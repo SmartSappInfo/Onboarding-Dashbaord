@@ -156,10 +156,13 @@ export default function PortalJoinClient({ slug }: PortalJoinClientProps) {
         user.displayName ||
         user.email.split('@')[0];
 
+      // Server actions derive the member from this verified token (never from a uid parameter).
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) throw new Error('Please sign in again to continue.');
+
       if (token && invitation) {
         // Accept invitation with existing authenticated account
-        const inviteRes = await acceptInvitationAction(portal.id, token, user.uid, {
-          email: user.email,
+        const inviteRes = await acceptInvitationAction(idToken, portal.id, token, {
           displayName: resolvedDisplayName,
           avatarUrl: user.photoURL || undefined,
         });
@@ -171,8 +174,7 @@ export default function PortalJoinClient({ slug }: PortalJoinClientProps) {
         // Direct 1-Click Join
         const userIsAdmin = userProfile?.role === 'admin' || userProfile?.roles?.includes('admin');
         const defaultRole = portal.accessPolicy?.defaultMemberRole || 'member';
-        const joinRes = await joinPortalDirectAction(portal.id, user.uid, {
-          email: user.email,
+        const joinRes = await joinPortalDirectAction(idToken, portal.id, {
           displayName: resolvedDisplayName,
           avatarUrl: user.photoURL || undefined,
           role: userIsAdmin ? 'admin' : defaultRole,
@@ -211,13 +213,13 @@ export default function PortalJoinClient({ slug }: PortalJoinClientProps) {
 
     setIsSubmitting(true);
     try {
-      let uid = '';
+      let idToken = '';
       if (isExistingUser) {
         const userCred = await signInWithEmailAndPassword(auth, email.trim(), password);
-        uid = userCred.user.uid;
+        idToken = await userCred.user.getIdToken();
       } else {
         const userCred = await createUserWithEmailAndPassword(auth, email.trim(), password);
-        uid = userCred.user.uid;
+        idToken = await userCred.user.getIdToken();
         if (displayName.trim()) {
           await updateProfile(userCred.user, { displayName: displayName.trim() });
         }
@@ -225,8 +227,7 @@ export default function PortalJoinClient({ slug }: PortalJoinClientProps) {
 
       if (token && invitation) {
         // Accept Invitation
-        const res = await acceptInvitationAction(portal.id, token, uid, {
-          email: email.trim(),
+        const res = await acceptInvitationAction(idToken, portal.id, token, {
           displayName: displayName.trim() || email.split('@')[0],
         });
 
@@ -236,8 +237,7 @@ export default function PortalJoinClient({ slug }: PortalJoinClientProps) {
       } else {
         // Direct Self-Registration Join
         const defaultRole = portal.accessPolicy?.defaultMemberRole || 'member';
-        const res = await joinPortalDirectAction(portal.id, uid, {
-          email: email.trim(),
+        const res = await joinPortalDirectAction(idToken, portal.id, {
           displayName: displayName.trim() || email.split('@')[0],
           role: defaultRole,
           joinedVia: 'direct_join',

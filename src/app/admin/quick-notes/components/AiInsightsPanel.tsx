@@ -34,7 +34,7 @@ export default function AiInsightsPanel({
   noteId,
   title,
   content,
-  userId,
+  userId: _userId,
   workspaceId,
   organizationId,
   links,
@@ -59,7 +59,7 @@ export default function AiInsightsPanel({
     setLoading(true);
     try {
       const plainText = extractPlainText(content);
-      const result = await generateQuickNoteInsight({ noteId, workspaceId, title, plainText, userId });
+      const result = await generateQuickNoteInsight({ noteId, workspaceId, title, plainText });
       if (result.success) {
         setInsight(result.data);
       } else {
@@ -73,7 +73,7 @@ export default function AiInsightsPanel({
   const createTask = async (text: string) => {
     setCreatingItem(text);
     try {
-      const result = await createTaskFromActionItem({ text, workspaceId, organizationId, userId, links });
+      const result = await createTaskFromActionItem({ text, workspaceId, organizationId, links });
       if (result.success) {
         toast({ title: 'Task created from action item' });
       } else {

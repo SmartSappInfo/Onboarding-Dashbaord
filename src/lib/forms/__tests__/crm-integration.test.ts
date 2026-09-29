@@ -110,8 +110,8 @@ vi.mock('@/app/actions/deal-actions', () => ({
 }));
 
 const mockCreateTask = vi.fn().mockResolvedValue({ success: true, id: 'task_888' });
-vi.mock('@/lib/task-server-actions', () => ({
-  createTaskAction: (data: any, userId: string) => mockCreateTask(data, userId),
+vi.mock('@/lib/tasks/task-core', () => ({
+  createTaskCore: (data: unknown, actor: unknown) => mockCreateTask(data, actor),
 }));
 
 const mockLogActivity = vi.fn().mockResolvedValue(undefined);
@@ -224,12 +224,12 @@ describe('SmartSapp Forms 2.0: CRM Integration Studio & Automated Actions', () =
         stageId: 'st_1',
       }));
 
-      // Verify createTaskAction was invoked with templated title and priority
+      // Verify the task core was invoked (system actor) with templated title and priority
       expect(mockCreateTask).toHaveBeenCalledWith(expect.objectContaining({
         title: 'Follow up with Kwame Mensah',
         entityId: 'ent_crm_123',
         priority: 'high',
-      }), expect.stringContaining('system-form-'));
+      }), expect.objectContaining({ kind: 'system', source: expect.stringContaining('form:') }));
 
       // Verify logActivity includes dealId and taskId
       expect(mockLogActivity).toHaveBeenCalledWith(expect.objectContaining({

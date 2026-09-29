@@ -194,16 +194,14 @@ export default function PortalCommunityClient({
     try {
       const cleanPollOptions = pollOptions.filter(o => o.trim().length > 0);
 
+      // Author and organization are derived server-side from the verified ID token and portal.
       const res = await createPostAction(
+        await user.getIdToken(),
         {
-          organizationId: portal.organizationId,
           portalId: portal.id,
           spaceId: targetSpace.id,
           workspaceIds: portal.workspaceIds,
-          authorId: user.uid,
-          authorName: user.displayName || user.email?.split('@')[0] || 'Member',
-          authorAvatarUrl: user.photoURL || undefined,
-          authorRole: 'member',
+          // Author name/avatar/role are set server-side from the portal membership.
           type: postType,
           title: postTitle.trim(),
           content: postContent.trim(),
@@ -239,11 +237,11 @@ export default function PortalCommunityClient({
 
     try {
       const res = await castPollVoteAction(
+        await user.getIdToken(),
         {
           pollId,
           postId,
           portalId: portal.id,
-          userId: user.uid,
           selectedOptionIds: [optionId],
         },
         slug,
@@ -289,12 +287,10 @@ export default function PortalCommunityClient({
     });
 
     try {
-      await toggleReactionAction({
-        organizationId: portal.organizationId,
+      await toggleReactionAction(await user.getIdToken(), {
         portalId: portal.id,
         targetType: 'post',
         targetId: postId,
-        userId: user.uid,
         type,
       });
     } catch (err: unknown) {

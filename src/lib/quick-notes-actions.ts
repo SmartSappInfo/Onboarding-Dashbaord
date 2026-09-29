@@ -8,6 +8,8 @@ import { isSafeHttpUrl, clampText } from './quick-notes-domain';
 import { QuickNotesRepository } from './quick-notes-repository';
 import { NoteIndexRepository } from './note-index-repository';
 import type { QuickNote, QuickNoteAttachment, QuickNoteLinks, NoteDocument, KnowledgeType } from './quick-notes-types';
+import { requireWorkspace, ForbiddenError } from './auth/require-auth';
+import { safeUrlFetch } from './security/ssrf-guard';
 
 /**
  * Quick Notes — server actions for cross-cutting concerns.
@@ -18,6 +20,10 @@ import type { QuickNote, QuickNoteAttachment, QuickNoteLinks, NoteDocument, Know
  * on the server: writing to the global Activity Feed (non-blocking via the
  * `after()` pattern inside `logActivity`). Phase 4/6/7 add index projection,
  * AI, and embeddings here.
+ *
+ * SECURITY (auth hotfix, agents_mcp Phase 1 §1.1a / audit F2): every export is a public endpoint.
+ * Each one calls `requireWorkspace`; `createdBy` / `userId` are ALWAYS the verified caller, and the
+ * activity's organization must be the caller's own (system admins excepted).
  */
 
 export interface QuickNoteActivityInput {
@@ -37,8 +43,14 @@ export interface QuickNoteActivityInput {
  * source so the feed can distinguish/filter Quick Notes (design spec R10/F4).
  */
 export async function logQuickNoteActivity(input: QuickNoteActivityInput): Promise<void> {
-  const { noteId, title, workspaceId, organizationId, createdBy, createdByName, contentPreview, links } = input;
+  const { noteId, title, workspaceId, organizationId, createdByName, contentPreview, links } = input;
   if (!workspaceId || !organizationId) return;
+  const ctx = await requireWorkspace(workspaceId);
+  if (!ctx.isSystemAdmin && ctx.profile.organizationId !== organizationId) {
+    throw new ForbiddenError('No access to this organization.');
+  }
+  // The activity is always attributed to the verified caller, not a caller-supplied `createdBy`.
+  const createdBy = ctx.uid;
 
   await logActivity({
     type: 'note_added',
@@ -83,20 +95,14 @@ const MAX_REDIRECT_HOPS = 3;
  * guard — a vetted public URL can otherwise 30x to a private/internal address.
  * Redirects are handled manually so each Location is checked before we follow.
  */
-async function ssrfSafeImageFetch(startUrl: string): Promise<Response | null> {
-  let url = startUrl;
-  for (let hop = 0; hop <= MAX_REDIRECT_HOPS; hop++) {
-    if (!isSafeHttpUrl(url)) return null;
-    const res = await fetch(url, { redirect: 'manual', signal: AbortSignal.timeout(8000) });
-    if (res.status >= 300 && res.status < 400) {
-      const location = res.headers.get('location');
-      if (!location) return null;
-      url = new URL(location, url).toString(); // resolve relative redirects
-      continue;
-    }
-    return res;
+async function ssrfSafeImageFetch(startUrl: string): Promise<Awaited<ReturnType<typeof safeUrlFetch>> | null> {
+  if (!isSafeHttpUrl(startUrl)) return null;
+  try {
+    // Shared guard (Rule 34): re-checks every redirect hop AND the DNS answer of every connection.
+    return await safeUrlFetch(startUrl, { signal: AbortSignal.timeout(8000) }, MAX_REDIRECT_HOPS);
+  } catch {
+    return null; // blocked, too many redirects, or network failure
   }
-  return null; // too many redirects
 }
 
 /**
@@ -149,6 +155,8 @@ export interface EnrichNoteLinkParams {
  */
 export async function enrichNoteLink(params: EnrichNoteLinkParams): Promise<QuickNoteAttachment> {
   const { url, workspaceId } = params;
+  // Spends AI + storage for the workspace: members of that workspace only.
+  await requireWorkspace(workspaceId);
   const base: QuickNoteAttachment = { id: randomUUID(), type: 'link', url };
 
   if (!isSafeHttpUrl(url) || !workspaceId) {
@@ -210,13 +218,14 @@ export interface CreateQuickNoteActionInput {
  */
 export async function createQuickNoteAction(
   workspaceId: string,
-  input: CreateQuickNoteActionInput,
-  userId: string
+  input: CreateQuickNoteActionInput
 ): Promise<{ success: boolean; noteId?: string; error?: string }> {
   try {
-    if (!workspaceId || !userId) {
-      return { success: false, error: 'Workspace ID and User ID are required.' };
+    if (!workspaceId) {
+      return { success: false, error: 'Workspace ID is required.' };
     }
+    // The author is the verified caller (was a caller-supplied userId).
+    const { uid: userId } = await requireWorkspace(workspaceId);
 
     const note = await QuickNotesRepository.createNote({
       workspaceId,

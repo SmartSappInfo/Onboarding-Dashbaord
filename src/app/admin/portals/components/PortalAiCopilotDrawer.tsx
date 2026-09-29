@@ -115,8 +115,7 @@ export function PortalAiCopilotDrawer({
           title: generatedCurriculum.courseTitle,
           description: generatedCurriculum.description,
           status: 'draft',
-        },
-        portalSlug
+        }
       );
 
       if (!res.success) throw new Error(res.error);

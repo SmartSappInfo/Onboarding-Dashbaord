@@ -26,7 +26,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { collection, query, where, limit } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -92,9 +92,9 @@ function PortalContentCatalogView({
   slug: string;
   portal: Portal;
 }) {
-  const firestore = useFirestore();
   const searchParams = useSearchParams();
   const { activeColors } = usePortalTheme();
+  const { user, isUserLoading } = useUser();
 
   const initialType = searchParams.get('type') || 'all';
 
@@ -110,17 +110,20 @@ function PortalContentCatalogView({
     }
   }, [searchParams]);
 
-  // Server Action Fallback State
+  // Content comes from the server, shaped for this viewer (Round 4 item 4): `content_items` is not
+  // readable from the browser, and gated items arrive as teasers. Waits for auth so members see
+  // what they are entitled to.
   const [serverItems, setServerItems] = React.useState<ContentItem[]>([]);
-  const [_isLoadingServer, setIsLoadingServer] = React.useState(true);
+  const [isLoadingContent, setIsLoadingServer] = React.useState(true);
 
   const fetchServerContent = React.useCallback(async () => {
-    if (!portal.id) return;
+    if (!portal.id || isUserLoading) return;
     try {
       setIsLoadingServer(true);
+      const idToken = user ? await user.getIdToken() : null;
       const res = await listContentItemsByPortalAction(portal.id, {
         status: 'published',
-      });
+      }, idToken);
       if (res.success && res.data) {
         setServerItems(res.data);
       }
@@ -129,29 +132,13 @@ function PortalContentCatalogView({
     } finally {
       setIsLoadingServer(false);
     }
-  }, [portal.id]);
+  }, [portal.id, user, isUserLoading]);
 
   React.useEffect(() => {
     fetchServerContent();
   }, [fetchServerContent]);
 
-  // Realtime Firestore Query for Content Items (Bounded with limit(50))
-  const contentQuery = useMemoFirebase(
-    () =>
-      firestore && portal.id
-        ? query(
-            collection(firestore, 'content_items'),
-            where('portalId', '==', portal.id),
-            where('status', '==', 'published'),
-            limit(50)
-          )
-        : null,
-    [firestore, portal.id]
-  );
-  const { data: realtimeItems, isLoading: isLoadingContent } = useCollection<ContentItem>(contentQuery);
-
-  // Combine Realtime with Server Fallback
-  const effectiveItems = (realtimeItems && realtimeItems.length > 0) ? realtimeItems : serverItems;
+  const effectiveItems = serverItems;
 
   // Memoized Filtered Content Items
   const filteredItems = React.useMemo(() => {

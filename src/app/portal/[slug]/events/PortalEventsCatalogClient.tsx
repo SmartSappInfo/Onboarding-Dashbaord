@@ -102,13 +102,11 @@ export function PortalEventsCatalogClient({ slug }: PortalEventsCatalogClientPro
     setRegisteringEventId(event.id);
     try {
       const res = await registerForEventAction(
+        await user.getIdToken(),
         {
-          organizationId: portal?.organizationId || 'smartsapp-hq',
           portalId: portal!.id,
           eventId: event.id,
-          userId: user.uid,
           userName: user.displayName || user.email?.split('@')[0] || 'Member',
-          userEmail: user.email || '',
         },
         slug,
         event.slug
@@ -127,13 +125,14 @@ export function PortalEventsCatalogClient({ slug }: PortalEventsCatalogClientPro
     (event: LiveEvent) => {
       if (user && portal) {
         // Fire-and-forget join timestamp tracking for attendance engine
-        void recordJoinSessionAction({
-          eventId: event.id,
-          userId: user.uid,
-          portalId: portal.id,
-          userName: user.displayName || user.email?.split('@')[0] || 'Member',
-          userEmail: user.email || '',
-        });
+        // Identity (uid/email) is taken from the verified ID token server-side.
+        void user.getIdToken().then(idToken =>
+          recordJoinSessionAction(idToken, {
+            eventId: event.id,
+            portalId: portal.id,
+            userName: user.displayName || user.email?.split('@')[0] || 'Member',
+          })
+        );
       }
       window.open(event.meetingUrl, '_blank', 'noopener,noreferrer');
     },

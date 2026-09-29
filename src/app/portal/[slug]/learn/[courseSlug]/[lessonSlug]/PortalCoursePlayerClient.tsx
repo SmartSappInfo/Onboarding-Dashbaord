@@ -430,7 +430,8 @@ export default function PortalCoursePlayerClient({
     }
 
     try {
-      await completeLessonAction(course.id, currentLesson.id, user.uid, portal.id, slug);
+      // The learner is derived server-side from this verified ID token.
+      await completeLessonAction(await user.getIdToken(), course.id, currentLesson.id, portal.id, slug);
       toast({ title: 'Lesson Completed! 🎉', description: 'Progress updated.' });
 
       if (nextLesson) {
@@ -464,12 +465,12 @@ export default function PortalCoursePlayerClient({
       }));
 
       const res = await submitAssessmentAction(
+        await user.getIdToken(),
         {
           assessmentId: currentAssessment.id,
           courseId: course.id,
           lessonId: currentLesson.id,
           portalId: portal.id,
-          userId: user.uid,
           answers: answersPayload,
         },
         slug

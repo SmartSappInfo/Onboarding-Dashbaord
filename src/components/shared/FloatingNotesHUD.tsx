@@ -186,7 +186,6 @@ export default function FloatingNotesHUD() {
         text: draftText,
         contextHint: activeEntityName ? `Linked to entity: ${activeEntityName}` : undefined,
         workspaceId: activeWorkspaceId,
-        userId: user.uid,
       });
 
       if (res.success && res.data) {

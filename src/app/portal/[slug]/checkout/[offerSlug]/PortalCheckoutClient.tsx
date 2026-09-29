@@ -147,12 +147,12 @@ export function PortalCheckoutClient({ slug, offerSlug }: PortalCheckoutClientPr
 
     setIsProcessingOrder(true);
     try {
+      // The server derives the buyer from the ID token (guest checkout when signed out).
       const res = await processCheckoutOrderAction(
+        user ? await user.getIdToken() : null,
         {
-          organizationId: portal.organizationId,
           portalId: portal.id,
           offerId: offer.id,
-          userId: user?.uid || `guest_${Date.now()}`,
           customerName: customerName.trim(),
           customerEmail: customerEmail.trim(),
           customerPhone: customerPhone.trim() || undefined,
@@ -165,6 +165,15 @@ export function PortalCheckoutClient({ slug, offerSlug }: PortalCheckoutClientPr
       );
 
       if (!res.success) throw new Error(res.error);
+
+      if (res.data.paymentStatus !== 'completed') {
+        // Paid orders wait for a verified payment before any access is granted.
+        toast({
+          title: 'Order Received',
+          description: `Your order for ${offer.title} is awaiting payment confirmation. Access unlocks once payment is verified.`,
+        });
+        return;
+      }
 
       toast({
         title: 'Order Confirmed! 🌟',

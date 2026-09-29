@@ -143,13 +143,11 @@ export function PortalEventDetailClient({ slug, eventSlug }: PortalEventDetailCl
     setIsSubmitting(true);
     try {
       const res = await registerForEventAction(
+        await user.getIdToken(),
         {
-          organizationId: portal.organizationId,
           portalId: portal.id,
           eventId: event.id,
-          userId: user.uid,
           userName: user.displayName || user.email?.split('@')[0] || 'Member',
-          userEmail: user.email || '',
         },
         slug,
         eventSlug
@@ -165,12 +163,12 @@ export function PortalEventDetailClient({ slug, eventSlug }: PortalEventDetailCl
   };
 
   const handleCancelRegistration = async () => {
-    if (!user || !event) return;
+    if (!user || !event || !portal) return;
     if (!confirm('Are you sure you want to cancel your seat for this event?')) return;
 
     setIsSubmitting(true);
     try {
-      const res = await cancelEventRegistrationAction(event.id, user.uid, slug, eventSlug);
+      const res = await cancelEventRegistrationAction(await user.getIdToken(), event.id, portal.id, slug, eventSlug);
       if (!res.success) throw new Error(res.error);
       toast({ title: 'Registration Cancelled', description: 'Your seat has been released.' });
     } catch (err: unknown) {
@@ -186,13 +184,14 @@ export function PortalEventDetailClient({ slug, eventSlug }: PortalEventDetailCl
     if (!event) return;
     if (user && portal) {
       // Fire-and-forget join timestamp tracking for attendance engine
-      void recordJoinSessionAction({
-        eventId: event.id,
-        userId: user.uid,
-        portalId: portal.id,
-        userName: user.displayName || user.email?.split('@')[0] || 'Member',
-        userEmail: user.email || '',
-      });
+      // Identity (uid/email) is taken from the verified ID token server-side.
+      void user.getIdToken().then(idToken =>
+        recordJoinSessionAction(idToken, {
+          eventId: event.id,
+          portalId: portal.id,
+          userName: user.displayName || user.email?.split('@')[0] || 'Member',
+        })
+      );
     }
     window.open(event.meetingUrl, '_blank', 'noopener,noreferrer');
   }, [event, user, portal]);
@@ -201,6 +200,7 @@ export function PortalEventDetailClient({ slug, eventSlug }: PortalEventDetailCl
     if (!user || !event || !portal) return;
     try {
       await recordEventAttendanceAction(
+        await user.getIdToken(),
         {
           portalId: portal.id,
           eventId: event.id,

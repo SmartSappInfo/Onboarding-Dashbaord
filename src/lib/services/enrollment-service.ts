@@ -50,8 +50,17 @@ export class EnrollmentService {
       .limit(1)
       .get();
 
-    // 2.1 Enforce membership plan entitlement check (unless manual admin override)
-    if (source !== 'manual_admin' && Array.isArray(courseData?.requiredPlanIds) && courseData.requiredPlanIds.length > 0) {
+    // 2.1 SECURITY (Round 4 item 1): entitlement depends on WHO is granting access.
+    // - `self_enroll`: the member themselves — only published courses of this portal, plan gate applies.
+    // - `manual_admin` (staff) and `purchase` (a settled order whose offer grants this course) are explicit
+    //   grants and skip the plan gate. Checkout enrols before it applies the offer's plan, so gating
+    //   purchases would silently drop paid enrolments.
+    // - Every other source keeps the plan gate.
+    if (source === 'self_enroll' && (courseData?.status !== 'published' || courseData?.portalId !== portalId)) {
+      throw new Error('This course is not open for enrolment.');
+    }
+    const isExplicitGrant = source === 'manual_admin' || source === 'purchase';
+    if (!isExplicitGrant && Array.isArray(courseData?.requiredPlanIds) && courseData.requiredPlanIds.length > 0) {
       const activePlanId = membershipSnap.empty ? null : membershipSnap.docs[0].data()?.planId;
       if (!activePlanId || !courseData.requiredPlanIds.includes(activePlanId)) {
         throw new Error('This course is exclusive to specific membership tiers. Please upgrade your membership to enroll.');

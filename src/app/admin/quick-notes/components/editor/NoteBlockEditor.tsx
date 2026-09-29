@@ -210,7 +210,6 @@ export default function NoteBlockEditor({
         text: plain,
         action,
         workspaceId,
-        userId,
       });
 
       if (res.success) {

@@ -162,15 +162,12 @@ export default function PortalPostDetailClient({
     setIsPostingComment(true);
     try {
       const res = await createCommentAction(
+        await user.getIdToken(),
         {
-          organizationId: portal.organizationId,
           portalId: portal.id,
           spaceId: space.id,
           postId: post.id,
-          authorId: user.uid,
-          authorName: user.displayName || user.email?.split('@')[0] || 'Member',
-          authorAvatarUrl: user.photoURL || undefined,
-          authorRole: 'member',
+          // Author name/avatar/role are set server-side from the portal membership.
           content: commentText.trim(),
         },
         slug
@@ -197,16 +194,13 @@ export default function PortalPostDetailClient({
     setIsPostingComment(true);
     try {
       const res = await createCommentAction(
+        await user.getIdToken(),
         {
-          organizationId: portal.organizationId,
           portalId: portal.id,
           spaceId: space.id,
           postId: post.id,
           parentCommentId,
-          authorId: user.uid,
-          authorName: user.displayName || user.email?.split('@')[0] || 'Member',
-          authorAvatarUrl: user.photoURL || undefined,
-          authorRole: 'member',
+          // Author name/avatar/role are set server-side from the portal membership.
           content: replyText.trim(),
         },
         slug
@@ -224,9 +218,14 @@ export default function PortalPostDetailClient({
   };
 
   const handleDeleteComment = async (commentId: string) => {
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     if (!confirm('Are you sure you want to delete this comment?')) return;
     try {
-      await deleteCommentAction(commentId, slug, space?.id, post?.id);
+      // Server checks the verified caller is the comment's author or portal staff.
+      await deleteCommentAction(await user.getIdToken(), commentId, slug, space?.id, post?.id);
       toast({ title: 'Comment Deleted', description: 'Comment removed from thread.' });
     } catch (err: unknown) {
       toast({ title: 'Delete Failed', description: getErrorMessage(err) });
@@ -243,13 +242,11 @@ export default function PortalPostDetailClient({
     if (!reason?.trim()) return;
 
     try {
-      await reportContentAction({
-        organizationId: portal.organizationId,
+      await reportContentAction(await user.getIdToken(), {
         portalId: portal.id,
         targetType: 'post',
         targetId: post.id,
         targetAuthorId: post.authorId,
-        reporterUserId: user.uid,
         reason: reason.trim(),
       });
       toast({ title: 'Report Submitted', description: 'Our moderation team will review this post.' });

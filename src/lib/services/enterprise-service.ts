@@ -158,7 +158,8 @@ export class EnterpriseService {
     // 1. Acyclic Tree Validation: ensure parentId is valid and not circular
     if (input.parentId) {
       const parentSnap = await adminDb.collection('org_hierarchy_nodes').doc(input.parentId).get();
-      if (!parentSnap.exists) {
+      // A parent from another organization is treated as missing (cross-tenant tree grafting).
+      if (!parentSnap.exists || parentSnap.data()?.organizationId !== input.organizationId) {
         throw new Error('Specified parent organizational unit does not exist.');
       }
     }

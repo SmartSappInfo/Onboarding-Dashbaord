@@ -305,7 +305,8 @@ export default function PortalCourseOverviewClient({
 
     setIsEnrolling(true);
     try {
-      const res = await enrollInCourseAction(course.id, user.uid, portal.id, slug);
+      // The learner is derived server-side from this verified ID token.
+      const res = await enrollInCourseAction(await user.getIdToken(), course.id, portal.id, slug);
       if (!res.success) throw new Error(res.error);
 
       toast({ title: 'Enrolled Successfully! 🎉', description: 'Your learning progress is now active.' });

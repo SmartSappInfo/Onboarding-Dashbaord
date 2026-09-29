@@ -66,7 +66,8 @@ vi.mock('../firebase-admin', () => {
 });
 
 // Import after mocks
-import { updateTaskAction } from '../task-server-actions';
+// Logic tests target the task core; session wrappers are covered in task-server-actions-auth.test.ts.
+import { updateTaskCore } from '../tasks/task-core';
 
 // Test storage access
 const __testStorage = {
@@ -133,7 +134,7 @@ describe('Property 3: Identifier Preservation Invariant', () => {
           const originalEntityType = task.entityType;
 
           // Execute: Update task with non-identifier fields
-          const result = await updateTaskAction(task.id, updates, 'test_user');
+          const result = await updateTaskCore(task.id, updates, { kind: 'user', uid: 'test_user' });
 
           // Verify: Update succeeded
           expect(result.success).toBe(true);
@@ -178,7 +179,7 @@ describe('Property 3: Identifier Preservation Invariant', () => {
 
           // Execute: Apply multiple updates sequentially
           for (const updates of updateSequence) {
-            const result = await updateTaskAction(task.id, updates, 'test_user');
+            const result = await updateTaskCore(task.id, updates, { kind: 'user', uid: 'test_user' });
             expect(result.success).toBe(true);
           }
 
@@ -203,7 +204,7 @@ describe('Property 3: Identifier Preservation Invariant', () => {
           __testStorage.tasks.set(task.id, task);
 
           // Execute: Update task
-          const result = await updateTaskAction(task.id, updates, 'test_user');
+          const result = await updateTaskCore(task.id, updates, { kind: 'user', uid: 'test_user' });
 
           // Verify: Update succeeded
           expect(result.success).toBe(true);
@@ -232,11 +233,11 @@ describe('Property 3: Identifier Preservation Invariant', () => {
           const originalEntityType = task.entityType;
 
           // Execute: Mark task as done
-          const result = await updateTaskAction(task.id, {
+          const result = await updateTaskCore(task.id, {
             status: 'done',
             workspaceId: task.workspaceId,
             title: task.title,
-          }, 'test_user');
+          }, { kind: 'user', uid: 'test_user' });
 
           // Verify: Update succeeded
           expect(result.success).toBe(true);
@@ -279,7 +280,7 @@ describe('Property 3: Identifier Preservation Invariant', () => {
             dueDate: new Date('2025-12-31').toISOString(),
           };
 
-          const result = await updateTaskAction(task.id, updates, 'test_user');
+          const result = await updateTaskCore(task.id, updates, { kind: 'user', uid: 'test_user' });
 
           // Verify: Update succeeded
           expect(result.success).toBe(true);

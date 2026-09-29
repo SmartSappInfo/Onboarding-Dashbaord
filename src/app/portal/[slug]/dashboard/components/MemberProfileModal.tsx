@@ -32,6 +32,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { updatePortalMemberProfileAction } from '@/app/actions/membership-actions';
+import { useAuth } from '@/firebase';
 import type { PortalMembership } from '@/lib/types/membership';
 import { User, School, Briefcase, Phone, Loader2, Sparkles } from 'lucide-react';
 
@@ -50,10 +51,11 @@ export function MemberProfileModal({
   onClose,
   portalId,
   portalSlug,
-  userId,
+  userId: _userId,
   currentMembership,
   onSuccess,
 }: MemberProfileModalProps) {
+  const auth = useAuth();
   const { toast } = useToast();
 
   const custom = (currentMembership?.customFields as Record<string, string | number | boolean | null> | undefined) || {};
@@ -101,10 +103,13 @@ export function MemberProfileModal({
 
     setIsSubmitting(true);
     try {
+      // The server derives the member from this verified token; userId is no longer sent.
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) throw new Error('Please sign in again to save your profile.');
       const res = await updatePortalMemberProfileAction(
+        idToken,
         {
           portalId,
-          userId,
           displayName: cleanName,
           schoolName: cleanSchool,
           jobTitle: cleanTitle,

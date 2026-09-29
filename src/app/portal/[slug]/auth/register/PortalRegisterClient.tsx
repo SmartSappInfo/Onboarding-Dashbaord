@@ -100,9 +100,8 @@ export default function PortalRegisterClient({ portal, slug }: PortalRegisterCli
         displayName: displayName.trim(),
       });
 
-      // Provision portal membership record
-      await joinPortalDirectAction(portal.id, userCred.user.uid, {
-        email: email.trim(),
+      // Provision portal membership record (identity + email are taken from the verified token)
+      await joinPortalDirectAction(await userCred.user.getIdToken(), portal.id, {
         displayName: displayName.trim(),
         role: 'member',
         joinedVia: 'direct_join',

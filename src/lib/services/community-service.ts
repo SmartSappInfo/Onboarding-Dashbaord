@@ -30,6 +30,20 @@ import type {
   MemberPublicProfile,
 } from '@/lib/types/community';
 
+/** The access fields of a space (a full `CommunitySpace` satisfies this). */
+export type SpaceAccessPolicy = Pick<CommunitySpace, 'id' | 'visibility' | 'allowedPlanIds' | 'allowedRoleIds'>;
+
+/** Who is trying to participate in a space, resolved server-side from the verified identity. */
+export interface SpaceParticipant {
+  uid: string;
+  planId?: string;
+  role?: string;
+  isPortalStaff: boolean;
+}
+
+/** Membership roles that may participate in (and moderate) every space of their portal. */
+const SPACE_MODERATOR_ROLES = new Set(['owner', 'admin', 'moderator']);
+
 export class CommunityService {
   /**
    * Helper to clean slugs
@@ -809,7 +823,7 @@ export class CommunityService {
    * Helper to verify if a member or role is entitled to access a space (Phase 3 Entitlements).
    */
   public static isUserEntitledToSpace(
-    space: CommunitySpace,
+    space: SpaceAccessPolicy,
     userPlanIds: string[] = [],
     userRole?: string
   ): boolean {
@@ -824,6 +838,38 @@ export class CommunityService {
         return true;
       }
       return space.allowedPlanIds.some(pid => userPlanIds.includes(pid));
+    }
+    return false;
+  }
+
+  /**
+   * SECURITY (Round 4 item 3): may this participant post, comment, react or vote in the space?
+   * - Portal staff, and members with an owner/admin/moderator role: always.
+   * - `private_cohort`: members whose role is in `allowedRoleIds`, or active members of a cohort whose
+   *   `linkedSpaceId` is this space (cohort discussions). `isUserEntitledToSpace` alone would deny them.
+   * - Everything else: `isUserEntitledToSpace` (public / members_only open; plan_gated by plan).
+   */
+  public static async canParticipateInSpace(space: SpaceAccessPolicy, participant: SpaceParticipant): Promise<boolean> {
+    if (participant.isPortalStaff) return true;
+    if (participant.role && SPACE_MODERATOR_ROLES.has(participant.role)) return true;
+    if (space.visibility === 'private_cohort') {
+      if (participant.role && space.allowedRoleIds?.includes(participant.role)) return true;
+      return CommunityService.isCohortMemberOfSpace(space.id, participant.uid);
+    }
+    return CommunityService.isUserEntitledToSpace(space, participant.planId ? [participant.planId] : [], participant.role);
+  }
+
+  private static async isCohortMemberOfSpace(spaceId: string, userId: string): Promise<boolean> {
+    const cohorts = await adminDb.collection('course_cohorts').where('linkedSpaceId', '==', spaceId).get();
+    for (const cohort of cohorts.docs) {
+      const members = await adminDb
+        .collection('cohort_members')
+        .where('cohortId', '==', cohort.id)
+        .where('userId', '==', userId)
+        .limit(1)
+        .get();
+      const status: unknown = members.empty ? undefined : members.docs[0].data().status;
+      if (!members.empty && status !== 'dropped') return true;
     }
     return false;
   }

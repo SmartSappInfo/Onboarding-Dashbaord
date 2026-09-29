@@ -10,11 +10,22 @@
  * - Strictly typed (Zero any / any[]).
  * - Server-side only ('use server').
  * - Validates input and sanitizes errors.
+ *
+ * SECURITY (auth hotfix, agents_mcp Phase 1 §1.1a / audit F2): these are public endpoints.
+ * Identity comes from the staff session via `requirePortalAdmin` / `requirePortalOrganizationAdmin`
+ * — never from a `userId` parameter (it used to default to 'system_admin' for anyone).
+ * Public on purpose: `validatePortalPasswordAction`, `getPublicPortalBySlugAction`.
  */
 
 import { revalidatePath } from 'next/cache';
 import { PortalService } from '@/lib/services/portal-service';
 import { PortalAccessService } from '@/lib/services/portal-access-service';
+import { requireSystemAdmin } from '@/lib/auth/require-auth';
+import {
+  portalAuthErrorMessage,
+  requirePortalAdmin,
+  requirePortalOrganizationAdmin,
+} from '@/lib/auth/require-portal-access';
 import type {
   Portal,
   CreatePortalInput,
@@ -28,12 +39,16 @@ export interface ActionResponse<T> {
   error?: string;
 }
 
+/** Auth failures return their own message; anything else keeps the action's generic fallback. */
+function failure(err: unknown, fallback: string): { success: false; error: string } {
+  return { success: false, error: portalAuthErrorMessage(err) ?? (err instanceof Error ? err.message : fallback) };
+}
+
 /**
  * Server action to create a new Experience Portal.
  */
 export async function createPortalAction(
-  input: CreatePortalInput,
-  userId: string = 'system_admin'
+  input: CreatePortalInput
 ): Promise<ActionResponse<Portal>> {
   try {
     if (!input.name || !input.name.trim()) {
@@ -42,14 +57,14 @@ export async function createPortalAction(
     if (!input.organizationId) {
       return { success: false, error: 'Organization ID is required.' };
     }
+    const { uid } = await requirePortalOrganizationAdmin(input.organizationId);
 
-    const portal = await PortalService.createPortal(input, userId);
+    const portal = await PortalService.createPortal(input, uid);
     revalidatePath('/admin/portals');
     return { success: true, data: portal };
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to create portal.';
     console.error('[PORTAL_ACTION] createPortalAction failed:', err);
-    return { success: false, error: message };
+    return failure(err, 'Failed to create portal.');
   }
 }
 
@@ -58,15 +73,15 @@ export async function createPortalAction(
  */
 export async function updatePortalAction(
   portalId: string,
-  updates: UpdatePortalInput,
-  userId: string = 'system_admin'
+  updates: UpdatePortalInput
 ): Promise<ActionResponse<Portal>> {
   try {
     if (!portalId) {
       return { success: false, error: 'Portal ID is required.' };
     }
+    const { auth } = await requirePortalAdmin(portalId);
 
-    const portal = await PortalService.updatePortal(portalId, updates, userId);
+    const portal = await PortalService.updatePortal(portalId, updates, auth.uid);
     revalidatePath('/admin/portals');
     revalidatePath(`/admin/portals/${portalId}`);
     revalidatePath(`/portal/${portal.slug}`);
@@ -74,9 +89,8 @@ export async function updatePortalAction(
 
     return { success: true, data: portal };
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to update portal.';
     console.error('[PORTAL_ACTION] updatePortalAction failed:', err);
-    return { success: false, error: message };
+    return failure(err, 'Failed to update portal.');
   }
 }
 
@@ -84,11 +98,11 @@ export async function updatePortalAction(
  * Server action to publish a portal.
  */
 export async function publishPortalAction(
-  portalId: string,
-  userId: string = 'system_admin'
+  portalId: string
 ): Promise<ActionResponse<Portal>> {
   try {
-    const portal = await PortalService.publishPortal(portalId, userId);
+    const { auth } = await requirePortalAdmin(portalId);
+    const portal = await PortalService.publishPortal(portalId, auth.uid);
     revalidatePath('/admin/portals');
     revalidatePath(`/admin/portals/${portalId}`);
     revalidatePath(`/portal/${portal.slug}`);
@@ -96,9 +110,8 @@ export async function publishPortalAction(
 
     return { success: true, data: portal };
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to publish portal.';
     console.error('[PORTAL_ACTION] publishPortalAction failed:', err);
-    return { success: false, error: message };
+    return failure(err, 'Failed to publish portal.');
   }
 }
 
@@ -107,11 +120,11 @@ export async function publishPortalAction(
  */
 export async function suspendPortalAction(
   portalId: string,
-  reason: string = 'Temporarily suspended by administrator',
-  userId: string = 'system_admin'
+  reason: string = 'Temporarily suspended by administrator'
 ): Promise<ActionResponse<Portal>> {
   try {
-    const portal = await PortalService.suspendPortal(portalId, reason, userId);
+    const { auth } = await requirePortalAdmin(portalId);
+    const portal = await PortalService.suspendPortal(portalId, reason, auth.uid);
     revalidatePath('/admin/portals');
     revalidatePath(`/admin/portals/${portalId}`);
     revalidatePath(`/portal/${portal.slug}`);
@@ -119,9 +132,8 @@ export async function suspendPortalAction(
 
     return { success: true, data: portal };
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to suspend portal.';
     console.error('[PORTAL_ACTION] suspendPortalAction failed:', err);
-    return { success: false, error: message };
+    return failure(err, 'Failed to suspend portal.');
   }
 }
 
@@ -129,19 +141,18 @@ export async function suspendPortalAction(
  * Server action to archive a portal.
  */
 export async function archivePortalAction(
-  portalId: string,
-  userId: string = 'system_admin'
+  portalId: string
 ): Promise<ActionResponse<Portal>> {
   try {
-    const portal = await PortalService.archivePortal(portalId, userId);
+    const { auth } = await requirePortalAdmin(portalId);
+    const portal = await PortalService.archivePortal(portalId, auth.uid);
     revalidatePath('/admin/portals');
     revalidatePath(`/admin/portals/${portalId}`);
 
     return { success: true, data: portal };
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to archive portal.';
     console.error('[PORTAL_ACTION] archivePortalAction failed:', err);
-    return { success: false, error: message };
+    return failure(err, 'Failed to archive portal.');
   }
 }
 
@@ -151,22 +162,21 @@ export async function archivePortalAction(
 export async function duplicatePortalAction(
   portalId: string,
   newName: string,
-  newSlug?: string,
-  userId: string = 'system_admin'
+  newSlug?: string
 ): Promise<ActionResponse<Portal>> {
   try {
     if (!newName || !newName.trim()) {
       return { success: false, error: 'New portal name is required.' };
     }
+    const { auth } = await requirePortalAdmin(portalId);
 
-    const portal = await PortalService.duplicatePortal(portalId, newName, newSlug, userId);
+    const portal = await PortalService.duplicatePortal(portalId, newName, newSlug, auth.uid);
     revalidatePath('/admin/portals');
 
     return { success: true, data: portal };
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to duplicate portal.';
     console.error('[PORTAL_ACTION] duplicatePortalAction failed:', err);
-    return { success: false, error: message };
+    return failure(err, 'Failed to duplicate portal.');
   }
 }
 
@@ -174,17 +184,16 @@ export async function duplicatePortalAction(
  * Server action to delete a portal.
  */
 export async function deletePortalAction(
-  portalId: string,
-  userId: string = 'system_admin'
+  portalId: string
 ): Promise<ActionResponse<boolean>> {
   try {
-    await PortalService.deletePortal(portalId, userId);
+    const { auth } = await requirePortalAdmin(portalId);
+    await PortalService.deletePortal(portalId, auth.uid);
     revalidatePath('/admin/portals');
     return { success: true, data: true };
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to delete portal.';
     console.error('[PORTAL_ACTION] deletePortalAction failed:', err);
-    return { success: false, error: message };
+    return failure(err, 'Failed to delete portal.');
   }
 }
 
@@ -197,6 +206,7 @@ export async function verifyPortalSlugAvailabilityAction(
   currentPortalId?: string
 ): Promise<ActionResponse<{ isAvailable: boolean; suggestedSlug: string }>> {
   try {
+    await requirePortalOrganizationAdmin(organizationId);
     const sanitized = PortalService.sanitizeSlug(slug);
     const uniqueSlug = await PortalService.generateUniqueSlug(sanitized, organizationId, currentPortalId);
     const isAvailable = uniqueSlug === sanitized;
@@ -209,8 +219,7 @@ export async function verifyPortalSlugAvailabilityAction(
       },
     };
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to verify slug.';
-    return { success: false, error: message };
+    return failure(err, 'Failed to verify slug.');
   }
 }
 
@@ -266,20 +275,17 @@ export async function getPublicPortalBySlugAction(
 }
 
 /**
- * Server action to get a portal by ID for Studio view.
+ * Server action to get a portal by ID for Studio view. Staff only: it returns the full record
+ * (access policy included). Public pages use `getPublicPortalBySlugAction`.
  */
 export async function getPortalByIdAction(
   portalId: string
 ): Promise<ActionResponse<Portal>> {
   try {
-    const portal = await PortalService.getPortalById(portalId);
-    if (!portal) {
-      return { success: false, error: 'Portal not found.' };
-    }
+    const { portal } = await requirePortalAdmin(portalId);
     return { success: true, data: portal };
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to fetch portal.';
-    return { success: false, error: message };
+    return failure(err, 'Failed to fetch portal.');
   }
 }
 
@@ -290,6 +296,8 @@ export async function runMasterExperienceSeederAction(
   organizationId: string = 'smartsapp-hq'
 ): Promise<ActionResponse<{ message: string; organizationId: string }>> {
   try {
+    // Seeds an entire ecosystem into any organization: platform system admins only.
+    await requireSystemAdmin();
     const { seedMasterExperience } = await import('@/app/seeds/seed-master-experience');
     await seedMasterExperience(organizationId);
     revalidatePath('/admin/portals');
@@ -301,9 +309,8 @@ export async function runMasterExperienceSeederAction(
       },
     };
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to execute master seeder.';
     console.error('[PORTAL_ACTION] runMasterExperienceSeederAction failed:', err);
-    return { success: false, error: message };
+    return failure(err, 'Failed to execute master seeder.');
   }
 }
 
@@ -313,18 +320,14 @@ export async function runMasterExperienceSeederAction(
  * Guarantees pre-existing portal documents in Firestore match current canonical paths.
  */
 export async function normalizeExistingPortalNavigationAction(
-  portalId: string,
-  userId: string = 'system_admin'
+  portalId: string
 ): Promise<ActionResponse<{ portal: Portal; updatedCount: number }>> {
   try {
     if (!portalId) {
       return { success: false, error: 'Portal ID is required.' };
     }
 
-    const portal = await PortalService.getPortalById(portalId);
-    if (!portal) {
-      return { success: false, error: 'Portal not found.' };
-    }
+    const { auth, portal } = await requirePortalAdmin(portalId);
 
     const { normalizePortalRelativePath } = await import('@/lib/utils/portal-navigation');
 
@@ -374,7 +377,7 @@ export async function normalizeExistingPortalNavigationAction(
     const updatedPortal = await PortalService.updatePortal(
       portalId,
       { navigation: updatedNav },
-      userId
+      auth.uid
     );
 
     revalidatePath('/admin/portals');
@@ -387,9 +390,8 @@ export async function normalizeExistingPortalNavigationAction(
       data: { portal: updatedPortal, updatedCount },
     };
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to normalize portal navigation.';
     console.error('[PORTAL_ACTION] normalizeExistingPortalNavigationAction failed:', err);
-    return { success: false, error: message };
+    return failure(err, 'Failed to normalize portal navigation.');
   }
 }
 

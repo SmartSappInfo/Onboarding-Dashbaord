@@ -10,7 +10,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { collection, query, where, orderBy } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useAuth } from '@/firebase';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -39,8 +39,9 @@ export function MemberTasksWidget({
   portalId,
   portalSlug,
   userId,
-  organizationId,
+  organizationId: _organizationId,
 }: MemberTasksWidgetProps) {
+  const auth = useAuth();
   const firestore = useFirestore();
   const { toast } = useToast();
 
@@ -86,12 +87,13 @@ export function MemberTasksWidget({
   const handleCompleteTask = async (taskId: string) => {
     setCompletingTaskId(taskId);
     try {
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) throw new Error('Please sign in again to continue.');
       const res = await completeTaskAction(
+        idToken,
         {
-          organizationId,
           portalId,
           taskId,
-          userId,
         },
         portalSlug
       );

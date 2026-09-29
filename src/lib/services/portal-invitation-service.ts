@@ -11,6 +11,7 @@
  */
 
 import crypto from 'crypto';
+import { z } from 'zod';
 import { adminDb } from '../firebase-admin';
 import { PortalMembershipService } from './portal-membership-service';
 import type {
@@ -21,6 +22,17 @@ import type {
 } from '../types/membership';
 
 const INVITATIONS_COLLECTION = 'portal_invitations';
+
+/** Usage fields of a stored invitation, validated before consuming a use. */
+const InvitationUsageSchema = z.object({
+  status: z.string(),
+  usedCount: z.number(),
+  maxUses: z.number(),
+  expiresAt: z.string().optional(),
+});
+
+/** Thrown inside the accept transaction when the invitation can no longer be used. */
+class InvitationUnavailableError extends Error {}
 
 export class PortalInvitationService {
   /**
@@ -152,44 +164,63 @@ export class PortalInvitationService {
     token: string,
     userId: string,
     userProfile: {
+      /** The accepting user's email, from their verified ID token (never caller-supplied). */
       email: string;
       displayName?: string;
       avatarUrl?: string;
-      contactId?: string;
     }
   ): Promise<{ success: boolean; membership?: PortalMembership; error?: string }> {
     const verification = await this.verifyInvitationToken(portalId, token);
     if (!verification.valid || !verification.invitation) {
       return { success: false, error: verification.error || 'Invalid invitation.' };
     }
-
     const inv = verification.invitation;
+
+    // SECURITY (Round 4 item 6): a targeted invite (it may carry an elevated role) is only valid for
+    // the address it was sent to. Email *verification* is deliberately not required: new accounts
+    // accept immediately after sign-up, and the token itself was delivered to that address.
+    if (inv.email && inv.email.trim().toLowerCase() !== userProfile.email.trim().toLowerCase()) {
+      return { success: false, error: 'This invitation was sent to a different email address.' };
+    }
+
+    // An existing member keeps their membership and does not consume a use.
+    const existing = await PortalMembershipService.getMembership(inv.portalId, userId);
+    if (existing) return { success: true, membership: existing };
+
+    // Consume one use atomically. Everything is re-checked INSIDE the transaction: the pre-check above
+    // runs outside it, so concurrent accepts could otherwise exceed `maxUses`.
     const invRef = adminDb.collection(INVITATIONS_COLLECTION).doc(inv.id);
+    try {
+      await adminDb.runTransaction(async t => {
+        const doc = await t.get(invRef);
+        const current = InvitationUsageSchema.safeParse(doc.exists ? doc.data() : undefined);
+        if (!current.success) throw new InvitationUnavailableError('Invitation link is invalid.');
+        const { status, usedCount, maxUses, expiresAt } = current.data;
+        if (status !== 'pending') throw new InvitationUnavailableError('This invitation is no longer available.');
+        if (expiresAt && new Date(expiresAt) < new Date()) throw new InvitationUnavailableError('This invitation link has expired.');
+        if (usedCount >= maxUses) {
+          throw new InvitationUnavailableError('This invitation link has reached its maximum number of uses.');
+        }
 
-    // Atomically increment and mark accepted if max uses reached
-    await adminDb.runTransaction(async t => {
-      const doc = await t.get(invRef);
-      if (!doc.exists) throw new Error('Invitation missing.');
-
-      const current = doc.data() as PortalInvitation;
-      const newUsedCount = current.usedCount + 1;
-      const isMaxReached = newUsedCount >= current.maxUses;
-
-      t.update(invRef, {
-        usedCount: newUsedCount,
-        status: isMaxReached ? 'accepted' : 'pending',
-        updatedAt: new Date().toISOString(),
+        const newUsedCount = usedCount + 1;
+        t.update(invRef, {
+          usedCount: newUsedCount,
+          status: newUsedCount >= maxUses ? 'accepted' : 'pending',
+          updatedAt: new Date().toISOString(),
+        });
       });
-    });
+    } catch (err: unknown) {
+      if (err instanceof InvitationUnavailableError) return { success: false, error: err.message };
+      throw err;
+    }
 
-    // Create or retrieve membership
+    // Create the membership. The CRM contact link is never caller-supplied (linked via CRM flows only).
     const membership = await PortalMembershipService.createMembership(
       {
         organizationId: inv.organizationId,
         portalId: inv.portalId,
         workspaceIds: inv.workspaceIds,
         userId,
-        contactId: userProfile.contactId,
         email: userProfile.email,
         displayName: userProfile.displayName || userProfile.email.split('@')[0],
         avatarUrl: userProfile.avatarUrl,

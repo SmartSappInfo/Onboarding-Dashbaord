@@ -15,6 +15,7 @@
  * - Strict typing (0 any, 0 any[], 0 unhandled unknown)
  */
 
+import { useAuth } from '@/firebase';
 import * as React from 'react';
 import {
   Dialog,
@@ -65,6 +66,7 @@ export function TaskSubmissionDropzoneModal({
   existingSubmission,
   onSuccess,
 }: TaskSubmissionDropzoneModalProps) {
+  const auth = useAuth();
   const { toast } = useToast();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -168,12 +170,13 @@ export function TaskSubmissionDropzoneModal({
         finalFileSize = selectedFile.size;
       }
 
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) throw new Error('Please sign in again to submit.');
       const res = await submitTaskAction(
+        idToken,
         {
-          organizationId: task.organizationId,
           portalId,
           taskId: task.id,
-          userId,
           notes: notes.trim() || undefined,
           submittedFileUrl: finalFileUrl,
           submittedFileName: finalFileName,

@@ -11,6 +11,7 @@
  * - Certificate Issuance: Auto-generates verified CourseCertificate on 100% course completion.
  */
 
+import { z } from 'zod';
 import { adminDb } from '@/lib/firebase-admin';
 import { PortalMembershipService } from '@/lib/services/portal-membership-service';
 import { ReleaseScheduleService } from '@/lib/services/release-schedule-service';
@@ -29,7 +30,42 @@ import type {
   CourseCertificate,
 } from '@/lib/types/learning';
 
+/** Fields that bind a lesson/assessment to its course (validated; the rest stays as stored). */
+const LessonBindingSchema = z.object({ courseId: z.string(), isPreview: z.boolean().optional() });
+const AssessmentBindingSchema = z.object({ courseId: z.string(), lessonId: z.string() });
+const EnrollmentStatusSchema = z.object({ status: z.string() });
+
+/** Enrolment statuses under which a learner may record progress (completed = revisiting). */
+const TRACKABLE_ENROLLMENT_STATUSES = new Set(['active', 'completed']);
+
 export class LearningProgressService {
+  /**
+   * SECURITY (Round 4 item 2): progress is keyed by `courseId`, and course completion / certificates
+   * count progress rows per course. A lesson may therefore only count toward ITS OWN course, and a
+   * non-preview lesson may only be tracked by an enrolled learner. Preview lessons stay open to any
+   * member (the player shows them before enrolment); they never issue a certificate on their own
+   * because certificates require an enrolment record.
+   */
+  private static async assertLessonTrackable(courseId: string, lessonId: string, userId: string): Promise<void> {
+    const lessonSnap = await adminDb.collection('course_lessons').doc(lessonId).get();
+    const lesson = LessonBindingSchema.safeParse(lessonSnap.exists ? lessonSnap.data() : undefined);
+    if (!lesson.success || lesson.data.courseId !== courseId) {
+      throw new Error('Lesson not found in this course.');
+    }
+    if (lesson.data.isPreview) return;
+
+    const enrollSnap = await adminDb
+      .collection('course_enrollments')
+      .where('courseId', '==', courseId)
+      .where('userId', '==', userId)
+      .limit(1)
+      .get();
+    const enrollment = enrollSnap.empty ? null : EnrollmentStatusSchema.safeParse(enrollSnap.docs[0].data());
+    if (!enrollment?.success || !TRACKABLE_ENROLLMENT_STATUSES.has(enrollment.data.status)) {
+      throw new Error('Enrol in this course to track your progress.');
+    }
+  }
+
   /**
    * Record video watch progress (Throttled/Debounced from client)
    */
@@ -41,6 +77,7 @@ export class LearningProgressService {
     watchSeconds: number,
     watchPercentage: number
   ): Promise<LearningProgress> {
+    await LearningProgressService.assertLessonTrackable(courseId, lessonId, userId);
     const progressId = `${courseId}_${lessonId}_${userId}`;
     const docRef = adminDb.collection('learning_progress').doc(progressId);
     const snap = await docRef.get();
@@ -106,6 +143,7 @@ export class LearningProgressService {
     userId: string,
     portalId: string
   ): Promise<void> {
+    await LearningProgressService.assertLessonTrackable(courseId, lessonId, userId);
     const progressId = `${courseId}_${lessonId}_${userId}`;
     const now = new Date().toISOString();
 
@@ -383,6 +421,14 @@ export class LearningProgressService {
     if (!snap.exists) {
       throw new Error(`Assessment ${input.assessmentId} not found.`);
     }
+
+    // SECURITY (Round 4 item 2): a quiz result only counts for the assessment's own course and lesson;
+    // otherwise an easy quiz could unlock an `assessment_pass` lesson elsewhere.
+    const binding = AssessmentBindingSchema.safeParse(snap.data());
+    if (!binding.success || binding.data.courseId !== input.courseId || binding.data.lessonId !== input.lessonId) {
+      throw new Error('Assessment not found for this lesson.');
+    }
+    await LearningProgressService.assertLessonTrackable(input.courseId, input.lessonId, input.userId);
 
     const assessment = snap.data() as CourseAssessment;
     let totalPointsPossible = 0;

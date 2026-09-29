@@ -85,8 +85,7 @@ export default function PortalSignInClient({ portal, slug }: PortalSignInClientP
       const userCred = await signInWithEmailAndPassword(auth, email.trim(), password);
 
       // Guarantee active membership record exists in portal
-      await joinPortalDirectAction(portal.id, userCred.user.uid, {
-        email: userCred.user.email || email.trim(),
+      await joinPortalDirectAction(await userCred.user.getIdToken(), portal.id, {
         displayName: userCred.user.displayName || email.trim().split('@')[0],
         role: 'member',
         joinedVia: 'direct_join',

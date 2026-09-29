@@ -35,6 +35,7 @@ import {
   recordOrientationWatchedAction,
 } from '@/app/actions/engagement-actions';
 import { updatePortalMemberProfileAction } from '@/app/actions/membership-actions';
+import { useAuth } from '@/firebase';
 import type {
   OnboardingStep,
   MemberOnboardingProgress,
@@ -74,7 +75,7 @@ export function PortalOnboardingModal({
   onOpenChange,
   portalId,
   portalSlug,
-  userId,
+  userId: _userId,
   steps,
   progress,
   membership,
@@ -82,6 +83,7 @@ export function PortalOnboardingModal({
   onSuccess,
 }: PortalOnboardingModalProps) {
   const { toast } = useToast();
+  const auth = useAuth();
 
   const completedStepIds = React.useMemo(() => progress?.completedStepIds || [], [progress?.completedStepIds]);
   const progressPct = progress?.progressPercentage || 0;
@@ -127,14 +129,16 @@ export function PortalOnboardingModal({
   const handleMarkStepComplete = async (stepId: string) => {
     setIsProcessingStep(true);
     try {
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) throw new Error('Please sign in again to continue.');
       if (activeStep?.type === 'welcome_video') {
-        const res = await recordOrientationWatchedAction(portalId, userId, portalSlug);
+        const res = await recordOrientationWatchedAction(idToken, portalId, portalSlug);
         if (!res.success) throw new Error(res.error);
       } else {
         const res = await advanceOnboardingStepAction(
+          idToken,
           {
             portalId,
-            userId,
             stepId,
           },
           portalSlug
@@ -169,10 +173,13 @@ export function PortalOnboardingModal({
 
     setIsSavingProfile(true);
     try {
+      // The server derives the member from this verified token; userId is no longer sent.
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) throw new Error('Please sign in again to save your profile.');
       const res = await updatePortalMemberProfileAction(
+        idToken,
         {
           portalId,
-          userId,
           displayName: profileName.trim(),
           bio: profileBio.trim() || undefined,
           jobTitle: profileRole.trim() || undefined,
@@ -182,11 +189,11 @@ export function PortalOnboardingModal({
 
       if (!res.success) throw new Error(res.error);
 
-      // Advance step
+      // Advance step (idToken obtained above for the profile save)
       await advanceOnboardingStepAction(
+        idToken,
         {
           portalId,
-          userId,
           stepId: activeStep.id,
         },
         portalSlug

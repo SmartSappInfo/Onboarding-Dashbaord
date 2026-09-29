@@ -532,7 +532,7 @@ export default function TasksClient() {
                 ? currentAssignees.filter(id => id !== userId)
                 : [...currentAssignees, userId];
 
-            const res = await updateTaskAction(task.id, { ...task, assignedTo: nextAssignees }, currentUser.uid);
+            const res = await updateTaskAction(task.id, { ...task, assignedTo: nextAssignees });
             if (res.success) {
                 toast({ title: 'Assignees updated successfully' });
             } else {
@@ -546,7 +546,7 @@ export default function TasksClient() {
     const handleUpdateStatus = async (task: Task, newStatus: TaskStatus) => {
         if (!currentUser) return;
         try {
-            const res = await updateTaskAction(task.id, { ...task, status: newStatus }, currentUser.uid);
+            const res = await updateTaskAction(task.id, { ...task, status: newStatus });
             if (res.success) {
                 toast({ title: `Status updated to ${STATUS_LABELS[newStatus]}` });
             } else {
@@ -562,7 +562,7 @@ export default function TasksClient() {
         try {
             const currentDueDate = task.dueDate ? new Date(task.dueDate) : new Date();
             const newDueDate = addDays(currentDueDate, days).toISOString();
-            const res = await updateTaskAction(task.id, { ...task, dueDate: newDueDate }, currentUser.uid);
+            const res = await updateTaskAction(task.id, { ...task, dueDate: newDueDate });
             if (res.success) {
                 toast({ title: `Task postponed by ${days} day${days > 1 ? 's' : ''}` });
             } else {
@@ -578,7 +578,7 @@ export default function TasksClient() {
         try {
             const task = allTasks?.find(t => t.id === taskId);
             if (!task) return false;
-            const res = await updateTaskAction(taskId, { ...task, ...updatedFields }, currentUser.uid);
+            const res = await updateTaskAction(taskId, { ...task, ...updatedFields });
             if (res.success) {
                 toast({ title: 'Task rescheduled successfully' });
                 return true;
@@ -598,8 +598,8 @@ export default function TasksClient() {
         try {
             const finalPayload = { ...payload, workspaceId: activeWorkspaceId };
             const res = editingTask 
-                ? await updateTaskAction(editingTask.id, finalPayload, currentUser.uid)
-                : await createTaskAction(finalPayload, currentUser.uid);
+                ? await updateTaskAction(editingTask.id, finalPayload)
+                : await createTaskAction(finalPayload);
 
             if (res.success) {
                 toast({ title: editingTask ? 'Task Architecture Synchronized' : 'Task Initialized' });
@@ -641,7 +641,7 @@ export default function TasksClient() {
         const newStatus = isDone ? 'todo' : 'done';
         
         try {
-            const res = await updateTaskAction(taskToComplete.id, { ...taskToComplete, status: newStatus }, currentUser.uid);
+            const res = await updateTaskAction(taskToComplete.id, { ...taskToComplete, status: newStatus });
             if (res.success) {
                 toast({ title: isDone ? 'Task Reopened' : 'Protocol Resolved' });
             } else {
@@ -656,7 +656,7 @@ export default function TasksClient() {
     const handleDelete = async (task: Task) => {
         if (!currentUser) return;
         try {
-            const res = await deleteTaskAction(task.id, currentUser.uid);
+            const res = await deleteTaskAction(task.id);
             if (res.success) {
                 toast({ title: 'Record Purged', description: `Task "${task.title}" deleted.` });
             } else {
@@ -672,7 +672,7 @@ export default function TasksClient() {
         if (!currentUser || selectedIds.length === 0) return;
         setIsBulkProcessing(true);
         try {
-            const res = await bulkUpdateTasksAction(selectedIds, { status: 'done' } as any, currentUser.uid, activeWorkspaceId);
+            const res = await bulkUpdateTasksAction(selectedIds, { status: 'done' }, activeWorkspaceId);
             if (res.success) {
                 toast({ title: 'Bulk Completion Success', description: `${selectedIds.length} tasks resolved.` });
                 setSelectedIds([]);
@@ -692,7 +692,7 @@ export default function TasksClient() {
         if (!currentUser || selectedIds.length === 0) return;
         setIsBulkProcessing(true);
         try {
-            const res = await bulkDeleteTasksAction(selectedIds, currentUser.uid, activeWorkspaceId);
+            const res = await bulkDeleteTasksAction(selectedIds, activeWorkspaceId);
             if (res.success) {
                 toast({ title: 'Bulk Delete Success', description: `${selectedIds.length} tasks permanently deleted.` });
                 setSelectedIds([]);
@@ -716,7 +716,7 @@ export default function TasksClient() {
             const promises = selectedIds.map(id => {
                 const task = allTasks.find(t => t.id === id);
                 if (!task) return Promise.resolve({ success: true });
-                return updateTaskAction(id, { ...task, assignedTo: [userId] }, currentUser.uid);
+                return updateTaskAction(id, { ...task, assignedTo: [userId] });
             });
             const results = await Promise.all(promises);
             const failures = results.filter(r => !r.success);
@@ -741,7 +741,7 @@ export default function TasksClient() {
             const promises = selectedIds.map(id => {
                 const task = allTasks.find(t => t.id === id);
                 if (!task) return Promise.resolve({ success: true });
-                return updateTaskAction(id, { ...task, status }, currentUser.uid);
+                return updateTaskAction(id, { ...task, status });
             });
             const results = await Promise.all(promises);
             const failures = results.filter(r => !r.success);
@@ -768,7 +768,7 @@ export default function TasksClient() {
                 if (!task || !task.dueDate) return Promise.resolve({ success: true });
                 const currentDueDate = new Date(task.dueDate);
                 const newDueDate = new Date(currentDueDate.getTime() + days * 24 * 60 * 60 * 1000).toISOString();
-                return updateTaskAction(id, { ...task, dueDate: newDueDate }, currentUser.uid);
+                return updateTaskAction(id, { ...task, dueDate: newDueDate });
             });
             const results = await Promise.all(promises);
             const failures = results.filter(r => !r.success);
@@ -1325,7 +1325,7 @@ export default function TasksClient() {
                                                                             e.stopPropagation();
                                                                             if (!currentUser) return;
                                                                             const newStatus = task.status === 'done' ? 'todo' : 'done';
-                                                                            await updateTaskAction(task.id, { ...task, status: newStatus }, currentUser.uid);
+                                                                            await updateTaskAction(task.id, { ...task, status: newStatus });
                                                                             toast({ title: newStatus === 'done' ? 'Task Completed' : 'Task Reopened' });
                                                                         }}
                                                                         className="h-5 w-5 rounded-full border border-border hover:border-emerald-500 hover:bg-emerald-500/10 flex items-center justify-center transition-all shrink-0 group/check cursor-pointer"

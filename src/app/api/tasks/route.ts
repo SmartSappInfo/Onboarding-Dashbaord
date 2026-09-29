@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { createTaskAction, getTasksForContact } from '@/lib/task-server-actions';
+import { createTaskCore, getTasksForContactCore } from '@/lib/tasks/task-core';
+import { authenticateApiRequest } from '@/lib/auth/api-auth-guard';
+import { CreateTaskRequestSchema, describeTaskPayloadIssues } from '@/lib/tasks/task-input-schema';
 import type { Task } from '@/lib/types';
 // SECURITY (audit F9): report the detail server-side, return an opaque message.
 import { toClientErrorMessage } from '@/lib/errors/report-error';
@@ -8,6 +10,10 @@ import { toClientErrorMessage } from '@/lib/errors/report-error';
 /**
  * @fileOverview Tasks API endpoint with entityId support
  * Requirements: 24.1, 24.2, 24.5
+ *
+ * SECURITY (auth hotfix §1.1a): these handlers were unauthenticated — GET listed any workspace's
+ * tasks and POST created tasks as 'system_api'. Callers now need a Firebase ID token (Bearer) for a
+ * member of the workspace; writes are permission-checked as that user.
  */
 
 /**
@@ -36,8 +42,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get tasks using server action
-    const tasks = await getTasksForContact(entityId, workspaceId);
+    const authResult = await authenticateApiRequest(request, { requiredWorkspaceId: workspaceId });
+    if (!authResult.success) return authResult.errorResponse;
+
+    const tasks = await getTasksForContactCore(entityId, workspaceId);
 
     // Apply additional filters if provided
     let filteredTasks = tasks;
@@ -73,56 +81,51 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const {
-      workspaceId,
-      title,
-      description,
-      priority,
-      status,
-      category,
-      dueDate,
-      assignedTo,
-      entityId,
-      entityType,
-      ...rest
-    } = body;
+    const body: unknown = await request.json();
 
-    // Validate required fields
-    if (!workspaceId || !title) {
+    // Required fields keep their original, specific error messages.
+    const raw = typeof body === 'object' && body !== null ? body : {};
+    if (!('workspaceId' in raw) || !raw.workspaceId || !('title' in raw) || !raw.title) {
       return NextResponse.json(
         { error: 'workspaceId and title are required' },
         { status: 400 }
       );
     }
-
-    if (!entityId) {
+    if (!('entityId' in raw) || !raw.entityId) {
       return NextResponse.json(
         { error: 'entityId must be provided' },
         { status: 400 }
       );
     }
 
-    // Prefer entityId when both provided (Requirement 24.1)
+    // SECURITY (Round 4 item 5): allowlist + type-check the body. Unknown keys are dropped and
+    // tenant/identity fields (organizationId, id, createdAt, ...) can never be set from here.
+    const parsed = CreateTaskRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: `Invalid task payload: ${describeTaskPayloadIssues(parsed.error)}` }, { status: 400 });
+    }
+    const { workspaceId, entityId, ...fields } = parsed.data;
+
+    const authResult = await authenticateApiRequest(request, { requiredWorkspaceId: workspaceId });
+    if (!authResult.success) return authResult.errorResponse;
+
     const taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'> = {
-      workspaceId,
-      title,
-      description: description || '',
-      priority: priority || 'medium',
-      status: status || 'todo',
-      category: category || 'general',
-      dueDate: dueDate || new Date().toISOString(),
-      assignedTo: assignedTo || '',
+      ...fields,
+      title: fields.title ?? '',
+      description: fields.description || '',
+      priority: fields.priority || 'medium',
+      status: fields.status || 'todo',
+      category: fields.category || 'general',
+      dueDate: fields.dueDate || new Date().toISOString(),
+      assignedTo: fields.assignedTo || '',
       // Dual-write: populate both identifiers (Requirement 24.2)
-      entityId: entityId || null,
-      entityType: entityType || null,
+      entityId,
       reminderSent: false,
-      reminders: [],
-      ...rest
+      reminders: fields.reminders || [],
+      workspaceId,
     };
 
-    // Create task using server action
-    const result = await createTaskAction(taskData, 'system_api');
+    const result = await createTaskCore(taskData, { kind: 'user', uid: authResult.user.uid });
 
     if (!result.success) {
       return NextResponse.json(

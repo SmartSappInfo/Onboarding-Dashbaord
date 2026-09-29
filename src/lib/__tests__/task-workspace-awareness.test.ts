@@ -13,9 +13,13 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { createTaskAction, updateTaskAction } from '../task-server-actions';
+// Logic tests target the task core; session wrappers are covered in task-server-actions-auth.test.ts.
+import { createTaskCore, updateTaskCore } from '../tasks/task-core';
 import { resolveContact } from '../contact-adapter';
 import type { Task, ResolvedContact } from '../types';
+
+// The task core reads `workspaces/{id}` to derive the task's organization (Round 4 item 5).
+const workspaceDoc = () => ({ get: async () => ({ exists: true, data: () => ({ organizationId: 'org_1' }) }) });
 
 // Mock firebase-admin
 vi.mock('../firebase-admin', () => ({
@@ -63,7 +67,7 @@ describe('Task Workspace Awareness (Requirement 13)', () => {
     it('should create task with entityId and entityType when provided', async () => {
       const { adminDb } = await import('../firebase-admin');
       const mockAdd = vi.fn().mockResolvedValue({ id: 'task_123' });
-      (adminDb.collection as any).mockReturnValue({ add: mockAdd });
+      (adminDb.collection as any).mockReturnValue({ add: mockAdd, doc: workspaceDoc });
 
       const taskData = {
         title: 'Follow up with institution',
@@ -81,7 +85,7 @@ describe('Task Workspace Awareness (Requirement 13)', () => {
         reminderSent: false,
       };
 
-      const result = await createTaskAction(taskData, 'test_user');
+      const result = await createTaskCore(taskData, { kind: 'user', uid: 'test_user' });
 
       expect(result.success).toBe(true);
       expect(mockAdd).toHaveBeenCalledWith(
@@ -96,7 +100,7 @@ describe('Task Workspace Awareness (Requirement 13)', () => {
     it('should require workspaceId when creating task', async () => {
       const { adminDb } = await import('../firebase-admin');
       const mockAdd = vi.fn().mockResolvedValue({ id: 'task_123' });
-      (adminDb.collection as any).mockReturnValue({ add: mockAdd });
+      (adminDb.collection as any).mockReturnValue({ add: mockAdd, doc: workspaceDoc });
 
       const taskData = {
         title: 'Test task',
@@ -112,7 +116,7 @@ describe('Task Workspace Awareness (Requirement 13)', () => {
         reminderSent: false,
       };
 
-      await createTaskAction(taskData, 'test_user');
+      await createTaskCore(taskData, { kind: 'user', uid: 'test_user' });
 
       expect(mockAdd).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -126,7 +130,7 @@ describe('Task Workspace Awareness (Requirement 13)', () => {
     it('should populate both entityId and entityId when creating task for migrated school', async () => {
       const { adminDb } = await import('../firebase-admin');
       const mockAdd = vi.fn().mockResolvedValue({ id: 'task_123' });
-      (adminDb.collection as any).mockReturnValue({ add: mockAdd });
+      (adminDb.collection as any).mockReturnValue({ add: mockAdd, doc: workspaceDoc });
 
       // Mock adapter to return migrated contact
       const mockContact: ResolvedContact = {
@@ -157,7 +161,7 @@ describe('Task Workspace Awareness (Requirement 13)', () => {
         reminderSent: false,
       };
 
-      await createTaskAction(taskData, 'test_user');
+      await createTaskCore(taskData, { kind: 'user', uid: 'test_user' });
 
       // Verify adapter was called
       expect(resolveContact).toHaveBeenCalledWith('school_123', 'workspace_1');
@@ -175,7 +179,7 @@ describe('Task Workspace Awareness (Requirement 13)', () => {
     it('should handle legacy schools that are not yet migrated', async () => {
       const { adminDb } = await import('../firebase-admin');
       const mockAdd = vi.fn().mockResolvedValue({ id: 'task_123' });
-      (adminDb.collection as any).mockReturnValue({ add: mockAdd });
+      (adminDb.collection as any).mockReturnValue({ add: mockAdd, doc: workspaceDoc });
 
       // Mock adapter to return legacy contact (no entityId)
       const mockContact: ResolvedContact = {
@@ -205,7 +209,7 @@ describe('Task Workspace Awareness (Requirement 13)', () => {
         reminderSent: false,
       };
 
-      await createTaskAction(taskData, 'test_user');
+      await createTaskCore(taskData, { kind: 'user', uid: 'test_user' });
 
       // Verify entityId is maintained, entityId is null for legacy records
       expect(mockAdd).toHaveBeenCalledWith(
@@ -220,7 +224,7 @@ describe('Task Workspace Awareness (Requirement 13)', () => {
     it('should handle tasks without any contact association', async () => {
       const { adminDb } = await import('../firebase-admin');
       const mockAdd = vi.fn().mockResolvedValue({ id: 'task_123' });
-      (adminDb.collection as any).mockReturnValue({ add: mockAdd });
+      (adminDb.collection as any).mockReturnValue({ add: mockAdd, doc: workspaceDoc });
 
       const taskData = {
         title: 'General task',
@@ -236,7 +240,7 @@ describe('Task Workspace Awareness (Requirement 13)', () => {
         reminderSent: false,
       };
 
-      await createTaskAction(taskData, 'test_user');
+      await createTaskCore(taskData, { kind: 'user', uid: 'test_user' });
 
       // Verify no contact fields are set (entityId can be undefined or null)
       const callArgs = mockAdd.mock.calls[0][0];
@@ -271,7 +275,10 @@ describe('Task Workspace Awareness (Requirement 13)', () => {
       const { adminDb } = await import('../firebase-admin');
       const mockUpdate = vi.fn().mockResolvedValue(undefined);
       (adminDb.collection as any).mockReturnValue({
-        doc: vi.fn(() => ({ update: mockUpdate })),
+        doc: vi.fn(() => ({
+          get: vi.fn().mockResolvedValue({ exists: true, data: () => ({ workspaceId: 'workspace_1' }) }),
+          update: mockUpdate,
+        })),
       });
 
       const updates = {
@@ -283,7 +290,7 @@ describe('Task Workspace Awareness (Requirement 13)', () => {
         title: 'Updated task',
       };
 
-      await updateTaskAction('task_123', updates, 'test_user');
+      await updateTaskCore('task_123', updates, { kind: 'user', uid: 'test_user' });
 
       expect(mockUpdate).toHaveBeenCalledWith(
         expect.objectContaining({

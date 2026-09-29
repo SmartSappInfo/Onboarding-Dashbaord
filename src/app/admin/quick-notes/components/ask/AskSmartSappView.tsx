@@ -159,7 +159,7 @@ export default function AskSmartSappView({
         reminders: [],
         reminderSent: false,
       };
-      const result = await createTaskAction(taskPayload, userId);
+      const result = await createTaskAction(taskPayload);
 
       if (result.success) {
         setConvertedTasks((prev) => ({ ...prev, [index]: true }));
@@ -203,8 +203,7 @@ export default function AskSmartSappView({
             entityId,
             entityName,
           },
-        },
-        userId
+        }
       );
 
       if (result.success) {

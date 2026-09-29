@@ -41,7 +41,7 @@ export function DashboardClientWrapper({
         setIsSavingTask(true);
         try {
             const finalPayload = { ...payload, workspaceId: activeWorkspaceId };
-            const res = await createTaskAction(finalPayload, currentUser.uid);
+            const res = await createTaskAction(finalPayload);
 
             if (res.success) {
                 toast({ title: 'Task Initialized' });

@@ -4,7 +4,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { executeOutcomeAutomationsAction } from '../call-centre-actions';
 import { CallCentreService } from '../services/call-centre-service';
 import { canUser } from '../workspace-permissions';
-import { createTaskAction } from '../task-server-actions';
+import { createTaskCore } from '../tasks/task-core';
 import { applyTagsAction, removeTagsAction } from '../tag-actions';
 import { updateEntityAction } from '../entity-actions';
 
@@ -108,8 +108,9 @@ vi.mock('../workspace-permissions', () => ({
 
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 
-vi.mock('../task-server-actions', () => ({
-  createTaskAction: vi.fn().mockResolvedValue({ success: true, id: 't1' }),
+// The engine runs session-less and uses the task core with a system actor.
+vi.mock('../tasks/task-core', () => ({
+  createTaskCore: vi.fn().mockResolvedValue({ success: true, id: 't1' }),
 }));
 vi.mock('../tag-actions', () => ({
   applyTagsAction: vi.fn().mockResolvedValue({ success: true }),
@@ -186,14 +187,14 @@ describe('executeOutcomeAutomationsAction', () => {
       }, 'user_1');
 
       expect(res.success).toBe(true);
-      expect(createTaskAction).toHaveBeenCalledWith(
+      expect(createTaskCore).toHaveBeenCalledWith(
         expect.objectContaining({
           title: 'Follow up',
           description: 'Call notes',
           priority: 'high',
           entityId: 'ent_1',
         }),
-        expect.any(String)
+        expect.objectContaining({ kind: 'system' })
       );
     });
 

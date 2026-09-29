@@ -73,6 +73,7 @@ export function PortalEventReplayClient({ slug, eventSlug }: PortalEventReplayCl
     if (!user || !event || !portal) return;
     try {
       await recordEventAttendanceAction(
+        await user.getIdToken(),
         {
           portalId: portal.id,
           eventId: event.id,

@@ -111,7 +111,6 @@ export function SubmissionReviewQueue({
           userId: activeSubmission.userId,
           reviewStatus,
           feedback: feedback.trim() || undefined,
-          reviewerUserId: 'admin',
         },
         portalSlug
       );

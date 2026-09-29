@@ -5,6 +5,12 @@
  *
  * Strongly typed Next.js Server Actions invoking domain services and triggering
  * path revalidations for the visual studio and personal runtime dashboards.
+ *
+ * SECURITY (auth hotfix, agents_mcp Phase 1 §1.1a / audit F2): these are public endpoints.
+ * - Studio (staff) actions: `requirePortalAdmin(portalId)` + `assertRecordInPortal` for record ids.
+ * - Member actions: the client passes a Firebase ID token; identity and email come from it.
+ * - `verifyInvitationTokenAction` stays public (the token is the secret).
+ * No action accepts `actorId`, `userId` or `isOrgAdmin` from the caller any more.
  */
 
 import { revalidatePath } from 'next/cache';
@@ -14,6 +20,15 @@ import { MembershipPlanService } from '@/lib/services/membership-plan-service';
 import { EntitlementService } from '@/lib/services/entitlement-service';
 // SECURITY (audit F9): report detail server-side; return an opaque message + ref.
 import { toClientErrorMessage } from '@/lib/errors/report-error';
+import {
+  assertRecordInPortal,
+  isPortalStaff,
+  portalAuthErrorMessage,
+  requirePortalAdmin,
+  requirePortalMember,
+  requirePortalUser,
+  resolvePortalViewer,
+} from '@/lib/auth/require-portal-access';
 import type {
   PortalMembership,
   PortalInvitation,
@@ -29,7 +44,6 @@ import type {
   ResourceType,
 } from '@/lib/types/membership';
 import type { UpdateMemberProfileInput } from '@/lib/types/engagement';
-import type { ContentItem } from '@/lib/types/content';
 
 // Standard action response envelope
 export interface ActionResult<T> {
@@ -38,80 +52,93 @@ export interface ActionResult<T> {
   error?: string;
 }
 
+/** Auth failures surface their own message; everything else stays opaque (audit F9). */
+function failure(err: unknown, fallback: string): { success: false; error: string } {
+  return { success: false, error: portalAuthErrorMessage(err) ?? toClientErrorMessage('actions.membership-actions', err, undefined, fallback) };
+}
+
 // ── 1. Membership Actions ───────────────────────────────────────────────────
 
+/** Staff add a member manually. Members self-join via `joinPortalDirectAction`. */
 export async function createMembershipAction(
-  input: CreateMembershipInput,
-  actorId: string = 'system'
+  input: CreateMembershipInput
 ): Promise<ActionResult<PortalMembership>> {
   try {
-    const membership = await PortalMembershipService.createMembership(input, actorId);
+    const { auth, portal } = await requirePortalAdmin(input.portalId);
+    const membership = await PortalMembershipService.createMembership(
+      { ...input, organizationId: portal.organizationId },
+      auth.uid
+    );
     revalidatePath(`/admin/portals/${input.portalId}`);
     return { success: true, data: membership };
   } catch (err) {
     console.error('[MEMBERSHIP_ACTION] createMembership failed:', err);
-    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to create membership.') };
+    return failure(err, 'Failed to create membership.');
   }
 }
 
 export async function updateMembershipRoleAction(
   membershipId: string,
   role: PortalMemberRole,
-  portalId: string,
-  actorId: string = 'system'
+  portalId: string
 ): Promise<ActionResult<PortalMembership>> {
   try {
-    const updated = await PortalMembershipService.updateRole(membershipId, role, actorId);
+    const { auth } = await requirePortalAdmin(portalId);
+    await assertRecordInPortal('portal_memberships', membershipId, portalId);
+    const updated = await PortalMembershipService.updateRole(membershipId, role, auth.uid);
     revalidatePath(`/admin/portals/${portalId}`);
     return { success: true, data: updated };
   } catch (err) {
     console.error('[MEMBERSHIP_ACTION] updateRole failed:', err);
-    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to update member role.') };
+    return failure(err, 'Failed to update member role.');
   }
 }
 
 export async function suspendMembershipAction(
   membershipId: string,
-  portalId: string,
-  actorId: string = 'system'
+  portalId: string
 ): Promise<ActionResult<PortalMembership>> {
   try {
-    const updated = await PortalMembershipService.suspendMembership(membershipId, actorId);
+    const { auth } = await requirePortalAdmin(portalId);
+    await assertRecordInPortal('portal_memberships', membershipId, portalId);
+    const updated = await PortalMembershipService.suspendMembership(membershipId, auth.uid);
     revalidatePath(`/admin/portals/${portalId}`);
     return { success: true, data: updated };
   } catch (err) {
     console.error('[MEMBERSHIP_ACTION] suspendMembership failed:', err);
-    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to suspend member.') };
+    return failure(err, 'Failed to suspend member.');
   }
 }
 
 export async function reactivateMembershipAction(
   membershipId: string,
-  portalId: string,
-  actorId: string = 'system'
+  portalId: string
 ): Promise<ActionResult<PortalMembership>> {
   try {
-    const updated = await PortalMembershipService.reactivateMembership(membershipId, actorId);
+    const { auth } = await requirePortalAdmin(portalId);
+    await assertRecordInPortal('portal_memberships', membershipId, portalId);
+    const updated = await PortalMembershipService.reactivateMembership(membershipId, auth.uid);
     revalidatePath(`/admin/portals/${portalId}`);
     return { success: true, data: updated };
   } catch (err) {
     console.error('[MEMBERSHIP_ACTION] reactivateMembership failed:', err);
-    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to reactivate member.') };
+    return failure(err, 'Failed to reactivate member.');
   }
 }
 
 export async function deleteMembershipAction(
   membershipId: string,
-  portalId: string,
-  actorId: string = 'system'
+  portalId: string
 ): Promise<ActionResult<boolean>> {
   try {
-    await PortalMembershipService.deleteMembership(membershipId, actorId);
+    const { auth } = await requirePortalAdmin(portalId);
+    await assertRecordInPortal('portal_memberships', membershipId, portalId);
+    await PortalMembershipService.deleteMembership(membershipId, auth.uid);
     revalidatePath(`/admin/portals/${portalId}`);
     return { success: true, data: true };
   } catch (err) {
     console.error('[MEMBERSHIP_ACTION] deleteMembership failed:', err);
-    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to delete member.') };
+    return failure(err, 'Failed to delete member.');
   }
 }
 
@@ -120,20 +147,20 @@ export async function deleteMembershipAction(
  * Automatically synchronizes custom fields and triggers 'complete_profile' onboarding advance.
  */
 export async function updatePortalMemberProfileAction(
-  input: UpdateMemberProfileInput,
+  idToken: string,
+  input: Omit<UpdateMemberProfileInput, 'userId'>,
   portalSlug?: string
 ): Promise<ActionResult<PortalMembership>> {
   try {
-    const updated = await PortalMembershipService.updateMemberProfile(input);
+    // A member may only edit their own profile: the userId comes from the verified token.
+    const { uid } = await requirePortalMember(idToken, input.portalId);
+    const updated = await PortalMembershipService.updateMemberProfile({ ...input, userId: uid });
     revalidatePath(`/admin/portals/${input.portalId}`);
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/dashboard`);
     return { success: true, data: updated };
   } catch (err) {
     console.error('[MEMBERSHIP_ACTION] updatePortalMemberProfile failed:', err);
-    return {
-      success: false,
-      error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to update member profile.'),
-    };
+    return failure(err, 'Failed to update member profile.');
   }
 }
 
@@ -144,23 +171,22 @@ export async function updateMembershipPlanAction(
   membershipId: string,
   planId: string | undefined,
   planName: string | undefined,
-  portalId: string,
-  actorId: string = 'system'
+  portalId: string
 ): Promise<ActionResult<PortalMembership>> {
   try {
+    const { auth } = await requirePortalAdmin(portalId);
+    await assertRecordInPortal('portal_memberships', membershipId, portalId);
+    if (planId) await assertRecordInPortal('membership_plans', planId, portalId);
     const updated = await PortalMembershipService.updateMembership(
       membershipId,
       { planId, planName },
-      actorId
+      auth.uid
     );
     revalidatePath(`/admin/portals/${portalId}`);
     return { success: true, data: updated };
   } catch (err) {
     console.error('[MEMBERSHIP_ACTION] updateMembershipPlan failed:', err);
-    return {
-      success: false,
-      error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to update member plan.'),
-    };
+    return failure(err, 'Failed to update member plan.');
   }
 }
 
@@ -170,66 +196,69 @@ export async function updateMembershipPlanAction(
 export async function updateMembershipTagsAction(
   membershipId: string,
   tags: string[],
-  portalId: string,
-  actorId: string = 'system'
+  portalId: string
 ): Promise<ActionResult<PortalMembership>> {
   try {
+    const { auth } = await requirePortalAdmin(portalId);
+    await assertRecordInPortal('portal_memberships', membershipId, portalId);
     const updated = await PortalMembershipService.updateMembership(
       membershipId,
       { tags },
-      actorId
+      auth.uid
     );
     revalidatePath(`/admin/portals/${portalId}`);
     return { success: true, data: updated };
   } catch (err) {
     console.error('[MEMBERSHIP_ACTION] updateMembershipTags failed:', err);
-    return {
-      success: false,
-      error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to update member tags.'),
-    };
+    return failure(err, 'Failed to update member tags.');
   }
 }
 
 // ── 2. Invitations Actions ──────────────────────────────────────────────────
 
 export async function createInvitationAction(
-  input: CreateInvitationInput,
-  actorId: string = 'system'
+  input: CreateInvitationInput
 ): Promise<ActionResult<PortalInvitation>> {
   try {
-    const invitation = await PortalInvitationService.createInvitation(input, actorId);
+    const { auth, portal } = await requirePortalAdmin(input.portalId);
+    const invitation = await PortalInvitationService.createInvitation(
+      { ...input, organizationId: portal.organizationId },
+      auth.uid
+    );
     revalidatePath(`/admin/portals/${input.portalId}`);
     return { success: true, data: invitation };
   } catch (err) {
     console.error('[INVITATION_ACTION] createInvitation failed:', err);
-    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to create invitation.') };
+    return failure(err, 'Failed to create invitation.');
   }
 }
 
 export async function createBulkInvitationsAction(
   portalId: string,
-  organizationId: string,
+  _organizationId: string,
   workspaceIds: string[],
   emails: string[],
   role: PortalMemberRole = 'member',
-  planId?: string,
-  actorId: string = 'system'
+  planId?: string
 ): Promise<ActionResult<PortalInvitation[]>> {
   try {
+    // The organization is taken from the portal, never from the caller.
+    const { auth, portal } = await requirePortalAdmin(portalId);
+    if (planId) await assertRecordInPortal('membership_plans', planId, portalId);
     const created = await PortalInvitationService.createBulkInvitations(
       portalId,
-      organizationId,
+      portal.organizationId,
       workspaceIds,
       emails,
       role,
       planId,
-      actorId
+      auth.uid
     );
     revalidatePath(`/admin/portals/${portalId}`);
     return { success: true, data: created };
   } catch (err) {
     console.error('[INVITATION_ACTION] createBulkInvitations failed:', err);
-    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to create bulk invitations.') };
+    return failure(err, 'Failed to create bulk invitations.');
   }
 }
 
@@ -250,18 +279,24 @@ export async function verifyInvitationTokenAction(
 }
 
 export async function acceptInvitationAction(
+  idToken: string,
   portalId: string,
   token: string,
-  userId: string,
   userProfile: {
-    email: string;
     displayName?: string;
     avatarUrl?: string;
-    contactId?: string;
   }
 ): Promise<ActionResult<PortalMembership>> {
   try {
-    const res = await PortalInvitationService.acceptInvitation(portalId, token, userId, userProfile);
+    // The accepting user and their email come from the verified token, not the caller.
+    const { uid, email } = await requirePortalUser(idToken);
+    if (!email) return { success: false, error: 'Your account needs an email address to accept an invitation.' };
+    // Only display fields are taken from the caller; the CRM contact link is never caller-supplied.
+    const res = await PortalInvitationService.acceptInvitation(portalId, token, uid, {
+      email,
+      displayName: userProfile.displayName,
+      avatarUrl: userProfile.avatarUrl,
+    });
     if (!res.success || !res.membership) {
       return { success: false, error: res.error || 'Failed to accept invitation.' };
     }
@@ -269,7 +304,7 @@ export async function acceptInvitationAction(
     return { success: true, data: res.membership };
   } catch (err) {
     console.error('[INVITATION_ACTION] acceptInvitation failed:', err);
-    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to accept invitation.') };
+    return failure(err, 'Failed to accept invitation.');
   }
 }
 
@@ -278,10 +313,9 @@ export async function acceptInvitationAction(
  * Provisions or retrieves an active member record and updates portal stats.
  */
 export async function joinPortalDirectAction(
+  idToken: string,
   portalId: string,
-  userId: string,
   userProfile: {
-    email: string;
     displayName?: string;
     avatarUrl?: string;
     role?: PortalMemberRole;
@@ -289,9 +323,12 @@ export async function joinPortalDirectAction(
   }
 ): Promise<ActionResult<PortalMembership>> {
   try {
-    if (!portalId || !userId || !userProfile.email) {
-      return { success: false, error: 'Portal ID, User ID, and email are required.' };
+    // Identity and email come from the verified Firebase ID token (was a caller-supplied userId).
+    const { uid: userId, email: tokenEmail } = await requirePortalUser(idToken);
+    if (!portalId || !tokenEmail) {
+      return { success: false, error: 'Portal ID and an account email are required.' };
     }
+    const email = tokenEmail;
 
     const { PortalService } = await import('@/lib/services/portal-service');
     const portal = await PortalService.getPortalById(portalId);
@@ -317,18 +354,13 @@ export async function joinPortalDirectAction(
     }
 
     // Role assignment with security elevation check:
-    // CAUTION: Client cannot self-promote to 'admin' or 'owner' without server-side validation against users/{userId}
+    // CAUTION: a self-joining user gets the portal's default role. Any other requested role
+    // (admin, owner, instructor, moderator…) requires the verified user to be staff of the
+    // portal's organization.
     const fallbackRole: PortalMemberRole = portal.accessPolicy?.defaultMemberRole || 'member';
     let assignedRole: PortalMemberRole = userProfile.role || fallbackRole;
-
-    if (assignedRole === 'admin' || assignedRole === 'owner') {
-      const { adminDb } = await import('@/lib/firebase-admin');
-      const userSnap = await adminDb.collection('users').doc(userId).get();
-      const userData = userSnap.data();
-      const isSystemAdmin = userData?.role === 'admin' || userData?.roles?.includes('admin');
-      if (!isSystemAdmin) {
-        assignedRole = fallbackRole;
-      }
+    if (assignedRole !== fallbackRole && !(await isPortalStaff(userId, portal.organizationId))) {
+      assignedRole = fallbackRole;
     }
 
     const membership = await PortalMembershipService.createMembership({
@@ -336,8 +368,8 @@ export async function joinPortalDirectAction(
       portalId,
       workspaceIds: portal.workspaceIds,
       userId,
-      email: userProfile.email.toLowerCase().trim(),
-      displayName: userProfile.displayName || userProfile.email.split('@')[0],
+      email: email.toLowerCase().trim(),
+      displayName: userProfile.displayName || email.split('@')[0],
       avatarUrl: userProfile.avatarUrl,
       role: assignedRole,
       status: 'active',
@@ -351,125 +383,128 @@ export async function joinPortalDirectAction(
     return { success: true, data: membership };
   } catch (err) {
     console.error('[MEMBERSHIP_ACTION] joinPortalDirectAction failed:', err);
-    return {
-      success: false,
-      error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to join portal.'),
-    };
+    return failure(err, 'Failed to join portal.');
   }
 }
 
 export async function revokeInvitationAction(
   invitationId: string,
-  portalId: string,
-  actorId: string = 'system'
+  portalId: string
 ): Promise<ActionResult<boolean>> {
   try {
-    await PortalInvitationService.revokeInvitation(invitationId, actorId);
+    const { auth } = await requirePortalAdmin(portalId);
+    await assertRecordInPortal('portal_invitations', invitationId, portalId);
+    await PortalInvitationService.revokeInvitation(invitationId, auth.uid);
     revalidatePath(`/admin/portals/${portalId}`);
     return { success: true, data: true };
   } catch (err) {
     console.error('[INVITATION_ACTION] revokeInvitation failed:', err);
-    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to revoke invitation.') };
+    return failure(err, 'Failed to revoke invitation.');
   }
 }
 
 // ── 3. Membership Plans Actions ─────────────────────────────────────────────
 
 export async function createPlanAction(
-  input: CreatePlanInput,
-  actorId: string = 'system'
+  input: CreatePlanInput
 ): Promise<ActionResult<MembershipPlan>> {
   try {
-    const plan = await MembershipPlanService.createPlan(input, actorId);
+    const { auth, portal } = await requirePortalAdmin(input.portalId);
+    const plan = await MembershipPlanService.createPlan({ ...input, organizationId: portal.organizationId }, auth.uid);
     revalidatePath(`/admin/portals/${input.portalId}`);
     return { success: true, data: plan };
   } catch (err) {
     console.error('[PLAN_ACTION] createPlan failed:', err);
-    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to create plan.') };
+    return failure(err, 'Failed to create plan.');
   }
 }
 
 export async function updatePlanAction(
   planId: string,
   input: UpdatePlanInput,
-  portalId: string,
-  actorId: string = 'system'
+  portalId: string
 ): Promise<ActionResult<MembershipPlan>> {
   try {
-    const plan = await MembershipPlanService.updatePlan(planId, input, actorId);
+    const { auth } = await requirePortalAdmin(portalId);
+    await assertRecordInPortal('membership_plans', planId, portalId);
+    const plan = await MembershipPlanService.updatePlan(planId, input, auth.uid);
     revalidatePath(`/admin/portals/${portalId}`);
     return { success: true, data: plan };
   } catch (err) {
     console.error('[PLAN_ACTION] updatePlan failed:', err);
-    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to update plan.') };
+    return failure(err, 'Failed to update plan.');
   }
 }
 
 export async function archivePlanAction(
   planId: string,
-  portalId: string,
-  actorId: string = 'system'
+  portalId: string
 ): Promise<ActionResult<MembershipPlan>> {
   try {
-    const plan = await MembershipPlanService.archivePlan(planId, actorId);
+    const { auth } = await requirePortalAdmin(portalId);
+    await assertRecordInPortal('membership_plans', planId, portalId);
+    const plan = await MembershipPlanService.archivePlan(planId, auth.uid);
     revalidatePath(`/admin/portals/${portalId}`);
     return { success: true, data: plan };
   } catch (err) {
     console.error('[PLAN_ACTION] archivePlan failed:', err);
-    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to archive plan.') };
+    return failure(err, 'Failed to archive plan.');
   }
 }
 
 // ── 4. Entitlements & Access Grant Actions ──────────────────────────────────
 
 export async function checkEntitlementAction(
+  idToken: string | null,
   portalId: string,
-  userId: string | null | undefined,
   resourceType: ResourceType,
-  resourceId: string,
-  isOrgAdmin: boolean = false
+  resourceId: string
 ): Promise<ActionResult<EntitlementCheckResult>> {
   try {
+    // Anonymous visitors pass null. Signed-in identity and org-admin status are derived server-side
+    // (they used to be caller-supplied, letting anyone claim isOrgAdmin=true).
+    const viewer = await resolvePortalViewer(idToken, portalId);
     const result = await EntitlementService.evaluateEntitlement(
       portalId,
-      userId,
+      viewer.userId,
       resourceType,
       resourceId,
-      isOrgAdmin
+      viewer.isStaff
     );
     return { success: true, data: result };
   } catch (err) {
     console.error('[ENTITLEMENT_ACTION] checkEntitlement failed:', err);
-    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Evaluation failed.') };
+    return failure(err, 'Evaluation failed.');
   }
 }
 
 export async function grantAccessAction(
-  input: GrantAccessInput,
-  actorId: string = 'system'
+  input: GrantAccessInput
 ): Promise<ActionResult<AccessGrant>> {
   try {
-    const grant = await EntitlementService.grantAccess(input, actorId);
+    const { auth } = await requirePortalAdmin(input.portalId);
+    const grant = await EntitlementService.grantAccess(input, auth.uid);
     revalidatePath(`/admin/portals/${input.portalId}`);
     return { success: true, data: grant };
   } catch (err) {
     console.error('[ENTITLEMENT_ACTION] grantAccess failed:', err);
-    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to grant access.') };
+    return failure(err, 'Failed to grant access.');
   }
 }
 
 export async function revokeAccessAction(
   grantId: string,
-  portalId: string,
-  actorId: string = 'system'
+  portalId: string
 ): Promise<ActionResult<boolean>> {
   try {
-    await EntitlementService.revokeAccess(grantId, actorId);
+    const { auth } = await requirePortalAdmin(portalId);
+    await assertRecordInPortal('access_grants', grantId, portalId);
+    await EntitlementService.revokeAccess(grantId, auth.uid);
     revalidatePath(`/admin/portals/${portalId}`);
     return { success: true, data: true };
   } catch (err) {
     console.error('[ENTITLEMENT_ACTION] revokeAccess failed:', err);
-    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to revoke grant.') };
+    return failure(err, 'Failed to revoke grant.');
   }
 }
 
@@ -477,10 +512,11 @@ export async function listMembershipsByPortalAction(
   portalId: string
 ): Promise<ActionResult<PortalMembership[]>> {
   try {
+    await requirePortalAdmin(portalId);
     const members = await PortalMembershipService.listMembers(portalId);
     return { success: true, data: members };
   } catch (err) {
-    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to list memberships.') };
+    return failure(err, 'Failed to list memberships.');
   }
 }
 
@@ -488,10 +524,11 @@ export async function listInvitationsByPortalAction(
   portalId: string
 ): Promise<ActionResult<PortalInvitation[]>> {
   try {
+    await requirePortalAdmin(portalId);
     const invitations = await PortalInvitationService.listInvitations(portalId);
     return { success: true, data: invitations };
   } catch (err) {
-    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to list invitations.') };
+    return failure(err, 'Failed to list invitations.');
   }
 }
 
@@ -499,53 +536,11 @@ export async function listPlansByPortalAction(
   portalId: string
 ): Promise<ActionResult<MembershipPlan[]>> {
   try {
+    await requirePortalAdmin(portalId);
     const plans = await MembershipPlanService.listPortalPlans(portalId, true);
     return { success: true, data: plans };
   } catch (err) {
-    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to list plans.') };
+    return failure(err, 'Failed to list plans.');
   }
 }
 
-export interface ContentAccessEvaluationResult {
-  access: EntitlementCheckResult;
-  sanitizedItem: ContentItem;
-}
-
-/**
- * Server Action evaluating a visitor's access to a content item and returning
- * a sanitized item projection (blocks truncated if access is denied).
- */
-export async function evaluateContentAccessAction(
-  item: ContentItem,
-  userId: string | null | undefined,
-  portalId: string,
-  isOrgAdmin: boolean = false
-): Promise<ActionResult<ContentAccessEvaluationResult>> {
-  try {
-    const access = await EntitlementService.evaluateContentItemAccess(
-      item,
-      userId,
-      portalId,
-      isOrgAdmin
-    );
-    const sanitizedItem = EntitlementService.sanitizeContentItemForVisitor(item, access);
-    return {
-      success: true,
-      data: {
-        access,
-        sanitizedItem,
-      },
-    };
-  } catch (err) {
-    console.error('[ENTITLEMENT_ACTION] evaluateContentAccessAction failed:', err);
-    return {
-      success: false,
-      error: toClientErrorMessage(
-        'actions.membership-actions',
-        err,
-        undefined,
-        'Failed to evaluate content access.'
-      ),
-    };
-  }
-}

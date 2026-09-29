@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { updateTaskAction, deleteTaskAction } from '@/lib/task-server-actions';
+import { deleteTaskCore, getTaskWorkspaceId, updateTaskCore } from '@/lib/tasks/task-core';
+import { authenticateApiRequest } from '@/lib/auth/api-auth-guard';
+import { UpdateTaskRequestSchema, describeTaskPayloadIssues } from '@/lib/tasks/task-input-schema';
 import type { Task } from '@/lib/types';
 // SECURITY (audit F9): report the detail server-side, return an opaque message.
 import { toClientErrorMessage } from '@/lib/errors/report-error';
@@ -8,7 +10,18 @@ import { toClientErrorMessage } from '@/lib/errors/report-error';
 /**
  * @fileOverview Task detail API endpoint
  * Requirements: 24.1, 24.2
+ *
+ * SECURITY (auth hotfix §1.1a): previously unauthenticated. Callers now need a Firebase ID token
+ * (Bearer) for a member of the task's STORED workspace, and are permission-checked as themselves.
  */
+
+/** 404 when the task is missing, 401/403 from the guard, otherwise the verified uid. */
+async function authorizeTask(request: NextRequest, taskId: string): Promise<{ uid: string } | NextResponse> {
+  const workspaceId = await getTaskWorkspaceId(taskId);
+  if (!workspaceId) return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+  const authResult = await authenticateApiRequest(request, { requiredWorkspaceId: workspaceId });
+  return authResult.success ? { uid: authResult.user.uid } : authResult.errorResponse;
+}
 
 /**
  * PATCH /api/tasks/[taskId]
@@ -20,13 +33,18 @@ export async function PATCH(
 ) {
   try {
     const { taskId } = await params;
-    const updates = await request.json();
-
-    // Remove identifier fields from updates to preserve them (Requirement 3.2)
-    const { _entityId, _entityType, _id, _createdAt, ...allowedUpdates } = updates;
+    const caller = await authorizeTask(request, taskId);
+    if (caller instanceof NextResponse) return caller;
+    // Identifiers and tenant fields are preserved (Requirement 3.2): the schema only admits writable
+    // Task fields and drops everything else (was a destructure of `_`-prefixed keys that never exist).
+    const parsed = UpdateTaskRequestSchema.safeParse(await request.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: `Invalid task payload: ${describeTaskPayloadIssues(parsed.error)}` }, { status: 400 });
+    }
+    const allowedUpdates = parsed.data;
 
     // Update task using server action
-    const result = await updateTaskAction(taskId, allowedUpdates, 'system_api');
+    const result = await updateTaskCore(taskId, allowedUpdates, { kind: 'user', uid: caller.uid });
 
     if (!result.success) {
       return NextResponse.json(
@@ -68,9 +86,10 @@ export async function DELETE(
 ) {
   try {
     const { taskId } = await params;
+    const caller = await authorizeTask(request, taskId);
+    if (caller instanceof NextResponse) return caller;
 
-    // Delete task using server action
-    const result = await deleteTaskAction(taskId, 'system_api');
+    const result = await deleteTaskCore(taskId, { kind: 'user', uid: caller.uid });
 
     if (!result.success) {
       return NextResponse.json(

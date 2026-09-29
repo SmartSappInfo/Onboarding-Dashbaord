@@ -87,7 +87,9 @@ export function EventAttendanceModal({
 
     setUpdatingUserId(reg.userId);
     try {
+      // Staff marking attendance: no ID token, authorized by the admin session.
       const res = await recordEventAttendanceAction(
+        null,
         {
           portalId,
           eventId: event.id,

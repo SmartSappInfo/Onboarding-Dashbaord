@@ -25,6 +25,8 @@ export type LessonContentType =
 
 export type EnrollmentSource =
   | 'manual_admin'
+  /** A member enrolling themselves from the portal (plan gating + published-only enforced). */
+  | 'self_enroll'
   | 'membership_plan'
   | 'invitation'
   | 'purchase'

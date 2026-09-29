@@ -16,6 +16,7 @@
  * - Clear, concise, everyday UI English without excessive text.
  */
 
+import { useAuth } from '@/firebase';
 import * as React from 'react';
 import {
   Dialog,
@@ -46,11 +47,12 @@ export function OrientationVideoModal({
   onClose,
   portalId,
   portalSlug,
-  userId,
+  userId: _userId,
   videoUrl,
   isAlreadyCompleted = false,
   onSuccess,
 }: OrientationVideoModalProps) {
+  const auth = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
@@ -63,7 +65,9 @@ export function OrientationVideoModal({
   const handleMarkComplete = async () => {
     setIsSubmitting(true);
     try {
-      const res = await recordOrientationWatchedAction(portalId, userId, portalSlug);
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) throw new Error('Please sign in again to continue.');
+      const res = await recordOrientationWatchedAction(idToken, portalId, portalSlug);
       if (!res.success) throw new Error(res.error);
 
       toast({

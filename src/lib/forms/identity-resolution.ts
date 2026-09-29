@@ -334,8 +334,9 @@ export async function resolveAndEnrichCrmEntity({
         const dueInHours = taskRule.dueInHours || 24;
         const dueDate = new Date(Date.now() + dueInHours * 3600 * 1000).toISOString();
 
-        const { createTaskAction } = await import('@/lib/task-server-actions');
-        const taskPayload: Parameters<typeof createTaskAction>[0] = {
+        // Form submissions are session-less: create the follow-up as a system actor via the task core.
+        const { createTaskCore } = await import('@/lib/tasks/task-core');
+        const taskPayload: Parameters<typeof createTaskCore>[0] = {
           title: taskTitle,
           description: `Auto-generated follow-up task from form submission "${form.title}".`,
           entityId: resolvedEntityId,
@@ -350,7 +351,7 @@ export async function resolveAndEnrichCrmEntity({
           dueDate,
         };
 
-        const taskRes: { success?: boolean; id?: string; error?: string } = await createTaskAction(taskPayload, `system-form-${form.id}`);
+        const taskRes: { success?: boolean; id?: string; error?: string } = await createTaskCore(taskPayload, { kind: 'system', source: `form:${form.id}` });
 
         if (taskRes?.success && taskRes.id) {
           createdTaskId = taskRes.id;

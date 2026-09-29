@@ -6,11 +6,15 @@
  * Strongly typed Next.js Server Actions for retrieving cached analytics snapshots,
  * triggering on-demand statistical recalculation, and revalidating studio pages.
  * Zero `any` or `any[]` typing.
+ *
+ * SECURITY (auth hotfix, agents_mcp Phase 1 §1.1a): staff only via `requirePortalAdmin`; the
+ * organization comes from the portal (the `organizationId` argument is ignored).
  */
 
 import { revalidatePath } from 'next/cache';
 import { PortalAnalyticsService } from '@/lib/services/portal-analytics-service';
 import { getErrorMessage } from '@/lib/errors/report-error';
+import { portalAuthErrorMessage, requirePortalAdmin } from '@/lib/auth/require-portal-access';
 import type {
   AnalyticsPeriod,
   PortalAnalyticsSnapshot,
@@ -24,19 +28,20 @@ export type ActionResponse<T> =
 
 export async function getPortalAnalyticsAction(
   portalId: string,
-  organizationId: string,
+  _organizationId: string,
   period: AnalyticsPeriod = 'all_time'
 ): Promise<ActionResponse<PortalAnalyticsSnapshot>> {
   try {
+    const { portal } = await requirePortalAdmin(portalId);
     const snapshot = await PortalAnalyticsService.getPortalAnalyticsSnapshot(
       portalId,
-      organizationId,
+      portal.organizationId,
       period,
       false
     );
     return { success: true, data: snapshot };
   } catch (err: unknown) {
-    return { success: false, error: getErrorMessage(err) || 'Failed to retrieve portal analytics.' };
+    return { success: false, error: portalAuthErrorMessage(err) ?? (getErrorMessage(err) || 'Failed to retrieve portal analytics.') };
   }
 }
 
@@ -44,13 +49,14 @@ export async function getPortalAnalyticsAction(
 
 export async function refreshPortalAnalyticsAction(
   portalId: string,
-  organizationId: string,
+  _organizationId: string,
   portalSlug?: string
 ): Promise<ActionResponse<PortalAnalyticsSnapshot>> {
   try {
+    const { portal } = await requirePortalAdmin(portalId);
     const snapshot = await PortalAnalyticsService.getPortalAnalyticsSnapshot(
       portalId,
-      organizationId,
+      portal.organizationId,
       'all_time',
       true
     );
@@ -61,6 +67,6 @@ export async function refreshPortalAnalyticsAction(
 
     return { success: true, data: snapshot };
   } catch (err: unknown) {
-    return { success: false, error: getErrorMessage(err) || 'Failed to refresh portal analytics.' };
+    return { success: false, error: portalAuthErrorMessage(err) ?? (getErrorMessage(err) || 'Failed to refresh portal analytics.') };
   }
 }

@@ -115,10 +115,9 @@ export function PortalAffiliateDashboardClient({ slug }: PortalAffiliateDashboar
     setIsRegistering(true);
     try {
       const res = await registerAffiliatePartnerAction(
+        await user.getIdToken(),
         {
-          organizationId: portal.organizationId,
           portalId: portal.id,
-          userId: user.uid,
           partnerName: partnerName.trim(),
           partnerEmail: partnerEmail.trim(),
           referralCode: customCode.trim() || undefined,

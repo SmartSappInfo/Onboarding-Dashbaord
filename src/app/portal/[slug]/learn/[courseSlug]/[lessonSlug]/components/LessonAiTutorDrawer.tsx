@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/sheet';
 import { useToast } from '@/hooks/use-toast';
 import { askAiTutorAction } from '@/app/actions/ai-experience-actions';
+import { useAuth } from '@/firebase';
 import type { AiTutorMessage } from '@/lib/types/ai-experience';
 import { getErrorMessage } from '@/lib/errors/report-error';
 import {
@@ -61,11 +62,12 @@ export function AiTutorChatContent({
   courseId,
   lessonId,
   lessonTitle,
-  organizationId,
-  userId,
+  organizationId: _organizationId,
+  userId: _userId,
   onClose,
   isDocked = false,
 }: AiTutorChatContentProps) {
+  const auth = useAuth();
   const { toast } = useToast();
   const [messages, setMessages] = React.useState<AiTutorMessage[]>([
     {
@@ -107,14 +109,16 @@ export function AiTutorChatContent({
     setIsSending(true);
 
     try {
+      // The learner and organization are derived server-side from the verified ID token and portal.
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) throw new Error('Please sign in to chat with the AI Tutor.');
       const res = await askAiTutorAction(
+        idToken,
         {
-          organizationId,
           portalId,
           courseId,
           lessonId,
           lessonTitle,
-          userId,
           userMessage: text.trim(),
         },
         portalSlug,

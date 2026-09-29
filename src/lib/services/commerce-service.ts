@@ -27,6 +27,16 @@ import type {
   JoinWaitlistInput,
 } from '@/lib/types/commerce';
 
+/**
+ * SECURITY (auth hotfix §1.1a): no payment gateway is integrated yet, so nothing proves a paid order
+ * was actually paid. Paid orders are therefore recorded as `pending` and provision NOTHING (no
+ * enrollments, plan, points, coupon use or affiliate commission) until a verified payment webhook
+ * settles them. Local demos can opt in to simulated payments; this can never be enabled in production.
+ */
+function simulatedPaymentsEnabled(): boolean {
+  return process.env.NODE_ENV !== 'production' && process.env.PORTAL_CHECKOUT_SIMULATE_PAYMENTS === 'true';
+}
+
 export class CommerceService {
   // ── Commercial Offers CRUD ─────────────────────────────────────────────────
 
@@ -193,9 +203,9 @@ export class CommerceService {
       return { isValid: false, discountAmount: 0, message: 'Coupon does not apply to this offer.' };
     }
 
-    // Calculate discount
+    // Calculate discount (the offer must belong to the same portal as the coupon)
     const offer = await CommerceService.getOfferById(input.offerId);
-    if (!offer) return { isValid: false, discountAmount: 0, message: 'Offer not found.' };
+    if (!offer || offer.portalId !== input.portalId) return { isValid: false, discountAmount: 0, message: 'Offer not found.' };
 
     let discount = 0;
     if (coupon.discountType === 'percentage') {
@@ -211,7 +221,10 @@ export class CommerceService {
 
   public static async processCheckoutOrder(input: ProcessCheckoutOrderInput): Promise<PortalOrder> {
     const offer = await CommerceService.getOfferById(input.offerId);
-    if (!offer) throw new Error('Commercial offer not found.');
+    // Never trust the caller's portal/offer pairing: an offer of portal B cannot be bought "in" portal A.
+    if (!offer || offer.portalId !== input.portalId || offer.isActive === false) {
+      throw new Error('Commercial offer not found.');
+    }
 
     const now = new Date().toISOString();
     const subtotal = offer.price;
@@ -233,17 +246,20 @@ export class CommerceService {
     }
 
     const totalAmount = Math.max(0, subtotal - discountAmount);
+    // Only free orders (or simulated payments in local dev) settle immediately; see simulatedPaymentsEnabled.
+    const isSettled = totalAmount === 0 || simulatedPaymentsEnabled();
 
     // 2. Affiliate Attribution
     let partner: AffiliatePartner | null = null;
     let commissionAmount = 0;
     if (input.affiliateCode) {
       partner = await CommerceService.getAffiliatePartnerByCode(input.portalId, input.affiliateCode);
-      if (partner && partner.userId !== input.userId && partner.status === 'active') {
+      if (isSettled && totalAmount > 0 && partner && partner.userId !== input.userId && partner.status === 'active') {
         if (partner.commissionType === 'percentage') {
           commissionAmount = Math.round((totalAmount * partner.commissionRate) / 100);
         } else {
-          commissionAmount = partner.commissionRate;
+          // A fixed commission can never exceed what the customer actually paid.
+          commissionAmount = Math.min(partner.commissionRate, totalAmount);
         }
       }
     }
@@ -264,16 +280,19 @@ export class CommerceService {
       discountAmount,
       totalAmount,
       currency: offer.currency,
-      paymentStatus: 'completed',
-      paymentMethod: input.paymentMethod,
+      paymentStatus: isSettled ? 'completed' : 'pending',
+      paymentMethod: totalAmount === 0 ? 'free' : input.paymentMethod,
       couponCode: validCoupon?.code,
-      affiliatePartnerId: partner?.id,
+      affiliatePartnerId: commissionAmount > 0 ? partner?.id : undefined,
       commissionAmount: commissionAmount > 0 ? commissionAmount : undefined,
       createdAt: now,
-      completedAt: now,
+      ...(isSettled ? { completedAt: now } : {}),
     };
 
     await orderDocRef.set(order);
+
+    // Unpaid orders stop here: nothing is consumed or provisioned until payment is verified.
+    if (!isSettled) return order;
 
     // 4. Update Coupon usedCount
     if (validCoupon) {

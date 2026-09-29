@@ -16,6 +16,7 @@ import { MembershipPlanService } from './membership-plan-service';
 import type {
   AccessGrant,
   GrantAccessInput,
+  PortalMembership,
   EntitlementCheckResult,
   ResourceType,
 } from '../types/membership';
@@ -217,7 +218,12 @@ export class EntitlementService {
     item: ContentItem,
     userId: string | null | undefined,
     portalId: string,
-    isOrgAdmin: boolean = false
+    isOrgAdmin: boolean = false,
+    /**
+     * Optional preloaded viewer context for evaluating MANY items (catalog, search): pass the member's
+     * membership (or null) and their valid grants to avoid one membership + grant read per item.
+     */
+    viewerContext?: { membership: PortalMembership | null; grants: AccessGrant[] }
   ): Promise<EntitlementCheckResult> {
     // 1. Admin bypass
     if (isOrgAdmin) {
@@ -235,7 +241,9 @@ export class EntitlementService {
     }
 
     // 4. Verify membership
-    const membership = await PortalMembershipService.getMembership(portalId, userId);
+    const membership = viewerContext
+      ? viewerContext.membership
+      : await PortalMembershipService.getMembership(portalId, userId);
     if (!membership) {
       return { hasAccess: false, reason: 'membership_required' };
     }
@@ -257,19 +265,24 @@ export class EntitlementService {
     }
 
     // 6. Direct Access Grant check for this content item
-    const grantSnap = await adminDb
-      .collection(GRANTS_COLLECTION)
-      .where('portalId', '==', portalId)
-      .where('userId', '==', userId)
-      .where('resourceType', '==', 'content_item')
-      .where('resourceId', '==', item.id)
-      .limit(1)
-      .get();
+    if (viewerContext) {
+      const grant = viewerContext.grants.find(g => g.resourceType === 'content_item' && g.resourceId === item.id);
+      if (grant) return { hasAccess: true, reason: 'direct_grant', membership, grant };
+    } else {
+      const grantSnap = await adminDb
+        .collection(GRANTS_COLLECTION)
+        .where('portalId', '==', portalId)
+        .where('userId', '==', userId)
+        .where('resourceType', '==', 'content_item')
+        .where('resourceId', '==', item.id)
+        .limit(1)
+        .get();
 
-    if (!grantSnap.empty) {
-      const grant = grantSnap.docs[0].data() as AccessGrant;
-      if (this.isGrantValid(grant)) {
-        return { hasAccess: true, reason: 'direct_grant', membership, grant };
+      if (!grantSnap.empty) {
+        const grant = grantSnap.docs[0].data() as AccessGrant;
+        if (this.isGrantValid(grant)) {
+          return { hasAccess: true, reason: 'direct_grant', membership, grant };
+        }
       }
     }
 
@@ -316,17 +329,20 @@ export class EntitlementService {
       truncatedBlocks = item.blocks ? item.blocks.slice(0, 1) : [];
     }
 
+    // Body text follows the same teaser rule as the reader: first paragraph, nothing for 'none'.
+    // (Round 4 item 4: `content` used to be returned in full for gated items.)
+    const teaserContent =
+      mode === 'none' || !item.content ? undefined : item.content.split('\n\n')[0] || item.content.slice(0, 250);
+
+    // Only the thumbnail survives: video/audio streams and file links are the paid asset.
+    const teaserMedia = item.media?.thumbnailUrl ? { thumbnailUrl: item.media.thumbnailUrl } : undefined;
+
     return {
       ...item,
       blocks: truncatedBlocks,
-      // Clear sensitive direct download URLs on gated media
-      media: item.media
-        ? {
-            ...item.media,
-            downloadUrl: undefined,
-            fileUrl: undefined,
-          }
-        : undefined,
+      content: teaserContent,
+      media: teaserMedia,
+      pageDocumentId: undefined,
       isGated: true,
       accessDeniedReason: accessResult.reason,
     };

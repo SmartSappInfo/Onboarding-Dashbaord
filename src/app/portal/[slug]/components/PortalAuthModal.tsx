@@ -27,7 +27,7 @@ import {
   sendPasswordResetEmail,
   updateProfile,
 } from 'firebase/auth';
-import { createMembershipAction } from '@/app/actions/membership-actions';
+import { joinPortalDirectAction } from '@/app/actions/membership-actions';
 import type { Portal } from '@/lib/types/portal';
 import { Lock, Mail, User, Key, Sparkles, Loader2, ArrowRight } from 'lucide-react';
 import { getErrorCode, getErrorMessage } from '@/lib/errors/report-error';
@@ -80,15 +80,12 @@ export function PortalAuthModal({
       if (mode === 'signin') {
         const userCred = await signInWithEmailAndPassword(auth, email.trim(), password);
 
-        // Ensure membership record exists
-        await createMembershipAction({
-          organizationId: portal.organizationId,
-          portalId: portal.id,
-          workspaceIds: portal.workspaceIds,
-          userId: userCred.user.uid,
-          email: userCred.user.email || email.trim(),
+        // Ensure membership record exists. Self-join applies the portal's access policy and
+        // default role server-side; identity comes from the verified ID token.
+        await joinPortalDirectAction(await userCred.user.getIdToken(), portal.id, {
           displayName: userCred.user.displayName || displayName || email.split('@')[0],
           avatarUrl: userCred.user.photoURL || undefined,
+          joinedVia: 'direct_join',
         });
 
         toast({ title: `Welcome back! 👋`, description: `Signed in as ${userCred.user.displayName || email}.` });
@@ -107,14 +104,10 @@ export function PortalAuthModal({
           await updateProfile(userCred.user, { displayName: displayName.trim() });
         }
 
-        // Provision initial membership
-        await createMembershipAction({
-          organizationId: portal.organizationId,
-          portalId: portal.id,
-          workspaceIds: portal.workspaceIds,
-          userId: userCred.user.uid,
-          email: email.trim(),
+        // Provision initial membership (policy + default role enforced server-side)
+        await joinPortalDirectAction(await userCred.user.getIdToken(), portal.id, {
           displayName: displayName.trim() || email.split('@')[0],
+          joinedVia: 'direct_join',
         });
 
         toast({ title: 'Account Created! 🎉', description: `Welcome to ${brandName}.` });

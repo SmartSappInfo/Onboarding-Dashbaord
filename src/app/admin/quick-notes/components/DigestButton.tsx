@@ -40,7 +40,7 @@ export default function DigestButton({ notes, scopeLabel, workspaceId, userId, d
     setLoading(true);
     setDigest(null);
     try {
-      const result = await generateQuickNotesDigest({ notes, scopeLabel, workspaceId, userId });
+      const result = await generateQuickNotesDigest({ notes, scopeLabel, workspaceId });
       if (result.success) {
         setDigest(result.data);
       } else {

@@ -22,7 +22,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { collection, query, where, limit } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useAuth } from '@/firebase';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -64,6 +64,7 @@ export function MemberOnboardingWidget({
   membership,
   courses = [],
 }: MemberOnboardingWidgetProps) {
+  const auth = useAuth();
   const firestore = useFirestore();
   const { toast } = useToast();
 
@@ -111,8 +112,11 @@ export function MemberOnboardingWidget({
     if (!portalId || !userId || hasReconciledRef.current) return;
     hasReconciledRef.current = true;
 
-    reconcileOnboardingAction(portalId, userId, portalSlug)
+    // The member is derived server-side from the verified ID token.
+    (auth.currentUser ? auth.currentUser.getIdToken() : Promise.resolve(null))
+      .then(idToken => (idToken ? reconcileOnboardingAction(idToken, portalId, portalSlug) : null))
       .then(res => {
+        if (!res) return;
         if (res.success && res.data && res.data.updatedStepIds.length > 0) {
           toast({
             title: 'Progress Synced! ✨',
@@ -123,7 +127,7 @@ export function MemberOnboardingWidget({
       .catch((err: unknown) => {
         console.warn('[MemberOnboardingWidget] Auto-reconciliation non-fatal error:', err);
       });
-  }, [portalId, userId, portalSlug, toast]);
+  }, [auth, portalId, userId, portalSlug, toast]);
 
   const getStepIcon = (type: string) => {
     switch (type) {

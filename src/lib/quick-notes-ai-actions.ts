@@ -5,7 +5,8 @@ import { quickNotesDigestFlow, type QuickNotesDigest } from '@/ai/flows/quick-no
 import { classifyKnowledgeFlow } from '@/ai/flows/classify-knowledge-flow';
 import { resolveEntitiesFlow, type EntityResolutionOutput } from '@/ai/flows/resolve-entities-flow';
 import { summarizeEntityTimelineFlow } from '@/ai/flows/summarize-entity-timeline-flow';
-import { createTaskAction } from './task-server-actions';
+import { createTaskCore } from './tasks/task-core';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 import { canUser } from './workspace-permissions';
 import { QuickNoteRepository } from './quick-notes-repository';
 import { buildAiInput } from './quick-notes-domain';
@@ -32,6 +33,16 @@ const RATE_LIMIT = 20; // calls
 const RATE_WINDOW_MS = 60_000; // per minute
 const callLog = new Map<string, number[]>();
 
+/** Verified session uid of a workspace member, or null when unauthenticated / not a member. */
+async function sessionUid(workspaceId: string): Promise<string | null> {
+  if (!workspaceId) return null;
+  try {
+    return (await requireWorkspace(workspaceId)).uid;
+  } catch {
+    return null;
+  }
+}
+
 function rateLimited(userId: string): boolean {
   const now = Date.now();
   const recent = (callLog.get(userId) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
@@ -49,7 +60,6 @@ export interface GenerateInsightParams {
   workspaceId: string;
   title?: string;
   plainText: string;
-  userId: string;
   model?: string;
 }
 
@@ -57,7 +67,9 @@ export interface GenerateInsightParams {
 export async function generateQuickNoteInsight(
   params: GenerateInsightParams
 ): Promise<ActionResult<QuickNoteInsight>> {
-  const { noteId, workspaceId, title, plainText, userId } = params;
+  const { noteId, workspaceId, title, plainText } = params;
+  // SECURITY (audit F2): identity is the verified session, never a caller-supplied userId.
+  const userId = await sessionUid(workspaceId);
   if (!userId) return { success: false, error: 'Not authenticated.' };
 
   const perm = await canUser(userId, 'operations', 'quickNotes', 'view', workspaceId);
@@ -102,14 +114,15 @@ export interface GenerateDigestParams {
   notes: Array<{ title?: string; plainText: string; createdAt?: string }>;
   scopeLabel?: string;
   workspaceId: string;
-  userId: string;
 }
 
 /** Generates a digest across a set of notes (e.g. the current board view). */
 export async function generateQuickNotesDigest(
   params: GenerateDigestParams
 ): Promise<ActionResult<QuickNotesDigest>> {
-  const { notes, scopeLabel, workspaceId, userId } = params;
+  const { notes, scopeLabel, workspaceId } = params;
+  // SECURITY (audit F2): identity is the verified session, never a caller-supplied userId.
+  const userId = await sessionUid(workspaceId);
   if (!userId) return { success: false, error: 'Not authenticated.' };
 
   const perm = await canUser(userId, 'operations', 'quickNotes', 'view', workspaceId);
@@ -140,7 +153,6 @@ export interface CreateTaskFromActionItemParams {
   text: string;
   workspaceId: string;
   organizationId: string;
-  userId: string;
   links?: QuickNoteLinks;
 }
 
@@ -152,7 +164,9 @@ export interface CreateTaskFromActionItemParams {
 export async function createTaskFromActionItem(
   params: CreateTaskFromActionItemParams
 ): Promise<ActionResult<{ id: string }>> {
-  const { text, workspaceId, organizationId, userId, links } = params;
+  const { text, workspaceId, organizationId, links } = params;
+  // SECURITY (audit F2): identity is the verified session, never a caller-supplied userId.
+  const userId = await sessionUid(workspaceId);
   if (!userId) return { success: false, error: 'Not authenticated.' };
   const title = text.trim();
   if (!title || !workspaceId) return { success: false, error: 'A task title and workspace are required.' };
@@ -174,7 +188,7 @@ export async function createTaskFromActionItem(
     reminderSent: false,
   };
 
-  const result = await createTaskAction(taskData, userId);
+  const result = await createTaskCore(taskData, { kind: 'user', uid: userId });
   if (!result.success || !result.id) {
     return { success: false, error: result.error || 'Failed to create task.' };
   }
@@ -185,7 +199,6 @@ export interface ClassifyDraftKnowledgeParams {
   text: string;
   contextHint?: string;
   workspaceId: string;
-  userId: string;
 }
 
 /**
@@ -194,7 +207,9 @@ export interface ClassifyDraftKnowledgeParams {
 export async function classifyDraftKnowledgeAction(
   params: ClassifyDraftKnowledgeParams
 ): Promise<ActionResult<KnowledgeClassificationResult>> {
-  const { text, contextHint, workspaceId, userId } = params;
+  const { text, contextHint, workspaceId } = params;
+  // SECURITY (audit F2): identity is the verified session, never a caller-supplied userId.
+  const userId = await sessionUid(workspaceId);
   if (!userId) return { success: false, error: 'Not authenticated.' };
 
   const perm = await canUser(userId, 'operations', 'quickNotes', 'view', workspaceId);
@@ -224,7 +239,6 @@ export interface AiAssistEditorParams {
   text: string;
   action: EditorAiAssistType;
   workspaceId: string;
-  userId: string;
 }
 
 /**
@@ -233,7 +247,9 @@ export interface AiAssistEditorParams {
 export async function aiAssistEditorAction(
   params: AiAssistEditorParams
 ): Promise<ActionResult<{ resultText: string }>> {
-  const { text, action, workspaceId, userId } = params;
+  const { text, action, workspaceId } = params;
+  // SECURITY (audit F2): identity is the verified session, never a caller-supplied userId.
+  const userId = await sessionUid(workspaceId);
   if (!userId) return { success: false, error: 'Not authenticated.' };
 
   const perm = await canUser(userId, 'operations', 'quickNotes', 'view', workspaceId);
@@ -281,7 +297,6 @@ export interface ResolveNoteEntitiesParams {
   }>;
   workspaceContext?: string;
   workspaceId: string;
-  userId: string;
 }
 
 /**
@@ -290,7 +305,9 @@ export interface ResolveNoteEntitiesParams {
 export async function resolveNoteEntitiesAction(
   params: ResolveNoteEntitiesParams
 ): Promise<ActionResult<EntityResolutionOutput>> {
-  const { text, candidateEntities, workspaceContext, workspaceId, userId } = params;
+  const { text, candidateEntities, workspaceContext, workspaceId } = params;
+  // SECURITY (audit F2): identity is the verified session, never a caller-supplied userId.
+  const userId = await sessionUid(workspaceId);
   if (!userId) return { success: false, error: 'Not authenticated.' };
 
   const perm = await canUser(userId, 'operations', 'quickNotes', 'view', workspaceId);
@@ -337,7 +354,6 @@ export interface SummarizeEntityTimelineParams {
     sentiment?: string;
   }>;
   workspaceId: string;
-  userId: string;
 }
 
 /**
@@ -346,7 +362,9 @@ export interface SummarizeEntityTimelineParams {
 export async function summarizeEntityTimelineAction(
   params: SummarizeEntityTimelineParams
 ): Promise<ActionResult<TimelineAiBrief>> {
-  const { entityName, entityType, timelineItems, workspaceId, userId } = params;
+  const { entityName, entityType, timelineItems, workspaceId } = params;
+  // SECURITY (audit F2): identity is the verified session, never a caller-supplied userId.
+  const userId = await sessionUid(workspaceId);
   if (!userId) return { success: false, error: 'Not authenticated.' };
 
   const perm = await canUser(userId, 'operations', 'quickNotes', 'view', workspaceId);

@@ -445,7 +445,7 @@ export default function EntityDetailPage() {
                 entityName: displayName,
                 entityType: entityData.entityType
             };
-            const res = await createTaskAction(finalPayload, currentUser.uid);
+            const res = await createTaskAction(finalPayload);
             if (res.success) {
                 toast({ title: 'Task Initialized', description: `Task "${payload.title}" created successfully.` });
                 setIsTaskEditorOpen(false);

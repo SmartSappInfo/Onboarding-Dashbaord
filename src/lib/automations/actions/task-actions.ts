@@ -1,6 +1,7 @@
 import { addDays } from 'date-fns';
 import { adminDb } from '../../firebase-admin';
-import { createTaskFromAutomation } from '../../task-server-actions';
+// Automation engine runs session-less: it uses the task core directly (system actor).
+import { createTaskFromAutomation } from '../../tasks/task-core';
 import type { TaskCategory, TaskPriority, TaskStatus } from '../../types';
 import type { ExecutionContext } from '../execution-types';
 

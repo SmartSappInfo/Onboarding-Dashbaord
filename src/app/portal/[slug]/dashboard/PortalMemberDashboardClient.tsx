@@ -34,6 +34,7 @@ import {
   Bookmark,
 } from 'lucide-react';
 import { listCoursesByPortalAction } from '@/app/actions/learning-actions';
+import { listContentItemsByPortalAction } from '@/app/actions/content-actions';
 import type { Portal } from '@/lib/types/portal';
 import type { PortalMembership, AccessGrant } from '@/lib/types/membership';
 import type { ContentItem } from '@/lib/types/content';
@@ -119,20 +120,21 @@ export default function PortalMemberDashboardClient({ slug, initialPortal }: Por
   const { data: memberships, isLoading: isLoadingMembership } = useCollection<PortalMembership>(membershipQuery);
   const membership = memberships?.[0] ?? null;
 
-  // 3. Query Portal Content Items (Lessons, Resources, Articles)
-  const contentQuery = useMemoFirebase(
-    () =>
-      firestore && portal?.id
-        ? query(
-            collection(firestore, 'content_items'),
-            where('portalId', '==', portal.id),
-            where('status', '==', 'published'),
-            limit(30)
-          )
-        : null,
-    [firestore, portal?.id]
-  );
-  const { data: contentItems } = useCollection<ContentItem>(contentQuery);
+  // 3. Portal Content Items (Lessons, Resources, Articles) — served by the server, shaped for this
+  // viewer (Round 4 item 4: `content_items` is not readable from the browser; gated bodies are trimmed).
+  const [contentItems, setContentItems] = React.useState<ContentItem[] | null>(null);
+  React.useEffect(() => {
+    if (isUserLoading || !portal?.id) return;
+    let cancelled = false;
+    (async () => {
+      const idToken = user ? await user.getIdToken() : null;
+      const res = await listContentItemsByPortalAction(portal.id, { status: 'published', limitCount: 30 }, idToken);
+      if (!cancelled) setContentItems(res.data ?? []);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [portal?.id, user, isUserLoading]);
 
   // 4. Query Member Access Grants
   const grantsQuery = useMemoFirebase(

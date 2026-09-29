@@ -172,7 +172,6 @@ export default function NoteEditorDialog({
       const res = await classifyDraftKnowledgeAction({
         text: `${title}\n\n${plain}`,
         workspaceId,
-        userId,
       });
       if (res.success) {
         setKnowledgeType(res.data.suggestedType);

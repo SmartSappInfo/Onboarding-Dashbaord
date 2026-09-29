@@ -101,7 +101,7 @@ export default function DealAiIntelligencePanel({ deal, onTaskCreated }: DealAiI
         relatedEntityId: deal.id,
         reminders: [],
         reminderSent: false,
-      }, user?.uid || 'system');
+      });
 
       if (res.success) {
         toast({

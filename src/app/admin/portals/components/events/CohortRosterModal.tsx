@@ -142,7 +142,7 @@ export function CohortRosterModal({
 
     setRemovingUserId(member.userId);
     try {
-      const res = await removeCohortMemberAction(cohort.id, member.userId, portalSlug);
+      const res = await removeCohortMemberAction(cohort.id, member.userId, portalId, portalSlug);
       if (!res.success) throw new Error(res.error);
       toast({
         title: 'Student Removed',

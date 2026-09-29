@@ -3,7 +3,7 @@
  *
  * ARCHITECTURAL GUIDELINES & CAUTION FOR MAINTAINERS (Rule 10):
  * 1. Single Source of Truth for Tasks:
- *    - Uses `createTaskAction` in `src/lib/task-server-actions.ts` for task creation.
+ *    - Uses `createTaskCore` in `src/lib/tasks/task-core.ts` for task creation.
  * 2. Risk Tier:
  *    - `task.list`: read_only (Zero mutation).
  *    - `task.create`: low_risk (Reversible operational task creation).
@@ -16,7 +16,8 @@
 import { z } from 'zod';
 import { McpToolDefinition } from '../types';
 import { adminDb } from '@/lib/firebase-admin';
-import { createTaskAction } from '@/lib/task-server-actions';
+// The MCP gateway authenticates the caller before tools run, so tools use the task core directly.
+import { createTaskCore } from '@/lib/tasks/task-core';
 import type { TaskPriority, TaskStatus } from '@/lib/types';
 
 // ==========================================
@@ -124,7 +125,7 @@ export const taskCreateTool: McpToolDefinition<
   handler: async (params, context) => {
     const callerUserId = context.callerType === 'agent' ? `system-${context.callerId}` : context.callerId;
 
-    const result = await createTaskAction(
+    const result = await createTaskCore(
       {
         workspaceId: context.workspaceId,
         organizationId: context.organizationId,
@@ -139,7 +140,10 @@ export const taskCreateTool: McpToolDefinition<
         reminders: [],
         reminderSent: false,
       },
-      callerUserId
+      // Agents act as system actors (as before); human callers are permission-checked as themselves.
+      context.callerType === 'agent'
+        ? { kind: 'system', source: callerUserId }
+        : { kind: 'user', uid: context.callerId }
     );
 
     if (!result.success || !result.id) {

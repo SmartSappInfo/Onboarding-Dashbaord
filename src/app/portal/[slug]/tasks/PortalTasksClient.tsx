@@ -119,14 +119,14 @@ export default function PortalTasksClient({ slug, initialPortal }: PortalTasksCl
   const fetchTasks = React.useCallback(async () => {
     if (!portal?.id) return;
     try {
-      const res = await listTasksByPortalAction(portal.id);
+      const res = await listTasksByPortalAction(portal.id, await auth.currentUser?.getIdToken());
       if (res.success && res.data) {
         setServerTasks(res.data);
       }
     } catch {
       // Graceful fallback
     }
-  }, [portal?.id]);
+  }, [auth, portal?.id]);
 
   React.useEffect(() => {
     fetchTasks();
@@ -178,11 +178,10 @@ export default function PortalTasksClient({ slug, initialPortal }: PortalTasksCl
     setCompletingTaskId(task.id);
     try {
       const res = await completeTaskAction(
+        await user.getIdToken(),
         {
-          organizationId: portal.organizationId,
           portalId: portal.id,
           taskId: task.id,
-          userId: user.uid,
         },
         slug
       );

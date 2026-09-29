@@ -15,7 +15,7 @@
 
 import * as React from 'react';
 import { collection, query, where, limit } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useAuth } from '@/firebase';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -52,6 +52,7 @@ export function PortalOnboardingBanner({
   membership,
   className = '',
 }: PortalOnboardingBannerProps) {
+  const auth = useAuth();
   const firestore = useFirestore();
   const { toast } = useToast();
 
@@ -110,8 +111,11 @@ export function PortalOnboardingBanner({
     if (!portalId || !userId || hasReconciledRef.current) return;
     hasReconciledRef.current = true;
 
-    reconcileOnboardingAction(portalId, userId, portalSlug)
+    // The member is derived server-side from the verified ID token.
+    (auth.currentUser ? auth.currentUser.getIdToken() : Promise.resolve(null))
+      .then(idToken => (idToken ? reconcileOnboardingAction(idToken, portalId, portalSlug) : null))
       .then(res => {
+        if (!res) return;
         if (res.success && res.data && res.data.updatedStepIds.length > 0) {
           toast({
             title: 'Progress Synced! ✨',
@@ -122,7 +126,7 @@ export function PortalOnboardingBanner({
       .catch(() => {
         // Non-fatal
       });
-  }, [portalId, userId, portalSlug, toast]);
+  }, [auth, portalId, userId, portalSlug, toast]);
 
   // If onboarding disabled or user dismissed full completion, don't show
   if (!isEnabled || isDismissed) {

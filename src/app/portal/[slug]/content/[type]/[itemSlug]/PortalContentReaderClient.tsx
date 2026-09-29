@@ -46,7 +46,8 @@ import { getPortalRadiusCss, getPortalButtonInlineStyle } from '@/lib/utils/port
 import { getContrastRatio } from '@/lib/utils/portal-theme-generator';
 import type { Portal } from '@/lib/types/portal';
 import type { ContentItem } from '@/lib/types/content';
-import type { PortalMembership, EntitlementDenialReason, MembershipPlan } from '@/lib/types/membership';
+import type { EntitlementCheckResult, EntitlementDenialReason, MembershipPlan } from '@/lib/types/membership';
+import { getContentItemForViewerAction, listContentItemsByPortalAction } from '@/app/actions/content-actions';
 import { BlockRenderer } from '@/components/page-builder/BlockRenderer';
 import type { BlockRenderContext } from '@/lib/page-builder/registry';
 import { DEFAULT_THEME } from '@/lib/page-builder/resolve-theme';
@@ -78,59 +79,43 @@ function PortalContentReaderView({
 
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
 
-  // 1. Query Content Item
-  const contentQuery = useMemoFirebase(
-    () =>
-      firestore && portal?.id && itemSlug && type
-        ? query(
-            collection(firestore, 'content_items'),
-            where('portalId', '==', portal.id),
-            where('type', '==', type),
-            where('slug', '==', itemSlug),
-            limit(1)
-          )
-        : null,
-    [firestore, portal?.id, itemSlug, type]
-  );
-  const { data: contentList, isLoading: isLoadingContent } = useCollection<ContentItem>(contentQuery);
-  const item = contentList?.[0] ?? null;
-
-  // 2. Query Sibling items for documentation sidebar or lesson syllabus
-  const siblingsQuery = useMemoFirebase(
-    () =>
-      firestore && portal?.id && type
-        ? query(
-            collection(firestore, 'content_items'),
-            where('portalId', '==', portal.id),
-            where('type', '==', type),
-            where('status', '==', 'published'),
-            limit(20)
-          )
-        : null,
-    [firestore, portal?.id, type]
-  );
-  const { data: siblings } = useCollection<ContentItem>(siblingsQuery);
-
-  // 3. User Authentication & Portal Membership Resolution
+  // 1–2. The item, its siblings and the viewer's access come from the SERVER (Round 4 item 4):
+  // gated bodies, media and file links are trimmed there, and `content_items` is not readable from
+  // the browser (firestore.rules). Waits for auth so signed-in members get their entitled view.
   const { user, isUserLoading } = useUser();
   const [isAuthModalOpen, setIsAuthModalOpen] = React.useState(false);
+  const [item, setItem] = React.useState<ContentItem | null>(null);
+  const [access, setAccess] = React.useState<EntitlementCheckResult | null>(null);
+  const [siblings, setSiblings] = React.useState<ContentItem[]>([]);
+  const [isLoadingContent, setIsLoadingContent] = React.useState(true);
 
-  const membershipQuery = useMemoFirebase(
-    () =>
-      firestore && portal?.id && user?.uid
-        ? query(
-            collection(firestore, 'portal_memberships'),
-            where('portalId', '==', portal.id),
-            where('userId', '==', user.uid),
-            limit(1)
-          )
-        : null,
-    [firestore, portal?.id, user?.uid]
-  );
-  const { data: memberships, isLoading: isLoadingMembership } = useCollection<PortalMembership>(membershipQuery);
-  const membership = memberships?.[0] ?? null;
+  React.useEffect(() => {
+    if (isUserLoading || !portal?.id) return;
+    let cancelled = false;
+    (async () => {
+      setIsLoadingContent(true);
+      try {
+        const idToken = user ? await user.getIdToken() : null;
+        const itemRes = await getContentItemForViewerAction(idToken, portal.id, type, itemSlug);
+        const loaded = itemRes.data?.item ?? null;
+        // Siblings (docs sidebar / syllabus) use the loaded item's validated type, as before.
+        const siblingsRes = loaded
+          ? await listContentItemsByPortalAction(portal.id, { type: loaded.type, status: 'published', limitCount: 20 }, idToken)
+          : null;
+        if (cancelled) return;
+        setItem(loaded);
+        setAccess(itemRes.data?.access ?? null);
+        setSiblings(siblingsRes?.data ?? []);
+      } finally {
+        if (!cancelled) setIsLoadingContent(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [portal?.id, type, itemSlug, user, isUserLoading]);
 
-  // 4. Query Membership Plans to resolve plan display names for paywalls
+  // 3. Query Membership Plans to resolve plan display names for paywalls
   const plansQuery = useMemoFirebase(
     () =>
       firestore && portal?.id
@@ -143,66 +128,20 @@ function PortalContentReaderView({
   );
   const { data: plans } = useCollection<MembershipPlan>(plansQuery);
 
-  // 5. Evaluate Client-Side Entitlement
+  // 4. Entitlement as decided by the server; only the plan's display name is resolved here.
   const entitlement = React.useMemo<{
     hasAccess: boolean;
     reason: EntitlementDenialReason;
     requiredPlanName?: string;
   }>(() => {
-    if (!item) return { hasAccess: true, reason: 'public_access' };
-
-    // Explicitly public items are accessible by all visitors
-    if (item.visibility === 'public') {
-      return { hasAccess: true, reason: 'public_access' };
+    if (!item || !access) return { hasAccess: true, reason: 'public_access' };
+    if (access.hasAccess) return { hasAccess: true, reason: access.reason };
+    if (access.reason === 'plan_upgrade_required') {
+      const matchingPlan = plans?.find(p => access.requiredPlanIds?.includes(p.id));
+      return { hasAccess: false, reason: access.reason, requiredPlanName: matchingPlan?.name || 'Exclusive Tier' };
     }
-
-    // While authentication is determining, don't lock prematurely if user might be authenticated
-    if (isUserLoading || isLoadingMembership) {
-      return { hasAccess: false, reason: 'auth_required' };
-    }
-
-    // Unauthenticated visitors cannot access non-public content
-    if (!user) {
-      return { hasAccess: false, reason: 'auth_required' };
-    }
-
-    // User is authenticated but has no membership record in this portal
-    if (!membership) {
-      return { hasAccess: false, reason: 'membership_required' };
-    }
-
-    // Suspended or inactive membership
-    if (membership.status !== 'active') {
-      return { hasAccess: false, reason: 'membership_inactive' };
-    }
-
-    // Portal admin / instructor bypass
-    if (membership.role === 'owner' || membership.role === 'admin' || membership.role === 'instructor') {
-      return { hasAccess: true, reason: 'admin_bypass' };
-    }
-
-    // Role-based restrictions
-    if (item.accessRoles && item.accessRoles.length > 0) {
-      if (!item.accessRoles.includes(membership.role)) {
-        return { hasAccess: false, reason: 'role_restricted' };
-      }
-    }
-
-    // Plan tier restrictions
-    if (item.requiredPlanIds && item.requiredPlanIds.length > 0) {
-      if (!membership.planId || !item.requiredPlanIds.includes(membership.planId)) {
-        const matchingPlan = plans?.find(p => item.requiredPlanIds?.includes(p.id));
-        return {
-          hasAccess: false,
-          reason: 'plan_upgrade_required',
-          requiredPlanName: matchingPlan?.name || 'Exclusive Tier',
-        };
-      }
-      return { hasAccess: true, reason: 'plan_entitlement' };
-    }
-
-    return { hasAccess: true, reason: 'member_access' };
-  }, [item, isUserLoading, isLoadingMembership, user, membership, plans]);
+    return { hasAccess: false, reason: access.reason };
+  }, [item, access, plans]);
 
   // Compute visible blocks based on teaser mode if gated
   const visibleBlocks = React.useMemo(() => {

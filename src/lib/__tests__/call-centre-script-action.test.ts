@@ -2,7 +2,7 @@
 // @ts-nocheck
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { executeScriptActionAction } from '../call-centre-actions';
-import { createTaskAction } from '../task-server-actions';
+import { createTaskCore } from '../tasks/task-core';
 import { applyTagsAction, removeTagsAction } from '../tag-actions';
 import { updateEntityAction } from '../entity-actions';
 import { canUser } from '../workspace-permissions';
@@ -138,8 +138,9 @@ vi.mock('../workspace-permissions', () => ({
   canUser: vi.fn().mockResolvedValue({ granted: true }),
 }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
-vi.mock('../task-server-actions', () => ({
-  createTaskAction: vi.fn().mockResolvedValue({ success: true, id: 't1' }),
+// The engine runs session-less and uses the task core with a system actor.
+vi.mock('../tasks/task-core', () => ({
+  createTaskCore: vi.fn().mockResolvedValue({ success: true, id: 't1' }),
 }));
 vi.mock('../tag-actions', () => ({
   applyTagsAction: vi.fn().mockResolvedValue({ success: true }),
@@ -170,15 +171,15 @@ describe('executeScriptActionAction', () => {
     vi.mocked(canUser).mockResolvedValueOnce({ granted: false, reason: 'no access' });
     const res = await executeScriptActionAction({ actionType: 'CREATE_TASK', actionConfig: { taskTitle: 'X' }, ...ctx }, 'user_1');
     expect(res.success).toBe(false);
-    expect(createTaskAction).not.toHaveBeenCalled();
+    expect(createTaskCore).not.toHaveBeenCalled();
   });
 
   it('executes CREATE_TASK against the contact', async () => {
     const res = await executeScriptActionAction({ actionType: 'CREATE_TASK', actionConfig: { taskTitle: 'Follow up' }, ...ctx }, 'user_1');
     expect(res.success).toBe(true);
-    expect(createTaskAction).toHaveBeenCalledWith(
+    expect(createTaskCore).toHaveBeenCalledWith(
       expect.objectContaining({ title: 'Follow up', entityId: 'ent_1', workspaceId: 'ws_1' }),
-      expect.any(String)
+      expect.objectContaining({ kind: 'system' })
     );
   });
 
@@ -198,7 +199,7 @@ describe('executeScriptActionAction', () => {
     const res = await executeScriptActionAction({ actionType: 'UNSUPPORTED_ACTION', actionConfig: {}, ...ctx }, 'user_1');
     expect(res.success).toBe(false);
     expect(res.unsupported).toBe(true);
-    expect(createTaskAction).not.toHaveBeenCalled();
+    expect(createTaskCore).not.toHaveBeenCalled();
   });
 
   it('executes TRANSFER_CALL action gracefully', async () => {
