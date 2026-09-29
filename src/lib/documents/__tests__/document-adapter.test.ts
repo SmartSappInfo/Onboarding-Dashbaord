@@ -162,3 +162,137 @@ describe('Document Adapter Protocol', () => {
     expect(reconstructed.hotspots[0].targetUrl).toBe('https://example.com');
   });
 });
+
+describe('Document Signing Compatibility Adapter (P2.2)', () => {
+  it('converts legacy Contract with PDFForm into a valid SigningEnvelope', async () => {
+    const { legacyContractToEnvelope } = await import('../document-adapter');
+    const mockContract = {
+      id: 'contract_123',
+      entityId: 'ent_456',
+      entityName: 'Acme Corp',
+      pdfId: 'pdf_789',
+      pdfName: 'Master Services Agreement',
+      status: 'signed' as const,
+      createdAt: '2026-09-01T00:00:00.000Z',
+      updatedAt: '2026-09-02T12:00:00.000Z',
+      signedAt: '2026-09-02T12:00:00.000Z',
+      dealId: 'deal_999',
+      storagePath: 'contracts/acme_signed.pdf',
+      documentDigest: 'sha256_mock_hash_123',
+      recipients: [
+        {
+          name: 'Alice Smith',
+          email: 'alice@acme.com',
+          phone: '+1234567890',
+          type: 'signer',
+        },
+      ],
+    };
+
+    const mockPdfForm = {
+      id: 'pdf_789',
+      workspaceIds: ['ws_enterprise_1'],
+      name: 'Master Services Agreement',
+      publicTitle: 'MSA 2026',
+      slug: 'msa-2026',
+      storagePath: 'templates/msa.pdf',
+      downloadUrl: 'https://storage.googleapis.com/templates/msa.pdf',
+      status: 'published' as const,
+      fields: [],
+    };
+
+    const envelope = legacyContractToEnvelope(mockContract, mockPdfForm);
+
+    expect(envelope.id).toBe('contract_123');
+    expect(envelope.workspaceId).toBe('ws_enterprise_1');
+    expect(envelope.title).toBe('Master Services Agreement');
+    expect(envelope.status).toBe('completed');
+    expect(envelope.contractId).toBe('contract_123');
+    expect(envelope.dealId).toBe('deal_999');
+    expect(envelope.isLegacyMigrated).toBe(true);
+    expect(envelope.recipients).toHaveLength(1);
+    expect(envelope.recipients[0].name).toBe('Alice Smith');
+    expect(envelope.recipients[0].email).toBe('alice@acme.com');
+    expect(envelope.recipients[0].status).toBe('signed');
+    expect(envelope.recipients[0].signedAt).toBe('2026-09-02T12:00:00.000Z');
+  });
+
+  it('synthesizes virtual recipient when legacy Contract has empty recipients array', async () => {
+    const { legacyContractToEnvelope } = await import('../document-adapter');
+    const mockContract = {
+      id: 'contract_legacy_no_recipients',
+      entityId: 'ent_777',
+      entityName: 'Beta LLC',
+      pdfId: 'pdf_111',
+      pdfName: 'Vendor Agreement',
+      status: 'sent' as const,
+      createdAt: '2026-09-10T00:00:00.000Z',
+      updatedAt: '2026-09-10T00:00:00.000Z',
+      recipients: [],
+    };
+
+    const envelope = legacyContractToEnvelope(mockContract);
+
+    expect(envelope.recipients).toHaveLength(1);
+    expect(envelope.recipients[0].name).toBe('Beta LLC');
+    expect(envelope.recipients[0].email).toBe('recipient@placeholder.internal');
+    expect(envelope.recipients[0].role).toBe('signer');
+    expect(envelope.recipients[0].status).toBe('invited');
+  });
+
+  it('projects modern SigningEnvelope back to legacy Contract format without data loss', async () => {
+    const { envelopeToLegacyContract } = await import('../document-adapter');
+    const { SigningEnvelopeSchema } = await import('@/lib/types/document-signing');
+
+    const envelope = SigningEnvelopeSchema.parse({
+      id: 'env_roundtrip',
+      workspaceId: 'ws_demo',
+      title: 'Enterprise Partnership',
+      status: 'completed',
+      contractId: 'orig_contract_id',
+      dealId: 'deal_alpha',
+      entityId: 'ent_alpha',
+      routingMode: 'sequential',
+      currentRoutingOrder: 1,
+      documentStoragePath: 'agreements/doc.pdf',
+      completedDocumentStoragePath: 'agreements/doc_sealed.pdf',
+      preExecutionSha256: 'sha256_pre',
+      completedSha256: 'sha256_sealed',
+      completedAt: '2026-09-29T12:00:00.000Z',
+      expiresAt: '2026-10-29T12:00:00.000Z',
+      createdBy: 'usr_lead',
+      createdAt: '2026-09-29T00:00:00.000Z',
+      updatedAt: '2026-09-29T12:00:00.000Z',
+      recipients: [
+        {
+          id: 'rec_sign_1',
+          workspaceId: 'ws_demo',
+          envelopeId: 'env_roundtrip',
+          entityId: 'ent_alpha',
+          role: 'signer',
+          name: 'Jane Doe',
+          email: 'jane@alpha.com',
+          routingOrder: 1,
+          status: 'signed',
+          tokenHash: 'h_token',
+          tokenExpiresAt: '2026-10-29T12:00:00.000Z',
+          signedAt: '2026-09-29T12:00:00.000Z',
+        },
+      ],
+    });
+
+    const legacyContract = envelopeToLegacyContract(envelope);
+
+    expect(legacyContract.id).toBe('orig_contract_id');
+    expect(legacyContract.entityId).toBe('ent_alpha');
+    expect(legacyContract.entityName).toBe('Jane Doe');
+    expect(legacyContract.status).toBe('signed');
+    expect(legacyContract.dealId).toBe('deal_alpha');
+    expect(legacyContract.storagePath).toBe('agreements/doc_sealed.pdf');
+    expect(legacyContract.documentDigest).toBe('sha256_sealed');
+    expect(legacyContract.recipients).toHaveLength(1);
+    expect(legacyContract.recipients[0].name).toBe('Jane Doe');
+    expect(legacyContract.recipients[0].email).toBe('jane@alpha.com');
+  });
+});
+

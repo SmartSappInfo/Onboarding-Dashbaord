@@ -388,3 +388,13 @@ export function documentAggregateToFlipbook(
     likesCount: doc.likesCount || 0,
   };
 }
+
+// Re-export document signing compatibility adapter functions (Phase 2, P2.2)
+export {
+  legacyContractToEnvelope,
+  envelopeToLegacyContract,
+  mapContractStatusToEnvelopeStatus,
+  mapEnvelopeStatusToContractStatus,
+  mapRecipientRole,
+} from './document-signing-adapter';
+
