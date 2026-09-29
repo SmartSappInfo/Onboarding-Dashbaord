@@ -117,6 +117,13 @@ export function clearRateLimit(identifier: string): void {
 }
 
 /**
+ * Clears the entire rate limit store (for test suites).
+ */
+export function resetRateLimitForTesting(): void {
+  rateLimitStore.clear();
+}
+
+/**
  * Evicts all rate limit tracking records whose timestamps have all expired.
  * Prevents memory bloat over long container lifetimes.
  */

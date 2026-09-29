@@ -146,18 +146,22 @@ export async function authenticateApiKey(
 
     const querySnapshot = await cgRef.where('prefix', '==', prefix).limit(1).get();
 
-    if (!querySnapshot.empty) {
+    if (querySnapshot && Array.isArray(querySnapshot.docs) && querySnapshot.docs.length > 0) {
       const doc = querySnapshot.docs[0];
-      candidateRecord = doc.data() as ApiKeyRecord;
-      targetDocRef = doc as unknown as { update: (data: Partial<ApiKeyRecord>) => Promise<unknown> };
+      if (doc && typeof doc.data === 'function') {
+        candidateRecord = doc.data() as ApiKeyRecord;
+        targetDocRef = doc as unknown as { update: (data: Partial<ApiKeyRecord>) => Promise<unknown> };
+      }
     }
   } catch {
     // Fallback query if collectionGroup is not supported in current mock context
     const fallbackSnapshot = await adminDb.collection('api_keys').where('prefix', '==', prefix).limit(1).get();
-    if (!fallbackSnapshot.empty) {
+    if (fallbackSnapshot && Array.isArray(fallbackSnapshot.docs) && fallbackSnapshot.docs.length > 0) {
       const doc = fallbackSnapshot.docs[0];
-      candidateRecord = doc.data() as ApiKeyRecord;
-      targetDocRef = doc as unknown as { update: (data: Partial<ApiKeyRecord>) => Promise<unknown> };
+      if (doc && typeof doc.data === 'function') {
+        candidateRecord = doc.data() as ApiKeyRecord;
+        targetDocRef = doc as unknown as { update: (data: Partial<ApiKeyRecord>) => Promise<unknown> };
+      }
     }
   }
 
