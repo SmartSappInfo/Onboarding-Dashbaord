@@ -1,4 +1,4 @@
-# Phase 8 Implementation Plan: Advanced Cross-Platform Mobile Signing Experience, Offline Biometric Captures, Embedded Partner SDK & Developer Webhooks / REST API Platform
+# Phase 8 Master Implementation Plan: Advanced Cross-Platform Mobile Signing Experience, Offline Biometric Captures, Embedded Partner SDK & Developer Webhooks / REST API Platform
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -6,8 +6,8 @@
 
 **Architecture:**
 - Grounded in foundational docs: `DocSigning_prd.md` (§6 API & Event Design, §6.6 Webhooks, §7.2 Developer Tools, §7.3 Responsive & Mobile Signing, §8.2 Security & Token Controls, §8.3 Evidence & Integrity) and `DocSigning_roadmap.md` (§8.1 Domain Boundaries, §14 Architecture Guardrails, §18 Definition of Done).
-- Architectural Modules:
-  1. **Scoped API Key Auth & Timing-Safe Verification (`api-key-auth-service.ts`)**: Generates cryptographically secure API keys (`sapp_live_...` / `sapp_test_...`), stores SHA-256 hashed digests with prefix indexing, verifies requests using constant-time `crypto.timingSafeEqual`, and enforces granular scopes (`envelopes:create`, `envelopes:read`, `templates:read`, `webhooks:manage`).
+- Architectural Pillars:
+  1. **Scoped API Key Auth & Timing-Safe Verification (`api-key-auth-service.ts`)**: Generates cryptographically secure API keys (`sapp_live_...` / `sapp_test_...`), stores SHA-256 hashed digests with prefix indexing, verifies requests using constant-time `crypto.timingSafeEqual`, and enforces granular scopes (`envelopes:create`, `envelopes:read`, `envelopes:void`, `templates:read`, `webhooks:manage`).
   2. **Token-Bucket Rate Limiter & Abuse Guard (`api-rate-limiter-service.ts`)**: Protects public APIs and vector PDF pipelines from exhaustion using sliding-window token buckets per API key and client IP, returning standard HTTP 429 with `Retry-After` and `X-RateLimit-*` headers.
   3. **Public Developer REST API Handlers (`/api/v1/envelopes`, `/api/v1/templates`)**: Standard RESTful endpoints accepting idempotency keys, validating payloads with runtime Zod schemas, returning structured `{ data, meta }` and `{ error }` envelopes, and filtering PII.
   4. **Embedded Partner Signing SDK & Secure Iframe Host (`embedded-signing-service.ts`, `/embed/sign/[token]`)**: Provides a zero-chrome embedded signing host with origin whitelisting (`Content-Security-Policy: frame-ancestors`), cryptographic session token exchange, bidirectional postMessage event protocol (`PARENT_READY`, `EMBED_LOADED`, `RECIPIENT_SIGNED`, `RECIPIENT_DECLINED`, `RESIZE_REQUEST`), and debounced auto-height resizing.
@@ -18,7 +18,60 @@
 
 ---
 
-## 1. Baseline Verification & Multi-Phase Continuity Matrix
+## 1. 10 Important Rules Invariant Compliance Protocol
+
+### Rule 1: Strict Sub-Skill Alignment & Code Conformance
+- **`next-best-practices`**: Implements Next.js 15 Route Handlers (`NextRequest`, `NextResponse`), Server Actions with `await requireWorkspace(workspaceId)`, and dynamic header extraction via `next/headers`. Client components strictly avoid direct database access.
+- **`vercel-react-best-practices`**: Zero waterfall data fetching, server-side data preparation, memoized coordinate geometry transformations, and debounced `ResizeObserver` callbacks to avoid client main-thread congestion.
+- **`emilkowal-animations`**: Tactile micro-interactions (`active:scale-[0.97]` on all buttons), 200ms ease-out transitions (`transition-all duration-200 ease-out`), smooth dialog enter transitions (never scaling from 0), and reduced-motion fallbacks (`motion-reduce:transform-none`).
+- **`backend-design`**: Sliding-window token-bucket rate limiting, constant-time authentication verification, atomic distributed transactions with retry backoff, and durable dead-letter conflict isolation.
+- **`frontend-design`**: Distinctive, institution-grade developer dock in Agreements Hub with syntax-highlighted curl examples, clean scope chip groups, real-time postMessage stream loggers, and zero generic "AI slop" styling.
+
+### Rule 2: Failure Modes, Testability & Scalable Refactoring
+- All 15 identified failure modes (FM-P8-01 through FM-P8-15) have concrete code-level mitigations and corresponding unit test assertions.
+- Code is modularized into testable, single-responsibility services (`api-key-auth-service.ts`, `api-rate-limiter-service.ts`, `embedded-signing-service.ts`, `offline-signing-service.ts`).
+- Verification commands (`pnpm test:run`, `pnpm typecheck`, `pnpm lint`) are executed at each step before committing locally.
+
+### Rule 3: Downstream Features Affected & Backoffice Enhancement Architecture
+- **Preserved Existing Features**: CRM deal stage sync (`crm-deal-sync-service.ts`), outbox reminders (`signing-reminder-service.ts`), public verification portal (`/verify/[envelopeId]`), template studio versioning, and link shortener continue operating without interruption.
+- **No-Code Backoffice Operations**: Legal ops and developer platform administrators can manage all aspects of API keys, iframe domain whitelists, webhook replay simulations, and offline sync conflicts directly within Agreements Hub without deploying code or touching database records.
+
+### Rule 4: Zero-Tolerance Typing (Zero `any` or `any[]`)
+- Strictly zero `any`, `any[]`, or unchecked casts in domain models, service layers, route handlers, and UI components.
+- External inputs (`req.json()`, `postMessage` payloads, IndexedDB blobs) enter as `unknown` and are immediately narrowed using strict Zod schemas before reaching business logic.
+
+### Rule 5: Staging, Rules & Governance Verification
+- Firestore collections (`api_keys`, `developer_webhooks`, `offline_sync_queue`, `offline_sync_conflicts`) are strictly scoped under `workspaces/{workspaceId}/`.
+- Security rules enforce that client SDKs cannot read secret hashes or mutate API keys directly; all key operations route through authenticated Server Actions.
+- Changes are verified against local emulators and test suites prior to production cutover.
+
+### Rule 6: Dependency & Context7 MCP Documentation Protocol
+- Uses native Node.js `crypto` primitives (`crypto.timingSafeEqual`, `crypto.createHmac`, `crypto.randomBytes`) and standard repository packages (`zod`, `lucide-react`, `framer-motion`).
+- When external framework conventions (Next.js 15 headers, route handler signatures) are updated, Context7 MCP is leveraged for canonical documentation.
+
+### Rule 7: Mobile-First Ergonomics & Everyday UI English
+- All buttons, inputs, and touch targets enforce `min-h-[44px]` height and `min-w-[44px]` width.
+- Form inputs enforce `text-base sm:text-sm` (16px on mobile) to eliminate iOS Safari automatic zoom-in behavior.
+- UI copy uses clean, concise, everyday English ("Create API Key", "Allowed Sites", "Test Connection", "Pending Sync") without walls of text or cryptic developer jargon.
+
+### Rule 8: High Security Standards & Threat Mitigation
+- API key secrets are hashed using SHA-256; only prefixes and hashes are stored.
+- Key authentication uses constant-time comparison (`crypto.timingSafeEqual`) to prevent timing side-channel attacks.
+- Embedded iframes enforce `Content-Security-Policy: frame-ancestors` and validate `event.origin` against the workspace whitelist.
+- Webhook payloads are signed with HMAC SHA-256 headers (`X-Sapp-Signature`) with replay timestamps.
+
+### Rule 9: High Load & Scale Protection
+- Sliding-window token-bucket limiter throttles burst requests (standard: 60/min, enterprise: 300/min).
+- Maximum envelope creation constraints (max 10 recipients, max 5 documents, max 25MB total payload) prevent vector PDF generator OOM crashes.
+- Debounced resize observers (100ms interval + 8px deadband) prevent infinite layout recalculation loops.
+
+### Rule 10: Future Maintainer Guidance Comments
+- Every newly created file begins with an authoritative architectural docstring explaining design rationale, security boundaries, and testability pointers for future developers.
+- Inline caution markers (`CAUTION: Security-sensitive boundary`, `TESTABILITY: Inject clock for deterministic time assertions`) are strategically placed.
+
+---
+
+## 2. Multi-Phase Continuity Matrix (Phases 0 through 7)
 
 | Implemented Phase | Established Invariants & Components | Phase 8 Interaction & Protection |
 | :--- | :--- | :--- |
@@ -33,7 +86,7 @@
 
 ---
 
-## 2. Failure Modes & Mitigations Register (FM-P8-01 through FM-P8-12)
+## 3. Failure Modes & Mitigations Register (FM-P8-01 through FM-P8-15)
 
 ```mermaid
 flowchart TD
@@ -46,10 +99,13 @@ flowchart TD
         FM6["FM-P8-06: Cross-Tenant API Key Header Manipulation"]
         FM7["FM-P8-07: Offline Double-Sign Race Condition"]
         FM8["FM-P8-08: Stale Client PWA Cache with Outdated Fields"]
-        FM9["FM-P8-09: Unsanitized External Webhook Payloads"]
+        FM9["FM-P8-09: Unsanitized External Webhook Payloads (SSRF)"]
         FM10["FM-P8-10: Mobile Safari iOS Viewport Auto-Zoom Clutter"]
         FM11["FM-P8-11: Malformed Idempotency Keys in Developer REST API"]
-        FM12["FM-P8-12: Unchecked Scopes Escalating to Admin Ops"]
+        FM12["FM-P8-12: Scope Escalation to Administrative Operations"]
+        FM13["FM-P8-13: Excessive Payload Size Causing Node.js OOM Crash"]
+        FM14["FM-P8-14: Stale API Key Revocation Cache Window"]
+        FM15["FM-P8-15: Clock Drift between Offline Client and Server"]
     end
 
     subgraph Mitigations
@@ -61,10 +117,13 @@ flowchart TD
         M6["Server-Side Workspace Scoping Bound to Validated Key Record"]
         M7["Recipient State Atomic Compare-and-Set in Firestore Tx"]
         M8["Cache-First for Static Assets + Network-First for Form Schemas"]
-        M9["HMAC SHA-256 Payload Signature + Replay Timestamp Window"]
+        M9["Strict HTTPS Whitelist + HMAC SHA-256 Payload Signature"]
         M10["Touch Targets >= 44px + text-base sm:text-sm Zoom Lock"]
         M11["Strict UUIDv4/Alphanumeric Idempotency Key Validator Regex"]
         M12["Granular Scope Enforcement: envelopes:create, templates:read"]
+        M13["Server-Side Payload Bounding: Max 10 Recipients, 25MB Max Payload"]
+        M14["Direct Firestore Document Read on Mutation Boundaries"]
+        M15["Cryptographic Device Nonce + Server Replay Time Bounds (Max 7 Days)"]
     end
 
     FM1 --> M1
@@ -79,6 +138,9 @@ flowchart TD
     FM10 --> M10
     FM11 --> M11
     FM12 --> M12
+    FM13 --> M13
+    FM14 --> M14
+    FM15 --> M15
 ```
 
 | ID | Failure Mode | Severity | Impact | Code-Level Mitigation |
@@ -91,39 +153,44 @@ flowchart TD
 | **FM-P8-06** | **Cross-Tenant Key Spoofing** | **Critical** | Developer passes API key from Workspace A but attempts to create envelopes in Workspace B. | API key authentication unconditionally binds `workspaceId` from the cryptographically verified key document in Firestore, ignoring client-supplied workspace query params. |
 | **FM-P8-07** | **Offline Double-Sign Race** | **High** | User signs offline on tablet while another party signs or declines online concurrently. | Sync replay uses atomic Firestore transaction (`adminDb.runTransaction`) checking `recipient.status === 'invited' \| 'viewed'`. Fails safely if status has advanced. |
 | **FM-P8-08** | **Stale PWA Form Definitions** | **Medium** | Signer caches template offline, but administrator updated template fields before connection dropped. | Template version snapshot SHA-256 is checked before offline render. PWA uses Network-First for field definitions and Cache-First for static font/vector assets. |
-| **FM-P8-09** | **Unsanitized Webhook Payloads** | **Medium** | Developer provides malicious webhook URL (SSRF) or receives unauthenticated event payloads. | Webhook URLs must start with `https://` (or `http://localhost` in test mode). Payloads are signed with HMAC SHA-256 using key secret with `X-Sapp-Signature` header. |
+| **FM-P8-09** | **Unsanitized Webhook Payloads (SSRF)** | **Medium** | Developer provides malicious webhook URL (SSRF) or receives unauthenticated event payloads. | Webhook URLs must start with `https://` (or `http://localhost` in test mode). Payloads are signed with HMAC SHA-256 using key secret with `X-Sapp-Signature` header. |
 | **FM-P8-10** | **Mobile Safari Auto-Zoom** | **Low** | Mobile signers tapping input fields experience abrupt Safari zoom in/out, breaking field coordinates. | Form inputs enforce `text-base sm:text-sm` (16px minimum on mobile), while touch targets enforce `min-h-[44px]` and `active:scale-[0.97]` tactile press feedback. |
 | **FM-P8-11** | **Malformed Idempotency Keys** | **Medium** | External clients send random strings or empty headers as idempotency keys, causing collisions. | Validate `Idempotency-Key` header with regex `^[A-Za-z0-9_-]{8,128}$`. Reject non-compliant keys with HTTP 400 Bad Request. |
 | **FM-P8-12** | **Scope Escalation** | **Critical** | Read-only API key attempts to dispatch new envelopes or void active contracts. | Authorization middleware checks required scope (e.g. `envelopes:create`) against `apiKey.scopes` array; returns HTTP 403 Forbidden with clear scope denial message. |
+| **FM-P8-13** | **Payload Size OOM Crash** | **High** | Client uploads 100MB embedded PDF payload crashing the API route handler. | Enforce 25MB max payload body size, max 10 recipients, and max 5 documents per envelope in Zod validator. |
+| **FM-P8-14** | **Stale Key Revocation Window** | **High** | Revoked key continues succeeding in API requests due to in-memory caching. | In-memory key verification cache has maximum 10-second TTL; revocation immediately clears local key cache entry. |
+| **FM-P8-15** | **Offline Client Clock Drift** | **Medium** | Signer device has clock set back 2 years, submitting deceptive signature timestamps. | Server records both client `signedAt` and server `syncedAt` in evidence ledger. Rejects packages where client timestamp is > 7 days in the past or > 1 hour in the future. |
 
 ---
 
-## 3. 10 Golden Rules Compliance & Verification Protocol
+## 4. Backoffice Enhancement Architecture (No-Code Operations)
 
-1. **Strict Sub-Skill Alignment:**
-   Conforms to `next-best-practices` (Next.js 15 Route Handlers, Server Actions, `next/headers`), `vercel-react-best-practices` (server-side data fetching, debounced observers, memoized transforms), `emilkowal-animations` (`active:scale-[0.97]` tactile press feedback, smooth ease-out transitions), `backend-design` (token-bucket rate limiting, timing-safe authentication, atomic transactions), and `frontend-design` (accessible, institution-grade developer dock).
-2. **Failure Modes & Clean Code Guarantee:**
-   All 12 failure modes (FM-P8-01 to FM-P8-12) have concrete code-level mitigations and corresponding unit test assertions. Every step is verified with `pnpm test:run`, `pnpm typecheck`, and `pnpm lint` before committing locally.
-3. **Downstream Feature & Backoffice Continuity:**
-   Preserves zero breaking changes across Agreements Hub tabs, existing `/sign/[token]` portal, CRM deal timeline federation, and verification routes.
-4. **Zero-Tolerance Typing (Rule 4):**
-   Strictly zero `any` or `any[]` or unchecked casts in domain models, service layers, route handlers, and UI components. All inputs from external boundaries are parsed with Zod schemas.
-5. **Staging & Policy Verification:**
-   All Firestore paths (`api_keys`, `developer_webhooks`, `offline_sync_queue`, `offline_sync_conflicts`) are scoped under `workspaces/{workspaceId}/` ensuring strict multi-tenant isolation.
-6. **Dependency & Documentation Hygiene:**
-   Standard cryptographic primitives (`crypto.createHash`, `crypto.timingSafeEqual`, `crypto.randomBytes`) and Radix UI components utilized.
-7. **Mobile-First & Everyday UI English:**
-   Every button and input enforces `min-h-[44px]` touch targets. Form inputs enforce `text-base sm:text-sm` to prevent iOS Safari auto-zoom. UI copy uses clear, everyday English ("Create API Key", "Allowed Embed Domains", "Test Webhook", "Sync Offline Signatures") avoiding cluttered jargon.
-8. **High Security Standards:**
-   Zero cross-tenant leakage, SHA-256 package verification, timing-safe key hashing, frame-ancestors CSP whitelisting, and immutable audit logs.
-9. **Load & Scale Protection:**
-   Token-bucket rate-limiting (max 60 req/min), bounded payload checks (max 10 recipients, max 5 documents), and debounced resize observers preventing CPU spikes.
-10. **Maintainer Guidance Comments:**
-    Every newly created file begins with an authoritative architectural docstring explaining design rationale, security boundaries, and testability pointers for future developers.
+The Agreements Hub backoffice dock (`ContractsClient.tsx`) is extended with a dedicated 7th tab: **"Developer Platform & Embedded SDK"** (`DeveloperPlatformTab.tsx`), giving workspace administrators full control over external integrations without writing code:
+
+1. **Scoped API Key Switchboard**:
+   - Create new API keys with selectable scopes (`envelopes:create`, `envelopes:read`, `envelopes:void`, `templates:read`, `webhooks:manage`).
+   - 1-time secret reveal modal with copy button, visual security warning, and auto-dismissal.
+   - 1-click key revocation and key secret rotation.
+   - Real-time telemetry: key status (`active` | `revoked`), creation date, expiration, and `lastUsedAt` timestamp.
+2. **Embed Origins Whitelist Editor**:
+   - Manage permitted parent domain origins (`https://partner.example.com`, `https://app.clientcrm.com`).
+   - Dynamic validation preventing wildcards (`*`) or insecure HTTP URLs in production.
+   - Instantly propagates to the CSP `frame-ancestors` header on `/embed/sign/[token]`.
+3. **Interactive Iframe Sandbox & PostMessage Inspector**:
+   - Live embedded signing testbed with customizable sample envelope.
+   - Real-time event visualizer showing bidirectional postMessage frames (`PARENT_READY` -> `EMBED_LOADED` -> `RESIZE_REQUEST` -> `RECIPIENT_SIGNED`).
+   - Auto-height resize toggle and mobile viewport simulation dock.
+4. **Webhook Delivery Simulator**:
+   - Send test event payloads (`envelope.sent`, `recipient.signed`, `envelope.completed`) to any destination URL.
+   - View live HTTP response codes, latency in milliseconds, and HMAC SHA-256 header preview.
+5. **Offline Sync Queue Health Monitor**:
+   - Real-time status cards: Pending Sync, Successfully Synced, and Sync Conflicts.
+   - 1-click retry for pending offline packages.
+   - Conflict resolution modal for inspecting quarantined offline signatures.
 
 ---
 
-## 4. Trackable Task Breakdown (Tasks 1 through 10)
+## 5. Trackable Task Breakdown (Tasks 1 through 10)
 
 ### Task 1: Domain Schemas & Zod Validators for Developer Platform, API Keys, Embedded SDK & Offline Biometrics
 **Files:**
@@ -213,7 +280,7 @@ flowchart TD
   - Expected: FAIL with module not found.
 
 - [ ] **Step 3: Implement `src/lib/documents/api-rate-limiter-service.ts`**
-  - In-memory / Firestore cache token bucket tracker with automatic window expiration.
+  - Sliding-window token bucket tracker with automatic window expiration.
   - Generates typed rate limit response headers.
   - Strict typing without `any`.
 
@@ -240,7 +307,7 @@ flowchart TD
     - Enforces `Authorization: Bearer sapp_live_...` with `envelopes:read` scope
     - Returns paginated envelopes matching caller's workspace
   - Test `POST /api/v1/envelopes`:
-    - Validates payload with `CreateEnvelopeApiRequestSchema`
+    - Validates payload with `CreateEnvelopeApiRequestSchema` (bounds check max 10 recipients, max 5 documents)
     - Enforces idempotency via `Idempotency-Key` header
     - Returns 201 Created with `{ data: { envelopeId, status: 'sent' }, meta: { requestId } }`
   - Test `GET /api/v1/envelopes/[id]`:
@@ -295,7 +362,7 @@ flowchart TD
   - Zero-chrome iframe container rendering the core signing interaction.
   - Client-side postMessage listener with strict `event.origin` verification.
   - ResizeObserver posting `RESIZE_REQUEST` to parent window.
-  - Rule 7 mobile responsiveness and accessibility.
+  - Mobile responsiveness (`min-h-[44px]` touch targets, zoom lock).
 
 - [ ] **Step 4: Run test to verify it passes**
   - Run: `pnpm test:run src/lib/documents/__tests__/embedded-signing-service.test.ts`
@@ -455,7 +522,7 @@ flowchart TD
 
 ---
 
-## 5. Review Checkpoints & Acceptance Gate
+## 6. Review Checkpoints & Acceptance Gate
 
 Before Phase 8 is declared complete and ready for production, the following criteria must be satisfied:
 1. **Zero `any` or `any[]` Typing**: Strict Zod schemas and TypeScript types on all REST requests, postMessage events, biometric strokes, and API key handlers.
