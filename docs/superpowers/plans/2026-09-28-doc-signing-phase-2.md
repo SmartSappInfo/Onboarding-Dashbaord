@@ -322,16 +322,16 @@ export type SigningEnvelope = z.infer<typeof SigningEnvelopeSchema>;
 - Modify: `src/lib/types/document-signing.ts`
 - Create: `src/lib/documents/__tests__/domain-schemas.test.ts`
 
-- [ ] **Step 1: Write schema validation test in `domain-schemas.test.ts`**
+- [x] **Step 1: Write schema validation test in `domain-schemas.test.ts`**
   - Verify valid and invalid envelope payloads, recipient role parsing, sequential routing modes, and status transitions.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/domain-schemas.test.ts`
-- [ ] **Step 3: Update `src/lib/types/document-signing.ts`**
+- [x] **Step 3: Update `src/lib/types/document-signing.ts`**
   - Implement `EnvelopeRecipientSchema`, `SigningEnvelopeSchema`, `EnvelopeRoutingModeSchema`, `DocumentFieldDefinitionSchema`.
   - Ensure zero `any` or `any[]` (Rule 4).
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/domain-schemas.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/types/document-signing.ts src/lib/documents/__tests__/domain-schemas.test.ts && git commit -m "feat(docsigning): implement strict domain schemas for multi-party envelopes"`
 
 ---
@@ -341,19 +341,19 @@ export type SigningEnvelope = z.infer<typeof SigningEnvelopeSchema>;
 - Create: `src/lib/documents/envelope-routing-service.ts`
 - Create: `src/lib/documents/__tests__/envelope-routing-service.test.ts`
 
-- [ ] **Step 1: Write routing unit tests in `envelope-routing-service.test.ts`**
+- [x] **Step 1: Write routing unit tests in `envelope-routing-service.test.ts`**
   - Test sequential routing: Recipient 2 cannot sign when Recipient 1 is pending.
   - Test parallel routing: Both Recipient 1 and Recipient 2 can sign concurrently at order 1.
   - Test routing advance: When Recipient 1 signs, Recipient 2 status advances from `pending` to `invited`.
   - Test terminal completion: When final recipient signs, envelope advances to `completed`.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/envelope-routing-service.test.ts`
-- [ ] **Step 3: Implement `src/lib/documents/envelope-routing-service.ts`**
+- [x] **Step 3: Implement `src/lib/documents/envelope-routing-service.ts`**
   - Pure deterministic functions: `canRecipientAct(envelope, recipientId)`, `advanceEnvelopeRouting(envelope, completedRecipientId)`.
   - Add inline architectural comments on state invariants (Rule 10).
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/envelope-routing-service.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/envelope-routing-service.ts src/lib/documents/__tests__/envelope-routing-service.test.ts && git commit -m "feat(docsigning): implement deterministic multi-party envelope routing engine"`
 
 ---
@@ -363,18 +363,18 @@ export type SigningEnvelope = z.infer<typeof SigningEnvelopeSchema>;
 - Create: `src/lib/documents/document-adapter.ts`
 - Create: `src/lib/documents/__tests__/document-adapter.test.ts`
 
-- [ ] **Step 1: Write adapter unit tests in `document-adapter.test.ts`**
+- [x] **Step 1: Write adapter unit tests in `document-adapter.test.ts`**
   - Test converting legacy `Contract` + `PDFForm` to `SigningEnvelope`.
   - Test synthesizing virtual recipient from legacy single-signer contract data.
   - Test converting new `SigningEnvelope` to legacy `Contract` projection for backward compatibility.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/document-adapter.test.ts`
-- [ ] **Step 3: Implement `src/lib/documents/document-adapter.ts`**
+- [x] **Step 3: Implement `src/lib/documents/document-adapter.ts`**
   - Bi-directional mapper functions: `legacyContractToEnvelope(contract, pdfForm)`, `envelopeToLegacyContract(envelope)`.
   - Preserve all legacy IDs, timestamps, and workspace bindings.
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/document-adapter.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/document-adapter.ts src/lib/documents/__tests__/document-adapter.test.ts && git commit -m "feat(docsigning): implement bi-directional compatibility adapter for legacy contracts"`
 
 ---
@@ -384,18 +384,18 @@ export type SigningEnvelope = z.infer<typeof SigningEnvelopeSchema>;
 - Create: `src/lib/documents/signing-token-service.ts`
 - Create: `src/lib/documents/__tests__/signing-token-service.test.ts`
 
-- [ ] **Step 1: Write unit tests in `signing-token-service.test.ts`**
+- [x] **Step 1: Write unit tests in `signing-token-service.test.ts`**
   - Test cryptographically random token generation (32 bytes entropy).
   - Test SHA-256 token hashing (`tokenHash = SHA256(rawToken)`).
   - Test token expiry verification (default 14 days, configurable).
   - Test token validation against stored `tokenHash`.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/signing-token-service.test.ts`
-- [ ] **Step 3: Implement `src/lib/documents/signing-token-service.ts`**
+- [x] **Step 3: Implement `src/lib/documents/signing-token-service.ts`**
   - `generateRecipientToken()`, `hashSigningToken(rawToken)`, `verifyRecipientToken(rawToken, recipient)`.
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/signing-token-service.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/signing-token-service.ts src/lib/documents/__tests__/signing-token-service.test.ts && git commit -m "feat(docsigning): implement secure recipient capability tokens and sha256 hashing"`
 
 ---
@@ -405,19 +405,19 @@ export type SigningEnvelope = z.infer<typeof SigningEnvelopeSchema>;
 - Create: `src/lib/documents/envelope-actions.ts`
 - Create: `src/lib/documents/__tests__/envelope-actions.test.ts`
 
-- [ ] **Step 1: Write integration tests in `envelope-actions.test.ts`**
+- [x] **Step 1: Write integration tests in `envelope-actions.test.ts`**
   - Test `createEnvelopeAction` with multiple recipients (sequential and parallel).
   - Test initial token generation for order 1 recipients.
   - Test validation rejection if duplicate recipient emails or missing required fields.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/envelope-actions.test.ts`
-- [ ] **Step 3: Implement `src/lib/documents/envelope-actions.ts`**
+- [x] **Step 3: Implement `src/lib/documents/envelope-actions.ts`**
   - Atomic creation in `signing_envelopes` collection.
   - Frozen variable snapshot via `FieldsVariablesService.resolveTemplateVariables`.
   - Notification dispatch for initial cohort via `messaging-actions.ts`.
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/envelope-actions.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/envelope-actions.ts src/lib/documents/__tests__/envelope-actions.test.ts && git commit -m "feat(docsigning): implement atomic multi-party envelope creation server action"`
 
 ---
@@ -428,21 +428,21 @@ export type SigningEnvelope = z.infer<typeof SigningEnvelopeSchema>;
 - Modify: `src/lib/documents/audit-certificate-service.ts` (Implement dynamic multi-page certificate height budgeting)
 - Create: `src/lib/documents/__tests__/envelope-step-finalization.test.ts`
 
-- [ ] **Step 1: Write unit tests in `envelope-step-finalization.test.ts`**
+- [x] **Step 1: Write unit tests in `envelope-step-finalization.test.ts`**
   - Test intermediate step signing (Recipient 1 signs: status `signed`, envelope advances, Recipient 2 invited).
   - Test terminal step signing (Recipient 2 signs: envelope completed, final vector PDF + certificate sealed, CRM `deal.contract.signed` emitted).
   - Test dynamic multi-page certificate when 3+ signers are present.
   - Test idempotent replay (re-submitting intermediate step returns success without double advancement).
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/envelope-step-finalization.test.ts`
-- [ ] **Step 3: Implement `submitRecipientSignatureAction` in `envelope-actions.ts`**
+- [x] **Step 3: Implement `submitRecipientSignatureAction` in `envelope-actions.ts`**
   - Transactional lock via `adminDb.runTransaction()`.
   - Signature offloading via `uploadSignatureImage`.
   - Cryptographic evidence record creation via `createEvidenceRecord`.
   - Update `audit-certificate-service.ts` to support multi-signer vertical pagination.
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/envelope-step-finalization.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/envelope-actions.ts src/lib/documents/audit-certificate-service.ts src/lib/documents/__tests__/envelope-step-finalization.test.ts && git commit -m "feat(docsigning): transactional multi-party step finalization, multi-page certificate, and routing progression"`
 
 ---
@@ -452,15 +452,15 @@ export type SigningEnvelope = z.infer<typeof SigningEnvelopeSchema>;
 - Modify: `src/app/admin/finance/contracts/components/ContractWizard.tsx`
 - Create: `src/app/admin/finance/contracts/components/RecipientRoutingEditor.tsx`
 
-- [ ] **Step 1: Build `RecipientRoutingEditor.tsx`**
+- [x] **Step 1: Build `RecipientRoutingEditor.tsx`**
   - Visual recipient list using `@dnd-kit/sortable` with order badges, role dropdown (Signer, Approver, Countersigner, Viewer), email/phone inputs, and delete/add buttons.
   - High-contrast role badges and accessible `min-h-[44px]` touch targets.
-- [ ] **Step 2: Integrate into `ContractWizard.tsx`**
+- [x] **Step 2: Integrate into `ContractWizard.tsx`**
   - Toggle between "Single Signer (Quick)" and "Multi-Party Routing".
   - Wire to `createEnvelopeAction`.
-- [ ] **Step 3: Verify TypeScript compiler and lint**
+- [x] **Step 3: Verify TypeScript compiler and lint**
   - Command: `pnpm typecheck && pnpm eslint 'src/app/admin/finance/contracts/components/*.tsx'`
-- [ ] **Step 4: Commit changes**
+- [x] **Step 4: Commit changes**
   - Command: `git add src/app/admin/finance/contracts/components/ContractWizard.tsx src/app/admin/finance/contracts/components/RecipientRoutingEditor.tsx && git commit -m "feat(docsigning): implement multi-party recipient routing editor in contract wizard"`
 
 ---
@@ -471,20 +471,20 @@ export type SigningEnvelope = z.infer<typeof SigningEnvelopeSchema>;
 - Create: `src/app/sign/[envelopeId]/components/MultiPartySigningPortal.tsx`
 - Create: `src/app/sign/[envelopeId]/components/WaitingForTurnView.tsx`
 
-- [ ] **Step 1: Implement `page.tsx`**
+- [x] **Step 1: Implement `page.tsx`**
   - Server component: extracts `envelopeId` and `token` query param.
   - Validates capability token via `signing-token-service.ts`.
   - If envelope is completed or recipient is out-of-turn, renders appropriate view safely without leaking other signers' private PII.
-- [ ] **Step 2: Implement `MultiPartySigningPortal.tsx`**
+- [x] **Step 2: Implement `MultiPartySigningPortal.tsx`**
   - Responsive vector PDF canvas.
   - Role-focused field guide highlighting assigned fields for current recipient.
   - Emil Kowalski spring micro-interactions (`active:scale-[0.97]`).
   - Mobile double-tap prevention and `text-base` input zoom lock.
-- [ ] **Step 3: Implement `WaitingForTurnView.tsx`**
+- [x] **Step 3: Implement `WaitingForTurnView.tsx`**
   - Friendly everyday English status: "Waiting for [Signer 1] to complete their review. You'll be notified automatically."
-- [ ] **Step 4: Verify TypeScript compiler and lint**
+- [x] **Step 4: Verify TypeScript compiler and lint**
   - Command: `pnpm typecheck && pnpm eslint 'src/app/sign/**/*.{ts,tsx}'`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/app/sign/ && git commit -m "feat(docsigning): implement dedicated multi-party signing portal and waiting state"`
 
 ---
@@ -495,16 +495,16 @@ export type SigningEnvelope = z.infer<typeof SigningEnvelopeSchema>;
 - Create: `src/app/admin/finance/contracts/components/EnvelopeDetailModal.tsx`
 - Create: `src/app/admin/finance/contracts/components/ReassignRecipientModal.tsx`
 
-- [ ] **Step 1: Build `EnvelopeDetailModal.tsx`**
+- [x] **Step 1: Build `EnvelopeDetailModal.tsx`**
   - Displays multi-party timeline with individual recipient status pills (*Invited*, *Opened*, *Signed*).
   - Quick action: "Resend to Current Signer".
   - Quick action: "Reassign Signer" if recipient is unavailable.
-- [ ] **Step 2: Build `ReassignRecipientModal.tsx`**
+- [x] **Step 2: Build `ReassignRecipientModal.tsx`**
   - Form allowing manager to enter replacement signer name and email.
   - Revokes old token, records audit event, and dispatches fresh invite to new recipient.
-- [ ] **Step 3: Verify TypeScript compiler and lint**
+- [x] **Step 3: Verify TypeScript compiler and lint**
   - Command: `pnpm typecheck && pnpm eslint 'src/app/admin/finance/contracts/**/*.{ts,tsx}'`
-- [ ] **Step 4: Commit changes**
+- [x] **Step 4: Commit changes**
   - Command: `git add src/app/admin/finance/contracts/ && git commit -m "feat(docsigning): implement multi-party live tracker and recipient reassignment dock"`
 
 ---
@@ -514,16 +514,16 @@ export type SigningEnvelope = z.infer<typeof SigningEnvelopeSchema>;
 - Verify: Full test suite across baseline, Phase 1, and Phase 2 tests.
 - Update: `docs/superpowers/plans/2026-09-28-doc-signing-phase-2.md`
 
-- [ ] **Step 1: Run all unit and integration test suites**
+- [x] **Step 1: Run all unit and integration test suites**
   - Command: `pnpm test:run src/lib/__tests__/*.test.ts src/lib/documents/__tests__/*.test.ts`
   - Expected: 100% pass across all suites.
-- [ ] **Step 2: Run TypeScript compiler**
+- [x] **Step 2: Run TypeScript compiler**
   - Command: `pnpm typecheck`
   - Expected: 0 errors.
-- [ ] **Step 3: Run ESLint**
+- [x] **Step 3: Run ESLint**
   - Command: `pnpm lint`
   - Expected: 0 errors, warnings $\le 670$.
-- [ ] **Step 4: Commit completed Phase 2 master plan status**
+- [x] **Step 4: Commit completed Phase 2 master plan status**
   - Command: `git add docs/superpowers/plans/2026-09-28-doc-signing-phase-2.md && git commit -m "docs(docsigning): mark Phase 2 tasks completed"`
 
 ---
