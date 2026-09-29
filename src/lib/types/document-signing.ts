@@ -236,3 +236,196 @@ export interface VerificationAuditCertificateData {
   auditTrail: EvidenceAuditLogEntry[];
   verificationUrl: string;
 }
+
+// ==========================================
+// 6. Template Studio & Versioning (Phase 3)
+// ==========================================
+
+export const DocumentTypeSchema = z.enum([
+  'contract',
+  'nda',
+  'msa',
+  'sow',
+  'order_form',
+  'sla',
+  'amendment',
+  'addendum',
+  'waiver',
+  'agreement',
+  'proposal',
+  'form',
+  'letter',
+  'policy',
+  'certificate',
+  'other',
+]);
+export type DocumentType = z.infer<typeof DocumentTypeSchema>;
+
+export const TemplateStatusSchema = z.enum(['draft', 'published', 'archived']);
+export type TemplateStatus = z.infer<typeof TemplateStatusSchema>;
+
+export const TemplateVersionStatusSchema = z.enum(['draft', 'published', 'superseded']);
+export type TemplateVersionStatus = z.infer<typeof TemplateVersionStatusSchema>;
+
+export const TemplateVersionSchema = z.object({
+  id: z.string().min(1),
+  workspaceId: z.string().min(1),
+  templateId: z.string().min(1),
+  versionNumber: z.number().int().min(1),
+  status: TemplateVersionStatusSchema,
+  contentSnapshot: z.object({
+    storagePath: z.string().min(1),
+    sha256: z.string().min(1),
+  }),
+  fields: z.array(DocumentFieldDefinitionSchema),
+  variableSchemaVersion: z.string().default('1.0'),
+  changeSummary: z.string().optional(),
+  publishedAt: z.string().optional(),
+  createdBy: z.string().min(1),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type TemplateVersion = z.infer<typeof TemplateVersionSchema>;
+
+export const DocumentTemplateSchema = z.object({
+  id: z.string().min(1),
+  workspaceId: z.string().min(1),
+  name: z.string().min(1),
+  description: z.string().optional(),
+  documentType: DocumentTypeSchema.default('contract'),
+  status: TemplateStatusSchema.default('draft'),
+  currentPublishedVersionId: z.string().optional(),
+  tagIds: z.array(z.string()).default([]),
+  storagePath: z.string(),
+  createdBy: z.string().min(1),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  archivedAt: z.string().optional(),
+});
+export type DocumentTemplate = z.infer<typeof DocumentTemplateSchema>;
+
+// ==========================================
+// 7. Post-Signing Contracts & Relationships (Phase 3)
+// ==========================================
+
+export const ContractLifecycleStatusSchema = z.enum([
+  'proposed',
+  'negotiation',
+  'pending_execution',
+  'executed',
+  'active',
+  'renewal_pending',
+  'renewed',
+  'amended',
+  'expired',
+  'terminated',
+  'superseded',
+]);
+export type ContractLifecycleStatus = z.infer<typeof ContractLifecycleStatusSchema>;
+
+export const ContractRelationshipTypeSchema = z.enum([
+  'amendment',
+  'renewal',
+  'supersedes',
+  'parent_child',
+]);
+export type ContractRelationshipType = z.infer<typeof ContractRelationshipTypeSchema>;
+
+export const ContractRelationshipSchema = z.object({
+  id: z.string().min(1),
+  workspaceId: z.string().min(1),
+  sourceContractId: z.string().min(1),
+  targetContractId: z.string().min(1),
+  relationshipType: ContractRelationshipTypeSchema,
+  description: z.string().optional(),
+  createdAt: z.string(),
+  createdBy: z.string().min(1),
+});
+export type ContractRelationship = z.infer<typeof ContractRelationshipSchema>;
+
+// ==========================================
+// 8. Contract Obligations & Milestones (Phase 3)
+// ==========================================
+
+export const ObligationTypeSchema = z.enum([
+  'deliverable',
+  'payment',
+  'reporting',
+  'renewal_notice',
+  'audit',
+  'compliance',
+  'other',
+]);
+export type ObligationType = z.infer<typeof ObligationTypeSchema>;
+
+export const ObligationStatusSchema = z.enum([
+  'pending',
+  'in_progress',
+  'fulfilled',
+  'breached',
+  'waived',
+]);
+export type ObligationStatus = z.infer<typeof ObligationStatusSchema>;
+
+export const ContractObligationSchema = z.object({
+  id: z.string().min(1),
+  workspaceId: z.string().min(1),
+  contractId: z.string().min(1),
+  title: z.string().min(1),
+  description: z.string().optional(),
+  type: ObligationTypeSchema.default('deliverable'),
+  status: ObligationStatusSchema.default('pending'),
+  dueDate: z.string(), // ISO-8601
+  responsibleParty: z.enum(['internal', 'counterparty', 'mutual']).default('internal'),
+  assignedUserId: z.string().optional(),
+  counterpartyContactId: z.string().optional(),
+  linkedTaskId: z.string().optional(),
+  reminderDaysBefore: z.array(z.number().int()).default([7, 14, 30]),
+  fulfilledAt: z.string().optional(),
+  fulfilledBy: z.string().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type ContractObligation = z.infer<typeof ContractObligationSchema>;
+
+export const ContractRecordSchema = z.object({
+  id: z.string().min(1),
+  workspaceId: z.string().min(1),
+  title: z.string().min(1),
+  status: ContractLifecycleStatusSchema.default('proposed'),
+  templateId: z.string().optional(),
+  templateVersionId: z.string().optional(),
+  envelopeIds: z.array(z.string()).default([]),
+  dealId: z.string().optional(),
+  entityId: z.string().optional(),
+  partyLinks: z.array(
+    z.object({
+      entityId: z.string().optional(),
+      contactId: z.string().optional(),
+      name: z.string(),
+      email: z.string().optional(),
+      role: z.string(),
+    })
+  ).default([]),
+  contractValue: z
+    .object({
+      amount: z.number().min(0),
+      currency: z.string().default('USD'),
+      cadence: z.enum(['one_off', 'monthly', 'quarterly', 'annually']).default('one_off'),
+    })
+    .optional(),
+  effectiveAt: z.string().optional(),
+  expiresAt: z.string().optional(),
+  renewalAt: z.string().optional(),
+  noticePeriodDays: z.number().int().default(30),
+  parentContractId: z.string().optional(),
+  ownerId: z.string().min(1),
+  executedPdfStoragePath: z.string().optional(),
+  executedPdfSha256: z.string().optional(),
+  certificateStoragePath: z.string().optional(),
+  tagIds: z.array(z.string()).default([]),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type ContractRecord = z.infer<typeof ContractRecordSchema>;
+
