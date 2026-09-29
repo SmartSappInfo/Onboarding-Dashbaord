@@ -739,3 +739,156 @@ export const DocumentAiAnalysisLogSchema = z.object({
 });
 export type DocumentAiAnalysisLog = z.infer<typeof DocumentAiAnalysisLogSchema>;
 
+// ==========================================
+// 8. Enterprise Governance, Assurance Profiles, Webhooks & Computed Formulas (Phase 6)
+// ==========================================
+
+export const AssuranceLevelSchema = z.enum(['simple', 'advanced', 'qualified']);
+export type AssuranceLevel = z.infer<typeof AssuranceLevelSchema>;
+
+export const AssuranceAuthMethodSchema = z.enum([
+  'email_link',
+  'email_otp',
+  'sms_otp',
+  'id_verification',
+  'in_person_witness',
+]);
+export type AssuranceAuthMethod = z.infer<typeof AssuranceAuthMethodSchema>;
+
+export const CertificateStandardSchema = z.enum([
+  'standard',
+  'pki_x509',
+  'qualified_trust',
+]);
+export type CertificateStandard = z.infer<typeof CertificateStandardSchema>;
+
+export const AssuranceProfileSchema = z.object({
+  id: z.string().min(1),
+  workspaceId: z.string().min(1),
+  name: z.string().min(1),
+  level: AssuranceLevelSchema,
+  description: z.string().optional(),
+  requiredAuth: z.array(AssuranceAuthMethodSchema).min(1),
+  requireSignatureBiometrics: z.boolean().default(false),
+  certificateStandard: CertificateStandardSchema.default('standard'),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type AssuranceProfile = z.infer<typeof AssuranceProfileSchema>;
+
+export const WebhookDeliveryStatusSchema = z.enum([
+  'pending',
+  'delivered',
+  'failed',
+  'dead_letter',
+]);
+export type WebhookDeliveryStatus = z.infer<typeof WebhookDeliveryStatusSchema>;
+
+export const WebhookSubscriptionSchema = z.object({
+  id: z.string().min(1),
+  workspaceId: z.string().min(1),
+  url: z.string().url(),
+  secret: z.string().min(16),
+  events: z.array(z.string()).min(1),
+  isActive: z.boolean().default(true),
+  retryLimit: z.number().int().min(1).max(10).default(5),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type WebhookSubscription = z.infer<typeof WebhookSubscriptionSchema>;
+
+export const WebhookDeliveryLogSchema = z.object({
+  id: z.string().min(1),
+  subscriptionId: z.string().min(1),
+  workspaceId: z.string().min(1),
+  event: z.string().min(1),
+  payload: z.record(z.string(), z.unknown()),
+  status: WebhookDeliveryStatusSchema,
+  attemptCount: z.number().int().min(0).default(0),
+  nextRetryAt: z.string().nullable().optional(),
+  lastAttemptAt: z.string().nullable().optional(),
+  responseStatusCode: z.number().int().nullable().optional(),
+  responseBody: z.string().nullable().optional(),
+  errorMessage: z.string().nullable().optional(),
+  createdAt: z.string(),
+});
+export type WebhookDeliveryLog = z.infer<typeof WebhookDeliveryLogSchema>;
+
+export const LegalHoldStatusSchema = z.object({
+  isUnderLegalHold: z.boolean(),
+  holdId: z.string().optional(),
+  matterId: z.string().optional(),
+  reason: z.string().optional(),
+  placedByUserId: z.string().optional(),
+  placedAt: z.string().optional(),
+  releasedAt: z.string().optional(),
+  releasedByUserId: z.string().optional(),
+});
+export type LegalHoldStatus = z.infer<typeof LegalHoldStatusSchema>;
+
+export const RetentionCategorySchema = z.enum([
+  'standard',
+  'financial',
+  'employment',
+  'intellectual_property',
+  'statutory_tax',
+  'custom',
+]);
+export type RetentionCategory = z.infer<typeof RetentionCategorySchema>;
+
+export const ContractRetentionPolicySchema = z.object({
+  id: z.string().min(1),
+  workspaceId: z.string().min(1),
+  category: RetentionCategorySchema,
+  retentionYears: z.number().int().min(1).max(100),
+  autoPurgeAfterRetention: z.boolean().default(false),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type ContractRetentionPolicy = z.infer<typeof ContractRetentionPolicySchema>;
+
+export const EvidencePackageManifestSchema = z.object({
+  packageId: z.string().min(1),
+  workspaceId: z.string().min(1),
+  contractId: z.string().min(1),
+  envelopeId: z.string().optional(),
+  generatedAt: z.string(),
+  documentSha256: z.string().regex(/^[a-f0-9]{64}$/),
+  certificateSha256: z.string().regex(/^[a-f0-9]{64}$/),
+  auditEventsCount: z.number().int().min(0),
+  manifestSha256: z.string().regex(/^[a-f0-9]{64}$/),
+  overallChecksum: z.string().regex(/^[a-f0-9]{64}$/),
+});
+export type EvidencePackageManifest = z.infer<typeof EvidencePackageManifestSchema>;
+
+export const ComputedFieldFormulaTypeSchema = z.enum([
+  'sum',
+  'multiply',
+  'subtract',
+  'percentage',
+  'tax',
+  'custom_expression',
+]);
+export type ComputedFieldFormulaType = z.infer<typeof ComputedFieldFormulaTypeSchema>;
+
+export const ComputedFieldFormulaSchema = z.object({
+  type: ComputedFieldFormulaTypeSchema,
+  expression: z.string().min(1),
+  sourceFieldIds: z.array(z.string()),
+  decimalPlaces: z.number().int().min(0).max(6).default(2),
+  currencySymbol: z.string().optional(),
+});
+export type ComputedFieldFormula = z.infer<typeof ComputedFieldFormulaSchema>;
+
+export const WorkspaceBrandingSchema = z.object({
+  workspaceId: z.string().min(1),
+  primaryColor: z.string().regex(/^#([A-Fa-f0-9]{6})$/),
+  logoUrl: z.string().url().or(z.literal('')),
+  companyDisplayName: z.string().min(1).max(100),
+  emailSenderName: z.string().min(1).max(100),
+  customInviteMessage: z.string().max(500).optional(),
+  portalSlug: z.string().regex(/^[a-z0-9-]+$/).optional(),
+  updatedAt: z.string(),
+});
+export type WorkspaceBranding = z.infer<typeof WorkspaceBrandingSchema>;
+
