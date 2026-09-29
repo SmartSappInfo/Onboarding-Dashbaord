@@ -64,6 +64,7 @@ import type {
   OfflineConflictResolutionAction,
 } from './quick-notes-types';
 import { KNOWLEDGE_TYPES } from './quick-notes-types';
+import type { ContractRecord, SigningEnvelope } from './types/document-signing';
 
 /**
  * Quick Notes / Company Brain — pure domain logic.
@@ -584,6 +585,8 @@ export interface BuildTimelineStreamParams {
   entityNotes?: RawTimelineEntityNote[];
   activities?: RawTimelineActivity[];
   tasks?: RawTimelineTask[];
+  contracts?: ContractRecord[];
+  signingEnvelopes?: SigningEnvelope[];
 }
 
 /**
@@ -723,6 +726,73 @@ export function buildTimelineStream(params: BuildTimelineStreamParams): CRMKnowl
         actionItems: [task.title],
         originHref: `/admin/tasks?id=${encodeURIComponent(task.id)}`,
         editable: false,
+      });
+    }
+  }
+
+  // 5. Process Contracts (Phase 4 / P4.2)
+  if (params.contracts) {
+    for (const contract of params.contracts) {
+      const valueStr = contract.contractValue
+        ? `${contract.contractValue.currency} ${contract.contractValue.amount.toLocaleString()} (${contract.contractValue.cadence})`
+        : 'N/A';
+      const content = `Contract agreement: status is ${contract.status}. Value: ${valueStr}. Notice period: ${contract.noticePeriodDays} days.`;
+
+      items.push({
+        id: `contract:${contract.id}`,
+        source: 'contract',
+        sourceId: contract.id,
+        workspaceId: contract.workspaceId,
+        title: contract.title || 'Contract Agreement',
+        content,
+        knowledgeType: 'decision',
+        timestamp: contract.createdAt || new Date().toISOString(),
+        authorId: contract.ownerId,
+        authorName: 'Legal / Contracts',
+        isPinned: false,
+        links: {
+          entityId: contract.entityId,
+          dealId: contract.dealId,
+        },
+        tags: [contract.status, 'contract', ...(contract.tagIds || [])],
+        originHref: `/admin/finance/contracts?id=${encodeURIComponent(contract.id)}`,
+        editable: false,
+        metadata: {
+          status: contract.status,
+          contractValue: contract.contractValue,
+        },
+      });
+    }
+  }
+
+  // 6. Process Signing Envelopes (Phase 4 / P4.2)
+  if (params.signingEnvelopes) {
+    for (const env of params.signingEnvelopes) {
+      const recipientCount = env.recipients?.length || 0;
+      const content = `Signing envelope status is ${env.status} with ${recipientCount} recipient(s). Routing mode: ${env.routingRules?.mode || 'sequential'}.`;
+
+      items.push({
+        id: `signing_envelope:${env.id}`,
+        source: 'signing_envelope',
+        sourceId: env.id,
+        workspaceId: env.workspaceId,
+        title: env.title || 'Signing Workflow',
+        content,
+        knowledgeType: 'action',
+        timestamp: env.createdAt || new Date().toISOString(),
+        authorName: 'DocSigning Engine',
+        isPinned: false,
+        links: {
+          dealId: env.dealId,
+          entityId: env.entityId,
+        },
+        tags: [env.status, 'signing_envelope', env.routingRules?.mode || 'sequential'],
+        originHref: `/verify/${encodeURIComponent(env.id)}`,
+        editable: false,
+        metadata: {
+          status: env.status,
+          routingRules: env.routingRules,
+        },
       });
     }
   }

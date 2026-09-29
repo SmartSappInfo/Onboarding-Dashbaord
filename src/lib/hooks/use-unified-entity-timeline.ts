@@ -34,6 +34,7 @@ import {
 import { summarizeEntityTimelineAction } from '../quick-notes-ai-actions';
 import { createTaskAction } from '../task-server-actions';
 import { logQuickNoteActivity } from '../quick-notes-actions';
+import type { ContractRecord, SigningEnvelope } from '@/lib/types/document-signing';
 
 export type EntityTimelineScope = 'entity' | 'contact' | 'lead' | 'deal' | 'task';
 
@@ -199,6 +200,60 @@ export function useUnifiedEntityTimeline({
   const { data: rawTasks, isLoading: isTasksLoading } =
     useCollection<RawTimelineTask>(tasksQuery);
 
+  // 5. Query Contracts (Phase 4 / P4.2)
+  const contractsQuery = useMemoFirebase(() => {
+    if (!firestore || !workspaceId || !recordId) return null;
+    if (by === 'deal') {
+      return query(
+        collection(firestore, 'contracts'),
+        where('workspaceId', '==', workspaceId),
+        where('dealId', '==', recordId),
+        orderBy('createdAt', 'desc'),
+        limit(25)
+      );
+    }
+    const effectiveEntityId = entityId || recordId;
+    if (!effectiveEntityId) return null;
+
+    return query(
+      collection(firestore, 'contracts'),
+      where('workspaceId', '==', workspaceId),
+      where('entityId', '==', effectiveEntityId),
+      orderBy('createdAt', 'desc'),
+      limit(25)
+    );
+  }, [firestore, workspaceId, by, recordId, entityId]);
+
+  const { data: rawContracts, isLoading: isContractsLoading } =
+    useCollection<ContractRecord>(contractsQuery);
+
+  // 6. Query Signing Envelopes (Phase 4 / P4.2)
+  const envelopesQuery = useMemoFirebase(() => {
+    if (!firestore || !workspaceId || !recordId) return null;
+    if (by === 'deal') {
+      return query(
+        collection(firestore, 'signing_envelopes'),
+        where('workspaceId', '==', workspaceId),
+        where('dealId', '==', recordId),
+        orderBy('createdAt', 'desc'),
+        limit(25)
+      );
+    }
+    const effectiveEntityId = entityId || recordId;
+    if (!effectiveEntityId) return null;
+
+    return query(
+      collection(firestore, 'signing_envelopes'),
+      where('workspaceId', '==', workspaceId),
+      where('entityId', '==', effectiveEntityId),
+      orderBy('createdAt', 'desc'),
+      limit(25)
+    );
+  }, [firestore, workspaceId, by, recordId, entityId]);
+
+  const { data: rawEnvelopes, isLoading: isEnvelopesLoading } =
+    useCollection<SigningEnvelope>(envelopesQuery);
+
   // Combine and normalize all sources into unified timeline, respecting settings toggles
   const items = React.useMemo(() => {
     let filteredActs = rawActivities || [];
@@ -214,8 +269,10 @@ export function useUnifiedEntityTimeline({
       entityNotes: rawEntityNotes || [],
       activities: filteredActs,
       tasks: rawTasks || [],
+      contracts: rawContracts || [],
+      signingEnvelopes: rawEnvelopes || [],
     });
-  }, [rawQuickNotes, rawEntityNotes, rawActivities, rawTasks, brainSettings]);
+  }, [rawQuickNotes, rawEntityNotes, rawActivities, rawTasks, rawContracts, rawEnvelopes, brainSettings]);
 
   // Filter items
   const filteredItems = React.useMemo(() => {
@@ -231,7 +288,9 @@ export function useUnifiedEntityTimeline({
     isQuickNotesLoading ||
     isEntityNotesLoading ||
     isActivitiesLoading ||
-    isTasksLoading;
+    isTasksLoading ||
+    isContractsLoading ||
+    isEnvelopesLoading;
 
   // Add new Note to timeline
   const addNote = async (
@@ -397,7 +456,7 @@ export function useUnifiedEntityTimeline({
         dueDate: new Date().toISOString(),
         reminders: [],
         reminderSent: false,
-      }, user.uid);
+      });
 
       if (res.success) {
         toast({ title: 'Task created successfully', description: actionText });
@@ -430,7 +489,6 @@ export function useUnifiedEntityTimeline({
         entityType: by,
         timelineItems: timelinePayload,
         workspaceId,
-        userId: user.uid,
       });
 
       if (res.success) {

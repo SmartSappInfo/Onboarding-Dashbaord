@@ -80,7 +80,9 @@ export type TimelineItemSource =
   | 'meeting'
   | 'task'
   | 'task_note'
-  | 'activity';
+  | 'activity'
+  | 'contract'
+  | 'signing_envelope';
 
 export interface ActionResult<T = unknown> {
   success: boolean;
