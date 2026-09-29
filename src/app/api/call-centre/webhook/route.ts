@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { validateExternalUrl } from '@/lib/security/ssrf-guard';
+import { isSsrfBlockedError, safeUrlFetch, validateExternalUrl } from '@/lib/security/ssrf-guard';
 
 /**
  * @fileOverview Call Centre Outbound Webhook Proxy
@@ -7,7 +7,7 @@ import { validateExternalUrl } from '@/lib/security/ssrf-guard';
  * Dispatches automated webhook payloads to external endpoints configured by workspace operators.
  *
  * ARCHITECTURAL GUIDANCE FOR MAINTAINERS:
- * - Security: Protected by SSRF validation via `validateExternalUrl` to prevent targeting
+ * - Security: Protected by SSRF validation (`validateExternalUrl` + `safeUrlFetch`) to prevent targeting
  *   internal infrastructure, cloud metadata (169.254.169.254), loopback addresses, or private subnets.
  * - Caution: Do not bypass the SSRF guard. If users report that a public webhook fails, verify
  *   that the target URL uses standard public HTTP/HTTPS ports.
@@ -72,7 +72,9 @@ export async function POST(req: Request) {
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10-second timeout
 
     try {
-      const res = await fetch(targetUrl, {
+      // safeUrlFetch re-checks every redirect hop, pins DNS per connection and drops credential
+      // headers on cross-origin redirects (SSRF, Rule 34).
+      const res = await safeUrlFetch(targetUrl, {
         method: 'POST',
         headers: parsedHeaders,
         body: JSON.stringify(payload ?? {}),
@@ -94,6 +96,10 @@ export async function POST(req: Request) {
       });
     } catch (fetchErr: unknown) {
       clearTimeout(timeoutId);
+      if (isSsrfBlockedError(fetchErr)) {
+        console.warn(`[WEBHOOK_PROXY_SSRF_BLOCKED] Connection refused for ${targetUrl}.`);
+        return NextResponse.json({ error: 'Destination URL is not permitted for security reasons.' }, { status: 403 });
+      }
       if (fetchErr instanceof Error && fetchErr.name === 'AbortError') {
         return NextResponse.json({ error: 'Webhook request timed out (10s limit)' }, { status: 504 });
       }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { validateExternalUrl } from '@/lib/security/ssrf-guard';
+import { isSsrfBlockedError, safeUrlFetch, validateExternalUrl } from '@/lib/security/ssrf-guard';
 
 /**
  * @fileOverview AI Website Seeding API Route
@@ -10,7 +10,7 @@ import { validateExternalUrl } from '@/lib/security/ssrf-guard';
  * then sends a truncated excerpt to the Gemini REST API to extract branding details.
  *
  * ARCHITECTURAL GUIDANCE FOR MAINTAINERS:
- * - Security: Protected by SSRF validation via `validateExternalUrl` to prevent targeting
+ * - Security: Protected by SSRF validation (`validateExternalUrl` + `safeUrlFetch`) to prevent targeting
  *   internal infrastructure, cloud metadata (169.254.169.254), loopback addresses, or private subnets.
  * - Resource Caps: Strict 10-second timeout, 6,000 character HTML head slice, and strict output token caps.
  * - Zero `any` or `any[]` typing.
@@ -153,7 +153,8 @@ export async function POST(request: NextRequest) {
 
     let html: string;
     try {
-      const siteResponse = await fetch(normalizedUrl, {
+      // safeUrlFetch re-checks every redirect hop and pins DNS per connection (SSRF, Rule 34).
+      const siteResponse = await safeUrlFetch(normalizedUrl, {
         signal: controller.signal,
         headers: {
           // Mimic a real browser to reduce 403 bot-blocks
@@ -187,6 +188,12 @@ export async function POST(request: NextRequest) {
       html = await siteResponse.text();
     } catch (fetchErr: unknown) {
       clearTimeout(timeoutId);
+      if (isSsrfBlockedError(fetchErr)) {
+        return NextResponse.json(
+          { error: 'The requested host is private, loopback, or cloud-internal and cannot be accessed.' },
+          { status: 400 }
+        );
+      }
       if (fetchErr instanceof Error && fetchErr.name === 'AbortError') {
         return NextResponse.json(
           { error: 'The request timed out after 10 seconds. The website may be slow or unreachable.' },

@@ -301,6 +301,9 @@ importers:
       three:
         specifier: ^0.167.1
         version: 0.167.1
+      undici:
+        specifier: ^7.25.0
+        version: 7.25.0
       uuid:
         specifier: ^14.0.0
         version: 14.0.0
