@@ -1015,5 +1015,169 @@ export const RolloutCohortConfigSchema = z.object({
 });
 export type RolloutCohortConfig = z.infer<typeof RolloutCohortConfigSchema>;
 
+/* =========================================================================
+   PHASE 8: DEVELOPER PLATFORM, SCOPED API KEYS, EMBEDDED SDK & OFFLINE PWA
+   =========================================================================
+   Maintainer Note:
+   These schemas govern programmatic developer access via REST APIs, partner
+   iframe embedded signing with postMessage bi-directional communication, and
+   offline biometric stroke captures with IndexedDB sync queues.
+   Strict validation ensures zero un-narrowed external payloads.
+*/
+
+export const ApiKeyScopeSchema = z.enum([
+  'envelopes:create',
+  'envelopes:read',
+  'envelopes:void',
+  'templates:read',
+  'webhooks:manage',
+]);
+export type ApiKeyScope = z.infer<typeof ApiKeyScopeSchema>;
+
+export const ApiKeyRateLimitTierSchema = z.enum(['standard', 'enterprise']);
+export type ApiKeyRateLimitTier = z.infer<typeof ApiKeyRateLimitTierSchema>;
+
+export const ApiKeyStatusSchema = z.enum(['active', 'revoked', 'expired']);
+export type ApiKeyStatus = z.infer<typeof ApiKeyStatusSchema>;
+
+export const ApiKeyRecordSchema = z.object({
+  id: z.string().min(1),
+  workspaceId: z.string().min(1),
+  name: z.string().min(1).max(64),
+  prefix: z.string().min(1),
+  hashedSecret: z.string().min(64), // SHA-256 hex digest
+  scopes: z.array(ApiKeyScopeSchema).min(1),
+  status: ApiKeyStatusSchema.default('active'),
+  rateLimitTier: ApiKeyRateLimitTierSchema.default('standard'),
+  createdAt: z.string(),
+  expiresAt: z.string().optional(),
+  lastUsedAt: z.string().optional(),
+});
+export type ApiKeyRecord = z.infer<typeof ApiKeyRecordSchema>;
+
+export const CreateApiKeyRequestSchema = z.object({
+  name: z.string().min(1).max(64),
+  scopes: z.array(ApiKeyScopeSchema).min(1),
+  rateLimitTier: ApiKeyRateLimitTierSchema.default('standard'),
+  expiresInDays: z.number().int().min(1).max(365).optional(),
+});
+export type CreateApiKeyRequest = z.infer<typeof CreateApiKeyRequestSchema>;
+
+export const CreateEnvelopeApiRecipientSchema = z.object({
+  role: z.string().min(1),
+  displayName: z.string().min(1),
+  email: z.string().email().optional(),
+  phone: z.string().optional(),
+  routingOrder: z.number().int().positive().default(1),
+  verificationPolicy: z.enum(['none', 'email', 'sms_otp']).default('none'),
+});
+export type CreateEnvelopeApiRecipient = z.infer<typeof CreateEnvelopeApiRecipientSchema>;
+
+export const CreateEnvelopeApiRequestSchema = z.object({
+  title: z.string().min(1),
+  templateId: z.string().min(1).optional(),
+  templateVersionId: z.string().min(1).optional(),
+  documentStoragePath: z.string().optional(),
+  recipients: z.array(CreateEnvelopeApiRecipientSchema).min(1).max(10),
+  metadata: z.record(z.string(), z.string()).optional(),
+  externalReferenceId: z.string().optional(),
+});
+export type CreateEnvelopeApiRequest = z.infer<typeof CreateEnvelopeApiRequestSchema>;
+
+export const EmbedHandshakeInitMessageSchema = z.object({
+  type: z.literal('handshake_init'),
+  token: z.string().min(1),
+});
+
+export const EmbedHandshakeAckMessageSchema = z.object({
+  type: z.literal('handshake_ack'),
+  status: z.literal('ready'),
+  allowedOrigins: z.array(z.string()),
+});
+
+export const EmbedRecipientSignedMessageSchema = z.object({
+  type: z.literal('recipient_signed'),
+  envelopeId: z.string().min(1),
+  recipientId: z.string().min(1),
+  timestamp: z.string(),
+});
+
+export const EmbedRecipientDeclinedMessageSchema = z.object({
+  type: z.literal('recipient_declined'),
+  envelopeId: z.string().min(1),
+  recipientId: z.string().min(1),
+  reason: z.string().optional(),
+  timestamp: z.string(),
+});
+
+export const EmbedResizeRequestMessageSchema = z.object({
+  type: z.literal('resize_request'),
+  height: z.number().positive(),
+});
+
+export const EmbedMessageSchema = z.discriminatedUnion('type', [
+  EmbedHandshakeInitMessageSchema,
+  EmbedHandshakeAckMessageSchema,
+  EmbedRecipientSignedMessageSchema,
+  EmbedRecipientDeclinedMessageSchema,
+  EmbedResizeRequestMessageSchema,
+]);
+export type EmbedMessage = z.infer<typeof EmbedMessageSchema>;
+
+export const OfflineBiometricPointSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+  time: z.number(),
+  pressure: z.number().min(0).max(1).optional(),
+  velocity: z.number().optional(),
+});
+export type OfflineBiometricPoint = z.infer<typeof OfflineBiometricPointSchema>;
+
+export const OfflineBiometricStrokeSchema = z.object({
+  points: z.array(OfflineBiometricPointSchema).min(1),
+});
+export type OfflineBiometricStroke = z.infer<typeof OfflineBiometricStrokeSchema>;
+
+export const OfflineSigningPayloadSchema = z.object({
+  envelopeId: z.string().min(1),
+  recipientId: z.string().min(1),
+  signedAt: z.string(),
+  strokes: z.array(OfflineBiometricStrokeSchema),
+  deviceFingerprint: z.string().min(1),
+  documentSha256: z.string().min(1),
+  nonce: z.string().min(1),
+});
+export type OfflineSigningPayload = z.infer<typeof OfflineSigningPayloadSchema>;
+
+export const OfflineSyncRecordSchema = z.object({
+  id: z.string().min(1),
+  workspaceId: z.string().min(1),
+  envelopeId: z.string().min(1),
+  recipientId: z.string().min(1),
+  status: z.enum(['pending', 'synced', 'conflict']),
+  payload: OfflineSigningPayloadSchema,
+  error: z.string().optional(),
+  syncedAt: z.string().optional(),
+});
+export type OfflineSyncRecord = z.infer<typeof OfflineSyncRecordSchema>;
+
+export const RateLimitConfigSchema = z.object({
+  windowMs: z.number().int().positive(),
+  maxRequests: z.number().int().positive(),
+});
+export type RateLimitConfig = z.infer<typeof RateLimitConfigSchema>;
+
+export const DeveloperWebhookSubscriptionSchema = z.object({
+  id: z.string().min(1),
+  workspaceId: z.string().min(1),
+  url: z.string().url(),
+  events: z.array(z.string()).min(1),
+  secret: z.string().min(16),
+  status: z.enum(['active', 'paused', 'disabled']),
+  createdAt: z.string(),
+});
+export type DeveloperWebhookSubscription = z.infer<typeof DeveloperWebhookSubscriptionSchema>;
+
+
 
 
