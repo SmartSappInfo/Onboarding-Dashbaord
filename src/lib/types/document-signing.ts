@@ -429,3 +429,132 @@ export const ContractRecordSchema = z.object({
 });
 export type ContractRecord = z.infer<typeof ContractRecordSchema>;
 
+// ==========================================
+// 9. Canonical Document Domain Events & Taxonomy (Phase 4 / P4.3)
+// ==========================================
+
+export const DocumentDomainEventTypeSchema = z.enum([
+  'document.template_published',
+  'document.instance_created',
+  'document.dispatched',
+  'document.viewed',
+  'signing.recipient_completed',
+  'signing.recipient_declined',
+  'signing.envelope_completed',
+  'contract.created',
+  'contract.amended',
+  'contract.renewed',
+  'contract.renewal_due',
+  'contract.terminated',
+  'obligation.fulfilled',
+]);
+export type DocumentDomainEventType = z.infer<typeof DocumentDomainEventTypeSchema>;
+
+export const DocumentDomainEventSchema = z.object({
+  id: z.string().min(1),
+  workspaceId: z.string().min(1),
+  type: DocumentDomainEventTypeSchema,
+  envelopeId: z.string().optional(),
+  contractId: z.string().optional(),
+  dealId: z.string().optional(),
+  entityId: z.string().optional(),
+  contactId: z.string().optional(),
+  recipientId: z.string().optional(),
+  actorId: z.string().min(1),
+  metadata: z.record(z.unknown()).default({}),
+  timestamp: z.string(),
+});
+export type DocumentDomainEvent = z.infer<typeof DocumentDomainEventSchema>;
+
+// ==========================================
+// 10. CRM Master-Record Federation & Links (Phase 4 / P4.1)
+// ==========================================
+
+export const CrmDocumentRelationshipTypeSchema = z.enum([
+  'primary',
+  'related',
+  'counterparty',
+]);
+export type CrmDocumentRelationshipType = z.infer<typeof CrmDocumentRelationshipTypeSchema>;
+
+export const CrmDocumentLinkSchema = z.object({
+  id: z.string().min(1),
+  workspaceId: z.string().min(1),
+  contractId: z.string().optional(),
+  envelopeId: z.string().optional(),
+  dealId: z.string().optional(),
+  entityId: z.string().optional(),
+  contactId: z.string().optional(),
+  relationshipType: CrmDocumentRelationshipTypeSchema.default('primary'),
+  createdAt: z.string(),
+});
+export type CrmDocumentLink = z.infer<typeof CrmDocumentLinkSchema>;
+
+// ==========================================
+// 11. Event-Derived Lifecycle Analytics (Phase 4 / P4.4)
+// ==========================================
+
+export const SigningFunnelStageSchema = z.object({
+  stage: z.string(),
+  count: z.number().int().min(0),
+  percentage: z.number().min(0).max(100),
+});
+export type SigningFunnelStage = z.infer<typeof SigningFunnelStageSchema>;
+
+export const SignerBottleneckMetricSchema = z.object({
+  role: z.string(),
+  averageTurnaroundHours: z.number().min(0),
+  count: z.number().int().min(0),
+});
+export type SignerBottleneckMetric = z.infer<typeof SignerBottleneckMetricSchema>;
+
+export const SigningAnalyticsMetricSchema = z.object({
+  completionRate: z.number().min(0).max(100),
+  medianHoursToSign: z.number().min(0),
+  averageHoursToSign: z.number().min(0),
+  totalEnvelopes: z.number().int().min(0),
+  completedCount: z.number().int().min(0),
+  declinedCount: z.number().int().min(0),
+  voidedCount: z.number().int().min(0),
+  expiredCount: z.number().int().min(0),
+  inProgressCount: z.number().int().min(0),
+  totalContractValue: z.number().min(0),
+  currency: z.string().default('USD'),
+  funnel: z.array(SigningFunnelStageSchema).default([]),
+  signerBottlenecks: z.array(SignerBottleneckMetricSchema).default([]),
+  freshnessTimestamp: z.string(),
+});
+export type SigningAnalyticsMetric = z.infer<typeof SigningAnalyticsMetricSchema>;
+
+// ==========================================
+// 12. Multi-Channel Reminder & Escalation Config (Phase 4 / P4.5)
+// ==========================================
+
+export const ReminderChannelSchema = z.enum(['email', 'sms', 'whatsapp']);
+export type ReminderChannel = z.infer<typeof ReminderChannelSchema>;
+
+export const ReminderQuietHoursSchema = z.object({
+  enabled: z.boolean().default(true),
+  start: z.string().default('22:00'),
+  end: z.string().default('08:00'),
+  timezone: z.string().default('UTC'),
+});
+export type ReminderQuietHours = z.infer<typeof ReminderQuietHoursSchema>;
+
+export const ReminderScheduleConfigSchema = z.object({
+  workspaceId: z.string().min(1),
+  enabled: z.boolean().default(true),
+  reminderDays: z.array(z.number().int().positive()).default([3, 7, 14]),
+  channels: z.array(ReminderChannelSchema).default(['email']),
+  renewalAlertDays: z.array(z.number().int().positive()).default([30, 60, 90]),
+  quietHours: ReminderQuietHoursSchema.default({
+    enabled: true,
+    start: '22:00',
+    end: '08:00',
+    timezone: 'UTC',
+  }),
+  dealAutoStageAdvance: z.boolean().default(true),
+  updatedAt: z.string(),
+  updatedBy: z.string().min(1),
+});
+export type ReminderScheduleConfig = z.infer<typeof ReminderScheduleConfigSchema>;
