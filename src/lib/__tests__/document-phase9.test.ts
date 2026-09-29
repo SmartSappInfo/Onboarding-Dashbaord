@@ -43,6 +43,8 @@ import {
 import {
   computeMerkleRootSha256,
   assembleEDiscoveryZipBundle,
+  verifyManifestIntegrity,
+  computeFileSha256,
 } from '@/lib/documents/ediscovery-archival-service';
 import type {
   BulkCampaign,
@@ -376,9 +378,9 @@ describe('Dedicated Phase 9 End-to-End Integration Suite (Enterprise Bulk & Comp
       expect(slice2.successfulCount).toBe(5);
       expect(slice2.isComplete).toBe(true);
 
-      // Verify campaign completed
+      // Verify campaign active (all envelopes dispatched and awaiting recipient signature)
       const campaignAfterSlice2 = store.get(`bulk_campaigns/${campaign.id}`);
-      expect(campaignAfterSlice2?.['status']).toBe('completed');
+      expect(campaignAfterSlice2?.['status']).toBe('active');
       expect(campaignAfterSlice2?.['dispatchedCount']).toBe(30);
 
       // 3. Telemetry progress query
@@ -635,6 +637,56 @@ describe('Dedicated Phase 9 End-to-End Integration Suite (Enterprise Bulk & Comp
       // Base64 ZIP payload should be valid
       expect(bundleResult.zipBase64).toBeDefined();
       expect(bundleResult.zipBase64.length).toBeGreaterThan(100);
+    });
+
+    it('cryptographically verifies manifest integrity and detects file tampering or missing artifacts (FM-P9-06)', () => {
+      const buf1 = Buffer.from('Contract terms and clauses');
+      const buf2 = Buffer.from('Evidence audit log entries');
+      const hash1 = computeFileSha256(buf1);
+      const hash2 = computeFileSha256(buf2);
+      const merkle = computeMerkleRootSha256([hash1, hash2]);
+
+      const testManifest = {
+        manifestVersion: '1.0.0' as const,
+        contractId: 'ctr-test-manifest',
+        envelopeId: 'env-test',
+        workspaceId,
+        title: 'Manifest Test',
+        exportedAt: new Date().toISOString(),
+        exportedByUserId: userId,
+        files: [
+          { path: 'doc.pdf', description: 'Main PDF', sha256: hash1, sizeBytes: buf1.length, mimeType: 'application/pdf' },
+          { path: 'evidence.json', description: 'Ledger', sha256: hash2, sizeBytes: buf2.length, mimeType: 'application/json' },
+        ],
+        merkleRootSha256: merkle,
+        legalHoldActive: false,
+      };
+
+      // 1. Valid files map
+      const validMap = new Map<string, Buffer>([
+        ['doc.pdf', buf1],
+        ['evidence.json', buf2],
+      ]);
+      const validCheck = verifyManifestIntegrity(testManifest, validMap);
+      expect(validCheck.isValid).toBe(true);
+      expect(validCheck.discrepancies).toHaveLength(0);
+
+      // 2. Tampered files map (altered doc.pdf content)
+      const tamperedMap = new Map<string, Buffer>([
+        ['doc.pdf', Buffer.from('Altered malicious contract terms!')],
+        ['evidence.json', buf2],
+      ]);
+      const tamperedCheck = verifyManifestIntegrity(testManifest, tamperedMap);
+      expect(tamperedCheck.isValid).toBe(false);
+      expect(tamperedCheck.discrepancies.some((d) => d.includes('Hash divergence on doc.pdf'))).toBe(true);
+
+      // 3. Missing file in map
+      const missingMap = new Map<string, Buffer>([
+        ['doc.pdf', buf1],
+      ]);
+      const missingCheck = verifyManifestIntegrity(testManifest, missingMap);
+      expect(missingCheck.isValid).toBe(false);
+      expect(missingCheck.discrepancies.some((d) => d.includes('Missing file: evidence.json'))).toBe(true);
     });
   });
 

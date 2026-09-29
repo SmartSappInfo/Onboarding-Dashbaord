@@ -230,7 +230,7 @@ export async function syncAllLogStatuses() {
             });
           }
         }
-      } catch (_e) {
+      } catch {
         console.error(`Status sync failed for log ${log.id}`);
       }
     }
@@ -527,7 +527,7 @@ export async function previewCampaignAudience(params: {
 
     // ── Normalize legacy params into filters ──────────────────────────────
     let filters = params.filters || [];
-    let filterLogic = params.filterLogic || 'AND';
+    let _filterLogic = params.filterLogic || 'AND';
 
     if (filters.length === 0 && params.includeTagIds && params.includeTagIds.length > 0) {
       filters = [{
@@ -544,7 +544,7 @@ export async function previewCampaignAudience(params: {
           value: params.excludeTagIds,
         });
       }
-      filterLogic = 'AND';
+      _filterLogic = 'AND';
     }
 
     const tagFilters = filters.filter(f => f.field === 'tags');
@@ -930,18 +930,22 @@ export async function previewCampaignAudience(params: {
     };
 
     results.forEach(c => {
-      const sourceContacts = c.data.entityContacts || c.data.contacts || [];
+      const fallbackData = (c.data || {}) as Record<string, unknown>;
+      const sourceContacts = ((fallbackData.entityContacts || fallbackData.contacts || []) as Array<Partial<EntityContact>>);
       
       // Helper to check if a contact matches the requested channel
-      const isValidForChannel = (sc: any, fallbackData: any) => {
+      const isValidForChannel = (
+        sc: Partial<EntityContact> | null | undefined,
+        fb: Record<string, unknown> | null | undefined
+      ) => {
         if (!channel) return true; // No channel specified, assume valid
-        if (channel === 'email') return !!sc.email || (!sc && !!fallbackData.email);
-        if (channel === 'sms' || channel === 'call') return !!sc.phone || (!sc && !!fallbackData.phone);
+        if (channel === 'email') return !!sc?.email || (!sc && !!fb?.email);
+        if (channel === 'sms' || channel === 'call') return !!sc?.phone || (!sc && !!fb?.phone);
         return false;
       };
 
       if (contactRoles && contactRoles.length > 0) {
-        const matched = sourceContacts.filter((sc: any) => {
+        const matched = sourceContacts.filter((sc) => {
           return contactRoles.some((role: string) => {
             if (role === 'primary') return !!sc.isPrimary;
             if (role === 'signatories' || role === 'signatory') return !!sc.isSignatory;
@@ -949,48 +953,56 @@ export async function previewCampaignAudience(params: {
             return sc.typeKey === cleanRole;
           });
         });
-        contactCount += matched.filter((sc: any) => isValidForChannel(sc, c.data) && isContactSelected(c.id, sc, c.data)).length;
+        contactCount += matched.filter((sc) => isValidForChannel(sc, fallbackData) && isContactSelected(c.id, sc, fallbackData)).length;
       } else if (isRoleBased) {
         // Only count contacts that have the specific role and valid channel data
-        contactCount += sourceContacts.filter((sc: any) => sc.typeKey === targetRole && isValidForChannel(sc, c.data) && isContactSelected(c.id, sc, c.data)).length;
+        contactCount += sourceContacts.filter((sc) => sc.typeKey === targetRole && isValidForChannel(sc, fallbackData) && isContactSelected(c.id, sc, fallbackData)).length;
       } else if (effectiveContactScope === 'primary') {
-        const primary = sourceContacts.find((sc: any) => sc.isPrimary) || sourceContacts[0];
+        const primary = sourceContacts.find((sc) => sc.isPrimary) || sourceContacts[0];
         if (primary) {
-          if (isValidForChannel(primary, c.data) && isContactSelected(c.id, primary, c.data)) contactCount++;
+          if (isValidForChannel(primary, fallbackData) && isContactSelected(c.id, primary, fallbackData)) contactCount++;
         } else {
           // Fallback to entity direct fields if no nested contacts exist
-          if (isValidForChannel(null, c.data) && isContactSelected(c.id, null, c.data)) contactCount++;
+          if (isValidForChannel(null, fallbackData) && isContactSelected(c.id, null, fallbackData)) contactCount++;
         }
       } else if (effectiveContactScope === 'signatories') {
-        contactCount += sourceContacts.filter((sc: any) => sc.isSignatory && isValidForChannel(sc, c.data) && isContactSelected(c.id, sc, c.data)).length;
+        contactCount += sourceContacts.filter((sc) => sc.isSignatory && isValidForChannel(sc, fallbackData) && isContactSelected(c.id, sc, fallbackData)).length;
       } else { // 'all'
         if (sourceContacts.length > 0) {
-          contactCount += sourceContacts.filter((sc: any) => isValidForChannel(sc, c.data) && isContactSelected(c.id, sc, c.data)).length;
+          contactCount += sourceContacts.filter((sc) => isValidForChannel(sc, fallbackData) && isContactSelected(c.id, sc, fallbackData)).length;
         } else {
           // Fallback to entity direct fields
-          if (isValidForChannel(null, c.data) && isContactSelected(c.id, null, c.data)) contactCount++;
+          if (isValidForChannel(null, fallbackData) && isContactSelected(c.id, null, fallbackData)) contactCount++;
         }
       }
     });
 
-    // Fetch the actual entities documents for the previewed items to get fresh canonical contacts
-    const previewEntities = results.slice(0, previewLimit);
-    const previewEntityIds = previewEntities.map(pe => pe.id);
+    // Fetch the actual entities documents for the previewed sample to get fresh canonical contacts
+    // Cap sample size to max 30 to avoid reading thousands of documents during full dispatch resolution
+    const maxContactsPreview = Math.min(previewLimit, 30);
+    const previewEntities = results.slice(0, maxContactsPreview);
+    // Deduplicate entity IDs to strictly prevent Firestore 'IN' duplicate element errors
+    const previewEntityIds = Array.from(new Set(previewEntities.map(pe => pe.id).filter(Boolean)));
 
-    const freshEntitiesMap = new Map<string, any>();
+    const freshEntitiesMap = new Map<string, Record<string, unknown>>();
     if (previewEntityIds.length > 0) {
       const entitiesColl = adminDb.collection('entities');
       if (entitiesColl && typeof entitiesColl.where === 'function') {
-        const entitiesSnap = await entitiesColl
-          .where('__name__', 'in', previewEntityIds)
-          .get();
-        entitiesSnap.docs.forEach(doc => {
-          freshEntitiesMap.set(doc.id, doc.data());
-        });
+        // Chunk into slices of 30 to strictly respect Firestore 'in' query limit
+        for (let i = 0; i < previewEntityIds.length; i += 30) {
+          const chunk = previewEntityIds.slice(i, i + 30);
+          if (chunk.length === 0) continue;
+          const entitiesSnap = await entitiesColl
+            .where('__name__', 'in', chunk)
+            .get();
+          entitiesSnap.docs.forEach(doc => {
+            freshEntitiesMap.set(doc.id, doc.data() as Record<string, unknown>);
+          });
+        }
       }
     }
 
-    // Build contactsPreview (max 10 contacts to preview)
+    // Build contactsPreview (max 10-30 contacts to preview)
     const contactsPreview: {
       id: string;
       name: string;
@@ -1003,59 +1015,60 @@ export async function previewCampaignAudience(params: {
     }[] = [];
 
     for (const c of results) {
-      if (contactsPreview.length >= previewLimit) break;
+      if (contactsPreview.length >= maxContactsPreview) break;
       
       const freshEntityData = freshEntitiesMap.get(c.id);
-      const fallbackData = freshEntityData || c.data;
-      const sourceContacts = freshEntityData?.entityContacts || freshEntityData?.contacts || c.data.entityContacts || c.data.contacts || [];
+      const fallbackData = (freshEntityData || c.data) as Record<string, unknown>;
+      const rawContacts = freshEntityData?.entityContacts || freshEntityData?.contacts || c.data.entityContacts || c.data.contacts;
+      const sourceContacts = (Array.isArray(rawContacts) ? rawContacts : []) as Partial<EntityContact>[];
 
-      const isValidForChannel = (sc: any, fallbackData: any) => {
+      const isValidForChannel = (sc: Partial<EntityContact> | null | undefined, fd: Record<string, unknown> | null | undefined) => {
         if (!channel) return true;
-        if (channel === 'email') return !!sc?.email || (!sc && (!!fallbackData?.email || !!fallbackData?.primaryEmail || !!fallbackData?.primaryContactEmail));
-        if (channel === 'sms' || channel === 'call') return !!sc?.phone || (!sc && (!!fallbackData?.phone || !!fallbackData?.primaryPhone || !!fallbackData?.primaryContactPhone));
+        if (channel === 'email') return !!sc?.email || (!sc && (!!fd?.email || !!fd?.primaryEmail || !!fd?.primaryContactEmail));
+        if (channel === 'sms' || channel === 'call') return !!sc?.phone || (!sc && (!!fd?.phone || !!fd?.primaryPhone || !!fd?.primaryContactPhone));
         return false;
       };
 
-      let matched: any[] = [];
+      let matched: Partial<EntityContact>[] = [];
       if (contactRoles && contactRoles.length > 0) {
-        matched = sourceContacts.filter((sc: any) => {
+        matched = sourceContacts.filter((sc) => {
           return contactRoles.some((role: string) => {
             if (role === 'primary') return !!sc.isPrimary;
             if (role === 'signatories' || role === 'signatory') return !!sc.isSignatory;
             const cleanRole = role.startsWith('role:') ? role.substring(5) : role;
             return sc.typeKey === cleanRole;
           });
-        }).filter((sc: any) => isValidForChannel(sc, fallbackData));
+        }).filter((sc) => isValidForChannel(sc, fallbackData));
       } else if (isRoleBased) {
-        matched = sourceContacts.filter((sc: any) => sc.typeKey === targetRole && isValidForChannel(sc, fallbackData));
+        matched = sourceContacts.filter((sc) => sc.typeKey === targetRole && isValidForChannel(sc, fallbackData));
       } else if (effectiveContactScope === 'primary') {
-        const primary = sourceContacts.find((sc: any) => sc.isPrimary) || sourceContacts[0];
+        const primary = sourceContacts.find((sc) => sc.isPrimary) || sourceContacts[0];
         if (primary) {
           if (isValidForChannel(primary, fallbackData)) matched = [primary];
         } else {
           if (isValidForChannel(null, fallbackData)) {
             matched = [{
               id: 'primary-fallback-' + c.id,
-              name: fallbackData.primaryContactName || fallbackData.name || c.name,
-              email: fallbackData.email || fallbackData.primaryEmail || fallbackData.primaryContactEmail || '',
-              phone: fallbackData.phone || fallbackData.primaryPhone || fallbackData.primaryContactPhone || '',
+              name: String(fallbackData.primaryContactName || fallbackData.name || c.name || ''),
+              email: String(fallbackData.email || fallbackData.primaryEmail || fallbackData.primaryContactEmail || ''),
+              phone: String(fallbackData.phone || fallbackData.primaryPhone || fallbackData.primaryContactPhone || ''),
               isPrimary: true,
               typeKey: 'primary',
             }];
           }
         }
       } else if (effectiveContactScope === 'signatories') {
-        matched = sourceContacts.filter((sc: any) => sc.isSignatory && isValidForChannel(sc, fallbackData));
+        matched = sourceContacts.filter((sc) => sc.isSignatory && isValidForChannel(sc, fallbackData));
       } else { // 'all'
         if (sourceContacts.length > 0) {
-          matched = sourceContacts.filter((sc: any) => isValidForChannel(sc, fallbackData));
+          matched = sourceContacts.filter((sc) => isValidForChannel(sc, fallbackData));
         } else {
           if (isValidForChannel(null, fallbackData)) {
             matched = [{
               id: 'primary-fallback-' + c.id,
-              name: fallbackData.primaryContactName || fallbackData.name || c.name,
-              email: fallbackData.email || fallbackData.primaryEmail || fallbackData.primaryContactEmail || '',
-              phone: fallbackData.phone || fallbackData.primaryPhone || fallbackData.primaryContactPhone || '',
+              name: String(fallbackData.primaryContactName || fallbackData.name || c.name || ''),
+              email: String(fallbackData.email || fallbackData.primaryEmail || fallbackData.primaryContactEmail || ''),
+              phone: String(fallbackData.phone || fallbackData.primaryPhone || fallbackData.primaryContactPhone || ''),
               isPrimary: true,
               typeKey: 'primary',
             }];
@@ -1064,21 +1077,25 @@ export async function previewCampaignAudience(params: {
       }
 
       for (const sc of matched) {
-        if (contactsPreview.length >= previewLimit) break;
+        if (contactsPreview.length >= maxContactsPreview) break;
         if (!isContactSelected(c.id, sc.id?.startsWith('primary-fallback') ? null : sc, fallbackData)) continue;
 
-        const email = sc.email || (sc.id?.startsWith('primary-fallback') ? fallbackData.email || fallbackData.primaryEmail || fallbackData.primaryContactEmail : '') || '';
-        const phone = sc.phone || (sc.id?.startsWith('primary-fallback') ? fallbackData.phone || fallbackData.primaryPhone || fallbackData.primaryContactPhone : '') || '';
+        const fallbackEmail = typeof fallbackData.email === 'string' ? fallbackData.email : (typeof fallbackData.primaryEmail === 'string' ? fallbackData.primaryEmail : (typeof fallbackData.primaryContactEmail === 'string' ? fallbackData.primaryContactEmail : ''));
+        const fallbackPhone = typeof fallbackData.phone === 'string' ? fallbackData.phone : (typeof fallbackData.primaryPhone === 'string' ? fallbackData.primaryPhone : (typeof fallbackData.primaryContactPhone === 'string' ? fallbackData.primaryContactPhone : ''));
+        const fallbackName = typeof fallbackData.name === 'string' ? fallbackData.name : (typeof fallbackData.primaryContactName === 'string' ? fallbackData.primaryContactName : c.name);
+
+        const email = sc.email || (sc.id?.startsWith('primary-fallback') ? fallbackEmail : '') || '';
+        const phone = sc.phone || (sc.id?.startsWith('primary-fallback') ? fallbackPhone : '') || '';
         const contactVal = channel === 'email' ? email : phone;
 
         contactsPreview.push({
           id: sc.id || Math.random().toString(),
-          name: sc.name || fallbackData.name || c.name,
+          name: sc.name || fallbackName,
           email,
           phone,
           contactVal,
           verificationStatus: 'unchecked',
-          entityName: fallbackData.name || c.name
+          entityName: typeof fallbackData.name === 'string' ? fallbackData.name : c.name,
         });
       }
     }

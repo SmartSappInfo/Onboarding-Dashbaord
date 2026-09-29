@@ -199,14 +199,18 @@ export async function dispatchCampaignBatchSlice(
     .get();
 
   if (queuedQuery.empty) {
-    // Check if any recipients failed
     const remainingCount = 0;
-    const finalStatus = campaign.failedCount > 0 ? 'active' : 'completed';
+    // When the dispatch queue is empty, the campaign is 'active' while signers execute.
+    // Transition to 'completed' only when all envelopes have reached a terminal signed or failed state.
+    const isAllTerminal =
+      campaign.totalCount > 0 &&
+      campaign.signedCount + campaign.failedCount >= campaign.totalCount;
+    const finalStatus = isAllTerminal ? 'completed' : 'active';
 
     await campaignRef.update({
       status: finalStatus,
-      completedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      ...(finalStatus === 'completed' ? { completedAt: new Date().toISOString() } : {}),
     });
 
     return {
@@ -315,15 +319,24 @@ export async function dispatchCampaignBatchSlice(
     .limit(1)
     .get();
 
-  const isComplete = remainingQuery.empty;
-  const nextStatus = isComplete ? (campaign.failedCount + failedCount > 0 ? 'active' : 'completed') : 'dispatching';
+  const isQueueDrained = remainingQuery.empty;
+  const totalFailed = campaign.failedCount + failedCount;
+  const isAllTerminal =
+    isQueueDrained &&
+    campaign.totalCount > 0 &&
+    (campaign.signedCount || 0) + totalFailed >= campaign.totalCount;
+
+  // Once the dispatch queue is drained, status is 'active' (envelopes out for signature).
+  // Only transitions to 'completed' when all envelopes have been executed or failed.
+  const nextStatus = isAllTerminal ? 'completed' : isQueueDrained ? 'active' : 'dispatching';
+  const isComplete = isQueueDrained;
 
   await campaignRef.update({
     dispatchedCount: FieldValue.increment(successfulCount),
     failedCount: FieldValue.increment(failedCount),
     status: nextStatus,
     updatedAt: new Date().toISOString(),
-    ...(isComplete ? { completedAt: new Date().toISOString() } : {}),
+    ...(isAllTerminal ? { completedAt: new Date().toISOString() } : {}),
   });
 
   return {
@@ -409,6 +422,6 @@ export async function getCampaignProgress(campaignId: string): Promise<BulkCampa
     signedCount: data.signedCount,
     failedCount: data.failedCount,
     progressPercentage,
-    isComplete: data.status === 'completed',
+    isComplete: data.status === 'completed' || (total > 0 && processed >= total),
   };
 }

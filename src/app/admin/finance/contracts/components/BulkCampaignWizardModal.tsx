@@ -40,6 +40,7 @@ import {
   BulkCsvMergePreviewResult,
   CreateBulkCampaignRequest,
 } from '@/lib/types/document-signing';
+import { parseBulkRecipientCsv } from '@/lib/documents/bulk-csv-merge-service';
 import {
   Layers,
   Upload,
@@ -73,6 +74,7 @@ export function BulkCampaignWizardModal({
   // Form State
   const [title, setTitle] = React.useState('');
   const [selectedTemplateId, setSelectedTemplateId] = React.useState('');
+  const [csvContent, setCsvContent] = React.useState('');
   const [csvFileName, setCsvFileName] = React.useState('');
   const [routingMode, setRoutingMode] = React.useState<'single_signer' | 'sequential_countersign'>('single_signer');
   const [countersignerName, setCountersignerName] = React.useState('');
@@ -99,6 +101,7 @@ export function BulkCampaignWizardModal({
       setStep(1);
       setTitle('');
       setSelectedTemplateId(publishedTemplates[0]?.id || '');
+      setCsvContent('');
       setCsvFileName('');
       setRoutingMode('single_signer');
       setCountersignerName('');
@@ -118,6 +121,7 @@ export function BulkCampaignWizardModal({
 
     try {
       const text = await file.text();
+      setCsvContent(text);
 
       const previewRes = await previewBulkCsvMergeAction(workspaceId, {
         csvContent: text,
@@ -150,7 +154,7 @@ export function BulkCampaignWizardModal({
 
   // Launch campaign
   const handleLaunchCampaign = async () => {
-    if (!previewResult || previewResult.totalRows === 0) {
+    if (!previewResult || previewResult.totalRows === 0 || !csvContent) {
       toast({
         title: 'No Recipients',
         description: 'Please upload a valid CSV roster first.',
@@ -171,12 +175,26 @@ export function BulkCampaignWizardModal({
     setIsSubmitting(true);
 
     try {
-      // Re-parse all rows to build complete recipient list
-      const recipients = previewResult.previewSample.map((p) => ({
-        name: p.recipientName,
-        email: p.recipientEmail,
-        variables: p.mappedVariables,
-      }));
+      // Re-parse all rows from the uploaded CSV to build complete recipient roster (FM-P9-01)
+      const fullParsed = parseBulkRecipientCsv(csvContent);
+      const recipients = fullParsed.rows
+        .filter((r) => r.isValid)
+        .map((r) => ({
+          name: r.name,
+          email: r.email,
+          ...(r.phone ? { phone: r.phone } : {}),
+          variables: r.variables,
+        }));
+
+      if (recipients.length === 0) {
+        toast({
+          title: 'No Valid Recipients',
+          description: 'No valid recipient rows found in the uploaded CSV roster.',
+          variant: 'destructive',
+        });
+        setIsSubmitting(false);
+        return;
+      }
 
       const payload: CreateBulkCampaignRequest = {
         title: title || `${selectedTemplate?.name || 'Document'} Bulk Campaign`,

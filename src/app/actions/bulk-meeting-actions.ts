@@ -37,14 +37,14 @@ export async function bulkRegisterParticipantsActionCore(data: BulkMeetingInvite
       throw new Error('Meeting not found');
     }
     const meeting = meetingSnap.data()!;
-    let typeSlug = 'parent-engagement';
+    let _typeSlug = 'parent-engagement';
     if (meeting.type) {
       if (typeof meeting.type === 'string') {
-        typeSlug = meeting.type === 'parent' ? 'parent-engagement' : meeting.type;
+        _typeSlug = meeting.type === 'parent' ? 'parent-engagement' : meeting.type;
       } else if (meeting.type.slug) {
-        typeSlug = meeting.type.slug === 'parent' ? 'parent-engagement' : meeting.type.slug;
+        _typeSlug = meeting.type.slug === 'parent' ? 'parent-engagement' : meeting.type.slug;
       } else if (meeting.type.id) {
-        typeSlug = meeting.type.id === 'parent' ? 'parent-engagement' : meeting.type.id;
+        _typeSlug = meeting.type.id === 'parent' ? 'parent-engagement' : meeting.type.id;
       }
     }
     const _meetingSlug = meeting.meetingSlug || meeting.entitySlug || meetingSnap.id;

@@ -307,8 +307,8 @@ export async function assembleEDiscoveryZipBundle(
   const totalSizeBytes = zipBuffer.length;
   let storageUrl: string | undefined = undefined;
 
-  // FM-P9-09: If bundle exceeds 25MB, upload to Cloud Storage
-  if (totalSizeBytes > 25 * 1024 * 1024) {
+  // FM-P9-09: If bundle exceeds 4MB, upload to Cloud Storage to avoid Server Action body limits
+  if (totalSizeBytes > 4 * 1024 * 1024) {
     try {
       const storagePath = `workspaces/${workspaceId}/ediscovery/${contractId}_${Date.now()}.zip`;
       const file = adminStorage.file(storagePath);
@@ -332,7 +332,7 @@ export async function assembleEDiscoveryZipBundle(
   }
 
   return {
-    zipBase64: zipBuffer.toString('base64'),
+    zipBase64: storageUrl ? '' : zipBuffer.toString('base64'),
     zipBuffer,
     manifest: validatedManifest,
     storageUrl,
