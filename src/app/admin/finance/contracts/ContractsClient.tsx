@@ -33,7 +33,9 @@ import {
     Users,
     GitBranch,
     FileText,
-    CheckSquare
+    CheckSquare,
+    Sparkles,
+    GitCompare
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -87,6 +89,9 @@ import TemplateCatalogTab from './components/TemplateCatalogTab';
 import ObligationsSummaryTab from './components/ObligationsSummaryTab';
 import ContractsAnalyticsTab from './components/ContractsAnalyticsTab';
 import ReminderSettingsDrawer from './components/ReminderSettingsDrawer';
+import { DocumentAiCopilotDrawer } from '@/app/admin/documents/components/DocumentAiCopilotDrawer';
+import { ContractClauseDiffModal } from './components/ContractClauseDiffModal';
+import { ObligationReviewModal } from './components/ObligationReviewModal';
 import type { ContractRecord } from '@/lib/types/document-signing';
 import { BarChart3, Bell } from 'lucide-react';
 
@@ -109,11 +114,14 @@ export default function AgreementsClient() {
     const [downloadingId, setDownloadingId] = React.useState<string | null>(null);
     const [trackingEnvelopeId, setTrackingEnvelopeId] = React.useState<string | null>(null);
 
-    // Contract Lifecycle & Modal State (Phase 3 & Phase 4)
+    // Contract Lifecycle & Modal State (Phase 3 & Phase 4 & Phase 5)
     const [lifecycleContractId, setLifecycleContractId] = React.useState<string | null>(null);
     const [amendmentParentContract, setAmendmentParentContract] = React.useState<ContractRecord | null>(null);
     const [isCreateObligationOpen, setIsCreateObligationOpen] = React.useState(false);
     const [isReminderSettingsOpen, setIsReminderSettingsOpen] = React.useState(false);
+    const [copilotContract, setCopilotContract] = React.useState<{ id: string; title: string } | null>(null);
+    const [diffContract, setDiffContract] = React.useState<{ id: string; title: string } | null>(null);
+    const [reviewObligationContract, setReviewObligationContract] = React.useState<{ id: string; title: string } | null>(null);
 
     // Single Contract Deletion State
     const [contractToPurge, setContractToPurge] = React.useState<{ contract: Contract, entity: WorkspaceEntity } | null>(null);
@@ -622,6 +630,33 @@ export default function AgreementsClient() {
                                                                                 <span className="font-bold text-sm">Contract Lifecycle</span>
                                                                             </DropdownMenuItem>
                                                                         )}
+                                                                        {contract?.id && (
+                                                                            <DropdownMenuItem 
+                                                                                className="gap-3 rounded-xl p-2.5" 
+                                                                                onClick={() => setCopilotContract({ id: contract.id, title: item.displayName || 'Agreement' })}
+                                                                            >
+                                                                                <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Sparkles className="h-4 w-4" /></div>
+                                                                                <span className="font-bold text-sm">AI Assistant</span>
+                                                                            </DropdownMenuItem>
+                                                                        )}
+                                                                        {contract?.id && (
+                                                                            <DropdownMenuItem 
+                                                                                className="gap-3 rounded-xl p-2.5" 
+                                                                                onClick={() => setDiffContract({ id: contract.id, title: item.displayName || 'Agreement' })}
+                                                                            >
+                                                                                <div className="p-1.5 bg-indigo-500/10 rounded-lg text-indigo-600 dark:text-indigo-400"><GitCompare className="h-4 w-4" /></div>
+                                                                                <span className="font-bold text-sm">Semantic Redline</span>
+                                                                            </DropdownMenuItem>
+                                                                        )}
+                                                                        {contract?.id && (
+                                                                            <DropdownMenuItem 
+                                                                                className="gap-3 rounded-xl p-2.5" 
+                                                                                onClick={() => setReviewObligationContract({ id: contract.id, title: item.displayName || 'Agreement' })}
+                                                                            >
+                                                                                <div className="p-1.5 bg-purple-500/10 rounded-lg text-purple-600 dark:text-purple-400"><CheckSquare className="h-4 w-4" /></div>
+                                                                                <span className="font-bold text-sm">Obligation Review</span>
+                                                                            </DropdownMenuItem>
+                                                                        )}
  <DropdownMenuItem className="gap-3 rounded-xl p-2.5" asChild>
                                                                             <a href={`/forms/${contract.pdfId}?entityId=${item.entityId}`} target="_blank" rel="noopener noreferrer">
  <div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Globe className="h-4 w-4" /></div>
@@ -861,6 +896,39 @@ export default function AgreementsClient() {
                     onOpenChange={setIsReminderSettingsOpen}
                     workspaceId={activeWorkspaceId || ''}
                 />
+
+                {/* Grounded AI Copilot Drawer (Phase 5 / P5.3) */}
+                {copilotContract && (
+                    <DocumentAiCopilotDrawer
+                        open={!!copilotContract}
+                        onOpenChange={(open) => !open && setCopilotContract(null)}
+                        workspaceId={activeWorkspaceId || ''}
+                        documentId={copilotContract.id}
+                        documentTitle={copilotContract.title}
+                    />
+                )}
+
+                {/* Semantic Redline & Diff Modal (Phase 5 / P5.2) */}
+                {diffContract && (
+                    <ContractClauseDiffModal
+                        open={!!diffContract}
+                        onOpenChange={(open) => !open && setDiffContract(null)}
+                        workspaceId={activeWorkspaceId || ''}
+                        contractId={diffContract.id}
+                        contractTitle={diffContract.title}
+                    />
+                )}
+
+                {/* Obligation Review Queue Modal (Phase 5 / P5.4) */}
+                {reviewObligationContract && (
+                    <ObligationReviewModal
+                        open={!!reviewObligationContract}
+                        onOpenChange={(open) => !open && setReviewObligationContract(null)}
+                        workspaceId={activeWorkspaceId || ''}
+                        contractId={reviewObligationContract.id}
+                        contractTitle={reviewObligationContract.title}
+                    />
+                )}
             </div>
         </TooltipProvider>
     );
