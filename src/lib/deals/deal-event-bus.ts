@@ -42,7 +42,11 @@ export type DealEventType =
   | 'deal.quote.created'
   | 'deal.quote.accepted'
   | 'deal.quote.rejected'
-  | 'deal.contract.signed';
+  | 'deal.contract.sent'
+  | 'deal.contract.in_progress'
+  | 'deal.contract.signed'
+  | 'deal.contract.declined'
+  | 'deal.contract.voided';
 
 export interface DealDomainEventPayload {
   dealId: string;
@@ -71,11 +75,14 @@ export interface DealDomainEventPayload {
   activityType?: string;
   quoteId?: string;
   quoteNumber?: string;
+  envelopeId?: string;
+  contractId?: string;
   contractStatus?: string;
   actorUserId?: string;
   occurredAt?: string;
   metadata?: Record<string, unknown>;
 }
+
 
 export interface DealDomainEvent {
   eventId: string;
