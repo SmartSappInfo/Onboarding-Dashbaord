@@ -21,37 +21,71 @@ import type { ApiKeyRecord } from '@/lib/types/document-signing';
 vi.mock('@/lib/documents/api-key-auth-service');
 vi.mock('@/lib/documents/api-rate-limiter-service');
 vi.mock('@/lib/firebase-admin', () => {
-  const createQuery = () => ({
-    where: vi.fn(() => createQuery()),
-    orderBy: vi.fn(() => createQuery()),
-    limit: vi.fn(() => createQuery()),
-    get: vi.fn(async () => ({
-      docs: [
-        {
-          id: 'env_101',
-          data: () => ({
+  const createQuery = (conditions: Array<[string, unknown]> = []) => ({
+    where: vi.fn((field: string, _op: string, val: unknown) => {
+      return createQuery([...conditions, [field, val]]);
+    }),
+    orderBy: vi.fn(() => createQuery(conditions)),
+    limit: vi.fn(() => createQuery(conditions)),
+    get: vi.fn(async () => {
+      const isExistingDeduplication = conditions.some(([f, v]) => f === 'idempotencyKey' && v === 'idemp_key_existing');
+      const isIdempotencyQuery = conditions.some(([f]) => f === 'idempotencyKey');
+
+      if (isExistingDeduplication) {
+        return {
+          empty: false,
+          docs: [
+            {
+              id: 'env_existing_101',
+              data: () => ({
+                id: 'env_existing_101',
+                workspaceId: 'ws_demo',
+                title: 'Existing Agreement',
+                status: 'sent',
+                recipients: [],
+                createdAt: '2026-09-29T10:00:00Z',
+              }),
+            },
+          ],
+        };
+      }
+
+      if (isIdempotencyQuery) {
+        return {
+          empty: true,
+          docs: [],
+        };
+      }
+
+      return {
+        empty: false,
+        docs: [
+          {
             id: 'env_101',
-            workspaceId: 'ws_demo',
-            title: 'Service Agreement',
-            name: 'Template 1',
-            documentType: 'agreement',
-            status: 'published',
-            recipients: [
-              {
-                recipientId: 'rec_01',
-                displayName: 'Alice',
-                email: 'alice@example.com',
-                role: 'signer',
-                status: 'pending',
-                routingOrder: 1,
-                signingToken: 'SECRET_DO_NOT_EXPOSE',
-              },
-            ],
-            createdAt: '2026-09-29T10:00:00Z',
-          }),
-        },
-      ],
-    })),
+            data: () => ({
+              id: 'env_101',
+              workspaceId: 'ws_demo',
+              title: 'Service Agreement',
+              name: 'Template 1',
+              documentType: 'agreement',
+              status: 'published',
+              recipients: [
+                {
+                  recipientId: 'rec_01',
+                  displayName: 'Alice',
+                  email: 'alice@example.com',
+                  role: 'signer',
+                  status: 'pending',
+                  routingOrder: 1,
+                  signingToken: 'SECRET_DO_NOT_EXPOSE',
+                },
+              ],
+              createdAt: '2026-09-29T10:00:00Z',
+            }),
+          },
+        ],
+      };
+    }),
   });
 
   return {
@@ -204,6 +238,37 @@ describe('Developer REST API Routes', () => {
       const json = await res.json();
       expect(json.data.envelopeId).toBeDefined();
       expect(json.meta.requestId).toBeDefined();
+    });
+
+    it('returns 200 with deduplicated response when idempotency key was previously processed', async () => {
+      const payload = {
+        title: 'Duplicate API Agreement',
+        recipients: [
+          {
+            role: 'client',
+            displayName: 'Bob Smith',
+            email: 'bob@partner.com',
+            routingOrder: 1,
+          },
+        ],
+      };
+
+      const req = new NextRequest('http://localhost:3000/api/v1/envelopes', {
+        method: 'POST',
+        headers: {
+          authorization: 'Bearer sapp_live_abcd1234_secret32',
+          'Idempotency-Key': 'idemp_key_existing',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const res = await postEnvelopes(req);
+      expect(res.status).toBe(200);
+
+      const json = await res.json();
+      expect(json.data.deduplicated).toBe(true);
+      expect(json.data.envelopeId).toBe('env_existing_101');
     });
 
     it('rejects malformed idempotency key (FM-P8-11)', async () => {

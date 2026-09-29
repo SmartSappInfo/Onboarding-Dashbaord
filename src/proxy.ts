@@ -111,7 +111,9 @@ export function proxy(request: NextRequest) {
     '/p/',
     '/m/',
     '/go/',
-    '/unsubscribe/'
+    '/unsubscribe/',
+    '/embed/',
+    '/verify/'
   ];
   
   const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
@@ -134,9 +136,12 @@ export function proxy(request: NextRequest) {
   // Allow public routes to pass through
   if (isPublicRoute) {
     const response = NextResponse.next();
-    // Allow framing on public embedded routes (surveys, forms, meetings, qr, preferences, pages, media)
+    // Allow framing on public embedded routes (surveys, forms, meetings, qr, preferences, pages, media, embedded signing)
     if (pathname.startsWith('/surveys') || pathname.startsWith('/f/') || pathname.startsWith('/meetings') || pathname.startsWith('/book') || pathname.startsWith('/q/') || pathname.startsWith('/p/') || pathname.startsWith('/m/')) {
       response.headers.set('Content-Security-Policy', "frame-ancestors *");
+      response.headers.delete('x-frame-options');
+    } else if (pathname.startsWith('/embed/')) {
+      // Embedded signing route sets its own strictly governed CSP frame-ancestors whitelist in the page handler
       response.headers.delete('x-frame-options');
     }
     return response;

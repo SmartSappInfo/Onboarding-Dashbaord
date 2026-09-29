@@ -420,5 +420,100 @@ describe('Phase 8: Developer Platform & Embedded SDK Integration Suite', () => {
       expect(replayResult.status).toBe('conflict');
       expect(replayResult.reason).toContain('voided');
     });
+
+    it('quarantines payload when recipient already executed online during offline window (FM-P8-08)', async () => {
+      const envelopeId = 'env_doublesign_integration';
+      const envelopeData: SigningEnvelope = {
+        id: envelopeId,
+        workspaceId: wsId,
+        title: 'Concurrent Signed Agreement',
+        status: 'sent',
+        routingMode: 'sequential',
+        currentRoutingOrder: 1,
+        preExecutionSha256: 'd'.repeat(64),
+        documentStoragePath: 'storage/doc.pdf',
+        expiresAt: '2026-10-30T00:00:00Z',
+        createdAt: '2026-09-29T00:00:00Z',
+        updatedAt: '2026-09-29T00:00:00Z',
+        createdBy: 'usr_creator',
+        recipients: [
+          {
+            id: 'rec_already_signed',
+            name: 'Alice Cooper',
+            email: 'alice@example.com',
+            role: 'signer',
+            routingOrder: 1,
+            status: 'signed', // Already marked signed on server
+            signedAt: '2026-09-29T01:00:00Z',
+            tokenHash: 'hash...',
+            tokenExpiresAt: '2026-10-30T00:00:00Z',
+            workspaceId: wsId,
+            envelopeId,
+          },
+        ],
+      };
+
+      await adminDb.collection('signing_envelopes').doc(envelopeId).set(envelopeData);
+
+      const pkg = createOfflineSigningPackage({
+        envelopeId,
+        recipientId: 'rec_already_signed',
+        strokes: sampleStrokes,
+        deviceFingerprint: 'tablet_offline_02',
+        documentSha256: 'd'.repeat(64),
+      });
+
+      const replayResult = await replayOfflineSigningPackage(wsId, pkg);
+      expect(replayResult.success).toBe(false);
+      expect(replayResult.status).toBe('conflict');
+      expect(replayResult.reason).toContain('already executed this agreement online');
+    });
+
+    it('quarantines payload when document digest has diverged from preExecutionSha256 (FM-P8-09)', async () => {
+      const envelopeId = 'env_tampered_digest_integration';
+      const envelopeData: SigningEnvelope = {
+        id: envelopeId,
+        workspaceId: wsId,
+        title: 'Divergent Digest Agreement',
+        status: 'sent',
+        routingMode: 'sequential',
+        currentRoutingOrder: 1,
+        preExecutionSha256: 'e'.repeat(64),
+        documentStoragePath: 'storage/doc.pdf',
+        expiresAt: '2026-10-30T00:00:00Z',
+        createdAt: '2026-09-29T00:00:00Z',
+        updatedAt: '2026-09-29T00:00:00Z',
+        createdBy: 'usr_creator',
+        recipients: [
+          {
+            id: 'rec_divergent_signer',
+            name: 'Bob Marley',
+            email: 'bob@example.com',
+            role: 'signer',
+            routingOrder: 1,
+            status: 'invited',
+            tokenHash: 'hash...',
+            tokenExpiresAt: '2026-10-30T00:00:00Z',
+            workspaceId: wsId,
+            envelopeId,
+          },
+        ],
+      };
+
+      await adminDb.collection('signing_envelopes').doc(envelopeId).set(envelopeData);
+
+      const pkg = createOfflineSigningPackage({
+        envelopeId,
+        recipientId: 'rec_divergent_signer',
+        strokes: sampleStrokes,
+        deviceFingerprint: 'tablet_offline_03',
+        documentSha256: 'f'.repeat(64), // Mismatch with server 'e'.repeat(64)
+      });
+
+      const replayResult = await replayOfflineSigningPackage(wsId, pkg);
+      expect(replayResult.success).toBe(false);
+      expect(replayResult.status).toBe('conflict');
+      expect(replayResult.reason).toContain('hash mismatch');
+    });
   });
 });

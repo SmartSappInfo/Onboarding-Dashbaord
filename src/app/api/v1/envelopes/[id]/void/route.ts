@@ -45,7 +45,7 @@ export async function POST(
   }
 
   const docRef = adminDb
-    .collection(`workspaces/${workspaceId}/signing_envelopes`)
+    .collection('signing_envelopes')
     .doc(envelopeId);
 
   const docSnap = await docRef.get();
@@ -59,6 +59,14 @@ export async function POST(
   }
 
   const existing = docSnap.data() as SigningEnvelope;
+  if (existing.workspaceId !== workspaceId) {
+    return formatErrorResponse(
+      'NOT_FOUND',
+      `Envelope ${envelopeId} not found in workspace`,
+      404,
+      auth.rateLimitHeaders
+    );
+  }
   if (existing.status === 'completed') {
     return formatErrorResponse(
       'INVALID_STATE',

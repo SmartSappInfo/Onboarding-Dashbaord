@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
   const { workspaceId } = auth.keyRecord;
   const snapshot = await adminDb
-    .collection(`workspaces/${workspaceId}/signing_envelopes`)
+    .collection('signing_envelopes')
     .where('workspaceId', '==', workspaceId)
     .orderBy('createdAt', 'desc')
     .limit(50)
@@ -73,6 +73,41 @@ export async function POST(request: NextRequest) {
       400,
       auth.rateLimitHeaders
     );
+  }
+
+  // Active Idempotency Deduplication Query (FM-P8-11)
+  if (idempotencyKey) {
+    const existingSnap = await adminDb
+      .collection('signing_envelopes')
+      .where('workspaceId', '==', workspaceId)
+      .where('idempotencyKey', '==', idempotencyKey)
+      .limit(1)
+      .get();
+
+    if (!existingSnap.empty) {
+      const existingDoc = existingSnap.docs[0];
+      const existingData = existingDoc.data() as SigningEnvelope;
+      return formatSuccessResponse(
+        {
+          envelopeId: existingDoc.id,
+          status: existingData.status,
+          recipients: (existingData.recipients || []).map((rec) => ({
+            recipientId: rec.id,
+            role: rec.role,
+            displayName: rec.name,
+            email: rec.email,
+            status: rec.status,
+          })),
+          deduplicated: true,
+        },
+        {
+          requestId: `req_${crypto.randomUUID()}`,
+          idempotencyKey,
+        },
+        auth.rateLimitHeaders,
+        200
+      );
+    }
   }
 
   let body: unknown;
@@ -143,7 +178,7 @@ export async function POST(request: NextRequest) {
   };
 
   await adminDb
-    .collection(`workspaces/${workspaceId}/signing_envelopes`)
+    .collection('signing_envelopes')
     .doc(envelopeId)
     .set(envelopeRecord);
 

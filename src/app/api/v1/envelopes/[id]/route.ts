@@ -28,7 +28,7 @@ export async function GET(
   const { workspaceId } = auth.keyRecord;
 
   const docSnap = await adminDb
-    .collection(`workspaces/${workspaceId}/signing_envelopes`)
+    .collection('signing_envelopes')
     .doc(envelopeId)
     .get();
 
@@ -42,6 +42,14 @@ export async function GET(
   }
 
   const data = docSnap.data() as SigningEnvelope;
+  if (data.workspaceId !== workspaceId) {
+    return formatErrorResponse(
+      'NOT_FOUND',
+      `Envelope ${envelopeId} not found in workspace`,
+      404,
+      auth.rateLimitHeaders
+    );
+  }
 
   // Redact any raw signing tokens or internal secrets from recipient records
   const sanitizedRecipients = (data.recipients || []).map((r) => {
