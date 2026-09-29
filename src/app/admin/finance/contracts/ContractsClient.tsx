@@ -35,7 +35,8 @@ import {
     FileText,
     CheckSquare,
     Sparkles,
-    GitCompare
+    GitCompare,
+    Rocket
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -93,6 +94,7 @@ import { DocumentAiCopilotDrawer } from '@/app/admin/documents/components/Docume
 import { ContractClauseDiffModal } from './components/ContractClauseDiffModal';
 import { ObligationReviewModal } from './components/ObligationReviewModal';
 import EnterpriseGovernanceTab from './components/EnterpriseGovernanceTab';
+import MigrationCutoverTab from './components/MigrationCutoverTab';
 import type { ContractRecord } from '@/lib/types/document-signing';
 import { BarChart3, Bell } from 'lucide-react';
 
@@ -106,7 +108,7 @@ export default function AgreementsClient() {
     const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
     const { activeWorkspaceId } = useWorkspace();
     
-    const [activeTab, setActiveTab] = React.useState<'contracts' | 'templates' | 'obligations' | 'analytics' | 'governance'>('contracts');
+    const [activeTab, setActiveTab] = React.useState<'contracts' | 'templates' | 'obligations' | 'analytics' | 'governance' | 'migration'>('contracts');
     const [searchTerm, setSearchTerm] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState('all');
     const [selectedEntities, setSelectedEntities] = React.useState<WorkspaceEntity[]>([]);
@@ -336,8 +338,8 @@ export default function AgreementsClient() {
                         </div>
                     </div>
 
-                    {/* Unified 4-Tab Workspace Navigation */}
-                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'contracts' | 'templates' | 'obligations' | 'analytics' | 'governance')} className="w-full space-y-6">
+                    {/* Unified 6-Tab Workspace Navigation */}
+                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'contracts' | 'templates' | 'obligations' | 'analytics' | 'governance' | 'migration')} className="w-full space-y-6">
                         <TabsList className="bg-muted/60 p-1 rounded-xl border border-border">
                             <TabsTrigger value="contracts" className="rounded-lg text-xs font-semibold gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                                 <FileCheck className="h-3.5 w-3.5" />
@@ -358,6 +360,10 @@ export default function AgreementsClient() {
                             <TabsTrigger value="governance" className="rounded-lg text-xs font-semibold gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                                 <ShieldCheck className="h-3.5 w-3.5" />
                                 Enterprise & Governance
+                            </TabsTrigger>
+                            <TabsTrigger value="migration" className="rounded-lg text-xs font-semibold gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                                <Rocket className="h-3.5 w-3.5" />
+                                GA Cutover & Migration
                             </TabsTrigger>
                         </TabsList>
 
@@ -752,6 +758,10 @@ export default function AgreementsClient() {
 
                         <TabsContent value="governance" className="mt-0">
                             <EnterpriseGovernanceTab workspaceId={activeWorkspaceId || ''} />
+                        </TabsContent>
+
+                        <TabsContent value="migration" className="mt-0">
+                            <MigrationCutoverTab workspaceId={activeWorkspaceId || ''} />
                         </TabsContent>
                     </Tabs>
                 </div>
