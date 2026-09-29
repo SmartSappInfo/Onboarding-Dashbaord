@@ -1,5 +1,25 @@
 import nextConfig from 'eslint-config-next/core-web-vitals';
 
+/*
+ * CAUTION (flat config): when two blocks match the same file, a later block's `no-restricted-syntax`
+ * REPLACES the earlier one's array instead of merging. Every block that sets this rule must therefore
+ * include every selector that applies to its files — use these shared constants, never inline copies.
+ */
+
+/** Audit F2: server actions are public endpoints and must never accept the caller's identity. */
+const IDENTITY_PARAM_BAN = {
+  selector:
+    'ExportNamedDeclaration > FunctionDeclaration > Identifier.params[name=/^(userId|actorId|currentUserId|performedBy)$/]',
+  message:
+    'Server Actions are public endpoints. Derive identity with authorizeBackofficeSession()/requireAuth() — never accept it as a parameter. See docs/audit/app_audit_fix.md (F2).',
+};
+
+/** Rule 4: no unchecked double casts; validate with a schema at the boundary instead. */
+const DOUBLE_CAST_BAN = {
+  selector: "TSAsExpression[expression.type='TSAsExpression'][expression.typeAnnotation.type='TSUnknownKeyword']",
+  message: 'Unchecked double cast (`as unknown as T`). Validate with a Zod schema at the boundary instead (Rule 4).',
+};
+
 /** @type {import('eslint').Linter.Config[]} */
 const config = [
   ...nextConfig,
@@ -49,12 +69,7 @@ const config = [
       'src/app/actions/seed-*.ts',
     ],
     rules: {
-      'no-restricted-syntax': ['error', {
-        selector:
-          'ExportNamedDeclaration > FunctionDeclaration > Identifier.params[name=/^(userId|actorId|currentUserId|performedBy)$/]',
-        message:
-          'Server Actions are public endpoints. Derive identity with authorizeBackofficeSession()/requireAuth() — never accept it as a parameter. See docs/audit/app_audit_fix.md (F2).',
-      }],
+      'no-restricted-syntax': ['error', IDENTITY_PARAM_BAN],
     },
   },
   {
@@ -71,10 +86,8 @@ const config = [
       '@typescript-eslint/no-unsafe-call': 'error',
       '@typescript-eslint/no-unsafe-return': 'error',
       '@typescript-eslint/no-unsafe-argument': 'error',
-      'no-restricted-syntax': ['error', {
-        selector: "TSAsExpression[expression.type='TSAsExpression'][expression.typeAnnotation.type='TSUnknownKeyword']",
-        message: 'Unchecked double cast (`as unknown as T`). Validate with a Zod schema at the boundary instead (Rule 4).',
-      }],
+      // Includes IDENTITY_PARAM_BAN so widening `files` over action modules can never drop audit F2.
+      'no-restricted-syntax': ['error', IDENTITY_PARAM_BAN, DOUBLE_CAST_BAN],
     },
   },
 ];

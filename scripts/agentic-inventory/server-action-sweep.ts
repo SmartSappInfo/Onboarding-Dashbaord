@@ -42,6 +42,7 @@ export const VERIFIED_IDENTITY_GUARDS: ReadonlyMap<string, string> = new Map([
   ['verifyCallerAuth', 'src/app/actions/authorization-actions.ts (verifyIdToken)'],
   ['checkMediaPermissionAction', 'src/lib/media/rbac-service.ts (requireWorkspace)'],
   ['checkDocumentPermissionAction', 'src/lib/documents/enterprise-security-actions.ts (requireWorkspace)'],
+  ['requireDocSigningPermission', 'src/lib/documents/docsigning-authz.ts (requireWorkspace + canUser RBAC)'],
   ['verifyRecipientToken', 'src/lib/documents/signing-token-service.ts (hashed capability token + expiry + revocation; public signing links)'],
 ]);
 
