@@ -26,6 +26,7 @@ import {
   WebhookDeliveryLogSchema,
 } from '@/lib/types/document-signing';
 import { createHmac, timingSafeEqual, randomUUID } from 'crypto';
+import { safeUrlFetch, validateSafeEgressUrl, type SafeFetchInit } from '@/lib/security/ssrf-guard';
 import {
   checkCircuitBreakerStatus,
   recordCircuitBreakerSuccess,
@@ -169,10 +170,21 @@ export async function scheduleWebhookDeliveriesForEvent(
 /**
  * Dispatches a webhook delivery attempt over HTTP with HMAC headers and exponential backoff retry.
  */
+/**
+ * The minimal fetch shape webhook delivery needs. The default is `safeUrlFetch`, which pins DNS to
+ * public addresses and re-validates every redirect hop (Rule 34). Tests may inject a mock.
+ * SECURITY (PR-0 review): this used plain `fetch`, so a subscriber URL such as
+ * http://169.254.169.254/… made the server call cloud metadata or internal services.
+ */
+export type WebhookFetcher = (
+  url: string,
+  init: SafeFetchInit
+) => Promise<{ ok: boolean; status: number; text(): Promise<string> }>;
+
 export async function dispatchWebhookDelivery(
   deliveryLog: WebhookDeliveryLog,
   subscription: WebhookSubscription,
-  fetcher: typeof fetch = fetch
+  fetcher: WebhookFetcher = safeUrlFetch
 ): Promise<WebhookDeliveryLog> {
   const stringifiedPayload = JSON.stringify(deliveryLog.payload);
   const timestamp = Math.floor(Date.now() / 1000);
@@ -279,7 +291,7 @@ export async function dispatchWebhookDelivery(
 export async function replayDeadLetterWebhook(
   workspaceId: string,
   deliveryLogId: string,
-  fetcher: typeof fetch = fetch
+  fetcher: WebhookFetcher = safeUrlFetch
 ): Promise<WebhookDeliveryLog> {
   const docRef = adminDb
     .collection(`workspaces/${workspaceId}/webhook_deliveries`)
@@ -348,8 +360,14 @@ export async function createWebhookSubscription(
   const subId = `wh_${randomUUID().replace(/-/g, '').slice(0, 16)}`;
   const now = new Date().toISOString();
 
+  // SECURITY (Rule 33/34): reject private, loopback, link-local and metadata targets up front with a
+  // clear error. This is advisory — the real protection is `safeUrlFetch` at delivery time, which
+  // re-checks DNS on every connection (a hostname can re-point after this check).
+  const url = await validateSafeEgressUrl(input.url);
+
   const subData: WebhookSubscription = {
     ...input,
+    url,
     id: subId,
     workspaceId,
     createdAt: now,

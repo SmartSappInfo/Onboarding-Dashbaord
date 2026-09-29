@@ -15,7 +15,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import type { Deal } from '@/lib/types';
-import type { SigningEnvelope, ContractObligation } from '@/lib/types/document-signing';
+import { ContractObligationSchema, type SigningEnvelope, type ContractObligation } from '@/lib/types/document-signing';
 import { emitDealDomainEvent } from '@/lib/deals/deal-event-bus';
 import { emitDocumentDomainEvent } from '@/lib/documents/document-event-bus';
 
@@ -310,9 +310,27 @@ export async function syncTaskCompletionToObligation(
     return { success: true, obligationUpdated: false };
   }
 
-  const obData = obSnap.data() as ContractObligation;
+  const parsed = ContractObligationSchema.safeParse(obSnap.data());
+  if (!parsed.success) {
+    console.warn(`[CRM_SYNC] Obligation ${obligationId} has an unexpected shape; not fulfilling.`);
+    return { success: true, obligationUpdated: false };
+  }
+  const obData: ContractObligation = parsed.data;
   if (obData.workspaceId !== workspaceId) {
     throw new Error(`Workspace mismatch: Obligation ${obligationId} belongs to a different workspace.`);
+  }
+
+  // SECURITY (PR-0 review, 2026-09-29): only the task the obligation itself created may fulfil it,
+  // and only for its own contract. Without this binding, any user able to edit tasks could point a
+  // task at any obligation id in the workspace and mark it fulfilled by completing the task.
+  if (obData.contractId !== contractId || obData.linkedTaskId !== taskId) {
+    console.warn(`[CRM_SYNC] Task ${taskId} is not the linked task of obligation ${obligationId}; not fulfilling.`);
+    return { success: true, obligationUpdated: false };
+  }
+
+  // Idempotent: fulfilling an obligation completes its linked task, which fires this hook again.
+  if (obData.status === 'fulfilled') {
+    return { success: true, obligationUpdated: false };
   }
 
   const now = new Date().toISOString();

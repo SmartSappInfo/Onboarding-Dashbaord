@@ -336,5 +336,62 @@ describe('P4.1 CRM Deal Synchronization & Master-Record Federation', () => {
         })
       );
     });
+
+    // SECURITY (PR-0 review, 2026-09-29): only the task the obligation created may fulfil it.
+    function seedObligation(id: string, overrides: Partial<ContractObligation> = {}): void {
+      mockObligationsStore.set(id, {
+        id,
+        workspaceId: 'ws_prod',
+        type: 'compliance',
+        contractId: 'ctr_001',
+        title: 'Deliver onboarding pack',
+        status: 'pending',
+        dueDate: '2026-10-15T00:00:00.000Z',
+        responsibleParty: 'internal',
+        linkedTaskId: 'task_linked',
+        reminderDaysBefore: [7],
+        createdAt: '2026-09-29T00:00:00.000Z',
+        updatedAt: '2026-09-29T00:00:00.000Z',
+        ...overrides,
+      });
+    }
+
+    it('refuses to fulfil from a task that is not the obligation\'s linked task', async () => {
+      seedObligation('ob_foreign_task');
+      const result = await syncTaskCompletionToObligation({
+        workspaceId: 'ws_prod',
+        taskId: 'task_someone_else_pointed_here',
+        contractId: 'ctr_001',
+        obligationId: 'ob_foreign_task',
+        actorUserId: 'usr_low_priv',
+      });
+      expect(result).toEqual({ success: true, obligationUpdated: false });
+      expect(mockObligationsStore.get('ob_foreign_task')?.status).toBe('pending');
+    });
+
+    it('refuses to fulfil when the task claims a different contract', async () => {
+      seedObligation('ob_foreign_contract');
+      const result = await syncTaskCompletionToObligation({
+        workspaceId: 'ws_prod',
+        taskId: 'task_linked',
+        contractId: 'survey_123',
+        obligationId: 'ob_foreign_contract',
+      });
+      expect(result.obligationUpdated).toBe(false);
+      expect(mockObligationsStore.get('ob_foreign_contract')?.status).toBe('pending');
+    });
+
+    it('is idempotent for an obligation that is already fulfilled (forward sync re-fires the hook)', async () => {
+      seedObligation('ob_done', { status: 'fulfilled', fulfilledAt: '2026-09-01T00:00:00.000Z', fulfilledBy: 'usr_a' });
+      const result = await syncTaskCompletionToObligation({
+        workspaceId: 'ws_prod',
+        taskId: 'task_linked',
+        contractId: 'ctr_001',
+        obligationId: 'ob_done',
+        actorUserId: 'usr_b',
+      });
+      expect(result.obligationUpdated).toBe(false);
+      expect(mockObligationsStore.get('ob_done')).toMatchObject({ fulfilledAt: '2026-09-01T00:00:00.000Z', fulfilledBy: 'usr_a' });
+    });
   });
 });

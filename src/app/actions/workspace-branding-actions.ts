@@ -11,11 +11,16 @@
  *    prevent HTML/CSS/XSS injection.
  * 2. Tenant Isolation (Rule 5 & 8):
  *    All branding configurations are saved in `workspaces/{workspaceId}/system_branding/default`.
+ *    SECURITY (PR-0 review, 2026-09-29): both actions were unauthenticated (anyone could overwrite a
+ *    workspace's signer-facing branding). They now require a session member with Doc Signing
+ *    (studios / pdfs) view or edit — the same permission the Doc Signing screens use.
+ *    CAUTION: public signing pages must not call these actions; read branding server-side there.
  * 3. Strict Typing (Rule 4):
  *    Strictly zero `any` or `any[]`.
  */
 
 import { adminDb } from '@/lib/firebase-admin';
+import { requireDocSigningPermission } from '@/lib/documents/docsigning-authz';
 import {
   WorkspaceBranding,
   WorkspaceBrandingSchema,
@@ -25,6 +30,7 @@ export async function getWorkspaceBrandingAction(
   workspaceId: string
 ): Promise<WorkspaceBranding | null> {
   try {
+    await requireDocSigningPermission(workspaceId, 'signing_branding', 'view');
     const docSnap = await adminDb
       .collection(`workspaces/${workspaceId}/system_branding`)
       .doc('default')
@@ -64,6 +70,7 @@ export async function updateWorkspaceBrandingAction(
   }
 ): Promise<{ success: boolean; data?: WorkspaceBranding; error?: string }> {
   try {
+    await requireDocSigningPermission(workspaceId, 'signing_branding', 'edit');
     const nowIso = new Date().toISOString();
     const payload: WorkspaceBranding = {
       workspaceId,
