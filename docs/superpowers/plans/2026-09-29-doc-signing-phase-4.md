@@ -177,17 +177,17 @@ Conforming to `frontend-design`, `ui-ux-pro-max`, `emilkowal-animations`, and `v
 - Modify: `src/lib/types/document-signing.ts`
 - Create: `src/lib/documents/__tests__/crm-analytics-schemas.test.ts`
 
-- [ ] **Step 1: Write schema validation unit tests in `crm-analytics-schemas.test.ts`**
+- [x] **Step 1: Write schema validation unit tests in `crm-analytics-schemas.test.ts`**
   - Test valid and invalid payloads for `DocumentDomainEventSchema`, `CrmDocumentLinkSchema`, `SigningAnalyticsMetricSchema`, `ReminderScheduleConfigSchema`.
   - Test event taxonomy constraints (`document.dispatched`, `signing.recipient_completed`, `contract.created`, etc.).
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/crm-analytics-schemas.test.ts`
-- [ ] **Step 3: Update `src/lib/types/document-signing.ts`**
+- [x] **Step 3: Update `src/lib/types/document-signing.ts`**
   - Implement all Phase 4 schemas and exported TypeScript types.
   - Strictly zero `any` or `any[]` (Rule 4).
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/crm-analytics-schemas.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/types/document-signing.ts src/lib/documents/__tests__/crm-analytics-schemas.test.ts && git commit -m "feat(docsigning): implement strict domain schemas for CRM links, document events, and analytics"`
 
 ---
@@ -197,21 +197,21 @@ Conforming to `frontend-design`, `ui-ux-pro-max`, `emilkowal-animations`, and `v
 - Create: `src/lib/documents/document-event-bus.ts`
 - Create: `src/lib/documents/__tests__/document-event-bus.test.ts`
 
-- [ ] **Step 1: Write unit tests in `document-event-bus.test.ts`**
+- [x] **Step 1: Write unit tests in `document-event-bus.test.ts`**
   - Test emitting `document.dispatched`, `signing.recipient_completed`, `signing.envelope_completed`.
   - Test emitting canonical contract lifecycle events (`contract.created`, `contract.amended`, `contract.renewed`, `contract.terminated`, `obligation.fulfilled`).
   - Test event persistence to Firestore collection `document_events` with workspace scoping.
   - Test non-blocking execution via Next.js `after()`.
   - Test forwarding relevant signing and contract events directly to `emitDealDomainEvent`.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/document-event-bus.test.ts`
-- [ ] **Step 3: Implement `src/lib/documents/document-event-bus.ts`**
+- [x] **Step 3: Implement `src/lib/documents/document-event-bus.ts`**
   - Pure event construction, deterministic `eventId` generator, and Firestore storage helper.
   - Bridge to `emitDealDomainEvent` for downstream CRM webhook and visual automation dispatch.
   - Add inline maintainer comments on event immutability (Rule 10).
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/document-event-bus.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/document-event-bus.ts src/lib/documents/__tests__/document-event-bus.test.ts && git commit -m "feat(docsigning): implement canonical document event bus and deal bridge"`
 
 ---
@@ -222,20 +222,20 @@ Conforming to `frontend-design`, `ui-ux-pro-max`, `emilkowal-animations`, and `v
 - Modify: `src/lib/tasks/task-core.ts`
 - Create: `src/lib/documents/__tests__/crm-deal-sync-service.test.ts`
 
-- [ ] **Step 1: Write unit tests in `crm-deal-sync-service.test.ts`**
+- [x] **Step 1: Write unit tests in `crm-deal-sync-service.test.ts`**
   - Test `syncEnvelopeWithDeal`: links envelope to deal, updates deal `contractStatus = 'sent'`.
   - Test `handleEnvelopeSigned`: advances deal stage to Won or updates `contractStatus = 'signed'` and updates deal value if specified.
   - Test `handleEnvelopeDeclined`: updates deal `contractStatus = 'declined'`.
   - Test tenant isolation check: rejecting deal link if workspaceId does not match.
   - Test reverse task completion hook: completing a task with `relatedParentId` (contractId) triggers `syncObligationWithTask`.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/crm-deal-sync-service.test.ts`
-- [ ] **Step 3: Implement `src/lib/documents/crm-deal-sync-service.ts` & wire `task-core.ts`**
+- [x] **Step 3: Implement `src/lib/documents/crm-deal-sync-service.ts` & wire `task-core.ts`**
   - Transactional synchronization functions between `deals` and `signing_envelopes`/`contracts`.
   - Connect `updateTaskCore` in `src/lib/tasks/task-core.ts` to call `syncObligationWithTask` when task status becomes `'done'`.
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/crm-deal-sync-service.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/crm-deal-sync-service.ts src/lib/tasks/task-core.ts src/lib/documents/__tests__/crm-deal-sync-service.test.ts && git commit -m "feat(docsigning): implement bi-directional CRM deal stage synchronization and task core reverse hook"`
 
 ---
@@ -247,19 +247,19 @@ Conforming to `frontend-design`, `ui-ux-pro-max`, `emilkowal-animations`, and `v
 - Modify: `src/lib/hooks/use-unified-entity-timeline.ts`
 - Create: `src/lib/documents/__tests__/timeline-contract-adapter.test.ts`
 
-- [ ] **Step 1: Write unit tests in `timeline-contract-adapter.test.ts`**
+- [x] **Step 1: Write unit tests in `timeline-contract-adapter.test.ts`**
   - Test transforming `ContractRecord` into `CRMKnowledgeTimelineItem` (source: `'contract'`).
   - Test transforming `SigningEnvelope` into `CRMKnowledgeTimelineItem` (source: `'signing_envelope'`).
   - Test timeline filtering by date, status, and search query.
   - Test query bounding: strictly enforcing `limit(25)` alongside `orderBy('createdAt', 'desc')`.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/timeline-contract-adapter.test.ts`
-- [ ] **Step 3: Implement timeline extensions**
+- [x] **Step 3: Implement timeline extensions**
   - Add `'contract' | 'signing_envelope'` to `TimelineItemSource` in `src/lib/quick-notes-types.ts`.
   - Implement federated streaming in `use-unified-entity-timeline.ts` with bounded `limit(25)`.
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/timeline-contract-adapter.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/quick-notes-types.ts src/lib/quick-notes-domain.ts src/lib/hooks/use-unified-entity-timeline.ts src/lib/documents/__tests__/timeline-contract-adapter.test.ts && git commit -m "feat(docsigning): federate contracts and signing workflows into unified CRM timeline"`
 
 ---
@@ -269,18 +269,18 @@ Conforming to `frontend-design`, `ui-ux-pro-max`, `emilkowal-animations`, and `v
 - Create: `src/lib/documents/signing-analytics-service.ts`
 - Create: `src/lib/documents/__tests__/signing-analytics-service.test.ts`
 
-- [ ] **Step 1: Write unit tests in `signing-analytics-service.test.ts`**
+- [x] **Step 1: Write unit tests in `signing-analytics-service.test.ts`**
   - Test `calculateSigningVelocity`: calculates median and average hours from dispatch to signature.
   - Test `calculateFunnelDropOff`: calculates completion %, decline %, void %, expired %.
   - Test `identifySignerBottlenecks`: groups turnaround time by recipient role and order index.
   - Test `calculateDealContractAttribution`: calculates total contract value signed by deal pipeline and stage.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/signing-analytics-service.test.ts`
-- [ ] **Step 3: Implement `src/lib/documents/signing-analytics-service.ts`**
+- [x] **Step 3: Implement `src/lib/documents/signing-analytics-service.ts`**
   - Pure calculation reducers operating over immutable event streams.
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/signing-analytics-service.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/signing-analytics-service.ts src/lib/documents/__tests__/signing-analytics-service.test.ts && git commit -m "feat(docsigning): implement event-derived lifecycle analytics engine"`
 
 ---
@@ -291,20 +291,20 @@ Conforming to `frontend-design`, `ui-ux-pro-max`, `emilkowal-animations`, and `v
 - Create: `src/app/api/cron/signing-reminders/route.ts`
 - Create: `src/lib/documents/__tests__/signing-reminder-service.test.ts`
 
-- [ ] **Step 1: Write unit tests in `signing-reminder-service.test.ts`**
+- [x] **Step 1: Write unit tests in `signing-reminder-service.test.ts`**
   - Test evaluating envelopes requiring reminders based on configured cadence (e.g. 3d, 7d).
   - Test active signer isolation (only sends reminder to the recipient whose turn it currently is).
   - Test deduplication window: skips if a reminder was sent in the last 24 hours.
   - Test multi-channel dispatch: triggers Email via Resend or SMS via mNotify.
   - Test evaluating upcoming contract renewals (30d, 60d, 90d notice).
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/signing-reminder-service.test.ts`
-- [ ] **Step 3: Implement `src/lib/documents/signing-reminder-service.ts` & cron route**
+- [x] **Step 3: Implement `src/lib/documents/signing-reminder-service.ts` & cron route**
   - Service functions: `evaluatePendingEnvelopeReminders`, `dispatchEnvelopeReminder`, `evaluateContractRenewalAlerts`.
   - Create secure Next.js Route Handler `/api/cron/signing-reminders/route.ts` with `CRON_SECRET` authorization.
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/signing-reminder-service.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/signing-reminder-service.ts src/app/api/cron/signing-reminders/route.ts src/lib/documents/__tests__/signing-reminder-service.test.ts && git commit -m "feat(docsigning): implement multi-channel reminder and renewal escalation engine and cron endpoint"`
 
 ---
@@ -314,16 +314,16 @@ Conforming to `frontend-design`, `ui-ux-pro-max`, `emilkowal-animations`, and `v
 - Create: `src/app/admin/deals/[id]/components/DealContractsCard.tsx`
 - Modify: `src/app/admin/deals/[id]/page.tsx`
 
-- [ ] **Step 1: Build `DealContractsCard.tsx`**
+- [x] **Step 1: Build `DealContractsCard.tsx`**
   - Shows linked agreements, contract status badge, commercial value with cadence, and active obligations.
   - 1-Click "Issue Agreement" button opening pre-populated dispatch dialog.
   - 1-Click download of executed vector PDF and vector audit certificate.
   - Emil Kowalski micro-interactions (`active:scale-[0.97]`).
-- [ ] **Step 2: Integrate into `src/app/admin/deals/[id]/page.tsx`**
+- [x] **Step 2: Integrate into `src/app/admin/deals/[id]/page.tsx`**
   - Mount `<DealContractsCard deal={deal} />` in the Deal page main tab section.
-- [ ] **Step 3: Verify TypeScript compiler and lint**
+- [x] **Step 3: Verify TypeScript compiler and lint**
   - Command: `pnpm typecheck && pnpm eslint 'src/app/admin/deals/[id]/components/DealContractsCard.tsx'`
-- [ ] **Step 4: Commit changes**
+- [x] **Step 4: Commit changes**
   - Command: `git add src/app/admin/deals/[id]/components/DealContractsCard.tsx src/app/admin/deals/[id]/page.tsx && git commit -m "feat(docsigning): implement deal contracts card and contextual dispatch UI"`
 
 ---
@@ -333,17 +333,17 @@ Conforming to `frontend-design`, `ui-ux-pro-max`, `emilkowal-animations`, and `v
 - Create: `src/app/admin/finance/contracts/components/ContractsAnalyticsTab.tsx`
 - Modify: `src/app/admin/finance/contracts/ContractsClient.tsx`
 
-- [ ] **Step 1: Build `ContractsAnalyticsTab.tsx`**
+- [x] **Step 1: Build `ContractsAnalyticsTab.tsx`**
   - Metrics overview cards (Completion Rate %, Median Hours to Sign, Drop-Off %, Active Agreements Value).
   - Funnel status breakdown visualizer.
   - Signer turnaround bottlenecks chart.
   - Date range selector (Last 7 Days, Last 30 Days, Last 90 Days, Year-to-Date).
   - Mobile card responsive layout.
-- [ ] **Step 2: Integrate as Tab 4 in `ContractsClient.tsx`**
+- [x] **Step 2: Integrate as Tab 4 in `ContractsClient.tsx`**
   - Add "Analytics & Reports" tab trigger and content panel.
-- [ ] **Step 3: Verify TypeScript compiler and lint**
+- [x] **Step 3: Verify TypeScript compiler and lint**
   - Command: `pnpm typecheck && pnpm eslint 'src/app/admin/finance/contracts/components/ContractsAnalyticsTab.tsx'`
-- [ ] **Step 4: Commit changes**
+- [x] **Step 4: Commit changes**
   - Command: `git add src/app/admin/finance/contracts/components/ContractsAnalyticsTab.tsx src/app/admin/finance/contracts/ContractsClient.tsx && git commit -m "feat(docsigning): implement agreements hub analytics and velocity tab"`
 
 ---
@@ -353,16 +353,16 @@ Conforming to `frontend-design`, `ui-ux-pro-max`, `emilkowal-animations`, and `v
 - Create: `src/app/admin/finance/contracts/components/ReminderSettingsDrawer.tsx`
 - Modify: `src/app/admin/finance/contracts/ContractsClient.tsx`
 
-- [ ] **Step 1: Build `ReminderSettingsDrawer.tsx`**
+- [x] **Step 1: Build `ReminderSettingsDrawer.tsx`**
   - Form allowing operations users to configure reminder frequency (e.g. 3d, 7d, 14d).
   - Channel toggles (Email, SMS, WhatsApp).
   - Renewal alert intervals (30d, 60d, 90d).
   - Quiet hours start/end time picker.
-- [ ] **Step 2: Wire Settings button in Agreements Hub top header**
+- [x] **Step 2: Wire Settings button in Agreements Hub top header**
   - Opens `ReminderSettingsDrawer` and saves workspace preferences via server action.
-- [ ] **Step 3: Verify TypeScript compiler and lint**
+- [x] **Step 3: Verify TypeScript compiler and lint**
   - Command: `pnpm typecheck && pnpm eslint 'src/app/admin/finance/contracts/components/ReminderSettingsDrawer.tsx'`
-- [ ] **Step 4: Commit changes**
+- [x] **Step 4: Commit changes**
   - Command: `git add src/app/admin/finance/contracts/components/ReminderSettingsDrawer.tsx src/app/admin/finance/contracts/ContractsClient.tsx && git commit -m "feat(docsigning): implement reminder and escalation settings drawer"`
 
 ---
@@ -372,16 +372,16 @@ Conforming to `frontend-design`, `ui-ux-pro-max`, `emilkowal-animations`, and `v
 - Verify: Full test suite across baseline, Phase 1, Phase 2, Phase 3, and Phase 4 tests.
 - Update: `docs/superpowers/plans/2026-09-29-doc-signing-phase-4.md`
 
-- [ ] **Step 1: Run all unit and integration test suites**
+- [x] **Step 1: Run all unit and integration test suites**
   - Command: `pnpm test:run src/lib/__tests__/*.test.ts src/lib/documents/__tests__/*.test.ts`
   - Expected: 100% pass across all suites.
-- [ ] **Step 2: Run TypeScript compiler**
+- [x] **Step 2: Run TypeScript compiler**
   - Command: `pnpm typecheck`
   - Expected: 0 errors.
-- [ ] **Step 3: Run ESLint**
+- [x] **Step 3: Run ESLint**
   - Command: `pnpm lint`
   - Expected: 0 errors, warnings $\le 670$.
-- [ ] **Step 4: Commit completed Phase 4 master plan status**
+- [x] **Step 4: Commit completed Phase 4 master plan status**
   - Command: `git add docs/superpowers/plans/2026-09-29-doc-signing-phase-4.md && git commit -m "docs(docsigning): mark Phase 4 tasks completed"`
 
 ---
