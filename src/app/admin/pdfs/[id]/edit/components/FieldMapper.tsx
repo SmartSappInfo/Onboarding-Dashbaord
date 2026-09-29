@@ -9,8 +9,11 @@ import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/comp
 import { 
     Text, Signature, Calendar, ChevronDownSquare, Phone, Mail, Clock, Camera, 
     Undo, Redo, Sparkles, Loader2, ZoomIn, ZoomOut, Eye, Maximize2, Minimize2, XCircle, Tag,
-    Plus, ChevronRight, Trash2, Database
+    Plus, Trash2, Database, Calculator
 } from 'lucide-react';
+import { TemplateAiFieldSuggester } from '@/app/admin/documents/templates/components/TemplateAiFieldSuggester';
+import { ComputedFormulaPopover } from './ComputedFormulaPopover';
+import type { AiFieldSuggestion } from '@/lib/types/document-signing';
 
 import {
   DropdownMenu,
@@ -67,10 +70,30 @@ interface FieldMapperProps {
 function EditorLayout() {
     const { 
         zoom, setZoom, addField, undo, redo, canUndo, canRedo, 
-        onDetect, isDetecting, onPreview: _onPreview, isFullScreen, setIsFullScreen,
+        onDetect: _onDetect, isDetecting, onPreview: _onPreview, isFullScreen, setIsFullScreen,
         viewMode, setViewMode, isFieldDeleteConfirmOpen, setIsFieldDeleteConfirmOpen,
-        selectedFieldIds, setFields, setSelectedFieldIds
+        selectedFieldIds, fields, setFields, setSelectedFieldIds
     } = useEditor();
+
+    const [isAiSuggesterOpen, setIsAiSuggesterOpen] = React.useState(false);
+
+    const handleApplyAiFields = (accepted: AiFieldSuggestion[]) => {
+        const newFields: LocalPDFFormField[] = accepted.map((sug) => ({
+            id: `fld_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+            label: sug.label,
+            type: sug.fieldType === 'signature' || sug.fieldType === 'initials'
+                ? 'signature'
+                : sug.fieldType === 'date'
+                ? 'date'
+                : 'text',
+            position: { x: sug.leftPct, y: sug.topPct },
+            dimensions: { width: sug.widthPct, height: sug.heightPct },
+            pageNumber: sug.pageNumber,
+            required: true,
+            isSuggestion: true,
+        }));
+        setFields((prev) => [...prev, ...newFields]);
+    };
 
     const isPreviewing = viewMode === 'preview';
 
@@ -168,7 +191,7 @@ function EditorLayout() {
                                             variant="ghost" 
                                             size="icon" 
                                             type="button"
-                                            onClick={onDetect} 
+                                            onClick={() => setIsAiSuggesterOpen(true)} 
                                             disabled={isDetecting}
  className="h-10 w-10 rounded-xl text-primary hover:bg-primary/10 transition-all"
                                         >
@@ -177,6 +200,37 @@ function EditorLayout() {
                                     </TooltipTrigger>
                                     <TooltipContent side="right">AI Detect Fields</TooltipContent>
                                 </Tooltip>
+
+                                {/* Dynamic Computed Formula Popover */}
+                                {selectedFieldIds.length === 1 && (
+                                    <ComputedFormulaPopover
+                                        currentFieldId={selectedFieldIds[0]}
+                                        availableFields={fields.map((f) => ({
+                                            id: f.id,
+                                            label: f.label,
+                                            type: f.type,
+                                            formula: f.formula,
+                                        }))}
+                                        initialFormula={fields.find((f) => f.id === selectedFieldIds[0])?.formula}
+                                        onApplyFormula={(newFormula) => {
+                                            setFields((prev) =>
+                                                prev.map((f) =>
+                                                    f.id === selectedFieldIds[0] ? { ...f, formula: newFormula } : f
+                                                )
+                                            );
+                                        }}
+                                        trigger={
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                type="button"
+                                                className="h-10 w-10 rounded-xl text-primary hover:bg-primary/10 transition-all active:scale-[0.97]"
+                                            >
+                                                <Calculator className="h-5 w-5" />
+                                            </Button>
+                                        }
+                                    />
+                                )}
 
                                 <ToolButton icon={Eye} label="Preview as User" onClick={() => setViewMode('preview')} />
 
@@ -287,6 +341,14 @@ function EditorLayout() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* AI Field Placement Assistant Modal (RSK-01) */}
+            <TemplateAiFieldSuggester
+                open={isAiSuggesterOpen}
+                onOpenChange={setIsAiSuggesterOpen}
+                pageTexts={[]}
+                onApplyFields={handleApplyAiFields}
+            />
         </div>
     );
 }

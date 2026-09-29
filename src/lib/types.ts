@@ -4577,6 +4577,7 @@ export interface PDFFormField {
   options?: string[];
   staticText?: string;
   variableKey?: string;
+  formula?: import('./types/document-signing').ComputedFieldFormula;
 }
 
 export interface Submission {
