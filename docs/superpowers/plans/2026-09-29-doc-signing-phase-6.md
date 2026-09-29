@@ -363,21 +363,21 @@ graph TD
 - Create: `src/app/actions/enterprise-governance-actions.ts`
 - Modify: `src/app/admin/finance/contracts/ContractsClient.tsx`
 
-- [ ] **Step 1: Implement `enterprise-governance-actions.ts`**
+- [x] **Step 1: Implement `enterprise-governance-actions.ts`**
   - Server actions for:
     - Assurance profiles CRUD.
     - Webhook health and DLQ replay action.
     - Legal hold toggle and retention policy assignment.
     - Evidence package ZIP generation download URL.
-- [ ] **Step 2: Build `EnterpriseGovernanceTab.tsx`**
+- [x] **Step 2: Build `EnterpriseGovernanceTab.tsx`**
   - 4 sub-sections: Assurance Profiles, Webhook Outbox & DLQ, Legal Hold & Retention, and Evidence Package Archive.
   - Real-time status cards, failure payload inspector, 1-click DLQ retry, and legal hold switches.
-- [ ] **Step 3: Mount 5th Tab in `ContractsClient.tsx`**
+- [x] **Step 3: Mount 5th Tab in `ContractsClient.tsx`**
   - Add "Enterprise & Governance" tab trigger with `ShieldCheck` icon.
   - Mount `<EnterpriseGovernanceTab workspaceId={activeWorkspaceId} />`.
-- [ ] **Step 4: Verify TypeScript compiler and lint**
+- [x] **Step 4: Verify TypeScript compiler and lint**
   - Command: `pnpm typecheck && pnpm eslint 'src/app/admin/finance/contracts/components/EnterpriseGovernanceTab.tsx' 'src/app/admin/finance/contracts/ContractsClient.tsx'`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/app/admin/finance/contracts/components/EnterpriseGovernanceTab.tsx src/app/actions/enterprise-governance-actions.ts src/app/admin/finance/contracts/ContractsClient.tsx && git commit -m "feat(docsigning): implement enterprise governance dock in agreements hub"`
 
 ---
@@ -387,16 +387,16 @@ graph TD
 - Verify: Full test suite across baseline, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, and Phase 6 tests.
 - Update: `docs/superpowers/plans/2026-09-29-doc-signing-phase-6.md`
 
-- [ ] **Step 1: Run all unit and integration test suites**
+- [x] **Step 1: Run all unit and integration test suites**
   - Command: `pnpm test:run src/lib/__tests__/*.test.ts src/lib/documents/__tests__/*.test.ts`
   - Expected: 100% pass across all suites.
-- [ ] **Step 2: Run TypeScript compiler**
+- [x] **Step 2: Run TypeScript compiler**
   - Command: `pnpm typecheck`
   - Expected: 0 errors.
-- [ ] **Step 3: Run ESLint**
+- [x] **Step 3: Run ESLint**
   - Command: `pnpm lint`
   - Expected: 0 errors, warnings $\le 670$.
-- [ ] **Step 4: Commit completed Phase 6 master plan status**
+- [x] **Step 4: Commit completed Phase 6 master plan status**
   - Command: `git add docs/superpowers/plans/2026-09-29-doc-signing-phase-6.md && git commit -m "docs(docsigning): mark Phase 6 tasks completed"`
 
 ---
