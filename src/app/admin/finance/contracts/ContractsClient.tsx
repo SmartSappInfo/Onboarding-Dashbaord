@@ -29,7 +29,8 @@ import {
     ListChecks,
     RotateCcw,
     ShieldAlert,
-    History
+    History,
+    Users
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -51,6 +52,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import ContractWizard from './components/ContractWizard';
 import WithdrawContractModal from './components/WithdrawContractModal';
+import EnvelopeDetailModal from './components/EnvelopeDetailModal';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -91,6 +93,7 @@ export default function AgreementsClient() {
     const [isWizardOpen, setIsWizardOpen] = React.useState(false);
     const [withdrawingEntity, setWithdrawingEntity] = React.useState<WorkspaceEntity | null>(null);
     const [downloadingId, setDownloadingId] = React.useState<string | null>(null);
+    const [trackingEnvelopeId, setTrackingEnvelopeId] = React.useState<string | null>(null);
 
     // Single Contract Deletion State
     const [contractToPurge, setContractToPurge] = React.useState<{ contract: Contract, entity: WorkspaceEntity } | null>(null);
@@ -540,6 +543,15 @@ export default function AgreementsClient() {
                                                                                 <span className="font-bold text-sm">Copy Verify URL</span>
                                                                             </DropdownMenuItem>
                                                                         )}
+                                                                        {contract?.id && (
+                                                                            <DropdownMenuItem 
+                                                                                className="gap-3 rounded-xl p-2.5" 
+                                                                                onClick={() => setTrackingEnvelopeId(contract.id)}
+                                                                            >
+                                                                                <div className="p-1.5 bg-indigo-500/10 rounded-lg text-indigo-600 dark:text-indigo-400"><Users className="h-4 w-4" /></div>
+                                                                                <span className="font-bold text-sm">Track Signatories</span>
+                                                                            </DropdownMenuItem>
+                                                                        )}
  <DropdownMenuItem className="gap-3 rounded-xl p-2.5" asChild>
                                                                             <a href={`/forms/${contract.pdfId}?entityId=${item.entityId}`} target="_blank" rel="noopener noreferrer">
  <div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Globe className="h-4 w-4" /></div>
@@ -669,6 +681,13 @@ export default function AgreementsClient() {
                         onOpenChange={(o) => !o && setWithdrawingEntity(null)} 
                     />
                 )}
+
+                <EnvelopeDetailModal 
+                    isOpen={!!trackingEnvelopeId} 
+                    onClose={() => setTrackingEnvelopeId(null)} 
+                    envelopeId={trackingEnvelopeId} 
+                    workspaceId={activeWorkspaceId || 'default'} 
+                />
 
                 {/* Single Purge Confirmation */}
                 <AlertDialog open={!!contractToPurge} onOpenChange={(o) => !o && setContractToPurge(null)}>
