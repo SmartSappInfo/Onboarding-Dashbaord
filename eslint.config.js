@@ -57,6 +57,26 @@ const config = [
       }],
     },
   },
+  {
+    // agents_mcp build plan A2 / Rule 4: no `any`, no unsafe flows and no unchecked double casts in the
+    // capability platform and the trusted cores. Type-aware (projectService), scoped to keep lint fast
+    // (~20 s). Widen `files` as new core modules are added (src/lib/crm/** lands in PR-1).
+    files: ['src/platform/**/*.ts', 'src/lib/tasks/**/*.ts', 'src/lib/auth/require-portal-access.ts'],
+    ignores: ['**/__tests__/**'],
+    languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname } },
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-unsafe-assignment': 'error',
+      '@typescript-eslint/no-unsafe-member-access': 'error',
+      '@typescript-eslint/no-unsafe-call': 'error',
+      '@typescript-eslint/no-unsafe-return': 'error',
+      '@typescript-eslint/no-unsafe-argument': 'error',
+      'no-restricted-syntax': ['error', {
+        selector: "TSAsExpression[expression.type='TSAsExpression'][expression.typeAnnotation.type='TSUnknownKeyword']",
+        message: 'Unchecked double cast (`as unknown as T`). Validate with a Zod schema at the boundary instead (Rule 4).',
+      }],
+    },
+  },
 ];
 
 export default config;
