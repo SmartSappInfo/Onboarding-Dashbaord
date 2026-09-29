@@ -126,6 +126,7 @@ export default function EditPdfPage() {
   const _pathname = usePathname();
   const { toast } = useToast();
   const pdfId = params.id as string;
+  const isNew = pdfId === 'new';
   const firestore = useFirestore();
   const { user: _user } = useUser();
   const { activeWorkspaceId, allowedWorkspaces } = useWorkspace();
@@ -168,7 +169,7 @@ export default function EditPdfPage() {
   const watchedForm = watch();
   const _debouncedForm = useDebounce(watchedForm, 2000);
 
-  const pdfDocRef = useMemoFirebase(() => firestore && pdfId ? doc(firestore, 'pdfs', pdfId) : null, [firestore, pdfId]);
+  const pdfDocRef = useMemoFirebase(() => firestore && pdfId && !isNew ? doc(firestore, 'pdfs', pdfId) : null, [firestore, pdfId, isNew]);
   const { data: pdf, isLoading } = useDoc<PDFForm>(pdfDocRef);
 
   const livePdf = React.useMemo(() => {
@@ -181,15 +182,15 @@ export default function EditPdfPage() {
     } as PDFForm;
   }, [pdf, watchedForm, fields, namingFieldId]);
   
-  useSetBreadcrumb(pdf?.name, `/admin/pdfs/${pdfId}`);
+  useSetBreadcrumb(isNew ? 'New PDF' : pdf?.name, `/admin/pdfs/${pdfId}`);
 
   const [isPublishOpen, setIsPublishOpen] = React.useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = React.useState(false);
 
   const versionsQuery = useMemoFirebase(() => {
-    if (!firestore || !pdfId) return null;
+    if (!firestore || !pdfId || isNew) return null;
     return query(collection(firestore, 'template_versions'), where('templateId', '==', pdfId));
-  }, [firestore, pdfId]);
+  }, [firestore, pdfId, isNew]);
   const { data: rawVersions } = useCollection<TemplateVersion>(versionsQuery);
   const allVersions = React.useMemo(() => rawVersions || [], [rawVersions]);
 
