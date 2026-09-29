@@ -86,8 +86,9 @@ import CreateObligationModal from './components/CreateObligationModal';
 import TemplateCatalogTab from './components/TemplateCatalogTab';
 import ObligationsSummaryTab from './components/ObligationsSummaryTab';
 import ContractsAnalyticsTab from './components/ContractsAnalyticsTab';
+import ReminderSettingsDrawer from './components/ReminderSettingsDrawer';
 import type { ContractRecord } from '@/lib/types/document-signing';
-import { BarChart3 } from 'lucide-react';
+import { BarChart3, Bell } from 'lucide-react';
 
 /**
  * @fileOverview Agreements Hub Client.
@@ -108,10 +109,11 @@ export default function AgreementsClient() {
     const [downloadingId, setDownloadingId] = React.useState<string | null>(null);
     const [trackingEnvelopeId, setTrackingEnvelopeId] = React.useState<string | null>(null);
 
-    // Contract Lifecycle & Modal State (Phase 3)
+    // Contract Lifecycle & Modal State (Phase 3 & Phase 4)
     const [lifecycleContractId, setLifecycleContractId] = React.useState<string | null>(null);
     const [amendmentParentContract, setAmendmentParentContract] = React.useState<ContractRecord | null>(null);
     const [isCreateObligationOpen, setIsCreateObligationOpen] = React.useState(false);
+    const [isReminderSettingsOpen, setIsReminderSettingsOpen] = React.useState(false);
 
     // Single Contract Deletion State
     const [contractToPurge, setContractToPurge] = React.useState<{ contract: Contract, entity: WorkspaceEntity } | null>(null);
@@ -303,6 +305,25 @@ export default function AgreementsClient() {
                             <p className="text-muted-foreground text-sm mt-1">
                                 Institutional legal contracts, templates, and post-signing obligations for {activeWorkspaceId || 'this workspace'}
                             </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setIsReminderSettingsOpen(true)}
+                                className="rounded-xl font-bold text-xs h-9 px-3 gap-1.5 shadow-sm active:scale-[0.97] transition-all min-h-[44px] sm:min-h-0"
+                            >
+                                <Bell className="h-3.5 w-3.5 text-primary" />
+                                Reminder Rules
+                            </Button>
+                            <Button
+                                onClick={() => setIsWizardOpen(true)}
+                                size="sm"
+                                className="rounded-xl font-bold text-xs h-9 px-3 shadow-sm active:scale-[0.97] transition-all min-h-[44px] sm:min-h-0"
+                            >
+                                <Plus className="h-3.5 w-3.5 mr-1" />
+                                New Contract
+                            </Button>
                         </div>
                     </div>
 
@@ -832,6 +853,13 @@ export default function AgreementsClient() {
                             description: 'New deliverable obligation added to the workspace ledger.'
                         });
                     }}
+                />
+
+                {/* Reminder & Notification Settings Drawer (Phase 4 / P4.5) */}
+                <ReminderSettingsDrawer
+                    open={isReminderSettingsOpen}
+                    onOpenChange={setIsReminderSettingsOpen}
+                    workspaceId={activeWorkspaceId || ''}
                 />
             </div>
         </TooltipProvider>
