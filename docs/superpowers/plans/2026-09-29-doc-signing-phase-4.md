@@ -251,11 +251,12 @@ Conforming to `frontend-design`, `ui-ux-pro-max`, `emilkowal-animations`, and `v
   - Test transforming `ContractRecord` into `CRMKnowledgeTimelineItem` (source: `'contract'`).
   - Test transforming `SigningEnvelope` into `CRMKnowledgeTimelineItem` (source: `'signing_envelope'`).
   - Test timeline filtering by date, status, and search query.
+  - Test query bounding: strictly enforcing `limit(25)` alongside `orderBy('createdAt', 'desc')`.
 - [ ] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/timeline-contract-adapter.test.ts`
 - [ ] **Step 3: Implement timeline extensions**
   - Add `'contract' | 'signing_envelope'` to `TimelineItemSource` in `src/lib/quick-notes-types.ts`.
-  - Implement federated streaming in `use-unified-entity-timeline.ts`.
+  - Implement federated streaming in `use-unified-entity-timeline.ts` with bounded `limit(25)`.
 - [ ] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/timeline-contract-adapter.test.ts`
 - [ ] **Step 5: Commit changes**
@@ -284,9 +285,10 @@ Conforming to `frontend-design`, `ui-ux-pro-max`, `emilkowal-animations`, and `v
 
 ---
 
-### Task 6: Multi-Channel Reminder & Renewal Escalation Engine (P4.5)
+### Task 6: Multi-Channel Reminder & Renewal Escalation Engine & Cron Endpoint (P4.5)
 **Files:**
 - Create: `src/lib/documents/signing-reminder-service.ts`
+- Create: `src/app/api/cron/signing-reminders/route.ts`
 - Create: `src/lib/documents/__tests__/signing-reminder-service.test.ts`
 
 - [ ] **Step 1: Write unit tests in `signing-reminder-service.test.ts`**
@@ -297,12 +299,13 @@ Conforming to `frontend-design`, `ui-ux-pro-max`, `emilkowal-animations`, and `v
   - Test evaluating upcoming contract renewals (30d, 60d, 90d notice).
 - [ ] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/signing-reminder-service.test.ts`
-- [ ] **Step 3: Implement `src/lib/documents/signing-reminder-service.ts`**
+- [ ] **Step 3: Implement `src/lib/documents/signing-reminder-service.ts` & cron route**
   - Service functions: `evaluatePendingEnvelopeReminders`, `dispatchEnvelopeReminder`, `evaluateContractRenewalAlerts`.
+  - Create secure Next.js Route Handler `/api/cron/signing-reminders/route.ts` with `CRON_SECRET` authorization.
 - [ ] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/signing-reminder-service.test.ts`
 - [ ] **Step 5: Commit changes**
-  - Command: `git add src/lib/documents/signing-reminder-service.ts src/lib/documents/__tests__/signing-reminder-service.test.ts && git commit -m "feat(docsigning): implement multi-channel reminder and renewal escalation engine"`
+  - Command: `git add src/lib/documents/signing-reminder-service.ts src/app/api/cron/signing-reminders/route.ts src/lib/documents/__tests__/signing-reminder-service.test.ts && git commit -m "feat(docsigning): implement multi-channel reminder and renewal escalation engine and cron endpoint"`
 
 ---
 
