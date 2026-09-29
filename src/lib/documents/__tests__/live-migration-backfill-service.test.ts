@@ -20,8 +20,7 @@ import {
   migrateLegacyContractToEnvelope,
   executeMigrationBatch,
 } from '@/lib/documents/live-migration-backfill-service';
-import { PDFForm, Contract } from '@/lib/types';
-import { Submission } from '@/lib/types/document-signing';
+import { PDFForm, Contract, Submission } from '@/lib/types';
 
 // Mock Firebase Admin
 const mockGet = vi.fn();
@@ -67,22 +66,26 @@ describe('Live Migration Backfill Engine (Phase 7)', () => {
   describe('migrateLegacyPdfFormToTemplate', () => {
     const legacyForm: PDFForm = {
       id: 'pdf_legacy_001',
-      title: 'Enterprise Master Services Agreement',
-      description: 'Standard enterprise template',
-      pdfUrl: 'https://storage.googleapis.com/test-bucket/msa.pdf',
+      name: 'Enterprise Master Services Agreement',
+      publicTitle: 'Enterprise Master Services Agreement',
+      slug: 'enterprise-msa',
+      storagePath: 'templates/msa.pdf',
+      downloadUrl: 'https://storage.googleapis.com/test-bucket/msa.pdf',
+      status: 'published',
+      workspaceIds: [workspaceId],
       fields: [
         {
           id: 'field_client_name',
           type: 'text',
           pageNumber: 1,
-          bounds: { x: 10, y: 20, width: 200, height: 30 },
+          position: { x: 10, y: 20 },
+          dimensions: { width: 200, height: 30 },
           label: 'Client Legal Entity',
           required: true,
         },
       ],
       createdAt: '2025-01-15T10:00:00.000Z',
       updatedAt: '2025-01-15T10:00:00.000Z',
-      workspaceId,
     };
 
     it('transforms legacy PDFForm into DocumentTemplate and version 1.0', async () => {
@@ -104,7 +107,7 @@ describe('Live Migration Backfill Engine (Phase 7)', () => {
     it('quarantines record if tenant workspaceId does not match (FM-P7-04)', async () => {
       const mismatchedForm: PDFForm = {
         ...legacyForm,
-        workspaceId: 'other_workspace_hacker',
+        workspaceIds: ['other_workspace_hacker'],
       };
 
       const result = await migrateLegacyPdfFormToTemplate({
@@ -123,27 +126,29 @@ describe('Live Migration Backfill Engine (Phase 7)', () => {
   describe('migrateLegacyContractToEnvelope', () => {
     const legacyContract: Contract = {
       id: 'con_legacy_888',
-      workspaceId,
+      entityId: 'ent_cyberdyne_01',
+      entityName: 'Cyberdyne Systems',
+      pdfId: 'pdf_legacy_001',
+      pdfName: 'Enterprise Master Services Agreement',
       status: 'signed',
-      pdfTemplateId: 'pdf_legacy_001',
-      recipientEmail: 'sarah.connor@cyberdyne.com',
-      recipientName: 'Sarah Connor',
-      completedPdfUrl: 'https://storage.googleapis.com/test-bucket/signed_msa.pdf',
+      recipients: [
+        {
+          name: 'Sarah Connor',
+          email: 'sarah.connor@cyberdyne.com',
+          type: 'signer',
+        },
+      ],
+      storagePath: 'contracts/signed_msa.pdf',
       createdAt: '2025-06-01T12:00:00.000Z',
       updatedAt: '2025-06-01T12:30:00.000Z',
     };
 
     const legacySubmission: Submission = {
       id: 'sub_legacy_888',
-      contractId: 'con_legacy_888',
-      workspaceId,
-      status: 'completed',
+      pdfId: 'pdf_legacy_001',
+      status: 'submitted',
       submittedAt: '2025-06-01T12:30:00.000Z',
-      fieldData: { field_client_name: 'Cyberdyne Systems' },
-      signerEmail: 'sarah.connor@cyberdyne.com',
-      signerName: 'Sarah Connor',
-      createdAt: '2025-06-01T12:00:00.000Z',
-      updatedAt: '2025-06-01T12:30:00.000Z',
+      formData: { field_client_name: 'Cyberdyne Systems' },
     };
 
     it('migrates legacy contract and submission to modern Contract and SigningEnvelope', async () => {

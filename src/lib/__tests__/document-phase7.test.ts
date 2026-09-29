@@ -90,18 +90,24 @@ describe('Dedicated Phase 7 End-to-End Cutover Suite (DocSigning_roadmap.md Phas
     it('backfills a legacy PDF form into modern DocumentTemplate and TemplateVersion v1.0', async () => {
       const legacyForm: PDFForm = {
         id: 'pdf_legacy_nda_001',
-        title: 'Master Enterprise NDA',
+        name: 'Master Enterprise NDA',
+        publicTitle: 'Master Enterprise NDA',
+        slug: 'master-nda',
+        storagePath: 'templates/nda.pdf',
+        downloadUrl: 'https://storage.googleapis.com/test-bucket/nda.pdf',
+        status: 'published',
+        workspaceIds: [workspaceId],
         fields: [
           {
             id: 'field_sig_01',
             type: 'signature',
             label: 'Authorized Officer Signature',
             required: true,
-            page: 1,
-            position: { x: 50, y: 700, width: 200, height: 50 },
+            pageNumber: 1,
+            position: { x: 50, y: 700 },
+            dimensions: { width: 200, height: 50 },
           },
         ],
-        workspaceId,
         createdAt: '2026-01-01T00:00:00.000Z',
         updatedAt: '2026-01-01T00:00:00.000Z',
       };
@@ -126,11 +132,10 @@ describe('Dedicated Phase 7 End-to-End Cutover Suite (DocSigning_roadmap.md Phas
         legacyContract: null, // Missing parent contract
         legacySubmission: {
           id: 'sub_orphan_999',
-          contractId: 'con_nonexistent_999',
-          workspaceId,
-          status: 'completed',
-          createdAt: '2026-01-01T00:00:00.000Z',
-          updatedAt: '2026-01-01T00:00:00.000Z',
+          pdfId: 'pdf_legacy_999',
+          formData: {},
+          status: 'submitted',
+          submittedAt: '2026-01-01T00:00:00.000Z',
         },
         isDryRun: false,
       });
@@ -223,10 +228,15 @@ describe('Dedicated Phase 7 End-to-End Cutover Suite (DocSigning_roadmap.md Phas
   // ── 3. Non-Blocking Shadow-Read Verifier ────────────────────────────────────
   describe('P7.3: Non-Blocking Shadow-Read Verifier & Telemetry', () => {
     it('returns legacy read immediately while validating modern adapter in background (FM-P7-08)', async () => {
-      const legacyFn = vi.fn().mockResolvedValue({ id: 'doc_123', status: 'signed', title: 'Agmt' });
-      const modernFn = vi.fn().mockResolvedValue({ id: 'doc_123', status: 'signed', title: 'Agmt' });
+      interface TestDoc {
+        id: string;
+        status: string;
+        title: string;
+      }
+      const legacyFn = vi.fn<() => Promise<TestDoc>>().mockResolvedValue({ id: 'doc_123', status: 'signed', title: 'Agmt' });
+      const modernFn = vi.fn<() => Promise<TestDoc>>().mockResolvedValue({ id: 'doc_123', status: 'signed', title: 'Agmt' });
 
-      const result = await executeShadowRead({
+      const result = await executeShadowRead<TestDoc>({
         workspaceId,
         entityType: 'contracts',
         entityId: 'doc_123',

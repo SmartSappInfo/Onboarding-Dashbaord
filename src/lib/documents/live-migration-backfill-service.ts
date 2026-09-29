@@ -5,7 +5,7 @@
  * 1. Purpose & Invariants (DocSigning_roadmap.md §13 & §17):
  *    Provides zero-downtime, bounded-batch backfill of historical legacy data:
  *    - Legacy `PDFForm` -> Modern `DocumentTemplate` & `TemplateVersion` (v1.0)
- *    - Legacy `Contract` & `Submission` -> Modern `Contract` & `SigningEnvelope`
+ *    - Legacy `Contract` & `Submission` -> Modern `ContractRecord` & `SigningEnvelope`
  * 2. In-Flight Race & Contention Protection:
  *    - Bounded Batches (FM-P7-02): Operations execute in chunks of 25 records with cursor checkpointing.
  *    - In-Flight Update Checking (FM-P7-01): Re-verifies timestamps to prevent overriding concurrent signers.
@@ -19,14 +19,14 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
-import { PDFForm, Contract as LegacyContract } from '@/lib/types';
+import { PDFForm, Contract as LegacyContract, Submission } from '@/lib/types';
 import {
-  Submission,
   DocumentTemplate,
   TemplateVersion,
   SigningEnvelope,
-  Recipient,
-  Contract as ModernContract,
+  EnvelopeRecipient,
+  ContractRecord,
+  DocumentFieldDefinition,
   MigrationRun,
   MigrationQuarantineRecord,
   MigrationQuarantineErrorCode,
@@ -129,14 +129,20 @@ export async function migrateLegacyPdfFormToTemplate(
   const { workspaceId, runId, legacyForm, isDryRun = false } = input;
 
   // FM-P7-04: Strict tenant boundary check
-  if (legacyForm.workspaceId && legacyForm.workspaceId !== workspaceId) {
+  const legacyWorkspaceId = (legacyForm as unknown as { workspaceId?: string }).workspaceId;
+  const legacyWorkspaceIds = Array.isArray(legacyForm.workspaceIds) ? legacyForm.workspaceIds : [];
+  const hasWorkspaceMismatch = legacyWorkspaceId
+    ? legacyWorkspaceId !== workspaceId
+    : legacyWorkspaceIds.length > 0 && !legacyWorkspaceIds.includes(workspaceId);
+
+  if (hasWorkspaceMismatch) {
     await quarantineLegacyRecord({
       workspaceId,
       runId,
       sourceCollection: 'pdfs',
       sourceRecordId: legacyForm.id,
       errorCode: 'ERR_TENANT_MISMATCH',
-      reason: `Form workspaceId (${legacyForm.workspaceId}) does not match migration context (${workspaceId})`,
+      reason: `Form workspace does not match migration context (${workspaceId})`,
       rawPayload: legacyForm as unknown as Record<string, unknown>,
       isDryRun,
     });
@@ -153,30 +159,57 @@ export async function migrateLegacyPdfFormToTemplate(
   const nowIso = new Date().toISOString();
   const templateId = legacyForm.id;
   const versionId = 'v1.0';
+  const templateName =
+    legacyForm.name ||
+    legacyForm.publicTitle ||
+    (legacyForm as unknown as { title?: string }).title ||
+    'Untitled Migrated Template';
 
   const modernTemplate: DocumentTemplate = {
     id: templateId,
     workspaceId,
-    title: legacyForm.title || 'Untitled Migrated Template',
-    description: legacyForm.description || '',
+    name: templateName,
+    description: (legacyForm as unknown as { description?: string }).description || '',
+    documentType: 'contract',
     status: 'published',
-    currentVersionId: versionId,
+    currentPublishedVersionId: versionId,
+    tagIds: [],
+    storagePath: legacyForm.storagePath || '',
+    createdBy: legacyForm.createdBy || 'system_migration_worker',
     createdAt: legacyForm.createdAt || nowIso,
     updatedAt: legacyForm.updatedAt || nowIso,
   };
+
+  const modernFields: DocumentFieldDefinition[] = (legacyForm.fields || []).map((f) => ({
+    id: f.id,
+    key: f.variableKey || f.id,
+    label: f.label,
+    type: (f.type as DocumentFieldDefinition['type']) || 'text',
+    page: f.pageNumber || 1,
+    x: f.position?.x ?? 0,
+    y: f.position?.y ?? 0,
+    width: f.dimensions?.width ?? 20,
+    height: f.dimensions?.height ?? 5,
+    required: f.required ?? false,
+    assignedRole: 'signer',
+  }));
 
   const modernVersion: TemplateVersion = {
     id: versionId,
     templateId,
     workspaceId,
-    versionNumber: versionId,
+    versionNumber: 1,
     status: 'published',
-    pdfUrl: legacyForm.pdfUrl || '',
-    fields: legacyForm.fields || [],
+    contentSnapshot: {
+      storagePath: legacyForm.storagePath || '',
+      sha256: 'legacy_migrated_digest',
+    },
+    fields: modernFields,
+    variableSchemaVersion: '1.0',
     publishedAt: legacyForm.createdAt || nowIso,
-    publishedByUserId: 'system_migration_worker',
-    changelog: 'Automated migration from legacy PDFForm',
+    createdBy: legacyForm.createdBy || 'system_migration_worker',
     createdAt: legacyForm.createdAt || nowIso,
+    updatedAt: legacyForm.updatedAt || nowIso,
   };
 
   if (!isDryRun) {
@@ -229,14 +262,15 @@ export async function migrateLegacyContractToEnvelope(
   }
 
   // FM-P7-04: Tenant check
-  if (legacyContract.workspaceId && legacyContract.workspaceId !== workspaceId) {
+  const contractWorkspaceId = (legacyContract as unknown as { workspaceId?: string }).workspaceId;
+  if (contractWorkspaceId && contractWorkspaceId !== workspaceId) {
     await quarantineLegacyRecord({
       workspaceId,
       runId,
       sourceCollection: 'contracts',
       sourceRecordId: legacyContract.id,
       errorCode: 'ERR_TENANT_MISMATCH',
-      reason: `Contract workspaceId (${legacyContract.workspaceId}) does not match migration context (${workspaceId})`,
+      reason: `Contract workspaceId (${contractWorkspaceId}) does not match migration context (${workspaceId})`,
       rawPayload: legacyContract as unknown as Record<string, unknown>,
       isDryRun,
     });
@@ -256,49 +290,80 @@ export async function migrateLegacyContractToEnvelope(
   const recipientId = `rec_mig_${contractId}_01`;
 
   // FM-P7-12: Statutory retention calculation
-  const retentionExpirationDate = calculateRetentionExpiration(
+  const retentionExpiration = calculateRetentionExpiration(
     'standard',
     legacyContract.createdAt || nowIso
   );
+  const retentionExpirationDate = retentionExpiration.toISOString();
 
   const isSigned = legacyContract.status === 'signed';
+  const legacyTitle =
+    (legacyContract as unknown as { title?: string }).title ||
+    legacyContract.pdfName ||
+    (legacyContract as unknown as { pdfTemplateId?: string }).pdfTemplateId ||
+    'Migrated Agreement';
 
-  const modernContract: ModernContract = {
+  const modernContract: ContractRecord = {
     id: contractId,
     workspaceId,
-    title: legacyContract.pdfTemplateId || 'Migrated Agreement',
-    status: isSigned ? 'signed' : 'draft',
-    pdfTemplateId: legacyContract.pdfTemplateId,
-    assuranceProfileId: 'profile_ses_standard',
-    isUnderLegalHold: false,
-    retentionCategory: 'standard',
-    retentionExpirationDate,
+    title: legacyTitle,
+    status: isSigned ? 'executed' : 'proposed',
+    entityId: legacyContract.entityId,
+    dealId: legacyContract.dealId,
+    envelopeIds: [envelopeId],
+    partyLinks: [],
+    noticePeriodDays: 30,
+    ownerId: 'system_migration_worker',
+    executedPdfStoragePath: legacyContract.storagePath,
+    executedPdfSha256: legacyContract.documentDigest,
+    tagIds: [],
     createdAt: legacyContract.createdAt || nowIso,
     updatedAt: legacyContract.updatedAt || nowIso,
   };
 
-  const recipient: Recipient = {
+  const primaryRecipient = legacyContract.recipients?.[0];
+  const recipientName =
+    primaryRecipient?.name ||
+    (legacyContract as unknown as { recipientName?: string }).recipientName ||
+    'Primary Signer';
+  const recipientEmail =
+    primaryRecipient?.email ||
+    (legacyContract as unknown as { recipientEmail?: string }).recipientEmail ||
+    'signer@domain.com';
+
+  const recipient: EnvelopeRecipient = {
     id: recipientId,
-    envelopeId,
     workspaceId,
+    envelopeId,
     role: 'signer',
+    name: recipientName,
+    email: recipientEmail,
     routingOrder: 1,
-    name: legacyContract.recipientName || 'Primary Signer',
-    email: legacyContract.recipientEmail || 'signer@domain.com',
     status: isSigned ? 'signed' : 'pending',
-    signedAt: isSigned ? legacyContract.updatedAt || nowIso : undefined,
-    createdAt: legacyContract.createdAt || nowIso,
+    tokenHash: 'legacy_migrated_token',
+    tokenExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    signedAt: isSigned ? legacyContract.signedAt || legacyContract.updatedAt || nowIso : undefined,
   };
 
   const envelope: SigningEnvelope = {
     id: envelopeId,
     workspaceId,
+    title: legacyTitle,
     contractId,
     status: isSigned ? 'completed' : 'sent',
+    routingMode: 'sequential',
+    currentRoutingOrder: 1,
     recipients: [recipient],
-    completedAt: isSigned ? legacyContract.updatedAt || nowIso : undefined,
+    documentStoragePath: legacyContract.storagePath || '',
+    preExecutionSha256: legacyContract.documentDigest || 'legacy_pre_digest',
+    completedDocumentStoragePath: isSigned ? legacyContract.storagePath : undefined,
+    completedSha256: isSigned ? legacyContract.documentDigest : undefined,
+    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    completedAt: isSigned ? legacyContract.signedAt || legacyContract.updatedAt || nowIso : undefined,
+    createdBy: 'system_migration_worker',
     createdAt: legacyContract.createdAt || nowIso,
     updatedAt: legacyContract.updatedAt || nowIso,
+    isLegacyMigrated: true,
   };
 
   if (!isDryRun) {
