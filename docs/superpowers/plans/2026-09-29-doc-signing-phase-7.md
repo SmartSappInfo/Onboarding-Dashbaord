@@ -197,19 +197,19 @@ graph TD
 - Modify: `src/lib/types/document-signing.ts`
 - Create: `src/lib/documents/__tests__/migration-cutover-schemas.test.ts`
 
-- [ ] **Step 1: Write schema validation unit tests in `migration-cutover-schemas.test.ts`**
+- [x] **Step 1: Write schema validation unit tests in `migration-cutover-schemas.test.ts`**
   - Test valid and invalid payloads for `MigrationRunSchema` (`runId`, `workspaceId`, `status`, `counts`, `cursor`).
   - Test `MigrationQuarantineRecordSchema` (`recordId`, `sourceCollection`, `errorCode`, `reason`, `rawPayload`).
   - Test `ReconciliationReportSchema` (`reportId`, `workspaceId`, `sourceCounts`, `targetCounts`, `discrepancies`, `artifactParityPercentage`).
   - Test `RolloutCohortConfigSchema` (`workspaceId`, `cohortPercentage`, `isEmergencyRollbackActive`, `updatedByUserId`).
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/migration-cutover-schemas.test.ts`
-- [ ] **Step 3: Update `src/lib/types/document-signing.ts`**
+- [x] **Step 3: Update `src/lib/types/document-signing.ts`**
   - Implement all Phase 7 schemas and exported TypeScript types.
   - Strictly zero `any` or `any[]` (Rule 4).
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/migration-cutover-schemas.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/types/document-signing.ts src/lib/documents/__tests__/migration-cutover-schemas.test.ts && git commit -m "feat(docsigning): implement strict schemas for migration backfill, reconciliation, and rollout"`
 
 ---
@@ -219,20 +219,20 @@ graph TD
 - Create: `src/lib/documents/live-migration-backfill-service.ts`
 - Create: `src/lib/documents/__tests__/live-migration-backfill-service.test.ts`
 
-- [ ] **Step 1: Write unit tests in `live-migration-backfill-service.test.ts`**
+- [x] **Step 1: Write unit tests in `live-migration-backfill-service.test.ts`**
   - Test migrating a legacy `PDFForm` to `DocumentTemplate` and `TemplateVersion` (`v1.0`).
   - Test migrating a legacy `Contract` and `Submission` to modern `Contract` and `SigningEnvelope`.
   - Test resumable cursor checkpoints: verifies migration resumes from last processed document ID on interruption.
   - Test quarantine routing: records with missing parent contracts are quarantined without breaking the batch (FM-P7-03).
   - Test rate limiting and batch sizing: chunks of 25 records with backpressure (FM-P7-02).
   - Test tenant isolation: records belonging to other workspaces are strictly rejected (FM-P7-04).
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/live-migration-backfill-service.test.ts`
-- [ ] **Step 3: Implement `src/lib/documents/live-migration-backfill-service.ts`**
+- [x] **Step 3: Implement `src/lib/documents/live-migration-backfill-service.ts`**
   - Bounded batch runner, cursor checkpointing, quarantine handler, and tenant enforcement.
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/live-migration-backfill-service.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/live-migration-backfill-service.ts src/lib/documents/__tests__/live-migration-backfill-service.test.ts && git commit -m "feat(docsigning): implement live data backfill engine with bounded batches and checkpoints"`
 
 ---
@@ -242,19 +242,19 @@ graph TD
 - Create: `src/lib/documents/data-reconciliation-service.ts`
 - Create: `src/lib/documents/__tests__/data-reconciliation-service.test.ts`
 
-- [ ] **Step 1: Write unit tests in `data-reconciliation-service.test.ts`**
+- [x] **Step 1: Write unit tests in `data-reconciliation-service.test.ts`**
   - Test comparing legacy `contracts` vs modern `contracts`: verifies count parity and status alignment.
   - Test comparing legacy `contract_submissions` vs modern `signing_envelopes`: verifies recipient status parity.
   - Test artifact checksum verification: verifies SHA-256 matches between legacy and modern records (FM-P7-06).
   - Test anomaly detection: produces structured discrepancy entries when a record is missing or mismatched.
   - Test reconciliation export: formats audit report into downloadable CSV and JSON.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/data-reconciliation-service.test.ts`
-- [ ] **Step 3: Implement `src/lib/documents/data-reconciliation-service.ts`**
+- [x] **Step 3: Implement `src/lib/documents/data-reconciliation-service.ts`**
   - Cursor-based reconciliation auditor, cryptographic checksum comparison, and report exporter.
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/data-reconciliation-service.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/data-reconciliation-service.ts src/lib/documents/__tests__/data-reconciliation-service.test.ts && git commit -m "feat(docsigning): implement automated data reconciliation and integrity audit engine"`
 
 ---
@@ -264,18 +264,18 @@ graph TD
 - Create: `src/lib/documents/shadow-read-service.ts`
 - Create: `src/lib/documents/__tests__/shadow-read-service.test.ts`
 
-- [ ] **Step 1: Write unit tests in `shadow-read-service.test.ts`**
+- [x] **Step 1: Write unit tests in `shadow-read-service.test.ts`**
   - Test executing parallel shadow read: returns legacy result immediately while comparing modern adapter in background.
   - Test diff detection: flags discrepancy if fields, status, or recipient counts diverge.
   - Test zero-latency impact: verifies user request path is non-blocking (FM-P7-08).
   - Test telemetry aggregation: computes rolling parity percentage over last 100 reads.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/shadow-read-service.test.ts`
-- [ ] **Step 3: Implement `src/lib/documents/shadow-read-service.ts`**
+- [x] **Step 3: Implement `src/lib/documents/shadow-read-service.ts`**
   - Asynchronous shadow read runner, deep diff comparator, and parity telemetry emitter.
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/shadow-read-service.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/shadow-read-service.ts src/lib/documents/__tests__/shadow-read-service.test.ts && git commit -m "feat(docsigning): implement non-blocking shadow-read verifier and telemetry"`
 
 ---
@@ -285,18 +285,18 @@ graph TD
 - Create: `src/lib/documents/rollout-switchboard-service.ts`
 - Create: `src/lib/documents/__tests__/rollout-switchboard-service.test.ts`
 
-- [ ] **Step 1: Write unit tests in `rollout-switchboard-service.test.ts`**
+- [x] **Step 1: Write unit tests in `rollout-switchboard-service.test.ts`**
   - Test cohort assignment hashing: deterministically assigns a contract or envelope to legacy vs modern based on workspace percentage.
   - Test emergency rollback: when `isEmergencyRollbackActive: true`, 100% of traffic routes to compatibility legacy mode (FM-P7-05).
   - Test updating cohort percentage: increments rollout from 0% -> 10% -> 25% -> 50% -> 100% with audit logging.
   - Test tenant isolation: cohort configurations strictly isolated by `workspaceId`.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/rollout-switchboard-service.test.ts`
-- [ ] **Step 3: Implement `src/lib/documents/rollout-switchboard-service.ts`**
+- [x] **Step 3: Implement `src/lib/documents/rollout-switchboard-service.ts`**
   - Deterministic hashing cohort router, emergency kill switch, and rollout state management.
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/rollout-switchboard-service.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/rollout-switchboard-service.ts src/lib/documents/__tests__/rollout-switchboard-service.test.ts && git commit -m "feat(docsigning): implement staged canary switchboard and rollout controls"`
 
 ---
@@ -306,17 +306,17 @@ graph TD
 - Create: `src/lib/documents/legacy-retirement-service.ts`
 - Create: `src/lib/documents/__tests__/legacy-retirement-service.test.ts`
 
-- [ ] **Step 1: Write unit tests in `legacy-retirement-service.test.ts`**
+- [x] **Step 1: Write unit tests in `legacy-retirement-service.test.ts`**
   - Test soft-deprecation interception: logs deprecation warnings when legacy endpoints are called while auto-projecting to modern domain (FM-P7-09).
   - Test hard cutover mode: rejects direct legacy mutations with `LegacyEndpointDeprecatedError` once 100% GA is achieved.
   - Test public URL translation: transparently rewrites `/forms/[pdfId]` requests to `/sign/[token]` maintaining perpetual link validity.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/legacy-retirement-service.test.ts`
-- [ ] **Step 3: Implement `src/lib/documents/legacy-retirement-service.ts`**
+- [x] **Step 3: Implement `src/lib/documents/legacy-retirement-service.ts`**
   - Interception layer, soft/hard deprecation guards, and URL redirect translator.
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/legacy-retirement-service.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/legacy-retirement-service.ts src/lib/documents/__tests__/legacy-retirement-service.test.ts && git commit -m "feat(docsigning): implement dual-write sunsetting and legacy deprecation layer"`
 
 ---
@@ -325,7 +325,7 @@ graph TD
 **Files:**
 - Create: `src/app/actions/migration-cutover-actions.ts`
 
-- [ ] **Step 1: Implement `migration-cutover-actions.ts`**
+- [x] **Step 1: Implement `migration-cutover-actions.ts`**
   - Server actions for:
     - `startMigrationRunAction`: trigger dry-run or live migration batch with cursor tracking.
     - `getMigrationStatusAction`: fetch active migration run metrics and quarantine counts.
@@ -334,9 +334,9 @@ graph TD
     - `triggerEmergencyRollbackAction`: toggle instant fallback to legacy compatibility mode.
     - `exportReconciliationReportAction`: generate downloadable CSV/JSON audit payload.
   - Strict typing, zero `any` (Rule 4), tenant isolation verification (Rule 5 & 8).
-- [ ] **Step 2: Verify TypeScript compiler and lint**
+- [x] **Step 2: Verify TypeScript compiler and lint**
   - Command: `pnpm typecheck && pnpm eslint src/app/actions/migration-cutover-actions.ts`
-- [ ] **Step 3: Commit changes**
+- [x] **Step 3: Commit changes**
   - Command: `git add src/app/actions/migration-cutover-actions.ts && git commit -m "feat(docsigning): implement server actions for migration and cutover operations"`
 
 ---
@@ -346,16 +346,16 @@ graph TD
 - Create: `src/app/admin/finance/contracts/components/MigrationCutoverTab.tsx`
 - Modify: `src/app/admin/finance/contracts/ContractsClient.tsx`
 
-- [ ] **Step 1: Build `MigrationCutoverTab.tsx`**
+- [x] **Step 1: Build `MigrationCutoverTab.tsx`**
   - 4 sub-sections: Migration Runner & Progress, Reconciliation Audit & Discrepancies, Canary Cohort Switchboard, and Emergency Rollback.
   - Real-time progress bar, quarantine anomaly drawer, stepped rollout slider, and 1-click rollback kill switch.
   - Mobile ergonomics: `min-h-[44px]` touch targets, `text-base sm:text-sm` zoom lock, `active:scale-[0.97]` tactile press.
-- [ ] **Step 2: Mount 6th Tab in `ContractsClient.tsx`**
+- [x] **Step 2: Mount 6th Tab in `ContractsClient.tsx`**
   - Add "GA Cutover & Migration" tab trigger with `Rocket` / `CheckCircle2` icon.
   - Mount `<MigrationCutoverTab workspaceId={activeWorkspaceId} />`.
-- [ ] **Step 3: Verify TypeScript compiler and lint**
+- [x] **Step 3: Verify TypeScript compiler and lint**
   - Command: `pnpm typecheck && pnpm eslint src/app/admin/finance/contracts/components/MigrationCutoverTab.tsx src/app/admin/finance/contracts/ContractsClient.tsx`
-- [ ] **Step 4: Commit changes**
+- [x] **Step 4: Commit changes**
   - Command: `git add src/app/admin/finance/contracts/components/MigrationCutoverTab.tsx src/app/admin/finance/contracts/ContractsClient.tsx && git commit -m "feat(docsigning): implement GA cutover and migration console UI in agreements hub"`
 
 ---
@@ -364,15 +364,15 @@ graph TD
 **Files:**
 - Create: `src/lib/__tests__/document-phase7.test.ts`
 
-- [ ] **Step 1: Write integration tests in `document-phase7.test.ts`**
+- [x] **Step 1: Write integration tests in `document-phase7.test.ts`**
   - Test full end-to-end migration lifecycle: Legacy `PDFForm` + `Contract` -> Migrated modern domain -> Reconciliation 100% parity -> Canary rollout promotion -> Dual-write sunsetting.
   - Test emergency rollback recovery: simulated anomaly trips rollback switch -> traffic reverts safely without data loss.
   - Test historical replay protection: CRM deal events suppressed during backfill (`isMigrationReplay: true`).
-- [ ] **Step 2: Run test to verify pass**
+- [x] **Step 2: Run test to verify pass**
   - Command: `pnpm test:run src/lib/__tests__/document-phase7.test.ts`
-- [ ] **Step 3: Verify TypeScript compiler and lint**
+- [x] **Step 3: Verify TypeScript compiler and lint**
   - Command: `pnpm typecheck && pnpm eslint src/lib/__tests__/document-phase7.test.ts`
-- [ ] **Step 4: Commit changes**
+- [x] **Step 4: Commit changes**
   - Command: `git add src/lib/__tests__/document-phase7.test.ts && git commit -m "test(docsigning): implement dedicated Phase 7 integration and cutover test suite"`
 
 ---
@@ -382,16 +382,16 @@ graph TD
 - Verify: Full test suite across baseline, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, and Phase 7 tests.
 - Update: `docs/superpowers/plans/2026-09-29-doc-signing-phase-7.md`
 
-- [ ] **Step 1: Run all unit and integration test suites**
+- [x] **Step 1: Run all unit and integration test suites**
   - Command: `pnpm test:run src/lib/__tests__/*.test.ts src/lib/documents/__tests__/*.test.ts`
   - Expected: 100% pass across all suites.
-- [ ] **Step 2: Run TypeScript compiler**
+- [x] **Step 2: Run TypeScript compiler**
   - Command: `pnpm typecheck`
   - Expected: 0 errors.
-- [ ] **Step 3: Run ESLint**
+- [x] **Step 3: Run ESLint**
   - Command: `pnpm lint`
   - Expected: 0 errors, warnings $\le 670$.
-- [ ] **Step 4: Commit completed Phase 7 master plan status**
+- [x] **Step 4: Commit completed Phase 7 master plan status**
   - Command: `git add docs/superpowers/plans/2026-09-29-doc-signing-phase-7.md && git commit -m "docs(docsigning): mark Phase 7 tasks completed"`
 
 ---
