@@ -130,8 +130,8 @@ export default function BulkCampaignsTab({ workspaceId }: BulkCampaignsTabProps)
     if (!rawTemplates) return [];
     return rawTemplates.map((p) => ({
       id: p.id,
-      name: p.title || p.name || 'Untitled Template',
-      variables: (p.fields || []).map((f) => f.name || f.id),
+      name: p.name || p.publicTitle || 'Untitled Template',
+      variables: (p.fields || []).map((f) => f.id),
     }));
   }, [rawTemplates]);
 
@@ -195,7 +195,7 @@ export default function BulkCampaignsTab({ workspaceId }: BulkCampaignsTabProps)
 
       toast({
         title: 'Batch Slice Dispatched',
-        description: `Processed ${res.data.processedCount} recipient(s): ${res.data.sentCount} sent, ${res.data.failedCount} failed. Remaining queued: ${res.data.remainingQueued}.`,
+        description: `Processed ${res.data.processedCount} recipient(s): ${res.data.successfulCount} sent, ${res.data.failedCount} failed. Remaining queued: ${res.data.remainingCount}.`,
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Slice dispatch failed';
@@ -224,7 +224,7 @@ export default function BulkCampaignsTab({ workspaceId }: BulkCampaignsTabProps)
 
       toast({
         title: 'Retried Failed Recipients',
-        description: `Targeted ${res.data.retriedCount} failed signers: ${res.data.succeededCount} delivered, ${res.data.failedCount} failed again.`,
+        description: res.data.message || `Targeted ${res.data.retriedCount} failed signers for retry.`,
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Retry failed';

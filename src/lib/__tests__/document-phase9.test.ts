@@ -25,10 +25,10 @@ import {
   sanitizeCsvCell,
   validateTemplateVariableMapping,
   generateDryRunMergePreview,
+  ParsedRecipientRow,
 } from '@/lib/documents/bulk-csv-merge-service';
 import {
   createBulkCampaign,
-  stageBulkRecipients,
   dispatchCampaignBatchSlice,
   retryFailedCampaignRecipients,
   getCampaignProgress,
@@ -42,7 +42,6 @@ import {
 } from '@/lib/documents/legal-hold-service';
 import {
   computeMerkleRootSha256,
-  buildEDiscoveryManifest,
   assembleEDiscoveryZipBundle,
 } from '@/lib/documents/ediscovery-archival-service';
 import type {
@@ -255,15 +254,17 @@ describe('Dedicated Phase 9 End-to-End Integration Suite (Enterprise Bulk & Comp
 
     it('identifies missing template variables in pre-flight dry-run linting', () => {
       const templateVars = ['name', 'email', 'annualSalary', 'equityPercent', 'startDate'];
-      const rows = [
+      const rows: ParsedRecipientRow[] = [
         {
           rowIndex: 1,
+          raw: {},
           name: 'Alice Wonder',
           email: 'alice@enterprise.com',
           variables: {
             annualSalary: '$180,000',
             // Missing equityPercent and startDate
           },
+          isValid: true,
           errors: [],
         },
       ];
@@ -518,7 +519,7 @@ describe('Dedicated Phase 9 End-to-End Integration Suite (Enterprise Bulk & Comp
       // Verify contract updated in root collection
       const contractDoc = store.get(`contracts/${contractId}`);
       expect(contractDoc?.['isUnderLegalHold']).toBe(true);
-      expect(contractDoc?.['legalHoldDetails']?.['matterId']).toBe('LIT-2026-0042');
+      expect((contractDoc?.['legalHoldDetails'] as Record<string, unknown> | undefined)?.['matterId']).toBe('LIT-2026-0042');
 
       // Verify deletion guard assertion blocks deletion with Legal Hold error
       await expect(assertContractNotUnderLegalHold(contractId)).rejects.toThrow(
