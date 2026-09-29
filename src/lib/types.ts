@@ -2569,7 +2569,7 @@ export interface Deal {
   contractTermMonths?: number;         // Term duration in months (default: 12)
   priceBookId?: string | null;         // Assigned Price Book reference
   contractId?: string | null;          // Commercial Contract reference
-  contractStatus?: 'none' | 'draft' | 'out_for_signature' | 'signed' | 'active' | 'terminated';
+  contractStatus?: 'none' | 'draft' | 'out_for_signature' | 'signed' | 'active' | 'terminated' | 'declined';
   contractSignedAt?: string | null;
   contractStartDate?: string | null;
   contractEndDate?: string | null;
