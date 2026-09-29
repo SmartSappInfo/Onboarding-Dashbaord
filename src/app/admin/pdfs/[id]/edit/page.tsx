@@ -206,24 +206,47 @@ export default function EditPdfPage() {
   }, [allVersions]);
 
   const activeDraftVersion: TemplateVersion = React.useMemo(() => {
+    const mapField = (f: PDFFormField): DocumentFieldDefinition => {
+      const validTypes: DocumentFieldDefinition['type'][] = [
+        'text',
+        'multiline',
+        'number',
+        'date',
+        'checkbox',
+        'dropdown',
+        'email',
+        'phone',
+        'signature',
+        'initials',
+        'static_text',
+        'variable',
+      ];
+      const fieldType: DocumentFieldDefinition['type'] = validTypes.includes(
+        f.type as DocumentFieldDefinition['type']
+      )
+        ? (f.type as DocumentFieldDefinition['type'])
+        : 'text';
+
+      return {
+        id: f.id,
+        key: f.variableKey || f.id,
+        label: f.label,
+        type: fieldType,
+        page: f.pageNumber || 1,
+        x: f.position?.x ?? 0,
+        y: f.position?.y ?? 0,
+        width: f.dimensions?.width ?? 20,
+        height: f.dimensions?.height ?? 5,
+        required: !!f.required,
+        assignedRole: 'signer',
+        variableKey: f.variableKey,
+      };
+    };
+
     if (latestDraftVersion) {
       return {
         ...latestDraftVersion,
-        fields: fields.map(
-          (f): DocumentFieldDefinition => ({
-            id: f.id,
-            key: f.key || f.name,
-            label: f.label || f.name,
-            type: (f.type as DocumentFieldDefinition['type']) || 'text',
-            page: f.page || 1,
-            x: f.x || 0,
-            y: f.y || 0,
-            width: f.width || 20,
-            height: f.height || 5,
-            required: !!f.required,
-            assignedRole: (f.assignedRole as DocumentFieldDefinition['assignedRole']) || 'signer',
-          })
-        ),
+        fields: fields.map(mapField),
       };
     }
     return {
@@ -234,23 +257,9 @@ export default function EditPdfPage() {
       status: 'draft',
       contentSnapshot: {
         storagePath: pdf?.storagePath || '',
-        sha256: pdf?.originalDocumentDigest || '',
+        sha256: pdf?.storagePath ? `sha_${pdf.storagePath}` : '',
       },
-      fields: fields.map(
-        (f): DocumentFieldDefinition => ({
-          id: f.id,
-          key: f.key || f.name,
-          label: f.label || f.name,
-          type: (f.type as DocumentFieldDefinition['type']) || 'text',
-          page: f.page || 1,
-          x: f.x || 0,
-          y: f.y || 0,
-          width: f.width || 20,
-          height: f.height || 5,
-          required: !!f.required,
-          assignedRole: (f.assignedRole as DocumentFieldDefinition['assignedRole']) || 'signer',
-        })
-      ),
+      fields: fields.map(mapField),
       variableSchemaVersion: '1.0',
       createdBy: _user?.uid || 'user',
       createdAt: new Date().toISOString(),

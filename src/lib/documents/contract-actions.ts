@@ -208,7 +208,13 @@ export async function createContractRecordAction(
       dealId: rest.dealId,
       entityId: rest.entityId,
       partyLinks: rest.partyLinks ?? [],
-      contractValue: rest.contractValue,
+      contractValue: rest.contractValue
+        ? {
+            amount: rest.contractValue.amount,
+            currency: rest.contractValue.currency || 'USD',
+            cadence: rest.contractValue.cadence ?? ('one_off' as const),
+          }
+        : undefined,
       effectiveAt: rest.effectiveAt,
       expiresAt: rest.expiresAt,
       renewalAt: rest.renewalAt,

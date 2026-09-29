@@ -116,14 +116,14 @@ export async function createContractObligation(
       priority: 'high',
       status: 'todo',
       category: 'general',
-      assignedTo: assignedUserId,
+      assignedTo: assignedUserId || '',
       entityId: counterpartyContactId,
-      entityType: counterpartyContactId ? 'institution' : null,
-      customFields: {
-        contractId,
-        obligationId,
-        isContractObligation: true,
-      },
+      entityType: counterpartyContactId ? 'institution' : undefined,
+      source: 'system',
+      relatedParentId: contractId,
+      relatedEntityId: obligationId,
+      reminders: [],
+      reminderSent: false,
     };
 
     const taskResult = await createTaskCore(taskInput, SYSTEM_ACTOR);
