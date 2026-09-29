@@ -211,9 +211,8 @@ export async function approveObligationCandidate(
   await emitDocumentDomainEvent({
     workspaceId,
     type: 'obligation.created',
-    targetType: 'contract',
-    targetId: cand.contractId,
-    actorUserId,
+    contractId: cand.contractId,
+    actorId: actorUserId,
     metadata: {
       obligationId,
       title: officialObligation.title,

@@ -453,6 +453,7 @@ export const DocumentDomainEventTypeSchema = z.enum([
   'contract.renewed',
   'contract.renewal_due',
   'contract.terminated',
+  'obligation.created',
   'obligation.fulfilled',
 ]);
 export type DocumentDomainEventType = z.infer<typeof DocumentDomainEventTypeSchema>;
