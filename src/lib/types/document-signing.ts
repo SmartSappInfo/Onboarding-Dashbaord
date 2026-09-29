@@ -904,4 +904,116 @@ export const CircuitBreakerStateSchema = z.object({
 });
 export type CircuitBreakerState = z.infer<typeof CircuitBreakerStateSchema>;
 
+// ============================================================================
+// SECTION 9: Phase 7 General Availability, Migration Backfill & Cutover Schemas
+// ============================================================================
+
+export const MigrationRunStatusSchema = z.enum([
+  'pending',
+  'in_progress',
+  'paused',
+  'completed',
+  'failed',
+  'rolled_back',
+]);
+export type MigrationRunStatus = z.infer<typeof MigrationRunStatusSchema>;
+
+export const MigrationRecordCountsSchema = z.object({
+  totalContracts: z.number().int().nonnegative().default(0),
+  migratedContracts: z.number().int().nonnegative().default(0),
+  totalTemplates: z.number().int().nonnegative().default(0),
+  migratedTemplates: z.number().int().nonnegative().default(0),
+  totalSubmissions: z.number().int().nonnegative().default(0),
+  migratedSubmissions: z.number().int().nonnegative().default(0),
+  quarantinedCount: z.number().int().nonnegative().default(0),
+  skippedCount: z.number().int().nonnegative().default(0),
+});
+export type MigrationRecordCounts = z.infer<typeof MigrationRecordCountsSchema>;
+
+export const MigrationRunSchema = z.object({
+  runId: z.string().min(1),
+  workspaceId: z.string().min(1),
+  isDryRun: z.boolean().default(false),
+  status: MigrationRunStatusSchema,
+  counts: MigrationRecordCountsSchema,
+  lastProcessedCursor: z.string().nullable().default(null),
+  startedAt: z.string(),
+  completedAt: z.string().nullable().default(null),
+  initiatedByUserId: z.string().min(1),
+  errorMessage: z.string().nullable().default(null),
+});
+export type MigrationRun = z.infer<typeof MigrationRunSchema>;
+
+export const MigrationQuarantineErrorCodeSchema = z.enum([
+  'ERR_ORPHANED_RECORD',
+  'ERR_TENANT_MISMATCH',
+  'ERR_ARTIFACT_UNREACHABLE',
+  'ERR_MALFORMED_SCHEMA',
+  'ERR_INCOMPLETE_FIELDS',
+]);
+export type MigrationQuarantineErrorCode = z.infer<typeof MigrationQuarantineErrorCodeSchema>;
+
+export const MigrationQuarantineRecordSchema = z.object({
+  quarantineId: z.string().min(1),
+  workspaceId: z.string().min(1),
+  runId: z.string().min(1),
+  sourceCollection: z.enum(['contracts', 'pdfs', 'contract_submissions']),
+  sourceRecordId: z.string().min(1),
+  errorCode: MigrationQuarantineErrorCodeSchema,
+  reason: z.string().min(1),
+  rawPayload: z.record(z.unknown()),
+  quarantinedAt: z.string(),
+  resolved: z.boolean().default(false),
+  resolvedAt: z.string().nullable().default(null),
+});
+export type MigrationQuarantineRecord = z.infer<typeof MigrationQuarantineRecordSchema>;
+
+export const ReconciliationDiscrepancySchema = z.object({
+  recordId: z.string().min(1),
+  entityType: z.enum(['contract', 'template', 'envelope', 'artifact']),
+  discrepancyType: z.enum([
+    'count_mismatch',
+    'status_divergence',
+    'hash_mismatch',
+    'missing_target',
+  ]),
+  expected: z.string(),
+  actual: z.string(),
+  detectedAt: z.string(),
+});
+export type ReconciliationDiscrepancy = z.infer<typeof ReconciliationDiscrepancySchema>;
+
+export const ReconciliationReportSchema = z.object({
+  reportId: z.string().min(1),
+  workspaceId: z.string().min(1),
+  generatedAt: z.string(),
+  sourceCounts: z.object({
+    contracts: z.number().int().nonnegative(),
+    templates: z.number().int().nonnegative(),
+    submissions: z.number().int().nonnegative(),
+  }),
+  targetCounts: z.object({
+    contracts: z.number().int().nonnegative(),
+    templates: z.number().int().nonnegative(),
+    envelopes: z.number().int().nonnegative(),
+  }),
+  parityPercentage: z.number().min(0).max(100),
+  artifactParityPercentage: z.number().min(0).max(100),
+  discrepancies: z.array(ReconciliationDiscrepancySchema),
+  status: z.enum(['perfect_parity', 'discrepancies_detected']),
+});
+export type ReconciliationReport = z.infer<typeof ReconciliationReportSchema>;
+
+export const RolloutCohortConfigSchema = z.object({
+  workspaceId: z.string().min(1),
+  cohortPercentage: z.number().int().min(0).max(100).default(0),
+  isEmergencyRollbackActive: z.boolean().default(false),
+  legacyDualWriteEnabled: z.boolean().default(true),
+  shadowReadsEnabled: z.boolean().default(true),
+  updatedAt: z.string(),
+  updatedByUserId: z.string().min(1),
+});
+export type RolloutCohortConfig = z.infer<typeof RolloutCohortConfigSchema>;
+
+
 
