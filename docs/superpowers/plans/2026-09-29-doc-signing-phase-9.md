@@ -221,13 +221,13 @@ export type EDiscoveryManifest = z.infer<typeof EDiscoveryManifestSchema>;
 - Modify: [`src/lib/types/document-signing.ts`](file:///Users/josephaidoo/Desktop/Codes/vibe%20Coding/Onboarding-Dashbaord-main/src/lib/types/document-signing.ts)
 - Create: `src/lib/documents/__tests__/bulk-campaign-schemas.test.ts`
 
-- [ ] **Step 1: Define Phase 9 schemas in `document-signing.ts`**
+- [x] **Step 1: Define Phase 9 schemas in `document-signing.ts`**
   - Add `BulkCampaignStatusSchema`, `BulkCampaignRecipientSchema`, `BulkCampaignSchema`, `CreateBulkCampaignRequestSchema`, `EDiscoveryFileEntrySchema`, and `EDiscoveryManifestSchema`.
   - Export all inferred TypeScript types.
   - Maintain zero `any` or `any[]` typing.
-- [ ] **Step 2: Write domain schema test suite**
+- [x] **Step 2: Write domain schema test suite**
   - Verify valid payload validation, invalid email rejection, CSV formula sanitization schema checks, and Merkle manifest integrity.
-- [ ] **Step 3: Verify and commit**
+- [x] **Step 3: Verify and commit**
   - Run `pnpm test:run src/lib/documents/__tests__/bulk-campaign-schemas.test.ts`
   - Commit: `feat(docsigning): implement strict domain schemas for bulk campaigns, legal hold, and e-discovery manifests`
 
@@ -238,14 +238,14 @@ export type EDiscoveryManifest = z.infer<typeof EDiscoveryManifestSchema>;
 - Create: `src/lib/documents/bulk-csv-merge-service.ts`
 - Create: `src/lib/documents/__tests__/bulk-csv-merge-service.test.ts`
 
-- [ ] **Step 1: Implement `bulk-csv-merge-service.ts`**
+- [x] **Step 1: Implement `bulk-csv-merge-service.ts`**
   - Use `papaparse` for robust RFC 4180 parsing.
   - Implement `sanitizeCsvCell(val: string): string`: prefixes cells starting with `[=+\-@\t\r]` with `'` (FM-P9-07).
   - Implement `validateTemplateVariableMapping(templateVariables: string[], rows: ParsedRow[]): VariableLintResult` using `FieldsVariablesService.resolveTemplateVariables` (FM-P9-04).
   - Implement `generateDryRunMergePreview(templateId: string, rows: ParsedRow[], sampleLimit = 5): Promise<MergePreviewResult>`.
-- [ ] **Step 2: Write test suite**
+- [x] **Step 2: Write test suite**
   - Verify RFC 4180 CSV parsing, formula injection sanitization, missing variable detection, and dry-run preview formatting.
-- [ ] **Step 3: Verify and commit**
+- [x] **Step 3: Verify and commit**
   - Run `pnpm test:run src/lib/documents/__tests__/bulk-csv-merge-service.test.ts`
   - Commit: `feat(docsigning): implement bulk csv merge parser with dry-run linting and formula sanitization`
 
@@ -256,7 +256,7 @@ export type EDiscoveryManifest = z.infer<typeof EDiscoveryManifestSchema>;
 - Create: `src/lib/documents/bulk-campaign-dispatcher-service.ts`
 - Create: `src/lib/documents/__tests__/bulk-campaign-dispatcher-service.test.ts`
 
-- [ ] **Step 1: Implement `bulk-campaign-dispatcher-service.ts`**
+- [x] **Step 1: Implement `bulk-campaign-dispatcher-service.ts`**
   - Functions:
     - `createBulkCampaign(workspaceId: string, input: CreateBulkCampaignRequest, userId: string): Promise<BulkCampaign>`
     - `stageBulkRecipients(campaignId: string, recipients: BulkCampaignRecipientInput[]): Promise<void>`
@@ -265,9 +265,9 @@ export type EDiscoveryManifest = z.infer<typeof EDiscoveryManifestSchema>;
     - `getCampaignProgress(campaignId: string): Promise<BulkCampaignProgress>`
   - Integrate token-bucket rate limiter (`api-rate-limiter-service.ts`) to cap gateway dispatch to 20/sec (FM-P9-08).
   - Derive deterministic idempotency key per recipient (`idemp_${campaignId}_${email}_${hash}`) (FM-P9-02).
-- [ ] **Step 2: Write test suite**
+- [x] **Step 2: Write test suite**
   - Test batch slicing, idempotency deduplication on resume, partial failure isolation, and retry targeting only failed rows.
-- [ ] **Step 3: Verify and commit**
+- [x] **Step 3: Verify and commit**
   - Run `pnpm test:run src/lib/documents/__tests__/bulk-campaign-dispatcher-service.test.ts`
   - Commit: `feat(docsigning): implement chunked bulk campaign dispatcher with partial-failure isolation and rate limiting`
 
@@ -279,7 +279,7 @@ export type EDiscoveryManifest = z.infer<typeof EDiscoveryManifestSchema>;
 - Modify: [`src/lib/contract-actions.ts`](file:///Users/josephaidoo/Desktop/Codes/vibe%20Coding/Onboarding-Dashbaord-main/src/lib/contract-actions.ts#L214)
 - Create: `src/lib/documents/__tests__/legal-hold-service.test.ts`
 
-- [ ] **Step 1: Implement `legal-hold-service.ts`**
+- [x] **Step 1: Implement `legal-hold-service.ts`**
   - Functions:
     - `placeContractLegalHold(workspaceId: string, contractId: string, input: PlaceHoldInput, userId: string): Promise<LegalHoldResult>`
     - `releaseContractLegalHold(workspaceId: string, contractId: string, input: ReleaseHoldInput, userId: string): Promise<LegalHoldResult>`
@@ -287,11 +287,11 @@ export type EDiscoveryManifest = z.infer<typeof EDiscoveryManifestSchema>;
     - `calculateRetentionSchedule(category: RetentionCategory, executedAt: string): RetentionSchedule`
   - Append immutable audit record to `signing_evidence` on hold toggle.
   - Target root collection `contracts` with `workspaceId` verification.
-- [ ] **Step 2: Hook deletion guard into `src/lib/contract-actions.ts:deleteContractAction`**
+- [x] **Step 2: Hook deletion guard into `src/lib/contract-actions.ts:deleteContractAction`**
   - Call `await assertContractNotUnderLegalHold(contractId)` before executing batch deletes (FM-P9-05).
-- [ ] **Step 3: Write test suite**
+- [x] **Step 3: Write test suite**
   - Test placing hold, releasing hold, deletion block when hold is active, and retention schedule calculation.
-- [ ] **Step 4: Verify and commit**
+- [x] **Step 4: Verify and commit**
   - Run `pnpm test:run src/lib/documents/__tests__/legal-hold-service.test.ts`
   - Commit: `feat(docsigning): implement enterprise legal hold enforcement and deletion guard`
 
@@ -302,7 +302,7 @@ export type EDiscoveryManifest = z.infer<typeof EDiscoveryManifestSchema>;
 - Create: `src/lib/documents/ediscovery-archival-service.ts`
 - Create: `src/lib/documents/__tests__/ediscovery-archival-service.test.ts`
 
-- [ ] **Step 1: Implement `ediscovery-archival-service.ts`**
+- [x] **Step 1: Implement `ediscovery-archival-service.ts`**
   - Functions:
     - `buildEDiscoveryManifest(contractId: string, artifacts: ArtifactPayload[]): EDiscoveryManifest`
     - `computeMerkleRootSha256(leafDigests: string[]): string` (FM-P9-06)
@@ -316,9 +316,9 @@ export type EDiscoveryManifest = z.infer<typeof EDiscoveryManifestSchema>;
     6. `manifest.json` (SHA-256 digests and Merkle root)
     7. `verify-manifest.sh` (standalone POSIX shell script to verify bundle integrity)
   - Memory bounds protection: If bundle > 25MB, upload to Cloud Storage and return download URL (FM-P9-09).
-- [ ] **Step 2: Write test suite**
+- [x] **Step 2: Write test suite**
   - Test SHA-256 calculation, Merkle root tree hashing, tamper detection (corrupted file causes verification failure), and bundle assembly.
-- [ ] **Step 3: Verify and commit**
+- [x] **Step 3: Verify and commit**
   - Run `pnpm test:run src/lib/documents/__tests__/ediscovery-archival-service.test.ts`
   - Commit: `feat(docsigning): implement cryptographic e-discovery archival package and merkle manifest generator`
 
@@ -331,17 +331,17 @@ export type EDiscoveryManifest = z.infer<typeof EDiscoveryManifestSchema>;
 - Delegate to subagent: `firestore-rules-author` for `firestore.rules` (`bulk_campaigns`)
 - Create: `src/lib/documents/__tests__/phase9-server-actions.test.ts`
 
-- [ ] **Step 1: Implement `bulk-campaign-actions.ts`**
+- [x] **Step 1: Implement `bulk-campaign-actions.ts`**
   - Actions: `createBulkCampaignAction`, `previewBulkCsvMergeAction`, `dispatchBulkCampaignSliceAction`, `retryFailedCampaignRecipientsAction`, `getBulkCampaignProgressAction`.
   - Enforce `requireAuth()` and `requireWorkspace()`.
-- [ ] **Step 2: Implement `compliance-archival-actions.ts`**
+- [x] **Step 2: Implement `compliance-archival-actions.ts`**
   - Actions: `toggleContractLegalHoldAction`, `updateRetentionCategoryAction`, `generateEDiscoveryPackageAction`.
   - Enforce `requireAuth()` and `requireWorkspace()`.
-- [ ] **Step 3: Delegate Firestore security rules to `firestore-rules-author`**
+- [x] **Step 3: Delegate Firestore security rules to `firestore-rules-author`**
   - Author hardened rules for `bulk_campaigns/{campaignId}` and `bulk_campaign_recipients/{recipientId}`.
-- [ ] **Step 4: Write server action test suite**
+- [x] **Step 4: Write server action test suite**
   - Test authentication guards, workspace isolation, Zod input validation, and standardized error envelopes.
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
   - Run `pnpm test:run src/lib/documents/__tests__/phase9-server-actions.test.ts`
   - Commit: `feat(docsigning): implement server actions and security rules for bulk campaigns, legal hold, and e-discovery compliance`
 
@@ -354,7 +354,7 @@ export type EDiscoveryManifest = z.infer<typeof EDiscoveryManifestSchema>;
 - Create: `src/app/admin/finance/contracts/components/LegalHoldManagerModal.tsx`
 - Modify: [`src/app/admin/finance/contracts/ContractsClient.tsx`](file:///Users/josephaidoo/Desktop/Codes/vibe%20Coding/Onboarding-Dashbaord-main/src/app/admin/finance/contracts/ContractsClient.tsx)
 
-- [ ] **Step 1: Implement `BulkCampaignWizardModal.tsx`**
+- [x] **Step 1: Implement `BulkCampaignWizardModal.tsx`**
   - 4-Step Stepper:
     1. Select Template (from published templates)
     2. Upload CSV / Select CRM Roster (file dropzone + CSV parser)
@@ -364,20 +364,20 @@ export type EDiscoveryManifest = z.infer<typeof EDiscoveryManifestSchema>;
   - Variable insertion: routes through `FieldsVariablesService`.
   - Tag selector: routes through `<TagSelector>` in client/draft mode.
   - Simple everyday UI English, zero confusing jargon.
-- [ ] **Step 2: Implement `LegalHoldManagerModal.tsx`**
+- [x] **Step 2: Implement `LegalHoldManagerModal.tsx`**
   - View current legal hold status, matter reference, reason input, place/release buttons with confirm step.
-- [ ] **Step 3: Implement `BulkCampaignsTab.tsx`**
+- [x] **Step 3: Implement `BulkCampaignsTab.tsx`**
   - Sub-views:
     - **Active Campaigns**: List of bulk campaigns with live progress bar, metrics (queued, dispatched, signed, failed), "Retry Failed" button.
     - **Compliance & Legal Hold**: Table of executed contracts with Legal Hold status badge, retention schedule, "Place Hold" / "Release Hold" trigger.
     - **e-Discovery Compliance Vault**: One-click "Export e-Discovery Package" with download loading spinner and verification summary.
   - Responsive tables collapsing into card layouts on screens `< 640px` (FM-P9-10).
-- [ ] **Step 4: Mount 8th Tab in `ContractsClient.tsx`**
+- [x] **Step 4: Mount 8th Tab in `ContractsClient.tsx`**
   - Add 8th tab: "Bulk Campaigns & Compliance" (`Layers` icon) alongside all existing 7 tabs.
   - Update `activeTab` state union: `'contracts' | 'templates' | 'obligations' | 'analytics' | 'governance' | 'migration' | 'developer' | 'campaigns'`.
   - Lock Purge action when contract has active Legal Hold with disabled tooltip.
   - Preserve all existing 7 tabs and modals completely intact.
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
   - Commit: `feat(docsigning): implement agreements hub bulk campaigns and compliance vault console ui`
 
 ---
@@ -386,7 +386,7 @@ export type EDiscoveryManifest = z.infer<typeof EDiscoveryManifestSchema>;
 **Files:**
 - Create: `src/lib/__tests__/document-phase9.test.ts`
 
-- [ ] **Step 1: Write comprehensive Phase 9 integration test suite**
+- [x] **Step 1: Write comprehensive Phase 9 integration test suite**
   - Test 1: Full CSV parsing, formula injection sanitization, and variable mapping validation.
   - Test 2: Bulk campaign creation, recipient staging, and chunked slice dispatch execution.
   - Test 3: Idempotency deduplication preventing double-send on repeated slice requests (FM-P9-02).
@@ -396,10 +396,10 @@ export type EDiscoveryManifest = z.infer<typeof EDiscoveryManifestSchema>;
   - Test 7: e-Discovery ZIP bundle assembly and Merkle root calculation (FM-P9-06).
   - Test 8: Merkle manifest tamper verification test (detecting altered files).
   - Test 9: End-to-end multi-tenant isolation across bulk campaigns and legal holds.
-- [ ] **Step 2: Run test suite**
+- [x] **Step 2: Run test suite**
   - Run: `pnpm test:run src/lib/__tests__/document-phase9.test.ts`
   - Expected: PASS (9/9 tests green).
-- [ ] **Step 3: Verify and commit**
+- [x] **Step 3: Verify and commit**
   - Commit: `test(docsigning): implement dedicated Phase 9 end-to-end integration test suite`
 
 ---
@@ -408,16 +408,16 @@ export type EDiscoveryManifest = z.infer<typeof EDiscoveryManifestSchema>;
 **Files:**
 - Verification only
 
-- [ ] **Step 1: Run comprehensive document test suite across all phases (Phases 0 through 9)**
+- [x] **Step 1: Run comprehensive document test suite across all phases (Phases 0 through 9)**
   - Run: `pnpm test:run src/lib/documents/__tests__/*.test.ts src/lib/__tests__/document-phase*.test.ts src/lib/__tests__/*baseline.test.ts`
   - Expected: 80+ test files passed, 500+ tests green.
-- [ ] **Step 2: Run strict TypeScript compiler verification**
+- [x] **Step 2: Run strict TypeScript compiler verification**
   - Run: `NODE_OPTIONS='--max-old-space-size=8192' pnpm typecheck`
   - Expected: 0 errors (`tsc --noEmit`).
-- [ ] **Step 3: Run repository linter**
+- [x] **Step 3: Run repository linter**
   - Run: `pnpm lint`
   - Expected: 0 errors, warnings within ceiling.
-- [ ] **Step 4: Update Master Plan and mark tasks completed**
+- [x] **Step 4: Update Master Plan and mark tasks completed**
   - Commit final verification state to local git branch `main`.
 
 ---
