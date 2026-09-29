@@ -36,7 +36,9 @@ import {
     CheckSquare,
     Sparkles,
     GitCompare,
-    Rocket
+    Rocket,
+    Layers,
+    Lock
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -96,6 +98,8 @@ import { ObligationReviewModal } from './components/ObligationReviewModal';
 import EnterpriseGovernanceTab from './components/EnterpriseGovernanceTab';
 import MigrationCutoverTab from './components/MigrationCutoverTab';
 import DeveloperPlatformTab from './components/DeveloperPlatformTab';
+import BulkCampaignsTab from './components/BulkCampaignsTab';
+import { LegalHoldManagerModal, LegalHoldContractSummary } from './components/LegalHoldManagerModal';
 import type { ContractRecord } from '@/lib/types/document-signing';
 import { BarChart3, Bell, Code2 } from 'lucide-react';
 
@@ -109,7 +113,7 @@ export default function AgreementsClient() {
     const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
     const { activeWorkspaceId } = useWorkspace();
     
-    const [activeTab, setActiveTab] = React.useState<'contracts' | 'templates' | 'obligations' | 'analytics' | 'governance' | 'migration' | 'developer'>('contracts');
+    const [activeTab, setActiveTab] = React.useState<'contracts' | 'templates' | 'obligations' | 'analytics' | 'governance' | 'migration' | 'developer' | 'campaigns'>('contracts');
     const [searchTerm, setSearchTerm] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState('all');
     const [selectedEntities, setSelectedEntities] = React.useState<WorkspaceEntity[]>([]);
@@ -118,7 +122,7 @@ export default function AgreementsClient() {
     const [downloadingId, setDownloadingId] = React.useState<string | null>(null);
     const [trackingEnvelopeId, setTrackingEnvelopeId] = React.useState<string | null>(null);
 
-    // Contract Lifecycle & Modal State (Phase 3 & Phase 4 & Phase 5)
+    // Contract Lifecycle & Modal State (Phase 3 & Phase 4 & Phase 5 & Phase 9)
     const [lifecycleContractId, setLifecycleContractId] = React.useState<string | null>(null);
     const [amendmentParentContract, setAmendmentParentContract] = React.useState<ContractRecord | null>(null);
     const [isCreateObligationOpen, setIsCreateObligationOpen] = React.useState(false);
@@ -126,6 +130,7 @@ export default function AgreementsClient() {
     const [copilotContract, setCopilotContract] = React.useState<{ id: string; title: string } | null>(null);
     const [diffContract, setDiffContract] = React.useState<{ id: string; title: string } | null>(null);
     const [reviewObligationContract, setReviewObligationContract] = React.useState<{ id: string; title: string } | null>(null);
+    const [legalHoldContract, setLegalHoldContract] = React.useState<LegalHoldContractSummary | null>(null);
 
     // Single Contract Deletion State
     const [contractToPurge, setContractToPurge] = React.useState<{ contract: Contract, entity: WorkspaceEntity } | null>(null);
@@ -339,8 +344,8 @@ export default function AgreementsClient() {
                         </div>
                     </div>
 
-                    {/* Unified 7-Tab Workspace Navigation */}
-                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'contracts' | 'templates' | 'obligations' | 'analytics' | 'governance' | 'migration' | 'developer')} className="w-full space-y-6">
+                    {/* Unified 8-Tab Workspace Navigation */}
+                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'contracts' | 'templates' | 'obligations' | 'analytics' | 'governance' | 'migration' | 'developer' | 'campaigns')} className="w-full space-y-6">
                         <TabsList className="bg-muted/60 p-1 rounded-xl border border-border flex flex-wrap h-auto gap-1">
                             <TabsTrigger value="contracts" className="rounded-lg text-xs font-semibold gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                                 <FileCheck className="h-3.5 w-3.5" />
@@ -369,6 +374,10 @@ export default function AgreementsClient() {
                             <TabsTrigger value="developer" className="rounded-lg text-xs font-semibold gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                                 <Code2 className="h-3.5 w-3.5" />
                                 Developer & Embedded SDK
+                            </TabsTrigger>
+                            <TabsTrigger value="campaigns" className="rounded-lg text-xs font-semibold gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                                <Layers className="h-3.5 w-3.5" />
+                                Bulk Campaigns & Compliance
                             </TabsTrigger>
                         </TabsList>
 
@@ -513,10 +522,24 @@ export default function AgreementsClient() {
                                                             isSelected ? "bg-primary text-white border-primary" : "bg-primary/5 border-primary/10 text-primary group-hover:bg-primary group-hover:text-white"
                                                         )}>
  <Building className="h-4 w-4" />
-                                                        </div>
- <div className="flex flex-col">
- <span className="font-semibold text-sm tracking-tight text-foreground">{item.displayName}</span>
- <span className="text-[9px] font-bold text-muted-foreground opacity-60 italic">{item.location?.zone?.name || item.zone?.name || UNASSIGNED_ZONE.name}</span>
+                                                         </div>
+                                                        <div className="flex flex-col">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="font-semibold text-sm tracking-tight text-foreground">{item.displayName}</span>
+                                                                {contract?.isUnderLegalHold && (
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <span className="inline-flex items-center p-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                                                                                <Lock className="h-3 w-3" />
+                                                                            </span>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent className="text-xs">
+                                                                            Preservation Hold Active ({contract.legalHoldDetails?.matterId || 'FRCP 26/37'})
+                                                                        </TooltipContent>
+                                                                    </Tooltip>
+                                                                )}
+                                                            </div>
+                                                            <span className="text-[9px] font-bold text-muted-foreground opacity-60 italic">{item.location?.zone?.name || item.zone?.name || UNASSIGNED_ZONE.name}</span>
                                                         </div>
                                                     </div>
                                                 </TableCell>
@@ -673,6 +696,23 @@ export default function AgreementsClient() {
                                                                                 <span className="font-bold text-sm">Obligation Review</span>
                                                                             </DropdownMenuItem>
                                                                         )}
+                                                                        {contract?.id && (
+                                                                            <DropdownMenuItem 
+                                                                                className="gap-3 rounded-xl p-2.5" 
+                                                                                onClick={() => setLegalHoldContract({
+                                                                                    id: contract.id,
+                                                                                    title: item.displayName || 'Agreement',
+                                                                                    isUnderLegalHold: contract.isUnderLegalHold,
+                                                                                    legalHoldDetails: contract.legalHoldDetails,
+                                                                                    retentionCategory: contract.retentionCategory,
+                                                                                })}
+                                                                            >
+                                                                                <div className="p-1.5 bg-amber-500/10 rounded-lg text-amber-600 dark:text-amber-400">
+                                                                                    <Lock className="h-4 w-4" />
+                                                                                </div>
+                                                                                <span className="font-bold text-sm">Legal Hold & Retention</span>
+                                                                            </DropdownMenuItem>
+                                                                        )}
  <DropdownMenuItem className="gap-3 rounded-xl p-2.5" asChild>
                                                                             <a href={`/forms/${contract.pdfId}?entityId=${item.entityId}`} target="_blank" rel="noopener noreferrer">
  <div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Globe className="h-4 w-4" /></div>
@@ -685,13 +725,23 @@ export default function AgreementsClient() {
                                                                 {canPurge && contract && (
                                                                     <>
  <DropdownMenuSeparator className="my-2 mx-2" />
-                                                                        <DropdownMenuItem 
+                                                                        {contract.isUnderLegalHold ? (
+                                                                            <DropdownMenuItem 
+                                                                                disabled
+                                                                                className="text-muted-foreground gap-3 rounded-xl p-2.5 opacity-60 cursor-not-allowed"
+                                                                            >
+                                                                                <div className="p-1.5 bg-amber-500/10 rounded-lg text-amber-600"><Lock className="h-4 w-4" /></div>
+                                                                                <span className="font-bold text-sm">Locked Under Legal Hold</span>
+                                                                            </DropdownMenuItem>
+                                                                        ) : (
+                                                                            <DropdownMenuItem 
  className="text-destructive gap-3 rounded-xl p-2.5 focus:bg-destructive/10 focus:text-destructive"
-                                                                            onClick={() => setContractToPurge({ contract, entity: item })}
-                                                                        >
+                                                                                onClick={() => setContractToPurge({ contract, entity: item })}
+                                                                            >
  <div className="p-1.5 bg-destructive/10 rounded-lg"><Trash2 className="h-4 w-4" /></div>
  <span className="font-bold text-sm">Purge Record</span>
-                                                                        </DropdownMenuItem>
+                                                                            </DropdownMenuItem>
+                                                                        )}
                                                                     </>
                                                                 )}
 
@@ -771,6 +821,10 @@ export default function AgreementsClient() {
 
                         <TabsContent value="developer" className="mt-0">
                             <DeveloperPlatformTab workspaceId={activeWorkspaceId || ''} />
+                        </TabsContent>
+
+                        <TabsContent value="campaigns" className="mt-0">
+                            <BulkCampaignsTab workspaceId={activeWorkspaceId || ''} />
                         </TabsContent>
                     </Tabs>
                 </div>
@@ -955,6 +1009,16 @@ export default function AgreementsClient() {
                         workspaceId={activeWorkspaceId || ''}
                         contractId={reviewObligationContract.id}
                         contractTitle={reviewObligationContract.title}
+                    />
+                )}
+
+                {/* Legal Hold & Retention Manager Modal (Phase 9) */}
+                {legalHoldContract && (
+                    <LegalHoldManagerModal
+                        isOpen={!!legalHoldContract}
+                        onClose={() => setLegalHoldContract(null)}
+                        workspaceId={activeWorkspaceId || ''}
+                        contract={legalHoldContract}
                     />
                 )}
             </div>

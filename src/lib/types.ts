@@ -4610,6 +4610,15 @@ export interface Contract {
   storagePath?: string;
   documentDigest?: string;
   dealId?: string;
+  isUnderLegalHold?: boolean;
+  legalHoldDetails?: {
+    matterId?: string;
+    reason?: string;
+    placedAt?: string;
+    placedByUserId?: string;
+  };
+  retentionCategory?: string;
+  retentionExpiresAt?: string;
 }
 
 export type ContractStatus = 'no_contract' | 'draft' | 'sent' | 'partially_signed' | 'signed' | 'expired';

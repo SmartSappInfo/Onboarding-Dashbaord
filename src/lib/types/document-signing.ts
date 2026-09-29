@@ -396,6 +396,16 @@ export const ContractObligationSchema = z.object({
 });
 export type ContractObligation = z.infer<typeof ContractObligationSchema>;
 
+export const RetentionCategorySchema = z.enum([
+  'standard',
+  'financial',
+  'employment',
+  'intellectual_property',
+  'statutory_tax',
+  'custom',
+]);
+export type RetentionCategory = z.infer<typeof RetentionCategorySchema>;
+
 export const ContractRecordSchema = z.object({
   id: z.string().min(1),
   workspaceId: z.string().min(1),
@@ -432,6 +442,17 @@ export const ContractRecordSchema = z.object({
   executedPdfSha256: z.string().optional(),
   certificateStoragePath: z.string().optional(),
   tagIds: z.array(z.string()).default([]),
+  isUnderLegalHold: z.boolean().optional(),
+  legalHoldDetails: z
+    .object({
+      matterId: z.string().optional(),
+      reason: z.string().optional(),
+      placedAt: z.string().optional(),
+      placedByUserId: z.string().optional(),
+    })
+    .optional(),
+  retentionCategory: RetentionCategorySchema.optional(),
+  retentionExpiresAt: z.string().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -826,16 +847,6 @@ export const LegalHoldStatusSchema = z.object({
   releasedByUserId: z.string().optional(),
 });
 export type LegalHoldStatus = z.infer<typeof LegalHoldStatusSchema>;
-
-export const RetentionCategorySchema = z.enum([
-  'standard',
-  'financial',
-  'employment',
-  'intellectual_property',
-  'statutory_tax',
-  'custom',
-]);
-export type RetentionCategory = z.infer<typeof RetentionCategorySchema>;
 
 export const ContractRetentionPolicySchema = z.object({
   id: z.string().min(1),
