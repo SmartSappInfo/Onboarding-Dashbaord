@@ -44,7 +44,6 @@ import {
   Layers,
   Upload,
   CheckCircle2,
-  AlertCircle,
   FileText,
   Users,
   ArrowRight,
@@ -74,7 +73,6 @@ export function BulkCampaignWizardModal({
   // Form State
   const [title, setTitle] = React.useState('');
   const [selectedTemplateId, setSelectedTemplateId] = React.useState('');
-  const [csvContent, setCsvContent] = React.useState('');
   const [csvFileName, setCsvFileName] = React.useState('');
   const [routingMode, setRoutingMode] = React.useState<'single_signer' | 'sequential_countersign'>('single_signer');
   const [countersignerName, setCountersignerName] = React.useState('');
@@ -101,7 +99,6 @@ export function BulkCampaignWizardModal({
       setStep(1);
       setTitle('');
       setSelectedTemplateId(publishedTemplates[0]?.id || '');
-      setCsvContent('');
       setCsvFileName('');
       setRoutingMode('single_signer');
       setCountersignerName('');
@@ -121,7 +118,6 @@ export function BulkCampaignWizardModal({
 
     try {
       const text = await file.text();
-      setCsvContent(text);
 
       const previewRes = await previewBulkCsvMergeAction(workspaceId, {
         csvContent: text,

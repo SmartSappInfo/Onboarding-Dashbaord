@@ -44,10 +44,8 @@ import {
   ShieldCheck,
   Download,
   Loader2,
-  Calendar,
   AlertTriangle,
   FileArchive,
-  ExternalLink,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
