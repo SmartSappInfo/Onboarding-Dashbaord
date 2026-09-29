@@ -1,0 +1,47 @@
+{
+  "$comment": "Behavioural baseline for Phase 1 domains (roadmap Phase 0 exit gate). Existing suites that lock down current behaviour of the code Phase 1 will wrap. Run with `pnpm test:agentic:baseline`. Removing or renaming a listed file fails agentic-baseline-manifest.test.ts.",
+  "domains": {
+    "identity": [
+      "src/lib/auth/__tests__/require-auth.test.ts",
+      "src/lib/auth/__tests__/require-org-admin.test.ts",
+      "src/lib/auth/__tests__/api-auth-guard.test.ts",
+      "src/lib/__tests__/permissions.test.ts",
+      "src/lib/__tests__/permissions-engine.test.ts",
+      "src/lib/__tests__/workspace-permissions.test.ts",
+      "src/lib/__tests__/role-templates-qa.test.ts",
+      "src/lib/messaging/__tests__/cross-tenant-isolation.test.ts"
+    ],
+    "crm": [
+      "src/lib/__tests__/contact-adapter.test.ts",
+      "src/lib/__tests__/contact-adapter-new-methods.test.ts",
+      "src/lib/__tests__/workspace-entity-actions.test.ts",
+      "src/lib/__tests__/update-contact-action.test.ts",
+      "src/lib/__tests__/entity-security.property.test.ts",
+      "src/lib/__tests__/entity-sync-invariants.test.ts",
+      "src/lib/__tests__/crm-actions-improvements.test.ts",
+      "src/lib/__tests__/stage-change-isolation.test.ts",
+      "src/lib/__tests__/pipeline-state-isolation.property.test.ts",
+      "src/lib/__tests__/pipeline-actions-industry.test.ts",
+      "src/lib/__tests__/tag-actions.property.test.ts",
+      "src/lib/__tests__/scoped-tag-actions.test.ts",
+      "src/lib/__tests__/workspace-tag-filtering.test.ts",
+      "src/lib/__tests__/entity-contact-primary-tags.test.ts"
+    ],
+    "portals": [
+      "src/lib/services/__tests__/portal-service.test.ts",
+      "src/lib/services/__tests__/portal-membership-service.test.ts",
+      "src/lib/services/__tests__/portal-access-service.test.ts",
+      "src/lib/services/__tests__/portal-invitation-service.test.ts",
+      "src/lib/services/__tests__/entitlement-service.test.ts",
+      "src/lib/services/__tests__/course-service.test.ts",
+      "src/lib/services/__tests__/community-service.test.ts",
+      "src/lib/page-builder/__tests__/portal-blocks.test.ts",
+      "src/platform/__tests__/baseline/portal-membership.baseline.test.ts"
+    ]
+  },
+  "platform": [
+    "src/platform/__tests__",
+    "src/lib/security/__tests__",
+    "scripts/agentic-inventory/__tests__"
+  ]
+}

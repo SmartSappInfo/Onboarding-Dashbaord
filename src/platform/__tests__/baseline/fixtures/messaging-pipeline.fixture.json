@@ -1,0 +1,23 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-09-26T22:39:00Z",
+  "description": "Frozen baseline fixture for FieldsVariablesService SSOT and suppression pipeline",
+  "sampleTokens": [
+    "{{contact_name}}",
+    "{{first_name}}",
+    "{{last_name}}",
+    "{{entity_name}}",
+    "{{verification_code}}",
+    "{{meeting_time}}"
+  ],
+  "sampleTemplate": "Hello {{contact_name}}, your verification code for {{entity_name}} is {{verification_code}}.",
+  "expectedResolved": "Hello Kwame Mensah, your verification code for SmartSapp Academy is 482910.",
+  "suppressionChannels": ["email", "sms", "whatsapp"],
+  "suppressionReasons": ["unsubscribed", "snoozed", "bounced", "complaint", "dnc_requested"],
+  "pipelineEvents": [
+    "messaging.message.dispatched",
+    "messaging.message.delivered",
+    "messaging.message.failed",
+    "messaging.message.suppressed"
+  ]
+}

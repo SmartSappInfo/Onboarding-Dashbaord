@@ -1,0 +1,34 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-09-26T22:39:00Z",
+  "description": "Frozen baseline fixture for call centre decision trees and tag selector compliance",
+  "scriptStructure": {
+    "rootNodeId": "node-greeting",
+    "nodes": [
+      {
+        "id": "node-greeting",
+        "title": "Initial Greeting",
+        "promptTemplate": "Hi {{contact_name}}, this is {{agent_name}} calling from {{entity_name}}.",
+        "outcomes": ["opt-interested", "opt-busy", "opt-not-interested"]
+      },
+      {
+        "id": "node-qualification",
+        "title": "Qualification & Needs",
+        "promptTemplate": "What is your primary onboarding priority?",
+        "outcomes": ["opt-immediate", "opt-future"]
+      }
+    ]
+  },
+  "tagApplicationContract": {
+    "uiComponent": "<TagSelector>",
+    "action": "applyTagsAction",
+    "rule": "Tags must never be applied via raw unvalidated string inputs"
+  },
+  "riskTaxonomy": {
+    "L0_READ": "No side-effects, safe for automated agents without confirmation",
+    "L1_INTERNAL_DRAFT": "Drafts and proposals with no external side effects",
+    "L2_STATE_MUTATION": "Audited internal entity updates, workspace scoped, version-checked",
+    "L3_EXTERNAL_COMMUNICATION_FINANCE": "Outbound messaging, external webhooks, financial operations; agents need verified approval",
+    "L4_PRIVILEGED_DESTRUCTIVE": "Privileged or destructive; agents need verified approval, often non-delegable"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-09-26T22:39:00Z",
+  "description": "Frozen baseline fixture for tenant boundary isolation and SSRF defense rules",
+  "blockedHostnames": [
+    "metadata.google.internal",
+    "metadata",
+    "localhost",
+    "127.0.0.1",
+    "0.0.0.0",
+    "::1"
+  ],
+  "blockedIpRanges": [
+    {
+      "range": "169.254.0.0/16",
+      "target": "Google Cloud Metadata / Link Local",
+      "example": "169.254.169.254"
+    },
+    {
+      "range": "10.0.0.0/8",
+      "target": "VPC Internal Private Subnet",
+      "example": "10.0.0.1"
+    },
+    {
+      "range": "172.16.0.0/12",
+      "target": "Docker / Private Subnet",
+      "example": "172.16.0.1"
+    },
+    {
+      "range": "192.168.0.0/16",
+      "target": "Local LAN / Private Subnet",
+      "example": "192.168.1.1"
+    },
+    {
+      "range": "127.0.0.0/8",
+      "target": "Loopback",
+      "example": "127.0.0.1"
+    }
+  ],
+  "effectivePrincipalFormula": "User Authority ∩ Agent Authority ∩ Workspace Scope ∩ Tool Scope ∩ Active Policy",
+  "nonDelegableRules": [
+    "organization.delete",
+    "workspace.delete",
+    "security.credentials.rotate",
+    "billing.payout_account.update",
+    "permissions.superadmin.grant"
+  ]
+}

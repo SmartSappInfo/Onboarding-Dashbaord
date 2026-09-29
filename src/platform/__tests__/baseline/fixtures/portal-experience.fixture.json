@@ -1,0 +1,50 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-09-26T22:39:00Z",
+  "description": "Frozen baseline fixture for Experience Platform & Portals domain models",
+  "membershipPlan": {
+    "id": "plan_frozen_001",
+    "organizationId": "org-smartsapp-baseline",
+    "portalId": "portal-academy-01",
+    "workspaceIds": ["ws-baseline-portal"],
+    "name": "Full Access Scholar",
+    "slug": "full-access-scholar",
+    "tier": "scholar",
+    "price": 450,
+    "currency": "GHS",
+    "interval": "monthly",
+    "features": [
+      "unlimited_course_enrollments",
+      "community_space_access",
+      "ai_tutor_inquiries",
+      "verifiable_credentials"
+    ],
+    "status": "active",
+    "order": 1,
+    "createdAt": "2026-09-26T22:39:00Z",
+    "updatedAt": "2026-09-26T22:39:00Z",
+    "unlockedCourseIds": ["course_stem_01", "course_code_02"],
+    "unlockedSpaceIds": ["space_general_01", "space_alumni_02"]
+  },
+  "portalMembership": {
+    "id": "member_frozen_001",
+    "organizationId": "org-smartsapp-baseline",
+    "portalId": "portal-academy-01",
+    "userId": "usr_student_88",
+    "email": "student88@academy.edu",
+    "displayName": "Akua Osei",
+    "role": "student",
+    "status": "active",
+    "planId": "plan_frozen_001",
+    "points": 340,
+    "streakDays": 14,
+    "completedLessonIds": ["les_01", "les_02", "les_03"]
+  },
+  "portalEvents": [
+    "portal.member.joined",
+    "portal.course.enrolled",
+    "portal.lesson.completed",
+    "portal.course.completed",
+    "portal.credential.issued"
+  ]
+}

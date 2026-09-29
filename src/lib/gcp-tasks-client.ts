@@ -900,3 +900,87 @@ export async function scheduleBulkForceAdvanceTask({
     throw error;
   }
 }
+
+/**
+ * Generic task scheduler for named queues, endpoints, and task keys (used by Agent Capabilities and workflows).
+ */
+export async function scheduleTaskWithKey(
+  taskKey: string,
+  queueName: string,
+  endpoint: string,
+  payload: Record<string, unknown>,
+  delaySeconds = 0
+): Promise<string> {
+  const client = await getCloudTasksClient();
+  const queue = `${QUEUE_PREFIX}${queueName}`;
+  const resolvedBaseUrl = await resolveRequestBaseUrl();
+
+  if (isEmulator || !client) {
+    console.info(`[GCP-TASKS-EMULATOR] Scheduling generic task ${taskKey} on queue "${queue}" with delay ${delaySeconds}s`);
+    const existingTimer = localTimers.get(taskKey);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+
+    const timer = setTimeout(async () => {
+      localTimers.delete(taskKey);
+      try {
+        await fetch(`${resolvedBaseUrl}${endpoint}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-cloud-tasks-secret': SECRET,
+          },
+          body: JSON.stringify(payload),
+        });
+      } catch (err) {
+        console.error(`[GCP-TASKS-EMULATOR] Error executing generic task ${taskKey}:`, err);
+      }
+    }, Math.max(0, delaySeconds * 1000));
+
+    localTimers.set(taskKey, timer);
+    return taskKey;
+  }
+
+  const parent = client.queuePath(PROJECT, LOCATION, queue);
+  const sanitizedKey = taskKey.replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 500);
+  const formattedTaskName = client.taskPath(PROJECT, LOCATION, queue, sanitizedKey);
+  const publicBaseUrl = await resolvePublicBaseUrl();
+  const serviceAccountEmail = resolveServiceAccountEmail();
+  const scheduleTimeSeconds = Math.floor(Date.now() / 1000) + delaySeconds;
+
+  const task = {
+    name: formattedTaskName,
+    httpRequest: {
+      httpMethod: 'POST' as const,
+      url: `${publicBaseUrl}${endpoint}`,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-cloud-tasks-secret': SECRET,
+      },
+      body: Buffer.from(JSON.stringify(payload)).toString('base64'),
+      oidcToken: {
+        serviceAccountEmail,
+        audience: publicBaseUrl,
+      },
+    },
+    scheduleTime: {
+      seconds: scheduleTimeSeconds,
+    },
+  };
+
+  try {
+    const [response] = await executeWithRetry(() => client.createTask({ parent, task }));
+    return response.name || taskKey;
+  } catch (err) {
+    // CAUTION (Cloud Run blueprint §5.1): the in-process fallback is a setTimeout that Cloud Run
+    // may throttle or kill after the response. Allow it only outside production; in production a
+    // missing queue must fail loudly so the step is not silently lost.
+    if (isQueueNotFoundError(err) && process.env.NODE_ENV !== 'production') {
+      await dispatchLocalHttpWorker(endpoint, payload, taskKey);
+      return taskKey;
+    }
+    throw err;
+  }
+}
+

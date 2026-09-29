@@ -10,6 +10,8 @@
  * - Centralized authorization contract for EntitlementService.
  */
 
+import { z } from 'zod';
+
 // ── 1. Roles & Status Enums ──────────────────────────────────────────────────
 
 export type PortalMemberRole =
@@ -152,6 +154,41 @@ export interface MembershipPlan {
   createdAt: string;
   updatedAt: string;
 }
+
+export const MembershipPlanSchema = z.object({
+  id: z.string(),
+  organizationId: z.string(),
+  portalId: z.string(),
+  workspaceIds: z.array(z.string()),
+  name: z.string(),
+  slug: z.string(),
+  description: z.string().optional(),
+  price: z.number(),
+  currency: z.string(),
+  interval: z.enum(['one_time', 'monthly', 'annual', 'lifetime']),
+  trialDays: z.number().optional(),
+  features: z.array(z.string()),
+  badgeText: z.string().optional(),
+  isPopular: z.boolean().optional(),
+  order: z.number(),
+  status: z.enum(['active', 'archived']),
+  unlockedResourceIds: z.array(z.string()).optional(),
+  unlockedCourseIds: z.array(z.string()).optional(),
+  unlockedSpaceIds: z.array(z.string()).optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  // Legacy / Transitional fields
+  workspaceId: z.string().optional(),
+  tier: z.string().optional(),
+  priceGhs: z.number().optional(),
+  billingInterval: z.string().optional(),
+  active: z.boolean().optional(),
+  maxSeats: z.number().optional(),
+  version: z.number().optional(),
+});
+
+export type MembershipPlanSchemaType = z.infer<typeof MembershipPlanSchema>;
+
 
 // ── 5. Access Grant Model ────────────────────────────────────────────────────
 
