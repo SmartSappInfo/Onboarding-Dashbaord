@@ -367,6 +367,13 @@ export const ObligationStatusSchema = z.enum([
 ]);
 export type ObligationStatus = z.infer<typeof ObligationStatusSchema>;
 
+export const ObligationResponsiblePartySchema = z.enum([
+  'internal',
+  'counterparty',
+  'mutual',
+]);
+export type ObligationResponsibleParty = z.infer<typeof ObligationResponsiblePartySchema>;
+
 export const ContractObligationSchema = z.object({
   id: z.string().min(1),
   workspaceId: z.string().min(1),
@@ -376,7 +383,7 @@ export const ContractObligationSchema = z.object({
   type: ObligationTypeSchema.default('deliverable'),
   status: ObligationStatusSchema.default('pending'),
   dueDate: z.string(), // ISO-8601
-  responsibleParty: z.enum(['internal', 'counterparty', 'mutual']).default('internal'),
+  responsibleParty: ObligationResponsiblePartySchema.default('internal'),
   assignedUserId: z.string().optional(),
   counterpartyContactId: z.string().optional(),
   linkedTaskId: z.string().optional(),
@@ -558,3 +565,176 @@ export const ReminderScheduleConfigSchema = z.object({
   updatedBy: z.string().min(1),
 });
 export type ReminderScheduleConfig = z.infer<typeof ReminderScheduleConfigSchema>;
+
+// ==========================================
+// 13. AI Document Intelligence, Redlining & Obligations (Phase 5 / P5.1 - P5.5)
+// ==========================================
+
+export const AiFieldTypeSchema = z.enum([
+  'signature',
+  'initials',
+  'date',
+  'signer_name',
+  'text',
+  'checkbox',
+]);
+export type AiFieldType = z.infer<typeof AiFieldTypeSchema>;
+
+export const AiFieldSuggestionSchema = z.object({
+  id: z.string().min(1),
+  pageNumber: z.number().int().min(1),
+  fieldType: AiFieldTypeSchema,
+  label: z.string().min(1),
+  recipientRole: RecipientRoleSchema.default('signer'),
+  confidence: z.number().min(0).max(1),
+  leftPct: z.number().min(0).max(100),
+  topPct: z.number().min(0).max(100),
+  widthPct: z.number().min(0).max(100),
+  heightPct: z.number().min(0).max(100),
+  sourceExcerpt: z.string().optional(),
+  accepted: z.boolean().default(false),
+});
+export type AiFieldSuggestion = z.infer<typeof AiFieldSuggestionSchema>;
+
+export const AiDocumentQaCitationSchema = z.object({
+  pageNumber: z.number().int().min(1),
+  textSnippet: z.string().min(1),
+  score: z.number().min(0).max(1).optional(),
+});
+export type AiDocumentQaCitation = z.infer<typeof AiDocumentQaCitationSchema>;
+
+export const AiDocumentQaMessageSchema = z.object({
+  role: z.enum(['user', 'assistant']),
+  content: z.string().min(1),
+});
+export type AiDocumentQaMessage = z.infer<typeof AiDocumentQaMessageSchema>;
+
+export const AiDocumentQaRequestSchema = z.object({
+  workspaceId: z.string().min(1),
+  documentId: z.string().min(1),
+  documentVersionId: z.string().optional(),
+  question: z.string().min(1),
+  history: z.array(AiDocumentQaMessageSchema).optional(),
+});
+export type AiDocumentQaRequest = z.infer<typeof AiDocumentQaRequestSchema>;
+
+export const AiDocumentQaResponseSchema = z.object({
+  answer: z.string().min(1),
+  citations: z.array(AiDocumentQaCitationSchema).default([]),
+  confidence: z.number().min(0).max(1).default(1),
+  isSupported: z.boolean().default(true),
+  documentId: z.string().min(1),
+  documentVersionId: z.string().optional(),
+  generatedAt: z.string(),
+});
+export type AiDocumentQaResponse = z.infer<typeof AiDocumentQaResponseSchema>;
+
+export const SemanticClauseChangeTypeSchema = z.enum([
+  'added',
+  'removed',
+  'modified',
+  'unchanged',
+]);
+export type SemanticClauseChangeType = z.infer<typeof SemanticClauseChangeTypeSchema>;
+
+export const SemanticClauseSignificanceSchema = z.enum(['high', 'medium', 'low']);
+export type SemanticClauseSignificance = z.infer<typeof SemanticClauseSignificanceSchema>;
+
+export const SemanticClauseDiffItemSchema = z.object({
+  id: z.string().min(1),
+  clauseTitle: z.string().min(1),
+  changeType: SemanticClauseChangeTypeSchema,
+  originalText: z.string().optional(),
+  newText: z.string().optional(),
+  summaryOfChange: z.string().min(1),
+  significance: SemanticClauseSignificanceSchema.default('medium'),
+});
+export type SemanticClauseDiffItem = z.infer<typeof SemanticClauseDiffItemSchema>;
+
+export const SemanticClauseDiffSchema = z.object({
+  documentId: z.string().min(1),
+  versionA: z.string().min(1),
+  versionB: z.string().min(1),
+  executiveSummary: z.string().min(1),
+  clauses: z.array(SemanticClauseDiffItemSchema).default([]),
+  addedCount: z.number().int().min(0),
+  removedCount: z.number().int().min(0),
+  modifiedCount: z.number().int().min(0),
+  generatedAt: z.string(),
+});
+export type SemanticClauseDiff = z.infer<typeof SemanticClauseDiffSchema>;
+
+export const AiObligationStatusSchema = z.enum([
+  'review_required',
+  'approved',
+  'rejected',
+]);
+export type AiObligationStatus = z.infer<typeof AiObligationStatusSchema>;
+
+export const AiObligationCandidateSchema = z.object({
+  id: z.string().min(1),
+  workspaceId: z.string().min(1),
+  contractId: z.string().min(1),
+  title: z.string().min(1),
+  description: z.string().min(1),
+  type: ObligationTypeSchema.default('deliverable'),
+  suggestedDueDate: z.string().optional(),
+  suggestedResponsibleParty: ObligationResponsiblePartySchema.default('internal'),
+  confidence: z.number().min(0).max(1).default(0.8),
+  sourcePage: z.number().int().min(1).optional(),
+  sourceExcerpt: z.string().min(1),
+  status: AiObligationStatusSchema.default('review_required'),
+  createdAt: z.string(),
+  reviewedAt: z.string().optional(),
+  reviewedBy: z.string().optional(),
+  linkedTaskId: z.string().optional(),
+});
+export type AiObligationCandidate = z.infer<typeof AiObligationCandidateSchema>;
+
+export const DocumentAiTaskTypeSchema = z.enum([
+  'field_detection',
+  'summarize',
+  'qa',
+  'compare',
+  'draft',
+  'obligations',
+]);
+export type DocumentAiTaskType = z.infer<typeof DocumentAiTaskTypeSchema>;
+
+export const DocumentAiAnalysisStatusSchema = z.enum([
+  'queued',
+  'running',
+  'succeeded',
+  'failed',
+  'review_required',
+]);
+export type DocumentAiAnalysisStatus = z.infer<typeof DocumentAiAnalysisStatusSchema>;
+
+export const DocumentAiTokenUsageSchema = z.object({
+  promptTokens: z.number().int().min(0),
+  completionTokens: z.number().int().min(0),
+  totalTokens: z.number().int().min(0),
+});
+export type DocumentAiTokenUsage = z.infer<typeof DocumentAiTokenUsageSchema>;
+
+export const DocumentAiAnalysisLogSchema = z.object({
+  id: z.string().min(1),
+  workspaceId: z.string().min(1),
+  documentId: z.string().min(1),
+  documentVersionId: z.string().optional(),
+  taskType: DocumentAiTaskTypeSchema,
+  status: DocumentAiAnalysisStatusSchema,
+  modelProvider: z.string().min(1),
+  modelName: z.string().min(1),
+  promptVersionId: z.string().min(1),
+  inputDigest: z.string().min(1),
+  confidence: z.number().min(0).max(1).optional(),
+  latencyMs: z.number().min(0).optional(),
+  tokenUsage: DocumentAiTokenUsageSchema.optional(),
+  costUsd: z.number().min(0).optional(),
+  reviewedBy: z.string().optional(),
+  reviewedAt: z.string().optional(),
+  createdAt: z.string(),
+});
+export type DocumentAiAnalysisLog = z.infer<typeof DocumentAiAnalysisLogSchema>;
+
