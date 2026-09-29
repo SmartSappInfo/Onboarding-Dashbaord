@@ -291,7 +291,7 @@ function EditorLayout() {
     );
 }
 
-function ToolButton({ icon: Icon, label, onClick, disabled }: { icon: any, label: string, onClick: () => void, disabled?: boolean }) {
+function ToolButton({ icon: Icon, label, onClick, disabled }: { icon: React.ComponentType<{ className?: string }>, label: string, onClick: () => void, disabled?: boolean }) {
     return (
         <Tooltip>
             <TooltipTrigger asChild>
