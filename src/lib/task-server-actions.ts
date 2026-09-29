@@ -39,12 +39,42 @@ export async function createTaskAction(taskData: NewTaskInput): Promise<TaskResu
 }
 
 /** Updates a task as the signed-in user; the task's own workspace is authorized. */
+/**
+ * SECURITY (PR-0 review): fields the session user may not change through the task UI.
+ * - Tenant/identity (`id`, `workspaceId`, `organizationId`, `createdAt`, `updatedAt`): owned by the store.
+ * - System links (`relatedParentId`, `relatedEntityId`, `relatedEntityType`, `source`, `automationId`):
+ *   set only by the flows that create linked tasks (DocSigning obligations, surveys, automations).
+ *   Letting a user re-point them would, for example, let completing any task fulfil an arbitrary
+ *   contract obligation through the task-completion reverse hook. Stripping them on update also keeps
+ *   an ordinary edit (the editor sends `relatedParentId: null`) from silently unlinking a task.
+ * The UI spreads whole stored tasks into updates (`{ ...task, status }`), so this strips rather than
+ * rejects: unknown or legacy values elsewhere stay as tolerant as before.
+ */
+const NON_EDITABLE_TASK_FIELDS = [
+  'id',
+  'workspaceId',
+  'organizationId',
+  'createdAt',
+  'updatedAt',
+  'relatedParentId',
+  'relatedEntityId',
+  'relatedEntityType',
+  'source',
+  'automationId',
+] as const;
+
+function editableTaskFields(updates: Partial<Task>): Partial<Task> {
+  const editable: Partial<Task> = { ...updates };
+  for (const field of NON_EDITABLE_TASK_FIELDS) delete editable[field];
+  return editable;
+}
+
 export async function updateTaskAction(taskId: string, updates: Partial<Task>): Promise<TaskResult> {
   try {
     const workspaceId = await getTaskWorkspaceId(taskId);
     if (!workspaceId) return { success: false, error: 'Task not found.' };
     const { uid } = await requireWorkspace(workspaceId);
-    return updateTaskCore(taskId, updates, { kind: 'user', uid });
+    return updateTaskCore(taskId, editableTaskFields(updates), { kind: 'user', uid });
   } catch (error: unknown) {
     return { success: false, error: getErrorMessage(error) };
   }
@@ -80,8 +110,8 @@ export async function bulkUpdateTasksAction(taskIds: string[], updates: Partial<
 
     const batch = adminDb.batch();
     const timestamp = new Date().toISOString();
-    // Tenant fields are never bulk-editable.
-    const { workspaceId: _ws, organizationId: _org, id: _id, ...safeUpdates } = updates;
+    // Tenant fields and system links are never bulk-editable (see NON_EDITABLE_TASK_FIELDS).
+    const safeUpdates = editableTaskFields(updates);
     taskIds.forEach(id => {
       const data: Record<string, unknown> = { ...safeUpdates, updatedAt: timestamp };
       if (updates.status === 'done') data.completedAt = timestamp;

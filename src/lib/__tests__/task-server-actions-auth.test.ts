@@ -99,6 +99,21 @@ describe('task server actions', () => {
     expect(h.updates[0].data).not.toHaveProperty('organizationId');
   });
 
+  it('update never re-points or clears system links (PR-0 review: obligation fulfilment)', async () => {
+    await updateTaskAction('t-a', {
+      title: 'x',
+      relatedParentId: 'contract-of-someone-else',
+      relatedEntityId: 'obligation-9',
+      relatedEntityType: null,
+      source: 'automation',
+      automationId: 'auto-1',
+    });
+    expect(h.updates[0].data).toMatchObject({ title: 'x' });
+    for (const field of ['relatedParentId', 'relatedEntityId', 'relatedEntityType', 'source', 'automationId']) {
+      expect(h.updates[0].data).not.toHaveProperty(field);
+    }
+  });
+
   it('bulk delete refuses tasks outside the verified workspace', async () => {
     await expect(bulkDeleteTasksAction(['t-a', 't-b'], 'ws-a')).resolves.toEqual({
       success: false,

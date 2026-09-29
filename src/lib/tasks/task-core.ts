@@ -43,16 +43,30 @@ async function checkPermission(
   return permission.granted ? { granted: true } : { granted: false, reason: permission.reason ?? 'Permission denied.' };
 }
 
-/** The tenant and identity fields of a stored task that authorization and audit rely on. */
+/**
+ * Audit/linking fields are read leniently: a legacy or unexpected shape (null, '' or an old enum value)
+ * becomes `undefined` instead of failing the whole parse. Only the tenant field fails closed.
+ */
+const lenient = <T extends z.ZodTypeAny>(schema: T) => schema.nullish().catch(undefined);
+
+/**
+ * The tenant and identity fields of a stored task that authorization and audit rely on.
+ *
+ * CAUTION (PR-0 review): ONLY `workspaceId` may fail closed — it is what authorization checks. Every
+ * other field is best-effort. The Tasks UI stores `relatedParentId: null` / `relatedEntityId: null`,
+ * and legacy tasks carry `organizationId: null`, `entityType: 'school'` or `title: null`; a strict
+ * schema here made update/complete/delete answer "Task not found." for all of them.
+ * Regression tests: src/lib/tasks/__tests__/task-core-stored-shapes.test.ts.
+ */
 const StoredTaskRefSchema = z.object({
   workspaceId: z.string().min(1),
-  organizationId: z.string().optional(),
-  entityId: z.string().nullable().optional(),
-  entityType: z.enum(['institution', 'family', 'person']).nullable().optional(),
-  title: z.string().optional(),
-  relatedParentId: z.string().optional(),
-  relatedEntityId: z.string().optional(),
-  source: z.string().optional(),
+  organizationId: lenient(z.string()),
+  entityId: lenient(z.string()),
+  entityType: lenient(z.enum(['institution', 'family', 'person'])),
+  title: lenient(z.string()),
+  relatedParentId: lenient(z.string()),
+  relatedEntityId: lenient(z.string()),
+  source: lenient(z.string()),
 });
 type StoredTaskRef = z.infer<typeof StoredTaskRefSchema>;
 
@@ -69,7 +83,7 @@ export async function getTaskWorkspaceId(taskId: string): Promise<string | null>
   return (await loadStoredTaskRef(taskId))?.workspaceId ?? null;
 }
 
-const WorkspaceOrgSchema = z.object({ organizationId: z.string().optional() });
+const WorkspaceOrgSchema = z.object({ organizationId: lenient(z.string()) });
 
 /**
  * SECURITY (Round 4 item 5): a task's organization is its workspace's organization — never the
