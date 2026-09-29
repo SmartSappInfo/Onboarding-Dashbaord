@@ -703,7 +703,7 @@ Status: ☐ not started · ◐ in progress · ☑ done (with evidence link).
 
 | PR | Title | Status | Gate evidence (A/B/C) | Notes |
 | :--- | :--- | :--- | :--- | :--- |
-| PR-0 | Branch split + sweep test + PR template (A20) + lint enforcement (A2) | ☑ 2026-09-29 | Local branches (not pushed): `agentic/pr0a-ssrf-guard` → `pr0b-phase0-platform` → `pr0c-portal-task-auth-hotfix` → `pr0d-guardrails`; `pr0e-content-items-rule` branches off (c). Clean-checkout checks: (a)/(b) no new tsc errors vs the `main` baseline, baseline 444; (c) tsc 0, vitest 712 files / 5,370 tests; (d) sweep test mutation-checked both ways, full lint 0 errors / 657 warnings. `git merge-tree` onto current `main`: clean. | See PR-0 notes below |
+| PR-0 | Branch split + sweep test + PR template (A20) + lint enforcement (A2) | ◐ landing (2026-09-29) | **On `main` (fast-forward, not pushed):** (a) `b14373c5` SSRF guard, (b) `efddec34` Phase 0 platform, (c) `1b188b3b` portal/task auth hotfix + `e44aa55b` task-core fix. Clean-checkout `e44aa55b`: tsc 0, lint 0 errors, vitest 747 files / 5,637 tests. **Pending your merge:** (f) `agentic/pr0f-docsigning-auth-hotfix` → (d) `agentic/pr0d-guardrails`; stack top: tsc 0, lint 0 errors / 663 warnings, vitest 750 / 5,680, baseline 44 / 452, sweep 0 new / 0 stale. **After the app release only:** (e) `agentic/pr0e-content-items-rule` (rules 39 pass). Backup: `../agentic-pr0-2026-09-29.bundle`. | See PR-0 notes and review below |
 | PR-1 | 1.1b CRM + MCP-governance hotfix | ☐ | | Critical: N1, N2 |
 | PR-2 | 1.0 Phase 0 closure + OTel/auth deps governance (A10) | ☐ | | Secret rotation needs approval |
 | PR-3 | 1.1 portal permission ids + lint | ☐ | | FER dry-run first |
@@ -722,11 +722,40 @@ Status: ☐ not started · ◐ in progress · ☑ done (with evidence link).
 | PR-16 | Generated docs, fingerprints (A4), telemetry, exit evidence | ☐ | | |
 
 **PR-0 notes (2026-09-29):**
-- **`main` does not build from a clean checkout today.** DocSigning commits (`contract-obligation-service.ts`, and `call-centre-service.ts` via `cd0555bd`) import `@/lib/tasks/task-core`, which only exists in branch (c) and in the uncommitted working tree. Merging (c) fixes it; until then CI typecheck on `main` fails.
-- **Rules auto-deploy.** `.github/workflows/deploy-firestore.yml` publishes `firestore.rules` on any push to `staging` or `deployment` that touches it. The `content_items` rule therefore lives in its own branch (e), merged only after the app release containing (c) is live.
-- **`docs/agentic/inventory.json`** (2 MB, generated) is gitignored; the matrix `.md` is committed.
-- **Sweep baseline.** 517 unguarded exports in 175 files under the strict definition, plus 9 public-by-design actions. The scanner's older `GUARD_CALLS` also counts caller-trusting helpers (`canUser`, `verifyPermission`, `verifyBackofficeAdmin`, …) and should be aligned with `VERIFIED_IDENTITY_GUARDS` in PR-2.
-- **Missing skill.** The `backend-design` skill named in the rules preamble doesn't exist; `backend-patterns` is used instead.
+
+**State of the stack:** `main` → (a) → (b) → (c) + task-core fix → (f) DocSigning hotfix → (d) guardrails; (e) off (c). Agentic work now lives in the worktree `../Onboarding-agentic`. The scratchpad worktree was lost, and nothing committed was affected.
+
+**Senior review (2026-09-29): on track with conditions.** Resolved in this pass:
+
+| Blocker | Resolution |
+| :--- | :--- |
+| Committed `main` called the new 1-arg task actions against the old wrappers (DocSigning commits `43a8e87d`, `7d163dcd` swept agentic files; `ignoreBuildErrors: true` hid it) | (a)–(c) landed; `main` typechecks with 0 errors |
+| Stored-task schema rejected the `null` links the Tasks UI writes, so tasks answered "Task not found." | `e44aa55b`: only `workspaceId` fails closed; regression tests; mutation-checked |
+| 11 unauthenticated DocSigning actions (`enterprise-governance-actions`, `workspace-branding-actions`), webhook SSRF, legal-hold actor spoofing, unbound obligation hook | Branch (f): session + finance/agreements or studios/pdfs RBAC, `validateSafeEgressUrl` + `safeUrlFetch`, hook bound to contract + linked task; mutation-checked tests |
+| Agentic copies in the main working tree kept being swept into commits; `firestore.rules` there equalled (e) | 163 duplicate files cleaned (byte-verified); your 12 files kept |
+| Worktree lost; branches local-only | Bundle backup plus a new worktree outside `/tmp` with its own install |
+| Sweep would fail after rebase | It correctly flagged the 11 DocSigning actions; passes after (f) |
+| ESLint scoped block could silently replace the F2 rule | Shared selector constants (verified with `--print-config`) |
+
+**Open follow-ups (tracked, not blockers for landing):**
+
+| # | Follow-up | Owner / PR |
+| :--- | :--- | :--- |
+| FU-1 | Paywall still open on `course_lessons`, `course_assessments` (stores correct answers), `community_posts`, `community_comments` (`if true`). Same pattern as `content_items`. | New item before (e) ships, or with it |
+| FU-2 | CI does not enforce anything: commits go straight to `main` (typecheck was red Sep 28–29). Add branch protection with required checks, a pre-push hook (sweep about 4 s + tsc), and a required-reviewer environment on the rules deploy job. | You / repo admin |
+| FU-3 | Staging shares the PRODUCTION Firebase project, so rules "staging first" (P5, A11) cannot be met. Decide the approval path before PR-6 and (e). | Decision |
+| FU-4 | Sweep false negatives (guard in try/catch or dead branch, local shadowing, `export default`, `export *`, inline `'use server'`, `.js`, TSX parse of `<T>x`); anonymous-tolerant guards (`resolvePortalViewer`) should need an allowlist tier; route-handler sweep (Rule 51). | PR-2 |
+| FU-5 | `no-unsafe-type-assertion` in the typed block (single `as` casts, e.g. `task-core.ts` `as Task`); lint and typecheck for `scripts/`. Lint headroom is only 7 warnings. | PR-2 |
+| FU-6 | Freeze the `system` task actor (4 call sites + automations) with a shrink-only test until PR-5 service principals. | PR-2 |
+| FU-7 | Rule 52 `server-only` boundary: 0 of 18 core modules; add `import 'server-only'` + boundary test. | PR-1 / PR-2 |
+| FU-8 | Scanner `GUARD_CALLS` still counts caller-trusting checks; the committed matrix publishes "Auth gaps (731)". Align with the strict sweep and publish the matrix as a CI artifact. | PR-2 |
+| FU-9 | 4 more senders use plain `fetch` (`webhook-engine.ts:86`, `outbound-webhook-service.ts:99`, `webhook-actions.ts:61`, plus the DocSigning one now fixed): Rule 34 row is not done. | PR-1 |
+| FU-10 | DocSigning is building a parallel AI / webhook / quota layer (Rule 69 drift), including a Gemini call with the key in the query string (`document-ai-copilot-service.ts:280`). PR-4 / PR-12 must absorb it. | PR-4, PR-12 |
+| FU-11 | `SsrffBlockedError` typo in a public export; `::ffff:0:0/96`, `fec0::/10` and TEST-NET ranges not blocked (low risk with DNS pinning). | PR-2 |
+| FU-12 | Regenerate inventory and matrix: they predate 68 DocSigning commits. | PR-2 |
+| FU-13 | Don't push to the public origin before deploying: the diffs disclose the fixed holes. | Release |
+
+**Missing skill.** The `backend-design` skill named in the rules preamble doesn't exist; `backend-patterns` is used instead.
 
 **A18 — affected-features matrix** (fill in per PR):
 
