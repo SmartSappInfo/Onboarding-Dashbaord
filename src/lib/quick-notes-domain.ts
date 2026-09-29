@@ -769,7 +769,7 @@ export function buildTimelineStream(params: BuildTimelineStreamParams): CRMKnowl
   if (params.signingEnvelopes) {
     for (const env of params.signingEnvelopes) {
       const recipientCount = env.recipients?.length || 0;
-      const content = `Signing envelope status is ${env.status} with ${recipientCount} recipient(s). Routing mode: ${env.routingRules?.mode || 'sequential'}.`;
+      const content = `Signing envelope status is ${env.status} with ${recipientCount} recipient(s). Routing mode: ${env.routingMode || 'sequential'}.`;
 
       items.push({
         id: `signing_envelope:${env.id}`,
@@ -786,12 +786,13 @@ export function buildTimelineStream(params: BuildTimelineStreamParams): CRMKnowl
           dealId: env.dealId,
           entityId: env.entityId,
         },
-        tags: [env.status, 'signing_envelope', env.routingRules?.mode || 'sequential'],
+        tags: [env.status, 'signing_envelope', env.routingMode || 'sequential'],
         originHref: `/verify/${encodeURIComponent(env.id)}`,
         editable: false,
         metadata: {
           status: env.status,
-          routingRules: env.routingRules,
+          routingMode: env.routingMode,
+          currentRoutingOrder: env.currentRoutingOrder,
         },
       });
     }

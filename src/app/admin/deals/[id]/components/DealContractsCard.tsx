@@ -248,7 +248,7 @@ export default function DealContractsCard({ deal }: DealContractsCardProps) {
                       {getStatusBadge(env.status)}
                     </div>
                     <p className="text-[11px] text-muted-foreground">
-                      Signatures: {signedCount} of {totalSigners} completed ({env.routingRules?.mode || 'sequential'} routing)
+                      Signatures: {signedCount} of {totalSigners} completed ({env.routingMode || 'sequential'} routing)
                     </p>
                   </div>
 

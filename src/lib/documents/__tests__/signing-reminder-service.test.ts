@@ -63,6 +63,8 @@ describe('P4.5 Multi-Channel Signing Reminders & Renewal Alerts Engine', () => {
         status: 'in_progress',
         templateVersionId: 'tpl_1',
         preExecutionSha256: 'sha_1',
+        routingMode: 'sequential',
+        currentRoutingOrder: 1,
         routingRules: { mode: 'sequential', currentStep: 1, totalSteps: 2 },
         recipients: [
           {
@@ -110,6 +112,8 @@ describe('P4.5 Multi-Channel Signing Reminders & Renewal Alerts Engine', () => {
         status: 'in_progress',
         templateVersionId: 'tpl_1',
         preExecutionSha256: 'sha_1',
+        routingMode: 'parallel',
+        currentRoutingOrder: 1,
         routingRules: { mode: 'parallel', currentStep: 1, totalSteps: 1 },
         recipients: [
           {

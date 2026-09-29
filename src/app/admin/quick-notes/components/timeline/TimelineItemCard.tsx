@@ -27,6 +27,8 @@ import {
   Eye,
   BookOpen,
   Compass,
+  FileText,
+  FileCheck,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -58,6 +60,8 @@ const SOURCE_ICONS: Record<TimelineItemSource, React.ElementType> = {
   task: CheckSquare,
   task_note: CheckSquare,
   activity: ActivityIcon,
+  contract: FileText,
+  signing_envelope: FileCheck,
 };
 
 const KNOWLEDGE_ICONS: Record<string, React.ElementType> = {

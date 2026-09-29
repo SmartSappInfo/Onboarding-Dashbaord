@@ -301,6 +301,7 @@ describe('P4.1 CRM Deal Synchronization & Master-Record Federation', () => {
       mockObligationsStore.set('ob_1', {
         id: 'ob_1',
         workspaceId: 'ws_prod',
+        type: 'compliance',
         contractId: 'ctr_001',
         title: 'Submit SOC2 Audit Report',
         status: 'pending',

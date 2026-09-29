@@ -21,7 +21,7 @@ function isAuthorized(request: NextRequest): boolean {
 
   try {
     return crypto.timingSafeEqual(Buffer.from(providedToken), Buffer.from(SECRET));
-  } catch (_err) {
+  } catch {
     return false;
   }
 }

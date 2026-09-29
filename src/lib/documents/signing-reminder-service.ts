@@ -84,8 +84,9 @@ export function evaluatePendingEnvelopeReminders(
       continue;
     }
 
-    const isSequential = env.routingRules?.mode === 'sequential';
-    const activeStep = env.routingRules?.currentStep || 1;
+    const routingMode = env.routingMode || (env as unknown as { routingRules?: { mode?: 'sequential' | 'parallel' | 'mixed' } }).routingRules?.mode || 'sequential';
+    const isSequential = routingMode === 'sequential';
+    const activeStep = env.currentRoutingOrder ?? (env as unknown as { routingRules?: { currentStep?: number } }).routingRules?.currentStep ?? 1;
 
     for (const rec of env.recipients || []) {
       // Must not already be signed or declined
