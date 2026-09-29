@@ -218,20 +218,41 @@ describe.skipIf(!up)('document signing security rules', () => {
     });
   });
 
-  describe('contract_relationships rules', () => {
-    it('allows authorized user to read relationships', async () => {
+  describe('bulk_campaigns rules', () => {
+    it('allows workspace member to read bulk campaigns in their workspace', async () => {
       const userDb = env.authenticatedContext('viewer-a').firestore();
-      await assertSucceeds(getDoc(doc(userDb, 'contract_relationships/rel-1')));
+      await assertSucceeds(getDoc(doc(userDb, 'bulk_campaigns/camp-a')));
     });
 
-    it('allows finance_manage user to create relationship', async () => {
+    it('denies user without workspace access to read bulk campaigns', async () => {
+      const userDb = env.authenticatedContext('viewer-a').firestore();
+      await assertFails(getDoc(doc(userDb, 'bulk_campaigns/camp-b')));
+    });
+
+    it('allows finance_manage user to create bulk campaign in their workspace', async () => {
       const userDb = env.authenticatedContext('user-finance-a').firestore();
-      await assertSucceeds(setDoc(doc(userDb, 'contract_relationships/rel-new'), {
+      await assertSucceeds(setDoc(doc(userDb, 'bulk_campaigns/camp-new'), {
         workspaceId: WS_A,
-        sourceContractId: 'c-1',
-        targetContractId: 'c-3',
-        relationshipType: 'renewal',
+        title: 'New Bulk Campaign',
+        status: 'ready',
+      }));
+    });
+  });
+
+  describe('bulk_campaign_recipients rules', () => {
+    it('allows authorized user to read bulk campaign recipients', async () => {
+      const userDb = env.authenticatedContext('viewer-a').firestore();
+      await assertSucceeds(getDoc(doc(userDb, 'bulk_campaign_recipients/rec-1')));
+    });
+
+    it('allows finance_manage user to create recipient item', async () => {
+      const userDb = env.authenticatedContext('user-finance-a').firestore();
+      await assertSucceeds(setDoc(doc(userDb, 'bulk_campaign_recipients/rec-new'), {
+        campaignId: 'camp-a',
+        email: 'test@recipient.com',
+        status: 'queued',
       }));
     });
   });
 });
+

@@ -2886,6 +2886,26 @@ service cloud.firestore {
                    );
     }
 
+    match /bulk_campaigns/{campaignId} {
+      allow get, list: if isAuthorized() && (
+                         isSystemAdmin() || 
+                         hasWorkspaceAccess(resource.data.workspaceId)
+                       );
+      allow write: if isAuthorized() && (
+                     isSystemAdmin() || 
+                     (hasPermission('finance_manage') && hasWorkspaceAccess(request.resource.data.workspaceId))
+                   );
+    }
+
+    match /bulk_campaign_recipients/{recipientId} {
+      allow get, list: if isAuthorized();
+      allow write: if isAuthorized() && (
+                     isSystemAdmin() || 
+                     hasPermission('finance_manage')
+                   );
+    }
+
+
     // --- Perspectives ---
     match /perspectives/{pId} {
       allow read: if isAuthorized();
