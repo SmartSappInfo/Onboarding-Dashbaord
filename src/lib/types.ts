@@ -6033,13 +6033,23 @@ export interface SectionPermissions {
 }
 
 /**
- * Full hierarchical permission schema.
+ * Full hierarchical permission schema (Authorization 2.0).
+ * 
+ * ARCHITECTURAL GUIDANCE FOR MAINTAINERS:
+ * - Mirrors the 6 top-level sidebar navigation groups: Operations, Studios, Finance Hub,
+ *   Social Hub, Workspace and Users, and Management.
+ * - `social` and `workforce` are defined with optional fallback support to guarantee
+ *   backward compatibility when deserializing legacy 4-section Firestore records.
+ * - Always run schemas through `normalizePermissionsSchema()` in `src/lib/permissions-engine.ts`
+ *   to ensure all 6 sections are fully instantiated and initialized.
  */
 export interface PermissionsSchema {
   operations: SectionPermissions;
   finance: SectionPermissions;
   studios: SectionPermissions;
   management: SectionPermissions;
+  social?: SectionPermissions;
+  workforce?: SectionPermissions;
 }
 
 // ─────────────────────────────────────────────────
