@@ -990,6 +990,7 @@ export interface UserProfile {
   onboardingCompleted?: boolean;
   onboardingStatus?: 'pending' | 'in_progress' | 'completed' | 'exempt';
   department?: string;
+  departmentId?: string;
   approvalStatus?: 'pending' | 'approved' | 'rejected';
   membershipStatus?: MembershipStatus;
   role?: string;
@@ -1362,6 +1363,7 @@ export type InvitationStatus =
   | 'sent'
   | 'delivered'
   | 'accepted'
+  | 'declined'
   | 'expired'
   | 'revoked'
   | 'failed';
@@ -1396,8 +1398,30 @@ export interface Invitation {
   invitedBy: string;
   acceptedBy?: string;
   acceptedAt?: string;
+  declinedAt?: string;
+  declinedReason?: string;
   createdAt: string;
   updatedAt?: string;
+}
+
+/**
+ * Encrypted Invitation Payload for URL parameter and session transfer.
+ * Encrypted using AES-256-GCM to prevent client tampering.
+ */
+export interface EncryptedInvitePayload {
+  invitationId: string;
+  organizationId: string;
+  organizationName: string;
+  departmentId: string;
+  departmentName: string;
+  email: string;
+  fullName?: string;
+  tempPassword?: string;
+  workspaceId?: string;
+  workspaceName?: string;
+  roleIds?: string[];
+  roleNames?: string[];
+  exp: number; // Unix epoch ms
 }
 
 export type AccessRequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
