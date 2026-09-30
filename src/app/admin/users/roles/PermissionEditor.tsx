@@ -37,22 +37,43 @@ interface PermissionEditorProps {
 }
 
 const SECTIONS: { id: keyof PermissionsSchema; label: string; description: string }[] = [
-  { id: 'operations', label: 'Operations', description: 'Dashboard, Campuses, Pipeline, Tasks, Meetings, and Automations' },
-  { id: 'finance', label: 'Finance Hub', description: 'Agreements, Invoices, Packages, Billing Cycles, and Gateways' },
-  { id: 'studios', label: 'Studios', description: 'Public Portals, Messaging, Forms, Tags, Media, and Verification' },
-  { id: 'management', label: 'Management', description: 'Team Directory, Roles, Custom Fields, and System Settings' },
+  { id: 'operations', label: 'Operations', description: 'Dashboard, Campuses, Pipeline, Tasks, Meetings, Automations, Brain, Reports, and Graph' },
+  { id: 'studios', label: 'Studios', description: 'Portals, Landing Pages, Media, Flipbooks, Thumbnails, Surveys, Signatures, Messaging, Call Centre, Forms, Tags, and QR' },
+  { id: 'finance', label: 'Finance Hub', description: 'Agreements, Invoices, Pricing Packages, Billing Cycles, and Payment Gateways' },
+  { id: 'social', label: 'Social Hub', description: 'Omnichannel Dashboard, Post Composer, Content Calendar, Unified Inbox, and Connected Accounts' },
+  { id: 'workforce', label: 'Workspace and Users', description: 'Workforce Intelligence, Directory, Onboarding, Command Center, Advisor, Governance, Workload, Identity, and Roles' },
+  { id: 'management', label: 'Management', description: 'Audit Activities, Lead Scores, Messaging Channels, Custom Fields, AI Prompts, Effort Rules, System Settings, Developer API, and Webhooks' },
 ];
 
 const SECTION_FEATURES: Record<keyof PermissionsSchema, { id: string; label: string }[]> = {
   operations: [
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'campuses', label: 'Campuses / Entities' },
+    { id: 'leadIntelligence', label: 'Lead Intelligence' },
     { id: 'pipeline', label: 'Pipeline & Deals' },
     { id: 'tasks', label: 'Daily Tasks' },
     { id: 'meetings', label: 'Meetings & Zoom' },
-    { id: 'quickNotes', label: 'Company Brain' },
-    { id: 'automations', label: 'Automations' },
+    { id: 'automations', label: 'Automations Engine' },
     { id: 'intelligence', label: 'Intelligence Reports' },
+    { id: 'quickNotes', label: 'Company Brain' },
+    { id: 'knowledgeGraph', label: 'Knowledge Graph' },
+    { id: 'salesEffort', label: 'Sales Effort Analytics' },
+  ],
+  studios: [
+    { id: 'publicPortals', label: 'Public Portals' },
+    { id: 'landingPages', label: 'Landing Pages' },
+    { id: 'media', label: 'Media Library' },
+    { id: 'flipbooks', label: 'Interactive Flipbooks' },
+    { id: 'thumbnails', label: 'Thumbnail Studio' },
+    { id: 'surveys', label: 'Survey Studio' },
+    { id: 'docSigning', label: 'Document Signing & Templates' },
+    { id: 'messaging', label: 'Messaging Studio' },
+    { id: 'callCentre', label: 'Call Centre' },
+    { id: 'forms', label: 'Form Studio' },
+    { id: 'tags', label: 'Workspace Tags' },
+    { id: 'qrStudio', label: 'QR Code Studio' },
+    { id: 'verifyStudio', label: 'Verification Studio' },
+    { id: 'socialIntelligence', label: 'Social Studio Legacy' },
   ],
   finance: [
     { id: 'agreements', label: 'Agreements & Contracts' },
@@ -61,20 +82,35 @@ const SECTION_FEATURES: Record<keyof PermissionsSchema, { id: string; label: str
     { id: 'cycles', label: 'Billing Cycles' },
     { id: 'billingSetup', label: 'Payment Gateways' },
   ],
-  studios: [
-    { id: 'publicPortals', label: 'Public Portals' },
-    { id: 'messaging', label: 'Messaging Studio' },
-    { id: 'callCentre', label: 'Call Centre' },
-    { id: 'forms', label: 'Form Studio' },
-    { id: 'tags', label: 'Workspace Tags' },
-    { id: 'media', label: 'Media Library' },
-    { id: 'qrStudio', label: 'QR Code Studio' },
-    { id: 'verifyStudio', label: 'Verification Studio' },
+  social: [
+    { id: 'dashboard', label: 'Social Hub Dashboard' },
+    { id: 'composer', label: 'Post Composer' },
+    { id: 'calendar', label: 'Content Calendar' },
+    { id: 'inbox', label: 'Unified Inbox' },
+    { id: 'accounts', label: 'Connected Accounts' },
+  ],
+  workforce: [
+    { id: 'intelligence', label: 'Workforce Intelligence' },
+    { id: 'users', label: 'Team Members Directory' },
+    { id: 'onboarding', label: 'Staff Onboarding' },
+    { id: 'commandCenter', label: 'Workforce Command Center' },
+    { id: 'advisor', label: 'Workforce Advisor' },
+    { id: 'governance', label: 'Workforce Governance' },
+    { id: 'crmWorkload', label: 'CRM Workload Distribution' },
+    { id: 'enterpriseIdentity', label: 'Enterprise Identity' },
+    { id: 'roles', label: 'Roles & Permissions' },
   ],
   management: [
-    { id: 'users', label: 'Team Members Directory' },
+    { id: 'activities', label: 'Audit Activities' },
+    { id: 'leadScores', label: 'Lead Scoring Rules' },
+    { id: 'messagingSettings', label: 'Messaging Channels & Gateways' },
     { id: 'fields', label: 'Custom Fields & Variables' },
+    { id: 'aiPrompts', label: 'AI Prompt Templates' },
+    { id: 'effortRules', label: 'Sales Effort Scoring' },
     { id: 'systemSettings', label: 'System Settings' },
+    { id: 'developerApi', label: 'Developer API & Keys' },
+    { id: 'webhooks', label: 'Self-Healing Webhooks' },
+    { id: 'users', label: 'Organization User Management' },
   ],
 };
 
@@ -99,7 +135,8 @@ export function PermissionEditor({ schema, onChange, readOnly = false }: Permiss
   
   const handleSectionToggle = (sectionId: keyof PermissionsSchema, enabled: boolean) => {
     const newSchema = { ...schema };
-    newSchema[sectionId] = { ...newSchema[sectionId], enabled };
+    const currentSection = newSchema[sectionId] || { enabled: false, features: {} };
+    newSchema[sectionId] = { ...currentSection, enabled };
     onChange(PermissionRegistryService.resolveDependencies(newSchema));
   };
 
@@ -110,9 +147,9 @@ export function PermissionEditor({ schema, onChange, readOnly = false }: Permiss
     enabled: boolean
   ) => {
     const newSchema = { ...schema };
-    const section = { ...newSchema[sectionId] };
+    const section = { ...(newSchema[sectionId] || { enabled: false, features: {} }) };
     const features = { ...section.features };
-    const feature = { ...features[featureId] };
+    const feature = { ...(features[featureId] || { view: false }) };
     
     feature[action] = enabled;
     
@@ -269,8 +306,8 @@ export function PermissionEditor({ schema, onChange, readOnly = false }: Permiss
                              <label
                                key={action.id}
                                className={cn(
-                                 "flex items-center gap-1.5 cursor-pointer py-1 select-none min-h-[32px]",
-                                 isActionDisabled && "cursor-not-allowed opacity-50"
+                                 "flex items-center gap-1.5 cursor-pointer py-1 select-none min-h-[44px] active:scale-[0.97] transition-transform",
+                                 isActionDisabled && "cursor-not-allowed opacity-50 active:scale-100"
                                )}
                              >
                                <Checkbox

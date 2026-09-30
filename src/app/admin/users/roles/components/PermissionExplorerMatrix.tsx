@@ -35,8 +35,10 @@ interface PermissionExplorerMatrixProps {
 
 const SECTIONS: { id: keyof PermissionsSchema; label: string }[] = [
   { id: 'operations', label: 'Operations' },
-  { id: 'finance', label: 'Finance Hub' },
   { id: 'studios', label: 'Studios' },
+  { id: 'finance', label: 'Finance Hub' },
+  { id: 'social', label: 'Social Hub' },
+  { id: 'workforce', label: 'Workspace & Users' },
   { id: 'management', label: 'Management' },
 ];
 
@@ -74,7 +76,7 @@ export function PermissionExplorerMatrix({ roles }: PermissionExplorerMatrixProp
           onValueChange={(val) => setActiveSection(val as keyof PermissionsSchema)}
           className="w-full sm:w-auto"
         >
-          <TabsList className="h-9 bg-muted/40 p-0.5 w-full sm:w-auto grid grid-cols-2 sm:flex">
+          <TabsList className="h-9 bg-muted/40 p-0.5 w-full sm:w-auto grid grid-cols-3 sm:flex overflow-x-auto">
             {SECTIONS.map((sec) => (
               <TabsTrigger
                 key={sec.id}

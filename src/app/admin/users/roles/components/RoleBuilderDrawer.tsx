@@ -283,21 +283,29 @@ export function RoleBuilderDrawer({
             </div>
 
             {/* Capability Summary Metrics */}
-            <div className="grid grid-cols-4 gap-2 pt-1">
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 pt-1">
               <div className="p-2 rounded-lg border bg-muted/20 text-center text-xs">
-                <span className="text-[10px] text-muted-foreground block">Operations</span>
+                <span className="text-[10px] text-muted-foreground block truncate">Operations</span>
                 <span className="font-bold text-foreground">{metrics.capabilitySummary.operations}</span>
               </div>
               <div className="p-2 rounded-lg border bg-muted/20 text-center text-xs">
-                <span className="text-[10px] text-muted-foreground block">Finance</span>
-                <span className="font-bold text-foreground">{metrics.capabilitySummary.finance}</span>
-              </div>
-              <div className="p-2 rounded-lg border bg-muted/20 text-center text-xs">
-                <span className="text-[10px] text-muted-foreground block">Studios</span>
+                <span className="text-[10px] text-muted-foreground block truncate">Studios</span>
                 <span className="font-bold text-foreground">{metrics.capabilitySummary.studios}</span>
               </div>
               <div className="p-2 rounded-lg border bg-muted/20 text-center text-xs">
-                <span className="text-[10px] text-muted-foreground block">Management</span>
+                <span className="text-[10px] text-muted-foreground block truncate">Finance</span>
+                <span className="font-bold text-foreground">{metrics.capabilitySummary.finance}</span>
+              </div>
+              <div className="p-2 rounded-lg border bg-muted/20 text-center text-xs">
+                <span className="text-[10px] text-muted-foreground block truncate">Social Hub</span>
+                <span className="font-bold text-foreground">{metrics.capabilitySummary.social}</span>
+              </div>
+              <div className="p-2 rounded-lg border bg-muted/20 text-center text-xs">
+                <span className="text-[10px] text-muted-foreground block truncate">Workforce</span>
+                <span className="font-bold text-foreground">{metrics.capabilitySummary.workforce}</span>
+              </div>
+              <div className="p-2 rounded-lg border bg-muted/20 text-center text-xs">
+                <span className="text-[10px] text-muted-foreground block truncate">Management</span>
                 <span className="font-bold text-foreground">{metrics.capabilitySummary.management}</span>
               </div>
             </div>
