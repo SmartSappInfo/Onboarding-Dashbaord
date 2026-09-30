@@ -371,6 +371,83 @@ PARENT / GUARDIAN SIGNATURE: DATE:`;
     expect(signature!.topPct).toBeCloseTo(87.5, 0.5);
     expect(date!.topPct).toBeCloseTo(87.6, 0.5);
   });
+
+  it('detects standalone SIGN: and DATE: in closing box with exact document labels and horizontal spacing', () => {
+    const rawText = `ACCEPTANCE
+By signing below, the Parent/Guardian agrees to be bound by all terms and conditions of this Agreement.
+
+SIGN:                                  DATE:`;
+
+    const lines = [
+      {
+        text: 'ACCEPTANCE',
+        topPct: 82.0,
+        heightPct: 2.0,
+        minLeftPct: 10.0,
+        maxRightPct: 25.0,
+        items: [{ str: 'ACCEPTANCE', leftPct: 10.0, topPct: 82.0, widthPct: 15.0, heightPct: 2.0 }],
+      },
+      {
+        text: 'By signing below, the Parent/Guardian agrees to be bound by all terms and conditions of this Agreement.',
+        topPct: 85.0,
+        heightPct: 2.0,
+        minLeftPct: 10.0,
+        maxRightPct: 85.0,
+        items: [
+          {
+            str: 'By signing below, the Parent/Guardian agrees to be bound by all terms and conditions of this Agreement.',
+            leftPct: 10.0,
+            topPct: 85.0,
+            widthPct: 75.0,
+            heightPct: 2.0,
+          },
+        ],
+      },
+      {
+        text: 'SIGN:                                  DATE:',
+        topPct: 91.5,
+        heightPct: 2.0,
+        minLeftPct: 10.0,
+        maxRightPct: 70.0,
+        items: [
+          { str: 'SIGN:', leftPct: 10.0, topPct: 91.5, widthPct: 5.0, heightPct: 2.0 },
+          { str: 'DATE:', leftPct: 58.0, topPct: 91.5, widthPct: 5.5, heightPct: 2.0 },
+        ],
+      },
+    ];
+
+    const allItems = lines.flatMap((l) => l.items);
+    const pagesData = [{ pageNumber: 1, text: rawText, lines, items: allItems }];
+
+    const fields = detectTemplateFieldsFromPages([rawText], { pagesData });
+
+    expect(fields.length).toBe(2);
+
+    const signField = fields.find((f) => f.fieldType === 'signature');
+    const dateField = fields.find((f) => f.fieldType === 'date');
+
+    expect(signField).toBeDefined();
+    expect(dateField).toBeDefined();
+
+    // Verify field names and document labels
+    expect(signField!.label).toBe('Signature');
+    expect(signField!.sourceExcerpt).toBe('SIGN:');
+    expect(dateField!.label).toBe('Date');
+    expect(dateField!.sourceExcerpt).toBe('DATE:');
+
+    // Verify geometry: signature starts after SIGN: (10 + 5 + 0.8 = 15.8) and ends before DATE: (58 - 1 = 57)
+    expect(signField!.leftPct).toBe(15.8);
+    expect(signField!.leftPct + signField!.widthPct).toBeLessThanOrEqual(58.0);
+    expect(signField!.heightPct).toBeGreaterThanOrEqual(3.8);
+
+    // Verify date starts after DATE: (58 + 5.5 + 0.8 = 64.3)
+    expect(dateField!.leftPct).toBe(64.3);
+    expect(dateField!.leftPct + dateField!.widthPct).toBeLessThanOrEqual(88.0);
+
+    // Both on page 1
+    expect(signField!.pageNumber).toBe(1);
+    expect(dateField!.pageNumber).toBe(1);
+  });
 });
 
 

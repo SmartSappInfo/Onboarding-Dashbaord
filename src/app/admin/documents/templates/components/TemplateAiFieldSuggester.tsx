@@ -52,7 +52,7 @@ import {
   extractPdfDocumentData,
   type ExtractedPageData,
 } from '@/lib/documents/client-pdf-text-extractor';
-import type { AiFieldSuggestion, AiFieldType, RecipientRole } from '@/lib/types/document-signing';
+import type { AiFieldSuggestion, AiFieldType } from '@/lib/types/document-signing';
 
 export interface TemplateAiFieldSuggesterProps {
   open: boolean;
@@ -67,7 +67,7 @@ export interface TemplateAiFieldSuggesterProps {
 const FIELD_TYPE_LABELS: Record<AiFieldType, string> = {
   signature: 'Signature',
   initials: 'Initials',
-  date: 'Date Signed',
+  date: 'Date',
   signer_name: 'Signer Name',
   text: 'Text Field',
   checkbox: 'Checkbox',
@@ -86,54 +86,6 @@ function getFieldIcon(type: AiFieldType): React.ReactElement {
     default:
       return <FileText className="h-4 w-4 text-muted-foreground" />;
   }
-}
-
-function getConfidenceBadge(confidence: number): React.ReactElement {
-  const pct = Math.round(confidence * 100);
-  if (pct >= 90) {
-    return (
-      <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-semibold py-0 h-4">
-        {pct}% match
-      </Badge>
-    );
-  }
-  if (pct >= 80) {
-    return (
-      <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 text-[10px] font-semibold py-0 h-4">
-        {pct}% match
-      </Badge>
-    );
-  }
-  return (
-    <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 text-[10px] font-semibold py-0 h-4">
-      {pct}% match
-    </Badge>
-  );
-}
-
-function getRoleBadge(role: RecipientRole): React.ReactElement {
-  if (role === 'signer') {
-    return (
-      <Badge variant="outline" className="text-[10px] font-semibold border-primary/30 text-primary">
-        Primary Signer
-      </Badge>
-    );
-  }
-  if (role === 'countersigner') {
-    return (
-      <Badge
-        variant="outline"
-        className="text-[10px] font-semibold border-amber-500/30 text-amber-600 dark:text-amber-400"
-      >
-        Countersigner
-      </Badge>
-    );
-  }
-  return (
-    <Badge variant="outline" className="text-[10px] font-semibold">
-      {role}
-    </Badge>
-  );
 }
 
 export function TemplateAiFieldSuggester({
@@ -362,7 +314,7 @@ export function TemplateAiFieldSuggester({
                       >
                         <div className="flex items-start gap-3 min-w-0">
                           <div
-                            className={`h-5 w-5 rounded-md border flex items-center justify-center mt-0.5 transition-colors ${
+                            className={`h-5 w-5 rounded-md border flex items-center justify-center mt-0.5 transition-colors shrink-0 ${
                               isSelected
                                 ? 'bg-primary border-primary text-primary-foreground'
                                 : 'border-muted-foreground/30 bg-background'
@@ -371,27 +323,21 @@ export function TemplateAiFieldSuggester({
                             {isSelected && <Check className="h-3.5 w-3.5 stroke-[3]" />}
                           </div>
 
-                          <div className="min-w-0 space-y-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-semibold text-xs text-foreground flex items-center gap-1.5">
+                          <div className="min-w-0 space-y-0.5">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-semibold text-xs text-foreground flex items-center gap-1.5 truncate">
                                 {getFieldIcon(candidate.fieldType)}
                                 {candidate.label}
                               </span>
-                              {getRoleBadge(candidate.recipientRole)}
-                              {getConfidenceBadge(candidate.confidence)}
                             </div>
 
-                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground flex-wrap">
                               <span>Page {candidate.pageNumber}</span>
-                              <span>•</span>
-                              <span>
-                                Position: {candidate.leftPct.toFixed(0)}% X, {candidate.topPct.toFixed(0)}% Y
-                              </span>
                               {candidate.sourceExcerpt && (
                                 <>
                                   <span>•</span>
-                                  <span className="italic truncate max-w-[200px]">
-                                    &ldquo;{candidate.sourceExcerpt}&rdquo;
+                                  <span className="truncate max-w-[260px]">
+                                    Document label: <span className="font-medium text-foreground/80">&ldquo;{candidate.sourceExcerpt}&rdquo;</span>
                                   </span>
                                 </>
                               )}
@@ -399,7 +345,7 @@ export function TemplateAiFieldSuggester({
                           </div>
                         </div>
 
-                        <Badge variant="outline" className="text-[10px] font-mono shrink-0">
+                        <Badge variant="outline" className="text-[10px] font-medium shrink-0">
                           {FIELD_TYPE_LABELS[candidate.fieldType]}
                         </Badge>
                       </div>

@@ -83,6 +83,7 @@ function formatFieldTitle(keyword: string, rowPrefix?: string): string {
     .replace(/\bNo\b/g, 'Number')
     .replace(/\bGhana Card\b/g, 'Ghana Card Number')
     .replace(/\bNumber Number\b/g, 'Number')
+    .replace(/\bSign\b/g, 'Signature')
     .trim();
 
   if (rowPrefix) {
@@ -96,7 +97,7 @@ function formatFieldTitle(keyword: string, rowPrefix?: string): string {
 }
 
 export const FIELD_KEYWORD_REGEX =
-  /(?:(?:^|\s+)(\b\d+[\.\)]\s*)?)(student(?:'s)?\s*name|pupil\s*name|child\s*name|parent(?:\s*[\/\&]\s*guardian)?(?:\s*name)?|guardian(?:\s*name)?|applicant\s*name|full\s*name|printed?\s*name|name|grade(?:\s*level)?|class(?:\s*[\/\&]\s*grade)?|(?:grade|class)\s*[\/\&]\s*form|(?:academic|school|grade)\s*year|contact(?:\s*(?:no|number))?|phone(?:\s*(?:no|number))?|telephone|mobile|cell|ghana\s*card(?:\s*(?:no|number|#))?|id\s*card|national\s*id|email(?:\s*address)?|home\s*address|residential\s*address|street|address|date\s*of\s*birth|dob|admission\s*(?:no|number)|student\s*id|id\s*(?:no|number|#)?|authorized\s*signature|parent\s*signature|student\s*signature|signature(?:\s*of\s*[^:]+)?|by|date(?:\s*signed)?|signed\s*on|date|title|position|designation|initials?|amount|fee|payment\s*method)\s*[:_#]/gi;
+  /(?:(?:^|\s+)(\b\d+[\.\)]\s*)?)(student(?:'s)?\s*name|pupil\s*name|child\s*name|parent(?:\s*[\/\&]\s*guardian)?(?:\s*name)?|guardian(?:\s*name)?|applicant\s*name|full\s*name|printed?\s*name|name|grade(?:\s*level)?|class(?:\s*[\/\&]\s*grade)?|(?:grade|class)\s*[\/\&]\s*form|(?:academic|school|grade)\s*year|contact(?:\s*(?:no|number))?|phone(?:\s*(?:no|number))?|telephone|mobile|cell|ghana\s*card(?:\s*(?:no|number|#))?|id\s*card|national\s*id|email(?:\s*address)?|home\s*address|residential\s*address|street|address|date\s*of\s*birth|dob|admission\s*(?:no|number)|student\s*id|id\s*(?:no|number|#)?|authorized\s*sign(?:ature)?|parent\s*sign(?:ature)?|student\s*sign(?:ature)?|sign(?:ature)?(?:\s*(?:of|here|below)[^:]*)?|sign\b|by|date(?:\s*signed)?|signed\s*on|date|title|position|designation|initials?|amount|fee|payment\s*method)\s*[:_#]/gi;
 
 interface ProcessableLine {
   text: string;
@@ -239,7 +240,12 @@ export function detectTemplateFieldsFromPages(
           let confidence = 0.85;
           let heightPct = 3.8;
 
-          if (lineLower.startsWith('by:') || lineLower.includes('signature:')) {
+          if (
+            lineLower.startsWith('by:') ||
+            lineLower.includes('signature:') ||
+            lineLower.includes('sign:') ||
+            /\bsign(?:ature)?\s*[:_]/.test(lineLower)
+          ) {
             detectedType = 'signature';
             label = `${block.partyLabel} Signature`;
             confidence = 0.96;
@@ -279,6 +285,10 @@ export function detectTemplateFieldsFromPages(
             const widthPct = Math.min(block.widthPct, 100 - leftPct);
             const boundedHeightPct = Math.min(heightPct, 100 - topPct);
 
+            // Extract the document prompt label (e.g. "By:" or "Date:")
+            const promptColonIdx = lineText.indexOf(':');
+            const docLabel = promptColonIdx !== -1 ? lineText.slice(0, promptColonIdx + 1).trim() : lineText.trim();
+
             const candidate = AiFieldSuggestionSchema.parse({
               id: fieldId,
               pageNumber,
@@ -290,7 +300,7 @@ export function detectTemplateFieldsFromPages(
               topPct,
               widthPct,
               heightPct: boundedHeightPct,
-              sourceExcerpt: lineText,
+              sourceExcerpt: docLabel,
               accepted: false,
             });
 
@@ -308,6 +318,7 @@ export function detectTemplateFieldsFromPages(
 
       const matches: Array<{
         rawKeyword: string;
+        documentLabel: string;
         cleanLabel: string;
         fieldType: AiFieldType;
         confidence: number;
@@ -338,7 +349,7 @@ export function detectTemplateFieldsFromPages(
         let confidence = 0.88;
 
         if (
-          kwLower.includes('signature') ||
+          /\bsign(?:ature)?\b/i.test(kwLower) ||
           (kwLower === 'by' && (pLine.text.trim().toLowerCase().startsWith('by') || pLine.text.includes('___'))) ||
           kwLower.includes('authorized signature')
         ) {
@@ -376,6 +387,7 @@ export function detectTemplateFieldsFromPages(
 
         matches.push({
           rawKeyword: keyword,
+          documentLabel: fullMatched.trim(),
           cleanLabel: '',
           fieldType,
           confidence,
@@ -393,12 +405,17 @@ export function detectTemplateFieldsFromPages(
         m.cleanLabel = formatFieldTitle(m.rawKeyword, effectivePrefix);
       });
 
-      // Build character spans for precise visual item mapping
-      let curChar = 0;
+      // Build character spans for precise visual item mapping by locating each item in pLine.text
+      let searchOffset = 0;
       const itemSpans = pLine.items.map((it) => {
-        const startChar = curChar;
-        const endChar = curChar + it.str.length;
-        curChar = endChar + 1; // 1 for space
+        const itemStr = it.str.trim();
+        let foundIdx = itemStr ? pLine.text.indexOf(itemStr, searchOffset) : -1;
+        if (foundIdx === -1) {
+          foundIdx = searchOffset;
+        }
+        const startChar = foundIdx;
+        const endChar = foundIdx + it.str.length;
+        searchOffset = Math.max(searchOffset, endChar);
         return { item: it, startChar, endChar };
       });
 
@@ -494,7 +511,7 @@ export function detectTemplateFieldsFromPages(
           topPct: boundedTop,
           widthPct: boundedWidth,
           heightPct: boundedHeight,
-          sourceExcerpt: pLine.text.trim(),
+          sourceExcerpt: m.documentLabel || pLine.text.trim(),
           accepted: false,
         });
 
