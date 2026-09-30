@@ -38,7 +38,6 @@ import {
   releaseContractLegalHold,
   assertContractNotUnderLegalHold,
   calculateRetentionSchedule,
-  getContractLegalHoldStatus,
 } from '@/lib/documents/legal-hold-service';
 import {
   computeMerkleRootSha256,
@@ -47,8 +46,6 @@ import {
   computeFileSha256,
 } from '@/lib/documents/ediscovery-archival-service';
 import type {
-  BulkCampaign,
-  BulkCampaignRecipient,
   CreateBulkCampaignRequest,
 } from '@/lib/types/document-signing';
 

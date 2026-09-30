@@ -87,7 +87,7 @@ export function verifySignedDistributionToken(token: string): {
     }
 
     return { valid: true, payload };
-  } catch (_err) {
+  } catch {
     return { valid: false, error: 'Failed to decode token payload.' };
   }
 }

@@ -9,11 +9,12 @@
  * 2. Injects restrictive frame-ancestors CSP directive to eliminate clickjacking.
  * 3. Enforces an 8px deadband and [500px, 2400px] height bounds to avoid infinite resize loops.
  * 4. Zero `any` or `any[]` typing.
+ * 5. This module is purely isomorphic (zero server/Node dependencies), safe for client component bundles.
+ *    Server-side origin validation querying Firestore is housed in `embedded-signing-server.ts`.
  *
  * @maintainer Antigravity Pair Programming
  */
 
-import { adminDb } from '@/lib/firebase-admin';
 import {
   EmbedMessageSchema,
   type EmbedMessage,
@@ -46,58 +47,6 @@ export function isValidEmbedOrigin(origin: string): boolean {
 export interface EmbedOriginValidationResult {
   allowed: boolean;
   reason?: string;
-}
-
-/**
- * Validates if the requesting parent origin is registered in workspace embed settings.
- */
-export async function validateEmbedOrigin(
-  workspaceId: string,
-  origin: string
-): Promise<EmbedOriginValidationResult> {
-  if (!isValidEmbedOrigin(origin)) {
-    return {
-      allowed: false,
-      reason: 'Invalid origin format. Must be a valid http(s) origin without paths or wildcards.',
-    };
-  }
-
-  const normalizedOrigin = origin.trim().replace(/\/+$/, '').toLowerCase();
-
-  const settingsDoc = await adminDb
-    .doc(`workspaces/${workspaceId}/settings/embedded_signing`)
-    .get();
-
-  if (!settingsDoc.exists) {
-    return {
-      allowed: false,
-      reason: 'Embedded signing origins not configured for workspace.',
-    };
-  }
-
-  const data = settingsDoc.data();
-  const allowedOrigins: unknown = data?.allowedEmbedOrigins;
-
-  if (!Array.isArray(allowedOrigins)) {
-    return {
-      allowed: false,
-      reason: 'Embedded signing origins not configured for workspace.',
-    };
-  }
-
-  const isWhitelisted = allowedOrigins.some((allowed) => {
-    if (typeof allowed !== 'string') return false;
-    return allowed.trim().replace(/\/+$/, '').toLowerCase() === normalizedOrigin;
-  });
-
-  if (!isWhitelisted) {
-    return {
-      allowed: false,
-      reason: `Origin '${origin}' is not whitelisted for workspace iframe embedding.`,
-    };
-  }
-
-  return { allowed: true };
 }
 
 /**

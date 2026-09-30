@@ -8,8 +8,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { validateEmbedOrigin } from '../embedded-signing-server';
 import {
-  validateEmbedOrigin,
   generateEmbedCspHeader,
   parseEmbedMessage,
   calculateClampedEmbedHeight,

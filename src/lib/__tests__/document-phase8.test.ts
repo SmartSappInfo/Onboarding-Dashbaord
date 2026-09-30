@@ -21,7 +21,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   generateApiKey,
   authenticateApiKey,
-  revokeApiKey,
   rotateApiKey,
 } from '@/lib/documents/api-key-auth-service';
 import {
@@ -29,12 +28,10 @@ import {
   resetRateLimitForTesting,
 } from '@/lib/documents/api-rate-limiter-service';
 import {
-  formatSuccessResponse,
   formatErrorResponse,
   authenticateDeveloperRequest,
 } from '@/lib/documents/developer-api-helper';
 import {
-  validateEmbedOrigin,
   generateEmbedCspHeader,
   parseEmbedMessage,
   calculateClampedEmbedHeight,

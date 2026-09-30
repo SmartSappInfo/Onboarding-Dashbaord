@@ -29,7 +29,7 @@ vi.mock('@/lib/firebase-admin', () => ({
             return { id };
           }),
           where: vi.fn().mockImplementation((field: string, op: string, val: string) => ({
-            orderBy: vi.fn().mockImplementation((orderField: string, direction: 'asc' | 'desc') => ({
+            orderBy: vi.fn().mockImplementation((_orderField: string, _direction: 'asc' | 'desc') => ({
               get: vi.fn().mockImplementation(async () => {
                 const filtered = mockEvidenceStore.filter((item) => (item as unknown as Record<string, unknown>)[field] === val);
                 return {

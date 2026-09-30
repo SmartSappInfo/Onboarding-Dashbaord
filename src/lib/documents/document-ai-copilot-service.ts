@@ -25,7 +25,6 @@ import {
   type AiDocumentQaCitation,
   type AiDocumentQaRequest,
   type AiDocumentQaResponse,
-  type AiDocumentQaMessage,
 } from '@/lib/types/document-signing';
 
 const GEMINI_MODEL = 'gemini-2.0-flash';

@@ -9,7 +9,7 @@
  *    Strictly zero `any` or `any[]`.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   createBulkCampaignAction,
   previewBulkCsvMergeAction,
@@ -50,7 +50,7 @@ vi.mock('@/lib/documents/bulk-campaign-dispatcher-service', () => ({
     updatedAt: '2026-09-29T20:00:00Z',
     tags: input.tags || [],
   }),
-  dispatchCampaignBatchSlice: async (campaignId: string, batchSize: number) => ({
+  dispatchCampaignBatchSlice: async (campaignId: string, _batchSize: number) => ({
     campaignId,
     processedCount: 2,
     successfulCount: 2,
