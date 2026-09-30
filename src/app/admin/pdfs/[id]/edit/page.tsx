@@ -10,8 +10,9 @@ import { doc, collection, query, where } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-    Loader2, Sparkles, ArrowLeft, ArrowRight, Palette, Layout, Save, Globe, ShieldCheck, FileText, Settings2, Share2
+    Loader2, Sparkles, ArrowLeft, ArrowRight, Palette, Layout, Save, Globe, ShieldCheck, FileText, Settings2, Share2, FileQuestion, Plus
 } from 'lucide-react';
+import Link from 'next/link';
 import { TemplateVersionBar } from './components/TemplateVersionBar';
 import { PublishVersionModal } from './components/PublishVersionModal';
 import { VersionHistoryDrawer } from './components/VersionHistoryDrawer';
@@ -146,6 +147,13 @@ export default function EditPdfPage() {
   const [_isQuickCreateOpen, _setIsQuickCreateOpen] = React.useState(false);
   const [hasInitialized, setHasInitialized] = React.useState(false);
 
+  // Redirect /admin/pdfs/new/edit immediately to the dedicated new PDF wizard
+  React.useEffect(() => {
+    if (isNew) {
+      router.replace('/admin/pdfs/new');
+    }
+  }, [isNew, router]);
+
   const _storageKey = `pdf-autosave-${pdfId}`;
   const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
 
@@ -277,14 +285,46 @@ export default function EditPdfPage() {
       setNamingFieldId(pdf.namingFieldId || null);
       resetHistory(initialFields);
       
-      const pattern = pdf.backgroundPattern || 'none';
+      const validPatterns: Array<FormData['backgroundPattern']> = [
+        'none', 'dots', 'grid', 'circuit', 'topography', 'cubes', 'gradient'
+      ];
+      const pattern: FormData['backgroundPattern'] = validPatterns.includes(pdf.backgroundPattern as FormData['backgroundPattern'])
+        ? (pdf.backgroundPattern as FormData['backgroundPattern'])
+        : 'none';
+
+      const validAlertChannels: Array<FormData['adminAlertChannel']> = ['email', 'sms', 'whatsapp', 'both'];
+      const alertChannel: FormData['adminAlertChannel'] = (pdf.adminAlertChannel === 'all' || !pdf.adminAlertChannel)
+        ? 'both'
+        : (validAlertChannels.includes(pdf.adminAlertChannel as FormData['adminAlertChannel'])
+            ? (pdf.adminAlertChannel as FormData['adminAlertChannel'])
+            : 'both');
 
       reset({
-        ...pdf,
-        internalName: pdf.name || '',
-        workspaceIds: pdf.workspaceIds || [activeWorkspaceId],
-        backgroundPattern: pattern as any,
-      } as any);
+        name: pdf.name || '',
+        publicTitle: pdf.publicTitle || pdf.name || '',
+        entityId: pdf.entityId || null,
+        entityName: pdf.entityName || null,
+        status: (pdf.status === 'published' || pdf.status === 'archived') ? pdf.status : 'draft',
+        slug: pdf.slug || '',
+        logoUrl: pdf.logoUrl || '',
+        backgroundColor: pdf.backgroundColor || '#F1F5F9',
+        backgroundPattern: pattern,
+        patternColor: pdf.patternColor || '#3B5FFF',
+        webhookEnabled: !!pdf.webhookEnabled,
+        webhookId: pdf.webhookId || '',
+        passwordProtected: !!pdf.passwordProtected,
+        password: pdf.password || '',
+        isContractDocument: !!pdf.isContractDocument,
+        confirmationMessagingEnabled: !!pdf.confirmationMessagingEnabled,
+        confirmationTemplateId: pdf.confirmationTemplateId || '',
+        confirmationSenderProfileId: pdf.confirmationSenderProfileId || '',
+        adminAlertsEnabled: !!pdf.adminAlertsEnabled,
+        adminAlertChannel: alertChannel,
+        adminAlertNotifyManager: !!pdf.adminAlertNotifyManager,
+        adminAlertSpecificUserIds: pdf.adminAlertSpecificUserIds || [],
+        workspaceIds: pdf.workspaceIds && pdf.workspaceIds.length > 0 ? pdf.workspaceIds : [activeWorkspaceId],
+        seo: pdf.seo,
+      });
       setHasInitialized(true);
     }
   }, [pdf, reset, resetHistory, activeWorkspaceId, hasInitialized]);
@@ -306,7 +346,7 @@ export default function EditPdfPage() {
   const handleRedo = () => { if (canRedo) { isProgrammaticChange.current = true; redoHistory(); } };
 
   const handleNext = async () => {
-    let fieldsToValidate: any[] = [];
+    let fieldsToValidate: Array<keyof FormData> = [];
     if (step === 1) fieldsToValidate = ['name', 'publicTitle', 'logoUrl', 'backgroundColor', 'backgroundPattern', 'patternColor'];
     const isStepValid = await trigger(fieldsToValidate);
     if (!isStepValid) { toast({ variant: 'destructive', title: 'Validation Error' }); return; }
@@ -347,8 +387,50 @@ export default function EditPdfPage() {
     } catch { toast({ variant: 'destructive', title: 'AI Detection Failed' }); } finally { setIsDetecting(false); }
   };
 
- if (isLoading) return <div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
- if (!pdf) return <div className="text-center py-20"><p>Document not found.</p></div>;
+  if (isNew) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-sm font-medium text-muted-foreground">Opening Document Creator...</p>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!pdf) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[450px] p-8 text-center max-w-md mx-auto">
+        <div className="w-16 h-16 rounded-3xl bg-muted/40 border border-border/60 flex items-center justify-center text-muted-foreground mb-4 shadow-sm">
+          <FileQuestion className="h-8 w-8" />
+        </div>
+        <h2 className="text-xl font-bold tracking-tight text-foreground">Document Not Found</h2>
+        <p className="text-sm text-muted-foreground mt-2 mb-6 leading-relaxed">
+          The requested document blueprint could not be found or has been permanently removed.
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-3 w-full">
+          <Button variant="outline" asChild className="rounded-xl min-h-[44px] px-5 font-semibold active:scale-[0.97] transition-all">
+            <Link href="/admin/pdfs">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Return to Catalog
+            </Link>
+          </Button>
+          <Button asChild className="rounded-xl min-h-[44px] px-5 font-bold shadow-md active:scale-[0.97] transition-all">
+            <Link href="/admin/pdfs/new">
+              <Plus className="h-4 w-4 mr-2" />
+              New Document
+            </Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <FormProvider {...form}>

@@ -704,6 +704,218 @@ export async function createPdfForm(data: Partial<PDFForm> & { size?: number; mi
   return { success: true, id: docRef.id };
 }
 
+export interface CreateStarterPdfFormOptions {
+  name: string;
+  workspaceIds: string[];
+  isContractDocument?: boolean;
+  userId: string;
+}
+
+/**
+ * Creates a clean, standardized 1-page Institutional Agreement Blueprint PDF
+ * and registers it in Firestore so administrators can immediately start drafting and mapping fields.
+ */
+export async function createStarterPdfForm(options: CreateStarterPdfFormOptions): Promise<{ success: boolean; id?: string; error?: string }> {
+  await requireAuth();
+  const { name, workspaceIds, isContractDocument = false, userId } = options;
+
+  if (!Array.isArray(workspaceIds) || workspaceIds.length === 0 || workspaceIds.some(id => typeof id !== 'string' || !id.trim())) {
+    return { success: false, error: 'A PDF Form must be associated with at least one valid workspace.' };
+  }
+
+  try {
+    const cleanName = name?.trim() || 'Institutional Agreement Blueprint';
+    const fileId = `starter_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const storagePath = `pdfs/${fileId}.pdf`;
+
+    // 1. Generate clean vector 1-page template
+    const pdfDoc = await PDFDocument.create();
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const page = pdfDoc.addPage([595.28, 841.89]); // A4: 595.28 x 841.89 points
+    const { width, height } = page.getSize();
+
+    // Outer border
+    page.drawRectangle({
+      x: 36,
+      y: 36,
+      width: width - 72,
+      height: height - 72,
+      borderWidth: 1,
+      borderColor: rgb(0.85, 0.88, 0.92),
+      color: rgb(0.99, 1, 1),
+    });
+
+    // Header Title
+    page.drawText(cleanName.toUpperCase(), {
+      x: 54,
+      y: height - 80,
+      size: 16,
+      font: boldFont,
+      color: rgb(0.09, 0.13, 0.22),
+    });
+
+    // Reference ID
+    page.drawText(`DOCUMENT REF: BLU-${Date.now().toString(36).toUpperCase()}`, {
+      x: 54,
+      y: height - 98,
+      size: 9,
+      font: font,
+      color: rgb(0.45, 0.5, 0.6),
+    });
+
+    // Divider
+    page.drawLine({
+      start: { x: 54, y: height - 112 },
+      end: { x: width - 54, y: height - 112 },
+      thickness: 1,
+      color: rgb(0.85, 0.88, 0.92),
+    });
+
+    // Section 1
+    page.drawText('1. PURPOSE & INTENT', {
+      x: 54,
+      y: height - 140,
+      size: 11,
+      font: boldFont,
+      color: rgb(0.12, 0.16, 0.25),
+    });
+
+    const bodyText1 = 'This document serves as an official institutional agreement between the undersigned parties. The parties hereby acknowledge that they have read, understood, and agreed to the covenants and commitments set forth in this document.';
+    page.drawText(bodyText1, {
+      x: 54,
+      y: height - 160,
+      size: 10,
+      font: font,
+      color: rgb(0.25, 0.3, 0.38),
+      maxWidth: width - 108,
+      lineHeight: 14,
+    });
+
+    // Section 2
+    page.drawText('2. TERMS & EXECUTION', {
+      x: 54,
+      y: height - 215,
+      size: 11,
+      font: boldFont,
+      color: rgb(0.12, 0.16, 0.25),
+    });
+
+    const bodyText2 = 'By applying a digital signature or authorized electronic verification to the designated execution zones below, each representative confirms that they possess legitimate authority to bind their respective entity.';
+    page.drawText(bodyText2, {
+      x: 54,
+      y: height - 235,
+      size: 10,
+      font: font,
+      color: rgb(0.25, 0.3, 0.38),
+      maxWidth: width - 108,
+      lineHeight: 14,
+    });
+
+    // Party A Signature Box
+    page.drawRectangle({
+      x: 54,
+      y: 110,
+      width: 215,
+      height: 75,
+      borderWidth: 1,
+      borderColor: rgb(0.8, 0.85, 0.9),
+      color: rgb(0.96, 0.98, 1),
+    });
+    page.drawText('SIGNATURE (PARTY A)', {
+      x: 64,
+      y: 168,
+      size: 8,
+      font: boldFont,
+      color: rgb(0.35, 0.4, 0.5),
+    });
+    page.drawLine({
+      start: { x: 64, y: 135 },
+      end: { x: 250, y: 135 },
+      thickness: 1,
+      color: rgb(0.7, 0.75, 0.8),
+    });
+    page.drawText('Date: ____________________', {
+      x: 64,
+      y: 120,
+      size: 8,
+      font: font,
+      color: rgb(0.4, 0.45, 0.55),
+    });
+
+    // Party B Signature Box
+    page.drawRectangle({
+      x: width - 269,
+      y: 110,
+      width: 215,
+      height: 75,
+      borderWidth: 1,
+      borderColor: rgb(0.8, 0.85, 0.9),
+      color: rgb(0.96, 0.98, 1),
+    });
+    page.drawText('SIGNATURE (PARTY B)', {
+      x: width - 259,
+      y: 168,
+      size: 8,
+      font: boldFont,
+      color: rgb(0.35, 0.4, 0.5),
+    });
+    page.drawLine({
+      start: { x: width - 259, y: 135 },
+      end: { x: width - 73, y: 135 },
+      thickness: 1,
+      color: rgb(0.7, 0.75, 0.8),
+    });
+    page.drawText('Date: ____________________', {
+      x: width - 259,
+      y: 120,
+      size: 8,
+      font: font,
+      color: rgb(0.4, 0.45, 0.55),
+    });
+
+    const pdfBytes = await pdfDoc.save();
+
+    // 2. Persist to Cloud Storage
+    const file = adminStorage.file(storagePath);
+    await file.save(Buffer.from(pdfBytes), {
+      metadata: {
+        contentType: 'application/pdf',
+        metadata: {
+          workspaceId: workspaceIds[0],
+          createdBy: userId,
+        },
+      },
+    });
+
+    // 3. Obtain download URL
+    let downloadUrl = '';
+    try {
+      const [signedUrl] = await file.getSignedUrl({
+        action: 'read',
+        expires: Date.now() + 1000 * 60 * 60 * 24 * 365, // 1 year
+      });
+      downloadUrl = signedUrl;
+    } catch {
+      downloadUrl = `https://storage.googleapis.com/${file.bucket.name}/${storagePath}`;
+    }
+
+    // 4. Create Firestore record via createPdfForm
+    return await createPdfForm({
+      name: cleanName,
+      originalFileName: `${cleanName}.pdf`,
+      storagePath,
+      downloadUrl,
+      size: pdfBytes.byteLength,
+      mimeType: 'application/pdf',
+      isContractDocument,
+    }, userId, workspaceIds);
+  } catch (error: unknown) {
+    console.error('[createStarterPdfForm] Error creating starter PDF:', error);
+    return { success: false, error: getErrorMessage(error) || 'Failed to create starter blueprint' };
+  }
+}
+
 export async function clonePdfForm(pdfId: string, userId: string): Promise<{ success: boolean; id?: string; error?: string }> {
   // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
   await requireAuth();

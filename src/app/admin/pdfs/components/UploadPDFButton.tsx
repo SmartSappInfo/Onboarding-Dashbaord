@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Upload, Plus, Library } from 'lucide-react';
+import { Upload, Plus, Library, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -96,8 +96,11 @@ export default function UploadPDFButton() {
                 </div>
             </div>
           </SheetHeader>
- <div className="flex-grow p-8 overflow-y-auto bg-background">
-            <PdfUploader onUploadSuccess={handleUploadSuccess} />
+          <div className="flex-grow p-8 overflow-y-auto bg-background">
+            <PdfUploader
+              onUploadSuccess={handleUploadSuccess}
+              workspaceIds={activeWorkspaceId ? [activeWorkspaceId] : []}
+            />
           </div>
         </SheetContent>
       </Sheet>
@@ -111,5 +114,3 @@ export default function UploadPDFButton() {
     </>
   );
 }
-
-function FileText(props: any) { return <Plus {...props} /> }

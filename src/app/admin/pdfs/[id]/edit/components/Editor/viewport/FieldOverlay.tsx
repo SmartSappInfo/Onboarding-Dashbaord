@@ -39,6 +39,15 @@ const fieldIcons: { [key in PDFFormField['type']]: React.ElementType } = {
   variable: Database,
 };
 
+interface ResizeState {
+  startX: number;
+  startY: number;
+  startWidth: number;
+  startHeight: number;
+  startFieldX: number;
+  startFieldY: number;
+}
+
 interface FieldOverlayProps {
   field: LocalPDFFormField;
   pageDimensions: { width: number; height: number };
@@ -57,7 +66,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
   const [isResizing, setIsResizing] = React.useState(false);
   const [isEditingLabel, setIsEditingLabel] = React.useState(false);
   const resizeHandleRef = React.useRef<ResizeHandle | null>(null);
-  const initialResizeState = React.useRef<any>(null);
+  const initialResizeState = React.useRef<ResizeState | null>(null);
 
   const isSelected = selectedFieldIds.includes(field.id);
   const isMulti = selectedFieldIds.length > 1;

@@ -11,6 +11,7 @@ import {
   finalizeAgreementAction,
   createPdfForm,
   updatePdfFormStatus,
+  createStarterPdfForm,
 } from '../pdf-actions';
 import type { Activity } from '../types';
 
@@ -145,6 +146,12 @@ vi.mock('../firebase-admin', () => ({
         };
       }
 
+      if (colName === 'media') {
+        return {
+          add: vi.fn().mockResolvedValue({ id: 'med_baseline_test' }),
+        };
+      }
+
       return {
         doc: (id: string) => ({
           id,
@@ -157,6 +164,8 @@ vi.mock('../firebase-admin', () => ({
     file: () => ({
       download: vi.fn().mockResolvedValue([mockBlankPdfBytes]),
       save: vi.fn().mockResolvedValue(true),
+      getSignedUrl: vi.fn().mockResolvedValue(['https://storage.googleapis.com/test-signed-url.pdf']),
+      bucket: { name: 'test-bucket' },
     }),
   },
 }));
@@ -258,5 +267,26 @@ describe('P0.3 Baseline: PDF Actions Finalization Lifecycle', () => {
     );
     expect(updateResult.success).toBe(true);
     expect(mockPdfsStore[createResult.id!].status).toBe('published');
+  });
+
+  it('generates a clean starter agreement blueprint and registers form record', async () => {
+    const result = await createStarterPdfForm({
+      name: 'Non-Disclosure Agreement',
+      workspaceIds: ['ws_main_01'],
+      isContractDocument: true,
+      userId: 'usr_test_operator',
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.id).toBeDefined();
+
+    const storedPdf = mockPdfsStore[result.id!];
+    expect(storedPdf).toBeDefined();
+    expect(storedPdf.name).toBe('Non-Disclosure Agreement');
+    expect(storedPdf.status).toBe('draft');
+    expect(storedPdf.isContractDocument).toBe(true);
+    expect(storedPdf.workspaceIds).toContain('ws_main_01');
+    expect(storedPdf.downloadUrl).toBeDefined();
+    expect(storedPdf.storagePath).toMatch(/^pdfs\/starter_/);
   });
 });

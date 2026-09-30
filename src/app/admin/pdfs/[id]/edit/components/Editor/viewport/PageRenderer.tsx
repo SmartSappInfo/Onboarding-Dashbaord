@@ -15,11 +15,16 @@ interface PageRendererProps {
   pageNumber: number;
 }
 
+interface RenderTask {
+  cancel: () => void;
+  promise: Promise<unknown>;
+}
+
 export const PageRenderer = React.memo(function PageRenderer({ pdfDoc, pageNumber }: PageRendererProps) {
   const { fields, zoom, setActivePageNumber } = useEditor();
   const containerRef = React.useRef<HTMLDivElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
-  const renderTaskRef = React.useRef<any>(null);
+  const renderTaskRef = React.useRef<RenderTask | null>(null);
   const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 });
   const [isRendering, setIsRendering] = React.useState(true);
 

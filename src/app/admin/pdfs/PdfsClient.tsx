@@ -342,10 +342,20 @@ export default function PdfsClient() {
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="h-64 text-center">
-                                        <div className="flex flex-col items-center justify-center gap-3 opacity-30">
-                                            <FileText className="h-12 w-12" />
-                                            <p className="font-semibold text-xs">No document templates found in this workspace hub</p>
+                                    <TableCell colSpan={6} className="h-72 text-center">
+                                        <div className="flex flex-col items-center justify-center gap-3 max-w-sm mx-auto p-4">
+                                            <div className="w-12 h-12 rounded-2xl bg-muted/50 flex items-center justify-center text-muted-foreground">
+                                                <FileText className="h-6 w-6" />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="font-bold text-sm text-foreground">No document blueprints found</p>
+                                                <p className="text-xs text-muted-foreground">Create your first agreement template or upload a PDF to get started.</p>
+                                            </div>
+                                            <Button asChild size="sm" className="mt-1 rounded-xl min-h-[44px] px-5 font-bold shadow-xs active:scale-[0.97]">
+                                                <Link href="/admin/pdfs/new">
+                                                    <PlusCircle className="mr-2 h-4 w-4" /> New Blueprint
+                                                </Link>
+                                            </Button>
                                         </div>
                                     </TableCell>
                                 </TableRow>

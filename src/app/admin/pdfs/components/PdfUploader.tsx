@@ -10,6 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { File as FileIcon, Upload, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { createPdfForm } from '@/lib/pdf-actions';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 const ACCEPTED_FILE_TYPES = ['application/pdf'];
 const MAX_FILE_SIZE_MB = 10;
@@ -17,9 +18,18 @@ const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 interface PdfUploaderProps {
   onUploadSuccess: (pdfId: string) => void;
+  workspaceIds?: string[];
+  customName?: string;
+  isContractDocument?: boolean;
 }
 
-export default function PdfUploader({ onUploadSuccess }: PdfUploaderProps) {
+export default function PdfUploader({
+  onUploadSuccess,
+  workspaceIds,
+  customName,
+  isContractDocument = false,
+}: PdfUploaderProps) {
+  const { activeWorkspaceId } = useWorkspace();
   const [stagedFile, setStagedFile] = React.useState<File | null>(null);
   const [isUploading, setIsUploading] = React.useState(false);
   const [progress, setProgress] = React.useState(0);
@@ -72,6 +82,19 @@ export default function PdfUploader({ onUploadSuccess }: PdfUploaderProps) {
       toast({ variant: 'destructive', title: 'Error', description: 'No file selected or you are not logged in.' });
       return;
     }
+
+    const targetWorkspaceIds = (workspaceIds && workspaceIds.length > 0)
+      ? workspaceIds
+      : (activeWorkspaceId ? [activeWorkspaceId] : []);
+
+    if (targetWorkspaceIds.length === 0) {
+      toast({
+        variant: 'destructive',
+        title: 'Workspace Required',
+        description: 'Please select an active workspace before uploading.',
+      });
+      return;
+    }
     
     setIsUploading(true);
     setProgress(0);
@@ -95,17 +118,22 @@ export default function PdfUploader({ onUploadSuccess }: PdfUploaderProps) {
       async () => {
         try {
           const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          const resolvedName = (customName && customName.trim().length > 0)
+            ? customName.trim()
+            : stagedFile.name.replace(/\.pdf$/i, '');
+
           const result = await createPdfForm({
-            name: stagedFile.name.replace(/\.pdf$/i, ''),
+            name: resolvedName,
             originalFileName: stagedFile.name,
             storagePath: storagePath,
             downloadUrl: downloadURL,
             size: stagedFile.size,
             mimeType: stagedFile.type,
-          }, user.uid, []);
+            isContractDocument,
+          }, user.uid, targetWorkspaceIds);
 
           if (result.success && result.id) {
-            toast({ title: 'Upload Successful', description: `${stagedFile.name} has been uploaded.` });
+            toast({ title: 'Upload Successful', description: `"${resolvedName}" has been uploaded.` });
             onUploadSuccess(result.id);
           } else {
             throw new Error(result.error || 'Failed to create database record.');
@@ -150,9 +178,14 @@ export default function PdfUploader({ onUploadSuccess }: PdfUploaderProps) {
           
  {isUploading && <Progress value={progress} className="w-full" />}
 
- <div className="flex justify-end pt-4">
- <Button onClick={handleUpload} disabled={isUploading || !stagedFile} className="w-full sm:w-auto" size="lg">
- {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+          <div className="flex justify-end pt-4">
+            <Button
+              onClick={handleUpload}
+              disabled={isUploading || !stagedFile}
+              className="w-full sm:w-auto min-h-[44px] px-6 rounded-xl font-bold shadow-md active:scale-[0.97] transition-all"
+              size="lg"
+            >
+              {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
               {isUploading ? `Uploading... ${Math.round(progress)}%` : 'Upload & Continue'}
             </Button>
           </div>
