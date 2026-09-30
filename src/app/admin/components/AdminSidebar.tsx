@@ -193,15 +193,15 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
   const coreNavItems = React.useMemo(() => [
     { href: wrapHref('/admin'), icon: LayoutDashboard, label: 'Dashboard', visible: true, disabled: !can('operations', 'dashboard', 'view') },
     { href: wrapHref('/admin/entities'), icon: School, label: plural, visible: isFeatureEnabled('entities'), disabled: !can('operations', 'campuses', 'view') },
-    { href: wrapHref('/admin/lead-intelligence'), icon: Sparkles, label: 'Lead Intelligence', visible: isFeatureEnabled('entities'), disabled: !can('operations', 'campuses', 'view') },
+    { href: wrapHref('/admin/lead-intelligence'), icon: Sparkles, label: 'Lead Intelligence', visible: isFeatureEnabled('entities'), disabled: !(can('operations', 'leadIntelligence', 'view') || can('operations', 'campuses', 'view')) },
     { href: wrapHref('/admin/pipeline'), icon: Workflow, label: dealPlural || 'Deals', visible: isFeatureEnabled('pipeline'), disabled: !can('operations', 'pipeline', 'view') },
     { href: wrapHref('/admin/tasks'), icon: CheckSquare, label: 'Tasks', visible: isFeatureEnabled('tasks'), disabled: !can('operations', 'tasks', 'view') },
     { href: wrapHref('/admin/meetings'), icon: Calendar, label: 'Meetings', visible: isFeatureEnabled('meetings'), disabled: !can('operations', 'meetings', 'view') },
     { href: wrapHref('/admin/automations'), icon: Zap, label: 'Automations', visible: isFeatureEnabled('automations'), disabled: !can('operations', 'automations', 'view') },
     { href: wrapHref('/admin/reports'), icon: BarChart3, label: 'Intelligence', visible: isFeatureEnabled('reports'), disabled: !can('operations', 'intelligence', 'view') },
-    { href: wrapHref('/admin/analytics/sales-effort'), icon: BarChart3, label: 'Sales Effort', visible: isFeatureEnabled('reports'), disabled: !can('operations', 'intelligence', 'view') },
+    { href: wrapHref('/admin/analytics/sales-effort'), icon: BarChart3, label: 'Sales Effort', visible: isFeatureEnabled('reports'), disabled: !(can('operations', 'salesEffort', 'view') || can('operations', 'intelligence', 'view')) },
     { href: wrapHref('/admin/quick-notes'), icon: Brain, label: 'Company Brain', visible: isFeatureEnabled('quick_notes'), disabled: !can('operations', 'quickNotes', 'view') },
-    { href: wrapHref('/admin/quick-notes/graph'), icon: Network, label: 'Knowledge Graph', visible: isFeatureEnabled('quick_notes'), disabled: !can('operations', 'quickNotes', 'view') },
+    { href: wrapHref('/admin/quick-notes/graph'), icon: Network, label: 'Knowledge Graph', visible: isFeatureEnabled('quick_notes'), disabled: !(can('operations', 'knowledgeGraph', 'view') || can('operations', 'quickNotes', 'view')) },
   ], [wrapHref, isFeatureEnabled, can, plural, dealPlural]);
 
   const financeNavItems = React.useMemo(() => [
@@ -216,8 +216,8 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
     { href: wrapHref('/admin/portals'), icon: Globe, label: 'Public Portals', visible: isFeatureEnabled('portals'), disabled: !can('studios', 'publicPortals', 'view') },
     { href: wrapHref('/admin/pages'), icon: Layout, label: 'Landing Pages', visible: isFeatureEnabled('portals'), disabled: !can('studios', 'landingPages', 'view') },
     { href: wrapHref('/admin/media'), icon: Film, label: 'Media', visible: isFeatureEnabled('media'), disabled: !can('studios', 'media', 'view') },
-    { href: wrapHref('/admin/flipbooks'), icon: BookOpen, label: 'Flipbook Studio', visible: isFeatureEnabled('media'), disabled: !can('studios', 'media', 'view') },
-    { href: wrapHref('/admin/media/thumbnails'), icon: Image, label: 'Thumbnail Studio', visible: isFeatureEnabled('media'), disabled: !can('studios', 'media', 'view') },
+    { href: wrapHref('/admin/flipbooks'), icon: BookOpen, label: 'Flipbook Studio', visible: isFeatureEnabled('media'), disabled: !(can('studios', 'flipbooks', 'view') || can('studios', 'media', 'view')) },
+    { href: wrapHref('/admin/media/thumbnails'), icon: Image, label: 'Thumbnail Studio', visible: isFeatureEnabled('media'), disabled: !(can('studios', 'thumbnails', 'view') || can('studios', 'media', 'view')) },
     { href: wrapHref('/admin/surveys'), icon: ClipboardList, label: 'Surveys', visible: isFeatureEnabled('surveys'), disabled: !can('studios', 'surveys', 'view') },
     { href: wrapHref('/admin/pdfs'), icon: FileText, label: 'Doc Signing', visible: isFeatureEnabled('pdfs'), disabled: !can('studios', 'docSigning', 'view') },
     { href: wrapHref('/admin/messaging'), icon: MessageSquareText, label: 'Messaging', visible: isFeatureEnabled('messaging'), disabled: !can('studios', 'messaging', 'view') },
@@ -229,35 +229,35 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
   ], [wrapHref, isFeatureEnabled, can]);
 
   const socialNavItems = React.useMemo(() => [
-    { href: wrapHref('/admin/social'), icon: LayoutDashboard, label: 'Dashboard', visible: isFeatureEnabled('social_intelligence'), disabled: !can('studios', 'socialIntelligence', 'view') },
-    { href: wrapHref('/admin/social/composer'), icon: Sparkles, label: 'Composer', visible: isFeatureEnabled('social_intelligence'), disabled: !can('studios', 'socialIntelligence', 'view') },
-    { href: wrapHref('/admin/social/calendar'), icon: Calendar, label: 'Calendar', visible: isFeatureEnabled('social_intelligence'), disabled: !can('studios', 'socialIntelligence', 'view') },
-    { href: wrapHref('/admin/social/inbox'), icon: MessageSquareText, label: 'Social Inbox', visible: isFeatureEnabled('social_intelligence'), disabled: !can('studios', 'socialIntelligence', 'view') },
-    { href: wrapHref('/admin/social/accounts'), icon: Settings, label: 'Connected Profiles', visible: isFeatureEnabled('social_intelligence'), disabled: !can('studios', 'socialIntelligence', 'view') },
+    { href: wrapHref('/admin/social'), icon: LayoutDashboard, label: 'Dashboard', visible: isFeatureEnabled('social_intelligence'), disabled: !(can('social', 'dashboard', 'view') || can('studios', 'socialIntelligence', 'view')) },
+    { href: wrapHref('/admin/social/composer'), icon: Sparkles, label: 'Composer', visible: isFeatureEnabled('social_intelligence'), disabled: !(can('social', 'composer', 'view') || can('studios', 'socialIntelligence', 'view')) },
+    { href: wrapHref('/admin/social/calendar'), icon: Calendar, label: 'Calendar', visible: isFeatureEnabled('social_intelligence'), disabled: !(can('social', 'calendar', 'view') || can('studios', 'socialIntelligence', 'view')) },
+    { href: wrapHref('/admin/social/inbox'), icon: MessageSquareText, label: 'Social Inbox', visible: isFeatureEnabled('social_intelligence'), disabled: !(can('social', 'inbox', 'view') || can('studios', 'socialIntelligence', 'view')) },
+    { href: wrapHref('/admin/social/accounts'), icon: Settings, label: 'Connected Profiles', visible: isFeatureEnabled('social_intelligence'), disabled: !(can('social', 'accounts', 'view') || can('studios', 'socialIntelligence', 'view')) },
   ], [wrapHref, isFeatureEnabled, can]);
 
   const workforceNavItems = React.useMemo(() => [
-    { href: wrapHref('/admin/workforce/intelligence'), icon: BrainCircuit, label: 'User Intelligence', visible: can('management', 'users', 'view') },
-    { href: wrapHref('/admin/users'), icon: Users, label: 'Users Hub', visible: can('management', 'users', 'view') },
-    { href: wrapHref('/admin/workforce/onboarding'), icon: Compass, label: 'Onboarding Journeys', visible: can('management', 'users', 'view') },
-    { href: wrapHref('/admin/workforce/command-center'), icon: Terminal, label: 'AI Command Center', visible: isSystemAdmin },
-    { href: wrapHref('/admin/workforce/ai'), icon: Sparkles, label: 'AI Workforce Advisor', visible: isSystemAdmin },
-    { href: wrapHref('/admin/users/governance'), icon: ShieldCheck, label: 'Governance & Security', visible: isSystemAdmin },
-    { href: wrapHref('/admin/workforce/crm'), icon: ArrowRightLeft, label: 'CRM Workload & Transfer', visible: can('management', 'users', 'view') },
-    { href: wrapHref('/admin/workforce/enterprise-identity'), icon: Building2, label: 'Enterprise SSO & SCIM', visible: isSystemAdmin },
-    { href: wrapHref('/admin/users/roles'), icon: ShieldEllipsis, label: 'Roles & Permissions', visible: isSystemAdmin },
+    { href: wrapHref('/admin/workforce/intelligence'), icon: BrainCircuit, label: 'User Intelligence', visible: can('workforce', 'intelligence', 'view') || can('management', 'users', 'view') },
+    { href: wrapHref('/admin/users'), icon: Users, label: 'Users Hub', visible: can('workforce', 'users', 'view') || can('management', 'users', 'view') },
+    { href: wrapHref('/admin/workforce/onboarding'), icon: Compass, label: 'Onboarding Journeys', visible: can('workforce', 'onboarding', 'view') || can('management', 'users', 'view') },
+    { href: wrapHref('/admin/workforce/command-center'), icon: Terminal, label: 'AI Command Center', visible: can('workforce', 'commandCenter', 'view') || isSystemAdmin },
+    { href: wrapHref('/admin/workforce/ai'), icon: Sparkles, label: 'AI Workforce Advisor', visible: can('workforce', 'advisor', 'view') || isSystemAdmin },
+    { href: wrapHref('/admin/users/governance'), icon: ShieldCheck, label: 'Governance & Security', visible: can('workforce', 'governance', 'view') || isSystemAdmin },
+    { href: wrapHref('/admin/workforce/crm'), icon: ArrowRightLeft, label: 'CRM Workload & Transfer', visible: can('workforce', 'crmWorkload', 'view') || can('management', 'users', 'view') },
+    { href: wrapHref('/admin/workforce/enterprise-identity'), icon: Building2, label: 'Enterprise SSO & SCIM', visible: can('workforce', 'enterpriseIdentity', 'view') || isSystemAdmin },
+    { href: wrapHref('/admin/users/roles'), icon: ShieldEllipsis, label: 'Roles & Permissions', visible: can('workforce', 'roles', 'view') || isSystemAdmin },
   ], [wrapHref, can, isSystemAdmin]);
 
   const systemNavItems = React.useMemo(() => [
     { href: wrapHref('/admin/activities'), icon: History, label: 'Activities', visible: can('management', 'activities', 'view') },
-    { href: wrapHref('/admin/entities/lead-scoring'), icon: Sparkles, label: 'Lead Scores', visible: isFeatureEnabled('entities'), disabled: !can('operations', 'campuses', 'view') },
-    { href: wrapHref('/admin/settings/invitation'), icon: Mail, label: 'Messaging', visible: can('management', 'systemSettings', 'view') },
+    { href: wrapHref('/admin/entities/lead-scoring'), icon: Sparkles, label: 'Lead Scores', visible: isFeatureEnabled('entities'), disabled: !(can('management', 'leadScores', 'view') || can('operations', 'campuses', 'view')) },
+    { href: wrapHref('/admin/settings/invitation'), icon: Mail, label: 'Messaging', visible: can('management', 'messagingSettings', 'view') || can('management', 'systemSettings', 'view') },
     { href: wrapHref('/admin/settings/fields'), icon: Database, label: 'Fields & Variables', visible: can('management', 'fields', 'view') },
-    { href: wrapHref('/admin/ai-prompts'), icon: Bot, label: 'AI Prompts', visible: can('management', 'systemSettings', 'view') },
-    { href: wrapHref('/admin/settings/sales-performance'), icon: Sliders, label: 'Effort Rules', visible: can('management', 'systemSettings', 'view') },
+    { href: wrapHref('/admin/ai-prompts'), icon: Bot, label: 'AI Prompts', visible: can('management', 'aiPrompts', 'view') || can('management', 'systemSettings', 'view') },
+    { href: wrapHref('/admin/settings/sales-performance'), icon: Sliders, label: 'Effort Rules', visible: can('management', 'effortRules', 'view') || can('management', 'systemSettings', 'view') },
     { href: wrapHref('/admin/settings'), icon: Settings, label: 'System', visible: can('management', 'systemSettings', 'view') },
-    { href: wrapHref('/admin/settings/developer'), icon: Code, label: 'Developer API', visible: can('management', 'systemSettings', 'view') },
-    { href: wrapHref('/admin/webhooks'), icon: Unplug, label: 'Webhooks', visible: can('management', 'systemSettings', 'view') },
+    { href: wrapHref('/admin/settings/developer'), icon: Code, label: 'Developer API', visible: can('management', 'developerApi', 'view') || can('management', 'systemSettings', 'view') },
+    { href: wrapHref('/admin/webhooks'), icon: Unplug, label: 'Webhooks', visible: can('management', 'webhooks', 'view') || can('management', 'systemSettings', 'view') },
     { href: '/backoffice', icon: Cog, label: 'Backoffice', visible: hasBackofficeAccess, external: true },
   ], [wrapHref, can, isFeatureEnabled, hasBackofficeAccess]);
 
