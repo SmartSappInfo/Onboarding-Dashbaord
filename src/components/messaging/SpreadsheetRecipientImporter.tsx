@@ -1,5 +1,20 @@
 'use client';
 
+/**
+ * @fileOverview SmartSapp Message Composer — Spreadsheet Recipient Importer & Variable Mapper
+ * 
+ * ARCHITECTURAL GUIDANCE & CAUTION FOR FUTURE MAINTAINERS (Rule 10):
+ * 1. Multi-Format Ingestion: Supports Excel (.xlsx, .xls) via binary XLSX.read and CSV via Papa.parse
+ *    with a 5MB maximum file size guard.
+ * 2. Cross-Environment File Loading: Employs FileReader fallback to ensure reliable execution across
+ *    all modern browsers and Node/JSDOM automated test environments.
+ * 3. Smart Header Detection & Fuzzy Matching: Auto-detects phone/email targets, contact names, and fuzzy
+ *    matches declared template variables against discovered spreadsheet column headers.
+ * 4. Mobile Ergonomics & Tactile Animations (Rules 6 & 7): Enforces minimum 44px touch targets on buttons
+ *    and selects (`min-h-[44px]`), coupled with Emil Kowalski active press feedback (`active:scale-[0.97]`).
+ * 5. Strict Zero-Any Invariant (Rule 1): Fully typed without 'any' or 'any[]'.
+ */
+
 import React, { useState, useCallback, useRef, useMemo } from 'react';
 import {
   UploadCloud,

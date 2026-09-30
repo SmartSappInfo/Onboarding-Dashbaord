@@ -1,5 +1,19 @@
 'use client';
 
+/**
+ * @fileOverview SmartSapp Message Composer — Interactive Ad-Hoc Contact Pills Input
+ * 
+ * ARCHITECTURAL GUIDANCE & CAUTION FOR FUTURE MAINTAINERS (Rule 10):
+ * 1. Delimited Text Tokenization: Parses raw pasted/typed text (comma, colon, semicolon, newline, tab)
+ *    into normalized contact pills using canonical `tokenizeDelimitedContacts`.
+ * 2. Mobile Touch Ergonomics (Rule 6): All interactive action buttons and pill delete icons enforce
+ *    a minimum 44px touch target zone (`min-h-[44px]`).
+ * 3. Emil Kowalski Animations (Rule 7): Tactile click feedback (`active:scale-[0.97]`) on all chips and buttons.
+ * 4. High Load & DOM Safety (Rule 9): Implements a rendering threshold cap (100 pills) with an interactive
+ *    toggle ("Show All / Show Less") to protect client DOM performance under large input volumes.
+ * 5. Strict Zero-Any Invariant (Rule 1): Strictly typed without 'any' or 'any[]'.
+ */
+
 import React, { useState, useCallback } from 'react';
 import {
   X,

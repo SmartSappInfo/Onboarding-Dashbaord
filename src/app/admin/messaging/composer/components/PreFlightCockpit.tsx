@@ -154,7 +154,7 @@ export function PreFlightCockpit<TFieldValues extends FieldValues = FieldValues>
                 type="button"
                 onClick={() => onScheduleToggle(false)}
                 className={cn(
-                  'flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all duration-150 active:scale-[0.97] min-h-[38px]',
+                  'flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg text-xs font-bold transition-all duration-150 active:scale-[0.97] min-h-[44px]',
                   !isScheduled
                     ? 'bg-background text-foreground shadow-xs'
                     : 'text-muted-foreground hover:text-foreground'
@@ -168,7 +168,7 @@ export function PreFlightCockpit<TFieldValues extends FieldValues = FieldValues>
                 type="button"
                 onClick={() => onScheduleToggle(true)}
                 className={cn(
-                  'flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all duration-150 active:scale-[0.97] min-h-[38px]',
+                  'flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg text-xs font-bold transition-all duration-150 active:scale-[0.97] min-h-[44px]',
                   isScheduled
                     ? 'bg-background text-foreground shadow-xs'
                     : 'text-muted-foreground hover:text-foreground'

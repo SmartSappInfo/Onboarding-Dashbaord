@@ -500,6 +500,7 @@ export function InternalUserAudienceSelector({
                   {/* Avatar */}
                   <div className="relative size-10 rounded-full shrink-0 overflow-hidden border border-border/60 bg-muted flex items-center justify-center">
                     {hasPhoto ? (
+                      /* eslint-disable-next-line @next/next/no-img-element -- External OAuth/Google/Firebase profile photo URLs vary across multiple dynamic domains */
                       <img
                         src={teammate.photoURL}
                         alt={teammate.name}

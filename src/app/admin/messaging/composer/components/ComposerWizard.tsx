@@ -726,6 +726,35 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
             if (data.audienceMode === 'team') {
                 const totalCount = selectedTeamMembers.length;
                 if (!totalCount) throw new Error('Please select at least one teammate.');
+
+                // High-volume team broadcast (> 50) template offloading via background worker (Rule 9)
+                if (selectedTeamMembers.length > 50 && data.messageSourceType === 'template' && data.templateId) {
+                    const bulkRecipients = selectedTeamMembers.map(m => ({
+                        recipient: data.channel === 'email' ? m.email : (m.phone || ''),
+                        displayName: m.name,
+                        entityId: m.userId,
+                        variables: {
+                            ...data.variables,
+                            contact_name: m.name,
+                            user_name: m.name,
+                            user_email: m.email,
+                            user_role: m.role || 'Member',
+                            user_department: m.department || '',
+                            channel: data.channel,
+                        },
+                    })).filter(r => Boolean(r.recipient));
+
+                    const { jobId } = await createBulkMessageJob({
+                        templateId: data.templateId,
+                        senderProfileId: data.senderProfileId!,
+                        recipients: bulkRecipients,
+                        userId: user.uid,
+                    });
+                    setStep(6);
+                    startJobProcessing(jobId);
+                    return;
+                }
+
                 setIsSending(true);
                 setSendProgress({ sent: 0, total: totalCount, currentEntity: '' });
 
@@ -846,9 +875,9 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                         recipient: item.target,
                         displayName: item.displayName,
                         variables: {
+                            ...data.variables,
                             contact_name: item.displayName || 'Direct Recipient',
                             ...(item.customVars || {}),
-                            ...data.variables,
                             channel: data.channel,
                         },
                     }));
