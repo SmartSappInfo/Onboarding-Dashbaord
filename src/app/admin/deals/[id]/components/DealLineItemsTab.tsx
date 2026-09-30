@@ -44,7 +44,8 @@ import {
   CreditCard,
   Package,
   TrendingUp,
-  Repeat
+  Repeat,
+  MoreHorizontal
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import {
@@ -53,7 +54,11 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { 
   Select, 
   SelectContent, 
@@ -400,131 +405,136 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
     <div className="space-y-6">
       {/* 1. Products & Line Items Editor Card */}
       <Card className="border-border/50 rounded-2xl bg-card shadow-sm overflow-hidden">
-        <CardHeader className="border-b bg-card/20 pb-4 px-6 pt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-0.5">
-            <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+        <CardHeader className="bg-muted/30 border-b py-2.5 px-6 flex flex-row items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-1.5 bg-primary/10 rounded-lg">
               <ShoppingBag className="h-4 w-4 text-primary" />
+            </div>
+            <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2 text-foreground">
               <span>Products & Commercial Line Items ({items.length})</span>
+              <CardInfoTooltip text="Manage billable goods, subscription licenses, discounts, and generate formal customer quotes." />
             </CardTitle>
-            <p className="text-xs text-muted-foreground">
-              Manage billable goods, subscription licenses, discounts, and generate formal customer quotes.
-            </p>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
-            {/* Direct Deep Link to Finance Hub Commercial Catalog */}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              asChild
-              className="h-9 rounded-xl font-bold text-xs border-border/80 hover:bg-muted/30 gap-1.5 min-h-[38px] cursor-pointer"
-            >
-              <Link href="/admin/finance/packages" target="_blank">
-                <Package className="h-3.5 w-3.5 text-primary" />
-                <span className="hidden sm:inline">Manage Catalog & Packages</span>
-                <ArrowUpRight className="h-3.5 w-3.5 opacity-60 ml-0.5" />
-              </Link>
-            </Button>
-
-            {(catalogProducts.length > 0 || catalogPackages.length > 0) && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-9 rounded-xl font-bold text-xs border-primary/30 text-primary hover:bg-primary/5 gap-1.5 cursor-pointer min-h-[38px]"
-                  >
-                    <Package className="h-3.5 w-3.5" />
-                    <span>From Catalog</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-72 max-h-80 overflow-y-auto rounded-xl p-1 shadow-xl">
-                  {catalogProducts.length > 0 && (
-                    <>
-                      <div className="px-2 py-1.5 text-[10px] font-black uppercase tracking-wider text-muted-foreground bg-muted/30 rounded-md my-0.5">
-                        Products & Services
-                      </div>
-                      {catalogProducts.map(prod => (
-                        <DropdownMenuItem
-                          key={prod.id}
-                          onClick={() => handleAddProductFromCatalog(prod)}
-                          className="flex flex-col items-start gap-0.5 p-2 rounded-lg cursor-pointer hover:bg-muted/50"
-                        >
-                          <div className="flex items-center justify-between w-full">
-                            <span className="font-bold text-xs text-foreground truncate">{prod.name}</span>
-                            <span className="text-[11px] font-black text-primary">{formatCurrency(prod.unitPrice, prod.currency)}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                            {prod.isRecurring ? (
-                              <Badge className="text-[9px] px-1 py-0 bg-emerald-500/10 text-emerald-600 border-none">
-                                Recurring ({prod.billingInterval})
-                              </Badge>
-                            ) : (
-                              <span>One-time</span>
-                            )}
-                            {prod.sku && <span>• {prod.sku}</span>}
-                          </div>
-                        </DropdownMenuItem>
-                      ))}
-                    </>
-                  )}
-
-                  {catalogPackages.length > 0 && (
-                    <>
-                      <div className="px-2 py-1.5 text-[10px] font-black uppercase tracking-wider text-primary bg-primary/5 rounded-md my-0.5 mt-1.5">
-                        Subscription Packages (Tiers)
-                      </div>
-                      {catalogPackages.map(pkg => (
-                        <DropdownMenuItem
-                          key={pkg.id}
-                          onClick={() => handleAddPackageFromCatalog(pkg)}
-                          className="flex flex-col items-start gap-0.5 p-2 rounded-lg cursor-pointer hover:bg-muted/50"
-                        >
-                          <div className="flex items-center justify-between w-full">
-                            <span className="font-bold text-xs text-foreground truncate">{pkg.name}</span>
-                            <span className="text-[11px] font-black text-emerald-600 dark:text-emerald-400">
-                              {formatCurrency(pkg.ratePerStudent, pkg.currency)}/user
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                            <Badge className="text-[9px] px-1 py-0 bg-primary/10 text-primary border-none">
-                              {pkg.billingTerm} cycle
-                            </Badge>
-                          </div>
-                        </DropdownMenuItem>
-                      ))}
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setCreatedQuote(null);
-                setIsQuoteModalOpen(true);
-              }}
-              disabled={items.length === 0}
-              className="h-9 rounded-xl font-bold text-xs border-border/80 hover:bg-primary/5 gap-1.5 min-h-[38px] cursor-pointer"
-            >
-              <Receipt className="h-3.5 w-3.5 text-primary" />
-              Generate Quote
-            </Button>
-
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Exactly One Hero Action Button */}
             <Button
               type="button"
               size="sm"
               onClick={handleAddItem}
-              className="h-9 rounded-xl font-bold text-xs bg-primary text-primary-foreground shadow-sm gap-1.5 min-h-[38px] cursor-pointer"
+              className="h-9 rounded-xl font-bold text-xs bg-primary text-primary-foreground shadow-sm gap-1.5 min-h-[38px] active:scale-[0.97] transition-all cursor-pointer"
             >
               <Plus className="h-3.5 w-3.5" />
-              Add Custom Item
+              <span>Add Custom Item</span>
             </Button>
+
+            {/* Doughnut Menu for Secondary Commands */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 rounded-xl border border-border/80 hover:bg-muted/50 text-muted-foreground hover:text-foreground active:scale-[0.97] transition-all cursor-pointer"
+                  title="More actions"
+                  aria-label="More actions"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 rounded-xl p-1 shadow-xl">
+                {(catalogProducts.length > 0 || catalogPackages.length > 0) && (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="flex items-center gap-2 p-2 rounded-lg cursor-pointer text-xs font-semibold">
+                      <Package className="h-3.5 w-3.5 text-primary" />
+                      <span>Add from Catalog</span>
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="w-72 max-h-80 overflow-y-auto rounded-xl p-1 shadow-2xl">
+                      {catalogProducts.length > 0 && (
+                        <>
+                          <div className="px-2 py-1.5 text-[10px] font-black uppercase tracking-wider text-muted-foreground bg-muted/30 rounded-md my-0.5">
+                            Products & Services
+                          </div>
+                          {catalogProducts.map(prod => (
+                            <DropdownMenuItem
+                              key={prod.id}
+                              onClick={() => handleAddProductFromCatalog(prod)}
+                              className="flex flex-col items-start gap-0.5 p-2 rounded-lg cursor-pointer hover:bg-muted/50"
+                            >
+                              <div className="flex items-center justify-between w-full">
+                                <span className="font-bold text-xs text-foreground truncate">{prod.name}</span>
+                                <span className="text-[11px] font-black text-primary">{formatCurrency(prod.unitPrice, prod.currency)}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                                {prod.isRecurring ? (
+                                  <Badge className="text-[9px] px-1 py-0 bg-emerald-500/10 text-emerald-600 border-none">
+                                    Recurring ({prod.billingInterval})
+                                  </Badge>
+                                ) : (
+                                  <span>One-time</span>
+                                )}
+                                {prod.sku && <span>• {prod.sku}</span>}
+                              </div>
+                            </DropdownMenuItem>
+                          ))}
+                        </>
+                      )}
+
+                      {catalogPackages.length > 0 && (
+                        <>
+                          <div className="px-2 py-1.5 text-[10px] font-black uppercase tracking-wider text-primary bg-primary/5 rounded-md my-0.5 mt-1.5">
+                            Subscription Packages (Tiers)
+                          </div>
+                          {catalogPackages.map(pkg => (
+                            <DropdownMenuItem
+                              key={pkg.id}
+                              onClick={() => handleAddPackageFromCatalog(pkg)}
+                              className="flex flex-col items-start gap-0.5 p-2 rounded-lg cursor-pointer hover:bg-muted/50"
+                            >
+                              <div className="flex items-center justify-between w-full">
+                                <span className="font-bold text-xs text-foreground truncate">{pkg.name}</span>
+                                <span className="text-[11px] font-black text-emerald-600 dark:text-emerald-400">
+                                  {formatCurrency(pkg.ratePerStudent, pkg.currency)}/user
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                                <Badge className="text-[9px] px-1 py-0 bg-primary/10 text-primary border-none">
+                                  {pkg.billingTerm} cycle
+                                </Badge>
+                              </div>
+                            </DropdownMenuItem>
+                          ))}
+                        </>
+                      )}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                )}
+
+                <DropdownMenuItem
+                  onClick={() => {
+                    setCreatedQuote(null);
+                    setIsQuoteModalOpen(true);
+                  }}
+                  disabled={items.length === 0}
+                  className="flex items-center gap-2 p-2 rounded-lg cursor-pointer text-xs font-semibold"
+                >
+                  <Receipt className="h-3.5 w-3.5 text-primary" />
+                  <span>Generate Quote</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator className="my-1" />
+
+                <DropdownMenuItem asChild className="flex items-center justify-between p-2 rounded-lg cursor-pointer text-xs font-semibold">
+                  <Link href="/admin/finance/packages" target="_blank" className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-3.5 w-3.5 text-primary" />
+                      <span>Manage Catalog & Packages</span>
+                    </div>
+                    <ArrowUpRight className="h-3.5 w-3.5 opacity-60" />
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </CardHeader>
 
@@ -774,15 +784,31 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
 
       {/* 2. Generated Commercial Quotes History Section */}
       <Card className="border-border/50 rounded-2xl bg-card shadow-sm overflow-hidden">
-        <CardHeader className="border-b bg-card/20 pb-4 px-6 pt-5 flex flex-row items-center justify-between">
-          <div className="space-y-0.5">
-            <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+        <CardHeader className="bg-muted/30 border-b py-2.5 px-6 flex flex-row items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-1.5 bg-primary/10 rounded-lg">
               <FileText className="h-4 w-4 text-primary" />
+            </div>
+            <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2 text-foreground">
               <span>Commercial Quotes & Client Proposals ({sortedQuotes.length})</span>
+              <CardInfoTooltip text="Formal customer quotes with shareable links, digital sign-off, and invoice conversion." />
             </CardTitle>
-            <p className="text-xs text-muted-foreground">
-              Formal customer quotes with shareable links, digital sign-off, and invoice conversion.
-            </p>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                setCreatedQuote(null);
+                setIsQuoteModalOpen(true);
+              }}
+              disabled={items.length === 0}
+              className="h-9 rounded-xl font-bold text-xs bg-primary text-primary-foreground shadow-sm gap-1.5 min-h-[38px] active:scale-[0.97] transition-all cursor-pointer"
+            >
+              <Receipt className="h-3.5 w-3.5" />
+              <span>Generate Quote</span>
+            </Button>
           </div>
         </CardHeader>
 

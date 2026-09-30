@@ -52,6 +52,7 @@ import { useCallModal } from '@/context/CallModalContext';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
@@ -1193,11 +1194,17 @@ export default function DealDetailsPage() {
                     <div className="lg:col-span-2">
                         <div className="space-y-6">
                                 {/* Deal Properties & Core Details Card */}
-                                <Card className="border-border/50 rounded-2xl bg-card shadow-sm">
-                                    <CardHeader className="border-b bg-card/20 pb-4 flex flex-row items-center justify-between">
-                                        <CardTitle className="text-sm font-bold flex items-center gap-2">
-                                            <Settings2 className="h-4 w-4 text-primary" /> Deal Properties & Core Details
-                                        </CardTitle>
+                                <Card className="border-border/50 rounded-2xl bg-card shadow-sm overflow-hidden">
+                                    <CardHeader className="bg-muted/30 border-b py-2.5 px-6 flex flex-row items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-1.5 bg-primary/10 rounded-lg">
+                                                <Settings2 className="h-4 w-4 text-primary" />
+                                            </div>
+                                            <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2 text-foreground">
+                                                <span>Deal Properties & Core Details</span>
+                                                <CardInfoTooltip text="Essential pipeline parameters, assignment, and projected closing schedule." />
+                                            </CardTitle>
+                                        </div>
                                         {isDirty && (
                                             <Badge variant="outline" className="text-[10px] font-bold text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10 animate-pulse">
                                                 Unsaved Changes
@@ -1666,9 +1673,17 @@ export default function DealDetailsPage() {
                                     </CardContent>
                                 </Card>
 
-                                <Card className="border-border/50 rounded-2xl bg-card shadow-sm">
-                                    <CardHeader className="border-b bg-card/20 pb-4">
-                                        <CardTitle className="text-sm font-bold flex items-center gap-2"><Settings2 className="h-4 w-4 text-primary" /> Custom Fields</CardTitle>
+                                <Card className="border-border/50 rounded-2xl bg-card shadow-sm overflow-hidden">
+                                    <CardHeader className="bg-muted/30 border-b py-2.5 px-6 flex flex-row items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-1.5 bg-primary/10 rounded-lg">
+                                                <Settings2 className="h-4 w-4 text-primary" />
+                                            </div>
+                                            <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2 text-foreground">
+                                                <span>Custom Fields</span>
+                                                <CardInfoTooltip text="Manage custom attributes, key-value properties, and metadata for this deal." />
+                                            </CardTitle>
+                                        </div>
                                     </CardHeader>
                                     <CardContent className="p-6 space-y-6">
                                         {Object.keys(deal.customFields || {}).length > 0 ? (
@@ -1714,9 +1729,17 @@ export default function DealDetailsPage() {
 
 
                                 {/* Deal Notes — scoped to this deal; also surface in the entity notes panel */}
-                                <Card className="border-border/50 rounded-2xl bg-card shadow-sm">
-                                    <CardHeader className="border-b bg-card/20 pb-4">
-                                        <CardTitle className="text-sm font-bold flex items-center gap-2"><MessageSquare className="h-4 w-4 text-primary" /> Notes</CardTitle>
+                                <Card className="border-border/50 rounded-2xl bg-card shadow-sm overflow-hidden">
+                                    <CardHeader className="bg-muted/30 border-b py-2.5 px-6 flex flex-row items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-1.5 bg-primary/10 rounded-lg">
+                                                <MessageSquare className="h-4 w-4 text-primary" />
+                                            </div>
+                                            <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2 text-foreground">
+                                                <span>Deal Notes</span>
+                                                <CardInfoTooltip text="Scoped notes and collaboration logs for this opportunity." />
+                                            </CardTitle>
+                                        </div>
                                     </CardHeader>
                                     <CardContent className="p-4">
                                         <EntityNotesTab entityId={deal.entityId || ''} dealId={deal.id} dealName={deal.name} compact />
@@ -1727,15 +1750,21 @@ export default function DealDetailsPage() {
 
                     <div className="lg:col-span-1 space-y-6">
                         {/* Upcoming Tasks */}
-                        <Card className="border-border/50 rounded-2xl bg-card shadow-sm">
-                            <CardHeader className="border-b bg-card/20 pb-4 flex flex-row items-center justify-between">
-                                <CardTitle className="text-sm font-bold flex items-center gap-2">
-                                    <CheckCircle2 className="h-4 w-4 text-primary" /> Upcoming Tasks
-                                </CardTitle>
+                        <Card className="border-border/50 rounded-2xl bg-card shadow-sm overflow-hidden">
+                            <CardHeader className="bg-muted/30 border-b py-2.5 px-6 flex flex-row items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-1.5 bg-primary/10 rounded-lg">
+                                        <CheckCircle2 className="h-4 w-4 text-primary" />
+                                    </div>
+                                    <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2 text-foreground">
+                                        <span>Upcoming Tasks</span>
+                                        <CardInfoTooltip text="Action items, reminders, and scheduled tasks assigned to this deal." />
+                                    </CardTitle>
+                                </div>
                                 <Button 
                                     size="sm" 
                                     onClick={() => setIsCreateTaskOpen(true)} 
-                                    className="h-8 px-3 rounded-xl font-bold text-xs gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+                                    className="h-8 px-3 rounded-xl font-bold text-xs gap-1.5 shadow-sm active:scale-[0.97] transition-all cursor-pointer"
                                 >
                                     <Plus className="h-3.5 w-3.5" /> Add Task
                                 </Button>
@@ -1776,11 +1805,17 @@ export default function DealDetailsPage() {
                         </Card>
 
                         {/* Activity Feed */}
-                        <Card className="border-border/50 rounded-2xl bg-card shadow-sm">
-                            <CardHeader className="border-b bg-card/20 pb-4 flex flex-row items-center justify-between">
-                                <CardTitle className="text-sm font-bold flex items-center gap-2">
-                                    <Activity className="h-4 w-4 text-primary" /> Activity Feed
-                                </CardTitle>
+                        <Card className="border-border/50 rounded-2xl bg-card shadow-sm overflow-hidden">
+                            <CardHeader className="bg-muted/30 border-b py-2.5 px-6 flex flex-row items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-1.5 bg-primary/10 rounded-lg">
+                                        <Activity className="h-4 w-4 text-primary" />
+                                    </div>
+                                    <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2 text-foreground">
+                                        <span>Activity Feed</span>
+                                        <CardInfoTooltip text="Complete chronological history of stage changes, communications, and deal events." />
+                                    </CardTitle>
+                                </div>
                             </CardHeader>
                             <CardContent className="p-6">
                                 <ActivityTimeline dealId={deal.id} entityId={deal.entityId} limit={30} />

@@ -36,7 +36,16 @@ import {
   Layers,
   ArrowRight,
   ShieldCheck,
+  MoreHorizontal,
+  ArrowUpRight,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { formatCurrency } from '@/lib/currency-utils';
 import { formatSafeLocaleDate } from '@/lib/date-utils';
 
@@ -114,33 +123,63 @@ export default function DealContractsCard({ deal }: DealContractsCardProps) {
 
   return (
     <Card className="border-border/50 rounded-2xl bg-card shadow-sm overflow-hidden">
-      <CardHeader className="border-b bg-card/20 pb-4 px-6 pt-5 flex flex-row items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-            <FileText className="h-4 w-4" />
+      <CardHeader className="bg-muted/30 border-b py-2.5 px-6 flex flex-row items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-1.5 bg-primary/10 rounded-lg">
+            <FileText className="h-4 w-4 text-primary" />
           </div>
-          <div>
-            <CardTitle className="text-sm font-bold flex items-center gap-2">
-              Agreements & Signing
-            </CardTitle>
-            <p className="text-[11px] text-muted-foreground">
-              Commercial contracts, signing workflows, and legal commitments
-            </p>
-          </div>
+          <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2 text-foreground">
+            <span>Agreements & Signing</span>
+            <CardInfoTooltip text="Commercial contracts, signing workflows, and legal commitments." />
+          </CardTitle>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {getStatusBadge(deal.contractStatus || (contracts[0]?.status as string))}
           <Button
             asChild
             size="sm"
-            className="rounded-xl font-bold text-xs h-9 px-3 shadow-sm active:scale-[0.97] transition-all min-h-[44px] sm:min-h-0"
+            className="rounded-xl font-bold text-xs h-9 px-3.5 bg-primary text-primary-foreground shadow-sm active:scale-[0.97] transition-all min-h-[38px] cursor-pointer gap-1.5"
           >
             <Link href={`/admin/finance/contracts?dealId=${encodeURIComponent(deal.id)}`}>
-              <Plus className="h-3.5 w-3.5 mr-1" />
-              Issue Agreement
+              <Plus className="h-3.5 w-3.5" />
+              <span>Issue Agreement</span>
             </Link>
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 rounded-xl border border-border/80 hover:bg-muted/50 text-muted-foreground hover:text-foreground active:scale-[0.97] transition-all cursor-pointer"
+                title="More contract actions"
+                aria-label="More contract actions"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 rounded-xl p-1 shadow-xl">
+              <DropdownMenuItem asChild className="flex items-center justify-between p-2 rounded-lg cursor-pointer text-xs font-semibold">
+                <Link href={`/admin/finance/contracts?dealId=${encodeURIComponent(deal.id)}`} className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-2">
+                    <FileCheck className="h-3.5 w-3.5 text-primary" />
+                    <span>All Contracts</span>
+                  </div>
+                  <ArrowUpRight className="h-3.5 w-3.5 opacity-60" />
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild className="flex items-center justify-between p-2 rounded-lg cursor-pointer text-xs font-semibold">
+                <Link href="/admin/pdfs" target="_blank" className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-3.5 w-3.5 text-primary" />
+                    <span>Document Signing Hub</span>
+                  </div>
+                  <ArrowUpRight className="h-3.5 w-3.5 opacity-60" />
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </CardHeader>
 

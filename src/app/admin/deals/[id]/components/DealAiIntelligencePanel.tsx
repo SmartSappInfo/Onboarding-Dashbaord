@@ -34,8 +34,17 @@ import {
   Plus,
   Compass,
   Workflow,
-  LayoutDashboard
+  LayoutDashboard,
+  MoreHorizontal,
+  ArrowUpRight
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -122,71 +131,25 @@ export default function DealAiIntelligencePanel({ deal, onTaskCreated }: DealAiI
 
   return (
     <Card className="border-border/50 rounded-2xl bg-card shadow-sm overflow-hidden">
-      <CardHeader className="border-b bg-gradient-to-r from-primary/10 via-card to-background pb-4 px-6 pt-5 flex flex-row items-center justify-between">
-        <div className="space-y-0.5">
-          <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+      <CardHeader className="bg-muted/30 border-b py-2.5 px-6 flex flex-row items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-1.5 bg-primary/10 rounded-lg">
             <Bot className="h-4 w-4 text-primary" />
+          </div>
+          <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2 text-foreground">
             <span>AI Deal Intelligence & Next Best Actions</span>
+            <CardInfoTooltip text="Machine intelligence evaluating deal velocity, stakeholder notes, and closing probability." />
           </CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Machine intelligence evaluating deal velocity, stakeholder notes, and closing probability.
-          </p>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <Link href="/admin/revenue-forecasting">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-9 rounded-xl font-bold text-xs gap-1.5"
-            >
-              <TrendingUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>Forecast Cockpit</span>
-            </Button>
-          </Link>
-
-          <Link href="/admin/deal-intelligence">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-9 rounded-xl font-bold text-xs gap-1.5"
-            >
-              <Compass className="h-3.5 w-3.5 text-primary" />
-              <span>Deal Intelligence</span>
-            </Button>
-          </Link>
-
-          <Link href="/admin/sales-orchestration">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-9 rounded-xl font-bold text-xs gap-1.5"
-            >
-              <Workflow className="h-3.5 w-3.5 text-indigo-500" />
-              <span>Sales Plays</span>
-            </Button>
-          </Link>
-
-          <Link href="/admin/revenue-operating-system">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-9 rounded-xl font-bold text-xs gap-1.5"
-            >
-              <LayoutDashboard className="h-3.5 w-3.5 text-amber-500" />
-              <span>Revenue OS</span>
-            </Button>
-          </Link>
-
+          {/* Exactly One Hero Action Button */}
           <Button
             type="button"
+            size="sm"
             onClick={handleGenerateInsights}
             disabled={isLoading}
-            className="h-9 rounded-xl font-bold text-xs bg-primary text-primary-foreground shadow-sm gap-1.5 shrink-0"
+            className="h-9 rounded-xl font-bold text-xs bg-primary text-primary-foreground shadow-sm gap-1.5 shrink-0 active:scale-[0.97] transition-all cursor-pointer min-h-[38px]"
           >
             {isLoading ? (
               <>
@@ -200,6 +163,60 @@ export default function DealAiIntelligencePanel({ deal, onTaskCreated }: DealAiI
               </>
             )}
           </Button>
+
+          {/* Doughnut Menu for Secondary Commands */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 rounded-xl border border-border/80 hover:bg-muted/50 text-muted-foreground hover:text-foreground active:scale-[0.97] transition-all cursor-pointer"
+                title="More intelligence actions"
+                aria-label="More intelligence actions"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 rounded-xl p-1 shadow-xl">
+              <DropdownMenuItem asChild className="p-2 rounded-lg cursor-pointer text-xs font-semibold">
+                <Link href="/admin/revenue-forecasting" className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>Forecast Cockpit</span>
+                  </div>
+                  <ArrowUpRight className="h-3.5 w-3.5 opacity-60" />
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild className="p-2 rounded-lg cursor-pointer text-xs font-semibold">
+                <Link href="/admin/deal-intelligence" className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-2">
+                    <Compass className="h-3.5 w-3.5 text-primary" />
+                    <span>Deal Intelligence</span>
+                  </div>
+                  <ArrowUpRight className="h-3.5 w-3.5 opacity-60" />
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild className="p-2 rounded-lg cursor-pointer text-xs font-semibold">
+                <Link href="/admin/sales-orchestration" className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-2">
+                    <Workflow className="h-3.5 w-3.5 text-indigo-500" />
+                    <span>Sales Plays</span>
+                  </div>
+                  <ArrowUpRight className="h-3.5 w-3.5 opacity-60" />
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild className="p-2 rounded-lg cursor-pointer text-xs font-semibold">
+                <Link href="/admin/revenue-operating-system" className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-2">
+                    <LayoutDashboard className="h-3.5 w-3.5 text-amber-500" />
+                    <span>Revenue OS</span>
+                  </div>
+                  <ArrowUpRight className="h-3.5 w-3.5 opacity-60" />
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </CardHeader>
 
