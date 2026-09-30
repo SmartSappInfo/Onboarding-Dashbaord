@@ -58,6 +58,8 @@ import {
   Clock,
   Sparkles,
   Filter,
+  Building2,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -73,6 +75,7 @@ export default function BulkCampaignsTab({ workspaceId }: BulkCampaignsTabProps)
   const [subView, setSubView] = React.useState<'campaigns' | 'legal_hold' | 'vault'>('campaigns');
   const [searchTerm, setSearchTerm] = React.useState('');
   const [filterHoldOnly, setFilterHoldOnly] = React.useState(false);
+  const [sourceFilter, setSourceFilter] = React.useState<'all' | 'crm_entities' | 'csv_upload'>('all');
 
   // Modal States
   const [isWizardOpen, setIsWizardOpen] = React.useState(false);
@@ -152,15 +155,20 @@ export default function BulkCampaignsTab({ workspaceId }: BulkCampaignsTabProps)
 
   // Filtered Campaigns
   const filteredCampaigns = React.useMemo(() => {
-    if (!searchTerm.trim()) return campaigns;
-    const q = searchTerm.toLowerCase();
-    return campaigns.filter(
-      (c) =>
+    return campaigns.filter((c) => {
+      if (sourceFilter !== 'all') {
+        const currentSource = c.sourceType || 'csv_upload';
+        if (currentSource !== sourceFilter) return false;
+      }
+      if (!searchTerm.trim()) return true;
+      const q = searchTerm.toLowerCase();
+      return (
         c.title.toLowerCase().includes(q) ||
         c.id.toLowerCase().includes(q) ||
         (c.tags || []).some((t) => t.toLowerCase().includes(q))
-    );
-  }, [campaigns, searchTerm]);
+      );
+    });
+  }, [campaigns, searchTerm, sourceFilter]);
 
   // Filtered Contracts for Legal Hold Tab
   const filteredContracts = React.useMemo(() => {
@@ -431,6 +439,18 @@ export default function BulkCampaignsTab({ workspaceId }: BulkCampaignsTabProps)
             />
           </div>
 
+          {subView === 'campaigns' && (
+            <select
+              value={sourceFilter}
+              onChange={(e) => setSourceFilter(e.target.value as 'all' | 'crm_entities' | 'csv_upload')}
+              className="h-[38px] px-2.5 rounded-xl border border-input bg-background text-xs font-semibold text-muted-foreground focus:text-foreground shrink-0 min-h-[38px]"
+            >
+              <option value="all">All Sources</option>
+              <option value="crm_entities">CRM Directory</option>
+              <option value="csv_upload">CSV Upload</option>
+            </select>
+          )}
+
           {subView === 'legal_hold' && (
             <Button
               variant={filterHoldOnly ? 'default' : 'outline'}
@@ -517,9 +537,26 @@ export default function BulkCampaignsTab({ workspaceId }: BulkCampaignsTabProps)
                                     {camp.id}
                                   </span>
                                 </div>
-                                {camp.tags && camp.tags.length > 0 && (
-                                  <div className="flex flex-wrap gap-1 mt-1">
-                                    {camp.tags.map((t) => (
+                                <div className="flex flex-wrap items-center gap-1 mt-1">
+                                  {camp.sourceType === 'crm_entities' ? (
+                                    <Badge
+                                      variant="outline"
+                                      className="text-[8px] h-4 px-1.5 py-0 font-medium text-primary border-primary/20 bg-primary/5 flex items-center gap-0.5"
+                                    >
+                                      <Building2 className="h-2.5 w-2.5" />
+                                      <span>CRM{camp.entityCount ? ` (${camp.entityCount})` : ''}</span>
+                                    </Badge>
+                                  ) : (
+                                    <Badge
+                                      variant="outline"
+                                      className="text-[8px] h-4 px-1.5 py-0 font-medium text-muted-foreground flex items-center gap-0.5"
+                                    >
+                                      <FileSpreadsheet className="h-2.5 w-2.5" />
+                                      <span>CSV</span>
+                                    </Badge>
+                                  )}
+                                  {camp.tags &&
+                                    camp.tags.map((t) => (
                                       <Badge
                                         key={t}
                                         variant="outline"
@@ -528,8 +565,7 @@ export default function BulkCampaignsTab({ workspaceId }: BulkCampaignsTabProps)
                                         {t}
                                       </Badge>
                                     ))}
-                                  </div>
-                                )}
+                                </div>
                               </div>
                             </TableCell>
 
@@ -643,9 +679,28 @@ export default function BulkCampaignsTab({ workspaceId }: BulkCampaignsTabProps)
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <p className="font-bold text-sm text-foreground">{camp.title}</p>
-                            <p className="text-[10px] text-muted-foreground mt-0.5">
-                              {format(new Date(camp.createdAt), 'MMM d, yyyy')}
-                            </p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="text-[10px] text-muted-foreground">
+                                {format(new Date(camp.createdAt), 'MMM d, yyyy')}
+                              </span>
+                              {camp.sourceType === 'crm_entities' ? (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[8px] h-4 px-1 py-0 font-medium text-primary border-primary/20 bg-primary/5 flex items-center gap-0.5"
+                                >
+                                  <Building2 className="h-2 w-2" />
+                                  <span>CRM</span>
+                                </Badge>
+                              ) : (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[8px] h-4 px-1 py-0 font-medium text-muted-foreground flex items-center gap-0.5"
+                                >
+                                  <FileSpreadsheet className="h-2 w-2" />
+                                  <span>CSV</span>
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                           <Badge
                             variant={
