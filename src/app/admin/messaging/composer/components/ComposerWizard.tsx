@@ -2096,11 +2096,6 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                         </CardDescription>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <Badge variant="secondary" className="text-xs font-semibold py-1 px-3">
-                                        Step 5 of 5
-                                    </Badge>
-                                </div>
                             </div>
                         </CardHeader>
                         <CardContent className="p-6 space-y-6">

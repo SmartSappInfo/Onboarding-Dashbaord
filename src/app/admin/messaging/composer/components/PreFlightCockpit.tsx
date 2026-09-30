@@ -68,14 +68,9 @@ export function PreFlightCockpit<TFieldValues extends FieldValues = FieldValues>
     <div className="space-y-5 text-left">
       {/* ─── SENDER IDENTITY SECTION ─── */}
       <div className="space-y-2.5">
-        <div className="flex items-center justify-between">
-          <Label className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-1.5">
-            <ShieldCheck className="h-3.5 w-3.5" /> Sender Identity
-          </Label>
-          <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-wider py-0 px-2 h-5 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5">
-            Verified Route
-          </Badge>
-        </div>
+        <Label className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-1.5">
+          <ShieldCheck className="h-3.5 w-3.5" /> Sender Identity
+        </Label>
 
         <Controller
           name={"senderProfileId" as import('react-hook-form').Path<TFieldValues>}

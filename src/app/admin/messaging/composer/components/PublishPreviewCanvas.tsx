@@ -31,7 +31,6 @@ import {
   Inbox
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { MessageTemplate, MessageStyle } from '@/lib/types';
 import { resolveVariables, renderBlocksToHtml, plainTextToHtml } from '@/lib/messaging-utils';
@@ -219,14 +218,9 @@ export function PublishPreviewCanvas({
     <div className="space-y-3">
       {/* ─── Preview Action Toolbar ─── */}
       <div className="flex flex-wrap items-center justify-between gap-2.5 pb-1">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-1.5">
-            <Eye className="h-3.5 w-3.5" /> Live Preview
-          </span>
-          <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-wider py-0 px-2 h-5 border-primary/20 text-primary bg-primary/5">
-            {channel === 'email' ? 'Client Simulation' : channel === 'whatsapp' ? 'WhatsApp Business' : 'Direct SMS'}
-          </Badge>
-        </div>
+        <span className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-1.5">
+          <Eye className="h-3.5 w-3.5" /> Live Preview
+        </span>
 
         <div className="flex items-center gap-2">
           {/* Viewport Mode Switcher (Email only) */}
