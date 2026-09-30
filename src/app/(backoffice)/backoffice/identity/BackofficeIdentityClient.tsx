@@ -226,12 +226,15 @@ export function BackofficeIdentityClient() {
         invitationId: invId,
       });
 
-      if (res.success && res.rawToken) {
-        const acceptUrl = `${window.location.origin}/accept-invitation?token=${res.rawToken}`;
+      if (res.success && (res.encryptedInviteToken || res.rawToken)) {
+        // Construct the tamper-proof encrypted invitation URL if available, falling back to legacy raw token
+        const acceptUrl = res.encryptedInviteToken
+          ? `${window.location.origin}/accept-invitation?invite=${encodeURIComponent(res.encryptedInviteToken)}`
+          : `${window.location.origin}/accept-invitation?token=${res.rawToken}`;
         await navigator.clipboard.writeText(acceptUrl);
         toast({
           title: 'Invitation Refreshed',
-          description: `New activation link copied to clipboard for ${email}.`,
+          description: `New encrypted activation link copied to clipboard for ${email}.`,
         });
         loadInvitations();
       }
@@ -660,6 +663,7 @@ export function BackofficeIdentityClient() {
                                 'text-[9px] font-bold uppercase tracking-wider',
                                 inv.status === 'accepted' && 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30',
                                 inv.status === 'sent' && 'bg-blue-500/10 text-blue-600 border-blue-500/30',
+                                inv.status === 'declined' && 'bg-slate-500/10 text-slate-600 border-slate-500/30',
                                 inv.status === 'expired' && 'bg-amber-500/10 text-amber-600 border-amber-500/30',
                                 inv.status === 'revoked' && 'bg-rose-500/10 text-rose-600 border-rose-500/30'
                               )}
@@ -673,14 +677,14 @@ export function BackofficeIdentityClient() {
                             </span>
                           </TableCell>
                           <TableCell className="text-right pr-4">
-                            {inv.status === 'sent' && (
+                            {inv.status === 'sent' ? (
                               <div className="flex items-center justify-end gap-1">
                                 <Button
                                   type="button"
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => handleResendInvite(inv.id, inv.email)}
-                                  className="text-xs h-7 px-2"
+                                  className="text-xs h-7 px-2 active:scale-[0.97]"
                                 >
                                   <Send className="w-3 h-3 mr-1" /> Copy Link
                                 </Button>
@@ -689,11 +693,17 @@ export function BackofficeIdentityClient() {
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => handleRevokeInvite(inv.id, inv.email)}
-                                  className="text-xs h-7 px-2 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10"
+                                  className="text-xs h-7 px-2 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 active:scale-[0.97]"
                                 >
                                   <Ban className="w-3 h-3 mr-1" /> Revoke
                                 </Button>
                               </div>
+                            ) : inv.status === 'declined' ? (
+                              <span className="text-[10px] text-slate-500 font-medium italic">
+                                Declined {inv.declinedAt ? new Date(inv.declinedAt).toLocaleDateString() : ''}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground italic">Completed</span>
                             )}
                           </TableCell>
                         </TableRow>

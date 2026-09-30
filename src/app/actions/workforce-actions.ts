@@ -396,7 +396,7 @@ export async function dispatchInvitationsAction(params: {
         let deptName = 'General';
         if (invitation.departmentId) {
           try {
-            const dept = await DepartmentService.getDepartmentById(params.organizationId, invitation.departmentId);
+            const dept = await DepartmentService.getDepartment(invitation.departmentId);
             if (dept) deptName = dept.name;
           } catch {
             // Fallback to General
@@ -502,7 +502,7 @@ export async function resendInvitationAction(params: {
       let deptName = 'General';
       if (invData?.departmentId) {
         try {
-          const dept = await DepartmentService.getDepartmentById(params.organizationId, invData.departmentId);
+          const dept = await DepartmentService.getDepartment(invData.departmentId);
           if (dept) deptName = dept.name;
         } catch {
           // Fallback to General

@@ -35,8 +35,8 @@ export interface VerifiedInvitationData {
   invitationId: string;
   organizationId: string;
   organizationName: string;
-  departmentId: string;
-  departmentName: string;
+  departmentId?: string;
+  departmentName?: string;
   email: string;
   fullName?: string;
   tempPassword?: string;
@@ -202,14 +202,10 @@ export async function validateEncryptedInvitationAction(
   try {
     const legacyInvite = await InvitationLifecycleService.validateInvitationToken(token);
     if (legacyInvite) {
-      // Resolve canonical department if available
       let deptName = 'General';
       if (legacyInvite.departmentId) {
         try {
-          const dept = await DepartmentService.getDepartmentById(
-            legacyInvite.organizationId,
-            legacyInvite.departmentId
-          );
+          const dept = await DepartmentService.getDepartment(legacyInvite.departmentId);
           if (dept) deptName = dept.name;
         } catch {
           // Fallback to default
