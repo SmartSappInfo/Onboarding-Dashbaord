@@ -297,7 +297,7 @@ export async function createDeal(data: DealCreationData): Promise<{ id?: string;
                 pipelineId,
                 stageId: stageId || 'default_stage',
                 status: data.status || 'open',
-                value: value || 0,
+                value: newDeal.value || 0,
                 assignedTo: newDeal.assignedTo,
             });
         }
