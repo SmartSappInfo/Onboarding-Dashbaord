@@ -54,6 +54,9 @@ export async function dispatchCampaignCore(campaignId: string): Promise<{
       includeLogic: campaign.audienceDefinition?.tagLogic === 'all' ? 'AND' : 'OR',
       selectedContacts: campaign.audienceDefinition?.selectedContacts,
       audienceMode: campaign.audienceDefinition?.mode,
+      groups: campaign.audienceDefinition?.groups,
+      contactScope: campaign.audienceDefinition?.contactScope,
+      channel: contactResolutionChannel(campaign.channel),
       limit: 5000, // R4 fix: dispatch needs full audience, not preview-limited
     });
 
@@ -161,7 +164,8 @@ export async function dispatchCampaignCore(campaignId: string): Promise<{
         
         await campaignRef.update({
           jobId: jobResult.jobId,
-          'stats.totalTargeted': audienceResult.count || recipients.length,
+          'stats.totalTargeted': recipients.length,
+          estimatedRecipientCount: recipients.length,
         });
         
         await adminDb.collection('message_jobs').doc(jobResult.jobId).update({
@@ -210,7 +214,8 @@ export async function dispatchCampaignCore(campaignId: string): Promise<{
 
       await campaignRef.update({
         jobId: jobResult.jobId,
-        'stats.totalTargeted': audienceResult.count || recipients.length,
+        'stats.totalTargeted': recipients.length,
+        estimatedRecipientCount: recipients.length,
       });
 
       await adminDb.collection('message_jobs').doc(jobResult.jobId).update({
@@ -268,7 +273,8 @@ export async function dispatchCampaignCore(campaignId: string): Promise<{
     // 7. Link job to campaign (two-phase commit — R3 fix from Phase 3)
     await campaignRef.update({
       jobId: jobResult.jobId,
-      'stats.totalTargeted': audienceResult.count || recipients.length,
+      'stats.totalTargeted': recipients.length,
+      estimatedRecipientCount: recipients.length,
     });
 
     // 8. Write campaignId to the job document

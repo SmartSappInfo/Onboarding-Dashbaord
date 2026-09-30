@@ -90,6 +90,11 @@ export async function evaluateCampaignABTest(campaignId: string, forcedWinnerId?
     includeTagIds: campaign.audienceDefinition?.tagIds,
     excludeTagIds: campaign.audienceDefinition?.excludeTagIds,
     includeLogic: campaign.audienceDefinition?.tagLogic === 'all' ? 'AND' : 'OR',
+    selectedContacts: campaign.audienceDefinition?.selectedContacts,
+    audienceMode: campaign.audienceDefinition?.mode,
+    groups: campaign.audienceDefinition?.groups,
+    contactScope: campaign.audienceDefinition?.contactScope,
+    channel: campaign.channel === 'email' ? 'email' : 'sms',
     limit: 5000,
   });
 

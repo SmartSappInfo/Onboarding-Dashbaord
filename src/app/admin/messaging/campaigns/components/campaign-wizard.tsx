@@ -351,8 +351,8 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
     }, [activeWorkspaceId, state.filters, state.filterLogic, state.contactScope, state.channel, state.audienceMode, state.entityIds, state.selectedContacts, state.tagIds, state.tagLogic, state.excludeTagIds, state.groups]);
 
     React.useEffect(() => {
-        // Only run preview on Audience step (step 3)
-        if (state.step === 3) {
+        // Run preview on Audience step (step 3) or Review step (step 5)
+        if (state.step === 3 || state.step === 5) {
             fetchPreview();
         }
         return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
@@ -627,6 +627,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                 savedAudienceId: state.savedAudienceId || undefined,
             };
 
+            const estimatedRecipients = previewResult?.contactCount ?? previewResult?.count ?? null;
             const data: any = {
                 workspaceId: activeWorkspaceId,
                 organizationId: activeOrganizationId || '',
@@ -640,6 +641,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                 customBlocks: state.customBlocks || [],
                 styleId: state.styleId || null,
                 audienceDefinition,
+                estimatedRecipientCount: estimatedRecipients,
                 senderProfileId: state.senderProfileId || null,
                 status: 'draft',
                 lastCompletedStep: state.step,
@@ -686,6 +688,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                 savedAudienceId: state.savedAudienceId || undefined,
             };
 
+            const estimatedRecipients = previewResult?.contactCount ?? previewResult?.count ?? undefined;
             const data: Omit<MessageCampaign, 'id' | 'stats' | 'createdAt' | 'updatedAt' | 'status'> = {
                 workspaceId: activeWorkspaceId,
                 organizationId: activeOrganizationId || '',
@@ -699,6 +702,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                 customBlocks: state.customBlocks || [],
                 styleId: state.styleId || null,
                 audienceDefinition,
+                estimatedRecipientCount: estimatedRecipients,
                 senderProfileId: state.senderProfileId,
                 scheduledAt: state.isScheduled && state.scheduledAt ? state.scheduledAt.toISOString() : undefined,
                 createdBy: user.uid,
@@ -1511,13 +1515,23 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                     <CardTitle className="text-sm font-bold">Estimated Recipients</CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-2">
-                                    <div className="flex items-baseline gap-1">
-                                        <span className="text-2xl font-black">{previewResult?.count ?? 0}</span>
+                                    <div className="flex items-baseline gap-1.5">
+                                        <span className="text-2xl font-black">
+                                            {previewResult?.contactCount ?? previewResult?.count ?? 0}
+                                        </span>
                                         <span className="text-[10px] font-semibold text-muted-foreground">contacts targeted</span>
                                     </div>
-                                    <div className="space-y-1">
-                                        <p className="text-[8px] font-bold text-muted-foreground uppercase">Mode / Scope</p>
-                                        <p className="text-[10px] font-semibold capitalize">{state.audienceMode.replace('_', ' ')} / {state.contactScope}</p>
+                                    <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-border/40 text-[10px]">
+                                        <div className="space-y-0.5">
+                                            <p className="text-[8px] font-bold text-muted-foreground uppercase">Entities Matched</p>
+                                            <p className="font-semibold text-foreground">{previewResult?.count ?? 0}</p>
+                                        </div>
+                                        <div className="space-y-0.5">
+                                            <p className="text-[8px] font-bold text-muted-foreground uppercase">Mode / Scope</p>
+                                            <p className="font-semibold text-foreground capitalize truncate" title={`${state.audienceMode} / ${state.contactScope}`}>
+                                                {state.audienceMode.replace('_', ' ')} / {state.contactScope === 'all' ? 'All Known Contacts' : state.contactScope === 'primary' ? 'Primary' : state.contactScope === 'signatories' ? 'Signatories' : state.contactScope}
+                                            </p>
+                                        </div>
                                     </div>
                                 </CardContent>
                             </Card>

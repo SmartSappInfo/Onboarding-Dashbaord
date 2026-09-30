@@ -31,8 +31,9 @@ import {
     X, AlertCircle, Info, Building, Trophy, TrendingUp,
     CheckCircle2, Target, Layers, Wand2, ArrowLeft, FileText,
     PlusCircle, Tag, Send, Settings2,
-    User, Filter, BookmarkCheck,
+    User, Filter, BookmarkCheck, Table, Code,
 } from 'lucide-react';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import { useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
@@ -242,6 +243,8 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
         logIds: string[];
     } | null>(null);
     const [showSummaryDialog, setShowSummaryDialog] = React.useState(false);
+    const [isExporting, setIsExporting] = React.useState(false);
+    const [exportingType, setExportingType] = React.useState<'pdf' | 'csv' | 'json' | null>(null);
     const [sampleVariables, setSampleVariables] = React.useState<Record<string, string>>({});
     const [jobProgress, setJobProgress] = React.useState(0);
     const [jobStatus, setJobStatus] = React.useState<string | null>(null);
@@ -725,11 +728,12 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                 if (audienceSource === 'individual') {
                     for (let i = 0; i < data.selectedEntityIds.length; i++) {
                         const entityId = data.selectedEntityIds[i];
+                        let entityName = 'Unknown Entity';
                         setSendProgress(p => ({ ...p, currentEntity: entityId }));
                         try {
                             // Resolve the display name server-side (no client entity cache).
                             const contactRes = await resolveContact(entityId, activeWorkspace?.id || '');
-                            const entityName = contactRes?.name || 'Unknown Entity';
+                            entityName = contactRes?.name || 'Unknown Entity';
 
                             const recipients = await resolveRecipientContacts({
                                 entityId, workspaceId: activeWorkspace?.id,
@@ -796,7 +800,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                             results.totalFailed++;
                             results.failedEntities.push({
                                 entityId,
-                                entityName: 'Unknown Entity',
+                                entityName,
                                 error: e instanceof Error ? e.message : 'Unknown error'
                             });
                         }
@@ -866,7 +870,9 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                             results.totalFailed++;
                             results.failedEntities.push({
                                 entityId,
-                                entityName: r.name,
+                                entityName,
+                                contactName: r.name,
+                                contactDetail: recipient,
                                 error: e instanceof Error ? e.message : 'Unknown error'
                             });
                         }
@@ -891,6 +897,296 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
             setIsSending(false);
         } finally { setIsSubmitting(false); }
     };
+
+    // ── Export Handlers for Failed Deliveries (Rule 10 Maintainer Documentation) ──
+    /**
+     * Exports failed delivery incident logs as RFC 4180 compliant CSV.
+     */
+    const handleExportCSV = React.useCallback(() => {
+        if (!sendSummary?.failedEntities || sendSummary.failedEntities.length === 0) {
+            toast({ title: 'No failed records', description: 'There are no failed dispatches to export.' });
+            return;
+        }
+        setExportingType('csv');
+        setIsExporting(true);
+        try {
+            const timestamp = format(new Date(), 'yyyyMMdd_HHmmss');
+            const headers = ['Entity ID', 'Entity Name', 'Contact Name', 'Recipient Detail', 'Channel', 'Failure Reason', 'Dispatched At'];
+            
+            // Neutralize spreadsheet formula injection (CWE-1236 / OWASP)
+            const sanitizeCSVCell = (val: unknown): string => {
+                const str = String(val ?? '');
+                const sanitized = /^[=+\-@\t\r]/.test(str) ? `'${str}` : str;
+                return `"${sanitized.replace(/"/g, '""')}"`;
+            };
+
+            const rows = sendSummary.failedEntities.map((item) => [
+                item.entityId || '',
+                item.entityName || '',
+                item.contactName || '',
+                item.contactDetail || '',
+                watchedChannel.toUpperCase(),
+                item.error || '',
+                format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
+            ]);
+
+            const csvContent = [
+                headers.map(sanitizeCSVCell).join(','),
+                ...rows.map((r) => r.map(sanitizeCSVCell).join(',')),
+            ].join('\r\n');
+
+            // Prepend \uFEFF for proper UTF-8 decoding in Excel & Google Sheets
+            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `failed_deliveries_${watchedChannel}_${timestamp}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            toast({ title: 'CSV Exported', description: `Exported ${sendSummary.failedEntities.length} failed delivery logs.` });
+        } catch (err: unknown) {
+            toast({ title: 'Export Failed', description: getErrorMessage(err), variant: 'destructive' });
+        } finally {
+            setIsExporting(false);
+            setExportingType(null);
+        }
+    }, [sendSummary, watchedChannel, toast]);
+
+    /**
+     * Exports failed delivery incident logs as formatted JSON with system metadata.
+     */
+    const handleExportJSON = React.useCallback(() => {
+        if (!sendSummary?.failedEntities || sendSummary.failedEntities.length === 0) {
+            toast({ title: 'No failed records', description: 'There are no failed dispatches to export.' });
+            return;
+        }
+        setExportingType('json');
+        setIsExporting(true);
+        try {
+            const timestamp = format(new Date(), 'yyyyMMdd_HHmmss');
+            const exportData = {
+                exportTimestamp: new Date().toISOString(),
+                organization: currentOrganization?.name || 'SmartSapp CRM',
+                workspace: activeWorkspace?.name || 'Default Workspace',
+                channel: watchedChannel,
+                summary: {
+                    totalSent: sendSummary.totalSent,
+                    totalFailed: sendSummary.totalFailed,
+                    success: sendSummary.success,
+                },
+                failedEntities: sendSummary.failedEntities.map((f) => ({
+                    entityId: f.entityId,
+                    entityName: f.entityName,
+                    contactName: f.contactName || null,
+                    contactDetail: f.contactDetail || null,
+                    error: f.error,
+                })),
+            };
+
+            const jsonStr = JSON.stringify(exportData, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `failed_deliveries_${watchedChannel}_${timestamp}.json`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            toast({ title: 'JSON Exported', description: `Exported ${sendSummary.failedEntities.length} failed delivery logs.` });
+        } catch (err: unknown) {
+            toast({ title: 'Export Failed', description: getErrorMessage(err), variant: 'destructive' });
+        } finally {
+            setIsExporting(false);
+            setExportingType(null);
+        }
+    }, [sendSummary, currentOrganization, activeWorkspace, watchedChannel, toast]);
+
+    /**
+     * Exports failed delivery incident logs as a presentation-grade executive PDF audit report.
+     */
+    const handleExportPDF = React.useCallback(async () => {
+        if (!sendSummary?.failedEntities || sendSummary.failedEntities.length === 0) {
+            toast({ title: 'No failed records', description: 'There are no failed dispatches to export.' });
+            return;
+        }
+        setExportingType('pdf');
+        setIsExporting(true);
+        try {
+            const { jsPDF } = await import('jspdf');
+            const doc = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4',
+            });
+
+            const pageWidth = 210;
+            const pageHeight = 297;
+            const margin = 14;
+            const contentWidth = pageWidth - margin * 2; // 182mm
+            let y = margin;
+
+            const checkPageBreak = (neededHeight: number) => {
+                if (y + neededHeight > pageHeight - 16) {
+                    doc.addPage();
+                    y = margin;
+                    // Mini continuation banner on subsequent pages
+                    doc.setFillColor(15, 23, 42); // slate-900
+                    doc.rect(margin, y, contentWidth, 7, 'F');
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(8);
+                    doc.setTextColor(248, 250, 252);
+                    doc.text(`Failed Deliveries Audit Report — Continued`, margin + 4, y + 4.8);
+                    y += 11;
+                    drawTableHeader(y);
+                    y += 7;
+                }
+            };
+
+            const drawTableHeader = (yPos: number) => {
+                doc.setFillColor(241, 245, 249); // slate-100
+                doc.setDrawColor(203, 213, 225); // slate-300
+                doc.rect(margin, yPos, contentWidth, 7, 'FD');
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(7.5);
+                doc.setTextColor(51, 65, 85); // slate-700
+                doc.text('#', margin + 2, yPos + 4.5);
+                doc.text('ENTITY / RECIPIENT', margin + 8, yPos + 4.5);
+                doc.text('CONTACT DETAIL', margin + 70, yPos + 4.5);
+                doc.text('FAILURE REASON / ERROR', margin + 116, yPos + 4.5);
+            };
+
+            // Header Background Banner (Slate-900)
+            doc.setFillColor(15, 23, 42);
+            doc.roundedRect(margin, y, contentWidth, 24, 2.5, 2.5, 'F');
+
+            // Header Title
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(12);
+            doc.text('FAILED DISPATCH AUDIT REPORT', margin + 6, y + 7.5);
+
+            // Subtitle / Org
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(203, 213, 225); // slate-300
+            const orgInfo = `${currentOrganization?.name || 'SmartSapp CRM'} • Channel: ${watchedChannel.toUpperCase()} • ${format(new Date(), 'PPpp')}`;
+            doc.text(orgInfo, margin + 6, y + 14);
+
+            // Workspace subtitle
+            doc.setFontSize(7.5);
+            doc.setTextColor(148, 163, 184); // slate-400
+            doc.text(`Workspace: ${activeWorkspace?.name || 'Active Workspace'} • Total Failed Records: ${sendSummary.failedEntities.length}`, margin + 6, y + 19.5);
+
+            y += 28;
+
+            // Metric summary cards
+            const cardWidth = (contentWidth - 5) / 2;
+
+            // Total Sent Box
+            doc.setFillColor(240, 253, 244); // emerald-50
+            doc.setDrawColor(187, 247, 208); // emerald-200
+            doc.roundedRect(margin, y, cardWidth, 13, 2, 2, 'FD');
+            doc.setTextColor(22, 101, 52); // emerald-800
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(7.5);
+            doc.text('SUCCESSFULLY DELIVERED', margin + 4, y + 4.5);
+            doc.setFontSize(11);
+            doc.text(String(sendSummary.totalSent), margin + 4, y + 10);
+
+            // Total Failed Box
+            doc.setFillColor(254, 242, 242); // rose-50
+            doc.setDrawColor(254, 202, 202); // rose-200
+            doc.roundedRect(margin + cardWidth + 5, y, cardWidth, 13, 2, 2, 'FD');
+            doc.setTextColor(153, 27, 27); // rose-800
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(7.5);
+            doc.text('FAILED DISPATCHES', margin + cardWidth + 9, y + 4.5);
+            doc.setFontSize(11);
+            doc.text(String(sendSummary.totalFailed), margin + cardWidth + 9, y + 10);
+
+            y += 17;
+
+            // Section Title: Incident Logs
+            doc.setTextColor(15, 23, 42); // slate-900
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.text(`Incident Logs (${sendSummary.failedEntities.length} Total)`, margin, y);
+            y += 4;
+
+            // Draw Table Header
+            drawTableHeader(y);
+            y += 7;
+
+            // Table Rows
+            sendSummary.failedEntities.forEach((item, idx) => {
+                const entityLabel = item.entityName + (item.contactName && item.contactName !== item.entityName ? ` (${item.contactName})` : '');
+                const detail = item.contactDetail || '—';
+                const rawError = item.error || 'Unknown dispatch error';
+                // Safeguard against extreme stack traces overflowing single-page bounds
+                const errorMsg = rawError.length > 350 ? `${rawError.slice(0, 347)}...` : rawError;
+
+                const splitEntity = doc.splitTextToSize(entityLabel, 58);
+                const splitDetail = doc.splitTextToSize(detail, 42);
+                const splitError = doc.splitTextToSize(errorMsg, 62);
+                const maxLines = Math.max(splitEntity.length, splitDetail.length, splitError.length, 1);
+                const rowHeight = Math.max(7, maxLines * 3.6 + 3);
+
+                checkPageBreak(rowHeight);
+
+                // Alternating row background
+                if (idx % 2 === 0) {
+                    doc.setFillColor(255, 255, 255);
+                } else {
+                    doc.setFillColor(248, 250, 252); // slate-50
+                }
+                doc.setDrawColor(226, 232, 240); // slate-200
+                doc.rect(margin, y, contentWidth, rowHeight, 'FD');
+
+                // Text cells
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(7);
+                doc.setTextColor(100, 116, 139); // slate-500
+                doc.text(String(idx + 1), margin + 2, y + 4.5);
+
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(15, 23, 42); // slate-900
+                doc.text(splitEntity, margin + 8, y + 4.5);
+
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(71, 85, 105); // slate-600
+                doc.text(splitDetail, margin + 70, y + 4.5);
+
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(190, 18, 60); // rose-700
+                doc.text(splitError, margin + 116, y + 4.5);
+
+                y += rowHeight;
+            });
+
+            // Update footer page numbers
+            const totalPages = doc.getNumberOfPages();
+            for (let i = 1; i <= totalPages; i++) {
+                doc.setPage(i);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(7);
+                doc.setTextColor(148, 163, 184); // slate-400
+                doc.text('SmartSapp CRM • Messaging Engine Audit', margin, pageHeight - 6);
+                doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
+            }
+
+            const timestamp = format(new Date(), 'yyyyMMdd_HHmmss');
+            doc.save(`failed_deliveries_${watchedChannel}_${timestamp}.pdf`);
+            toast({ title: 'PDF Exported', description: 'Failed delivery audit report PDF downloaded.' });
+        } catch (err: unknown) {
+            toast({ title: 'PDF Export Failed', description: getErrorMessage(err), variant: 'destructive' });
+        } finally {
+            setIsExporting(false);
+            setExportingType(null);
+        }
+    }, [sendSummary, currentOrganization, activeWorkspace, watchedChannel, toast]);
 
     // ── Stepper UI ─────────────────────────────────────────────────────────────
 
@@ -1589,74 +1885,184 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
 
             {/* Summary dialog */}
             <AlertDialog open={showSummaryDialog} onOpenChange={setShowSummaryDialog}>
-                <AlertDialogContent className="max-w-lg rounded-2xl">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2 text-lg font-bold">
+                <AlertDialogContent className="max-w-lg rounded-2xl sm:rounded-3xl border border-white/10 bg-slate-950 text-slate-100 shadow-2xl p-6 overflow-hidden">
+                    <AlertDialogHeader className="space-y-1.5 text-left">
+                        <div className="flex items-center justify-between">
+                            <AlertDialogTitle className="flex items-center gap-2.5 text-base sm:text-lg font-bold text-slate-100">
+                                {sendSummary?.totalFailed === 0 ? (
+                                    <>
+                                        <div className="h-8 w-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                                            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                                        </div>
+                                        <span>Send Complete</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="h-8 w-8 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
+                                            <AlertCircle className="h-4 w-4 text-amber-400" />
+                                        </div>
+                                        <span>Completed with Errors</span>
+                                    </>
+                                )}
+                            </AlertDialogTitle>
+                            <Badge variant="outline" className="border-white/10 bg-slate-900 text-[10px] font-semibold text-slate-300 uppercase tracking-wider px-2 py-0.5">
+                                {watchedChannel}
+                            </Badge>
+                        </div>
+                        <AlertDialogDescription className="text-xs text-slate-400">
                             {sendSummary?.totalFailed === 0
-                                ? <><CheckCircle2 className="h-5 w-5 text-emerald-600" /> Send Complete</>
-                                : <><AlertCircle className="h-5 w-5 text-amber-600" /> Completed with Errors</>}
-                        </AlertDialogTitle>
-                        <AlertDialogDescription className="text-xs font-semibold text-muted-foreground">Message delivery summary</AlertDialogDescription>
+                                ? 'All outbound messages have been successfully processed.'
+                                : 'Some recipients encountered delivery errors during dispatch.'}
+                        </AlertDialogDescription>
                     </AlertDialogHeader>
+
                     {sendSummary && (
-                        <div className="space-y-4 py-2">
+                        <div className="space-y-4 py-2 text-left">
                             <div className="grid grid-cols-2 gap-3">
-                                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center gap-3">
-                                    <div className="p-2 bg-emerald-600 text-white rounded-lg"><Check className="h-3.5 w-3.5" /></div>
-                                    <div><p className="text-[10px] font-bold text-emerald-900">Sent</p><p className="text-xl font-bold text-emerald-600">{sendSummary.totalSent}</p></div>
+                                <div className="p-3.5 rounded-2xl bg-emerald-950/30 border border-emerald-500/25 flex items-center gap-3">
+                                    <div className="h-9 w-9 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
+                                        <Check className="h-4 w-4" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-bold text-emerald-400/90 tracking-wider uppercase">Sent</p>
+                                        <p className="text-2xl font-black text-emerald-300 tabular-nums leading-none mt-0.5">{sendSummary.totalSent}</p>
+                                    </div>
                                 </div>
-                                <div className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-center gap-3">
-                                    <div className="p-2 bg-red-600 text-white rounded-lg"><X className="h-3.5 w-3.5" /></div>
-                                    <div><p className="text-[10px] font-bold text-red-900">Failed</p><p className="text-xl font-bold text-red-600">{sendSummary.totalFailed}</p></div>
+                                <div className="p-3.5 rounded-2xl bg-rose-950/30 border border-rose-500/25 flex items-center gap-3">
+                                    <div className="h-9 w-9 rounded-xl bg-rose-500/20 border border-rose-500/30 text-rose-400 flex items-center justify-center shrink-0">
+                                        <X className="h-4 w-4" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-bold text-rose-400/90 tracking-wider uppercase">Failed</p>
+                                        <p className="text-2xl font-black text-rose-300 tabular-nums leading-none mt-0.5">{sendSummary.totalFailed}</p>
+                                    </div>
                                 </div>
                             </div>
+
+                            {sendSummary.totalFailed === 0 && (
+                                <div className="p-4 rounded-2xl bg-emerald-950/20 border border-emerald-500/20 text-center space-y-1 my-1">
+                                    <CheckCircle2 className="h-7 w-7 text-emerald-400 mx-auto" />
+                                    <p className="text-xs font-bold text-emerald-300">All messages dispatched successfully!</p>
+                                    <p className="text-[11px] text-slate-400">Zero delivery failures were recorded for this dispatch batch.</p>
+                                </div>
+                            )}
                             
                             {sendSummary.totalFailed > 0 && sendSummary.failedEntities && (
-                                <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-red-900 uppercase tracking-widest ml-1">Error Logs</Label>
-                                    <div className="max-h-36 overflow-y-auto rounded-xl border border-red-200 bg-red-50/50 p-2">
-                                        <div className="space-y-2">
+                                <div className="space-y-2.5">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-xs font-bold text-rose-400 tracking-wider uppercase flex items-center gap-1.5">
+                                            <AlertCircle className="h-3.5 w-3.5 text-rose-400" />
+                                            <span>Error Logs</span>
+                                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-mono">
+                                                {sendSummary.failedEntities.length}
+                                            </span>
+                                        </Label>
+
+                                        {/* Export buttons */}
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-[10px] text-slate-400 font-medium mr-0.5 hidden xs:inline">Export:</span>
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="outline"
+                                                disabled={isExporting}
+                                                onClick={handleExportPDF}
+                                                className="h-8 sm:h-7 px-2.5 text-xs sm:text-[11px] font-semibold gap-1.5 rounded-lg border-white/10 bg-slate-900 text-slate-200 hover:bg-slate-800 hover:text-white hover:border-rose-500/40 active:scale-[0.97] transition-all"
+                                                title="Export failed dispatches as PDF"
+                                            >
+                                                {isExporting && exportingType === 'pdf' ? (
+                                                    <Loader2 className="h-3 w-3 animate-spin text-rose-400" />
+                                                ) : (
+                                                    <FileText className="h-3 w-3 text-rose-400" />
+                                                )}
+                                                <span>PDF</span>
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="outline"
+                                                disabled={isExporting}
+                                                onClick={handleExportCSV}
+                                                className="h-8 sm:h-7 px-2.5 text-xs sm:text-[11px] font-semibold gap-1.5 rounded-lg border-white/10 bg-slate-900 text-slate-200 hover:bg-slate-800 hover:text-white hover:border-emerald-500/40 active:scale-[0.97] transition-all"
+                                                title="Export failed dispatches as CSV"
+                                            >
+                                                {isExporting && exportingType === 'csv' ? (
+                                                    <Loader2 className="h-3 w-3 animate-spin text-emerald-400" />
+                                                ) : (
+                                                    <Table className="h-3 w-3 text-emerald-400" />
+                                                )}
+                                                <span>CSV</span>
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="outline"
+                                                disabled={isExporting}
+                                                onClick={handleExportJSON}
+                                                className="h-8 sm:h-7 px-2.5 text-xs sm:text-[11px] font-semibold gap-1.5 rounded-lg border-white/10 bg-slate-900 text-slate-200 hover:bg-slate-800 hover:text-white hover:border-amber-500/40 active:scale-[0.97] transition-all"
+                                                title="Export failed dispatches as JSON"
+                                            >
+                                                {isExporting && exportingType === 'json' ? (
+                                                    <Loader2 className="h-3 w-3 animate-spin text-amber-400" />
+                                                ) : (
+                                                    <Code className="h-3 w-3 text-amber-400" />
+                                                )}
+                                                <span>JSON</span>
+                                            </Button>
+                                        </div>
+                                    </div>
+
+                                    <div className="max-h-44 overflow-y-auto rounded-2xl border border-rose-500/20 bg-slate-900/60 p-2 space-y-1.5">
+                                        <div className="space-y-1.5">
                                             {sendSummary.failedEntities.map((f: FailedSendEntity, i: number) => (
-                                                <div key={i} className="p-2.5 rounded-lg bg-card border border-red-200 space-y-0.5 shadow-sm">
-                                                    <div className="flex items-center gap-1.5">
-                                                        <Building className="h-3 w-3 text-red-600" />
-                                                        <span className="text-xs font-bold text-red-900">
-                                                            {f.entityName}{f.contactName && f.contactName !== f.entityName ? ` - ${f.contactName}` : ''}
-                                                        </span>
+                                                <div key={i} className="p-2.5 rounded-xl bg-slate-950/80 border border-white/5 hover:border-rose-500/25 space-y-1 transition-colors">
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <div className="flex items-center gap-1.5 min-w-0">
+                                                            <Building className="h-3 w-3 text-rose-400 shrink-0" />
+                                                            <span className="text-xs font-semibold text-slate-200 truncate">
+                                                                {f.entityName}{f.contactName && f.contactName !== f.entityName ? ` — ${f.contactName}` : ''}
+                                                            </span>
+                                                        </div>
+                                                        {f.contactDetail ? (
+                                                            <span className="text-[10px] font-mono text-slate-400 shrink-0 bg-slate-900 px-1.5 py-0.5 rounded border border-white/5">
+                                                                {f.contactDetail}
+                                                            </span>
+                                                        ) : null}
                                                     </div>
-                                                    {f.contactDetail ? (
-                                                        <p className="text-[9px] font-semibold text-muted-foreground pl-4 uppercase tracking-tighter opacity-70">{f.contactDetail}</p>
-                                                    ) : null}
-                                                    <p className="text-[10px] text-red-700 pl-4">{f.error}</p>
+                                                    <p className="text-[11px] text-rose-300/90 pl-4.5 break-words font-medium leading-relaxed">
+                                                        {f.error}
+                                                    </p>
                                                 </div>
                                             ))}
                                         </div>
                                     </div>
+
                                     <Button 
                                         type="button"
                                         variant="outline" 
-                                        className="w-full h-10 rounded-xl font-bold border-red-200 text-red-900 hover:bg-red-50 gap-2 text-xs transition-all shadow-sm"
+                                        className="w-full h-10 rounded-xl font-bold border border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 hover:text-rose-200 active:scale-[0.97] gap-2 text-xs transition-all shadow-sm"
                                         onClick={() => {
                                             const failedIds = sendSummary.failedEntities?.map(f => f.entityId).filter(Boolean) as string[];
+                                            setAudienceSource('individual');
                                             setValue('selectedEntityIds', failedIds);
                                             setShowSummaryDialog(false); 
                                             setStep(3);
                                             toast({ title: 'Retry prepared', description: `${failedIds.length} entities selected for retry.` });
                                         }}
                                     >
-                                        <TrendingUp className="h-3.5 w-3.5" /> Retry Failed Entities
+                                        <TrendingUp className="h-3.5 w-3.5 text-rose-400" /> Retry Failed Entities
                                     </Button>
                                 </div>
                             )}
                         </div>
                     )}
-                    <AlertDialogFooter className="bg-muted/20 -mx-6 -mb-6 p-4 border-t">
+                    <AlertDialogFooter className="bg-slate-900/80 -mx-6 -mb-6 p-4 border-t border-white/10 flex sm:justify-end gap-2">
                         <AlertDialogAction 
                             onClick={() => { 
                                 setShowSummaryDialog(false); 
                                 setSendSummary(null); 
                             }} 
-                            className="rounded-xl font-bold px-8 shadow-lg active:scale-95 transition-all"
+                            className="rounded-xl font-bold px-8 h-10 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg active:scale-[0.97] transition-all"
                         >
                             Close
                         </AlertDialogAction>

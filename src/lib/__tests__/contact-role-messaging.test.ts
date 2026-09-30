@@ -151,6 +151,81 @@ describe('Contact Role Messaging Logic Tests', () => {
       expect(res.success).toBe(true);
       expect(res.count).toBe(1);
     });
+
+    it('handles >30 entities during full dispatch (limit: 5000) without exceeding Firestore 30-item IN limit', async () => {
+      // Simulate 111 entities matching in workspace
+      const mockWorkspaceEntities = Array.from({ length: 111 }, (_, i) => ({
+        id: `we_${i}`,
+        entityId: `ent_${i}`,
+        workspaceId: 'ws_1',
+        displayName: `Entity ${i}`,
+        workspaceTags: [],
+        entityContacts: [
+          { id: `c_${i}_1`, name: `Primary ${i}`, email: `p${i}@test.com`, isPrimary: true, typeKey: 'primary' },
+          { id: `c_${i}_2`, name: `Secondary ${i}`, email: `s${i}@test.com`, isPrimary: false, typeKey: 'staff' },
+        ],
+      }));
+
+      const inQueryCalls: any[] = [];
+      const mockCollection = vi.fn((collectionName: string) => {
+        if (collectionName === 'workspace_entities') {
+          return {
+            where: vi.fn().mockReturnThis(),
+            get: vi.fn().mockResolvedValue({
+              docs: mockWorkspaceEntities.map(we => ({
+                id: we.id,
+                data: () => we,
+              })),
+            }),
+          };
+        }
+        if (collectionName === 'entities') {
+          return {
+            where: vi.fn((field: string, op: string, val: unknown[]) => {
+              if (op === 'in' && Array.isArray(val)) {
+                inQueryCalls.push(val);
+                if (val.length > 30) {
+                  throw new Error("3 INVALID_ARGUMENT: 'IN' supports up to 30 comparison values.");
+                }
+              }
+              return {
+                get: vi.fn().mockResolvedValue({
+                  docs: (val as string[]).map(id => ({
+                    id,
+                    data: () => ({ name: `Entity ${id}` }),
+                  })),
+                }),
+              };
+            }),
+          };
+        }
+        if (collectionName === 'tags') {
+          return {
+            where: vi.fn().mockReturnThis(),
+            get: vi.fn().mockResolvedValue({ docs: [] }),
+          };
+        }
+        return {};
+      });
+      (adminDb.collection as any) = mockCollection;
+
+      const res = await previewCampaignAudience({
+        workspaceId: 'ws_1',
+        audienceMode: 'all',
+        contactScope: 'all',
+        limit: 5000,
+      });
+
+      expect(res.success).toBe(true);
+      expect(res.count).toBe(111);
+      expect(res.contactCount).toBe(222); // 111 * 2 contacts
+      expect(res.preview).toHaveLength(111);
+      // Every 'in' query must have <= 30 values
+      expect(inQueryCalls.length).toBeGreaterThan(0);
+      inQueryCalls.forEach(callArray => {
+        expect(callArray.length).toBeLessThanOrEqual(30);
+      });
+    });
   });
 
   describe('resolveRecipientContacts with contactRoles list', () => {
