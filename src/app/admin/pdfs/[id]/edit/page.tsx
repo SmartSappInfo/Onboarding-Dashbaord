@@ -195,10 +195,16 @@ export default function EditPdfPage() {
   const [isPublishOpen, setIsPublishOpen] = React.useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = React.useState(false);
 
+  // Versions are stored per workspace. The workspace filter is also what lets the Firestore rule
+  // prove the query only returns this tenant's documents; without it the query is rejected.
   const versionsQuery = useMemoFirebase(() => {
-    if (!firestore || !pdfId || isNew) return null;
-    return query(collection(firestore, 'template_versions'), where('templateId', '==', pdfId));
-  }, [firestore, pdfId, isNew]);
+    if (!firestore || !pdfId || isNew || !activeWorkspaceId) return null;
+    return query(
+      collection(firestore, 'template_versions'),
+      where('workspaceId', '==', activeWorkspaceId),
+      where('templateId', '==', pdfId)
+    );
+  }, [firestore, pdfId, isNew, activeWorkspaceId]);
   const { data: rawVersions } = useCollection<TemplateVersion>(versionsQuery);
   const allVersions = React.useMemo(() => rawVersions || [], [rawVersions]);
 

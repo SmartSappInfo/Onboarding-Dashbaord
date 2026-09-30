@@ -2834,75 +2834,81 @@ service cloud.firestore {
     }
 
     // --- Document Signing & Contract Lifecycle ---
+    //
+    // Every document below carries exactly one `workspaceId` (required by the Zod schemas in
+    // src/lib/types/document-signing.ts), and every operation is checked against it:
+    // - read: staff who can access the stored workspace. Nothing is public, and a document
+    //   missing `workspaceId` is readable only by system admins. Signing, embed and
+    //   verification pages read through the server (Admin SDK), which these rules don't govern.
+    // - create: the new document's workspace must be one the caller can access.
+    // - update: the caller must access the stored workspace, and `workspaceId` cannot change.
+    //   Checking only the new data would let a user pull another tenant's document into their
+    //   own workspace by rewriting the field.
+    // - delete: the caller must access the stored workspace.
+    // `list` rules are not filters: app queries on these collections must filter on
+    // `workspaceId`, or Firestore rejects them (see document-signing-security-rules.rules.test.ts).
+    // `.get('workspaceId', '')` turns a missing field into '', which only system admins pass.
+    function canReadWorkspaceDoc() {
+      return isAuthorized() && hasWorkspaceAccess(resource.data.get('workspaceId', ''));
+    }
+
+    function canCreateWorkspaceDoc(perm) {
+      return isAuthorized() && hasPermission(perm) &&
+        hasWorkspaceAccess(request.resource.data.get('workspaceId', ''));
+    }
+
+    function canUpdateWorkspaceDoc(perm) {
+      return isAuthorized() && hasPermission(perm) &&
+        hasWorkspaceAccess(resource.data.get('workspaceId', '')) &&
+        request.resource.data.get('workspaceId', '') == resource.data.get('workspaceId', '');
+    }
+
+    function canDeleteWorkspaceDoc(perm) {
+      return isAuthorized() && hasPermission(perm) &&
+        hasWorkspaceAccess(resource.data.get('workspaceId', ''));
+    }
+
     match /template_versions/{versionId} {
-      allow get: if (resource.data.status in ['published', 'superseded']) ||
-                    (isAuthorized() && (
-                      isSystemAdmin() || 
-                      !('workspaceId' in resource.data) || 
-                      resource.data.workspaceId == null || 
-                      hasWorkspaceAccess(resource.data.workspaceId)
-                    ));
-      allow list: if isAuthorized() && (
-                    isSystemAdmin() || 
-                    !('workspaceId' in resource.data) || 
-                    resource.data.workspaceId == null || 
-                    hasWorkspaceAccess(resource.data.workspaceId)
-                  );
-      allow write: if isAuthorized() && (
-                     isSystemAdmin() || 
-                     (hasPermission('studios_edit') && hasWorkspaceAccess(request.resource.data.workspaceId))
-                   );
+      allow get, list: if canReadWorkspaceDoc();
+      allow create: if canCreateWorkspaceDoc('studios_edit');
+      allow update: if canUpdateWorkspaceDoc('studios_edit');
+      allow delete: if canDeleteWorkspaceDoc('studios_edit');
     }
 
     match /signing_envelopes/{envelopeId} {
-      allow get, list: if isAuthorized() && (
-                         isSystemAdmin() || 
-                         hasWorkspaceAccess(resource.data.workspaceId)
-                       );
-      allow write: if isAuthorized() && (
-                     isSystemAdmin() || 
-                     (hasPermission('finance_manage') && hasWorkspaceAccess(request.resource.data.workspaceId))
-                   );
+      allow get, list: if canReadWorkspaceDoc();
+      allow create: if canCreateWorkspaceDoc('finance_manage');
+      allow update: if canUpdateWorkspaceDoc('finance_manage');
+      allow delete: if canDeleteWorkspaceDoc('finance_manage');
     }
 
     match /contract_obligations/{obligationId} {
-      allow get, list: if isAuthorized() && (
-                         isSystemAdmin() || 
-                         !('workspaceId' in resource.data) || 
-                         resource.data.workspaceId == null || 
-                         hasWorkspaceAccess(resource.data.workspaceId)
-                       );
-      allow write: if isAuthorized() && (
-                     isSystemAdmin() || 
-                     (hasPermission('finance_manage') && hasWorkspaceAccess(request.resource.data.workspaceId))
-                   );
+      allow get, list: if canReadWorkspaceDoc();
+      allow create: if canCreateWorkspaceDoc('finance_manage');
+      allow update: if canUpdateWorkspaceDoc('finance_manage');
+      allow delete: if canDeleteWorkspaceDoc('finance_manage');
     }
 
     match /contract_relationships/{relationshipId} {
-      allow get, list: if isAuthorized();
-      allow write: if isAuthorized() && (
-                     isSystemAdmin() || 
-                     hasPermission('finance_manage')
-                   );
+      allow get, list: if canReadWorkspaceDoc();
+      allow create: if canCreateWorkspaceDoc('finance_manage');
+      allow update: if canUpdateWorkspaceDoc('finance_manage');
+      allow delete: if canDeleteWorkspaceDoc('finance_manage');
     }
 
     match /bulk_campaigns/{campaignId} {
-      allow get, list: if isAuthorized() && (
-                         isSystemAdmin() || 
-                         hasWorkspaceAccess(resource.data.workspaceId)
-                       );
-      allow write: if isAuthorized() && (
-                     isSystemAdmin() || 
-                     (hasPermission('finance_manage') && hasWorkspaceAccess(request.resource.data.workspaceId))
-                   );
+      allow get, list: if canReadWorkspaceDoc();
+      allow create: if canCreateWorkspaceDoc('finance_manage');
+      allow update: if canUpdateWorkspaceDoc('finance_manage');
+      allow delete: if canDeleteWorkspaceDoc('finance_manage');
     }
 
+    // Recipients hold personal contact details and carry no `workspaceId`: tenancy lives on the
+    // parent campaign. Only the server's bulk dispatcher reads or writes them (Admin SDK), so
+    // clients get no access. Opening client reads would first need a `workspaceId` on every
+    // recipient and a rule like the ones above.
     match /bulk_campaign_recipients/{recipientId} {
-      allow get, list: if isAuthorized();
-      allow write: if isAuthorized() && (
-                     isSystemAdmin() || 
-                     hasPermission('finance_manage')
-                   );
+      allow read, write: if false;
     }
 
 

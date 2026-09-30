@@ -134,25 +134,29 @@ export default function ContractLifecycleDetailModal({
     }
   }, [isOpen, contractId, fetchContract]);
 
+  // Both queries filter on workspaceId: the Firestore rules only allow queries that provably
+  // stay inside a workspace the user belongs to, so a contract-only filter is rejected.
   // Query obligations for this contract
   const obligationsQuery = useMemoFirebase(() => {
-    if (!firestore || !contractId) return null;
+    if (!firestore || !contractId || !workspaceId) return null;
     return query(
       collection(firestore, 'contract_obligations'),
+      where('workspaceId', '==', workspaceId),
       where('contractId', '==', contractId)
     );
-  }, [firestore, contractId]);
+  }, [firestore, contractId, workspaceId]);
   const { data: rawObligations } = useCollection<ContractObligation>(obligationsQuery);
   const obligations = rawObligations || [];
 
   // Query relationships for this contract
   const relationshipsQuery = useMemoFirebase(() => {
-    if (!firestore || !contractId) return null;
+    if (!firestore || !contractId || !workspaceId) return null;
     return query(
       collection(firestore, 'contract_relationships'),
+      where('workspaceId', '==', workspaceId),
       where('sourceContractId', '==', contractId)
     );
-  }, [firestore, contractId]);
+  }, [firestore, contractId, workspaceId]);
   const { data: rawRelationships } = useCollection<ContractRelationship>(relationshipsQuery);
   const relationships = rawRelationships || [];
 
