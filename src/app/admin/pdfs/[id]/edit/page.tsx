@@ -10,7 +10,7 @@ import { doc, collection, query, where } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-    Loader2, Sparkles, ArrowLeft, ArrowRight, Palette, Layout, Save, Globe, ShieldCheck, FileText, Settings2, Share2, FileQuestion, Plus
+    Loader2, Sparkles, ArrowLeft, ArrowRight, Palette, Layout, Save, Globe, ShieldCheck, FileText, FileQuestion, Plus
 } from 'lucide-react';
 import Link from 'next/link';
 import { TemplateVersionBar } from './components/TemplateVersionBar';
@@ -570,13 +570,49 @@ export default function EditPdfPage() {
                                 </motion.div>
                             )}
                         </AnimatePresence>
+
+                        {/* In-Flow Page Bottom Action Bar (Un-docked, positioned naturally at bottom of page) */}
+                        <div className="flex items-center justify-between pt-8 pb-12 mt-8 border-t border-border/60 gap-4">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => router.push('/admin/pdfs')}
+                                className="font-bold text-muted-foreground hover:text-foreground rounded-xl px-6 min-h-[44px] h-12 active:scale-[0.97] transition-all"
+                            >
+                                Cancel
+                            </Button>
+                            <div className="flex items-center gap-3 sm:gap-4">
+                                {step > 1 && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => handleStepChange(step - 1)}
+                                        className="font-bold border-border/60 rounded-xl px-5 sm:px-6 min-h-[44px] h-12 gap-2 active:scale-[0.97] transition-all shadow-xs"
+                                    >
+                                        <ArrowLeft className="h-4 w-4" /> Back
+                                    </Button>
+                                )}
+                                {step < 3 ? (
+                                    <Button
+                                        type="button"
+                                        onClick={handleNext}
+                                        className="gap-2 px-8 sm:px-10 min-h-[44px] h-12 font-semibold shadow-md rounded-xl transition-all active:scale-[0.97] group"
+                                    >
+                                        Next Phase <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        type="submit"
+                                        disabled={isSaving}
+                                        onClick={form.handleSubmit((d) => performSave(d, true))}
+                                        className="gap-2 px-8 sm:px-12 min-h-[48px] h-12 sm:h-14 font-semibold shadow-xl bg-primary text-white hover:bg-primary/90 rounded-2xl transition-all active:scale-[0.97] text-base sm:text-lg"
+                                    >
+                                        {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />} Finalize & Save
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
                     </form>
-                </div>
-            </div>
- <div className="fixed bottom-0 left-0 right-0 z-[80] p-4 sm:p-6 bg-background/80 backdrop-blur-lg border-t shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
- <div className="w-full md:w-[95%] lg:w-[90%] mx-auto max-w-7xl flex items-center justify-between gap-4">
- <Button type="button" variant="ghost" onClick={() => router.push('/admin/pdfs')} className="font-bold text-muted-foreground rounded-xl px-6 h-12">Cancel</Button>
- <div className="flex items-center gap-4">{step > 1 && (<Button type="button" variant="outline" onClick={() => handleStepChange(step - 1)} className="font-bold border-border/50 rounded-xl px-6 h-12 gap-2"><ArrowLeft className="h-4 w-4" /> Back</Button>)}{step < 3 ? (<Button type="button" onClick={handleNext} className="gap-2 px-10 h-12 font-semibold shadow-xl rounded-xl transition-all active:scale-95 group">Next Phase <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></Button>) : (<Button type="submit" disabled={isSaving} onClick={form.handleSubmit((d) => performSave(d, true))} className="gap-2 px-12 h-14 font-semibold shadow-2xl bg-primary text-white hover:bg-primary/90 rounded-[1.25rem] transition-all active:scale-95 text-lg">{isSaving ? <Loader2 className="h-6 w-6 animate-spin" /> : <Save className="h-6 w-6" />} Finalize & Save</Button>)}</div>
                 </div>
             </div>
         </div>
