@@ -834,7 +834,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                 organizationId={effectiveOrgId}
                                 workspaceId={activeWorkspaceId}
                                 defaultSentinelValue={state.channel === 'whatsapp' ? 'whatsapp' : 'default'}
-                                defaultLabel={state.channel === 'whatsapp' ? 'WhatsApp Business Account' : 'Default Active Profile'}
+                                defaultLabel={state.channel === 'whatsapp' ? 'WhatsApp Business Account' : 'Default Profile'}
                                 allowDefault={state.channel === 'whatsapp'}
                                 triggerClassName="h-12 font-bold"
                             />

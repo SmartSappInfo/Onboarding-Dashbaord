@@ -89,7 +89,7 @@ export function PreFlightCockpit<TFieldValues extends FieldValues = FieldValues>
               organizationId={activeOrganizationId}
               workspaceId={activeWorkspaceId}
               defaultSentinelValue={channel === 'whatsapp' ? 'whatsapp' : 'default'}
-              defaultLabel={channel === 'whatsapp' ? 'WhatsApp Business Account' : 'Default Active Profile'}
+              defaultLabel={channel === 'whatsapp' ? 'WhatsApp Business Account' : 'Default Profile'}
               allowDefault={true}
               placeholder="Select sender identity..."
               triggerClassName="h-12 rounded-xl bg-card border-border/80 shadow-xs font-semibold text-xs transition-all active:scale-[0.98]"
@@ -148,7 +148,7 @@ export function PreFlightCockpit<TFieldValues extends FieldValues = FieldValues>
               <Clock className="h-3.5 w-3.5" /> Dispatch Mode
             </Label>
 
-            {/* Segmented Pill Selector */}
+            {/* Segmented Pill Selector with high-contrast primary selection */}
             <div className="grid grid-cols-2 p-1 bg-muted/40 rounded-xl border border-border/50 gap-1">
               <button
                 type="button"
@@ -156,11 +156,18 @@ export function PreFlightCockpit<TFieldValues extends FieldValues = FieldValues>
                 className={cn(
                   'flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg text-xs font-bold transition-all duration-150 active:scale-[0.97] min-h-[44px]',
                   !isScheduled
-                    ? 'bg-background text-foreground shadow-xs'
-                    : 'text-muted-foreground hover:text-foreground'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-card/70 font-semibold'
                 )}
               >
-                <Zap className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                <Zap
+                  className={cn(
+                    'h-3.5 w-3.5 transition-colors',
+                    !isScheduled
+                      ? 'text-primary-foreground fill-primary-foreground stroke-[2.5]'
+                      : 'text-emerald-600 dark:text-emerald-400'
+                  )}
+                />
                 <span>Immediate</span>
               </button>
 
@@ -170,11 +177,18 @@ export function PreFlightCockpit<TFieldValues extends FieldValues = FieldValues>
                 className={cn(
                   'flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg text-xs font-bold transition-all duration-150 active:scale-[0.97] min-h-[44px]',
                   isScheduled
-                    ? 'bg-background text-foreground shadow-xs'
-                    : 'text-muted-foreground hover:text-foreground'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-card/70 font-semibold'
                 )}
               >
-                <CalendarClock className="h-3.5 w-3.5 text-primary" />
+                <CalendarClock
+                  className={cn(
+                    'h-3.5 w-3.5 transition-colors',
+                    isScheduled
+                      ? 'text-primary-foreground stroke-[2.5]'
+                      : 'text-primary'
+                  )}
+                />
                 <span>Scheduled</span>
               </button>
             </div>

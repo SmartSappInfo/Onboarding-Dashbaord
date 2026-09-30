@@ -1059,7 +1059,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
               organizationId={effectiveOrgId}
               workspaceId={activeWorkspace?.id}
               defaultSentinelValue="default"
-              defaultLabel="Default Active Profile"
+              defaultLabel="Default Profile"
             />
           </div>
 
@@ -1226,7 +1226,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
               organizationId={effectiveOrgId}
               workspaceId={activeWorkspace?.id}
               defaultSentinelValue="default"
-              defaultLabel="Default Active Profile"
+              defaultLabel="Default Profile"
             />
           </div>
 

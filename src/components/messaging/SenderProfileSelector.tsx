@@ -54,7 +54,7 @@ export interface SenderProfileSelectorProps {
   workspaceId?: string;
   /** If true, only profiles associated with `workspaceId` (or global to org) are selectable */
   filterByWorkspace?: boolean;
-  /** Whether the "Default Active Profile" / Auto-Resolve option is available (default: true) */
+  /** Whether the "Default Profile" / Auto-Resolve option is available (default: true) */
   allowDefault?: boolean;
   /** Custom label for the default/auto-resolve option */
   defaultLabel?: string;
@@ -202,7 +202,7 @@ export function SenderProfileSelector({
     defaultLabel ||
     (channel === 'whatsapp' && defaultSentinelValue === 'whatsapp'
       ? 'WhatsApp Business Account'
-      : 'Default Active Profile');
+      : 'Default Profile');
 
   return (
     <div className={cn('relative w-full', className)}>

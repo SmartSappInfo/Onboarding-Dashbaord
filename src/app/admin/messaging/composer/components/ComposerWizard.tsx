@@ -2531,7 +2531,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                 }}
                 recipientCount={audienceSource === 'individual' ? watchedSelectedEntityIds.length : filteredRecipients.length}
                 channel={watchedChannel}
-                senderProfileLabel={selectedSenderProfile ? `${selectedSenderProfile.name}${selectedSenderProfile.identifier ? ` (${selectedSenderProfile.identifier})` : ''}` : (watchedSenderProfileId === 'default' ? 'Default Active Profile' : watchedSenderProfileId)}
+                senderProfileLabel={selectedSenderProfile ? `${selectedSenderProfile.name}${selectedSenderProfile.identifier ? ` (${selectedSenderProfile.identifier})` : ''}` : (watchedSenderProfileId === 'default' ? 'Default Profile' : watchedSenderProfileId)}
                 isScheduled={watchedIsScheduled}
                 scheduledAt={watch('scheduledAt')}
                 isSubmitting={isSubmitting}

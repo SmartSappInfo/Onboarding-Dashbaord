@@ -41,7 +41,7 @@ export function SafeguardBlastModal({
   onConfirm,
   recipientCount,
   channel,
-  senderProfileLabel = 'Default Active Profile',
+  senderProfileLabel = 'Default Profile',
   isScheduled,
   scheduledAt,
   isSubmitting = false,
