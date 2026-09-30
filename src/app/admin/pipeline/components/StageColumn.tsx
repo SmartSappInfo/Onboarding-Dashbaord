@@ -170,17 +170,17 @@ export default function StageColumn({
 
     return (
         <div
-            ref={setNodeRef}
-            style={{ ...style, width: isOverlay ? `${customWidth}px` : undefined }}
+            ref={isOverlay ? undefined : setNodeRef}
+            style={{ ...style, width: isOverlay ? (customWidth ? `${customWidth}px` : undefined) : undefined }}
             className={cn(
                 "h-full flex-shrink-0 select-none pb-4",
-                !isOverlay && "w-[280px] md:w-[320px] lg:w-[340px]"
+                "w-[280px] md:w-[320px] lg:w-[340px]"
             )}
         >
             <Card
                 className={cn(
                     "flex flex-col bg-card border border-border rounded-2xl overflow-hidden transition-all duration-300 w-full relative",
-                    isOverlay && "shadow-2xl scale-105 rotate-1",
+                    isOverlay && "shadow-2xl scale-[1.02] border-primary/60",
                     isOver && isDraggingDeal && "bg-primary/[0.06] border-primary/50 ring-2 ring-primary/20 shadow-lg"
                 )}
             >

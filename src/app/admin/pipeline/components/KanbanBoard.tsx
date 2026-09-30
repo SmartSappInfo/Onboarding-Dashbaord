@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import {
   DndContext,
   MouseSensor,
@@ -170,6 +171,14 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
   // Mobile active stage state
   const [activeMobileStageId, setActiveMobileStageId] = React.useState<string | null>(() => (stages && stages.length > 0 ? stages[0]?.id : null));
 
+  // SSR hydration mount state & measured drag width to eliminate overlay clipping
+  const [mounted, setMounted] = React.useState<boolean>(false);
+  const [draggedItemWidth, setDraggedItemWidth] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const allDeals = React.useMemo(() => {
     return deals || [];
   }, [deals]);
@@ -237,6 +246,10 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
 
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
+    const initialWidth = active.rect.current.initial?.width;
+    if (initialWidth && initialWidth > 0) {
+      setDraggedItemWidth(initialWidth);
+    }
     if (active.data.current?.type === 'DEAL') {
       const deal = active.data.current.deal as Deal;
       draggedDealRef.current = deal;
@@ -330,6 +343,7 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
 
   const handleDragEnd = async (event: DragEndEvent) => {
     setActiveElement(null);
+    setDraggedItemWidth(null);
     const { active, over } = event;
 
     const sourceStageId = sourceStageIdRef.current;
@@ -504,7 +518,11 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
-        onDragCancel={() => { setActiveElement(null); setDealsByStage(initialDealsByStage.current); }}
+        onDragCancel={() => { 
+          setActiveElement(null); 
+          setDraggedItemWidth(null); 
+          setDealsByStage(initialDealsByStage.current); 
+        }}
         collisionDetection={closestCorners}
       >
         <ScrollArea className="flex-1 whitespace-nowrap">
@@ -528,33 +546,48 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
           </div>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
-      <DragOverlay dropAnimation={null}>
-        {activeElement ? (
-          'order' in activeElement ? (
-            <StageColumn
-              stage={activeElement as OnboardingStage}
-              pipelineId={pipelineId}
-              pipelineName={pipelineName}
-              customWidth={customWidth}
-              deals={dealsByStage[(activeElement as OnboardingStage).id] || []}
-              isOverlay
-              tasksByDealId={tasksByDealId}
-              automations={automations}
-              showDealTotals={showDealTotals}
-              entitiesById={entitiesById}
-            />
-          ) : (
-            <div className="w-72 pointer-events-none">
-              <DealCard 
-                deal={activeElement as Deal} 
-                isOverlay 
-                taskStats={tasksByDealId[(activeElement as Deal).id]}
-                clientName={entitiesById.get((activeElement as Deal).entityId)?.displayName}
-              />
-            </div>
-          )
+        {mounted && typeof document !== 'undefined' ? createPortal(
+          <DragOverlay dropAnimation={null}>
+            {activeElement ? (
+              'order' in activeElement ? (
+                <div
+                  className="pointer-events-none select-none"
+                  style={{
+                    width: draggedItemWidth ? `${draggedItemWidth}px` : (customWidth ? `${customWidth}px` : undefined),
+                  }}
+                >
+                  <StageColumn
+                    stage={activeElement as OnboardingStage}
+                    pipelineId={pipelineId}
+                    pipelineName={pipelineName}
+                    customWidth={draggedItemWidth || customWidth}
+                    deals={dealsByStage[(activeElement as OnboardingStage).id] || []}
+                    isOverlay
+                    tasksByDealId={tasksByDealId}
+                    automations={automations}
+                    showDealTotals={showDealTotals}
+                    entitiesById={entitiesById}
+                  />
+                </div>
+              ) : (
+                <div 
+                  className="pointer-events-none select-none w-[calc(280px-1.5rem)] md:w-[calc(320px-1.5rem)] lg:w-[calc(340px-1.5rem)]"
+                  style={{
+                    width: draggedItemWidth ? `${draggedItemWidth}px` : (customWidth ? `${customWidth - 24}px` : undefined),
+                  }}
+                >
+                  <DealCard 
+                    deal={activeElement as Deal} 
+                    isOverlay 
+                    taskStats={tasksByDealId[(activeElement as Deal).id]}
+                    clientName={entitiesById.get((activeElement as Deal).entityId)?.displayName}
+                  />
+                </div>
+              )
+            ) : null}
+          </DragOverlay>,
+          document.body
         ) : null}
-      </DragOverlay>
 
       {/* Loss Reason Dialog */}
       <Dialog open={pendingLostDeal !== null} onOpenChange={(open) => {

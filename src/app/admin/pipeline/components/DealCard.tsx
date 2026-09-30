@@ -155,7 +155,11 @@ export default function DealCard({ deal, stage, isOverlay, onDelete, clientName,
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: deal.id, data: { type: 'DEAL', deal } });
+  } = useSortable({ 
+    id: deal.id, 
+    data: { type: 'DEAL', deal },
+    disabled: isOverlay,
+  });
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -242,18 +246,24 @@ export default function DealCard({ deal, stage, isOverlay, onDelete, clientName,
 
   return (
     <TooltipProvider>
-        <div ref={setNodeRef} style={style} className="w-full min-w-0 overflow-hidden">
+        <div 
+            ref={isOverlay ? undefined : setNodeRef} 
+            style={isOverlay ? undefined : style} 
+            className={cn("w-full min-w-0", !isOverlay && "overflow-hidden")}
+        >
         <Card
             className={cn(
-                "w-full min-w-0 max-w-full mb-3 touch-manipulation rounded-[1.5rem] border transition-all duration-300 bg-card select-none group/card overflow-hidden text-left",
-                isOverlay ? "border-primary shadow-2xl scale-105 rotate-1" : "border-border shadow-sm hover:shadow-lg hover:border-primary/30",
+                "w-full min-w-0 max-w-full touch-manipulation rounded-[1.5rem] border bg-card select-none text-left",
+                isOverlay 
+                    ? "border-primary/80 ring-2 ring-primary/20 shadow-2xl scale-[1.02] cursor-grabbing bg-card/95 backdrop-blur-md mb-0" 
+                    : "border-border shadow-sm hover:shadow-lg hover:border-primary/30 transition-all duration-300 group/card overflow-hidden mb-3",
                 deal.status === 'lost' && "grayscale opacity-60"
             )}
         >
         <CardHeader 
-            {...attributes} 
-            {...listeners} 
-            className="p-4 pb-2 flex flex-row items-start justify-between space-y-0 cursor-grab active:cursor-grabbing w-full min-w-0 overflow-hidden"
+            {...(isOverlay ? {} : attributes)} 
+            {...(isOverlay ? {} : listeners)} 
+            className="p-4 pb-2 flex flex-row items-start justify-between space-y-0 cursor-grab active:cursor-grabbing w-full min-w-0"
         >
             <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
                 <div className="relative shrink-0">
