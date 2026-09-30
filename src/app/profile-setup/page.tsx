@@ -440,7 +440,8 @@ function ProfileSetupContent() {
     setIsSubmitting(true);
     try {
       const result = await submitOnboardingProfileAction({
-        userId: user.uid,
+        // The server reads who we are from the ID token; it no longer accepts a uid.
+        idToken: await user.getIdToken(),
         name: fullName.trim(),
         phone: phoneNumber.trim(),
         department: department || 'General',

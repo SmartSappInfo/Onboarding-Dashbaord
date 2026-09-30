@@ -68,7 +68,8 @@ export default function OnboardingSetupClient() {
 
     const checkStatus = async () => {
       try {
-        const res = await getOnboardingSetupStateAction(user.uid);
+        // The server reads who we are from the ID token; it no longer accepts a uid.
+        const res = await getOnboardingSetupStateAction(await user.getIdToken());
 
         if (!res.success) {
           toast({ variant: 'destructive', title: 'Setup Error', description: res.error || 'Could not load setup state.' });
@@ -154,7 +155,7 @@ export default function OnboardingSetupClient() {
   };
 
   const handleSubmitSetup = async () => {
-    if (!orgData) return;
+    if (!orgData || !user) return;
 
     if (!workspaceName.trim()) {
       toast({
@@ -167,7 +168,10 @@ export default function OnboardingSetupClient() {
 
     setIsSubmitting(true);
     try {
+      // The server identifies the signed-in admin from the ID token (it used to require a uid
+      // this page never sent, so setup always failed with "User ID is required").
       const result = await completeOrganizationOnboardingAction({
+        idToken: await user.getIdToken(),
         organizationId: orgData.id,
         branding: {
           primaryColor,

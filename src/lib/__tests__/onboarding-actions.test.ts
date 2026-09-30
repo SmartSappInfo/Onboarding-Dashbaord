@@ -5,6 +5,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { adminAuth, adminDb } from '../firebase-admin';
+import { DepartmentService } from '../services/workforce/department-service';
 import { 
   validateJoinCodeAction, 
   submitOnboardingProfileAction, 
@@ -157,47 +158,48 @@ describe('validateJoinCodeAction', () => {
 });
 
 describe('submitOnboardingProfileAction', () => {
+  /**
+   * Firestore for one submission: the caller's existing user doc (or none), the target
+   * organization (`null` = does not exist) and its workspaces.
+   */
+  function arrange(opts: { existingUser?: Record<string, unknown>; org?: Record<string, unknown> | null; workspaceIds?: string[] }) {
+    const userSet = vi.fn().mockResolvedValue(undefined);
+    const usersDoc = vi.fn().mockReturnValue({
+      get: vi.fn().mockResolvedValue({ exists: Boolean(opts.existingUser), data: () => opts.existingUser }),
+      set: userSet,
+    });
+    (adminDb.collection as any).mockImplementation((name) => {
+      if (name === 'users') return { doc: usersDoc };
+      if (name === 'workspaces') {
+        return { where: vi.fn().mockReturnThis(), get: vi.fn().mockResolvedValue({ docs: (opts.workspaceIds ?? []).map((id) => ({ id })) }) };
+      }
+      if (name === 'organizations') {
+        return { doc: vi.fn().mockReturnValue({ get: vi.fn().mockResolvedValue({ exists: opts.org !== null, data: () => opts.org ?? undefined }) }) };
+      }
+      if (name === 'departments') {
+        return { where: vi.fn().mockReturnThis(), orderBy: vi.fn().mockReturnThis(), get: vi.fn().mockResolvedValue({ docs: [] }) };
+      }
+      return {};
+    });
+    return { userSet, usersDoc };
+  }
+  const signedInAs = (uid: string) => (adminAuth.verifyIdToken as any).mockResolvedValue({ uid });
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it('should save user onboarding details and map workspace IDs', async () => {
-    const mockUserDoc = {
-      exists: true,
-      data: () => ({ email: 'user@example.com' })
-    };
-
-    const mockUserDocRef = {
-      get: vi.fn().mockResolvedValue(mockUserDoc),
-      set: vi.fn().mockResolvedValue(undefined)
-    };
-
-    const mockWorkspacesSnapshot = {
-      docs: [
-        { id: 'workspace_1' },
-        { id: 'workspace_2' }
-      ]
-    };
-
-    const mockWorkspacesQuery = {
-      where: vi.fn().mockReturnThis(),
-      get: vi.fn().mockResolvedValue(mockWorkspacesSnapshot)
-    };
-
-    (adminDb.collection as any).mockImplementation((name) => {
-      if (name === 'users') {
-        return {
-          doc: vi.fn().mockReturnValue(mockUserDocRef)
-        };
-      }
-      if (name === 'workspaces') {
-        return mockWorkspacesQuery;
-      }
-      return {};
+    const { userSet: set } = arrange({
+      existingUser: { email: 'user@example.com' },
+      org: { name: 'Org 1', isConfigured: true },
+      workspaceIds: ['workspace_1', 'workspace_2'],
     });
+    const mockUserDocRef = { set };
+    signedInAs('user_123');
 
     const result = await submitOnboardingProfileAction({
-      userId: 'user_123',
+      idToken: 'token_user_123',
       name: 'Jane Doe',
       phone: '+23312345678',
       department: 'operations',
@@ -229,55 +231,17 @@ describe('submitOnboardingProfileAction', () => {
   });
 
   it('should preserve isAuthorized: true and approvalStatus: approved for invited members', async () => {
-    const mockUserDoc = {
-      exists: true,
-      data: () => ({
-        email: 'invited@example.com',
-        isAuthorized: true,
-        approvalStatus: 'approved'
-      })
-    };
-
-    const mockUserDocRef = {
-      get: vi.fn().mockResolvedValue(mockUserDoc),
-      set: vi.fn().mockResolvedValue(undefined)
-    };
-
-    const mockWorkspacesSnapshot = {
-      docs: [{ id: 'workspace_1' }]
-    };
-
-    const mockWorkspacesQuery = {
-      where: vi.fn().mockReturnThis(),
-      get: vi.fn().mockResolvedValue(mockWorkspacesSnapshot)
-    };
-
-    const mockOrgDocRef = {
-      get: vi.fn().mockResolvedValue({
-        exists: true,
-        data: () => ({ name: 'Test Org', isConfigured: true })
-      })
-    };
-
-    (adminDb.collection as any).mockImplementation((name) => {
-      if (name === 'users') {
-        return {
-          doc: vi.fn().mockReturnValue(mockUserDocRef)
-        };
-      }
-      if (name === 'workspaces') {
-        return mockWorkspacesQuery;
-      }
-      if (name === 'organizations') {
-        return {
-          doc: vi.fn().mockReturnValue(mockOrgDocRef)
-        };
-      }
-      return {};
+    // Invited members carry the inviting organization, and keep their approval for it.
+    const { userSet: set } = arrange({
+      existingUser: { email: 'invited@example.com', organizationId: 'org_1', isAuthorized: true, approvalStatus: 'approved' },
+      org: { name: 'Test Org', isConfigured: true },
+      workspaceIds: ['workspace_1'],
     });
+    const mockUserDocRef = { set };
+    signedInAs('user_invited_456');
 
     const result = await submitOnboardingProfileAction({
-      userId: 'user_invited_456',
+      idToken: 'token_user_invited_456',
       name: 'Invited Member',
       phone: '+23312345679',
       department: 'engineering',
@@ -300,6 +264,80 @@ describe('submitOnboardingProfileAction', () => {
       }),
       { merge: true }
     );
+  });
+
+  // SECURITY (hardening H1c): the user comes only from the verified token, an account cannot be
+  // moved to another organization, and approval is never carried across organizations.
+  describe('tenant and identity safety', () => {
+    it('writes only the signed-in user from the token', async () => {
+      const { usersDoc } = arrange({ existingUser: {}, org: { name: 'Org 1' } });
+      signedInAs('real_uid');
+
+      await submitOnboardingProfileAction({ idToken: 'token', name: 'Name', organizationId: 'org_1' });
+
+      expect(usersDoc).toHaveBeenCalledWith('real_uid');
+      expect(usersDoc).toHaveBeenCalledTimes(1);
+    });
+
+    it('refuses an invalid or missing token without writing', async () => {
+      const { userSet } = arrange({ existingUser: {}, org: { name: 'Org 1' } });
+      (adminAuth.verifyIdToken as any).mockRejectedValue(new Error('bad token'));
+
+      expect(await submitOnboardingProfileAction({ idToken: 'forged', name: 'Name', organizationId: 'org_1' }))
+        .toMatchObject({ success: false, error: 'Your session has expired. Please sign in again.' });
+      expect(await submitOnboardingProfileAction({ idToken: '', name: 'Name', organizationId: 'org_1' }))
+        .toMatchObject({ success: false });
+      expect(userSet).not.toHaveBeenCalled();
+    });
+
+    it('never moves an account that already belongs to another organization', async () => {
+      const { userSet } = arrange({
+        existingUser: { organizationId: 'org_A', isAuthorized: true, approvalStatus: 'approved', workspaceIds: ['ws_a'] },
+        org: { name: 'Org B' },
+      });
+      signedInAs('member_of_a');
+
+      const result = await submitOnboardingProfileAction({ idToken: 'token', name: 'Name', organizationId: 'org_B' });
+
+      expect(result).toMatchObject({ success: false, error: 'Your account already belongs to another organization.' });
+      expect(userSet).not.toHaveBeenCalled();
+    });
+
+    it('does not treat approval without the same organization as pre-authorization', async () => {
+      const { userSet } = arrange({ existingUser: { isAuthorized: true, approvalStatus: 'approved' }, org: { name: 'Org 1' } });
+      signedInAs('no_org_user');
+
+      const result = await submitOnboardingProfileAction({ idToken: 'token', name: 'Name', organizationId: 'org_1' });
+
+      expect(result).toMatchObject({ success: true, isAuthorized: false });
+      expect(userSet).toHaveBeenCalledWith(expect.objectContaining({ isAuthorized: false, approvalStatus: 'pending' }), { merge: true });
+    });
+
+    it('refuses an organization that does not exist', async () => {
+      const { userSet } = arrange({ existingUser: {}, org: null });
+      signedInAs('new_user');
+
+      const result = await submitOnboardingProfileAction({ idToken: 'token', name: 'Name', organizationId: 'org_missing' });
+
+      expect(result).toMatchObject({ success: false, error: 'Organization not found.' });
+      expect(userSet).not.toHaveBeenCalled();
+    });
+
+    it('does not create departments during onboarding; an unknown name stays free text', async () => {
+      const { userSet } = arrange({ existingUser: {}, org: { name: 'Org 1' } });
+      signedInAs('new_user');
+      const findOrCreate = vi.spyOn(DepartmentService, 'findOrCreateDepartmentByName');
+
+      try {
+        await submitOnboardingProfileAction({ idToken: 'token', name: 'Name', organizationId: 'org_1', department: 'Brand New Team' });
+
+        expect(findOrCreate).not.toHaveBeenCalled();
+        expect(userSet).toHaveBeenCalledWith(expect.objectContaining({ department: 'Brand New Team' }), { merge: true });
+        expect(userSet.mock.calls[0][0]).not.toHaveProperty('departmentId');
+      } finally {
+        findOrCreate.mockRestore();
+      }
+    });
   });
 });
 
@@ -442,9 +480,10 @@ describe('completeOrganizationOnboardingAction', () => {
     vi.clearAllMocks();
   });
 
-  it('should return error if userId is missing', async () => {
+  it('refuses an invalid or missing token', async () => {
+    (adminAuth.verifyIdToken as any).mockRejectedValue(new Error('bad token'));
     const result = await completeOrganizationOnboardingAction({
-      userId: '',
+      idToken: 'forged',
       organizationId: 'org_1',
       branding: {
         primaryColor: '#10b981',
@@ -455,7 +494,8 @@ describe('completeOrganizationOnboardingAction', () => {
       workspace: { name: 'Workspace 1', contactScope: 'person', industry: 'SaaS' }
     });
     expect(result.success).toBe(false);
-    expect(result.error).toBe('User ID is required.');
+    expect(result.error).toBe('Your session has expired. Please sign in again.');
+    expect(mockTransaction.update).not.toHaveBeenCalled();
   });
 
   it('should return ALREADY_CONFIGURED if organization.isConfigured is already true', async () => {
@@ -483,8 +523,9 @@ describe('completeOrganizationOnboardingAction', () => {
       return {};
     });
 
+    (adminAuth.verifyIdToken as any).mockResolvedValue({ uid: 'user_123' });
     const result = await completeOrganizationOnboardingAction({
-      userId: 'user_123',
+      idToken: 'token_user_123',
       organizationId: 'org_1',
       branding: {
         primaryColor: '#10b981',
@@ -500,9 +541,10 @@ describe('completeOrganizationOnboardingAction', () => {
   });
 
   it('should transactionally complete organization onboarding and provision workspace', async () => {
+    // The invited first admin: an approved member of the organization being set up.
     const mockUserSnap = {
       exists: true,
-      data: () => ({ organizationId: 'org_1', workspaceIds: [] })
+      data: () => ({ organizationId: 'org_1', workspaceIds: [], isAuthorized: true, approvalStatus: 'approved' })
     };
     const mockOrgSnap = {
       exists: true,
@@ -530,8 +572,9 @@ describe('completeOrganizationOnboardingAction', () => {
       return {};
     });
 
+    (adminAuth.verifyIdToken as any).mockResolvedValue({ uid: 'user_123' });
     const result = await completeOrganizationOnboardingAction({
-      userId: 'user_123',
+      idToken: 'token_user_123',
       organizationId: 'org_1',
       branding: {
         primaryColor: '#8b5cf6',
@@ -564,5 +607,47 @@ describe('completeOrganizationOnboardingAction', () => {
         status: 'active'
       })
     );
+
+    // The owner becomes ORGANIZATION admin: the org admin set and full schema, never the
+    // platform-wide system_admin token (hardening H1c).
+    const userUpdate = mockTransaction.update.mock.calls
+      .map(([, data]) => data)
+      .find((data) => data.roles !== undefined);
+    expect(userUpdate).toMatchObject({ organizationId: 'org_1', isAuthorized: true, roles: ['administrator'] });
+    expect(userUpdate.permissions).toEqual(expect.arrayContaining(['finance_manage', 'studios_edit']));
+    expect(userUpdate.permissions).not.toContain('system_admin');
+    expect(userUpdate.permissionsSchema).toBeDefined();
+  });
+
+  // SECURITY (hardening H1c): only an approved member of the organization being set up (the
+  // invited first admin) may complete it. Anyone else could make themselves its administrator.
+  describe('who may complete setup', () => {
+    const arrangeSetup = (userData: Record<string, unknown>) => {
+      mockTransaction.get.mockImplementation(async (ref) => {
+        if (ref.id === 'caller') return { exists: true, data: () => userData };
+        if (ref.id === 'org_1') return { exists: true, data: () => ({ isConfigured: false }) };
+        return { exists: false };
+      });
+      (adminDb.collection as any).mockImplementation((name) => {
+        if (name === 'users' || name === 'organizations') return { doc: vi.fn((id) => ({ id })) };
+        if (name === 'workspaces') return { doc: vi.fn().mockReturnValue({ id: 'ws_new' }) };
+        return {};
+      });
+      (adminAuth.verifyIdToken as any).mockResolvedValue({ uid: 'caller' });
+    };
+    const complete = () => completeOrganizationOnboardingAction({ idToken: 'token', organizationId: 'org_1', workspace: { name: 'WS' } });
+
+    it('refuses a user from another organization', async () => {
+      arrangeSetup({ organizationId: 'org_other', isAuthorized: true, approvalStatus: 'approved' });
+      expect(await complete()).toMatchObject({ success: false, error: 'Only an approved member of this organization can complete its setup.' });
+      expect(mockTransaction.update).not.toHaveBeenCalled();
+      expect(mockTransaction.set).not.toHaveBeenCalled();
+    });
+
+    it('refuses a member who is not approved yet', async () => {
+      arrangeSetup({ organizationId: 'org_1', isAuthorized: false, approvalStatus: 'pending' });
+      expect(await complete()).toMatchObject({ success: false });
+      expect(mockTransaction.update).not.toHaveBeenCalled();
+    });
   });
 });

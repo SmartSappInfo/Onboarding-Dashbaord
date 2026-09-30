@@ -9,8 +9,8 @@ Staging shares the production Firebase project, so any rules deploy is a product
 | Phase | Item | Severity | Status | Commit |
 | :--- | :--- | :--- | :--- | :--- |
 | H0 | Flaky tag property test | CI reliability | ☑ done | `1358bffb` |
-| H1 | Workforce privilege escalation + super-admin self-promotion | **Critical (live)** | ☑ done | this commit |
-| H1c | Onboarding actions trust a caller-supplied `userId` (found in H1) | **High (live)** | ☐ | |
+| H1 | Workforce privilege escalation + super-admin self-promotion | **Critical (live)** | ☑ deployed | `31e1196f` |
+| H1c | Onboarding actions trust a caller-supplied `userId`; org owners got platform `system_admin` (found in H1) | **Critical (live)** | ☑ done | this commit |
 | H2 | Phone password reset → one-time code | **High (live)** | ☐ | |
 | H3 | Lint step 1 (~311 warnings) | Quality | ☐ | |
 | H4a | `content_items` paywall rule (held PR-0e) | High | ☐ | |
@@ -91,6 +91,20 @@ missing permission so it is fixable in Roles without code (backoffice-manageable
 authentication: anyone can overwrite another user's onboarding profile or reconfigure any
 organization's onboarding. Fix: derive the user from a verified ID token (onboarding users may not
 be approved yet, so not `requireAuth`), check organization membership, update the callers.
+
+**Done.** Also found and fixed:
+- `completeOrganizationOnboardingAction` promoted the caller with `permissions: ['system_admin']`
+  (the PLATFORM token), so every organization owner became an admin of every organization. It now
+  grants `ORG_ADMIN_PERMISSIONS` (new shared constant, also used by provisioning) and
+  `getFullAdminPermissions()`, and only an approved member of that organization may complete setup.
+- An approved member of one organization could resubmit onboarding with another's id and stay
+  approved there. Onboarding can now attach an account to an organization once, never move it.
+- Self-onboarding no longer creates departments (unknown names stay free text).
+- The setup page never sent the `userId` the old action required, so setup always failed; it now
+  sends the ID token.
+
+**Needs a decision (data, Rule 5):** users who already received `system_admin` through this flow
+keep it. Review users with `system_admin` outside `smartsapp-hq` before removing it.
 
 ## H2 — Phone password reset → one-time code
 

@@ -18,6 +18,8 @@ import { OnboardingInstanceService } from '@/lib/services/onboarding/onboarding-
 import { IdentityMigrationService } from '@/lib/services/identity/identity-migration-service';
 import { DepartmentService } from '@/lib/services/workforce/department-service';
 import { PersonService } from '@/lib/services/identity/person-service';
+import { ORG_ADMIN_PERMISSIONS } from '@/lib/constants/org-admin-permissions';
+import { getFullAdminPermissions } from '@/lib/permissions-engine';
 import type {
   OnboardingJourney,
   OnboardingInstance,
@@ -386,8 +388,26 @@ export async function validateJoinCodeAction(code: string): Promise<{
   }
 }
 
+/**
+ * The signed-in caller's uid from a verified Firebase ID token — never from a parameter.
+ *
+ * SECURITY (hardening H1c): the onboarding actions used to take `userId` from the request, so
+ * anyone could rewrite another user's onboarding profile or finish another organization's setup
+ * as its administrator. Onboarding users may not be approved yet, so this deliberately does not
+ * use `requireAuth` (which requires approval); it only proves who the caller is.
+ */
+async function verifiedCallerUid(idToken: string): Promise<string> {
+  const expired = 'Your session has expired. Please sign in again.';
+  if (!idToken) throw new Error(expired);
+  try {
+    return (await adminAuth.verifyIdToken(idToken)).uid;
+  } catch {
+    throw new Error(expired);
+  }
+}
+
 export async function submitOnboardingProfileAction(payload: {
-  userId: string;
+  idToken: string;
   name: string;
   phone?: string;
   department?: string;
@@ -401,8 +421,8 @@ export async function submitOnboardingProfileAction(payload: {
   };
 }): Promise<{ success: boolean; isAuthorized?: boolean; isConfigured?: boolean; error?: string }> {
   try {
-    const { userId, name, phone, organizationId, notificationPreferences } = payload;
-    if (!userId) throw new Error('User ID is required');
+    const { name, phone, organizationId, notificationPreferences } = payload;
+    const userId = await verifiedCallerUid(payload.idToken);
     if (!organizationId) throw new Error('Organization ID is required');
 
     let deptName = payload.department?.trim();
@@ -424,11 +444,16 @@ export async function submitOnboardingProfileAction(payload: {
       }
     }
 
+    // Link an EXISTING department by name only. A person onboarding (often not yet approved) must
+    // not create departments in the organization they are joining; an unknown name is kept as
+    // free text for an administrator to map (hardening H1c).
     if (deptName && !deptId) {
       try {
-        const resolved = await DepartmentService.findOrCreateDepartmentByName(organizationId, deptName);
-        deptId = resolved.id;
-        deptName = resolved.name;
+        const resolved = await DepartmentService.findDepartmentByName(organizationId, deptName);
+        if (resolved) {
+          deptId = resolved.id;
+          deptName = resolved.name;
+        }
       } catch (err) {
         console.warn('[submitOnboardingProfileAction] Error resolving department by name:', err);
       }
@@ -445,22 +470,23 @@ export async function submitOnboardingProfileAction(payload: {
     const existingUserDoc = await userDocRef.get();
     const existingData = existingUserDoc.exists ? existingUserDoc.data() || {} : {};
 
-    // Check if organization is configured
-    let isConfigured = true;
-    try {
-      const orgCol = adminDb.collection('organizations');
-      if (orgCol && typeof orgCol.doc === 'function') {
-        const orgDoc = await orgCol.doc(organizationId).get();
-        if (orgDoc && orgDoc.exists) {
-          isConfigured = orgDoc.data()?.isConfigured !== false;
-        }
-      }
-    } catch {
-      // Default to isConfigured = true on lookup failure
+    // The organization must exist; its `isConfigured` flag drives the next onboarding step.
+    const orgDoc = await adminDb.collection('organizations').doc(organizationId).get();
+    if (!orgDoc.exists) throw new Error('Organization not found.');
+    const isConfigured = orgDoc.data()?.isConfigured !== false;
+
+    // SECURITY (hardening H1c): onboarding may attach an account to an organization once, but
+    // never move an account that already belongs to one. Before this, an approved member of
+    // organization A could resubmit with B's id and stay approved, now as a member of B.
+    const existingOrgId = typeof existingData.organizationId === 'string' ? existingData.organizationId : '';
+    if (existingOrgId && existingOrgId !== organizationId) {
+      throw new Error('Your account already belongs to another organization.');
     }
 
-    // Invited members are pre-authorized (isAuthorized === true or approvalStatus === 'approved')
-    const isPreAuthorized = existingData.isAuthorized === true || existingData.approvalStatus === 'approved';
+    // Invited members are pre-authorized (isAuthorized === true or approvalStatus === 'approved'),
+    // but only for the organization that invited them.
+    const isPreAuthorized = existingOrgId === organizationId &&
+      (existingData.isAuthorized === true || existingData.approvalStatus === 'approved');
 
     const finalDept = deptName || existingData.department || 'General';
     const finalDeptId = deptId || existingData.departmentId || undefined;
@@ -583,14 +609,15 @@ export async function enforceSuperAdminProfileAction(
   }
 }
 
-export async function getOnboardingSetupStateAction(userId: string): Promise<{
+export async function getOnboardingSetupStateAction(idToken: string): Promise<{
   success: boolean;
   state?: 'no-profile' | 'already-configured' | 'ready';
   org?: { id: string; name: string };
   error?: string;
 }> {
   try {
-    if (!userId) return { success: false, error: 'Missing userId' };
+    // The caller's own state only: the uid comes from the verified token (hardening H1c).
+    const userId = await verifiedCallerUid(idToken);
 
     const userDoc = await adminDb.collection('users').doc(userId).get();
     if (!userDoc.exists) {
@@ -627,7 +654,7 @@ export async function getOnboardingSetupStateAction(userId: string): Promise<{
 }
 
 export async function completeOrganizationOnboardingAction(payload: {
-  userId?: string;
+  idToken: string;
   organizationId: string;
   branding?: {
     primaryColor?: string;
@@ -652,10 +679,8 @@ export async function completeOrganizationOnboardingAction(payload: {
   };
 }): Promise<{ success: boolean; code?: string; workspaceId?: string; error?: string }> {
   try {
-    const { userId, organizationId, branding, localization, workspace } = payload;
-    if (!userId) {
-      return { success: false, error: 'User ID is required.' };
-    }
+    const { organizationId, branding, localization, workspace } = payload;
+    const userId = await verifiedCallerUid(payload.idToken);
     if (!organizationId) {
       return { success: false, error: 'Organization ID is required.' };
     }
@@ -676,6 +701,16 @@ export async function completeOrganizationOnboardingAction(payload: {
       const orgData = orgSnap.data() || {};
       if (orgData.isConfigured === true) {
         return { success: false, code: 'ALREADY_CONFIGURED', error: 'Organization is already configured.' };
+      }
+
+      // SECURITY (hardening H1c): only an approved member of THIS organization (the invited first
+      // admin) may complete its setup. Before, anyone could finish an unconfigured organization's
+      // setup and be promoted to its administrator.
+      const existingUserData = userSnap.exists ? userSnap.data() || {} : {};
+      const isApprovedMember = existingUserData.organizationId === organizationId &&
+        (existingUserData.isAuthorized === true || existingUserData.approvalStatus === 'approved');
+      if (!isApprovedMember) {
+        throw new Error('Only an approved member of this organization can complete its setup.');
       }
 
       const wsRef = adminDb.collection('workspaces').doc();
@@ -709,8 +744,11 @@ export async function completeOrganizationOnboardingAction(payload: {
         updatedAt: new Date().toISOString(),
       });
 
-      // Promote user to administrator
-      const existingUserData = userSnap.exists ? userSnap.data() || {} : {};
+      // Promote the caller to ORGANIZATION administrator.
+      // CAUTION: never 'system_admin' here. It is the PLATFORM super-admin token (Firestore rules
+      // isSystemAdmin(), requireAuth, the org switcher); granting it made every organization's
+      // owner an admin of every other organization. The org admin set plus the full hierarchical
+      // schema give complete access inside this organization (canUser reads permissionsSchema).
       const currentWorkspaces: string[] = existingUserData.workspaceIds || [];
       const updatedWorkspaces = Array.from(new Set([...currentWorkspaces, wsRef.id]));
 
@@ -720,7 +758,8 @@ export async function completeOrganizationOnboardingAction(payload: {
         isAuthorized: true,
         approvalStatus: 'approved',
         roles: ['administrator'],
-        permissions: ['system_admin'],
+        permissions: [...ORG_ADMIN_PERMISSIONS],
+        permissionsSchema: getFullAdminPermissions(),
         profileCompleted: true,
         updatedAt: new Date().toISOString(),
       });

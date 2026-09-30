@@ -2,6 +2,7 @@
 
 import { adminDb } from './firebase-admin';
 import type { Organization, AppPermissionId } from './types';
+import { ORG_ADMIN_PERMISSIONS } from './constants/org-admin-permissions';
 import { getFullAdminPermissions } from './permissions-engine';
 import { migrateToPermissionsSchema } from './permissions-migration';
 import { assertUserTenantPermission } from './organization-utils';
@@ -306,12 +307,10 @@ async function provisionOrganizationDefaults(organizationId: string, _userId: st
     for (const role of ferRoles) {
         // NOTE: never seed 'system_admin' on org-scoped roles — it is the
         // PLATFORM super-admin token (rules isSystemAdmin() + org switcher).
-        // Org administrators get the full operational set instead.
+        // Org administrators get the full operational set instead: ORG_ADMIN_PERMISSIONS, shared
+        // with organization onboarding so the two can never drift apart.
         const perms: AppPermissionId[] = role.name === 'Administrator'
-            ? ['schools_view', 'schools_edit', 'prospects_view', 'finance_view', 'finance_manage',
-               'contracts_delete', 'studios_view', 'studios_edit', 'dashboard_manage',
-               'meetings_manage', 'tasks_manage', 'activities_view',
-               'tags_view', 'tags_manage', 'tags_apply', 'forms_manage', 'fields_manage']
+            ? [...ORG_ADMIN_PERMISSIONS]
             : ['schools_view', 'activities_view'];
         
         const ref = adminDb.collection('roles').doc();
