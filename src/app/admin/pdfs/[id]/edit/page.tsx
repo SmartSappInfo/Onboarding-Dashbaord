@@ -455,10 +455,10 @@ export default function EditPdfPage() {
                                 <motion.div key="step1" {...stepTransition}>
  <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
                                         <Card className="xl:col-span-2 shadow-sm border border-border text-left">
- <CardHeader className="bg-muted/30 border-b pb-6">
+  <CardHeader className="bg-muted/30 border-b py-3.5 px-6">
  <div className="flex items-center gap-3">
  <div className="p-2 bg-primary/10 rounded-xl"><FileText className="h-5 w-5 text-primary" /></div>
- <div><CardTitle className="text-lg font-semibold tracking-tight">Document Identity</CardTitle><CardDescription className="text-xs font-medium">Naming and hub association details.</CardDescription></div>
+ <CardTitle className="text-lg font-semibold tracking-tight">Document Identity</CardTitle>
                                                 </div>
                                             </CardHeader>
                                             <CardContent className="p-6 space-y-8">
@@ -499,7 +499,7 @@ export default function EditPdfPage() {
                                         </Card>
  <div className="space-y-8 text-left">
  <Card className="shadow-sm border border-border">
- <CardHeader className="bg-muted/30 border-b pb-6 px-6"><div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><Palette className="h-5 w-5 text-primary" /></div><div><CardTitle className="text-lg font-semibold tracking-tight">Visual Identity</CardTitle></div></div></CardHeader>
+ <CardHeader className="bg-muted/30 border-b py-3.5 px-6"><div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><Palette className="h-5 w-5 text-primary" /></div><CardTitle className="text-lg font-semibold tracking-tight">Visual Identity</CardTitle></div></CardHeader>
  <CardContent className="p-6 space-y-8">
  <Controller name="logoUrl" control={form.control} render={({ field }) => (<div className="space-y-2"><Label className="text-[10px] font-semibold text-muted-foreground ml-1">Brand Logo</Label><MediaSelect {...field} filterType="image" className="rounded-2xl" /></div>)} />
                                                 </CardContent>
@@ -537,7 +537,7 @@ export default function EditPdfPage() {
  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start text-left">
  <div className="space-y-8">
  <Card className="shadow-sm overflow-hidden border border-border">
- <CardHeader className="bg-muted/30 border-b pb-6"><div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><Globe className="h-5 w-5 text-primary" /></div><div><CardTitle className="text-lg font-semibold tracking-tight">Finalize & Integrate</CardTitle></div></div></CardHeader>
+ <CardHeader className="bg-muted/30 border-b py-3.5 px-6"><div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><Globe className="h-5 w-5 text-primary" /></div><CardTitle className="text-lg font-semibold tracking-tight">Finalize & Integrate</CardTitle></div></CardHeader>
  <CardContent className="p-0">
  <div className="p-6">
  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
