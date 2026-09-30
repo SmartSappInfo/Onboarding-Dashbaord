@@ -23,6 +23,7 @@ describe('InternalUserAudienceSelector', () => {
       organizationId: 'org-1',
       workspaceIds: ['ws-1'],
       photoURL: 'https://example.com/sarah.jpg',
+      createdAt: '2026-01-01T00:00:00Z',
     },
     {
       id: 'u2',
@@ -33,6 +34,7 @@ describe('InternalUserAudienceSelector', () => {
       department: 'Support',
       organizationId: 'org-1',
       workspaceIds: ['ws-1'],
+      createdAt: '2026-01-01T00:00:00Z',
     },
     {
       id: 'u3',
@@ -43,6 +45,7 @@ describe('InternalUserAudienceSelector', () => {
       department: 'Sales',
       organizationId: 'org-1',
       workspaceIds: ['ws-1'],
+      createdAt: '2026-01-01T00:00:00Z',
     },
     {
       id: 'u4',
@@ -52,8 +55,10 @@ describe('InternalUserAudienceSelector', () => {
       organizationId: 'org-1',
       workspaceIds: ['ws-1'],
       // Missing role -> defaults to 'Member'
+      createdAt: '2026-01-01T00:00:00Z',
     },
   ];
+
 
   const defaultProps = {
     channel: 'email' as const,

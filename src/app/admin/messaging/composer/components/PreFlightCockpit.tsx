@@ -38,6 +38,7 @@ export interface PreFlightCockpitProps<TFieldValues extends FieldValues = FieldV
   scheduledAt?: Date;
   recipientCount: number;
   audienceSource: 'individual' | 'manual' | 'saved';
+  audienceMode?: 'entities' | 'team' | 'adhoc';
   activeOrganizationId?: string;
   activeWorkspaceId?: string;
   onScheduleToggle: (scheduled: boolean) => void;
@@ -52,6 +53,7 @@ export function PreFlightCockpit<TFieldValues extends FieldValues = FieldValues>
   isScheduled,
   recipientCount,
   audienceSource,
+  audienceMode = 'entities',
   activeOrganizationId,
   activeWorkspaceId,
   onScheduleToggle,
@@ -113,14 +115,24 @@ export function PreFlightCockpit<TFieldValues extends FieldValues = FieldValues>
                 {recipientCount}
               </span>
               <span className="text-xs font-semibold text-muted-foreground">
-                {recipientCount === 1 ? 'recipient ready' : 'recipients ready'}
+                {audienceMode === 'team'
+                  ? (recipientCount === 1 ? 'teammate ready' : 'teammates ready')
+                  : (recipientCount === 1 ? 'recipient ready' : 'recipients ready')}
               </span>
             </div>
           </div>
 
           <div className="text-right">
             <Badge variant="secondary" className="text-[10px] font-bold px-2 py-0.5 capitalize">
-              {audienceSource === 'individual' ? 'Direct Select' : audienceSource === 'saved' ? 'Saved Segment' : 'Manual Audience'}
+              {audienceMode === 'team'
+                ? 'Internal Team'
+                : audienceMode === 'adhoc'
+                  ? 'Direct & Spreadsheet'
+                  : audienceSource === 'individual'
+                    ? 'Direct Select'
+                    : audienceSource === 'saved'
+                      ? 'Saved Segment'
+                      : 'Manual Audience'}
             </Badge>
             <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-1 flex items-center justify-end gap-1">
               <CheckCircle2 className="h-3 w-3" />

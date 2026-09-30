@@ -24,11 +24,22 @@ export interface ExtractedTextItem {
   heightPct: number;
 }
 
+export interface ExtractedLineData {
+  text: string;
+  topPct: number;
+  heightPct: number;
+  minLeftPct: number;
+  maxRightPct: number;
+  items: ExtractedTextItem[];
+}
+
 export interface ExtractedPageData {
   pageNumber: number;
   text: string;
+  lines?: ExtractedLineData[];
   items: ExtractedTextItem[];
 }
+
 
 interface RawPdfItem {
   str?: string;
@@ -136,23 +147,49 @@ export async function extractPdfDocumentData(
         matchingLine.items.push(item);
       }
 
-      // Sort each line left-to-right and construct text string
-      lines.sort((a, b) => a.topPct - b.topPct);
-      const textLines: string[] = [];
+      // Sort each line left-to-right, calculate accurate line bounding boxes, and construct lines
+      const extractedLines: ExtractedLineData[] = [];
 
       for (const line of lines) {
         line.items.sort((a, b) => a.leftPct - b.leftPct);
-        const lineText = line.items.map((it) => it.str).join(' ');
-        if (lineText.trim().length > 0) {
-          textLines.push(lineText.trim());
+        const validItems = line.items.filter((it) => it.str.trim().length > 0);
+        if (validItems.length === 0) continue;
+
+        const lineTopPct = Number(
+          (validItems.reduce((acc, it) => acc + it.topPct, 0) / validItems.length).toFixed(2)
+        );
+        const lineMaxHeight = Number(
+          Math.max(...validItems.map((it) => it.heightPct)).toFixed(2)
+        );
+        const minLeftPct = Number(
+          Math.min(...validItems.map((it) => it.leftPct)).toFixed(2)
+        );
+        const maxRightPct = Number(
+          Math.max(...validItems.map((it) => it.leftPct + it.widthPct)).toFixed(2)
+        );
+
+        const lineText = validItems.map((it) => it.str).join(' ').trim();
+        if (lineText.length > 0) {
+          extractedLines.push({
+            text: lineText,
+            topPct: lineTopPct,
+            heightPct: lineMaxHeight,
+            minLeftPct,
+            maxRightPct,
+            items: validItems,
+          });
         }
       }
 
-      const fullText = textLines.join('\n');
+      // Sort lines strictly top to bottom
+      extractedLines.sort((a, b) => a.topPct - b.topPct);
+
+      const fullText = extractedLines.map((l) => l.text).join('\n');
 
       results.push({
         pageNumber: pageNum,
         text: fullText,
+        lines: extractedLines,
         items,
       });
     } finally {

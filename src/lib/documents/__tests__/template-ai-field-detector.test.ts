@@ -201,6 +201,177 @@ Date: _________________________`,
     expect(parentNames.length).toBe(1);
     expect(phones.length).toBe(1);
   });
+
+  it('places tabular student rows and parent details with millimeter visual precision', () => {
+    const rawText = `PARENT/GUARDIAN NAME:
+CONTACT No: GHANA CARD #:
+1. STUDENT NAME: GRADE:
+2. STUDENT NAME: GRADE:
+3. STUDENT NAME: GRADE:
+4. STUDENT NAME: GRADE:
+5. STUDENT NAME: GRADE:
+PARENT / GUARDIAN SIGNATURE: DATE:`;
+
+    const lines = [
+      {
+        text: 'PARENT/GUARDIAN NAME:',
+        topPct: 43.5,
+        heightPct: 1.8,
+        minLeftPct: 15.0,
+        maxRightPct: 34.0,
+        items: [
+          { str: 'PARENT/GUARDIAN', leftPct: 15.0, topPct: 43.5, widthPct: 13.0, heightPct: 1.8 },
+          { str: 'NAME:', leftPct: 28.5, topPct: 43.5, widthPct: 5.5, heightPct: 1.8 },
+        ],
+      },
+      {
+        text: 'CONTACT No: GHANA CARD #:',
+        topPct: 47.5,
+        heightPct: 1.8,
+        minLeftPct: 15.0,
+        maxRightPct: 63.5,
+        items: [
+          { str: 'CONTACT', leftPct: 15.0, topPct: 47.5, widthPct: 7.0, heightPct: 1.8 },
+          { str: 'No:', leftPct: 22.5, topPct: 47.5, widthPct: 3.0, heightPct: 1.8 },
+          { str: 'GHANA', leftPct: 50.0, topPct: 47.5, widthPct: 6.0, heightPct: 1.8 },
+          { str: 'CARD', leftPct: 56.5, topPct: 47.5, widthPct: 4.5, heightPct: 1.8 },
+          { str: '#:', leftPct: 61.5, topPct: 47.5, widthPct: 2.0, heightPct: 1.8 },
+        ],
+      },
+      {
+        text: '1. STUDENT NAME: GRADE:',
+        topPct: 51.5,
+        heightPct: 1.8,
+        minLeftPct: 15.0,
+        maxRightPct: 67.5,
+        items: [
+          { str: '1.', leftPct: 15.0, topPct: 51.5, widthPct: 2.0, heightPct: 1.8 },
+          { str: 'STUDENT', leftPct: 17.5, topPct: 51.5, widthPct: 7.0, heightPct: 1.8 },
+          { str: 'NAME:', leftPct: 25.0, topPct: 51.5, widthPct: 5.0, heightPct: 1.8 },
+          { str: 'GRADE:', leftPct: 62.0, topPct: 51.5, widthPct: 5.5, heightPct: 1.8 },
+        ],
+      },
+      {
+        text: '2. STUDENT NAME: GRADE:',
+        topPct: 55.5,
+        heightPct: 1.8,
+        minLeftPct: 15.0,
+        maxRightPct: 67.5,
+        items: [
+          { str: '2.', leftPct: 15.0, topPct: 55.5, widthPct: 2.0, heightPct: 1.8 },
+          { str: 'STUDENT', leftPct: 17.5, topPct: 55.5, widthPct: 7.0, heightPct: 1.8 },
+          { str: 'NAME:', leftPct: 25.0, topPct: 55.5, widthPct: 5.0, heightPct: 1.8 },
+          { str: 'GRADE:', leftPct: 62.0, topPct: 55.5, widthPct: 5.5, heightPct: 1.8 },
+        ],
+      },
+      {
+        text: '3. STUDENT NAME: GRADE:',
+        topPct: 59.5,
+        heightPct: 1.8,
+        minLeftPct: 15.0,
+        maxRightPct: 67.5,
+        items: [
+          { str: '3.', leftPct: 15.0, topPct: 59.5, widthPct: 2.0, heightPct: 1.8 },
+          { str: 'STUDENT', leftPct: 17.5, topPct: 59.5, widthPct: 7.0, heightPct: 1.8 },
+          { str: 'NAME:', leftPct: 25.0, topPct: 59.5, widthPct: 5.0, heightPct: 1.8 },
+          { str: 'GRADE:', leftPct: 62.0, topPct: 59.5, widthPct: 5.5, heightPct: 1.8 },
+        ],
+      },
+      {
+        text: '4. STUDENT NAME: GRADE:',
+        topPct: 63.5,
+        heightPct: 1.8,
+        minLeftPct: 15.0,
+        maxRightPct: 67.5,
+        items: [
+          { str: '4.', leftPct: 15.0, topPct: 63.5, widthPct: 2.0, heightPct: 1.8 },
+          { str: 'STUDENT', leftPct: 17.5, topPct: 63.5, widthPct: 7.0, heightPct: 1.8 },
+          { str: 'NAME:', leftPct: 25.0, topPct: 63.5, widthPct: 5.0, heightPct: 1.8 },
+          { str: 'GRADE:', leftPct: 62.0, topPct: 63.5, widthPct: 5.5, heightPct: 1.8 },
+        ],
+      },
+      {
+        text: '5. STUDENT NAME: GRADE:',
+        topPct: 67.5,
+        heightPct: 1.8,
+        minLeftPct: 15.0,
+        maxRightPct: 67.5,
+        items: [
+          { str: '5.', leftPct: 15.0, topPct: 67.5, widthPct: 2.0, heightPct: 1.8 },
+          { str: 'STUDENT', leftPct: 17.5, topPct: 67.5, widthPct: 7.0, heightPct: 1.8 },
+          { str: 'NAME:', leftPct: 25.0, topPct: 67.5, widthPct: 5.0, heightPct: 1.8 },
+          { str: 'GRADE:', leftPct: 62.0, topPct: 67.5, widthPct: 5.5, heightPct: 1.8 },
+        ],
+      },
+      {
+        text: 'PARENT / GUARDIAN SIGNATURE: DATE:',
+        topPct: 88.0,
+        heightPct: 1.8,
+        minLeftPct: 15.0,
+        maxRightPct: 75.0,
+        items: [
+          { str: 'PARENT / GUARDIAN', leftPct: 15.0, topPct: 88.0, widthPct: 15.0, heightPct: 1.8 },
+          { str: 'SIGNATURE:', leftPct: 30.5, topPct: 88.0, widthPct: 9.0, heightPct: 1.8 },
+          { str: 'DATE:', leftPct: 68.0, topPct: 88.0, widthPct: 5.0, heightPct: 1.8 },
+        ],
+      },
+    ];
+
+    const allItems = lines.flatMap((l) => l.items);
+    const pagesData = [{ pageNumber: 1, text: rawText, lines, items: allItems }];
+
+    const fields = detectTemplateFieldsFromPages([rawText], { pagesData });
+
+    // Expect all 15 fields detected: Parent Name, Contact No, Ghana Card, 5 Student Names, 5 Grades, Signature, Date
+    expect(fields.length).toBe(15);
+
+    // 1. Parent/Guardian Name placed inside table cell, NOT outside at 92%
+    const parentName = fields.find((f) => f.label.includes('Parent/Guardian Name'));
+    expect(parentName).toBeDefined();
+    expect(parentName!.leftPct).toBe(34.8); // 34.0 + 0.8
+    expect(parentName!.leftPct + parentName!.widthPct).toBeLessThanOrEqual(88);
+    expect(parentName!.topPct).toBeCloseTo(43.1, 0.5);
+    expect(parentName!.heightPct).toBeLessThanOrEqual(2.8);
+
+    // 2. Contact Number and Ghana Card Number
+    const contactNo = fields.find((f) => f.label.includes('Contact Number'));
+    const ghanaCard = fields.find((f) => f.label.includes('Ghana Card'));
+    expect(contactNo).toBeDefined();
+    expect(ghanaCard).toBeDefined();
+    expect(contactNo!.leftPct + contactNo!.widthPct).toBeLessThanOrEqual(ghanaCard!.leftPct);
+    expect(ghanaCard!.leftPct + ghanaCard!.widthPct).toBeLessThanOrEqual(88);
+
+    // 3. Student Names 1-5 strictly in Column 1 and with distinct row Y positions
+    for (let i = 1; i <= 5; i++) {
+      const studentField = fields.find((f) => f.label === `Student Name ${i}`);
+      const gradeField = fields.find((f) => f.label === `Grade ${i}`);
+
+      expect(studentField).toBeDefined();
+      expect(gradeField).toBeDefined();
+
+      // Student name in column 1 (starts ~30.8%, ends before grade starts at ~62%)
+      expect(studentField!.leftPct).toBeCloseTo(30.8, 0.5);
+      expect(studentField!.leftPct + studentField!.widthPct).toBeLessThanOrEqual(62.0);
+
+      // Grade in column 2 (starts ~68.3%, ends within 88% table bound)
+      expect(gradeField!.leftPct).toBeCloseTo(68.3, 0.5);
+      expect(gradeField!.leftPct + gradeField!.widthPct).toBeLessThanOrEqual(88.0);
+
+      // Sits vertically on its line, compact height to prevent cell border overlap
+      expect(studentField!.topPct).toBeCloseTo(51.1 + (i - 1) * 4.0, 0.5);
+      expect(studentField!.heightPct).toBeLessThanOrEqual(2.8);
+      expect(gradeField!.heightPct).toBeLessThanOrEqual(2.8);
+    }
+
+    // 4. Signature & Date
+    const signature = fields.find((f) => f.fieldType === 'signature');
+    const date = fields.find((f) => f.fieldType === 'date');
+    expect(signature).toBeDefined();
+    expect(date).toBeDefined();
+    expect(signature!.topPct).toBeCloseTo(87.5, 0.5);
+    expect(date!.topPct).toBeCloseTo(87.6, 0.5);
+  });
 });
+
 
 

@@ -53,6 +53,10 @@ import { SafeguardBlastModal } from './SafeguardBlastModal';
 import { useAudiences } from '@/lib/audience-hooks';
 import { getEffectiveContactTypes } from '@/lib/contact-type-actions';
 import type { InvitationRecipient } from '@/lib/contacts/contact-repository';
+import type { ComposerAudienceMode, AdHocContactItem, InternalUserRecipient } from '@/lib/types/composer-audience';
+import { AdHocContactPillsInput } from '@/components/messaging/AdHocContactPillsInput';
+import { SpreadsheetRecipientImporter } from '@/components/messaging/SpreadsheetRecipientImporter';
+import { InternalUserAudienceSelector } from '@/components/messaging/InternalUserAudienceSelector';
 
 interface CSVRecord {
     [key: string]: string;
@@ -91,6 +95,7 @@ const formSchema = z.object({
     templateId: z.string().optional(),
     senderProfileId: z.string().optional(),
     // Step 3 – Audience
+    audienceMode: z.enum(['entities', 'team', 'adhoc']).default('entities'),
     mode: z.enum(['single', 'bulk']).default('single'),
     selectedEntityIds: z.array(z.string()).default([]),
     contactScope: z.enum(['primary', 'signatories', 'roles', 'all']).default('primary'),
@@ -259,7 +264,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            channel: 'email', messageSourceType: 'template', mode: 'single',
+            channel: 'email', messageSourceType: 'template', audienceMode: 'entities', mode: 'single',
             selectedEntityIds: [], contactScope: 'primary', entityId: '',
             isScheduled: false, variables: {}, applyTagIds: [], triggerAutomationIds: [],
             tagSegmentInclude: [], tagSegmentExclude: [], tagSegmentLogic: 'OR',
@@ -272,6 +277,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
     const { watch, setValue, getValues, control } = form;
     const watchedChannel = watch('channel');
     const watchedTemplateId = watch('templateId');
+    const watchedAudienceMode = (watch('audienceMode') || 'entities') as ComposerAudienceMode;
     const watchedMode = watch('mode');
     const watchedIsScheduled = watch('isScheduled');
     const watchedSelectedEntityIds = watch('selectedEntityIds');
@@ -293,6 +299,9 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
     const [availableRoles, setAvailableRoles] = React.useState<{ key: string; label: string }[]>([]);
     const [filteredRecipients, setFilteredRecipients] = React.useState<InvitationRecipient[]>([]);
     const [isResolvingRecipients, setIsResolvingRecipients] = React.useState(false);
+    const [selectedTeamMembers, setSelectedTeamMembers] = React.useState<InternalUserRecipient[]>([]);
+    const [adhocContacts, setAdhocContacts] = React.useState<AdHocContactItem[]>([]);
+    const [adhocSubTab, setAdhocSubTab] = React.useState<'pills' | 'spreadsheet'>('pills');
 
     const { audiences: savedAudiences } = useAudiences(activeWorkspaceId);
 
@@ -693,8 +702,20 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                 if (data.messageSourceType === 'new' && !data.customBody) return;
                 setStep(3);
             }
-            else if (step === 3 && data.mode === 'single' && (audienceSource === 'individual' ? data.selectedEntityIds.length === 0 : filteredRecipients.length === 0)) return; // Wait for selection
-            else if (step === 3) setStep(4);
+            else if (step === 3) {
+                if (data.audienceMode === 'entities') {
+                    const hasEntities = audienceSource === 'individual' 
+                        ? data.selectedEntityIds.length > 0 
+                        : filteredRecipients.length > 0;
+                    if (!hasEntities && data.mode === 'single') return;
+                    if (data.mode === 'bulk' && !csvData.length) return;
+                } else if (data.audienceMode === 'team') {
+                    if (selectedTeamMembers.length === 0) return;
+                } else if (data.audienceMode === 'adhoc') {
+                    if (adhocContacts.filter(c => c.isValid).length === 0) return;
+                }
+                setStep(4);
+            }
             else if (step === 4) setStep(5);
             return;
         }
@@ -702,7 +723,242 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
         setIsSubmitting(true);
         const scheduledAt = data.isScheduled ? data.scheduledAt?.toISOString() : undefined;
         try {
-            if (data.mode === 'single') {
+            if (data.audienceMode === 'team') {
+                const totalCount = selectedTeamMembers.length;
+                if (!totalCount) throw new Error('Please select at least one teammate.');
+                setIsSending(true);
+                setSendProgress({ sent: 0, total: totalCount, currentEntity: '' });
+
+                interface FailedEntity {
+                    entityId: string;
+                    entityName: string;
+                    contactName?: string;
+                    contactDetail?: string;
+                    error: string;
+                }
+                interface SendResults {
+                    success: boolean;
+                    totalSent: number;
+                    totalFailed: number;
+                    failedEntities: FailedEntity[];
+                    logIds: string[];
+                }
+
+                const results: SendResults = { success: true, totalSent: 0, totalFailed: 0, failedEntities: [], logIds: [] };
+                const { sendRawMessage, sendMessage } = await import('@/lib/messaging-engine');
+
+                for (let i = 0; i < selectedTeamMembers.length; i++) {
+                    const m = selectedTeamMembers[i];
+                    const recipient = data.channel === 'email' ? m.email : m.phone;
+                    setSendProgress(p => ({ ...p, currentEntity: m.name }));
+
+                    if (!recipient) {
+                        results.totalFailed++;
+                        results.failedEntities.push({
+                            entityId: m.userId,
+                            entityName: 'Internal Team',
+                            contactName: m.name,
+                            error: `Missing contact detail (${data.channel === 'email' ? 'email' : 'phone'}).`,
+                        });
+                        setSendProgress(p => ({ ...p, sent: i + 1 }));
+                        continue;
+                    }
+
+                    try {
+                        let res: { success: boolean; error?: string; logId?: string };
+                        const teamVariables: Record<string, unknown> = {
+                            ...data.variables,
+                            contact_name: m.name,
+                            user_name: m.name,
+                            user_email: m.email,
+                            user_role: m.role || 'Member',
+                            user_department: m.department || '',
+                            channel: data.channel,
+                        };
+
+                        if (data.messageSourceType === 'template') {
+                            res = await sendMessage({
+                                templateId: data.templateId!,
+                                senderProfileId: data.senderProfileId!,
+                                recipient,
+                                variables: teamVariables,
+                                workspaceId: activeWorkspace?.id,
+                                scheduledAt,
+                                entityId: m.userId,
+                            });
+                        } else if (data.channel === 'whatsapp') {
+                            res = { success: false, error: 'WhatsApp requires selecting an approved template.' };
+                        } else {
+                            res = await sendRawMessage({
+                                channel: data.channel,
+                                recipient,
+                                body: data.customBody!,
+                                subject: data.channel === 'email' ? data.customSubject : undefined,
+                                senderProfileId: data.senderProfileId,
+                                variables: teamVariables,
+                                workspaceIds: [activeWorkspace?.id].filter(Boolean) as string[],
+                                scheduledAt,
+                            });
+                        }
+
+                        if (res.success) {
+                            results.totalSent++;
+                            if (res.logId) results.logIds.push(res.logId);
+                        } else {
+                            results.totalFailed++;
+                            results.failedEntities.push({
+                                entityId: m.userId,
+                                entityName: 'Internal Team',
+                                contactName: m.name,
+                                contactDetail: recipient,
+                                error: res.error || 'Unknown error',
+                            });
+                        }
+                    } catch (e: unknown) {
+                        results.totalFailed++;
+                        results.failedEntities.push({
+                            entityId: m.userId,
+                            entityName: 'Internal Team',
+                            contactName: m.name,
+                            contactDetail: recipient,
+                            error: e instanceof Error ? e.message : 'Unknown error',
+                        });
+                    }
+
+                    setSendProgress(p => ({ ...p, sent: i + 1 }));
+                    if (i < selectedTeamMembers.length - 1) await new Promise(r => setTimeout(r, 250));
+                }
+
+                setIsSending(false);
+                setSendSummary(results);
+                setShowSummaryDialog(true);
+                if (results.totalSent > 0) {
+                    setStep(1);
+                    form.reset();
+                    setSelectedTeamMembers([]);
+                }
+            } else if (data.audienceMode === 'adhoc') {
+                const validAdHoc = adhocContacts.filter(c => c.isValid);
+                if (!validAdHoc.length) throw new Error('Please provide at least one valid recipient.');
+
+                if (validAdHoc.length > 50 && data.messageSourceType === 'template' && data.templateId) {
+                    const bulkRecipients = validAdHoc.map(item => ({
+                        recipient: item.target,
+                        displayName: item.displayName,
+                        variables: {
+                            contact_name: item.displayName || 'Direct Recipient',
+                            ...(item.customVars || {}),
+                            ...data.variables,
+                            channel: data.channel,
+                        },
+                    }));
+                    const { jobId } = await createBulkMessageJob({
+                        templateId: data.templateId,
+                        senderProfileId: data.senderProfileId!,
+                        recipients: bulkRecipients,
+                        userId: user.uid,
+                    });
+                    setStep(6);
+                    startJobProcessing(jobId);
+                    return;
+                }
+
+                setIsSending(true);
+                setSendProgress({ sent: 0, total: validAdHoc.length, currentEntity: '' });
+
+                interface FailedEntity {
+                    entityId: string;
+                    entityName: string;
+                    contactName?: string;
+                    contactDetail?: string;
+                    error: string;
+                }
+                interface SendResults {
+                    success: boolean;
+                    totalSent: number;
+                    totalFailed: number;
+                    failedEntities: FailedEntity[];
+                    logIds: string[];
+                }
+
+                const results: SendResults = { success: true, totalSent: 0, totalFailed: 0, failedEntities: [], logIds: [] };
+                const { sendRawMessage, sendMessage } = await import('@/lib/messaging-engine');
+
+                for (let i = 0; i < validAdHoc.length; i++) {
+                    const item = validAdHoc[i];
+                    const recipient = item.target;
+                    setSendProgress(p => ({ ...p, currentEntity: item.displayName || item.target }));
+
+                    try {
+                        let res: { success: boolean; error?: string; logId?: string };
+                        const adhocVariables: Record<string, unknown> = {
+                            ...data.variables,
+                            contact_name: item.displayName || 'Direct Recipient',
+                            ...(item.customVars || {}),
+                            channel: data.channel,
+                        };
+
+                        if (data.messageSourceType === 'template') {
+                            res = await sendMessage({
+                                templateId: data.templateId!,
+                                senderProfileId: data.senderProfileId!,
+                                recipient,
+                                variables: adhocVariables,
+                                workspaceId: activeWorkspace?.id,
+                                scheduledAt,
+                            });
+                        } else if (data.channel === 'whatsapp') {
+                            res = { success: false, error: 'WhatsApp requires selecting an approved template.' };
+                        } else {
+                            res = await sendRawMessage({
+                                channel: data.channel,
+                                recipient,
+                                body: data.customBody!,
+                                subject: data.channel === 'email' ? data.customSubject : undefined,
+                                senderProfileId: data.senderProfileId,
+                                variables: adhocVariables,
+                                workspaceIds: [activeWorkspace?.id].filter(Boolean) as string[],
+                                scheduledAt,
+                            });
+                        }
+
+                        if (res.success) {
+                            results.totalSent++;
+                            if (res.logId) results.logIds.push(res.logId);
+                        } else {
+                            results.totalFailed++;
+                            results.failedEntities.push({
+                                entityId: item.id,
+                                entityName: item.displayName || 'Direct Contact',
+                                contactName: item.displayName,
+                                contactDetail: recipient,
+                                error: res.error || 'Unknown error',
+                            });
+                        }
+                    } catch (e: unknown) {
+                        results.totalFailed++;
+                        results.failedEntities.push({
+                            entityId: item.id,
+                            entityName: item.displayName || 'Direct Contact',
+                            contactName: item.displayName,
+                            contactDetail: recipient,
+                            error: e instanceof Error ? e.message : 'Unknown error',
+                        });
+                    }
+
+                    setSendProgress(p => ({ ...p, sent: i + 1 }));
+                    if (i < validAdHoc.length - 1) await new Promise(r => setTimeout(r, 250));
+                }
+
+                setIsSending(false);
+                setSendSummary(results);
+                setShowSummaryDialog(true);
+                if (results.totalSent > 0) {
+                    setStep(1);
+                    form.reset();
+                    setAdhocContacts([]);
+                }
+            } else if (data.mode === 'single') {
                 const totalCount = audienceSource === 'individual' ? data.selectedEntityIds.length : filteredRecipients.length;
                 if (!totalCount) throw new Error('Please select at least one recipient.');
                 setIsSending(true);
