@@ -8,7 +8,8 @@ import {
     ALargeSmall, Copy, Replace, Trash2, Key, ChevronDown, Bold, Italic, Underline,
     AlignVerticalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd,
     ChevronUp, ChevronDown as ChevronDownIcon, Tag, Database, Pipette,
-    CaseUpper, CaseSensitive, Baseline, AlignLeft, AlignCenter, AlignRight
+    CaseUpper, CaseSensitive, Baseline, AlignLeft, AlignCenter, AlignRight,
+    Check, X, Sparkles
 } from 'lucide-react';
 import { cn, resolveVariableValue, toTitleCase } from '@/lib/utils';
 import { useEditor } from '../EditorContext';
@@ -55,7 +56,7 @@ interface FieldOverlayProps {
 
 export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimensions }: FieldOverlayProps) {
   const { 
-    selectedFieldIds, namingFieldId, selectField, updateField, removeField: _removeField, duplicateFields, zoom, setIsFieldDeleteConfirmOpen, viewMode, entity
+    selectedFieldIds, namingFieldId, selectField, updateField, removeField, duplicateFields, zoom, setIsFieldDeleteConfirmOpen, viewMode, entity
   } = useEditor();
   
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ 
@@ -250,6 +251,49 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
         <>
  <div className="absolute -top-14 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-1 rounded-2xl border bg-background/95 backdrop-blur-sm p-1 shadow-2xl scale-90 sm:scale-100 origin-bottom">
             <TooltipProvider>
+              {field.isSuggestion && (
+                <>
+                  <div className="flex items-center gap-1 px-1">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            updateField(field.id, { isSuggestion: false });
+                          }}
+                          className="h-8 px-2 text-xs font-semibold rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 active:scale-[0.97] gap-1"
+                        >
+                          <Check className="h-3.5 w-3.5 stroke-[2.5]" />
+                          <span>Accept</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Accept AI Placement</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeField(field.id);
+                          }}
+                          className="h-8 px-2 text-xs font-semibold rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 active:scale-[0.97] gap-1"
+                        >
+                          <X className="h-3.5 w-3.5 stroke-[2.5]" />
+                          <span>Reject</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Reject AI Placement</TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <Separator orientation="vertical" className="h-6 mx-0.5 bg-border/50" />
+                </>
+              )}
  <div className="flex items-center gap-0.5 px-1">
                 {field.type !== 'variable' && (
                     <Tooltip>
@@ -510,7 +554,51 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
           ))}
         </>
       )}
- {field.isSuggestion && <span className="absolute -top-6 left-0 text-[10px] font-semibold tracking-wider bg-green-500 text-white px-2 py-0.5 rounded-full shadow-lg">AI Suggestion</span>}
+      {field.isSuggestion && (
+        <div 
+          className="absolute -top-7 left-0 z-30 flex items-center gap-1.5 bg-emerald-600 text-white text-[10px] font-semibold tracking-wider px-2 py-0.5 rounded-full shadow-lg select-none"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <Sparkles className="h-2.5 w-2.5 shrink-0" />
+          <span>AI Suggestion</span>
+          <div className="flex items-center gap-0.5 ml-1 pl-1 border-l border-white/20">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Accept suggestion"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      updateField(field.id, { isSuggestion: false });
+                    }}
+                    className="p-0.5 hover:bg-emerald-700/80 rounded transition-colors active:scale-90"
+                  >
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs py-1 px-2">Accept placement</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Reject suggestion"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeField(field.id);
+                    }}
+                    className="p-0.5 hover:bg-rose-600 rounded transition-colors active:scale-90"
+                  >
+                    <X className="h-3 w-3 stroke-[3]" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs py-1 px-2">Reject placement</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        </div>
+      )}
     </div>
   );
 });

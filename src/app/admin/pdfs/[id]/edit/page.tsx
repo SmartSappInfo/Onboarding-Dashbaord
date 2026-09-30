@@ -97,29 +97,6 @@ type FormData = z.infer<typeof formSchema>;
 
 const stepTransition = { initial: { opacity: 0, x: 20 }, animate: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -20 }, transition: { type: 'spring' as const, damping: 25, stiffness: 200 } };
 
-const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClick: (step: number) => void }) => {
-    const steps = [{ name: 'Details', icon: Settings2 }, { name: 'Builder', icon: Layout }, { name: 'Publish', icon: Share2 }];
-    return (
- <div className="flex justify-center items-center mb-12 max-w-2xl mx-auto px-4">
-            {steps.map((step, index) => {
-                const stepNum = index + 1;
-                const Icon = step.icon;
-                const isActive = currentStep === stepNum;
-                const isCompleted = currentStep > stepNum;
-                return (
-                    <React.Fragment key={step.name}>
- <button type="button" onClick={() => onStepClick(stepNum)} className="flex flex-col items-center group outline-none" disabled={index === steps.length - 1 && currentStep < 3}>
- <div className={cn('flex items-center justify-center w-10 h-10 rounded-2xl border-2 transition-all duration-300 shadow-sm group-hover:scale-110', isCompleted ? 'bg-primary border-primary text-primary-foreground' : isActive ? 'bg-primary/10 border-primary text-primary shadow-lg shadow-primary/10' : 'bg-background border-border text-muted-foreground')}><Icon className="w-5 h-5" /></div>
- <p className={cn('mt-3 text-[10px] font-semibold transition-colors', isActive || isCompleted ? 'text-primary' : 'text-muted-foreground opacity-60 group-hover:opacity-100')}>{step.name}</p>
-                        </button>
- {index < steps.length - 1 && (<div className="flex-1 mx-4 h-[2px] relative overflow-hidden bg-muted rounded-full"><motion.div initial={false} animate={{ width: isCompleted ? '100%' : '0%' }} className="absolute left-0 top-0 h-full bg-primary" /></div>)}
-                    </React.Fragment>
-                );
-            })}
-        </div>
-    );
-};
-
 export default function EditPdfPage() {
   const params = useParams();
   const router = useRouter();
@@ -136,7 +113,28 @@ export default function EditPdfPage() {
   const { provider: liveProvider, modelId: liveModelId } = useLiveAiModel();
 
   const [step, setStep] = React.useState(1);
-  const [fields, setFields] = React.useState<PDFFormField[]>([]);
+  const [fields, setFieldsState] = React.useState<PDFFormField[]>([]);
+  const { state: historyState, set: setHistory, undo: undoHistory, redo: redoHistory, canUndo, canRedo, reset: resetHistory } = useUndoRedo<PDFFormField[]>([]);
+  const isUndoRedoAction = React.useRef(false);
+
+  // Sync undo/redo history state back to fields state
+  React.useEffect(() => {
+    if (isUndoRedoAction.current) {
+      setFieldsState(historyState);
+      isUndoRedoAction.current = false;
+    }
+  }, [historyState]);
+
+  // Wrapped setFields that updates state and pushes new state frame to undo/redo stack
+  const setFields = React.useCallback<React.Dispatch<React.SetStateAction<PDFFormField[]>>>((action) => {
+    setFieldsState((prev) => {
+      const next = typeof action === 'function' ? action(prev) : action;
+      if (!isUndoRedoAction.current) {
+        setHistory(next);
+      }
+      return next;
+    });
+  }, [setHistory]);
   const [namingFieldId, setNamingFieldId] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
   const [isDetecting, setIsDetecting] = React.useState(false);
@@ -170,9 +168,7 @@ export default function EditPdfPage() {
   // loading the whole workspace (Phase 5.2).
   const selectedSchool = useEntityByDocId(watchedSchoolId);
 
-  const { state: _historyState, set: _setHistory, undo: undoHistory, redo: redoHistory, canUndo, canRedo, reset: resetHistory } = useUndoRedo<PDFFormField[]>([]);
 
-  const isProgrammaticChange = React.useRef(false);
   const _debouncedFields = useDebounce(fields, 800);
   const watchedForm = watch();
   const _debouncedForm = useDebounce(watchedForm, 2000);
@@ -287,7 +283,7 @@ export default function EditPdfPage() {
   React.useEffect(() => {
     if (pdf && !hasInitialized) {
       const initialFields = JSON.parse(JSON.stringify(pdf.fields || []));
-      setFields(initialFields);
+      setFieldsState(initialFields);
       setNamingFieldId(pdf.namingFieldId || null);
       resetHistory(initialFields);
       
@@ -348,8 +344,19 @@ export default function EditPdfPage() {
     setIsSaving(false);
   };
 
-  const handleUndo = () => { if (canUndo) { isProgrammaticChange.current = true; undoHistory(); } };
-  const handleRedo = () => { if (canRedo) { isProgrammaticChange.current = true; redoHistory(); } };
+  const handleUndo = React.useCallback(() => {
+    if (canUndo) {
+      isUndoRedoAction.current = true;
+      undoHistory();
+    }
+  }, [canUndo, undoHistory]);
+
+  const handleRedo = React.useCallback(() => {
+    if (canRedo) {
+      isUndoRedoAction.current = true;
+      redoHistory();
+    }
+  }, [canRedo, redoHistory]);
 
   const handleNext = async () => {
     let fieldsToValidate: Array<keyof FormData> = [];
@@ -442,16 +449,19 @@ export default function EditPdfPage() {
     <FormProvider {...form}>
       <div className="h-full flex flex-col">
         <TemplateVersionBar
+          documentName={watchedForm.name || pdf?.name || ''}
+          onDocumentNameChange={(val) => setValue('name', val, { shouldDirty: true })}
           currentVersion={currentDisplayVersion}
           isDraft={!latestPublishedVersion || !!latestDraftVersion}
           hasUnsavedChanges={form.formState.isDirty}
           isSaving={isSaving}
+          currentStep={step}
+          onStepClick={handleStepChange}
           onOpenHistory={() => setIsHistoryOpen(true)}
           onOpenPublish={() => setIsPublishOpen(true)}
         />
         <div className="flex-1 overflow-y-auto ">
-          <div className="w-full md:w-[95%] lg:w-[90%] mx-auto max-w-7xl p-8">
-            <Stepper currentStep={step} onStepClick={handleStepChange} />
+          <div className="w-full md:w-[95%] lg:w-[90%] mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
  <form onSubmit={form.handleSubmit((d) => performSave(d, true))} className="pb-12">
                         <AnimatePresence mode="wait">
                             {step === 1 && (

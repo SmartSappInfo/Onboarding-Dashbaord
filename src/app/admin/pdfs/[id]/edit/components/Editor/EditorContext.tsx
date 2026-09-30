@@ -199,10 +199,10 @@ export function EditorProvider({
     setFields(prev => prev.map(f => updates[f.id] ? { ...f, position: updates[f.id] } : f));
   }, [fields, selectedFieldIds, setFields]);
 
-  // Keyboard Nudge & Delete Logic
+  // Keyboard Nudge, Delete & Global Undo/Redo Logic
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (selectedFieldIds.length === 0 || viewMode === 'preview') return;
+      if (viewMode === 'preview') return;
 
       const activeEl = document.activeElement;
       const isTyping = 
@@ -211,6 +211,24 @@ export function EditorProvider({
         (activeEl as HTMLElement)?.isContentEditable;
 
       if (isTyping) return;
+
+      // Global Canvas Undo & Redo (Ctrl+Z / Cmd+Z, Ctrl+Y / Cmd+Shift+Z)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          if (canRedo) redo();
+        } else {
+          if (canUndo) undo();
+        }
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        if (canRedo) redo();
+        return;
+      }
+
+      if (selectedFieldIds.length === 0) return;
 
       // Nudge Logic
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
@@ -246,7 +264,7 @@ export function EditorProvider({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedFieldIds, setFields, viewMode]);
+  }, [selectedFieldIds, setFields, viewMode, undo, redo, canUndo, canRedo]);
 
   const value = React.useMemo(() => ({
     pdf, pdfDoc, setPdfDoc, entity, fields, selectedFieldIds, zoom, numPages, activePageNumber, isSidebarCollapsed, sidebarTab, isFullScreen, viewMode, namingFieldId, marquee, isDetecting,

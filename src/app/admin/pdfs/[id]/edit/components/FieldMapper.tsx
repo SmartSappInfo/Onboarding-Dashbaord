@@ -9,7 +9,7 @@ import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/comp
 import { 
     Text, Signature, Calendar, ChevronDownSquare, Phone, Mail, Clock, Camera, 
     Undo, Redo, Sparkles, Loader2, ZoomIn, ZoomOut, Eye, Maximize2, Minimize2, XCircle, Tag,
-    Plus, Trash2, Database, Calculator
+    Plus, Trash2, Database, Calculator, Check, X
 } from 'lucide-react';
 import { TemplateAiFieldSuggester } from '@/app/admin/documents/templates/components/TemplateAiFieldSuggester';
 import { useToast } from '@/hooks/use-toast';
@@ -80,6 +80,28 @@ function EditorLayout() {
 
     const [isAiSuggesterOpen, setIsAiSuggesterOpen] = React.useState(false);
 
+    const suggestedFields = React.useMemo(() => fields.filter((f) => f.isSuggestion), [fields]);
+
+    const handleAcceptAllSuggestions = () => {
+        const count = suggestedFields.length;
+        setFields((prev) =>
+            prev.map((f) => (f.isSuggestion ? { ...f, isSuggestion: false } : f))
+        );
+        toast({
+            title: 'AI Fields Accepted',
+            description: `Accepted all ${count} suggested field${count === 1 ? '' : 's'}.`,
+        });
+    };
+
+    const handleRejectAllSuggestions = () => {
+        const count = suggestedFields.length;
+        setFields((prev) => prev.filter((f) => !f.isSuggestion));
+        toast({
+            title: 'AI Fields Rejected',
+            description: `Removed ${count} suggested field${count === 1 ? '' : 's'}.`,
+        });
+    };
+
     const handleApplyAiFields = (accepted: AiFieldSuggestion[]) => {
         const newFields: LocalPDFFormField[] = accepted.map((sug) => ({
             id: `fld_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -112,6 +134,46 @@ function EditorLayout() {
         )}>
  <div className="flex-1 relative min-w-0 flex flex-col overflow-hidden">
                 <DocumentCanvas />
+
+                {/* Floating AI Suggestion Review Dock */}
+                {suggestedFields.length > 0 && !isPreviewing && (
+                    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[80] flex items-center gap-3 px-4 py-2 rounded-2xl bg-background/95 backdrop-blur-md border border-emerald-500/30 shadow-2xl animate-in fade-in slide-in-from-top-3 max-w-[90vw] sm:max-w-none">
+                        <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                            <div className="p-1.5 rounded-lg bg-emerald-500/10 shrink-0">
+                                <Sparkles className="h-4 w-4" />
+                            </div>
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
+                                <span className="text-xs font-bold text-foreground">
+                                    {suggestedFields.length} AI Field Placement{suggestedFields.length === 1 ? '' : 's'}
+                                </span>
+                                <span className="hidden sm:inline text-xs text-muted-foreground">
+                                    Review placements on canvas
+                                </span>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2 pl-2 border-l border-border/60">
+                            <Button
+                                type="button"
+                                size="sm"
+                                onClick={handleAcceptAllSuggestions}
+                                className="h-8 px-3 text-xs font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm active:scale-[0.97] gap-1.5"
+                            >
+                                <Check className="h-3.5 w-3.5 stroke-[2.5]" />
+                                <span>Accept All</span>
+                            </Button>
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={handleRejectAllSuggestions}
+                                className="h-8 px-3 text-xs font-semibold rounded-xl hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 active:scale-[0.97] gap-1.5"
+                            >
+                                <X className="h-3.5 w-3.5 stroke-[2.5]" />
+                                <span>Reject All</span>
+                            </Button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Vertical Toolbar - Unified Actions */}
                 {!isPreviewing && (
