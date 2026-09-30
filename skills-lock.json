@@ -143,6 +143,12 @@
       "sourceType": "github",
       "computedHash": "9faeba2296cd2696b5c2407392fced5524812da07d0a2ec259b524d97bec8aae"
     },
+    "mcp-builder": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/mcp-builder/SKILL.md",
+      "computedHash": "826e46adf81e1372282e205c34e1a2ee876e72148007726e4a2512599d2fef7b"
+    },
     "next-best-practices": {
       "source": "vercel-labs/next-skills",
       "sourceType": "github",
