@@ -12,6 +12,8 @@
  *    - Hosts internal document name (no version number v1.0, removed "Approved production template").
  *    - Inline pencil editing allows renaming directly in the header.
  *    - Thinner stepper embedded in the title bar replaces the bulky page-body stepper.
+ *    - Mobile Optimization: Action buttons are unified into a standard 3-vertical-dots (kebab)
+ *      menu positioned directly in-line with the internal document name on mobile viewports.
  * 3. Mobile-First & Accessibility (Rule 7):
  *    - Touch targets >= 44x44px (`min-h-[44px]` on mobile).
  *    - Tactile micro-interactions via `active:scale-[0.97]`.
@@ -29,11 +31,18 @@ import {
   History, 
   UploadCloud, 
   CheckCircle2, 
-  AlertCircle 
+  AlertCircle,
+  MoreVertical,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import type { TemplateVersion } from '@/lib/types/document-signing';
 
@@ -94,111 +103,148 @@ export function TemplateVersionBar({
   return (
     <div
       className={cn(
-        'w-full bg-background/95 backdrop-blur-md border-b border-border/60 px-4 py-2 flex flex-wrap items-center justify-between gap-3 shadow-xs min-h-[52px]',
+        'w-full bg-background/95 backdrop-blur-md border-b border-border/60 px-4 py-2.5 flex flex-col md:flex-row items-center justify-between gap-2.5 sm:gap-3 shadow-xs min-h-[52px]',
         className
       )}
       role="region"
       aria-label="Document Title & Workflow Bar"
     >
-      {/* Left: Document Name with Pencil Editing & Status Badge */}
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-          <FileText className="w-4 h-4" aria-hidden="true" />
-        </div>
-
-        {isEditingName ? (
-          <div className="flex items-center gap-1.5">
-            <Input
-              autoFocus
-              aria-label="Edit document name"
-              value={tempName}
-              onChange={(e) => setTempName(e.target.value)}
-              onBlur={handleSaveName}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleSaveName();
-                if (e.key === 'Escape') handleCancelName();
-              }}
-              className="h-8 text-xs font-semibold px-2 w-44 sm:w-64 rounded-lg bg-background border-primary/50"
-              placeholder="Document name..."
-            />
-            <button
-              type="button"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={handleSaveName}
-              title="Save name"
-              className="h-8 w-8 flex items-center justify-center rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.97] transition-all"
-            >
-              <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-            </button>
-            <button
-              type="button"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={handleCancelName}
-              title="Cancel"
-              className="h-8 w-8 flex items-center justify-center rounded-lg border hover:bg-muted text-muted-foreground active:scale-[0.97] transition-all"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
+      {/* ── Row 1 on Mobile / Left on Desktop: Document Name, Pencil Editing, Status Badge, & Mobile 3-Dots Menu ── */}
+      <div className="flex items-center justify-between w-full md:w-auto gap-2.5 sm:gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <FileText className="w-4 h-4" aria-hidden="true" />
           </div>
-        ) : (
-          <div className="flex items-center gap-2 flex-wrap">
-            <span
-              className="text-sm font-semibold text-foreground tracking-tight truncate max-w-[150px] sm:max-w-[220px] md:max-w-[280px]"
-              title={documentName || 'Untitled Document'}
-            >
-              {documentName || 'Untitled Document'}
-            </span>
 
-            {onDocumentNameChange && (
+          {isEditingName ? (
+            <div className="flex items-center gap-1.5">
+              <Input
+                autoFocus
+                aria-label="Edit document name"
+                value={tempName}
+                onChange={(e) => setTempName(e.target.value)}
+                onBlur={handleSaveName}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSaveName();
+                  if (e.key === 'Escape') handleCancelName();
+                }}
+                className="h-8 text-xs font-semibold px-2 w-44 sm:w-64 rounded-lg bg-background border-primary/50"
+                placeholder="Document name..."
+              />
               <button
                 type="button"
-                onClick={() => setIsEditingName(true)}
-                title="Rename document"
-                className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/70 active:scale-[0.97] transition-all"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={handleSaveName}
+                title="Save name"
+                className="h-8 w-8 flex items-center justify-center rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.97] transition-all"
               >
-                <Pencil className="w-3.5 h-3.5" />
+                <Check className="w-3.5 h-3.5 stroke-[2.5]" />
               </button>
-            )}
-
-            <Badge
-              variant="outline"
-              className={cn(
-                'text-[10px] font-medium px-2 py-0.5 rounded-full border',
-                isDraft
-                  ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30'
-                  : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30'
-              )}
-            >
-              {isDraft ? 'Draft' : 'Published'}
-            </Badge>
-          </div>
-        )}
-
-        {/* Unsaved changes / Saved indicator */}
-        <div className="hidden xl:flex items-center gap-1.5 pl-3 border-l border-border/60 text-xs">
-          {isSaving ? (
-            <span className="flex items-center gap-1 text-muted-foreground">
-              <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
-              Saving...
-            </span>
-          ) : hasUnsavedChanges ? (
-            <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium">
-              <AlertCircle className="w-3.5 h-3.5" aria-hidden="true" />
-              Unsaved edits
-            </span>
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={handleCancelName}
+                title="Cancel"
+                className="h-8 w-8 flex items-center justify-center rounded-lg border hover:bg-muted text-muted-foreground active:scale-[0.97] transition-all"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
           ) : (
-            <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
-              <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
-              All changes saved
-            </span>
+            <div className="flex items-center gap-2 flex-wrap min-w-0">
+              <span
+                className="text-sm font-semibold text-foreground tracking-tight truncate max-w-[140px] xs:max-w-[180px] sm:max-w-[220px] md:max-w-[280px]"
+                title={documentName || 'Untitled Document'}
+              >
+                {documentName || 'Untitled Document'}
+              </span>
+
+              {onDocumentNameChange && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditingName(true)}
+                  title="Rename document"
+                  className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/70 active:scale-[0.97] transition-all"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              )}
+
+              <Badge
+                variant="outline"
+                className={cn(
+                  'text-[10px] font-medium px-2 py-0.5 rounded-full border shrink-0',
+                  isDraft
+                    ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30'
+                    : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30'
+                )}
+              >
+                {isDraft ? 'Draft' : 'Published'}
+              </Badge>
+            </div>
           )}
+
+          {/* Unsaved changes / Saved indicator (Large desktop view) */}
+          <div className="hidden xl:flex items-center gap-1.5 pl-3 border-l border-border/60 text-xs shrink-0">
+            {isSaving ? (
+              <span className="flex items-center gap-1 text-muted-foreground">
+                <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
+                Saving...
+              </span>
+            ) : hasUnsavedChanges ? (
+              <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium">
+                <AlertCircle className="w-3.5 h-3.5" aria-hidden="true" />
+                Unsaved edits
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+                <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
+                All changes saved
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* ── Mobile 3-Dots (Doughnut/Kebab) Action Menu ── */}
+        {/* Placed directly in-line with the internal document name on mobile (< md) */}
+        <div className="flex md:hidden items-center shrink-0">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label="Document actions"
+                className="min-h-[44px] min-w-[44px] p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80 active:scale-[0.97] transition-all"
+              >
+                <MoreVertical className="w-5 h-5" aria-hidden="true" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52 rounded-xl shadow-lg border-border/60 p-1.5">
+              <DropdownMenuItem
+                onClick={onOpenHistory}
+                className="flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium rounded-lg cursor-pointer active:scale-[0.98] transition-all"
+              >
+                <History className="w-4 h-4 text-muted-foreground shrink-0" />
+                <span>Version History</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={onOpenPublish}
+                disabled={isSaving}
+                className="flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold rounded-lg cursor-pointer text-primary focus:text-primary active:scale-[0.98] transition-all"
+              >
+                <UploadCloud className="w-4 h-4 shrink-0" />
+                <span>Publish Version</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
-      {/* Center: Thinner Workflow Stepper */}
+      {/* ── Row 2 on Mobile / Center on Desktop: Thinner Workflow Stepper ── */}
       <nav
         aria-label="Workflow Steps"
-        className="flex items-center bg-muted/40 p-0.5 rounded-xl border border-border/60 gap-0.5"
+        className="flex items-center justify-center bg-muted/40 p-0.5 rounded-xl border border-border/60 gap-0.5 max-w-full overflow-x-auto scrollbar-none"
       >
         {STEPS.map((stepItem, idx) => {
           const isActive = currentStep === stepItem.stepNum;
@@ -209,7 +255,7 @@ export function TemplateVersionBar({
                 type="button"
                 onClick={() => onStepClick(stepItem.stepNum)}
                 className={cn(
-                  'px-3 sm:px-2.5 py-2 sm:py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all select-none min-h-[44px] sm:min-h-[32px] active:scale-[0.97]',
+                  'px-3 sm:px-2.5 py-1.5 sm:py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all select-none min-h-[44px] sm:min-h-[32px] active:scale-[0.97]',
                   isActive
                     ? 'bg-background text-primary font-semibold shadow-xs ring-1 ring-border/50'
                     : isCompleted
@@ -239,8 +285,8 @@ export function TemplateVersionBar({
         })}
       </nav>
 
-      {/* Right: Actions */}
-      <div className="flex items-center gap-2">
+      {/* ── Desktop-Only Actions (Hidden on mobile where 3-dots menu is used) ── */}
+      <div className="hidden md:flex items-center gap-2 shrink-0">
         <Button
           type="button"
           variant="outline"
@@ -249,8 +295,7 @@ export function TemplateVersionBar({
           className="min-h-[44px] sm:min-h-[34px] px-3 text-xs font-medium text-muted-foreground hover:text-foreground active:scale-[0.97] transition-all"
         >
           <History className="w-4 h-4 mr-1.5 shrink-0" aria-hidden="true" />
-          <span className="hidden sm:inline">Version History</span>
-          <span className="sm:hidden">History</span>
+          <span>Version History</span>
         </Button>
 
         <Button
@@ -261,8 +306,7 @@ export function TemplateVersionBar({
           className="min-h-[44px] sm:min-h-[34px] px-3.5 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.97] transition-all shadow-sm"
         >
           <UploadCloud className="w-4 h-4 mr-1.5 shrink-0" aria-hidden="true" />
-          <span className="hidden sm:inline">Publish Version</span>
-          <span className="sm:hidden">Publish</span>
+          <span>Publish Version</span>
         </Button>
       </div>
     </div>
