@@ -43,7 +43,10 @@ import {
     RotateCcw,
     MoreVertical,
     AlertTriangle,
-    Layers
+    Layers,
+    Pencil,
+    X,
+    XCircle
 } from 'lucide-react';
 import { useCallModal } from '@/context/CallModalContext';
 import { Badge } from '@/components/ui/badge';
@@ -87,7 +90,6 @@ import DealLineItemsTab from './components/DealLineItemsTab';
 import DealContractsCard from './components/DealContractsCard';
 import DealAiIntelligencePanel from './components/DealAiIntelligencePanel';
 import DealQuickActions from './components/DealQuickActions';
-import { DealStageStepper } from './components/DealStageStepper';
 import { PageContainer } from '@/components/ui/page-container';
 import { formatCurrency, getCurrencySymbol } from '@/lib/currency-utils';
 
@@ -119,6 +121,12 @@ export default function DealDetailsPage() {
     const [assignedToUserId, setAssignedToUserId] = React.useState('');
     const [expectedCloseDate, setExpectedCloseDate] = React.useState('');
     const [isSaving, setIsSaving] = React.useState(false);
+
+    // Inline deal title pencil editing state
+    const [isEditingTitle, setIsEditingTitle] = React.useState(false);
+    const [titleDraft, setTitleDraft] = React.useState('');
+    const [isRenamingDeal, setIsRenamingDeal] = React.useState(false);
+    const titleInputRef = React.useRef<HTMLInputElement>(null);
 
     // Call Centre context integration (Phase 3 CRM Call Centre & Interactive Scripts)
     const { openCallModal } = useCallModal();
@@ -539,6 +547,7 @@ export default function DealDetailsPage() {
     React.useEffect(() => {
         if (deal) {
             setName(deal.name || '');
+            setTitleDraft(deal.name || '');
             setValue(deal.value?.toString() || '0');
             setDescription(deal.description || '');
             setStatus(deal.status || 'open');
@@ -624,6 +633,66 @@ export default function DealDetailsPage() {
         setPrimaryFocalContactId(prev => (prev === id ? '' : id));
         // Ensure that designating as deal owner also includes the contact in focal contacts
         setSelectedFocalContactIds(prev => prev.includes(id) ? prev : [...prev, id]);
+    };
+
+    /**
+     * Inline Deal Name Pencil Editing Handlers (Rule 10):
+     * - Provides prominent, inline editable title with dedicated pencil icon.
+     * - Synchronizes directly with Firestore via updateDealDetailsAction with actionable error feedback.
+     * - Keeps local form dirty-state and state tree coherent.
+     */
+    const handleStartEditingTitle = () => {
+        setTitleDraft(name || deal?.name || '');
+        setIsEditingTitle(true);
+        setTimeout(() => {
+            titleInputRef.current?.focus();
+            titleInputRef.current?.select();
+        }, 50);
+    };
+
+    const handleSaveTitle = async () => {
+        if (!deal) return;
+        const trimmed = titleDraft.trim();
+        if (!trimmed) {
+            toast({
+                variant: 'destructive',
+                title: 'Invalid Name',
+                description: 'Deal name cannot be empty.',
+            });
+            return;
+        }
+
+        if (trimmed === (deal.name || '').trim()) {
+            setName(trimmed);
+            setIsEditingTitle(false);
+            return;
+        }
+
+        setIsRenamingDeal(true);
+        try {
+            const res = await updateDealDetailsAction(deal.id, { name: trimmed });
+            if (res.error) throw new Error(res.error);
+            setName(trimmed);
+            setIsEditingTitle(false);
+            toast({
+                title: 'Deal Renamed',
+                description: `Deal name updated to "${trimmed}".`,
+                actionConfig: {
+                    path: `/admin/deals/${deal.id}`,
+                    label: 'View Deal',
+                },
+            });
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Failed to rename deal';
+            toast({ variant: 'destructive', title: 'Rename Failed', description: msg });
+        } finally {
+            setIsRenamingDeal(false);
+        }
+    };
+
+    const handleCancelEditingTitle = () => {
+        setTitleDraft(name);
+        setIsEditingTitle(false);
     };
 
     const [isStageUpdating, setIsStageUpdating] = React.useState(false);
@@ -859,17 +928,82 @@ export default function DealDetailsPage() {
                 <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-card/40 backdrop-blur-xl shadow-lg">
                     <div className="p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                         <div className="space-y-3 flex-1 min-w-0">
-                            {/* Inline-editable Deal Title & Status/MRR Badges */}
+                            {/* Inline-editable Deal Title & Status/MRR Badges with Pencil Editing Style (Rule 10) */}
                             <div className="flex items-center gap-3 flex-wrap">
-                                <div className="flex items-center gap-2 group/title flex-1 min-w-[260px] max-w-2xl">
-                                    <Input
-                                        value={name}
-                                        onChange={e => setName(e.target.value)}
-                                        placeholder="Enter deal title..."
-                                        aria-label="Deal title"
-                                        className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground bg-transparent hover:bg-muted/30 focus:bg-background border border-transparent hover:border-border/60 focus:border-primary/50 rounded-xl px-2 py-1 h-auto transition-all focus-visible:ring-2 focus-visible:ring-primary/20 shadow-none w-full"
-                                    />
-                                </div>
+                                {!isEditingTitle ? (
+                                    <div className="flex items-center gap-2 group/dealname min-w-0 max-w-2xl py-1">
+                                        <h1
+                                            onClick={handleStartEditingTitle}
+                                            title="Click to rename deal"
+                                            className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-foreground hover:text-primary transition-colors cursor-pointer select-text truncate"
+                                        >
+                                            {name || deal.name || 'Unnamed Deal'}
+                                        </h1>
+                                        <button
+                                            type="button"
+                                            onClick={handleStartEditingTitle}
+                                            title="Edit deal name"
+                                            aria-label="Edit deal name"
+                                            className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground/60 hover:text-primary hover:bg-muted/70 transition-all shrink-0 active:scale-95 cursor-pointer"
+                                        >
+                                            <Pencil className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2 min-w-[280px] sm:min-w-[380px] max-w-2xl flex-1">
+                                        <Input
+                                            ref={titleInputRef}
+                                            value={titleDraft}
+                                            onChange={e => setTitleDraft(e.target.value)}
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    handleSaveTitle();
+                                                } else if (e.key === 'Escape') {
+                                                    e.preventDefault();
+                                                    handleCancelEditingTitle();
+                                                }
+                                            }}
+                                            disabled={isRenamingDeal}
+                                            placeholder="Enter deal title..."
+                                            aria-label="Edit deal name"
+                                            className="text-2xl sm:text-3xl font-extrabold tracking-tight h-11 px-3 rounded-xl bg-background border-primary shadow-xs focus-visible:ring-2 focus-visible:ring-primary/20 w-full"
+                                        />
+                                        <Button
+                                            type="button"
+                                            size="icon"
+                                            variant="default"
+                                            disabled={isRenamingDeal}
+                                            onClick={handleSaveTitle}
+                                            className="h-10 w-10 shrink-0 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 cursor-pointer"
+                                            title="Save deal name"
+                                        >
+                                            {isRenamingDeal ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 stroke-[2.5]" />}
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            size="icon"
+                                            variant="ghost"
+                                            disabled={isRenamingDeal}
+                                            onClick={handleCancelEditingTitle}
+                                            className="h-10 w-10 shrink-0 rounded-xl hover:bg-muted text-muted-foreground active:scale-95 cursor-pointer"
+                                            title="Cancel"
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                )}
+
+                                {deal.status === 'won' && (
+                                    <Badge variant="outline" className="h-6 px-2.5 text-[10px] font-bold border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 gap-1">
+                                        <CheckCircle2 className="h-3 w-3" /> Won
+                                    </Badge>
+                                )}
+                                {deal.status === 'lost' && (
+                                    <Badge variant="outline" className="h-6 px-2.5 text-[10px] font-bold border-rose-500/30 text-rose-600 dark:text-rose-400 bg-rose-500/10 gap-1">
+                                        <XCircle className="h-3 w-3" /> Lost
+                                    </Badge>
+                                )}
                                 {deal.isArchived && (
                                     <Badge variant="outline" className="h-6 px-2.5 text-[10px] font-bold border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10 gap-1">
                                         <Archive className="h-3 w-3" /> Archived
@@ -922,57 +1056,119 @@ export default function DealDetailsPage() {
                             </div>
                         </div>
 
-                        {/* Opportunity Lifecycle Actions Toolbar */}
+                        {/* Stage Selector Dropdown & More Actions Menu (Replaces Duplicate & Merge per user specification) */}
                         <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setIsDuplicateModalOpen(true)}
-                                className="h-9 px-3.5 rounded-xl font-bold text-xs gap-1.5 border-border/80 hover:bg-primary/5"
+                            <Select
+                                value={stageId}
+                                onValueChange={(newStageId) => handleDirectStageChange(newStageId)}
+                                disabled={isSaving || isStageUpdating}
                             >
-                                <Copy className="h-3.5 w-3.5 text-primary" /> Duplicate
-                            </Button>
-
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setIsMergeModalOpen(true)}
-                                className="h-9 px-3.5 rounded-xl font-bold text-xs gap-1.5 border-border/80 hover:bg-primary/5"
-                            >
-                                <GitMerge className="h-3.5 w-3.5 text-primary" /> Merge...
-                            </Button>
+                                <SelectTrigger 
+                                    className="h-9 min-w-[160px] sm:min-w-[200px] rounded-xl font-bold text-xs gap-2 border-border/80 bg-background/90 hover:bg-muted/50 transition-all shadow-xs"
+                                    aria-label="Change deal stage"
+                                >
+                                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold shrink-0">Stage:</span>
+                                    <SelectValue placeholder="Select Stage" />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl min-w-[210px]">
+                                    {stageOptions.map((stg) => (
+                                        <SelectItem key={stg.id} value={stg.id} className="text-xs font-semibold rounded-lg py-2">
+                                            <div className="flex items-center gap-2">
+                                                <span 
+                                                    className="h-2 w-2 rounded-full shrink-0" 
+                                                    style={{ backgroundColor: stg.color || '#3b82f6' }} 
+                                                />
+                                                <span className="truncate">{stg.name}</span>
+                                                {stg.id === stageId && (
+                                                    <span className="text-[10px] text-muted-foreground ml-auto font-normal shrink-0">(Current)</span>
+                                                )}
+                                            </div>
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
 
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl">
+                                    <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-border/80 hover:bg-muted/60 shrink-0" title="More Actions">
                                         <MoreVertical className="h-4 w-4" />
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="rounded-2xl w-48 p-1.5">
+                                <DropdownMenuContent align="end" className="rounded-2xl w-52 p-1.5 shadow-xl">
+                                    <DropdownMenuItem
+                                        onClick={() => setIsDuplicateModalOpen(true)}
+                                        className="rounded-xl p-2.5 gap-2.5 text-xs font-semibold cursor-pointer"
+                                    >
+                                        <Copy className="h-4 w-4 text-primary shrink-0" />
+                                        <span>Duplicate Deal</span>
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuItem
+                                        onClick={() => setIsMergeModalOpen(true)}
+                                        className="rounded-xl p-2.5 gap-2.5 text-xs font-semibold cursor-pointer"
+                                    >
+                                        <GitMerge className="h-4 w-4 text-primary shrink-0" />
+                                        <span>Merge Deal...</span>
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuSeparator />
+
+                                    {deal.status !== 'won' && (
+                                        <DropdownMenuItem
+                                            onClick={() => handleDirectStatusChange('won')}
+                                            className="rounded-xl p-2.5 gap-2.5 text-xs font-semibold text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10 cursor-pointer"
+                                        >
+                                            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                                            <span>Mark as Closed Won</span>
+                                        </DropdownMenuItem>
+                                    )}
+
+                                    {deal.status !== 'lost' && (
+                                        <DropdownMenuItem
+                                            onClick={() => handleDirectStatusChange('lost')}
+                                            className="rounded-xl p-2.5 gap-2.5 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-500/10 cursor-pointer"
+                                        >
+                                            <XCircle className="h-4 w-4 text-rose-600 shrink-0" />
+                                            <span>Mark as Closed Lost</span>
+                                        </DropdownMenuItem>
+                                    )}
+
+                                    {deal.status !== 'open' && (
+                                        <DropdownMenuItem
+                                            onClick={() => handleDirectStatusChange('open')}
+                                            className="rounded-xl p-2.5 gap-2.5 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-500/10 cursor-pointer"
+                                        >
+                                            <RotateCcw className="h-4 w-4 text-blue-600 shrink-0" />
+                                            <span>Reopen Deal as Active</span>
+                                        </DropdownMenuItem>
+                                    )}
+
+                                    <DropdownMenuSeparator />
+
                                     <DropdownMenuItem
                                         onClick={handleToggleArchive}
-                                        className="rounded-xl p-2 gap-2 text-xs font-semibold cursor-pointer"
+                                        className="rounded-xl p-2.5 gap-2.5 text-xs font-semibold cursor-pointer"
                                     >
                                         {deal.isArchived ? (
                                             <>
-                                                <RotateCcw className="h-3.5 w-3.5 text-primary" />
+                                                <RotateCcw className="h-4 w-4 text-primary shrink-0" />
                                                 <span>Restore Deal</span>
                                             </>
                                         ) : (
                                             <>
-                                                <Archive className="h-3.5 w-3.5 text-muted-foreground" />
+                                                <Archive className="h-4 w-4 text-muted-foreground shrink-0" />
                                                 <span>Archive Deal</span>
                                             </>
                                         )}
                                     </DropdownMenuItem>
+
                                     <DropdownMenuSeparator />
+
                                     <DropdownMenuItem
                                         onClick={handleDeleteDeal}
-                                        className="rounded-xl p-2 gap-2 text-xs font-semibold text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
+                                        className="rounded-xl p-2.5 gap-2.5 text-xs font-semibold text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
                                     >
-                                        <Trash2 className="h-3.5 w-3.5" />
+                                        <Trash2 className="h-4 w-4 shrink-0" />
                                         <span>Delete Deal</span>
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
@@ -980,21 +1176,18 @@ export default function DealDetailsPage() {
                         </div>
                     </div>
 
-                    {/* Visual Deal Stage Stepper chevron progress track */}
-                    <div className="border-t border-border/40 px-6 py-4 bg-muted/10">
-                        <DealStageStepper
-                            stages={stageOptions}
-                            currentStageId={stageId}
-                            status={status}
-                            onSelectStage={handleDirectStageChange}
-                            onSelectStatus={handleDirectStatusChange}
-                            disabled={isSaving || isStageUpdating}
+                    {/* ARCHITECTURAL POINTER (Rule 10 Unified Deal Header Footer):
+                        - Removed stages buttons bar per user specification.
+                        - Moved Call & Quick Log interaction triggers to the bottom of the line in the deal title hero area.
+                    */}
+                    <div className="border-t border-border/40 px-6 py-3 bg-muted/10">
+                        <DealQuickActions 
+                            deal={deal} 
+                            contacts={entityContacts} 
+                            className="p-0 border-0 bg-transparent shadow-none rounded-none" 
                         />
                     </div>
                 </div>
-
-                {/* Deal Multi-Channel Quick Actions Bar (Phase 3 CRM Activity Graph) */}
-                <DealQuickActions deal={deal} contacts={entityContacts} />
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2">
@@ -1527,11 +1720,17 @@ export default function DealDetailsPage() {
 
                     <div className="lg:col-span-1 space-y-6">
                         {/* Upcoming Tasks */}
-                        <Card className="border-none shadow-sm rounded-2xl bg-card overflow-hidden">
-                            <CardHeader className="border-b bg-card/20 pb-4 px-6 pt-5 flex flex-row items-center justify-between">
-                                <CardTitle className="text-[11px] font-semibold text-primary flex items-center gap-2"><CheckCircle2 className="h-4 w-4" /> Upcoming Tasks</CardTitle>
-                                <Button size="sm" onClick={() => setIsCreateTaskOpen(true)} className="rounded-lg font-bold text-[9px] h-7 px-3 shadow-sm">
-                                    <Plus className="h-3 w-3 mr-1" /> Add
+                        <Card className="border-border/50 rounded-2xl bg-card shadow-sm">
+                            <CardHeader className="border-b bg-card/20 pb-4 flex flex-row items-center justify-between">
+                                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                    <CheckCircle2 className="h-4 w-4 text-primary" /> Upcoming Tasks
+                                </CardTitle>
+                                <Button 
+                                    size="sm" 
+                                    onClick={() => setIsCreateTaskOpen(true)} 
+                                    className="h-8 px-3 rounded-xl font-bold text-xs gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+                                >
+                                    <Plus className="h-3.5 w-3.5" /> Add Task
                                 </Button>
                             </CardHeader>
                             <CardContent className="p-4 space-y-2">
@@ -1570,9 +1769,11 @@ export default function DealDetailsPage() {
                         </Card>
 
                         {/* Activity Feed */}
-                        <Card className="border-none shadow-sm rounded-2xl bg-card overflow-hidden">
-                            <CardHeader className="border-b bg-card/20 pb-4 px-6 pt-5">
-                                <CardTitle className="text-[11px] font-semibold text-primary flex items-center gap-2"><Activity className="h-4 w-4" /> Activity Feed</CardTitle>
+                        <Card className="border-border/50 rounded-2xl bg-card shadow-sm">
+                            <CardHeader className="border-b bg-card/20 pb-4 flex flex-row items-center justify-between">
+                                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                    <Activity className="h-4 w-4 text-primary" /> Activity Feed
+                                </CardTitle>
                             </CardHeader>
                             <CardContent className="p-6">
                                 <ActivityTimeline dealId={deal.id} entityId={deal.entityId} limit={30} />
