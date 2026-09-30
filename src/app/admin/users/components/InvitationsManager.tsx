@@ -607,7 +607,7 @@ export function InvitationsManager({
                             variant="ghost"
                             size="sm"
                             onClick={() => handleResend(inv.id, inv.email)}
-                            className="text-xs h-7 px-2 active:scale-[0.97]"
+                            className="text-xs min-h-[44px] px-2.5 active:scale-[0.97]"
                           >
                             <RefreshCw className="w-3 h-3 mr-1" /> Resend
                           </Button>
@@ -616,7 +616,7 @@ export function InvitationsManager({
                             variant="ghost"
                             size="sm"
                             onClick={() => handleRevoke(inv.id, inv.email)}
-                            className="text-xs h-7 px-2 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 active:scale-[0.97]"
+                            className="text-xs min-h-[44px] px-2.5 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 active:scale-[0.97]"
                           >
                             <Ban className="w-3 h-3 mr-1" /> Revoke
                           </Button>
@@ -896,7 +896,7 @@ export function InvitationsManager({
                 size="sm"
                 onClick={() => setSingleModalOpen(false)}
                 disabled={isSendingSingle}
-                className="text-xs h-9 px-4 active:scale-[0.97]"
+                className="text-xs min-h-[44px] px-4 active:scale-[0.97]"
               >
                 Cancel
               </Button>
@@ -904,7 +904,7 @@ export function InvitationsManager({
                 type="submit"
                 size="sm"
                 disabled={isSendingSingle || !inviteEmail || inviteRoleIds.length === 0}
-                className="text-xs h-9 px-4 font-semibold active:scale-[0.97]"
+                className="text-xs min-h-[44px] px-4 font-semibold active:scale-[0.97]"
               >
                 {isSendingSingle ? (
                   <>
@@ -1003,7 +1003,7 @@ export function InvitationsManager({
               size="sm"
               onClick={() => setCsvModalOpen(false)}
               disabled={isDispatchingCsv}
-              className="text-xs h-9 px-4 active:scale-[0.97]"
+              className="text-xs min-h-[44px] px-4 active:scale-[0.97]"
             >
               Cancel
             </Button>
@@ -1012,7 +1012,7 @@ export function InvitationsManager({
               size="sm"
               onClick={handleDispatchCsv}
               disabled={isDispatchingCsv || parsedCsvRows.filter((r) => r.valid).length === 0 || inviteRoleIds.length === 0}
-              className="text-xs h-9 px-4 font-semibold active:scale-[0.97]"
+              className="text-xs min-h-[44px] px-4 font-semibold active:scale-[0.97]"
             >
               {isDispatchingCsv ? (
                 <>

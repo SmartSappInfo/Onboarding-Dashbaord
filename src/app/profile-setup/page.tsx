@@ -58,6 +58,7 @@ function ProfileSetupContent() {
 
   const [codeFromLink, setCodeFromLink] = React.useState(false);
   const [isPreAssociatedOrg, setIsPreAssociatedOrg] = React.useState(false);
+  const [isPreassignedDept, setIsPreassignedDept] = React.useState(false);
   const [isResolvingOrg, setIsResolvingOrg] = React.useState(true);
   const [step, setStep] = React.useState<1 | 2 | 3>(1);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -270,6 +271,7 @@ function ProfileSetupContent() {
                 setDepartment(preassignedDept || 'General');
                 setDepartmentId(preassignedDeptId);
               }
+              setIsPreassignedDept(true);
             } else if (preassignedDept) {
               const match = resolvedDepts.find((d) => d.name.toLowerCase() === preassignedDept.toLowerCase());
               if (match) {
@@ -279,6 +281,7 @@ function ProfileSetupContent() {
                 setDepartment(preassignedDept);
                 setDepartmentId('');
               }
+              setIsPreassignedDept(true);
             } else {
               const first = resolvedDepts[0];
               if (first) {
@@ -304,7 +307,7 @@ function ProfileSetupContent() {
     return () => {
       isMounted = false;
     };
-  }, [user, isUserLoading, firestore, codeParam, fullName, phoneNumber, department]);
+  }, [user, isUserLoading, firestore, codeParam, fullName, phoneNumber, department, router, searchParams]);
 
   const runValidation = async (
     codeToValidate: string,
@@ -540,7 +543,7 @@ function ProfileSetupContent() {
           variant="outline"
           size="sm"
           onClick={handleSignOut}
-          className="rounded-xl border-border bg-card/70 backdrop-blur-md text-foreground hover:bg-accent gap-1.5 h-9 px-3 transition-all active:scale-[0.97]"
+          className="rounded-xl border-border bg-card/70 backdrop-blur-md text-foreground hover:bg-accent gap-1.5 min-h-[44px] px-3.5 transition-all active:scale-[0.97]"
         >
           <LogOut className="h-3.5 w-3.5 text-muted-foreground" />
           <span className="text-xs font-medium">Sign Out</span>
@@ -911,12 +914,20 @@ function ProfileSetupContent() {
 
                   {/* Department */}
                   <div className="space-y-1.5">
-                    <Label htmlFor="department" className="text-xs font-bold uppercase tracking-wider text-foreground">
-                      Department
-                    </Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="department" className="text-xs font-bold uppercase tracking-wider text-foreground">
+                        Department
+                      </Label>
+                      {isPreassignedDept && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                          <ShieldCheck className="h-3 w-3" /> Pre-assigned
+                        </span>
+                      )}
+                    </div>
                     <div className="relative">
                       <Briefcase className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
                       <Select
+                        disabled={isPreassignedDept}
                         value={departmentId || department}
                         onValueChange={(val) => {
                           const match = orgDepartments.find((d) => d.id === val || d.name === val);
@@ -929,7 +940,7 @@ function ProfileSetupContent() {
                           }
                         }}
                       >
-                        <SelectTrigger className="rounded-xl border-input bg-background pl-10 text-foreground h-12 text-sm focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:border-emerald-500">
+                        <SelectTrigger className="rounded-xl border-input bg-background pl-10 text-foreground h-12 text-sm focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:border-emerald-500 disabled:opacity-85 disabled:cursor-not-allowed">
                           <SelectValue placeholder="Select Department" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-border bg-popover text-popover-foreground shadow-2xl">
@@ -952,6 +963,11 @@ function ProfileSetupContent() {
                         </SelectContent>
                       </Select>
                     </div>
+                    {isPreassignedDept && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Your department is locked by your organization administrator.
+                      </p>
+                    )}
                   </div>
                 </motion.div>
               )}

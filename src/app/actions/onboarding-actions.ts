@@ -16,11 +16,14 @@ import { adminAuth, adminDb } from '@/lib/firebase-admin';
 import { OnboardingJourneyService } from '@/lib/services/onboarding/onboarding-journey-service';
 import { OnboardingInstanceService } from '@/lib/services/onboarding/onboarding-instance-service';
 import { IdentityMigrationService } from '@/lib/services/identity/identity-migration-service';
+import { DepartmentService } from '@/lib/services/workforce/department-service';
+import { PersonService } from '@/lib/services/identity/person-service';
 import type {
   OnboardingJourney,
   OnboardingInstance,
   OnboardingAudience,
   OnboardingStepDefinition,
+  Department,
 } from '@/lib/types';
 
 // Helper to verify caller token
@@ -230,7 +233,7 @@ export async function bulkAssignJourneyAction(params: {
       params.journeyId
     );
     return { success: true, assignedCount: res.assignedCount, errors: res.errors };
-  } catch (_err: unknown) {
+  } catch {
     return { success: false, assignedCount: 0, errors: [] };
   }
 }
@@ -260,12 +263,50 @@ export async function adminOverrideStepAction(params: {
 // 3. USER & PROFILE ONBOARDING ACTIONS
 // ----------------------------------------------------
 
+// Helper to resolve canonical departments for an organization with graceful fallback
+async function resolveCanonicalDepartmentsForOrg(orgId: string, orgDataDepartments?: unknown): Promise<{
+  departments: string[];
+  canonicalDepartments: Array<{ id: string; name: string; code: string }>;
+}> {
+  let canonicalDepts: Department[] = [];
+  try {
+    canonicalDepts = await DepartmentService.getCanonicalDepartmentsForOrganization(orgId);
+  } catch (err) {
+    console.warn(`[validateJoinCodeAction] Could not fetch canonical departments for ${orgId}:`, err);
+  }
+
+  if (canonicalDepts && canonicalDepts.length > 0) {
+    return {
+      departments: canonicalDepts.map((d) => d.name),
+      canonicalDepartments: canonicalDepts.map((d) => ({
+        id: d.id,
+        name: d.name,
+        code: d.code,
+      })),
+    };
+  }
+
+  const fallbackNames = Array.isArray(orgDataDepartments) && orgDataDepartments.length > 0
+    ? (orgDataDepartments as string[])
+    : ['Operations', 'Sales', 'Engineering', 'Customer Success', 'General'];
+
+  return {
+    departments: fallbackNames,
+    canonicalDepartments: fallbackNames.map((name) => ({
+      id: name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+      name,
+      code: name.substring(0, 4).toUpperCase(),
+    })),
+  };
+}
+
 export async function validateJoinCodeAction(code: string): Promise<{
   success: boolean;
   organizationId?: string;
   organizationName?: string;
   isConfigured?: boolean;
   departments?: string[];
+  canonicalDepartments?: Array<{ id: string; name: string; code: string }>;
   logoUrl?: string;
   error?: string;
 }> {
@@ -285,16 +326,14 @@ export async function validateJoinCodeAction(code: string): Promise<{
     if (!slugSnap.empty) {
       const docSnap = slugSnap.docs[0];
       const data = docSnap.data();
-      const departments =
-        data.departments && Array.isArray(data.departments) && data.departments.length > 0
-          ? data.departments
-          : ['Operations', 'Sales', 'Engineering', 'Customer Success', 'General'];
+      const { departments, canonicalDepartments } = await resolveCanonicalDepartmentsForOrg(docSnap.id, data.departments);
       return {
         success: true,
         organizationId: docSnap.id,
         organizationName: data.name || trimmed,
         isConfigured: data.isConfigured !== false,
         departments,
+        canonicalDepartments,
         logoUrl: data.logoUrl || undefined,
       };
     }
@@ -309,16 +348,14 @@ export async function validateJoinCodeAction(code: string): Promise<{
     if (!tokenSnap.empty) {
       const docSnap = tokenSnap.docs[0];
       const data = docSnap.data();
-      const departments =
-        data.departments && Array.isArray(data.departments) && data.departments.length > 0
-          ? data.departments
-          : ['Operations', 'Sales', 'Engineering', 'Customer Success', 'General'];
+      const { departments, canonicalDepartments } = await resolveCanonicalDepartmentsForOrg(docSnap.id, data.departments);
       return {
         success: true,
         organizationId: docSnap.id,
         organizationName: data.name || trimmed,
         isConfigured: data.isConfigured !== false,
         departments,
+        canonicalDepartments,
         logoUrl: data.logoUrl || undefined,
       };
     }
@@ -327,16 +364,14 @@ export async function validateJoinCodeAction(code: string): Promise<{
     const directDoc = await adminDb.collection('organizations').doc(trimmed).get();
     if (directDoc.exists) {
       const data = directDoc.data() || {};
-      const departments =
-        data.departments && Array.isArray(data.departments) && data.departments.length > 0
-          ? data.departments
-          : ['Operations', 'Sales', 'Engineering', 'Customer Success', 'General'];
+      const { departments, canonicalDepartments } = await resolveCanonicalDepartmentsForOrg(directDoc.id, data.departments);
       return {
         success: true,
         organizationId: directDoc.id,
         organizationName: data.name || trimmed,
         isConfigured: data.isConfigured !== false,
         departments,
+        canonicalDepartments,
         logoUrl: data.logoUrl || undefined,
       };
     }
@@ -356,6 +391,7 @@ export async function submitOnboardingProfileAction(payload: {
   name: string;
   phone?: string;
   department?: string;
+  departmentId?: string;
   organizationId: string;
   notificationPreferences?: {
     email: boolean;
@@ -365,9 +401,37 @@ export async function submitOnboardingProfileAction(payload: {
   };
 }): Promise<{ success: boolean; isAuthorized?: boolean; isConfigured?: boolean; error?: string }> {
   try {
-    const { userId, name, phone, department, organizationId, notificationPreferences } = payload;
+    const { userId, name, phone, organizationId, notificationPreferences } = payload;
     if (!userId) throw new Error('User ID is required');
     if (!organizationId) throw new Error('Organization ID is required');
+
+    let deptName = payload.department?.trim();
+    let deptId = payload.departmentId?.trim();
+
+    // SSoT Verification: verify deptId actually exists in Firestore to prevent dangling references
+    // if the department was deleted or renamed while the onboarding invitation was in flight
+    if (deptId) {
+      try {
+        const dDoc = await DepartmentService.getDepartment(deptId);
+        if (dDoc) {
+          deptName = dDoc.name; // Enforce canonical name from SSoT
+        } else {
+          deptId = undefined; // Dangling reference: clear to allow fallback resolution
+        }
+      } catch (err) {
+        console.warn('[submitOnboardingProfileAction] Error fetching department by id:', err);
+      }
+    }
+
+    if (deptName && !deptId) {
+      try {
+        const resolved = await DepartmentService.findOrCreateDepartmentByName(organizationId, deptName);
+        deptId = resolved.id;
+        deptName = resolved.name;
+      } catch (err) {
+        console.warn('[submitOnboardingProfileAction] Error resolving department by name:', err);
+      }
+    }
 
     // Fetch workspaces for this organization
     const wsSnap = await adminDb
@@ -397,11 +461,15 @@ export async function submitOnboardingProfileAction(payload: {
     // Invited members are pre-authorized (isAuthorized === true or approvalStatus === 'approved')
     const isPreAuthorized = existingData.isAuthorized === true || existingData.approvalStatus === 'approved';
 
-    const updatePayload = {
+    const finalDept = deptName || existingData.department || 'General';
+    const finalDeptId = deptId || existingData.departmentId || undefined;
+
+    const updatePayload: Record<string, unknown> = {
       id: userId,
       name: name || existingData.name || '',
       phone: phone || existingData.phone || '',
-      department: department || existingData.department || 'General',
+      department: finalDept,
+      ...(finalDeptId ? { departmentId: finalDeptId } : {}),
       organizationId,
       workspaceIds: (existingData.workspaceIds && Array.isArray(existingData.workspaceIds) && existingData.workspaceIds.length > 0)
         ? existingData.workspaceIds
@@ -424,7 +492,18 @@ export async function submitOnboardingProfileAction(payload: {
 
     // Sync with Canonical Identity Person Graph (Phase 1)
     try {
-      await IdentityMigrationService.getOrMigratePerson(userId, organizationId);
+      const existingPerson = await IdentityMigrationService.getOrMigratePerson(userId, organizationId);
+      const prevDeptId = existingPerson?.departmentId;
+      if (finalDeptId) {
+        await PersonService.updatePerson(userId, {
+          departmentId: finalDeptId,
+          departmentName: finalDept,
+        });
+        await DepartmentService.recalculateMemberCount(organizationId, finalDeptId);
+        if (prevDeptId && prevDeptId !== finalDeptId) {
+          await DepartmentService.recalculateMemberCount(organizationId, prevDeptId);
+        }
+      }
     } catch (syncErr) {
       console.warn('[submitOnboardingProfileAction] Person sync warning:', syncErr);
     }

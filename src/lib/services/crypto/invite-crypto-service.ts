@@ -42,8 +42,18 @@ const IV_LENGTH = 12; // 96-bit IV recommended for GCM
 function getEncryptionKey(): Buffer {
   const secret =
     process.env.INVITATION_SECRET_KEY ||
-    process.env.CREDENTIAL_ENCRYPTION_KEY ||
-    'smartsapp-secure-invitation-salt-2026';
+    process.env.CREDENTIAL_ENCRYPTION_KEY;
+
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        '[InviteCryptoService] Missing critical INVITATION_SECRET_KEY or CREDENTIAL_ENCRYPTION_KEY in production environment.'
+      );
+    }
+    // In development and test environments, fall back to default salt
+    return crypto.createHash('sha256').update('smartsapp-secure-invitation-salt-2026').digest();
+  }
+
   return crypto.createHash('sha256').update(secret).digest();
 }
 

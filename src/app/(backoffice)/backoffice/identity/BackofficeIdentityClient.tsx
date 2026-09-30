@@ -684,7 +684,7 @@ export function BackofficeIdentityClient() {
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => handleResendInvite(inv.id, inv.email)}
-                                  className="text-xs h-7 px-2 active:scale-[0.97]"
+                                  className="text-xs min-h-[44px] px-2.5 active:scale-[0.97]"
                                 >
                                   <Send className="w-3 h-3 mr-1" /> Copy Link
                                 </Button>
@@ -693,7 +693,7 @@ export function BackofficeIdentityClient() {
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => handleRevokeInvite(inv.id, inv.email)}
-                                  className="text-xs h-7 px-2 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 active:scale-[0.97]"
+                                  className="text-xs min-h-[44px] px-2.5 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 active:scale-[0.97]"
                                 >
                                   <Ban className="w-3 h-3 mr-1" /> Revoke
                                 </Button>
