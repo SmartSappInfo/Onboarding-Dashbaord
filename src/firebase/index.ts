@@ -31,8 +31,8 @@ export function initializeFirebase() {
 export function getSdks(firebaseApp: FirebaseApp) {
   let db;
   try {
-    db = initializeFirestore(firebaseApp, { experimentalForceLongPolling: true });
-  } catch (_e) {
+    db = initializeFirestore(firebaseApp, { experimentalAutoDetectLongPolling: true });
+  } catch {
     db = getFirestore(firebaseApp);
   }
   return {

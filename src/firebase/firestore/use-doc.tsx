@@ -39,6 +39,16 @@ export interface UseDocResult<T> {
  * The Firestore DocumentReference. Waits if null/undefined.
  * @returns {UseDocResult<T>} Object with data, isLoading, error.
  */
+/** Maximum retry attempts for transient Firestore network / deadline exceeded errors. */
+const MAX_TRANSIENT_RETRIES = 3;
+
+/** Initial exponential backoff delay in milliseconds. */
+const INITIAL_BACKOFF_MS = 1000;
+
+function isTransientFirestoreError(code: string | undefined): boolean {
+  return code === 'deadline-exceeded' || code === 'unavailable';
+}
+
 export function useDoc<T = any>(
   memoizedDocRef: DocumentReference<DocumentData> | null | undefined,
 ): UseDocResult<T> {
@@ -64,43 +74,84 @@ export function useDoc<T = any>(
       return;
     }
 
-    const unsubscribe = onSnapshot(
-      memoizedDocRef,
-      (snapshot: DocumentSnapshot<DocumentData>) => {
-        if (snapshot.exists()) {
-          setData({ ...(snapshot.data() as T), id: snapshot.id });
-        } else {
-          // Document does not exist
-          setData(null);
-        }
-        setError(null); // Clear any previous error on successful snapshot (even if doc doesn't exist)
-        setSettledRef(memoizedDocRef);
-      },
-      (_error: FirestoreError) => {
-        console.error(`[Firestore useDoc Error] (${_error.code || 'unknown'}):`, _error.message || _error);
+    let isSubscribed = true;
+    let unsubscribe: (() => void) | null = null;
+    let retryTimeout: NodeJS.Timeout | null = null;
+    let retryAttempt = 0;
+    const path = memoizedDocRef.path;
 
-        if (_error.code === 'permission-denied') {
-          const contextualError = new FirestorePermissionError({
-            operation: 'get',
-            path: memoizedDocRef.path,
-          });
+    const subscribe = () => {
+      if (!isSubscribed) return;
 
-          setError(contextualError);
-
-          // trigger global error propagation only if authenticated
-          if (auth.currentUser) {
-            errorEmitter.emit('permission-error', contextualError);
+      unsubscribe = onSnapshot(
+        memoizedDocRef,
+        (snapshot: DocumentSnapshot<DocumentData>) => {
+          if (!isSubscribed) return;
+          if (snapshot.exists()) {
+            setData({ ...(snapshot.data() as T), id: snapshot.id });
+          } else {
+            // Document does not exist
+            setData(null);
           }
-        } else {
-          setError(_error);
+          setError(null); // Clear any previous error on successful snapshot (even if doc doesn't exist)
+          setSettledRef(memoizedDocRef);
+          retryAttempt = 0;
+        },
+        (_error: FirestoreError) => {
+          if (!isSubscribed) return;
+
+          const isTransient = isTransientFirestoreError(_error.code);
+
+          if (isTransient && retryAttempt < MAX_TRANSIENT_RETRIES) {
+            const delayMs = Math.min(INITIAL_BACKOFF_MS * Math.pow(2, retryAttempt), 8000);
+            retryAttempt += 1;
+            console.warn(
+              `[Firestore useDoc] Transient error (${_error.code}) on path "${path}". Reconnecting in ${delayMs}ms (attempt ${retryAttempt}/${MAX_TRANSIENT_RETRIES})...`
+            );
+
+            retryTimeout = setTimeout(() => {
+              if (isSubscribed) {
+                subscribe();
+              }
+            }, delayMs);
+            return;
+          }
+
+          console.error(
+            `[Firestore useDoc Error] (${_error.code || 'unknown'}) on path "${path}":`,
+            _error.message || _error
+          );
+
+          if (_error.code === 'permission-denied') {
+            const contextualError = new FirestorePermissionError({
+              operation: 'get',
+              path: memoizedDocRef.path,
+            });
+
+            setError(contextualError);
+
+            // trigger global error propagation only if authenticated
+            if (auth.currentUser) {
+              errorEmitter.emit('permission-error', contextualError);
+            }
+          } else {
+            setError(_error);
+          }
+
+          setData(null);
+          setSettledRef(memoizedDocRef);
         }
+      );
+    };
 
-        setData(null);
-        setSettledRef(memoizedDocRef);
-      }
-    );
+    subscribe();
 
-    return () => unsubscribe();
+    return () => {
+      isSubscribed = false;
+      if (retryTimeout) clearTimeout(retryTimeout);
+      if (unsubscribe) unsubscribe();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- auth is read only for contextual error reporting and must not trigger subscription restarts
   }, [memoizedDocRef]); // Re-run if the memoizedDocRef changes.
 
   return { data, isLoading, error };

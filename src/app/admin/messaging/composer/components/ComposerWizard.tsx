@@ -4,9 +4,9 @@ import * as React from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { collection, query, where, orderBy, limit, doc, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, doc, onSnapshot } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { MessageTemplate, Meeting, Survey, PDFForm, SurveyResponse, Submission, TemplateVariable, MessageStyle, SenderProfile } from '@/lib/types';
+import type { MessageTemplate, TemplateVariable, MessageStyle, SenderProfile } from '@/lib/types';
 import { createBulkMessageJob, processJobChunkBackground } from '@/lib/bulk-messaging';
 import { resolveContact } from '@/lib/contact-adapter';
 import { fetchSmsBalanceAction } from '@/lib/mnotify-actions';
@@ -394,36 +394,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
             : null,
     [firestore, activeWorkspaceId]);
 
-    const meetingsQuery = useMemoFirebase(() =>
-        firestore ? query(collection(firestore, 'meetings'), orderBy('meetingTime', 'desc')) : null,
-    [firestore]);
-
-    const surveysQuery = useMemoFirebase(() =>
-        firestore ? query(collection(firestore, 'surveys'), where('status', '==', 'published')) : null,
-    [firestore]);
-
-    const pdfsQuery = useMemoFirebase(() =>
-        firestore ? query(collection(firestore, 'pdfs'), where('status', '==', 'published')) : null,
-    [firestore]);
-
-    const responsesQuery = useMemoFirebase(() =>
-        firestore && watchedSourceSurveyId
-            ? query(collection(firestore, `surveys/${watchedSourceSurveyId}/responses`), orderBy('submittedAt', 'desc'), limit(50))
-            : null,
-    [firestore, watchedSourceSurveyId]);
-
-    const submissionsQuery = useMemoFirebase(() =>
-        firestore && watchedSourcePdfId
-            ? query(collection(firestore, `pdfs/${watchedSourcePdfId}/submissions`), orderBy('submittedAt', 'desc'), limit(50))
-            : null,
-    [firestore, watchedSourcePdfId]);
-
     const { data: styles } = useCollection<MessageStyle>(stylesQuery);
-    const { data: _meetings } = useCollection<Meeting>(meetingsQuery);
-    const { data: _surveys } = useCollection<Survey>(surveysQuery);
-    const { data: _pdfs } = useCollection<PDFForm>(pdfsQuery);
-    const { data: _responses } = useCollection<SurveyResponse>(responsesQuery);
-    const { data: _submissions } = useCollection<Submission>(submissionsQuery);
 
     // Entity selection is now search-backed inside EntitySelector (no full-set
     // load). Recipient resolution happens server-side per entity at send time.

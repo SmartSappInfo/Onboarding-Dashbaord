@@ -20,8 +20,8 @@ export const firestore = (() => {
   
   const app = getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig);
   try {
-    _firestore = initializeFirestore(app, { experimentalForceLongPolling: true });
-  } catch (e) {
+    _firestore = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
+  } catch {
     _firestore = getFirestore(app);
   }
   return _firestore;

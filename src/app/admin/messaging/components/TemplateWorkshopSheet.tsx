@@ -4,7 +4,7 @@ import * as React from 'react';
 import dynamic from 'next/dynamic';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, where, addDoc, or } from 'firebase/firestore';
+import { collection, query, orderBy, where, addDoc, or, limit } from 'firebase/firestore';
 import type { MessageTemplate, VariableDefinition, MessageStyle, Meeting, Survey, PDFForm } from '@/lib/types';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
@@ -104,7 +104,7 @@ export function TemplateWorkshopSheet({
                         } else {
                             toast({ variant: 'destructive', title: 'Error', description: 'Template not found.' });
                         }
-                    } catch (_e) {
+                    } catch {
                         toast({ variant: 'destructive', title: 'Error', description: 'Failed to load template.' });
                     } finally {
                         setIsLoadingTemplate(false);
@@ -130,7 +130,7 @@ export function TemplateWorkshopSheet({
                         } else {
                             toast({ variant: 'destructive', title: 'Error', description: 'Source template not found.' });
                         }
-                    } catch (_e) {
+                    } catch {
                         toast({ variant: 'destructive', title: 'Error', description: 'Failed to load template to clone.' });
                     } finally {
                         setIsLoadingTemplate(false);
@@ -156,9 +156,35 @@ export function TemplateWorkshopSheet({
             )
         );
     }, [firestore, activeOrganizationId, activeWorkspaceId]);
-    const meetingsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'meetings'), orderBy('meetingTime', 'desc')) : null, [firestore]);
-    const surveysQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'surveys'), where('status', '==', 'published')) : null, [firestore]);
-    const pdfsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'pdfs'), where('status', '==', 'published')) : null, [firestore]);
+    const meetingsQuery = useMemoFirebase(() => {
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(
+            collection(firestore, 'meetings'),
+            where('workspaceIds', 'array-contains', activeWorkspaceId),
+            orderBy('meetingTime', 'desc'),
+            limit(50)
+        );
+    }, [firestore, activeWorkspaceId]);
+
+    const surveysQuery = useMemoFirebase(() => {
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(
+            collection(firestore, 'surveys'),
+            where('status', '==', 'published'),
+            where('workspaceIds', 'array-contains', activeWorkspaceId),
+            limit(50)
+        );
+    }, [firestore, activeWorkspaceId]);
+
+    const pdfsQuery = useMemoFirebase(() => {
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(
+            collection(firestore, 'pdfs'),
+            where('status', '==', 'published'),
+            where('workspaceIds', 'array-contains', activeWorkspaceId),
+            limit(50)
+        );
+    }, [firestore, activeWorkspaceId]);
 
     const { data: _firestoreVariables } = useCollection<VariableDefinition>(varsQuery);
     const { data: styles } = useCollection<MessageStyle>(stylesQuery);
