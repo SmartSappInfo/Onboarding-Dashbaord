@@ -135,6 +135,14 @@ export function createTestUserWithWorkspaceRoles(
           enabled: false,
           features: {},
         },
+        social: {
+          enabled: false,
+          features: {},
+        },
+        workforce: {
+          enabled: false,
+          features: {},
+        },
       },
     },
   };

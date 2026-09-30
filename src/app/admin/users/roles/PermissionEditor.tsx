@@ -134,10 +134,12 @@ export function PermissionEditor({ schema, onChange, readOnly = false }: Permiss
   };
   
   const handleSectionToggle = (sectionId: keyof PermissionsSchema, enabled: boolean) => {
-    const newSchema = { ...schema };
-    const currentSection = newSchema[sectionId] || { enabled: false, features: {} };
-    newSchema[sectionId] = { ...currentSection, enabled };
-    onChange(PermissionRegistryService.resolveDependencies(newSchema));
+    const currentSection = schema[sectionId] || { enabled: false, features: {} };
+    const updated = {
+      ...schema,
+      [sectionId]: { ...currentSection, enabled },
+    };
+    onChange(PermissionRegistryService.resolveDependencies(updated));
   };
 
   const handleActionToggle = (
@@ -146,17 +148,17 @@ export function PermissionEditor({ schema, onChange, readOnly = false }: Permiss
     action: AppPermissionAction, 
     enabled: boolean
   ) => {
-    const newSchema = { ...schema };
-    const section = { ...(newSchema[sectionId] || { enabled: false, features: {} }) };
-    const features = { ...section.features };
+    const currentSection = schema[sectionId] || { enabled: false, features: {} };
+    const features = { ...currentSection.features };
     const feature = { ...(features[featureId] || { view: false }) };
     
     feature[action] = enabled;
+    let sectionEnabled = currentSection.enabled;
     
     // DAG Dependency Rule: Enabling mutate action auto-asserts 'view'
     if (enabled && action !== 'view') {
       feature.view = true;
-      section.enabled = true;
+      sectionEnabled = true;
     }
     
     // Disabling 'view' turns off mutate actions
@@ -167,30 +169,42 @@ export function PermissionEditor({ schema, onChange, readOnly = false }: Permiss
     }
 
     features[featureId] = feature;
-    section.features = features;
-    newSchema[sectionId] = section;
-    onChange(PermissionRegistryService.resolveDependencies(newSchema));
+    const updated = {
+      ...schema,
+      [sectionId]: {
+        ...currentSection,
+        enabled: sectionEnabled,
+        features,
+      },
+    };
+    onChange(PermissionRegistryService.resolveDependencies(updated));
   };
 
   const handleSelectAllSection = (sectionId: keyof PermissionsSchema) => {
-    const newSchema = { ...schema };
-    const section = { ...newSchema[sectionId] };
-    section.enabled = true;
+    const currentSection = schema[sectionId] || { enabled: false, features: {} };
     const features: Record<string, { view: boolean; create?: boolean; edit?: boolean; delete?: boolean }> = {};
 
     SECTION_FEATURES[sectionId].forEach((f) => {
       features[f.id] = { view: true, create: true, edit: true, delete: true };
     });
 
-    section.features = features;
-    newSchema[sectionId] = section;
-    onChange(PermissionRegistryService.resolveDependencies(newSchema));
+    const updated = {
+      ...schema,
+      [sectionId]: {
+        ...currentSection,
+        enabled: true,
+        features,
+      },
+    };
+    onChange(PermissionRegistryService.resolveDependencies(updated));
   };
 
   const handleClearSection = (sectionId: keyof PermissionsSchema) => {
-    const newSchema = { ...schema };
-    newSchema[sectionId] = { enabled: false, features: {} };
-    onChange(PermissionRegistryService.resolveDependencies(newSchema));
+    const updated = {
+      ...schema,
+      [sectionId]: { enabled: false, features: {} },
+    };
+    onChange(PermissionRegistryService.resolveDependencies(updated));
   };
 
   return (

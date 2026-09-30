@@ -6047,9 +6047,9 @@ export interface PermissionsSchema {
   operations: SectionPermissions;
   finance: SectionPermissions;
   studios: SectionPermissions;
+  social: SectionPermissions;
+  workforce: SectionPermissions;
   management: SectionPermissions;
-  social?: SectionPermissions;
-  workforce?: SectionPermissions;
 }
 
 // ─────────────────────────────────────────────────
