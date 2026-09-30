@@ -9930,6 +9930,22 @@
         { "fieldPath": "contractId", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "signing_evidence",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "envelopeId", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signing_evidence",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "envelopeId", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

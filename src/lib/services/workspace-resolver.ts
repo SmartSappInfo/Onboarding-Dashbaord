@@ -92,7 +92,10 @@ export const resolveWorkspaceIdFromPDFForm = cache(async (pdfFormId: string): Pr
   if (!pdfFormId || typeof pdfFormId !== 'string') return null;
 
   try {
-    const docSnap = await adminDb.collection('pdf_forms').doc(pdfFormId).get();
+    let docSnap = await adminDb.collection('pdfs').doc(pdfFormId).get();
+    if (!docSnap.exists) {
+      docSnap = await adminDb.collection('pdf_forms').doc(pdfFormId).get();
+    }
     if (docSnap.exists) {
       const data = docSnap.data();
       const workspaceId = (data?.workspaceIds?.[0] || data?.workspaceId) as string | undefined;

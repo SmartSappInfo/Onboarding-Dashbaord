@@ -28,6 +28,22 @@ const mockEmittedEvents: Array<{ eventType: string; payload: Record<string, unkn
 
 vi.mock('@/lib/firebase-admin', () => ({
   adminDb: {
+    runTransaction: vi.fn().mockImplementation(async (cb: (tx: {
+      get: (ref: { id: string }) => Promise<{ exists: boolean; id: string; data: () => SigningEnvelope | undefined }>;
+      set: (ref: { id: string }, data: SigningEnvelope) => void;
+    }) => Promise<unknown>) => {
+      const tx = {
+        get: vi.fn().mockImplementation(async (ref: { id: string }) => ({
+          exists: !!mockEnvelopesStore[ref.id],
+          id: ref.id,
+          data: () => mockEnvelopesStore[ref.id],
+        })),
+        set: vi.fn().mockImplementation((ref: { id: string }, data: SigningEnvelope) => {
+          mockEnvelopesStore[ref.id] = { ...data, id: ref.id };
+        }),
+      };
+      return cb(tx);
+    }),
     collection: (colName: string) => {
       if (colName === 'signing_envelopes') {
         return {

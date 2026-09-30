@@ -4,7 +4,7 @@ import { adminDb, adminStorage } from './firebase-admin';
 import { revalidatePath } from 'next/cache';
 import { logActivity } from './activity-logger';
 import { resolveContact } from './contact-adapter';
-import type { PDFForm, School } from './types';
+import type { PDFForm, School, EntityContact } from './types';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { toTitleCase } from './utils';
 import { sendMessage } from './messaging-engine';
@@ -43,12 +43,16 @@ function resolvePdfVariables(text: string, school?: School): string {
     // Pre-compute contact variables using FER-01 helpers
     const { getContactVariables } = require('./entity-contact-helpers');
     
-    // Build an entity-shaped object for the helper
-    const entityContacts = (school as any).entityContacts || [];
+    // Build an entity-shaped object for the helper without unchecked any casting
+    const schoolRecord = school as School & {
+        entityContacts?: EntityContact[];
+        terminology?: { singular?: string };
+    };
+    const entityContacts = schoolRecord.entityContacts || [];
     
     const contactVars = getContactVariables({ entityContacts });
     
-    const termLower = ((school as any).terminology?.singular || 'Campus').toLowerCase();
+    const termLower = (schoolRecord.terminology?.singular || 'Campus').toLowerCase();
     
     return text.replace(/\{\{(.*?)\}\}/g, (match, key) => {
         const cleanKey = key.trim();
@@ -239,7 +243,7 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: Record<strin
 export async function saveAgreementProgressAction(
     pdfId: string, 
     entityId: string, 
-    formData: any,
+    formData: Record<string, unknown>,
     entityType?: 'institution' | 'family' | 'person'
 ) {
     try {
@@ -256,7 +260,8 @@ export async function saveAgreementProgressAction(
         if (contractQuery.empty) {
             const pdfSnap = await pdfRef.get();
             const termLower = (pdfSnap.data()?.terminology?.singular || 'Campus').toLowerCase();
-            const entityName = formData.entity_name || formData[`${termLower}_name`] || 'Institution';
+            const rawEntityName = formData.entity_name || formData[`${termLower}_name`];
+            const entityName = typeof rawEntityName === 'string' && rawEntityName.trim() ? rawEntityName.trim() : 'Institution';
             contractDoc = await contractsCol.add({
                 entityId: entityId,
                 entityName,

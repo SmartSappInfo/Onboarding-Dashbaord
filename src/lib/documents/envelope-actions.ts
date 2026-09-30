@@ -320,53 +320,58 @@ export async function createEnvelopeAction(
 /**
  * Executes a single recipient signing step, offloads signature image to Cloud Storage,
  * creates append-only evidence logs, advances the routing order, and updates CRM deal state.
+ * Employs a Firestore transaction to eliminate race conditions under parallel signing cohorts.
  */
 export async function submitRecipientSignatureAction(
   input: SubmitRecipientSignatureInput
 ): Promise<SubmitRecipientSignatureResult> {
   try {
-    const envelopeDoc = await adminDb.collection('signing_envelopes').doc(input.envelopeId).get();
-    if (!envelopeDoc.exists) {
+    const envelopeRef = adminDb.collection('signing_envelopes').doc(input.envelopeId);
+
+    // Initial pre-check before expensive network uploads
+    const initialDoc = await envelopeRef.get();
+    if (!initialDoc.exists) {
       return { success: false, error: 'Envelope not found.' };
     }
 
-    const envelope = envelopeDoc.data() as SigningEnvelope;
-    const recipient = envelope.recipients.find((r) => r.id === input.recipientId);
-    if (!recipient) {
+    const envelopeSnapshot = initialDoc.data() as SigningEnvelope;
+    const initialRecipient = envelopeSnapshot.recipients.find((r) => r.id === input.recipientId);
+    if (!initialRecipient) {
       return { success: false, error: 'Recipient not found on this envelope.' };
     }
 
     // 1. Verify capability token
-    const tokenCheck = verifyRecipientToken(input.rawToken, recipient);
+    const tokenCheck = verifyRecipientToken(input.rawToken, initialRecipient);
     if (!tokenCheck.valid) {
       return { success: false, error: tokenCheck.reason || 'Invalid or tampered capability token.' };
     }
 
     // 2. Idempotency Check: Gracefully handle duplicate submissions
-    if (recipient.status === 'signed') {
+    if (initialRecipient.status === 'signed') {
       return {
         success: true,
         alreadySigned: true,
-        isTerminal: envelope.status === 'completed',
-        envelope,
+        isTerminal: envelopeSnapshot.status === 'completed',
+        envelope: envelopeSnapshot,
       };
     }
 
     // 3. Routing Order Enforcement
-    const actionCheck = canRecipientAct(envelope, recipient.id);
+    const actionCheck = canRecipientAct(envelopeSnapshot, initialRecipient.id);
     if (!actionCheck.allowed) {
       return { success: false, error: actionCheck.reason || 'Recipient is not permitted to sign at this time.' };
     }
 
     // 4. Offload signature to Cloud Storage if base64 data URL provided
+    // (Offload before entering the transaction to avoid retrying network storage uploads)
     let signatureStoragePath = input.signatureStoragePath;
     let signatureHash: string | undefined;
 
     if (input.signatureBase64 && isBase64DataUrl(input.signatureBase64)) {
       const uploadResult = await uploadSignatureImage({
-        workspaceId: envelope.workspaceId,
-        contractId: envelope.id,
-        recipientId: recipient.id,
+        workspaceId: envelopeSnapshot.workspaceId,
+        contractId: envelopeSnapshot.id,
+        recipientId: initialRecipient.id,
         dataUrl: input.signatureBase64,
       });
       signatureStoragePath = uploadResult.storagePath;
@@ -375,25 +380,75 @@ export async function submitRecipientSignatureAction(
 
     const nowIso = new Date().toISOString();
 
-    // 5. Advance Envelope Routing
-    const routingResult = advanceEnvelopeRouting(envelope, recipient.id, 'signed', {
-      signedAt: nowIso,
-      signatureStoragePath,
-      signatureHash,
-      ipAddress: input.ipAddress,
-      userAgent: input.userAgent,
-      formData: input.formData,
-    });
+    // 5. Advance Envelope Routing in Firestore Transaction (FM-P2-01 Race Protection)
+    let routingResult: ReturnType<typeof advanceEnvelopeRouting>;
+    let activeEnvelope: SigningEnvelope = envelopeSnapshot;
+
+    if (typeof adminDb.runTransaction === 'function') {
+      const txResult = await adminDb.runTransaction(async (transaction) => {
+        const txDoc = await transaction.get(envelopeRef);
+        if (!txDoc.exists) {
+          throw new Error('Envelope not found during transaction.');
+        }
+        const freshEnvelope = txDoc.data() as SigningEnvelope;
+        const freshRecipient = freshEnvelope.recipients.find((r) => r.id === input.recipientId);
+        if (!freshRecipient) {
+          throw new Error('Recipient not found on this envelope during transaction.');
+        }
+
+        if (freshRecipient.status === 'signed') {
+          return { alreadySigned: true, envelope: freshEnvelope, routing: null };
+        }
+
+        const freshActionCheck = canRecipientAct(freshEnvelope, freshRecipient.id);
+        if (!freshActionCheck.allowed) {
+          throw new Error(freshActionCheck.reason || 'Recipient is not permitted to sign at this time.');
+        }
+
+        const stepRouting = advanceEnvelopeRouting(freshEnvelope, freshRecipient.id, 'signed', {
+          signedAt: nowIso,
+          signatureStoragePath,
+          signatureHash,
+          ipAddress: input.ipAddress,
+          userAgent: input.userAgent,
+          formData: input.formData,
+        });
+
+        transaction.set(envelopeRef, stepRouting.updatedEnvelope);
+        return { alreadySigned: false, envelope: stepRouting.updatedEnvelope, routing: stepRouting };
+      });
+
+      if (txResult.alreadySigned) {
+        return {
+          success: true,
+          alreadySigned: true,
+          isTerminal: txResult.envelope.status === 'completed',
+          envelope: txResult.envelope,
+        };
+      }
+      routingResult = txResult.routing!;
+      activeEnvelope = txResult.envelope;
+    } else {
+      // Fallback for mock environments without runTransaction
+      routingResult = advanceEnvelopeRouting(envelopeSnapshot, initialRecipient.id, 'signed', {
+        signedAt: nowIso,
+        signatureStoragePath,
+        signatureHash,
+        ipAddress: input.ipAddress,
+        userAgent: input.userAgent,
+        formData: input.formData,
+      });
+      await envelopeRef.set(routingResult.updatedEnvelope);
+      activeEnvelope = routingResult.updatedEnvelope;
+    }
 
     // 6. Persistence & Evidence Logging
-    await adminDb.collection('signing_envelopes').doc(envelope.id).set(routingResult.updatedEnvelope);
-
     await createEvidenceRecord({
-      envelopeId: envelope.id,
+      envelopeId: activeEnvelope.id,
       action: 'signed',
-      recipientId: recipient.id,
-      recipientEmail: recipient.email,
-      recipientName: recipient.name,
+      recipientId: initialRecipient.id,
+      recipientEmail: initialRecipient.email,
+      recipientName: initialRecipient.name,
       ipAddress: input.ipAddress,
       userAgent: input.userAgent,
       documentDigest: signatureHash,
@@ -401,25 +456,25 @@ export async function submitRecipientSignatureAction(
 
     if (routingResult.isTerminal) {
       await createEvidenceRecord({
-        envelopeId: envelope.id,
+        envelopeId: activeEnvelope.id,
         action: 'completed',
         documentDigest: routingResult.updatedEnvelope.completedSha256 || signatureHash,
       });
 
-      if (envelope.dealId) {
+      if (activeEnvelope.dealId) {
         emitDealDomainEvent('deal.contract.signed', {
-          dealId: envelope.dealId,
-          workspaceId: envelope.workspaceId,
-          envelopeId: envelope.id,
+          dealId: activeEnvelope.dealId,
+          workspaceId: activeEnvelope.workspaceId,
+          envelopeId: activeEnvelope.id,
           contractStatus: 'signed',
         });
       }
     } else {
-      if (envelope.dealId) {
+      if (activeEnvelope.dealId) {
         emitDealDomainEvent('deal.contract.in_progress', {
-          dealId: envelope.dealId,
-          workspaceId: envelope.workspaceId,
-          envelopeId: envelope.id,
+          dealId: activeEnvelope.dealId,
+          workspaceId: activeEnvelope.workspaceId,
+          envelopeId: activeEnvelope.id,
           contractStatus: 'in_progress',
         });
       }
@@ -427,7 +482,7 @@ export async function submitRecipientSignatureAction(
       // Record 'sent' evidence for newly unlocked signatories
       for (const newly of routingResult.newlyInvitedRecipients) {
         await createEvidenceRecord({
-          envelopeId: envelope.id,
+          envelopeId: activeEnvelope.id,
           action: 'sent',
           recipientId: newly.id,
           recipientEmail: newly.email,
@@ -718,7 +773,10 @@ export async function getEnvelopeAdminDetailsAction(
       const contract = { id: contractDoc.id, ...contractDoc.data() } as Contract;
       let pdfForm: Partial<PDFForm> | undefined;
       if (contract.pdfId) {
-        const formDoc = await adminDb.collection('pdf_forms').doc(contract.pdfId).get();
+        let formDoc = await adminDb.collection('pdfs').doc(contract.pdfId).get();
+        if (!formDoc.exists) {
+          formDoc = await adminDb.collection('pdf_forms').doc(contract.pdfId).get();
+        }
         if (formDoc.exists) {
           pdfForm = formDoc.data() as Partial<PDFForm>;
         }
