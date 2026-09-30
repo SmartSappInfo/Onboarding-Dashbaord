@@ -65,6 +65,8 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
   });
 
   const [isResizing, setIsResizing] = React.useState(false);
+  const [resizePreview, setResizePreview] = React.useState<{ position: { x: number; y: number }; dimensions: { width: number; height: number } } | null>(null);
+  const latestResizeRef = React.useRef<{ position: { x: number; y: number }; dimensions: { width: number; height: number } } | null>(null);
   const [isEditingLabel, setIsEditingLabel] = React.useState(false);
   const resizeHandleRef = React.useRef<ResizeHandle | null>(null);
   const initialResizeState = React.useRef<ResizeState | null>(null);
@@ -87,6 +89,8 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
     e.preventDefault();
     setIsResizing(true);
     resizeHandleRef.current = handle;
+    latestResizeRef.current = null;
+    setResizePreview(null);
     
     initialResizeState.current = {
       startX: e.clientX,
@@ -118,14 +122,27 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
       if (handle.includes('right')) newW = Math.max(10, startWidth + dx);
       if (handle.includes('left')) { newW = Math.max(10, startWidth - dx); newX = startFieldX + (startWidth - newW); }
 
-      updateField(field.id, {
-        position: { x: (newX / pageDimensions.width) * 100, y: (newY / pageDimensions.height) * 100 },
-        dimensions: { width: (newW / pageDimensions.width) * 100, height: (newH / pageDimensions.height) * 100 },
-        isSuggestion: false,
-      });
+      const nextPreview = {
+        position: { x: Math.max(0, (newX / pageDimensions.width) * 100), y: Math.max(0, (newY / pageDimensions.height) * 100) },
+        dimensions: { width: Math.min(100, (newW / pageDimensions.width) * 100), height: Math.min(100, (newH / pageDimensions.height) * 100) },
+      };
+
+      latestResizeRef.current = nextPreview;
+      setResizePreview(nextPreview);
     };
 
-    const handleMouseUp = () => setIsResizing(false);
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      if (latestResizeRef.current) {
+        updateField(field.id, {
+          position: latestResizeRef.current.position,
+          dimensions: latestResizeRef.current.dimensions,
+          isSuggestion: false,
+        });
+        latestResizeRef.current = null;
+      }
+      setResizePreview(null);
+    };
     
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
@@ -135,12 +152,15 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
     };
   }, [isResizing, field.id, pageDimensions, updateField]);
 
+  const currentPosition = resizePreview ? resizePreview.position : field.position;
+  const currentDimensions = resizePreview ? resizePreview.dimensions : field.dimensions;
+
   const style: React.CSSProperties = {
     position: 'absolute',
-    left: `${field.position.x}%`,
-    top: `${field.position.y}%`,
-    width: `${field.dimensions.width}%`,
-    height: `${field.dimensions.height}%`,
+    left: `${currentPosition.x}%`,
+    top: `${currentPosition.y}%`,
+    width: `${currentDimensions.width}%`,
+    height: `${currentDimensions.height}%`,
     transform: CSS.Translate.toString(transform),
     zIndex: isSelected ? 50 : (field.isSuggestion ? 10 : 1),
     opacity: isDragging ? 0.4 : 1,

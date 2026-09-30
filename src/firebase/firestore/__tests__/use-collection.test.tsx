@@ -163,6 +163,7 @@ describe('useCollection Hook', () => {
   });
 
   it('unsubscribes and cancels pending retry timers on unmount', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const unsubscribeMock = vi.fn();
     let errorCallback: (err: FirestoreError) => void = () => {};
 
@@ -194,5 +195,6 @@ describe('useCollection Hook', () => {
     });
 
     expect(onSnapshot).toHaveBeenCalledTimes(1);
+    warnSpy.mockRestore();
   });
 });

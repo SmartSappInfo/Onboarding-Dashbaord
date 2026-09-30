@@ -113,28 +113,15 @@ export default function EditPdfPage() {
   const { provider: liveProvider, modelId: liveModelId } = useLiveAiModel();
 
   const [step, setStep] = React.useState(1);
-  const [fields, setFieldsState] = React.useState<PDFFormField[]>([]);
-  const { state: historyState, set: setHistory, undo: undoHistory, redo: redoHistory, canUndo, canRedo, reset: resetHistory } = useUndoRedo<PDFFormField[]>([]);
-  const isUndoRedoAction = React.useRef(false);
-
-  // Sync undo/redo history state back to fields state
-  React.useEffect(() => {
-    if (isUndoRedoAction.current) {
-      setFieldsState(historyState);
-      isUndoRedoAction.current = false;
-    }
-  }, [historyState]);
-
-  // Wrapped setFields that updates state and pushes new state frame to undo/redo stack
-  const setFields = React.useCallback<React.Dispatch<React.SetStateAction<PDFFormField[]>>>((action) => {
-    setFieldsState((prev) => {
-      const next = typeof action === 'function' ? action(prev) : action;
-      if (!isUndoRedoAction.current) {
-        setHistory(next);
-      }
-      return next;
-    });
-  }, [setHistory]);
+  const {
+    state: fields,
+    set: setFields,
+    undo: handleUndo,
+    redo: handleRedo,
+    canUndo,
+    canRedo,
+    reset: resetHistory,
+  } = useUndoRedo<PDFFormField[]>([]);
   const [namingFieldId, setNamingFieldId] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
   const [isDetecting, setIsDetecting] = React.useState(false);
@@ -232,10 +219,11 @@ export default function EditPdfPage() {
         'static_text',
         'variable',
       ];
+      const rawType = f.type === 'static-text' ? 'static_text' : f.type;
       const fieldType: DocumentFieldDefinition['type'] = validTypes.includes(
-        f.type as DocumentFieldDefinition['type']
+        rawType as DocumentFieldDefinition['type']
       )
-        ? (f.type as DocumentFieldDefinition['type'])
+        ? (rawType as DocumentFieldDefinition['type'])
         : 'text';
 
       return {
@@ -283,7 +271,6 @@ export default function EditPdfPage() {
   React.useEffect(() => {
     if (pdf && !hasInitialized) {
       const initialFields = JSON.parse(JSON.stringify(pdf.fields || []));
-      setFieldsState(initialFields);
       setNamingFieldId(pdf.namingFieldId || null);
       resetHistory(initialFields);
       
@@ -344,20 +331,6 @@ export default function EditPdfPage() {
     setIsSaving(false);
   };
 
-  const handleUndo = React.useCallback(() => {
-    if (canUndo) {
-      isUndoRedoAction.current = true;
-      undoHistory();
-    }
-  }, [canUndo, undoHistory]);
-
-  const handleRedo = React.useCallback(() => {
-    if (canRedo) {
-      isUndoRedoAction.current = true;
-      redoHistory();
-    }
-  }, [canRedo, redoHistory]);
-
   const handleNext = async () => {
     let fieldsToValidate: Array<keyof FormData> = [];
     if (step === 1) fieldsToValidate = ['name', 'publicTitle', 'logoUrl', 'backgroundColor', 'backgroundPattern', 'patternColor'];
@@ -368,7 +341,21 @@ export default function EditPdfPage() {
 
   const handleStepChange = async (targetStep: number) => {
     if (targetStep === step) return;
-    if (targetStep > step) { const isStepValid = await trigger(); if (!isStepValid) return; }
+    if (targetStep > step) {
+      let fieldsToValidate: Array<keyof FormData> = [];
+      if (step === 1) fieldsToValidate = ['name', 'publicTitle', 'logoUrl', 'backgroundColor', 'backgroundPattern', 'patternColor'];
+      if (fieldsToValidate.length > 0) {
+        const isStepValid = await trigger(fieldsToValidate);
+        if (!isStepValid) {
+          toast({
+            variant: 'destructive',
+            title: 'Validation Error',
+            description: 'Please complete all required fields before proceeding.',
+          });
+          return;
+        }
+      }
+    }
     setStep(targetStep);
   };
 

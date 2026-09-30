@@ -110,8 +110,10 @@ export function TemplateVersionBar({
           <div className="flex items-center gap-1.5">
             <Input
               autoFocus
+              aria-label="Edit document name"
               value={tempName}
               onChange={(e) => setTempName(e.target.value)}
+              onBlur={handleSaveName}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleSaveName();
                 if (e.key === 'Escape') handleCancelName();
@@ -121,6 +123,7 @@ export function TemplateVersionBar({
             />
             <button
               type="button"
+              onMouseDown={(e) => e.preventDefault()}
               onClick={handleSaveName}
               title="Save name"
               className="h-8 w-8 flex items-center justify-center rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.97] transition-all"
@@ -129,6 +132,7 @@ export function TemplateVersionBar({
             </button>
             <button
               type="button"
+              onMouseDown={(e) => e.preventDefault()}
               onClick={handleCancelName}
               title="Cancel"
               className="h-8 w-8 flex items-center justify-center rounded-lg border hover:bg-muted text-muted-foreground active:scale-[0.97] transition-all"
@@ -205,7 +209,7 @@ export function TemplateVersionBar({
                 type="button"
                 onClick={() => onStepClick(stepItem.stepNum)}
                 className={cn(
-                  'px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all select-none min-h-[32px] active:scale-[0.97]',
+                  'px-3 sm:px-2.5 py-2 sm:py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all select-none min-h-[44px] sm:min-h-[32px] active:scale-[0.97]',
                   isActive
                     ? 'bg-background text-primary font-semibold shadow-xs ring-1 ring-border/50'
                     : isCompleted

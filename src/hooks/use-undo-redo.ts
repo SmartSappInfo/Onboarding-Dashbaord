@@ -29,7 +29,7 @@ function deepEqual<T>(a: T, b: T): boolean {
 
 export interface UseUndoRedoReturn<T> {
   readonly state: T;
-  readonly set: (newPresent: T) => void;
+  readonly set: (action: T | ((prev: T) => T)) => void;
   readonly undo: () => void;
   readonly redo: () => void;
   readonly canUndo: boolean;
@@ -87,16 +87,17 @@ export const useUndoRedo = <T>(
   }, []);
 
   const set = useCallback(
-    (newPresent: T) => {
+    (action: T | ((prev: T) => T)) => {
       setHistory((currentState) => {
         const { past, present } = currentState;
+        const resolvedPresent = typeof action === 'function' ? (action as (prev: T) => T)(present) : action;
 
-        if (deepEqual(newPresent, present)) {
+        if (deepEqual(resolvedPresent, present)) {
           return currentState;
         }
         return {
           past: [...past.slice(-(maxHistory - 1)), present],
-          present: newPresent,
+          present: resolvedPresent,
           future: [],
         };
       });

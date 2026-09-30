@@ -73,4 +73,24 @@ describe('useUndoRedo hook', () => {
     expect(result.current.canUndo).toBe(false);
     expect(result.current.canRedo).toBe(false);
   });
+
+  it('supports functional state updaters (prev => next)', () => {
+    const { result } = renderHook(() => useUndoRedo<number[]>([1, 2]));
+
+    act(() => {
+      result.current.set((prev) => [...prev, 3]);
+    });
+    expect(result.current.state).toEqual([1, 2, 3]);
+    expect(result.current.canUndo).toBe(true);
+
+    act(() => {
+      result.current.undo();
+    });
+    expect(result.current.state).toEqual([1, 2]);
+
+    act(() => {
+      result.current.redo();
+    });
+    expect(result.current.state).toEqual([1, 2, 3]);
+  });
 });
