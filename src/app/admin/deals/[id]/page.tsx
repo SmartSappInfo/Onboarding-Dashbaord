@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
-import { doc, updateDoc, collection, query, orderBy, where } from 'firebase/firestore';
+import { doc, collection, query, orderBy, where } from 'firebase/firestore';
 import type { Deal, UserProfile, OnboardingStage, Pipeline, Task, EntityContact, DealFocalContact, WorkspaceEntity } from '@/lib/types';
 import { getEntityContactsAction } from '@/app/actions/entity-contact-actions';
 import { getForecastUrgency } from '../../pipeline/utils/deal-urgency';
@@ -45,7 +45,8 @@ import {
     Layers,
     Pencil,
     X,
-    XCircle
+    XCircle,
+    ChevronDown
 } from 'lucide-react';
 import { useCallModal } from '@/context/CallModalContext';
 import { Badge } from '@/components/ui/badge';
@@ -90,7 +91,8 @@ import EntityNotesTab from '../../entities/components/EntityNotesTab';
 import DealLineItemsTab from './components/DealLineItemsTab';
 import DealContractsCard from './components/DealContractsCard';
 import DealAiIntelligencePanel from './components/DealAiIntelligencePanel';
-import DealQuickActions from './components/DealQuickActions';
+import DealCustomFieldsCard from './components/DealCustomFieldsCard';
+import DealQuickActions, { QuickLogDropdownContent, type DealQuickLogModalType } from './components/DealQuickActions';
 import { PageContainer } from '@/components/ui/page-container';
 import { formatCurrency, getCurrencySymbol } from '@/lib/currency-utils';
 
@@ -137,9 +139,8 @@ export default function DealDetailsPage() {
     const [selectedFocalContactIds, setSelectedFocalContactIds] = React.useState<string[]>([]);
     const [primaryFocalContactId, setPrimaryFocalContactId] = React.useState<string>('');
 
-    // Custom fields state
-    const [customKey, setCustomKey] = React.useState('');
-    const [customValue, setCustomValue] = React.useState('');
+    // Quick Log modal state (bridging DealQuickActions and Activity Feed card header - Rule 10)
+    const [quickLogModal, setQuickLogModal] = React.useState<DealQuickLogModalType | null>(null);
 
     // Fetch users for assignments — scoped to the deal's workspace (multi-tenant isolation)
     const usersQuery = useMemoFirebase(() =>
@@ -223,6 +224,15 @@ export default function DealDetailsPage() {
         }
         return null;
     }, [currentPipeline, deal?.pipelineId, deal?.workspaceId, currentStage?.pipelineId, dealPipelineName]);
+
+    // Unified active pipeline reference for custom fields inheritance and defaults (Rule 10)
+    const activePipeline = React.useMemo(() => {
+        if (pipelineId) {
+            const found = pipelines.find(p => p.id === pipelineId);
+            if (found) return found;
+        }
+        return currentPipeline || effectiveCurrentPipeline || (pipelines.length > 0 ? pipelines[0] : null);
+    }, [pipelines, pipelineId, currentPipeline, effectiveCurrentPipeline]);
 
     // Synchronous fallback for currentStage if currentStage is still loading from Firestore
     const effectiveCurrentStage = React.useMemo(() => {
@@ -868,33 +878,6 @@ export default function DealDetailsPage() {
         }
     };
 
-    const handleAddCustomField = async () => {
-        if (!firestore || !deal || !customKey || !customValue) return;
-        try {
-            const updatedFields = { ...(deal.customFields || {}), [customKey]: customValue };
-            await updateDoc(doc(firestore, 'deals', deal.id), { customFields: updatedFields, updatedAt: new Date().toISOString() });
-            setCustomKey('');
-            setCustomValue('');
-            toast({ title: 'Custom Field Added' });
-        } catch (e: unknown) {
-            const msg = e instanceof Error ? e.message : 'Unknown error';
-            toast({ variant: 'destructive', title: 'Error', description: msg });
-        }
-    };
-
-    const handleRemoveCustomField = async (key: string) => {
-        if (!firestore || !deal) return;
-        try {
-            const updatedFields = { ...(deal.customFields || {}) };
-            delete updatedFields[key];
-            await updateDoc(doc(firestore, 'deals', deal.id), { customFields: updatedFields, updatedAt: new Date().toISOString() });
-            toast({ title: 'Custom Field Removed' });
-        } catch (e: unknown) {
-            const msg = e instanceof Error ? e.message : 'Unknown error';
-            toast({ variant: 'destructive', title: 'Error', description: msg });
-        }
-    };
-
     if (isLoading) return <div className="p-8 space-y-8"><Skeleton className="h-48 w-full rounded-2xl"/><Skeleton className="h-96 w-full rounded-2xl"/></div>;
     if (!deal) return <div className="p-20 text-center"><h2 className="text-xl font-bold">Deal not found</h2></div>;
 
@@ -1186,6 +1169,8 @@ export default function DealDetailsPage() {
                             deal={deal} 
                             contacts={entityContacts} 
                             className="p-0 border-0 bg-transparent shadow-none rounded-none" 
+                            activeModal={quickLogModal}
+                            onActiveModalChange={setQuickLogModal}
                         />
                     </div>
                 </div>
@@ -1718,50 +1703,8 @@ export default function DealDetailsPage() {
                                     </CardContent>
                                 </Card>
 
-                                <Card className="border-border/50 rounded-2xl bg-card shadow-sm overflow-hidden">
-                                    <CardHeader className="bg-muted/30 border-b h-[60px] min-h-[60px] px-6 py-0 flex flex-row items-center justify-between gap-3">
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <div className="p-1.5 bg-primary/10 rounded-lg shrink-0">
-                                                <Settings2 className="h-4 w-4 text-primary" />
-                                            </div>
-                                            <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2 text-foreground truncate">
-                                                <span>Custom Fields</span>
-                                                <CardInfoTooltip text="Manage custom attributes, key-value properties, and metadata for this deal." />
-                                            </CardTitle>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent className="p-6 space-y-6">
-                                        {Object.keys(deal.customFields || {}).length > 0 ? (
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                {Object.entries(deal.customFields || {}).map(([key, value]) => (
-                                                    <div key={key} className="p-4 rounded-xl border bg-muted/20 flex flex-col gap-1 relative group">
-                                                        <span className="text-[10px] font-semibold text-muted-foreground uppercase">{key}</span>
-                                                        <span className="font-bold text-sm">{value}</span>
-                                                        <button onClick={() => handleRemoveCustomField(key)} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-rose-500 hover:text-rose-700 text-xs font-bold transition-opacity">Remove</button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <div className="text-center p-8 bg-muted/20 rounded-xl border-dashed border-2">
-                                                <p className="text-xs font-semibold text-muted-foreground">No custom fields defined for this deal.</p>
-                                            </div>
-                                        )}
-
-                                        <Separator />
-
-                                        <div className="flex items-end gap-4">
-                                            <div className="space-y-2 flex-1">
-                                                <Label className="text-[10px] font-bold">Field Name</Label>
-                                                <Input value={customKey} onChange={e => setCustomKey(e.target.value)} placeholder="e.g. Contract Type" className="rounded-xl" />
-                                            </div>
-                                            <div className="space-y-2 flex-1">
-                                                <Label className="text-[10px] font-bold">Value</Label>
-                                                <Input value={customValue} onChange={e => setCustomValue(e.target.value)} placeholder="e.g. Multi-year" className="rounded-xl" />
-                                            </div>
-                                            <Button onClick={handleAddCustomField} disabled={!customKey || !customValue} className="rounded-xl font-bold shadow-md">Add Field</Button>
-                                        </div>
-                                    </CardContent>
-                                </Card>
+                                {/* Deal Custom Fields (Pipeline-wide schema & inheritance - Rule 10) */}
+                                <DealCustomFieldsCard deal={deal} pipeline={activePipeline} />
 
                                 {/* Deal Line Items & Commercials */}
                                 <DealLineItemsTab deal={deal} />
@@ -1861,6 +1804,20 @@ export default function DealDetailsPage() {
                                         <CardInfoTooltip text="Complete chronological history of stage changes, communications, and deal events." />
                                     </CardTitle>
                                 </div>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button 
+                                            size="sm" 
+                                            variant="outline"
+                                            className="h-9 px-3.5 rounded-xl font-bold text-xs gap-1.5 border-border/80 hover:bg-muted/50 shadow-sm active:scale-[0.97] transition-all cursor-pointer shrink-0"
+                                        >
+                                            <Plus className="h-3.5 w-3.5 text-primary shrink-0" />
+                                            <span>Log Activity</span>
+                                            <ChevronDown className="h-3 w-3 text-muted-foreground ml-0.5 shrink-0" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <QuickLogDropdownContent align="end" onSelect={setQuickLogModal} />
+                                </DropdownMenu>
                             </CardHeader>
                             <CardContent className="p-6">
                                 <ActivityTimeline dealId={deal.id} entityId={deal.entityId} limit={30} />

@@ -23,7 +23,9 @@ import {
     User, 
     Video, 
     FileText, 
-    Phone
+    Phone,
+    Plus,
+    ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -34,6 +36,12 @@ import {
     DialogDescription, 
     DialogFooter 
 } from '@/components/ui/dialog';
+import {
+    DropdownMenu,
+    DropdownMenuTrigger,
+    DropdownMenuContent,
+    DropdownMenuItem
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -46,20 +54,100 @@ import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/context/TenantContext';
 import { useCallModal } from '@/context/CallModalContext';
 
-interface DealQuickActionsProps {
+export type DealQuickLogModalType = 'call' | 'meeting' | 'email' | 'whatsapp';
+
+export interface DealQuickActionsProps {
     deal: Deal;
     contacts?: EntityContact[];
     className?: string;
+    activeModal?: DealQuickLogModalType | null;
+    onActiveModalChange?: (modal: DealQuickLogModalType | null) => void;
 }
 
-export default function DealQuickActions({ deal, contacts = [], className }: DealQuickActionsProps) {
+/**
+ * ARCHITECTURAL POINTER (Rule 10):
+ * Reusable dropdown menu content for quick logging interactions (Calls, Meetings, Emails, WhatsApp).
+ * Shared across the Deal Header toolbar and the Activity Feed CardHeader to maintain strict DRY principles.
+ */
+export function QuickLogDropdownContent({ 
+    align = 'start', 
+    onSelect 
+}: { 
+    align?: 'start' | 'end'; 
+    onSelect: (type: DealQuickLogModalType) => void;
+}) {
+    return (
+        <DropdownMenuContent align={align} className="w-56 rounded-2xl p-1.5 shadow-xl border bg-card/95 backdrop-blur-sm z-50">
+            <DropdownMenuItem
+                onClick={() => onSelect('call')}
+                className="flex items-center gap-2.5 p-2 rounded-xl cursor-pointer text-xs font-semibold hover:bg-emerald-500/10 focus:bg-emerald-500/10 transition-colors"
+            >
+                <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
+                    <PhoneCall className="h-4 w-4" />
+                </div>
+                <div className="flex flex-col">
+                    <span className="font-semibold text-foreground">Log Phone Call</span>
+                    <span className="text-[10px] text-muted-foreground font-normal">Call outcome & duration</span>
+                </div>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+                onClick={() => onSelect('meeting')}
+                className="flex items-center gap-2.5 p-2 rounded-xl cursor-pointer text-xs font-semibold hover:bg-blue-500/10 focus:bg-blue-500/10 transition-colors"
+            >
+                <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0">
+                    <Calendar className="h-4 w-4" />
+                </div>
+                <div className="flex flex-col">
+                    <span className="font-semibold text-foreground">Log Meeting</span>
+                    <span className="text-[10px] text-muted-foreground font-normal">Demo, sync or pitch details</span>
+                </div>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+                onClick={() => onSelect('email')}
+                className="flex items-center gap-2.5 p-2 rounded-xl cursor-pointer text-xs font-semibold hover:bg-indigo-500/10 focus:bg-indigo-500/10 transition-colors"
+            >
+                <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shrink-0">
+                    <Mail className="h-4 w-4" />
+                </div>
+                <div className="flex flex-col">
+                    <span className="font-semibold text-foreground">Log Email</span>
+                    <span className="text-[10px] text-muted-foreground font-normal">Sent or received message</span>
+                </div>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+                onClick={() => onSelect('whatsapp')}
+                className="flex items-center gap-2.5 p-2 rounded-xl cursor-pointer text-xs font-semibold hover:bg-teal-500/10 focus:bg-teal-500/10 transition-colors"
+            >
+                <div className="p-1.5 rounded-lg bg-teal-500/10 text-teal-600 dark:text-teal-400 shrink-0">
+                    <MessageCircle className="h-4 w-4" />
+                </div>
+                <div className="flex flex-col">
+                    <span className="font-semibold text-foreground">Log WhatsApp</span>
+                    <span className="text-[10px] text-muted-foreground font-normal">WhatsApp conversation notes</span>
+                </div>
+            </DropdownMenuItem>
+        </DropdownMenuContent>
+    );
+}
+
+export default function DealQuickActions({ 
+    deal, 
+    contacts = [], 
+    className,
+    activeModal: controlledActiveModal,
+    onActiveModalChange
+}: DealQuickActionsProps) {
     const { user } = useUser();
     const { toast } = useToast();
     const { activeWorkspaceId } = useTenant();
     const { openCallModal } = useCallModal();
 
-    // Active Modal Type
-    const [activeModal, setActiveModal] = React.useState<'call' | 'meeting' | 'email' | 'whatsapp' | null>(null);
+    // Active Modal Type (supports controlled or internal state)
+    const [internalActiveModal, setInternalActiveModal] = React.useState<DealQuickLogModalType | null>(null);
+    const activeModal = controlledActiveModal !== undefined ? controlledActiveModal : internalActiveModal;
     const [isSubmitting, setIsSubmitting] = React.useState(false);
 
     // Form fields
@@ -116,8 +204,8 @@ export default function DealQuickActions({ deal, contacts = [], className }: Dea
         return pool;
     }, [deal, contacts]);
 
-    // Open modal with prefilled defaults
-    const handleOpenModal = (type: 'call' | 'meeting' | 'email' | 'whatsapp') => {
+    // Setup default values when opening an interaction modal
+    const setupDefaultsForModal = React.useCallback((type: DealQuickLogModalType) => {
         const primaryContact = availableContacts[0];
         setSelectedContactId(primaryContact?.id || '');
         setOccurredAt(new Date().toISOString().slice(0, 16));
@@ -139,14 +227,35 @@ export default function DealQuickActions({ deal, contacts = [], className }: Dea
             setSubject(`WhatsApp update for ${deal.name}`);
             setOutcome('sent');
         }
+    }, [availableContacts, deal.name]);
 
-        setActiveModal(type);
+    // Open modal with prefilled defaults
+    const handleOpenModal = (type: DealQuickLogModalType) => {
+        setupDefaultsForModal(type);
+        if (onActiveModalChange) {
+            onActiveModalChange(type);
+        } else {
+            setInternalActiveModal(type);
+        }
     };
 
     const handleCloseModal = () => {
-        setActiveModal(null);
+        if (onActiveModalChange) {
+            onActiveModalChange(null);
+        } else {
+            setInternalActiveModal(null);
+        }
         setIsSubmitting(false);
     };
+
+    // Synchronize defaults if activeModal is opened externally (e.g. from Activity Feed card header)
+    const prevModalRef = React.useRef(activeModal);
+    React.useEffect(() => {
+        if (activeModal && activeModal !== prevModalRef.current) {
+            setupDefaultsForModal(activeModal);
+        }
+        prevModalRef.current = activeModal;
+    }, [activeModal, setupDefaultsForModal]);
 
     const handleSubmitInteraction = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -233,53 +342,21 @@ export default function DealQuickActions({ deal, contacts = [], className }: Dea
 
                 <div className="h-4 w-px bg-border/60 mx-0.5 hidden sm:block" />
 
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1 mr-1">
-                    Quick Log:
-                </span>
-
-                <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleOpenModal('call')}
-                    className="min-h-[44px] sm:min-h-[38px] px-3.5 rounded-xl font-bold text-xs gap-2 border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 cursor-pointer transition-all active:scale-95"
-                >
-                    <PhoneCall className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span>Log Call</span>
-                </Button>
-
-                <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleOpenModal('meeting')}
-                    className="min-h-[44px] sm:min-h-[38px] px-3.5 rounded-xl font-bold text-xs gap-2 border-blue-500/30 bg-blue-500/5 hover:bg-blue-500/10 text-blue-700 dark:text-blue-300 cursor-pointer transition-all active:scale-95"
-                >
-                    <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                    <span>Log Meeting</span>
-                </Button>
-
-                <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleOpenModal('email')}
-                    className="min-h-[44px] sm:min-h-[38px] px-3.5 rounded-xl font-bold text-xs gap-2 border-indigo-500/30 bg-indigo-500/5 hover:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 cursor-pointer transition-all active:scale-95"
-                >
-                    <Mail className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                    <span>Log Email</span>
-                </Button>
-
-                <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleOpenModal('whatsapp')}
-                    className="min-h-[44px] sm:min-h-[38px] px-3.5 rounded-xl font-bold text-xs gap-2 border-teal-500/30 bg-teal-500/5 hover:bg-teal-500/10 text-teal-700 dark:text-teal-300 cursor-pointer transition-all active:scale-95"
-                >
-                    <MessageCircle className="h-4 w-4 text-teal-600 dark:text-teal-400 shrink-0" />
-                    <span>Log WhatsApp</span>
-                </Button>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="min-h-[44px] sm:min-h-[38px] px-3.5 rounded-xl font-bold text-xs gap-2 border-border/80 hover:bg-muted/50 text-foreground cursor-pointer transition-all active:scale-95 shadow-xs"
+                        >
+                            <Plus className="h-4 w-4 text-primary shrink-0" />
+                            <span>Quick Log</span>
+                            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground ml-0.5 shrink-0" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <QuickLogDropdownContent align="start" onSelect={handleOpenModal} />
+                </DropdownMenu>
             </div>
 
             {/* Modal Dialog for Call, Meeting, Email, WhatsApp */}

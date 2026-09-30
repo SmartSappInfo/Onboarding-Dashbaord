@@ -15,7 +15,7 @@
  */
 
 import * as React from 'react';
-import type { PipelineType } from '@/lib/types';
+import type { PipelineType, PipelineCustomField } from '@/lib/types';
 import { 
     ShieldCheck, 
     Settings2, 
@@ -23,7 +23,8 @@ import {
     Users, 
     Calendar, 
     DollarSign,
-    Bookmark 
+    Bookmark,
+    Sliders
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -36,6 +37,7 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { calculateExpectedCloseDate } from '../utils/deal-expected-close';
+import { PipelineDealCustomFieldsCard } from './PipelineDealCustomFieldsCard';
 
 export interface PipelineFormData {
   name: string;
@@ -52,6 +54,7 @@ export interface PipelineFormData {
   assignmentUserIds: string[];
   defaultCloseDateOffsetValue: number | '';
   defaultCloseDateOffsetUnit: 'hours' | 'days' | 'months';
+  dealCustomFields?: PipelineCustomField[];
 }
 
 export interface PipelineConfigOption {
@@ -397,12 +400,15 @@ export function PipelineConfigFields({
   if (variant === 'modal') {
     return (
       <Tabs defaultValue="blueprint" className="w-full">
-        <TabsList className="grid grid-cols-2 w-full h-11 p-1 bg-muted/30 rounded-xl mb-4">
+        <TabsList className="grid grid-cols-3 w-full h-11 p-1 bg-muted/30 rounded-xl mb-4">
           <TabsTrigger value="blueprint" className="rounded-lg text-xs font-bold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs">
-            <Settings2 className="h-3.5 w-3.5 mr-1.5" /> Blueprint &amp; Layout
+            <Settings2 className="h-3.5 w-3.5 mr-1.5" /> Blueprint
           </TabsTrigger>
           <TabsTrigger value="routing" className="rounded-lg text-xs font-bold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs">
-            <Users className="h-3.5 w-3.5 mr-1.5" /> Access &amp; Routing
+            <Users className="h-3.5 w-3.5 mr-1.5" /> Routing
+          </TabsTrigger>
+          <TabsTrigger value="customFields" className="rounded-lg text-xs font-bold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs">
+            <Sliders className="h-3.5 w-3.5 mr-1.5" /> Custom Fields
           </TabsTrigger>
         </TabsList>
         <TabsContent value="blueprint" className="mt-0 focus-visible:outline-none">
@@ -410,6 +416,13 @@ export function PipelineConfigFields({
         </TabsContent>
         <TabsContent value="routing" className="mt-0 focus-visible:outline-none">
           {renderAccessAndRouting()}
+        </TabsContent>
+        <TabsContent value="customFields" className="mt-0 focus-visible:outline-none">
+          <PipelineDealCustomFieldsCard
+            fields={formData.dealCustomFields || []}
+            onChange={(newFields) => onChange('dealCustomFields', newFields)}
+            disabled={disabled}
+          />
         </TabsContent>
       </Tabs>
     );
@@ -444,6 +457,12 @@ export function PipelineConfigFields({
           {renderAccessAndRouting()}
         </CardContent>
       </Card>
+
+      <PipelineDealCustomFieldsCard
+        fields={formData.dealCustomFields || []}
+        onChange={(newFields) => onChange('dealCustomFields', newFields)}
+        disabled={disabled}
+      />
     </div>
   );
 }

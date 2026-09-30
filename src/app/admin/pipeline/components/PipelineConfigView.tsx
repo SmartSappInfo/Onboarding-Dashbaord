@@ -59,6 +59,7 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
         assignmentUserIds: [],
         defaultCloseDateOffsetValue: '',
         defaultCloseDateOffsetUnit: 'days',
+        dealCustomFields: [],
     });
 
     const updateField = React.useCallback(<K extends keyof PipelineFormData>(key: K, value: PipelineFormData[K]) => {
@@ -233,6 +234,7 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
                 assignmentUserIds: pipeline.assignmentUserIds || [],
                 defaultCloseDateOffsetValue: pipeline.defaultCloseDateOffsetValue ?? '',
                 defaultCloseDateOffsetUnit: pipeline.defaultCloseDateOffsetUnit ?? 'days',
+                dealCustomFields: pipeline.dealCustomFields || [],
             });
             if (pipeline.columnWidth) onWidthChange(pipeline.columnWidth);
         }
@@ -268,6 +270,7 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
                 assignmentUserIds: formData.assignmentUserIds,
                 defaultCloseDateOffsetValue: numOffset,
                 defaultCloseDateOffsetUnit: unitOffset,
+                dealCustomFields: formData.dealCustomFields || [],
                 updatedAt: new Date().toISOString()
             });
             toast({ title: 'Architecture Synchronized' });

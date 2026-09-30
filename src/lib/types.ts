@@ -881,6 +881,25 @@ export type StageRequiredField =
   | 'decisionMaker' 
   | 'nextStep';
 
+export type PipelineCustomFieldType = 'text' | 'number' | 'date' | 'select' | 'boolean';
+
+/**
+ * ARCHITECTURAL POINTER (Deal Custom Fields Configuration - Rule 10):
+ * Defines a custom attribute field schema for a pipeline.
+ * All deals belonging to the pipeline inherit these field definitions,
+ * ensuring consistency across deals in the same operational pipeline.
+ */
+export interface PipelineCustomField {
+  id: string;
+  key: string;                    // Normalized property identifier (e.g. 'contractType', 'referralPartner')
+  label: string;                  // Human-readable title displayed in UI
+  type: PipelineCustomFieldType;  // 'text' | 'number' | 'date' | 'select' | 'boolean'
+  options?: string[];             // Select options when type === 'select'
+  required?: boolean;             // Whether this field is mandatory for deals in this pipeline
+  description?: string;           // Optional description / placeholder guidance
+  defaultValue?: string;          // Optional baseline value
+}
+
 export interface Pipeline {
   id: string;
   name: string;
@@ -906,6 +925,8 @@ export interface Pipeline {
   defaultPresetViewId?: string;
   /** Default monetary deal value for newly created deals in this pipeline (defaults to 0). */
   defaultDealValue?: number;
+  /** Custom fields schema defined for all deals belonging to this pipeline. */
+  dealCustomFields?: PipelineCustomField[];
 }
 
 export interface StarterStageConfig {
@@ -934,6 +955,8 @@ export interface CreatePipelinePayload {
   defaultCloseDateOffsetValue?: number | null;
   defaultCloseDateOffsetUnit?: 'hours' | 'days' | 'months' | null;
   initialStages?: StarterStageConfig[];
+  /** Optional custom field definitions initialized with the pipeline */
+  dealCustomFields?: PipelineCustomField[];
 }
 
 export const APP_PERMISSIONS = [

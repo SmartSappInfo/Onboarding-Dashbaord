@@ -68,6 +68,7 @@ export default function PipelineSettingsClient() {
         assignmentUserIds: [],
         defaultCloseDateOffsetValue: '',
         defaultCloseDateOffsetUnit: 'days',
+        dealCustomFields: [],
     });
 
     const updateField = React.useCallback(<K extends keyof PipelineFormData>(key: K, value: PipelineFormData[K]) => {
@@ -182,6 +183,7 @@ export default function PipelineSettingsClient() {
                 assignmentUserIds: selectedPipeline.assignmentUserIds || [],
                 defaultCloseDateOffsetValue: selectedPipeline.defaultCloseDateOffsetValue ?? '',
                 defaultCloseDateOffsetUnit: selectedPipeline.defaultCloseDateOffsetUnit ?? 'days',
+                dealCustomFields: selectedPipeline.dealCustomFields || [],
             });
         }
     }, [selectedPipeline, activeWorkspaceId]);
@@ -212,6 +214,7 @@ export default function PipelineSettingsClient() {
             assignmentUserIds: formData.assignmentUserIds,
             defaultCloseDateOffsetValue: numOffset,
             defaultCloseDateOffsetUnit: unitOffset,
+            dealCustomFields: formData.dealCustomFields || [],
             updatedAt: new Date().toISOString()
         };
 

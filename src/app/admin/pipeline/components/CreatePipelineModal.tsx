@@ -94,6 +94,7 @@ export function CreatePipelineModal({
     assignmentUserIds: [],
     defaultCloseDateOffsetValue: 30,
     defaultCloseDateOffsetUnit: 'days',
+    dealCustomFields: [],
   });
 
   // Query workspace roles scoped strictly to active organization
@@ -223,6 +224,7 @@ export function CreatePipelineModal({
         defaultCloseDateOffsetValue: typeof formData.defaultCloseDateOffsetValue === 'number' ? formData.defaultCloseDateOffsetValue : null,
         defaultCloseDateOffsetUnit: formData.defaultCloseDateOffsetUnit,
         initialStages: stages,
+        dealCustomFields: formData.dealCustomFields || [],
       });
 
       if (res.success && res.id) {

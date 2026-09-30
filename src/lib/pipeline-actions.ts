@@ -3,7 +3,7 @@
 
 import { adminDb } from './firebase-admin';
 import { revalidatePath } from 'next/cache';
-import type { Pipeline, IndustryVertical, CreatePipelinePayload } from './types';
+import type { Pipeline, IndustryVertical, CreatePipelinePayload, PipelineCustomField } from './types';
 import { canUser } from './workspace-permissions';
 import { INDUSTRY_CONFIG } from './industry-config';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
@@ -108,6 +108,7 @@ export async function createPipelineWithStagesAction(
         : null,
       defaultCloseDateOffsetUnit: payload.defaultCloseDateOffsetUnit || null,
       defaultPresetViewId: payload.defaultPresetViewId || 'preset_all_deals',
+      dealCustomFields: payload.dealCustomFields || [],
       isDefault: false,
       isArchived: false,
       createdAt: timestamp,
@@ -503,4 +504,155 @@ function getStageColor(index: number): string {
         '#EF4444', // red - terminal stages (Churned, Closed, Outcome)
     ];
     return colors[index % colors.length];
+}
+
+/**
+ * ARCHITECTURAL POINTER (Rule 10 - Deal Custom Fields Management):
+ * Adds or updates a custom field definition on a pipeline.
+ * All deals belonging to the target pipeline automatically inherit this custom field.
+ */
+export async function addPipelineDealCustomFieldAction(
+  pipelineId: string,
+  field: Omit<PipelineCustomField, 'id'> & { id?: string }
+): Promise<{ success: boolean; field?: PipelineCustomField; error?: string }> {
+  try {
+    const verified = await requireAuth();
+    if (!pipelineId) return { success: false, error: 'Pipeline ID is required.' };
+    if (!field.label || !field.label.trim()) return { success: false, error: 'Field label is required.' };
+
+    const pipelineRef = adminDb.collection('pipelines').doc(pipelineId);
+    const snap = await pipelineRef.get();
+    if (!snap.exists) return { success: false, error: 'Pipeline not found.' };
+
+    const pData = snap.data() as Partial<Pipeline>;
+    const targetWsId = pData.workspaceIds?.[0];
+    if (targetWsId) {
+      const perm = await canUser(verified.uid, 'operations', 'pipeline', 'edit', targetWsId);
+      if (!perm.granted) return { success: false, error: perm.reason };
+    }
+
+    const normalizedKey = (field.key && field.key.trim()) 
+      ? field.key.trim().replace(/[^a-zA-Z0-9_]/g, '_')
+      : field.label.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+
+    const existingFields: PipelineCustomField[] = Array.isArray(pData.dealCustomFields) 
+      ? [...pData.dealCustomFields] 
+      : [];
+
+    const fieldId = field.id || `fld_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const newField: PipelineCustomField = {
+      id: fieldId,
+      key: normalizedKey,
+      label: field.label.trim(),
+      type: field.type || 'text',
+      options: Array.isArray(field.options) ? field.options.filter(Boolean) : undefined,
+      required: Boolean(field.required),
+      description: field.description?.trim() || undefined,
+      defaultValue: field.defaultValue?.trim() || undefined,
+    };
+
+    // Update if key exists, otherwise append
+    const existingIndex = existingFields.findIndex(f => f.key === normalizedKey || f.id === fieldId);
+    if (existingIndex >= 0) {
+      existingFields[existingIndex] = newField;
+    } else {
+      existingFields.push(newField);
+    }
+
+    await pipelineRef.update({
+      dealCustomFields: existingFields,
+      updatedAt: new Date().toISOString(),
+    });
+
+    revalidatePath('/admin/pipeline');
+    revalidatePath('/admin/pipeline/settings');
+    revalidatePath('/admin/deals');
+
+    return { success: true, field: newField };
+  } catch (e: unknown) {
+    const error = e instanceof Error ? e.message : 'Failed to add custom field to pipeline';
+    return { success: false, error };
+  }
+}
+
+/**
+ * Updates the complete list of custom field definitions on a pipeline.
+ */
+export async function updatePipelineDealCustomFieldsAction(
+  pipelineId: string,
+  fields: PipelineCustomField[]
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const verified = await requireAuth();
+    if (!pipelineId) return { success: false, error: 'Pipeline ID is required.' };
+
+    const pipelineRef = adminDb.collection('pipelines').doc(pipelineId);
+    const snap = await pipelineRef.get();
+    if (!snap.exists) return { success: false, error: 'Pipeline not found.' };
+
+    const pData = snap.data() as Partial<Pipeline>;
+    const targetWsId = pData.workspaceIds?.[0];
+    if (targetWsId) {
+      const perm = await canUser(verified.uid, 'operations', 'pipeline', 'edit', targetWsId);
+      if (!perm.granted) return { success: false, error: perm.reason };
+    }
+
+    await pipelineRef.update({
+      dealCustomFields: fields,
+      updatedAt: new Date().toISOString(),
+    });
+
+    revalidatePath('/admin/pipeline');
+    revalidatePath('/admin/pipeline/settings');
+    revalidatePath('/admin/deals');
+
+    return { success: true };
+  } catch (e: unknown) {
+    const error = e instanceof Error ? e.message : 'Failed to update custom fields on pipeline';
+    return { success: false, error };
+  }
+}
+
+/**
+ * Removes a custom field definition from a pipeline.
+ */
+export async function removePipelineDealCustomFieldAction(
+  pipelineId: string,
+  fieldIdOrKey: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const verified = await requireAuth();
+    if (!pipelineId || !fieldIdOrKey) return { success: false, error: 'Pipeline ID and Field Identifier are required.' };
+
+    const pipelineRef = adminDb.collection('pipelines').doc(pipelineId);
+    const snap = await pipelineRef.get();
+    if (!snap.exists) return { success: false, error: 'Pipeline not found.' };
+
+    const pData = snap.data() as Partial<Pipeline>;
+    const targetWsId = pData.workspaceIds?.[0];
+    if (targetWsId) {
+      const perm = await canUser(verified.uid, 'operations', 'pipeline', 'edit', targetWsId);
+      if (!perm.granted) return { success: false, error: perm.reason };
+    }
+
+    const existingFields: PipelineCustomField[] = Array.isArray(pData.dealCustomFields) 
+      ? pData.dealCustomFields 
+      : [];
+
+    const updatedFields = existingFields.filter(f => f.id !== fieldIdOrKey && f.key !== fieldIdOrKey);
+
+    await pipelineRef.update({
+      dealCustomFields: updatedFields,
+      updatedAt: new Date().toISOString(),
+    });
+
+    revalidatePath('/admin/pipeline');
+    revalidatePath('/admin/pipeline/settings');
+    revalidatePath('/admin/deals');
+
+    return { success: true };
+  } catch (e: unknown) {
+    const error = e instanceof Error ? e.message : 'Failed to remove custom field from pipeline';
+    return { success: false, error };
+  }
 }
