@@ -128,6 +128,19 @@ vi.mock('../firebase-admin', () => {
   };
 });
 
+// Shared generators for every property below. Change with care: they define what a valid input
+// is, not the property under test.
+// - Ids are non-blank and URL-safe, like real Firestore ids. Plain `fc.string()` produced
+//   whitespace ids (counterexample [" ", " ", ["call"], ["call"], " "], seed 1697029857).
+// - Tag id lists are unique, as real callers send them. The fake store holds ONE scope per tag
+//   id, so a duplicate split across scopes turned a global tag into a workspace tag and the app
+//   (correctly) refused it (counterexample ["a", "A", ["5", "5"], "-"], seed -771516488).
+// - Scoped tag ids carry a `g_`/`w_` prefix so a global and a workspace tag never share an id.
+const idArb = fc.stringMatching(/^[a-zA-Z0-9_-]{1,20}$/);
+const uniqueIdsArb = (maxLength: number) => fc.uniqueArray(idArb, { minLength: 1, maxLength });
+const tagIdsArb = (scopePrefix: 'g' | 'w') =>
+  uniqueIdsArb(5).map((ids) => ids.map((id) => `${scopePrefix}_${id}`));
+
 describe('Property 4: Tag Partition Invariant', () => {
   let testStorage: {
     entities: Map<string, any>;
@@ -146,11 +159,11 @@ describe('Property 4: Tag Partition Invariant', () => {
   it('should maintain tag partition: removing workspace tag does NOT remove global tag', async () => {
     await fc.assert(
       fc.asyncProperty(
-        fc.string({ minLength: 1, maxLength: 20 }), // entityId
-        fc.string({ minLength: 1, maxLength: 20 }), // workspaceId
-        fc.array(fc.string({ minLength: 1, maxLength: 20 }), { minLength: 1, maxLength: 5 }), // globalTagIds
-        fc.array(fc.string({ minLength: 1, maxLength: 20 }), { minLength: 1, maxLength: 5 }), // workspaceTagIds
-        fc.string({ minLength: 1, maxLength: 20 }), // userId
+        idArb, // entityId
+        idArb, // workspaceId
+        tagIdsArb('g'), // globalTagIds
+        tagIdsArb('w'), // workspaceTagIds
+        idArb, // userId
         async (entityId, workspaceId, globalTagIds, workspaceTagIds, userId) => {
           // Setup: Create entity and workspace_entity
           testStorage.entities.set(entityId, {
@@ -232,11 +245,11 @@ describe('Property 4: Tag Partition Invariant', () => {
   it('should maintain tag partition: removing global tag does NOT remove workspace tag', async () => {
     await fc.assert(
       fc.asyncProperty(
-        fc.string({ minLength: 1, maxLength: 20 }), // entityId
-        fc.string({ minLength: 1, maxLength: 20 }), // workspaceId
-        fc.array(fc.string({ minLength: 1, maxLength: 20 }), { minLength: 1, maxLength: 5 }), // globalTagIds
-        fc.array(fc.string({ minLength: 1, maxLength: 20 }), { minLength: 1, maxLength: 5 }), // workspaceTagIds
-        fc.string({ minLength: 1, maxLength: 20 }), // userId
+        idArb, // entityId
+        idArb, // workspaceId
+        tagIdsArb('g'), // globalTagIds
+        tagIdsArb('w'), // workspaceTagIds
+        idArb, // userId
         async (entityId, workspaceId, globalTagIds, workspaceTagIds, userId) => {
           // Setup: Create entity and workspace_entity
           testStorage.entities.set(entityId, {
@@ -318,11 +331,11 @@ describe('Property 4: Tag Partition Invariant', () => {
   it('should maintain tag partition: applying to one scope does not affect the other', async () => {
     await fc.assert(
       fc.asyncProperty(
-        fc.stringMatching(/^[a-zA-Z0-9_-]{1,20}$/), // entityId
-        fc.stringMatching(/^[a-zA-Z0-9_-]{1,20}$/), // workspaceId
-        fc.array(fc.stringMatching(/^[a-zA-Z0-9_-]{1,20}$/), { minLength: 1, maxLength: 5 }).map(arr => arr.map(id => `g_${id}`)), // globalTagIds
-        fc.array(fc.stringMatching(/^[a-zA-Z0-9_-]{1,20}$/), { minLength: 1, maxLength: 5 }).map(arr => arr.map(id => `w_${id}`)), // workspaceTagIds
-        fc.stringMatching(/^[a-zA-Z0-9_-]{1,20}$/), // userId
+        idArb, // entityId
+        idArb, // workspaceId
+        tagIdsArb('g'), // globalTagIds
+        tagIdsArb('w'), // workspaceTagIds
+        idArb, // userId
         async (entityId, workspaceId, globalTagIds, workspaceTagIds, userId) => {
           // Setup: Create entity and workspace_entity
           testStorage.entities.set(entityId, {
@@ -406,10 +419,10 @@ describe('Property 4: Tag Partition Invariant', () => {
   it('should allow same tag ID in both scopes when tag has dual scope capability', async () => {
     await fc.assert(
       fc.asyncProperty(
-        fc.string({ minLength: 1, maxLength: 20 }), // entityId
-        fc.string({ minLength: 1, maxLength: 20 }), // workspaceId
-        fc.array(fc.string({ minLength: 1, maxLength: 20 }), { minLength: 1, maxLength: 3 }), // sharedTagIds
-        fc.string({ minLength: 1, maxLength: 20 }), // userId
+        idArb, // entityId
+        idArb, // workspaceId
+        uniqueIdsArb(3), // sharedTagIds: unprefixed on purpose (split across the two scopes below)
+        idArb, // userId
         async (entityId, workspaceId, sharedTagIds, userId) => {
           // Setup: Create entity and workspace_entity
           testStorage.entities.set(entityId, {

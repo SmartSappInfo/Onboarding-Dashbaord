@@ -8,7 +8,7 @@ Staging shares the production Firebase project, so any rules deploy is a product
 
 | Phase | Item | Severity | Status | Commit |
 | :--- | :--- | :--- | :--- | :--- |
-| H0 | Flaky tag property test | CI reliability | ☐ | |
+| H0 | Flaky tag property test | CI reliability | ☑ done | this commit |
 | H1 | Workforce privilege escalation | **Critical (live)** | ☐ | |
 | H2 | Phone password reset → one-time code | **High (live)** | ☐ | |
 | H3 | Lint step 1 (~311 warnings) | Quality | ☐ | |
