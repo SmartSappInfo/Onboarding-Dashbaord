@@ -376,7 +376,7 @@ export function normalizePermissionsSchema(raw: unknown): PermissionsSchema {
 
   // Backward compatibility migration for Workforce:
   // If management.users has permissions, backfill into workforce section
-  if (base.management.enabled && base.management.features.users) {
+  if (base.management.enabled && base.management.features.users?.view) {
     if (!base.workforce.enabled) {
       base.workforce.enabled = true;
     }

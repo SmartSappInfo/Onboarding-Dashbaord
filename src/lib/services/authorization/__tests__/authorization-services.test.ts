@@ -34,6 +34,23 @@ describe('Authorization 2.0 Canonical Services Suite', () => {
       expect(resolved.finance.features.invoices?.delete).toBe(true);
     });
 
+    it('should respect explicit section.enabled: false when only view actions are configured (Issue C-01)', () => {
+      const disabledSectionSchema: PermissionsSchema = {
+        ...getBlankPermissions(),
+        studios: {
+          enabled: false,
+          features: {
+            messaging: { view: true, create: false, edit: false, delete: false },
+          },
+        },
+      };
+
+      const resolved = PermissionRegistryService.resolveDependencies(disabledSectionSchema);
+
+      expect(resolved.studios.enabled).toBe(false);
+      expect(resolved.studios.features.messaging?.view).toBe(true);
+    });
+
     it('should calculate accurate risk metrics across all active permissions', () => {
       const schema: PermissionsSchema = {
         ...getBlankPermissions(),

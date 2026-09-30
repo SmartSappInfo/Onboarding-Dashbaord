@@ -1774,23 +1774,21 @@ export class PermissionRegistryService {
       const section = resolved[secKey];
       if (!section) return;
 
-      let sectionHasEnabledFeature = false;
+      let hasMutateAction = false;
 
       Object.entries(section.features).forEach(([_featKey, actions]) => {
         if (!actions) return;
 
-        // If any mutate action is enabled, view MUST be true
+        // If any mutate action is enabled, view MUST be true (DAG invariant)
         if (actions.create || actions.edit || actions.delete) {
           actions.view = true;
-        }
-
-        if (actions.view || actions.create || actions.edit || actions.delete) {
-          sectionHasEnabledFeature = true;
+          hasMutateAction = true;
         }
       });
 
-      // If any feature has active permissions, enable the section
-      if (sectionHasEnabledFeature) {
+      // Only auto-enable the section if a mutate action is asserted;
+      // preserves operator's explicit section.enabled: false for view-only sets.
+      if (hasMutateAction) {
         section.enabled = true;
       }
     });

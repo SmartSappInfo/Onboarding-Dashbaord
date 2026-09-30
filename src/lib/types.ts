@@ -1299,6 +1299,8 @@ export interface AccessSimulationResult {
     operations: number;
     finance: number;
     studios: number;
+    social: number;
+    workforce: number;
     management: number;
   };
   riskBreakdown: {

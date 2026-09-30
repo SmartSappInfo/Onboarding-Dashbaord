@@ -135,9 +135,18 @@ export function PermissionEditor({ schema, onChange, readOnly = false }: Permiss
   
   const handleSectionToggle = (sectionId: keyof PermissionsSchema, enabled: boolean) => {
     const currentSection = schema[sectionId] || { enabled: false, features: {} };
+    const updatedFeatures = { ...currentSection.features };
+    if (!enabled) {
+      Object.keys(updatedFeatures).forEach((k) => {
+        const feat = updatedFeatures[k];
+        if (feat) {
+          updatedFeatures[k] = { ...feat, create: false, edit: false, delete: false };
+        }
+      });
+    }
     const updated = {
       ...schema,
-      [sectionId]: { ...currentSection, enabled },
+      [sectionId]: { ...currentSection, enabled, features: updatedFeatures },
     };
     onChange(PermissionRegistryService.resolveDependencies(updated));
   };
