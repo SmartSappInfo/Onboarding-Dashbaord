@@ -1358,7 +1358,10 @@ export const BulkCsvMergePreviewResultSchema = z.object({
 });
 export type BulkCsvMergePreviewResult = z.infer<typeof BulkCsvMergePreviewResultSchema>;
 
-
-
-
+export const PreviewBulkCrmRecipientsInputSchema = z.object({
+  entityIds: z.array(z.string().min(1)).min(1).max(1000),
+  contactRole: z.enum(['signatory', 'primary', 'all']).default('signatory'),
+  templateVariables: z.array(z.string()).default([]),
+});
+export type PreviewBulkCrmRecipientsInput = z.infer<typeof PreviewBulkCrmRecipientsInputSchema>;
 

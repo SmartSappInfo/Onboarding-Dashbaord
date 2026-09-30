@@ -17,6 +17,7 @@ import {
   retryFailedCampaignRecipientsAction,
   getBulkCampaignProgressAction,
   listWorkspaceBulkCampaignsAction,
+  previewBulkCrmRecipientsAction,
 } from '@/app/actions/bulk-campaign-actions';
 import {
   placeContractLegalHoldAction,
@@ -144,7 +145,32 @@ vi.mock('@/lib/documents/ediscovery-archival-service', () => ({
 // Mock adminDb
 vi.mock('@/lib/firebase-admin', () => ({
   adminDb: {
-    collection: () => ({
+    getAll: async (...refs: Array<{ id: string; colName: string }>) =>
+      refs.map((ref) => ({
+        id: ref.id,
+        exists: true,
+        data: () => ({
+          id: ref.id,
+          entityId: ref.id.includes('_') ? ref.id.split('_')[1] : ref.id,
+          displayName: 'Acme Global Holdings',
+          primaryEmail: 'signer@acmeglobal.com',
+          primaryPhone: '+1-555-0199',
+          primaryContactName: 'Jane CEO',
+          locationString: 'Delaware, USA',
+          status: 'active',
+          entityContacts: [
+            {
+              id: 'cnt-1',
+              name: 'Jane CEO',
+              email: 'signer@acmeglobal.com',
+              isSignatory: true,
+              isPrimary: true,
+            },
+          ],
+        }),
+      })),
+    collection: (colName: string) => ({
+      doc: (id: string) => ({ id, colName }),
       where: () => ({
         limit: () => ({
           get: async () => ({
@@ -238,6 +264,32 @@ Alice,alice@corp.com,$10,000`;
       const result = await getBulkCampaignProgressAction(workspaceId, 'camp-mock-1');
       expect(result.success).toBe(true);
       expect(result.data?.progressPercentage).toBe(100);
+    });
+
+    it('previewBulkCrmRecipientsAction resolves CRM entities and returns preview', async () => {
+      const result = await previewBulkCrmRecipientsAction(workspaceId, {
+        entityIds: ['ent-101'],
+        contactRole: 'signatory',
+        templateVariables: ['entity_name', 'email'],
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.data?.totalRows).toBe(1);
+      expect(result.data?.validRows).toBe(1);
+      expect(result.data?.previewSample[0].recipientEmail).toBe('signer@acmeglobal.com');
+      expect(result.data?.previewSample[0].mappedVariables.entity_name).toBe('Acme Global Holdings');
+      expect(result.data?.previewSample[0].sourceType).toBe('crm');
+    });
+
+    it('previewBulkCrmRecipientsAction rejects empty entityIds array', async () => {
+      const result = await previewBulkCrmRecipientsAction(workspaceId, {
+        entityIds: [],
+        contactRole: 'signatory',
+        templateVariables: [],
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Validation error');
     });
 
     it('listWorkspaceBulkCampaignsAction returns workspace campaigns', async () => {

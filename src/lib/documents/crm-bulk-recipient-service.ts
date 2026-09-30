@@ -19,12 +19,13 @@
  *    Strictly zero `any` or `any[]`. Output adheres to BulkCsvMergePreviewResultSchema.
  */
 
-import type { SearchedEntity } from '@/hooks/use-entity-search';
+import type { WorkspaceEntity, EntityContact } from '@/lib/types';
 import type {
   BulkCsvMergePreviewResult,
   BulkCsvMergePreviewItem,
 } from '@/lib/types/document-signing';
-import type { EntityContact } from '@/lib/types';
+
+export type SearchedEntity = WorkspaceEntity & { id: string };
 
 export interface CrmRecipientExtractionOptions {
   contactRole?: 'signatory' | 'primary' | 'all';

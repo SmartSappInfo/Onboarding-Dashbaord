@@ -33,11 +33,17 @@ import {
   generateDryRunMergePreview,
 } from '@/lib/documents/bulk-csv-merge-service';
 import {
+  extractRecipientsFromEntities,
+  type SearchedEntity,
+} from '@/lib/documents/crm-bulk-recipient-service';
+import {
   BulkCampaign,
   BulkCampaignSchema,
   CreateBulkCampaignRequestSchema,
   BulkCsvMergePreviewResult,
+  PreviewBulkCrmRecipientsInputSchema,
 } from '@/lib/types/document-signing';
+import type { EntityContact } from '@/lib/types';
 
 export interface BulkCampaignActionResult<T> {
   success: boolean;
@@ -201,3 +207,147 @@ export async function listWorkspaceBulkCampaignsAction(
     return { success: false, error: message };
   }
 }
+
+/**
+ * Resolves CRM entities by IDs and runs a pre-flight dry-run recipient and variable preview.
+ */
+export async function previewBulkCrmRecipientsAction(
+  workspaceId: string,
+  input: unknown
+): Promise<BulkCampaignActionResult<BulkCsvMergePreviewResult>> {
+  try {
+    await requireAuth();
+    await requireWorkspace(workspaceId);
+
+    const parseResult = PreviewBulkCrmRecipientsInputSchema.safeParse(input);
+    if (!parseResult.success) {
+      return {
+        success: false,
+        error: `Validation error: ${parseResult.error.errors.map((e) => e.message).join(', ')}`,
+      };
+    }
+
+    const { entityIds, contactRole, templateVariables } = parseResult.data;
+    if (entityIds.length === 0) {
+      return {
+        success: false,
+        error: 'At least one CRM entity must be selected.',
+      };
+    }
+
+    // Query entities in bounded batches of 25 to respect Firestore limits
+    const BATCH_SIZE = 25;
+    const resolvedEntities: SearchedEntity[] = [];
+
+    for (let i = 0; i < entityIds.length; i += BATCH_SIZE) {
+      const chunk = entityIds.slice(i, i + BATCH_SIZE);
+
+      // Check composite tenant-keyed workspace_entities, direct doc IDs, and entities collection
+      const compositeWeRefs = chunk.map((eid) =>
+        adminDb.collection('workspace_entities').doc(`${workspaceId}_${eid}`)
+      );
+      const directWeRefs = chunk.map((eid) =>
+        adminDb.collection('workspace_entities').doc(eid)
+      );
+      const entityRefs = chunk.map((eid) =>
+        adminDb.collection('entities').doc(eid)
+      );
+
+      const [compositeWeSnaps, directWeSnaps, entitySnaps] = await Promise.all([
+        adminDb.getAll(...compositeWeRefs),
+        adminDb.getAll(...directWeRefs),
+        adminDb.getAll(...entityRefs),
+      ]);
+
+      const tempWE: Record<string, FirebaseFirestore.DocumentData> = {};
+      compositeWeSnaps.forEach((snap) => {
+        if (snap.exists) {
+          const data = snap.data();
+          if (data?.entityId) {
+            tempWE[data.entityId] = data;
+          }
+        }
+      });
+      directWeSnaps.forEach((snap) => {
+        if (snap.exists) {
+          const data = snap.data();
+          const eid = data?.entityId || snap.id;
+          if (!tempWE[eid]) {
+            tempWE[eid] = data;
+          }
+        }
+      });
+
+      const tempEntity: Record<string, FirebaseFirestore.DocumentData> = {};
+      entitySnaps.forEach((snap) => {
+        if (snap.exists) {
+          const data = snap.data();
+          if (data) {
+            tempEntity[snap.id] = data;
+          }
+        }
+      });
+
+      for (const eid of chunk) {
+        const weData = tempWE[eid];
+        const rawEntityData = tempEntity[eid];
+
+        if (!weData && !rawEntityData) {
+          continue;
+        }
+
+        const rawContacts = (weData?.entityContacts || rawEntityData?.entityContacts || []) as EntityContact[];
+        const validContacts: EntityContact[] = Array.isArray(rawContacts) ? rawContacts : [];
+
+        const searchedEntity: SearchedEntity = {
+          id: eid,
+          organizationId: weData?.organizationId || rawEntityData?.organizationId || '',
+          workspaceId,
+          entityId: eid,
+          entityType: weData?.entityType || rawEntityData?.entityType || 'person',
+          status: weData?.status || rawEntityData?.status || 'active',
+          workspaceTags: weData?.workspaceTags || [],
+          addedAt: weData?.addedAt || rawEntityData?.createdAt || new Date().toISOString(),
+          updatedAt: weData?.updatedAt || rawEntityData?.updatedAt || new Date().toISOString(),
+          displayName:
+            weData?.displayName ||
+            rawEntityData?.displayName ||
+            rawEntityData?.name ||
+            'Unknown Entity',
+          primaryEmail:
+            weData?.primaryEmail ||
+            rawEntityData?.primaryEmail ||
+            rawEntityData?.email ||
+            '',
+          primaryPhone:
+            weData?.primaryPhone ||
+            rawEntityData?.primaryPhone ||
+            rawEntityData?.phone ||
+            '',
+          primaryContactName:
+            weData?.primaryContactName ||
+            rawEntityData?.primaryContactName ||
+            '',
+          entityContacts: validContacts,
+          locationString:
+            weData?.locationString ||
+            rawEntityData?.locationString ||
+            '',
+        };
+
+        resolvedEntities.push(searchedEntity);
+      }
+    }
+
+    const preview = extractRecipientsFromEntities(resolvedEntities, {
+      contactRole,
+      templateVariables,
+    });
+
+    return { success: true, data: preview };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to preview CRM recipients';
+    return { success: false, error: message };
+  }
+}
+

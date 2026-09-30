@@ -64,7 +64,8 @@ export interface BulkCampaignProgress {
 export function deriveRecipientIdempotencyKey(
   campaignId: string,
   email: string,
-  variables: Record<string, string>
+  variables: Record<string, string>,
+  entityId?: string
 ): string {
   const normEmail = email.toLowerCase().trim();
   const sortedVars = Object.keys(variables)
@@ -75,11 +76,13 @@ export function deriveRecipientIdempotencyKey(
     }, {});
 
   const hash = createHash('sha256')
-    .update(`${campaignId}:${normEmail}:${JSON.stringify(sortedVars)}`)
+    .update(`${campaignId}:${normEmail}:${entityId || ''}:${JSON.stringify(sortedVars)}`)
     .digest('hex')
     .substring(0, 16);
 
-  return `idemp_${campaignId}_${normEmail}_${hash}`;
+  return entityId
+    ? `idemp_${campaignId}_${entityId}_${normEmail}_${hash}`
+    : `idemp_${campaignId}_${normEmail}_${hash}`;
 }
 
 /**
@@ -106,6 +109,8 @@ export async function createBulkCampaign(
     signedCount: 0,
     failedCount: 0,
     routingMode: validated.routingMode,
+    sourceType: validated.sourceType || 'csv_upload',
+    entityCount: validated.entityIds?.length,
     countersignerEmail: validated.countersignerEmail,
     countersignerName: validated.countersignerName,
     createdBy: userId,
@@ -130,7 +135,12 @@ export async function createBulkCampaign(
     chunk.forEach((rec, chunkIdx) => {
       const rowIndex = i + chunkIdx + 1;
       const recId = randomUUID();
-      const idempotencyKey = deriveRecipientIdempotencyKey(campaignId, rec.email, rec.variables);
+      const idempotencyKey = deriveRecipientIdempotencyKey(
+        campaignId,
+        rec.email,
+        rec.variables,
+        rec.entityId
+      );
 
       const recipientItem: BulkCampaignRecipient = {
         id: recId,
@@ -142,6 +152,9 @@ export async function createBulkCampaign(
         variables: rec.variables,
         status: 'queued',
         idempotencyKey,
+        entityId: rec.entityId,
+        contactId: rec.contactId,
+        sourceType: rec.sourceType || (validated.sourceType === 'crm_entities' ? 'crm' : 'csv'),
       };
 
       const parsedRecipient = BulkCampaignRecipientSchema.parse(recipientItem);
@@ -284,6 +297,9 @@ export async function dispatchCampaignBatchSlice(
             recipientId: recipient.id,
             idempotencyKey: recipient.idempotencyKey,
             variables: recipient.variables,
+            ...(recipient.entityId ? { entityId: recipient.entityId } : {}),
+            ...(recipient.contactId ? { contactId: recipient.contactId } : {}),
+            ...(recipient.sourceType ? { sourceType: recipient.sourceType } : {}),
           },
           createdAt: now,
           updatedAt: now,
