@@ -125,6 +125,63 @@ interface RawToken {
   rawInput: string;
 }
 
+export interface NormalizedTargetResult {
+  target: string;
+  isValid: boolean;
+  validationError?: string;
+}
+
+/**
+ * Validates and normalizes a single raw target according to channel requirements.
+ */
+export function validateAndNormalizeTarget(
+  text: string,
+  channel: 'email' | 'sms' | 'whatsapp',
+  defaultCountry: string = 'GH'
+): NormalizedTargetResult {
+  let target = text.trim();
+  let isValid = false;
+  let validationError: string | undefined;
+
+  if (channel === 'email') {
+    const lower = text.toLowerCase().trim();
+    if (isEmailLike(lower)) {
+      target = lower;
+      isValid = true;
+    } else {
+      target = text.trim();
+      isValid = false;
+      validationError = !target ? 'Email address cannot be empty' : 'Invalid email address format';
+    }
+  } else {
+    // SMS or WhatsApp
+    try {
+      const cleaned = text.trim().replace(/[\s\-\(\)]/g, '');
+      if (!cleaned) {
+        isValid = false;
+        validationError = 'Phone number cannot be empty';
+      } else if (/[a-zA-Z]/.test(cleaned)) {
+        isValid = false;
+        validationError = 'Phone number cannot contain letters';
+      } else {
+        const parsed = parsePhoneNumberWithError(cleaned, (defaultCountry || 'GH') as CountryCode);
+        if (parsed.isValid()) {
+          target = parsed.format('E.164');
+          isValid = true;
+        } else {
+          isValid = false;
+          validationError = 'Invalid phone number format';
+        }
+      }
+    } catch (err: unknown) {
+      isValid = false;
+      validationError = err instanceof Error ? err.message : 'Invalid phone number format';
+    }
+  }
+
+  return { target, isValid, validationError };
+}
+
 /**
  * Tokenizes raw delimited contact inputs with dual-mode colon disambiguation,
  * angle bracket extraction, E.164 phone normalization, and deduplication.
@@ -206,47 +263,10 @@ export function tokenizeDelimitedContacts(
   const items: AdHocContactItem[] = [];
   let duplicateCount = 0;
 
+
   for (let i = 0; i < rawTokens.length; i++) {
     const { text, label } = rawTokens[i];
-    let target = text;
-    let isValid = false;
-    let validationError: string | undefined;
-
-    if (channel === 'email') {
-      const lower = text.toLowerCase().trim();
-      if (isEmailLike(lower)) {
-        target = lower;
-        isValid = true;
-      } else {
-        target = text.trim();
-        isValid = false;
-        validationError = 'Invalid email address format';
-      }
-    } else {
-      // SMS or WhatsApp
-      try {
-        const cleaned = text.trim().replace(/[\s\-\(\)]/g, '');
-        if (!cleaned) {
-          isValid = false;
-          validationError = 'Phone number cannot be empty';
-        } else if (/[a-zA-Z]/.test(cleaned)) {
-          isValid = false;
-          validationError = 'Phone number cannot contain letters';
-        } else {
-          const parsed = parsePhoneNumberWithError(cleaned, (defaultCountry || 'GH') as CountryCode);
-          if (parsed.isValid()) {
-            target = parsed.format('E.164');
-            isValid = true;
-          } else {
-            isValid = false;
-            validationError = 'Invalid phone number format';
-          }
-        }
-      } catch (err: unknown) {
-        isValid = false;
-        validationError = err instanceof Error ? err.message : 'Invalid phone number format';
-      }
-    }
+    const { target, isValid, validationError } = validateAndNormalizeTarget(text, channel, defaultCountry);
 
     // Deduplication check based on canonical target
     const dedupKey = target.toLowerCase();
