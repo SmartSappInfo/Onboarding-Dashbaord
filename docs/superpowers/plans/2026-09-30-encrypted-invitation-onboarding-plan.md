@@ -75,15 +75,15 @@
 - Create: `src/lib/services/crypto/invite-crypto-service.ts`
 - Create: `src/lib/services/crypto/__tests__/invite-crypto-service.test.ts`
 
-- [ ] **Step 1: Write the failing unit tests for `InviteCryptoService`**
+- [x] **Step 1: Write the failing unit tests for `InviteCryptoService`**
   Test encryption, decryption, tampering detection (invalid auth tag), expired token rejection, and base64url URL-safety.
   File: `src/lib/services/crypto/__tests__/invite-crypto-service.test.ts`
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   Run: `pnpm vitest run src/lib/services/crypto/__tests__/invite-crypto-service.test.ts`
   Expected: FAIL (module not found).
 
-- [ ] **Step 3: Update `src/lib/types.ts`**
+- [x] **Step 3: Update `src/lib/types.ts`**
   - Add `'declined'` to `InvitationStatus`:
     ```typescript
     export type InvitationStatus =
@@ -116,18 +116,18 @@
     }
     ```
 
-- [ ] **Step 4: Implement `InviteCryptoService`**
+- [x] **Step 4: Implement `InviteCryptoService`**
   File: `src/lib/services/crypto/invite-crypto-service.ts`
   - Implement AES-256-GCM encryption with 12-byte random IV.
   - Return base64url formatted token `iv.tag.ciphertext`.
   - Implement tamper verification and expiration validation.
   - Export Zod schema `EncryptedInvitePayloadSchema` for runtime validation.
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
   Run: `pnpm vitest run src/lib/services/crypto/__tests__/invite-crypto-service.test.ts`
   Expected: PASS.
 
-- [ ] **Step 6: Git commit Phase 1**
+- [x] **Step 6: Git commit Phase 1**
   Commit message: `feat(crypto): implement AES-256-GCM invite crypto service and types`
 
 ---
@@ -139,23 +139,23 @@
 - Create: `src/app/actions/invitation-crypto-actions.ts`
 - Create: `src/lib/services/workforce/__tests__/invitation-crypto-actions.test.ts`
 
-- [ ] **Step 1: Write failing unit tests for invitation crypto actions and lifecycle methods**
+- [x] **Step 1: Write failing unit tests for invitation crypto actions and lifecycle methods**
   Test:
   1. `validateEncryptedInvitationAction`: returns invitation and prefill details, detects already completed profiles, detects declined invitations.
   2. `acceptInvitationLandingAction`: marks invitation as accepted in Firestore.
   3. `declineInvitationLandingAction`: marks invitation as declined in Firestore.
   File: `src/lib/services/workforce/__tests__/invitation-crypto-actions.test.ts`
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   Run: `pnpm vitest run src/lib/services/workforce/__tests__/invitation-crypto-actions.test.ts`
   Expected: FAIL.
 
-- [ ] **Step 3: Update `InvitationLifecycleService` in `src/lib/services/workforce/invitation-lifecycle-service.ts`**
+- [x] **Step 3: Update `InvitationLifecycleService` in `src/lib/services/workforce/invitation-lifecycle-service.ts`**
   - Add `declineInvitation(invitationId: string, reason?: string)` method: sets `status: 'declined'`, `declinedAt: new Date().toISOString()`.
   - Add `getInvitationDetails(invitationId: string)`: safely retrieves invitation document.
   - Update `validateInvitationToken`: handle `'declined'` status safely.
 
-- [ ] **Step 4: Implement `src/app/actions/invitation-crypto-actions.ts`**
+- [x] **Step 4: Implement `src/app/actions/invitation-crypto-actions.ts`**
   - Server actions with strict Zod validation:
     1. `validateEncryptedInvitationAction(params: { token: string })`:
        - Supports both encrypted base64url token and legacy raw hex token.
@@ -167,11 +167,11 @@
     3. `declineInvitationLandingAction(params: { token: string, reason?: string })`:
        - Decrypts token, calls `InvitationLifecycleService.declineInvitation`.
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
   Run: `pnpm vitest run src/lib/services/workforce/__tests__/invitation-crypto-actions.test.ts`
   Expected: PASS.
 
-- [ ] **Step 6: Git commit Phase 2**
+- [x] **Step 6: Git commit Phase 2**
   Commit message: `feat(workforce): implement encrypted invitation server actions and decline state`
 
 ---
@@ -184,30 +184,30 @@
 - Modify: `src/app/actions/workforce-actions.ts`
 - Test: `src/lib/services/workforce/__tests__/invitation-dispatch-service.test.ts`
 
-- [ ] **Step 1: Write/Update dispatch tests for encrypted links**
+- [x] **Step 1: Write/Update dispatch tests for encrypted links**
   Verify email, SMS, and WhatsApp dispatch payloads use the encrypted URL `/accept-invitation?invite=...`.
 
-- [ ] **Step 2: Update `InvitationDispatchService`**
+- [x] **Step 2: Update `InvitationDispatchService`**
   - Add `encryptedInviteToken?: string` to dispatch inputs.
   - When `encryptedInviteToken` is present, format acceptance URL as:
     `${origin}/accept-invitation?invite=${encodeURIComponent(encryptedInviteToken)}`
   - Fall back cleanly to legacy `${origin}/accept-invitation?token=${rawToken}` if encrypted token not supplied.
 
-- [ ] **Step 3: Update `inviteUserAction` in `src/lib/user-invite-actions.ts`**
+- [x] **Step 3: Update `inviteUserAction` in `src/lib/user-invite-actions.ts`**
   - Resolve canonical SSoT `departmentId` and `departmentName`.
   - Create `invitations` record using `InvitationLifecycleService.createInvitation`.
   - Generate encrypted payload via `InviteCryptoService.encryptInvitePayload`.
   - Dispatch credentials using the new encrypted URL.
 
-- [ ] **Step 4: Update `resendInvitationAction` in `src/app/actions/workforce-actions.ts`**
+- [x] **Step 4: Update `resendInvitationAction` in `src/app/actions/workforce-actions.ts`**
   - Generate fresh encrypted payload on resend.
   - Return `encryptedInviteToken` alongside `rawToken`.
 
-- [ ] **Step 5: Run dispatch unit tests**
+- [x] **Step 5: Run dispatch unit tests**
   Run: `pnpm vitest run src/lib/services/workforce/__tests__/invitation-dispatch-service.test.ts`
   Expected: PASS.
 
-- [ ] **Step 6: Git commit Phase 3**
+- [x] **Step 6: Git commit Phase 3**
   Commit message: `feat(dispatch): embed encrypted invitation token in multi-channel dispatch`
 
 ---
@@ -218,7 +218,7 @@
 - Modify: `src/app/accept-invitation/page.tsx`
 - Modify: `src/app/accept-invitation/AcceptInvitationClient.tsx`
 
-- [ ] **Step 1: Update `AcceptInvitationClient.tsx` to handle `?invite=` and `?token=`**
+- [x] **Step 1: Update `AcceptInvitationClient.tsx` to handle `?invite=` and `?token=`**
   - Extract `invite` or `token` from URL query parameters.
   - Call `validateEncryptedInvitationAction`.
   - Check `state`:
@@ -236,7 +236,7 @@
         - Invitee Name & Email preview.
         - Clear message: *"You have been invited to join [Organization] as part of the [Department] department."*
 
-- [ ] **Step 2: Implement "Accept" and "Decline" Handlers**
+- [x] **Step 2: Implement "Accept" and "Decline" Handlers**
   - **Accept Invitation:**
     - Trigger `acceptInvitationLandingAction`.
     - Set `sessionStorage.setItem('active_invite_payload', token)`.
@@ -247,13 +247,13 @@
     - Call `declineInvitationLandingAction`.
     - Switch view to confirmed declined card.
 
-- [ ] **Step 3: Mobile & Animation Optimization**
+- [x] **Step 3: Mobile & Animation Optimization**
   - Touch targets $\ge 44\text{px}$ (`h-11 sm:h-10`).
   - Active button tactile scale `active:scale-[0.97]` (`emilkowal-animations`).
   - Responsive container `min-h-[100dvh]` with centered card.
   - Plain English UI text.
 
-- [ ] **Step 4: Git commit Phase 4**
+- [x] **Step 4: Git commit Phase 4**
   Commit message: `feat(ui): implement welcome accept/decline landing screen and re-visit routing`
 
 ---
@@ -264,7 +264,7 @@
 - Modify: `src/app/login/page.tsx`
 - Modify: `src/app/profile-setup/page.tsx`
 
-- [ ] **Step 1: Update `src/app/login/page.tsx`**
+- [x] **Step 1: Update `src/app/login/page.tsx`**
   - Detect `?invite=` query param or `sessionStorage.getItem('active_invite_payload')`.
   - If present, call `validateEncryptedInvitationAction` to pre-populate Email (and temp password if applicable).
   - Show contextual banner: *"Accepting invitation to join [Organization Name]"*.
@@ -272,7 +272,7 @@
     - If `profileCompleted === false`, router push `/profile-setup?invite=${encodeURIComponent(token)}`.
     - If `profileCompleted === true`, router push `/admin`.
 
-- [ ] **Step 2: Update `src/app/profile-setup/page.tsx`**
+- [x] **Step 2: Update `src/app/profile-setup/page.tsx`**
   - Read `?invite=` query parameter or `sessionStorage.getItem('active_invite_payload')`.
   - Decrypt invitation payload via `validateEncryptedInvitationAction`.
   - Pre-fill and lock:
@@ -284,7 +284,7 @@
     - Clear `sessionStorage.removeItem('active_invite_payload')`.
     - Route to `/admin`.
 
-- [ ] **Step 3: Git commit Phase 5**
+- [x] **Step 3: Git commit Phase 5**
   Commit message: `feat(onboarding): connect encrypted invite payload to login and profile setup`
 
 ---
@@ -295,17 +295,17 @@
 - Modify: `src/app/admin/users/components/InvitationsManager.tsx`
 - Modify: `src/app/(backoffice)/backoffice/identity/BackofficeIdentityClient.tsx`
 
-- [ ] **Step 1: Enhance `InvitationsManager.tsx`**
+- [x] **Step 1: Enhance `InvitationsManager.tsx`**
   - Add `'declined'` to status dropdown filter (`"Declined"`).
   - Add `'declined'` badge styling: `bg-slate-500/10 text-slate-600 border-slate-500/30`.
   - Update `handleResend` to generate and copy the encrypted link `${origin}/accept-invitation?invite=${res.encryptedInviteToken}`.
   - Add "Copy Link" action in the row actions so admins can copy the active invite link directly.
 
-- [ ] **Step 2: Enhance `BackofficeIdentityClient.tsx`**
+- [x] **Step 2: Enhance `BackofficeIdentityClient.tsx`**
   - Add `'declined'` badge support.
   - Update `handleResendInvite` to copy the encrypted invite link.
 
-- [ ] **Step 3: Git commit Phase 6**
+- [x] **Step 3: Git commit Phase 6**
   Commit message: `feat(backoffice): add declined status and encrypted link copy to backoffice workforce`
 
 ---
@@ -315,15 +315,15 @@
 **Files:**
 - All modified and created files.
 
-- [ ] **Step 1: Run comprehensive Vitest suite**
+- [x] **Step 1: Run comprehensive Vitest suite**
   Run: `pnpm vitest run src/lib/services/crypto/ src/lib/services/workforce/`
   Expected: ALL PASS.
 
-- [ ] **Step 2: Run TypeScript typecheck**
+- [x] **Step 2: Run TypeScript typecheck**
   Run: `pnpm typecheck`
   Expected: 0 errors.
 
-- [ ] **Step 3: Run ESLint**
+- [x] **Step 3: Run ESLint**
   Run: `pnpm lint`
   Expected: 0 errors, 0 warnings.
 
