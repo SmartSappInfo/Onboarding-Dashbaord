@@ -3,9 +3,12 @@
 /**
  * @fileoverview Internal User Audience Selector Component.
  *
- * Provides a production-grade, highly tactile UI for selecting internal workspace
+ * Provides an enterprise-grade, highly tactile UI for selecting internal workspace
  * teammates as broadcast/direct message recipients with:
  * - Dynamic channel eligibility validation (Email / SMS / WhatsApp).
+ * - Automatic resolution of raw Firestore role IDs (e.g. 'aP8rWeyeU2uYleUj4VjX') to human-readable names.
+ * - Humanizing of technical role slugs (e.g. 'customer_success_(cse)' -> 'Customer Success (CSE)').
+ * - Balanced, distributed multi-column card layout eliminating squished metadata and wasted whitespace.
  * - Real-time teammate search by name, email, phone, role, and department.
  * - Dynamic role-filter pills with tactile feedback (Emil Kowalski micro-animations).
  * - Batch selection actions ("Select All Eligible", "Deselect All").
@@ -24,9 +27,12 @@ import {
   Phone,
   AlertTriangle,
   RotateCcw,
+  Briefcase,
 } from 'lucide-react';
 import { useWorkspaceUsers } from '@/hooks/use-workspace-users';
-import type { UserProfile } from '@/lib/types';
+import { useWorkspaceRoles } from '@/hooks/use-workspace-roles';
+import { useTenant } from '@/context/TenantContext';
+import type { UserProfile, Role } from '@/lib/types';
 import type { InternalUserRecipient } from '@/lib/types/composer-audience';
 import { cn } from '@/lib/utils';
 
@@ -38,10 +44,205 @@ export interface InternalUserAudienceSelectorProps {
   disabled?: boolean;
   className?: string;
   defaultCountry?: string;
+  organizationId?: string | null;
+  roles?: Role[];
 }
 
 interface NormalizedTeammate extends InternalUserRecipient {
   photoURL?: string;
+}
+
+/**
+ * Known technical role slugs mapped to clean, human-readable display titles.
+ */
+const SYSTEM_ROLE_DISPLAY_MAP: Record<string, string> = {
+  admin: 'Admin',
+  administrator: 'Administrator',
+  superadmin: 'Super Admin',
+  super_admin: 'Super Admin',
+  user: 'Member',
+  member: 'Member',
+  agent: 'Agent',
+  manager: 'Manager',
+  owner: 'Owner',
+  viewer: 'Viewer',
+  editor: 'Editor',
+  billing_manager: 'Billing Manager',
+  finance_officer: 'Finance Officer',
+  trainer: 'Trainer',
+  supervisor: 'Supervisor',
+  support: 'Support Agent',
+  customer_success: 'Customer Success',
+  'customer_success_(cse)': 'Customer Success (CSE)',
+};
+
+/**
+ * Common technical and business acronyms to preserve in all-caps when humanizing role titles.
+ */
+const KNOWN_ACRONYMS = new Set([
+  'CSE', 'CEO', 'CTO', 'CFO', 'COO', 'HR', 'IT', 'QA', 'CRM', 'API', 'UI', 'UX', 'SMS', 'VIP', 'SOP'
+]);
+
+/**
+ * Checks if a string looks like an unformatted Firestore auto-generated document ID (e.g. 'aP8rWeyeU2uYleUj4VjX').
+ * Firestore auto-IDs are 16-35 characters of base62 characters without whitespace.
+ */
+export function isRawFirestoreId(str: string): boolean {
+  if (!str) return false;
+  const trimmed = str.trim();
+  return (
+    /^[A-Za-z0-9_-]{16,35}$/.test(trimmed) &&
+    (/[0-9]/.test(trimmed) || (/[a-z]/.test(trimmed) && /[A-Z]/.test(trimmed)))
+  );
+}
+
+/**
+ * Humanizes a snake_case, kebab-case, or lowercase role slug into clean Title Case.
+ * Examples:
+ * - 'customer_success_(cse)' -> 'Customer Success (CSE)'
+ * - 'finance_officer' -> 'Finance Officer'
+ * - 'agency_operations' -> 'Agency Operations'
+ */
+export function humanizeRoleSlug(slug: string): string {
+  if (!slug) return 'Member';
+
+  const lower = slug.trim().toLowerCase();
+  if (SYSTEM_ROLE_DISPLAY_MAP[lower]) {
+    return SYSTEM_ROLE_DISPLAY_MAP[lower];
+  }
+
+  // Replace underscores and hyphens with spaces
+  const cleaned = slug.replace(/[_]/g, ' ').trim();
+  const words = cleaned.split(/\s+/);
+
+  const formattedWords = words.map((word) => {
+    // Handle parenthesized acronyms, e.g. '(cse)' -> '(CSE)'
+    const parenMatch = word.match(/^\((.*)\)$/);
+    if (parenMatch && parenMatch[1]) {
+      const inner = parenMatch[1];
+      const upperInner = inner.toUpperCase();
+      if (KNOWN_ACRONYMS.has(upperInner) || inner.length <= 4) {
+        return `(${upperInner})`;
+      }
+      return `(${inner.charAt(0).toUpperCase() + inner.slice(1).toLowerCase()})`;
+    }
+
+    const upper = word.toUpperCase();
+    if (KNOWN_ACRONYMS.has(upper)) {
+      return upper;
+    }
+
+    // Preserve minor grammatical words in lowercase if not at start
+    if (['and', 'of', 'in', 'at', 'to', 'for', 'by', '&'].includes(word.toLowerCase())) {
+      return word.toLowerCase();
+    }
+
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+  });
+
+  const result = formattedWords.join(' ');
+  return result.charAt(0).toUpperCase() + result.slice(1);
+}
+
+/**
+ * Formats a raw role string or document ID into a clean human-readable name,
+ * leveraging the organization's role lookup map where available.
+ */
+export function formatRoleName(
+  rawRole: string | undefined | null,
+  roleMap?: Map<string, Role>
+): string {
+  if (!rawRole) return 'Member';
+  const trimmed = rawRole.trim();
+  if (!trimmed) return 'Member';
+
+  // 1. Check if it's a known role ID in the roleMap
+  if (roleMap?.has(trimmed)) {
+    const roleObj = roleMap.get(trimmed);
+    if (roleObj?.name?.trim()) {
+      return humanizeRoleSlug(roleObj.name.trim());
+    }
+  }
+
+  // 2. If it's a raw unmapped Firestore ID, never show the hash to the user
+  if (isRawFirestoreId(trimmed)) {
+    return 'Member';
+  }
+
+  // 3. Humanize technical slug/code
+  return humanizeRoleSlug(trimmed);
+}
+
+/**
+ * Resolves a UserProfile entity to a clean, human-readable primary role title.
+ */
+export function resolveUserRole(
+  user: UserProfile,
+  workspaceId: string | null | undefined,
+  roleMap?: Map<string, Role>
+): string {
+  // 1. Check workspace-specific assigned roles first (workspaceRoles mapping)
+  if (workspaceId && user.workspaceRoles?.[workspaceId]?.length) {
+    for (const rId of user.workspaceRoles[workspaceId]) {
+      if (roleMap?.has(rId)) {
+        const name = roleMap.get(rId)?.name;
+        if (name) return formatRoleName(name, roleMap);
+      }
+    }
+    for (const rId of user.workspaceRoles[workspaceId]) {
+      if (!isRawFirestoreId(rId)) {
+        return formatRoleName(rId, roleMap);
+      }
+    }
+  }
+
+  // 2. Check user.role field
+  if (user.role?.trim()) {
+    const r = user.role.trim();
+    if (roleMap?.has(r)) {
+      const name = roleMap.get(r)?.name;
+      if (name) return formatRoleName(name, roleMap);
+    }
+    if (!isRawFirestoreId(r)) {
+      return formatRoleName(r, roleMap);
+    }
+  }
+
+  // 3. Check legacy user.roles array
+  if (user.roles?.length) {
+    for (const rId of user.roles) {
+      const trimmed = rId?.trim();
+      if (!trimmed) continue;
+      if (roleMap?.has(trimmed)) {
+        const name = roleMap.get(trimmed)?.name;
+        if (name) return formatRoleName(name, roleMap);
+      }
+    }
+    for (const rId of user.roles) {
+      const trimmed = rId?.trim();
+      if (!trimmed) continue;
+      if (!isRawFirestoreId(trimmed)) {
+        return formatRoleName(trimmed, roleMap);
+      }
+    }
+  }
+
+  // 4. Check hydrated roleNames
+  if (user.roleNames?.length) {
+    for (const rName of user.roleNames) {
+      const trimmed = rName?.trim();
+      if (trimmed && !isRawFirestoreId(trimmed)) {
+        return formatRoleName(trimmed, roleMap);
+      }
+    }
+  }
+
+  // 5. Fallback check for raw user.role (sanitized)
+  if (user.role?.trim()) {
+    return formatRoleName(user.role.trim(), roleMap);
+  }
+
+  return 'Member';
 }
 
 /**
@@ -61,12 +262,14 @@ function getInitials(name: string): string {
  */
 function normalizeUserProfile(
   user: UserProfile,
-  channel: 'email' | 'sms' | 'whatsapp'
+  channel: 'email' | 'sms' | 'whatsapp',
+  workspaceId?: string | null,
+  roleMap?: Map<string, Role>
 ): NormalizedTeammate {
   const name = user.displayName?.trim() || user.name?.trim() || 'Teammate';
   const email = user.email?.trim() || '';
   const phone = user.phone?.trim() || undefined;
-  const role = user.role?.trim() || (user.roles && user.roles[0]?.trim()) || 'Member';
+  const role = resolveUserRole(user, workspaceId, roleMap);
   const department = user.department?.trim() || undefined;
 
   let isEligibleForChannel = false;
@@ -95,20 +298,42 @@ export function InternalUserAudienceSelector({
   onChange,
   disabled = false,
   className,
+  organizationId,
+  roles: propRoles,
 }: InternalUserAudienceSelectorProps) {
-  const { data: rawUsers, isLoading } = useWorkspaceUsers(workspaceId);
+  const { activeOrganizationId } = useTenant();
+  const { data: rawUsers, isLoading: isLoadingUsers } = useWorkspaceUsers(workspaceId);
+
+  // Discover effective organization ID for querying roles
+  const effectiveOrgId = organizationId || activeOrganizationId || rawUsers?.[0]?.organizationId;
+
+  // Query workspace roles only when not explicitly supplied via props
+  const { roleMap: fetchedRoleMap } = useWorkspaceRoles(
+    propRoles ? null : effectiveOrgId
+  );
+
+  const effectiveRoleMap = useMemo(() => {
+    if (propRoles) {
+      const map = new Map<string, Role>();
+      for (const r of propRoles) {
+        if (r && r.id) map.set(r.id, r);
+      }
+      return map;
+    }
+    return fetchedRoleMap;
+  }, [propRoles, fetchedRoleMap]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRole, setSelectedRole] = useState('All');
   const [imgLoadErrors, setImgLoadErrors] = useState<Record<string, boolean>>({});
 
-  // 1. Teammate Normalization
+  // 1. Teammate Normalization with Role ID Resolution
   const allTeammates: NormalizedTeammate[] = useMemo(() => {
     if (!rawUsers || rawUsers.length === 0) return [];
-    return rawUsers.map((u) => normalizeUserProfile(u, channel));
-  }, [rawUsers, channel]);
+    return rawUsers.map((u) => normalizeUserProfile(u, channel, workspaceId, effectiveRoleMap));
+  }, [rawUsers, channel, workspaceId, effectiveRoleMap]);
 
-  // 2. Dynamic Unique Roles
+  // 2. Dynamic Unique Roles (Normalized and Humanized)
   const uniqueRoles = useMemo(() => {
     const rolesSet = new Set<string>();
     for (const teammate of allTeammates) {
@@ -221,7 +446,7 @@ export function InternalUserAudienceSelector({
   }, []);
 
   // Loading Skeleton State
-  if (isLoading) {
+  if (isLoadingUsers) {
     return (
       <div
         data-testid="internal-user-selector-skeleton"
@@ -263,7 +488,7 @@ export function InternalUserAudienceSelector({
           className
         )}
       >
-        <div className="size-12 rounded-2xl bg-muted/80 flex items-center justify-center text-muted-foreground shadow-sm">
+        <div className="size-12 rounded-2xl bg-muted/80 flex items-center justify-center text-muted-foreground shadow-xs">
           <Users className="size-6" />
         </div>
         <div className="space-y-1 max-w-sm">
@@ -301,7 +526,7 @@ export function InternalUserAudienceSelector({
               visibleEligibleTeammates.length === 0 ||
               isAllVisibleEligibleSelected
             }
-            className="min-h-[44px] px-3.5 py-2 text-xs font-medium rounded-xl border border-border/80 bg-card hover:bg-accent/60 active:scale-[0.97] transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none flex items-center gap-1.5 shadow-xs"
+            className="min-h-[44px] px-3.5 py-2 text-xs font-medium rounded-xl border border-border/80 bg-card hover:bg-accent/60 active:scale-[0.97] transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none flex items-center gap-1.5 shadow-2xs"
           >
             <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />
             <span>Select All Eligible</span>
@@ -311,7 +536,7 @@ export function InternalUserAudienceSelector({
             type="button"
             onClick={handleDeselectAll}
             disabled={disabled || selectedUsers.length === 0}
-            className="min-h-[44px] px-3.5 py-2 text-xs font-medium rounded-xl border border-border/80 bg-card hover:bg-accent/60 active:scale-[0.97] transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none flex items-center gap-1.5 text-muted-foreground hover:text-foreground shadow-xs"
+            className="min-h-[44px] px-3.5 py-2 text-xs font-medium rounded-xl border border-border/80 bg-card hover:bg-accent/60 active:scale-[0.97] transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none flex items-center gap-1.5 text-muted-foreground hover:text-foreground shadow-2xs"
           >
             <RotateCcw className="size-3.5" />
             <span>Deselect All</span>
@@ -328,7 +553,7 @@ export function InternalUserAudienceSelector({
           onChange={(e) => setSearchQuery(e.target.value)}
           disabled={disabled}
           placeholder="Search teammates by name, email, phone, role..."
-          className="min-h-[44px] w-full rounded-xl border border-border/80 bg-background/60 pl-10 pr-10 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
+          className="min-h-[44px] w-full rounded-xl border border-border/80 bg-background/60 pl-10 pr-10 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs"
         />
         {searchQuery.trim().length > 0 && !disabled && (
           <button
@@ -342,7 +567,7 @@ export function InternalUserAudienceSelector({
         )}
       </div>
 
-      {/* Role Filter Pills */}
+      {/* Role Filter Pills (Humanized and ID-free) */}
       {uniqueRoles.length > 0 && (
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
           <button
@@ -407,8 +632,8 @@ export function InternalUserAudienceSelector({
         </div>
       )}
 
-      {/* Teammates List */}
-      <div className="space-y-2">
+      {/* Teammates List - Distributed Multi-Column Cards */}
+      <div className="space-y-2.5">
         {filteredTeammates.length === 0 ? (
           <div className="p-8 rounded-2xl border border-dashed border-border bg-card/40 text-center flex flex-col items-center justify-center space-y-3">
             <div className="size-11 rounded-2xl bg-muted/80 flex items-center justify-center text-muted-foreground">
@@ -425,7 +650,7 @@ export function InternalUserAudienceSelector({
             <button
               type="button"
               onClick={handleResetFilters}
-              className="min-h-[44px] px-4 py-2 text-xs font-medium rounded-xl border border-border bg-card hover:bg-accent/60 active:scale-[0.97] transition-all duration-200 inline-flex items-center gap-1.5 shadow-xs"
+              className="min-h-[44px] px-4 py-2 text-xs font-medium rounded-xl border border-border bg-card hover:bg-accent/60 active:scale-[0.97] transition-all duration-200 inline-flex items-center gap-1.5 shadow-2xs"
             >
               <RotateCcw className="size-3.5" />
               <span>Reset filters</span>
@@ -450,17 +675,18 @@ export function InternalUserAudienceSelector({
                   }
                 }}
                 className={cn(
-                  'group relative flex items-center justify-between p-3 rounded-xl border transition-all duration-200 min-h-[64px] select-none',
+                  'group relative flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:p-4 rounded-xl border transition-all duration-200 min-h-[68px] gap-3 select-none',
                   !isEligible
-                    ? 'opacity-65 bg-muted/15 border-dashed border-border/70 cursor-not-allowed'
+                    ? 'opacity-70 bg-muted/15 border-dashed border-border/70 cursor-not-allowed'
                     : isSelected
-                    ? 'border-emerald-500/40 bg-emerald-50/50 dark:bg-emerald-950/20 shadow-xs cursor-pointer active:scale-[0.98]'
-                    : 'border-border/70 bg-card hover:border-border hover:bg-accent/40 cursor-pointer active:scale-[0.98]',
+                    ? 'border-emerald-500/40 bg-emerald-50/40 dark:bg-emerald-950/20 shadow-xs cursor-pointer active:scale-[0.99]'
+                    : 'border-border/70 bg-card hover:border-border hover:bg-accent/30 cursor-pointer active:scale-[0.99]',
                   disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
                 )}
               >
-                <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
-                  {/* Dedicated Accessible Checkbox Button */}
+                {/* ── Left Zone: Selection + Identity (Name, Role Badge, Mobile Dept) ── */}
+                <div className="flex items-center gap-3.5 min-w-0 sm:flex-[1.2] lg:flex-1">
+                  {/* Dedicated Accessible Checkbox Button (44px tap zone) */}
                   <button
                     type="button"
                     role="checkbox"
@@ -479,7 +705,7 @@ export function InternalUserAudienceSelector({
                       }
                     }}
                     className={cn(
-                      'min-h-[44px] min-w-[44px] -m-2 p-2 flex items-center justify-center rounded-lg transition-transform duration-150 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                      'min-h-[44px] min-w-[44px] -m-2 p-2 flex items-center justify-center rounded-lg transition-transform duration-150 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0',
                       (!isEligible || disabled) && 'cursor-not-allowed pointer-events-none'
                     )}
                   >
@@ -498,9 +724,9 @@ export function InternalUserAudienceSelector({
                   </button>
 
                   {/* Avatar */}
-                  <div className="relative size-10 rounded-full shrink-0 overflow-hidden border border-border/60 bg-muted flex items-center justify-center">
+                  <div className="relative size-10 rounded-full shrink-0 overflow-hidden border border-border/60 bg-muted flex items-center justify-center shadow-2xs">
                     {hasPhoto ? (
-                      /* eslint-disable-next-line @next/next/no-img-element -- External OAuth/Google/Firebase profile photo URLs vary across multiple dynamic domains */
+                      /* eslint-disable-next-line @next/next/no-img-element -- External OAuth/Google/Firebase profile photo URLs vary across domains */
                       <img
                         src={teammate.photoURL}
                         alt={teammate.name}
@@ -514,62 +740,94 @@ export function InternalUserAudienceSelector({
                     )}
                   </div>
 
-                  {/* Teammate Information */}
-                  <div className="min-w-0 flex-1 space-y-0.5">
-                    <div className="flex flex-wrap items-center gap-1.5">
+                  {/* Name and Role */}
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-sm text-foreground truncate max-w-[180px] sm:max-w-xs">
                         {teammate.name}
                       </span>
 
                       {teammate.role && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-muted text-muted-foreground border border-border/40">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-muted/80 text-muted-foreground border border-border/50 shrink-0">
                           {teammate.role}
                         </span>
                       )}
-
-                      {teammate.department && (
-                        <span className="text-[11px] text-muted-foreground font-medium hidden sm:inline-flex items-center gap-1">
-                          <span>•</span>
-                          <span>{teammate.department}</span>
-                        </span>
-                      )}
-
-                      {!isEligible && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30">
-                          <AlertTriangle className="size-3 shrink-0" />
-                          <span>{missingDetailLabel}</span>
-                        </span>
-                      )}
                     </div>
 
-                    {/* Contact Details */}
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-                      {teammate.email && (
-                        <div
-                          className={cn(
-                            'inline-flex items-center gap-1 truncate max-w-[200px]',
-                            channel === 'email' && 'text-foreground/90 font-medium'
-                          )}
-                        >
-                          <Mail className="size-3 text-muted-foreground shrink-0" />
-                          <span className="truncate">{teammate.email}</span>
-                        </div>
-                      )}
-
-                      {teammate.phone && (
-                        <div
-                          className={cn(
-                            'inline-flex items-center gap-1',
-                            (channel === 'sms' || channel === 'whatsapp') &&
-                              'text-foreground/90 font-medium'
-                          )}
-                        >
-                          <Phone className="size-3 text-muted-foreground shrink-0" />
-                          <span>{teammate.phone}</span>
-                        </div>
-                      )}
-                    </div>
+                    {/* Department on mobile (stacked under name) */}
+                    {teammate.department && (
+                      <p className="text-xs text-muted-foreground truncate sm:hidden flex items-center gap-1.5">
+                        <Briefcase className="size-3 text-muted-foreground/70 shrink-0" />
+                        <span>{teammate.department}</span>
+                      </p>
+                    )}
                   </div>
+                </div>
+
+                {/* ── Center Zone: Department Badge (Tablet & Desktop) ── */}
+                <div className="hidden sm:flex items-center min-w-0 sm:w-44 md:w-52 lg:w-56 shrink-0 text-xs text-muted-foreground">
+                  {teammate.department ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-muted/40 border border-border/50 text-muted-foreground truncate max-w-full">
+                      <Briefcase className="size-3.5 text-muted-foreground/70 shrink-0" />
+                      <span className="truncate">{teammate.department}</span>
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground/40 italic text-[11px]">No department</span>
+                  )}
+                </div>
+
+                {/* ── Right Zone: Contact Details + Channel Eligibility Warning ── */}
+                <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 shrink-0 sm:ml-auto">
+                  {/* Contact details */}
+                  <div className="flex flex-col sm:items-end justify-center text-xs text-muted-foreground gap-1 min-w-0">
+                    {teammate.email && (
+                      <div
+                        className={cn(
+                          'inline-flex items-center gap-1.5 truncate max-w-[210px] transition-colors',
+                          channel === 'email' ? 'text-foreground font-medium' : 'text-muted-foreground'
+                        )}
+                      >
+                        <Mail
+                          className={cn(
+                            'size-3.5 shrink-0',
+                            channel === 'email' ? 'text-primary' : 'text-muted-foreground/70'
+                          )}
+                        />
+                        <span className="truncate">{teammate.email}</span>
+                      </div>
+                    )}
+
+                    {teammate.phone && (
+                      <div
+                        className={cn(
+                          'inline-flex items-center gap-1.5 truncate transition-colors',
+                          channel === 'sms' || channel === 'whatsapp'
+                            ? 'text-foreground font-medium'
+                            : 'text-muted-foreground'
+                        )}
+                      >
+                        <Phone
+                          className={cn(
+                            'size-3.5 shrink-0',
+                            channel === 'sms' || channel === 'whatsapp'
+                              ? 'text-primary'
+                              : 'text-muted-foreground/70'
+                          )}
+                        />
+                        <span>{teammate.phone}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Channel Ineligibility Warning Badge */}
+                  {!isEligible && (
+                    <div className="shrink-0">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30 whitespace-nowrap shadow-2xs">
+                        <AlertTriangle className="size-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                        <span>{missingDetailLabel}</span>
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             );

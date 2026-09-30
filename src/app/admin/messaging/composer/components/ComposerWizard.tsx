@@ -129,7 +129,7 @@ type FormData = z.infer<typeof formSchema>;
 
 // ─── Step config ──────────────────────────────────────────────────────────────
 const STEPS = [
-    { n: 1, label: 'Message Type',   icon: Mail },
+    { n: 1, label: 'Details',        icon: Mail },
     { n: 2, label: 'Builder',        icon: Wand2 },
     { n: 3, label: 'Audience',       icon: Users },
     { n: 4, label: 'Tags & Actions', icon: Tag },
@@ -139,40 +139,64 @@ const STEPS = [
 // ─── Sub-components (extracted for stability) ─────────────────────────────────
 
 const Stepper = ({ currentStep, onStepClick }: { currentStep: number; onStepClick: (n: number) => void }) => (
-    <div className="flex items-center justify-center gap-0 mb-10">
-        {STEPS.map((s, idx) => {
-            const Icon = s.icon;
-            const isActive = currentStep === s.n;
-            const isDone = currentStep > s.n;
-            return (
-                <React.Fragment key={s.n}>
-                    <button
-                        type="button"
-                        onClick={() => isDone && onStepClick(s.n)}
-                        className={cn('flex flex-col items-center gap-1.5 outline-none group', isDone && 'cursor-pointer')}
-                        aria-label={`Step ${s.n}: ${s.label}${isDone ? ' (Completed)' : isActive ? ' (Active)' : ''}`}
-                    >
-                        <div className={cn(
-                            'w-9 h-9 rounded-2xl border-2 flex items-center justify-center transition-all duration-300',
-                            isDone  ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20' :
-                            isActive ? 'border-primary text-primary bg-primary/10 shadow-lg shadow-primary/10 scale-110' :
-                                       'border-border text-muted-foreground',
-                        )}>
-                            {isDone ? <Check className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
-                        </div>
-                        <span className={cn('text-[9px] font-bold uppercase tracking-widest transition-colors sr-only sm:not-sr-only sm:block',
-                            isActive || isDone ? 'text-primary' : 'text-muted-foreground opacity-50'
-                        )}>{s.label}</span>
-                    </button>
-                    {idx < STEPS.length - 1 && (
-                        <div className="flex-1 mx-2 h-[2px] bg-border rounded-full overflow-hidden max-w-[60px]">
-                            <div className={cn('h-full bg-primary transition-all duration-500', isDone ? 'w-full' : 'w-0')} />
-                        </div>
-                    )}
-                </React.Fragment>
-            );
-        })}
-    </div>
+    <nav
+        aria-label="Composer Workflow Steps"
+        className="flex items-center justify-center mb-8 px-2"
+    >
+        <div className="inline-flex items-center bg-muted/40 backdrop-blur-md p-1 rounded-full border border-border/60 shadow-xs max-w-full overflow-x-auto scrollbar-none gap-0.5 sm:gap-1">
+            {STEPS.map((s, idx) => {
+                const isActive = currentStep === s.n;
+                const isDone = currentStep > s.n;
+                const isClickable = isDone;
+
+                return (
+                    <React.Fragment key={s.n}>
+                        <button
+                            type="button"
+                            onClick={() => isClickable && onStepClick(s.n)}
+                            disabled={!isClickable}
+                            aria-current={isActive ? 'step' : undefined}
+                            aria-label={`Step ${s.n}: ${s.label}${isDone ? ' (Completed)' : isActive ? ' (Active)' : ''}`}
+                            className={cn(
+                                'px-3 sm:px-3.5 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 transition-all duration-200 select-none min-h-[38px] sm:min-h-[36px]',
+                                isActive
+                                    ? 'bg-background text-primary font-semibold shadow-xs ring-1 ring-border/50'
+                                    : isDone
+                                    ? 'text-primary/90 hover:text-primary hover:bg-background/60 cursor-pointer active:scale-[0.97]'
+                                    : 'text-muted-foreground/60 cursor-not-allowed opacity-75'
+                            )}
+                        >
+                            <span
+                                className={cn(
+                                    'w-5 h-5 rounded-full text-[11px] font-bold flex items-center justify-center shrink-0 transition-colors',
+                                    isActive
+                                        ? 'bg-primary text-primary-foreground shadow-2xs'
+                                        : isDone
+                                        ? 'bg-primary/10 text-primary'
+                                        : 'bg-muted-foreground/20 text-muted-foreground'
+                                )}
+                            >
+                                {isDone ? <Check className="w-3 h-3 stroke-[2.5]" /> : s.n}
+                            </span>
+                            <span className={cn(
+                                'transition-colors whitespace-nowrap',
+                                isActive ? 'text-primary font-semibold' : ''
+                            )}>
+                                {s.label}
+                            </span>
+                        </button>
+
+                        {idx < STEPS.length - 1 && (
+                            <ChevronRight
+                                className="w-3.5 h-3.5 text-muted-foreground/30 shrink-0 mx-0.5"
+                                aria-hidden="true"
+                            />
+                        )}
+                    </React.Fragment>
+                );
+            })}
+        </div>
+    </nav>
 );
 
 const NavFooter = ({ 

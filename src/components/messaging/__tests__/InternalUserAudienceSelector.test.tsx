@@ -3,11 +3,30 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import React from 'react';
 import { InternalUserAudienceSelector } from '../InternalUserAudienceSelector';
 import { useWorkspaceUsers } from '@/hooks/use-workspace-users';
-import type { UserProfile } from '@/lib/types';
+import { useWorkspaceRoles } from '@/hooks/use-workspace-roles';
+import type { UserProfile, Role } from '@/lib/types';
 import type { InternalUserRecipient } from '@/lib/types/composer-audience';
 
 vi.mock('@/hooks/use-workspace-users', () => ({
   useWorkspaceUsers: vi.fn(),
+}));
+
+vi.mock('@/hooks/use-workspace-roles', () => ({
+  useWorkspaceRoles: vi.fn(() => ({
+    roles: [],
+    roleMap: new Map(),
+    isLoading: false,
+    error: null,
+  })),
+  useRoleLookup: vi.fn((roles: Role[] | null | undefined) => {
+    const map = new Map<string, Role>();
+    if (roles) {
+      for (const r of roles) {
+        if (r && r.id) map.set(r.id, r);
+      }
+    }
+    return map;
+  }),
 }));
 
 describe('InternalUserAudienceSelector', () => {
@@ -59,7 +78,6 @@ describe('InternalUserAudienceSelector', () => {
     },
   ];
 
-
   const defaultProps = {
     channel: 'email' as const,
     workspaceId: 'ws-1',
@@ -69,6 +87,12 @@ describe('InternalUserAudienceSelector', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(useWorkspaceRoles).mockReturnValue({
+      roles: [],
+      roleMap: new Map(),
+      isLoading: false,
+      error: null,
+    });
   });
 
   describe('Loading and Empty States', () => {
@@ -129,14 +153,14 @@ describe('InternalUserAudienceSelector', () => {
       // Sarah C. uses displayName over name
       const sarahRow = screen.getByTestId('teammate-row-u1');
       expect(within(sarahRow).getByText('Sarah C.')).toBeInTheDocument();
-      expect(within(sarahRow).getByText('Operations')).toBeInTheDocument();
+      expect(within(sarahRow).getAllByText('Operations').length).toBeGreaterThan(0);
       expect(within(sarahRow).getByText('Admin')).toBeInTheDocument();
 
       // Alex Smith uses roles[0] fallback
       const alexRow = screen.getByTestId('teammate-row-u3');
       expect(within(alexRow).getByText('Alex Smith')).toBeInTheDocument();
       expect(within(alexRow).getByText('Manager')).toBeInTheDocument();
-      expect(within(alexRow).getByText('Sales')).toBeInTheDocument();
+      expect(within(alexRow).getAllByText('Sales').length).toBeGreaterThan(0);
 
       // Kwame Mensah falls back to 'Member' role
       const kwameRow = screen.getByTestId('teammate-row-u4');
@@ -153,6 +177,227 @@ describe('InternalUserAudienceSelector', () => {
 
       // John Doe has no photo, should display JD initials
       expect(screen.getByText('JD')).toBeInTheDocument();
+    });
+  });
+
+  describe('Role ID Resolution & Technical Code Humanizing', () => {
+    it('resolves raw Firestore role IDs to human role names using roleMap', () => {
+      const usersWithRoleIds: UserProfile[] = [
+        {
+          id: 'u-godwin',
+          name: 'Godwin Mawudzro',
+          email: 'godwin@example.com',
+          phone: '+233557099205',
+          role: 'aP8rWeyeU2uYleUj4VjX', // Raw Firestore document ID
+          department: 'Agency Operations & Traffic',
+          organizationId: 'org-1',
+          workspaceIds: ['ws-1'],
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+      ];
+
+      const customRoles: Role[] = [
+        {
+          id: 'aP8rWeyeU2uYleUj4VjX',
+          name: 'Operations Specialist',
+          description: 'Custom operations role',
+          organizationId: 'org-1',
+          workspaceIds: ['ws-1'],
+          permissions: [],
+          color: '#3b82f6',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+      ];
+
+      vi.mocked(useWorkspaceUsers).mockReturnValue({
+        data: usersWithRoleIds,
+        isLoading: false,
+        error: null,
+      } as ReturnType<typeof useWorkspaceUsers>);
+
+      const roleMap = new Map<string, Role>();
+      roleMap.set('aP8rWeyeU2uYleUj4VjX', customRoles[0]);
+
+      vi.mocked(useWorkspaceRoles).mockReturnValue({
+        roles: customRoles,
+        roleMap,
+        isLoading: false,
+        error: null,
+      });
+
+      render(<InternalUserAudienceSelector {...defaultProps} />);
+
+      const godwinRow = screen.getByTestId('teammate-row-u-godwin');
+      expect(within(godwinRow).getByText('Operations Specialist')).toBeInTheDocument();
+      expect(within(godwinRow).queryByText('aP8rWeyeU2uYleUj4VjX')).not.toBeInTheDocument();
+
+      // Dynamic role filter pill displays resolved human name
+      expect(screen.getByRole('button', { name: /^operations specialist/i })).toBeInTheDocument();
+    });
+
+    it('masks unmapped raw Firestore role IDs to "Member" so ugly hashes never leak', () => {
+      const usersWithUnmappedId: UserProfile[] = [
+        {
+          id: 'u-reginald',
+          name: 'Reginald Abdallah',
+          email: 'reginald@example.com',
+          phone: '+233551718489',
+          role: 'aP8rWeyeU2uYleUj4VjX', // Orphaned or unmapped ID
+          department: 'Sales and Marketing',
+          organizationId: 'org-1',
+          workspaceIds: ['ws-1'],
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+      ];
+
+      vi.mocked(useWorkspaceUsers).mockReturnValue({
+        data: usersWithUnmappedId,
+        isLoading: false,
+        error: null,
+      } as ReturnType<typeof useWorkspaceUsers>);
+
+      vi.mocked(useWorkspaceRoles).mockReturnValue({
+        roles: [],
+        roleMap: new Map(),
+        isLoading: false,
+        error: null,
+      });
+
+      render(<InternalUserAudienceSelector {...defaultProps} />);
+
+      const reginaldRow = screen.getByTestId('teammate-row-u-reginald');
+      expect(within(reginaldRow).getByText('Member')).toBeInTheDocument();
+      expect(within(reginaldRow).queryByText('aP8rWeyeU2uYleUj4VjX')).not.toBeInTheDocument();
+    });
+
+    it('humanizes snake_case, lowercase, and acronym-containing technical role codes', () => {
+      const usersWithTechnicalRoles: UserProfile[] = [
+        {
+          id: 'u-cse',
+          name: 'Rita Ocloo',
+          email: 'rita@example.com',
+          phone: '+233240001111',
+          role: 'customer_success_(cse)',
+          organizationId: 'org-1',
+          workspaceIds: ['ws-1'],
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+        {
+          id: 'u-finance',
+          name: 'Finance User',
+          email: 'finance@example.com',
+          phone: '+233240002222',
+          role: 'finance_officer',
+          organizationId: 'org-1',
+          workspaceIds: ['ws-1'],
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+        {
+          id: 'u-trainer',
+          name: 'Noah Owusu',
+          email: 'noah@example.com',
+          phone: '+233240003333',
+          role: 'trainer',
+          organizationId: 'org-1',
+          workspaceIds: ['ws-1'],
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+        {
+          id: 'u-user',
+          name: 'Evans Kenney',
+          email: 'evans@example.com',
+          phone: '+233240004444',
+          role: 'user',
+          organizationId: 'org-1',
+          workspaceIds: ['ws-1'],
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+      ];
+
+      vi.mocked(useWorkspaceUsers).mockReturnValue({
+        data: usersWithTechnicalRoles,
+        isLoading: false,
+        error: null,
+      } as ReturnType<typeof useWorkspaceUsers>);
+
+      render(<InternalUserAudienceSelector {...defaultProps} />);
+
+      // customer_success_(cse) -> Customer Success (CSE)
+      const ritaRow = screen.getByTestId('teammate-row-u-cse');
+      expect(within(ritaRow).getByText('Customer Success (CSE)')).toBeInTheDocument();
+
+      // finance_officer -> Finance Officer
+      const financeRow = screen.getByTestId('teammate-row-u-finance');
+      expect(within(financeRow).getByText('Finance Officer')).toBeInTheDocument();
+
+      // trainer -> Trainer
+      const noahRow = screen.getByTestId('teammate-row-u-trainer');
+      expect(within(noahRow).getByText('Trainer')).toBeInTheDocument();
+
+      // user -> Member
+      const evansRow = screen.getByTestId('teammate-row-u-user');
+      expect(within(evansRow).getByText('Member')).toBeInTheDocument();
+    });
+  });
+
+  describe('Card Content Distribution & Layout', () => {
+    it('distributes name/role on left, department badge in center, and contact info on right', () => {
+      const teammatesForLayout: UserProfile[] = [
+        {
+          id: 'u-full',
+          name: 'Godwin Mawudzro',
+          email: 'gkwame.gk17@gmail.com',
+          phone: '+233557099205',
+          role: 'Admin',
+          department: 'Agency Operations & Traffic',
+          organizationId: 'org-1',
+          workspaceIds: ['ws-1'],
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+      ];
+
+      vi.mocked(useWorkspaceUsers).mockReturnValue({
+        data: teammatesForLayout,
+        isLoading: false,
+        error: null,
+      } as ReturnType<typeof useWorkspaceUsers>);
+
+      render(<InternalUserAudienceSelector {...defaultProps} channel="sms" />);
+
+      const card = screen.getByTestId('teammate-row-u-full');
+      expect(within(card).getByText('Godwin Mawudzro')).toBeInTheDocument();
+      expect(within(card).getByText('Admin')).toBeInTheDocument();
+      expect(within(card).getAllByText('Agency Operations & Traffic').length).toBeGreaterThan(0);
+      expect(within(card).getByText('gkwame.gk17@gmail.com')).toBeInTheDocument();
+      expect(within(card).getByText('+233557099205')).toBeInTheDocument();
+    });
+
+    it('positions channel warning badge on the right side for ineligible teammates', () => {
+      const teammatesWithWarning: UserProfile[] = [
+        {
+          id: 'u-warn',
+          name: 'Rita Ocloo',
+          email: 'rita@example.com',
+          phone: '', // Missing phone
+          role: 'Member',
+          department: 'Customer Success',
+          organizationId: 'org-1',
+          workspaceIds: ['ws-1'],
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+      ];
+
+      vi.mocked(useWorkspaceUsers).mockReturnValue({
+        data: teammatesWithWarning,
+        isLoading: false,
+        error: null,
+      } as ReturnType<typeof useWorkspaceUsers>);
+
+      render(<InternalUserAudienceSelector {...defaultProps} channel="sms" />);
+
+      const card = screen.getByTestId('teammate-row-u-warn');
+      expect(within(card).getByText('Missing phone')).toBeInTheDocument();
+      expect(within(card).getByRole('checkbox')).toBeDisabled();
     });
   });
 
@@ -298,85 +543,62 @@ describe('InternalUserAudienceSelector', () => {
       render(<InternalUserAudienceSelector {...defaultProps} onChange={onChange} />);
 
       const sarahRow = screen.getByTestId('teammate-row-u1');
-      const checkbox = within(sarahRow).getByRole('checkbox');
+      const sarahCheckbox = within(sarahRow).getByRole('checkbox');
 
-      fireEvent.keyDown(checkbox, { key: ' ' });
+      fireEvent.keyDown(sarahCheckbox, { key: ' ' });
       expect(onChange).toHaveBeenCalledTimes(1);
 
-      fireEvent.keyDown(checkbox, { key: 'Enter' });
+      fireEvent.keyDown(sarahCheckbox, { key: 'Enter' });
       expect(onChange).toHaveBeenCalledTimes(2);
     });
 
     it('selects all eligible visible teammates when "Select All Eligible" is clicked', () => {
       const onChange = vi.fn();
-      render(
-        <InternalUserAudienceSelector
-          {...defaultProps}
-          channel="email"
-          onChange={onChange}
-        />
-      );
+      render(<InternalUserAudienceSelector {...defaultProps} channel="email" onChange={onChange} />);
 
       const selectAllBtn = screen.getByRole('button', { name: /select all eligible/i });
       fireEvent.click(selectAllBtn);
 
       expect(onChange).toHaveBeenCalledTimes(1);
       const selected = onChange.mock.calls[0][0] as InternalUserRecipient[];
-      // On email channel: u1, u2, u4 are eligible; u3 (Alex) has no email
+      // Sarah (u1), John (u2), and Kwame (u4) have emails; Alex (u3) does not
       expect(selected).toHaveLength(3);
       expect(selected.map((u) => u.userId)).toEqual(['u1', 'u2', 'u4']);
     });
 
     it('clears selection when "Deselect All" is clicked', () => {
       const onChange = vi.fn();
-      const selectedUser: InternalUserRecipient = {
-        userId: 'u1',
-        name: 'Sarah C.',
-        email: 'sarah@example.com',
-        isEligibleForChannel: true,
-      };
-
       render(
         <InternalUserAudienceSelector
           {...defaultProps}
-          selectedUsers={[selectedUser]}
+          selectedUsers={[
+            {
+              userId: 'u1',
+              name: 'Sarah C.',
+              email: 'sarah@example.com',
+              isEligibleForChannel: true,
+            },
+          ]}
           onChange={onChange}
         />
       );
 
-      const deselectBtn = screen.getByRole('button', { name: /deselect all/i });
-      fireEvent.click(deselectBtn);
+      const deselectAllBtn = screen.getByRole('button', { name: /deselect all/i });
+      fireEvent.click(deselectAllBtn);
 
       expect(onChange).toHaveBeenCalledWith([]);
     });
 
     it('disables "Select All Eligible" when all eligible teammates are already selected', () => {
-      const allEligible: InternalUserRecipient[] = [
-        {
-          userId: 'u1',
-          name: 'Sarah C.',
-          email: 'sarah@example.com',
-          isEligibleForChannel: true,
-        },
-        {
-          userId: 'u2',
-          name: 'John Doe',
-          email: 'john@example.com',
-          isEligibleForChannel: true,
-        },
-        {
-          userId: 'u4',
-          name: 'Kwame Mensah',
-          email: 'kwame@example.com',
-          isEligibleForChannel: true,
-        },
-      ];
-
       render(
         <InternalUserAudienceSelector
           {...defaultProps}
           channel="email"
-          selectedUsers={allEligible}
+          selectedUsers={[
+            { userId: 'u1', name: 'Sarah', email: 's@e.com', isEligibleForChannel: true },
+            { userId: 'u2', name: 'John', email: 'j@e.com', isEligibleForChannel: true },
+            { userId: 'u4', name: 'Kwame', email: 'k@e.com', isEligibleForChannel: true },
+          ]}
         />
       );
 
@@ -387,8 +609,8 @@ describe('InternalUserAudienceSelector', () => {
     it('disables "Deselect All" when no teammates are selected', () => {
       render(<InternalUserAudienceSelector {...defaultProps} selectedUsers={[]} />);
 
-      const deselectBtn = screen.getByRole('button', { name: /deselect all/i });
-      expect(deselectBtn).toBeDisabled();
+      const deselectAllBtn = screen.getByRole('button', { name: /deselect all/i });
+      expect(deselectAllBtn).toBeDisabled();
     });
   });
 
@@ -405,44 +627,44 @@ describe('InternalUserAudienceSelector', () => {
       render(<InternalUserAudienceSelector {...defaultProps} />);
 
       const searchInput = screen.getByPlaceholderText(/search teammates/i);
-      fireEvent.change(searchInput, { target: { value: 'kwame' } });
+      fireEvent.change(searchInput, { target: { value: 'sarah' } });
 
-      expect(screen.getByText('Kwame Mensah')).toBeInTheDocument();
-      expect(screen.queryByText('Sarah C.')).not.toBeInTheDocument();
+      expect(screen.getByText('Sarah C.')).toBeInTheDocument();
       expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
       expect(screen.queryByText('Alex Smith')).not.toBeInTheDocument();
+      expect(screen.queryByText('Kwame Mensah')).not.toBeInTheDocument();
     });
 
     it('filters teammates by department or role', () => {
       render(<InternalUserAudienceSelector {...defaultProps} />);
 
       const searchInput = screen.getByPlaceholderText(/search teammates/i);
-      fireEvent.change(searchInput, { target: { value: 'operations' } });
+      fireEvent.change(searchInput, { target: { value: 'Support' } });
 
-      expect(screen.getByText('Sarah C.')).toBeInTheDocument();
-      expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
+      expect(screen.queryByText('Sarah C.')).not.toBeInTheDocument();
     });
 
     it('clears search input when clear button is clicked', () => {
       render(<InternalUserAudienceSelector {...defaultProps} />);
 
       const searchInput = screen.getByPlaceholderText(/search teammates/i);
-      fireEvent.change(searchInput, { target: { value: 'kwame' } });
-      expect(screen.queryByText('Sarah C.')).not.toBeInTheDocument();
+      fireEvent.change(searchInput, { target: { value: 'sarah' } });
+
+      expect(screen.getByText('Sarah C.')).toBeInTheDocument();
 
       const clearBtn = screen.getByRole('button', { name: /clear search/i });
       fireEvent.click(clearBtn);
 
       expect(searchInput).toHaveValue('');
-      expect(screen.getByText('Sarah C.')).toBeInTheDocument();
-      expect(screen.getByText('Kwame Mensah')).toBeInTheDocument();
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
 
     it('shows empty search state when query has no matches, with reset button', () => {
       render(<InternalUserAudienceSelector {...defaultProps} />);
 
       const searchInput = screen.getByPlaceholderText(/search teammates/i);
-      fireEvent.change(searchInput, { target: { value: 'nonexistent-person' } });
+      fireEvent.change(searchInput, { target: { value: 'nonexistent user 12345' } });
 
       expect(screen.getByText(/no teammates match your search/i)).toBeInTheDocument();
 
@@ -456,7 +678,7 @@ describe('InternalUserAudienceSelector', () => {
       const onChange = vi.fn();
       render(<InternalUserAudienceSelector {...defaultProps} onChange={onChange} />);
 
-      // Role filter pills: All, Admin, Agent, Manager, Member
+      // Role pills exist
       expect(screen.getByRole('button', { name: /^all/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /^admin/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /^agent/i })).toBeInTheDocument();
