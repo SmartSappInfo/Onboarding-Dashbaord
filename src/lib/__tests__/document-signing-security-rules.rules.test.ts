@@ -7,6 +7,8 @@
  * - signing_envelopes
  * - contract_obligations
  * - contract_relationships
+ * - bulk_campaigns
+ * - bulk_campaign_recipients
  */
 import { describe, it, beforeAll, afterAll, beforeEach } from 'vitest';
 import {
@@ -132,6 +134,24 @@ describe.skipIf(!up)('document signing security rules', () => {
         sourceContractId: 'c-1',
         targetContractId: 'c-2',
         relationshipType: 'amendment',
+      });
+
+      // Bulk campaigns and recipients. The read tests below need real documents: reading a
+      // missing document leaves `resource` null, so a deny would pass without testing the rule.
+      await setDoc(doc(db, 'bulk_campaigns/camp-a'), {
+        workspaceId: WS_A,
+        title: 'Campaign A',
+        status: 'ready',
+      });
+      await setDoc(doc(db, 'bulk_campaigns/camp-b'), {
+        workspaceId: WS_B,
+        title: 'Campaign B',
+        status: 'ready',
+      });
+      await setDoc(doc(db, 'bulk_campaign_recipients/rec-1'), {
+        campaignId: 'camp-a',
+        email: 'recipient@example.com',
+        status: 'queued',
       });
     });
   });
