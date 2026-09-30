@@ -16,6 +16,7 @@ import {
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useAuth, useFirestore } from '@/firebase';
 import { enforceSuperAdminProfileAction } from '@/app/actions/onboarding-actions';
+import { validateEncryptedInvitationAction } from '@/app/actions/invitation-crypto-actions';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -49,6 +50,8 @@ function LoginContent() {
   const searchParams = useSearchParams();
   // Post-auth destination carried from an invite link (open-redirect safe).
   const returnTo = safeInternalRedirect(searchParams.get('redirect'));
+  const inviteToken = searchParams.get('invite') || (typeof window !== 'undefined' ? sessionStorage.getItem('active_invite_payload') : null);
+  const emailParam = searchParams.get('email');
   const auth = useAuth();
   const firestore = useFirestore();
   const [showPassword, setShowPassword] = React.useState(false);
@@ -67,6 +70,36 @@ function LoginContent() {
   React.useEffect(() => {
     document.title = 'Login - Onboarding Workspace';
   }, []);
+
+  // Pre-fill email from query param if available
+  React.useEffect(() => {
+    if (emailParam && !form.getValues('email')) {
+      form.setValue('email', emailParam);
+    }
+  }, [emailParam, form]);
+
+  // Pre-fill email and credentials from encrypted invitation token
+  React.useEffect(() => {
+    if (inviteToken) {
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('active_invite_payload', inviteToken);
+      }
+      validateEncryptedInvitationAction({ token: inviteToken })
+        .then((res) => {
+          if (res.success && res.invitation) {
+            if (res.invitation.email && !form.getValues('email')) {
+              form.setValue('email', res.invitation.email);
+            }
+            if (res.invitation.tempPassword && !form.getValues('password')) {
+              form.setValue('password', res.invitation.tempPassword);
+            }
+          }
+        })
+        .catch((err) => {
+          console.warn('[Login] Encrypted invite check warning:', err);
+        });
+    }
+  }, [inviteToken, form]);
 
   const handleAuthorizedGoogleUser = React.useCallback(
     async (uid: string, profile: { name: string | null; email: string | null; phone: string | null }) => {
@@ -97,7 +130,8 @@ function LoginContent() {
           }
         } else if (data.profileCompleted === false || !data.profileCompleted) {
           toast({ title: 'Sign-in Successful', description: "Let's complete your profile." });
-          router.push(returnTo || '/profile-setup');
+          const inviteQ = inviteToken ? `?invite=${encodeURIComponent(inviteToken)}` : '';
+          router.push(returnTo || `/profile-setup${inviteQ}`);
         } else if (data.approvalStatus === 'pending') {
           toast({ title: 'Sign-in Successful', description: 'Your registration is awaiting approval.' });
           router.push(returnTo || '/awaiting-approval');
@@ -128,9 +162,10 @@ function LoginContent() {
         description: "Your account has been created. Let's set up your profile details.",
         duration: 5000,
       });
-      router.push(returnTo || '/profile-setup');
+      const inviteQ = inviteToken ? `?invite=${encodeURIComponent(inviteToken)}` : '';
+      router.push(returnTo || `/profile-setup${inviteQ}`);
     },
-    [auth, firestore, router, toast, returnTo]
+    [auth, firestore, router, toast, returnTo, inviteToken]
   );
 
   React.useEffect(() => {
@@ -212,13 +247,15 @@ function LoginContent() {
           if (data.permissions?.includes('system_admin')) {
             router.push(returnTo || '/admin/settings/organizations');
           } else if (data.profileCompleted === false || !data.profileCompleted) {
-            router.push(returnTo || '/profile-setup');
+            const inviteQ = inviteToken ? `?invite=${encodeURIComponent(inviteToken)}` : '';
+            router.push(returnTo || `/profile-setup${inviteQ}`);
           } else {
             router.push(returnTo || '/admin');
           }
         } else if (data.profileCompleted === false || !data.profileCompleted) {
           toast({ title: 'Sign-in Successful', description: "Let's complete your profile." });
-          router.push(returnTo || '/profile-setup');
+          const inviteQ = inviteToken ? `?invite=${encodeURIComponent(inviteToken)}` : '';
+          router.push(returnTo || `/profile-setup${inviteQ}`);
         } else if (data.approvalStatus === 'pending') {
           toast({ title: 'Sign-in Successful', description: 'Your registration is awaiting approval.' });
           router.push(returnTo || '/awaiting-approval');
@@ -244,7 +281,8 @@ function LoginContent() {
           createdAt: new Date().toISOString(),
         });
         toast({ title: 'Welcome to SmartSapp', description: "Let's complete your profile." });
-        router.push(returnTo || '/profile-setup');
+        const inviteQ = inviteToken ? `?invite=${encodeURIComponent(inviteToken)}` : '';
+        router.push(returnTo || `/profile-setup${inviteQ}`);
       }
     } catch (error: unknown) {
       console.error('Login Error:', error);

@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useUser, useAuth, useFirestore } from '@/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { validateJoinCodeAction, submitOnboardingProfileAction } from '@/app/actions/onboarding-actions';
+import { validateEncryptedInvitationAction } from '@/app/actions/invitation-crypto-actions';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,13 +24,26 @@ import LightRays from '@/components/LightRays';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Badge } from '@/components/ui/badge';
 
-const DEFAULT_DEPARTMENTS = ['General', 'Operations', 'Sales', 'Engineering', 'Customer Success'];
+export interface CanonicalDeptOption {
+  id: string;
+  name: string;
+  code?: string;
+}
+
+const DEFAULT_DEPARTMENTS: CanonicalDeptOption[] = [
+  { id: 'General', name: 'General', code: 'GEN' },
+  { id: 'Operations', name: 'Operations', code: 'OPS' },
+  { id: 'Sales', name: 'Sales', code: 'SLS' },
+  { id: 'Engineering', name: 'Engineering', code: 'ENG' },
+  { id: 'Customer Success', name: 'Customer Success', code: 'CS' },
+];
 
 interface ValidatedOrg {
   id: string;
   name: string;
   isConfigured: boolean;
   departments?: string[];
+  canonicalDepartments?: CanonicalDeptOption[];
   logoUrl?: string;
 }
 
@@ -58,7 +72,8 @@ function ProfileSetupContent() {
   const [fullName, setFullName] = React.useState('');
   const [phoneNumber, setPhoneNumber] = React.useState('');
   const [department, setDepartment] = React.useState('');
-  const [orgDepartments, setOrgDepartments] = React.useState<string[]>(DEFAULT_DEPARTMENTS);
+  const [departmentId, setDepartmentId] = React.useState('');
+  const [orgDepartments, setOrgDepartments] = React.useState<CanonicalDeptOption[]>(DEFAULT_DEPARTMENTS);
   const [assignedWorkspaces, setAssignedWorkspaces] = React.useState<{ id: string; name: string }[]>([]);
 
   const [notifEmail, setNotifEmail] = React.useState(true);
@@ -82,9 +97,16 @@ function ProfileSetupContent() {
     }
   }, [user, fullName, phoneNumber]);
 
-  // Auth Redirect Guard — preserve the invite code across the auth boundary.
+  // Auth Redirect Guard — preserve the invite code or encrypted token across the auth boundary.
   React.useEffect(() => {
     if (isUserLoading || user) return;
+    const inviteParam = searchParams.get('invite') || (typeof window !== 'undefined' ? sessionStorage.getItem('active_invite_payload') : null);
+    if (inviteParam) {
+      if (typeof window !== 'undefined') sessionStorage.setItem('active_invite_payload', inviteParam);
+      const dest = `/profile-setup?invite=${encodeURIComponent(inviteParam)}`;
+      router.push(`/login?redirect=${encodeURIComponent(dest)}`);
+      return;
+    }
     const code = codeParam || (typeof window !== 'undefined' ? sessionStorage.getItem('pendingJoinCode') : null);
     if (code) {
       if (typeof window !== 'undefined') sessionStorage.setItem('pendingJoinCode', code);
@@ -93,10 +115,10 @@ function ProfileSetupContent() {
     } else {
       router.push('/login');
     }
-  }, [user, isUserLoading, codeParam, router]);
+  }, [user, isUserLoading, codeParam, searchParams, router]);
 
-  // Auto-resolve organization: checks user's Firestore profile first (for invited users),
-  // then falls back to invite link query param or sessionStorage.
+  // Auto-resolve organization: checks user's Firestore profile first (for invited members),
+  // then falls back to encrypted invite payload, and finally join code.
   const orgResolvedRef = React.useRef(false);
   React.useEffect(() => {
     if (!user || isUserLoading || orgResolvedRef.current) return;
@@ -107,6 +129,7 @@ function ProfileSetupContent() {
       try {
         let targetOrgId = '';
         let preassignedDept = '';
+        let preassignedDeptId = '';
 
         // 1. Check if user document already has an organizationId (Invited members)
         if (firestore && user?.uid) {
@@ -114,10 +137,19 @@ function ProfileSetupContent() {
             const userSnap = await getDoc(doc(firestore, 'users', user.uid));
             if (userSnap.exists()) {
               const uData = userSnap.data();
+              // Re-visit guard: if profile is already completed, bounce straight to dashboard
+              if (uData.profileCompleted === true) {
+                router.push('/admin');
+                return;
+              }
               if (uData.organizationId) {
                 targetOrgId = uData.organizationId;
                 if (uData.name && !fullName) setFullName(uData.name);
                 if (uData.phone && !phoneNumber) setPhoneNumber(uData.phone);
+                if (uData.departmentId) {
+                  preassignedDeptId = uData.departmentId;
+                  setDepartmentId(uData.departmentId);
+                }
                 if (uData.department) {
                   preassignedDept = uData.department;
                   setDepartment(uData.department);
@@ -151,7 +183,35 @@ function ProfileSetupContent() {
           }
         }
 
-        // 2. If no direct org on user doc, check invite code from link or sessionStorage
+        // 2. Check encrypted invitation payload if targetOrgId not yet found on user doc
+        if (!targetOrgId) {
+          const inviteParam = searchParams.get('invite') || (typeof window !== 'undefined' ? sessionStorage.getItem('active_invite_payload') : null);
+          if (inviteParam) {
+            try {
+              const inviteRes = await validateEncryptedInvitationAction({ token: inviteParam });
+              if (inviteRes.success && inviteRes.invitation) {
+                const inv = inviteRes.invitation;
+                targetOrgId = inv.organizationId;
+                if (inv.fullName && !fullName) setFullName(inv.fullName);
+                if (inv.departmentId) {
+                  preassignedDeptId = inv.departmentId;
+                  setDepartmentId(inv.departmentId);
+                }
+                if (inv.departmentName) {
+                  preassignedDept = inv.departmentName;
+                  setDepartment(inv.departmentName);
+                }
+                if (inv.workspaceName) {
+                  setAssignedWorkspaces([{ id: inv.workspaceId || 'ws-1', name: inv.workspaceName }]);
+                }
+              }
+            } catch (invErr) {
+              console.warn('[ProfileSetup] Encrypted invite check warning:', invErr);
+            }
+          }
+        }
+
+        // 3. If no direct org on user doc or encrypted token, check join code from link or sessionStorage
         if (!targetOrgId) {
           const code = codeParam || (typeof window !== 'undefined' ? sessionStorage.getItem('pendingJoinCode') : null);
           if (code) {
@@ -161,29 +221,72 @@ function ProfileSetupContent() {
           }
         }
 
-        // 3. If an organization was found, validate and hydrate it
+        // 4. If an organization was found, validate and hydrate it
         if (targetOrgId) {
           orgResolvedRef.current = true;
           const result = await validateJoinCodeAction(targetOrgId);
           if (result.success && result.organizationId && result.organizationName && isMounted) {
+            let resolvedDepts: CanonicalDeptOption[] = [];
+            if (result.canonicalDepartments && result.canonicalDepartments.length > 0) {
+              resolvedDepts = result.canonicalDepartments.map((d) => ({
+                id: d.id,
+                name: d.name,
+                code: d.code,
+              }));
+            } else if (result.departments && result.departments.length > 0) {
+              resolvedDepts = result.departments.map((name) => ({
+                id: name,
+                name,
+                code: name.slice(0, 4).toUpperCase(),
+              }));
+            } else {
+              resolvedDepts = DEFAULT_DEPARTMENTS;
+            }
+
             const orgInfo: ValidatedOrg = {
               id: result.organizationId,
               name: result.organizationName,
               isConfigured: !!result.isConfigured,
-              departments: result.departments || DEFAULT_DEPARTMENTS,
+              departments: result.departments || resolvedDepts.map((d) => d.name),
+              canonicalDepartments: resolvedDepts,
               logoUrl: result.logoUrl,
             };
             setValidatedOrg(orgInfo);
-            const baseDepts = result.departments || DEFAULT_DEPARTMENTS;
-            const validDepts = preassignedDept && !baseDepts.includes(preassignedDept)
-              ? [preassignedDept, ...baseDepts]
-              : baseDepts;
-            setOrgDepartments(validDepts);
-            if (preassignedDept) {
-              setDepartment(preassignedDept);
-            } else if (!validDepts.includes(department)) {
-              setDepartment(validDepts[0] || 'General');
+
+            if (preassignedDept && !resolvedDepts.some((d) => d.id === preassignedDeptId || d.name.toLowerCase() === preassignedDept.toLowerCase())) {
+              resolvedDepts = [
+                { id: preassignedDeptId || preassignedDept, name: preassignedDept, code: preassignedDept.slice(0, 4).toUpperCase() },
+                ...resolvedDepts,
+              ];
             }
+            setOrgDepartments(resolvedDepts);
+
+            if (preassignedDeptId) {
+              const match = resolvedDepts.find((d) => d.id === preassignedDeptId);
+              if (match) {
+                setDepartment(match.name);
+                setDepartmentId(match.id);
+              } else {
+                setDepartment(preassignedDept || 'General');
+                setDepartmentId(preassignedDeptId);
+              }
+            } else if (preassignedDept) {
+              const match = resolvedDepts.find((d) => d.name.toLowerCase() === preassignedDept.toLowerCase());
+              if (match) {
+                setDepartment(match.name);
+                setDepartmentId(match.id);
+              } else {
+                setDepartment(preassignedDept);
+                setDepartmentId('');
+              }
+            } else {
+              const first = resolvedDepts[0];
+              if (first) {
+                setDepartment(first.name);
+                setDepartmentId(first.id);
+              }
+            }
+
             setIsPreAssociatedOrg(true);
             setStep(2); // Skip Step 1 and proceed directly to Step 2 (Profile)!
             setIsResolvingOrg(false);
@@ -220,18 +323,37 @@ function ProfileSetupContent() {
     try {
       const result = await validateJoinCodeAction(trimmed);
       if (result.success && result.organizationId && result.organizationName) {
+        let resolvedDepts: CanonicalDeptOption[] = [];
+        if (result.canonicalDepartments && result.canonicalDepartments.length > 0) {
+          resolvedDepts = result.canonicalDepartments.map((d) => ({
+            id: d.id,
+            name: d.name,
+            code: d.code,
+          }));
+        } else if (result.departments && result.departments.length > 0) {
+          resolvedDepts = result.departments.map((name) => ({
+            id: name,
+            name,
+            code: name.slice(0, 4).toUpperCase(),
+          }));
+        } else {
+          resolvedDepts = DEFAULT_DEPARTMENTS;
+        }
+
         const orgInfo: ValidatedOrg = {
           id: result.organizationId,
           name: result.organizationName,
           isConfigured: !!result.isConfigured,
-          departments: result.departments || DEFAULT_DEPARTMENTS,
+          departments: result.departments || resolvedDepts.map((d) => d.name),
+          canonicalDepartments: resolvedDepts,
           logoUrl: result.logoUrl,
         };
         setValidatedOrg(orgInfo);
-        const validDepts = result.departments || DEFAULT_DEPARTMENTS;
-        setOrgDepartments(validDepts);
-        if (!validDepts.includes(department)) {
-          setDepartment(validDepts[0] || 'General');
+        setOrgDepartments(resolvedDepts);
+        const match = resolvedDepts.find((d) => d.id === departmentId || d.name === department) || resolvedDepts[0];
+        if (match) {
+          setDepartment(match.name);
+          setDepartmentId(match.id);
         }
         toast({
           title: 'Organization Verified',
@@ -319,6 +441,7 @@ function ProfileSetupContent() {
         name: fullName.trim(),
         phone: phoneNumber.trim(),
         department: department || 'General',
+        departmentId: departmentId || undefined,
         organizationId: validatedOrg.id,
         notificationPreferences: {
           email: notifEmail,
@@ -329,7 +452,10 @@ function ProfileSetupContent() {
       });
 
       if (result.success) {
-        if (typeof window !== 'undefined') sessionStorage.removeItem('pendingJoinCode');
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('pendingJoinCode');
+          sessionStorage.removeItem('active_invite_payload');
+        }
         if (result.isAuthorized) {
           toast({
             title: `Welcome to ${validatedOrg.name}!`,
@@ -648,9 +774,14 @@ function ProfileSetupContent() {
 
                       <div className="flex flex-wrap gap-1.5 pt-1">
                         <span className="text-[11px] text-muted-foreground mr-1">Available Departments:</span>
-                        {(validatedOrg.departments || DEFAULT_DEPARTMENTS).slice(0, 4).map((dept) => (
-                          <span key={dept} className="px-2 py-0.5 rounded-md bg-muted border border-border text-[10px] text-foreground">
-                            {dept}
+                        {orgDepartments.slice(0, 4).map((dept) => (
+                          <span key={dept.id || dept.name} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted border border-border text-[10px] text-foreground">
+                            {dept.code && (
+                              <span className="font-mono font-medium text-emerald-600 dark:text-emerald-400">
+                                [{dept.code}]
+                              </span>
+                            )}
+                            <span>{dept.name}</span>
                           </span>
                         ))}
                       </div>
@@ -785,14 +916,37 @@ function ProfileSetupContent() {
                     </Label>
                     <div className="relative">
                       <Briefcase className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
-                      <Select value={department} onValueChange={setDepartment}>
+                      <Select
+                        value={departmentId || department}
+                        onValueChange={(val) => {
+                          const match = orgDepartments.find((d) => d.id === val || d.name === val);
+                          if (match) {
+                            setDepartmentId(match.id);
+                            setDepartment(match.name);
+                          } else {
+                            setDepartment(val);
+                            setDepartmentId('');
+                          }
+                        }}
+                      >
                         <SelectTrigger className="rounded-xl border-input bg-background pl-10 text-foreground h-12 text-sm focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:border-emerald-500">
                           <SelectValue placeholder="Select Department" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-border bg-popover text-popover-foreground shadow-2xl">
                           {orgDepartments.map((dept) => (
-                            <SelectItem key={dept} value={dept} className="focus:bg-emerald-500/10 focus:text-emerald-600 dark:focus:text-emerald-300">
-                              {dept}
+                            <SelectItem
+                              key={dept.id || dept.name}
+                              value={dept.id || dept.name}
+                              className="focus:bg-emerald-500/10 focus:text-emerald-600 dark:focus:text-emerald-300"
+                            >
+                              <div className="flex items-center gap-2">
+                                {dept.code && (
+                                  <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
+                                    {dept.code}
+                                  </span>
+                                )}
+                                <span>{dept.name}</span>
+                              </div>
                             </SelectItem>
                           ))}
                         </SelectContent>
