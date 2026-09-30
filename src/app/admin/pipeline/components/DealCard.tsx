@@ -253,7 +253,7 @@ export default function DealCard({ deal, stage, isOverlay, onDelete, clientName,
         >
         <Card
             className={cn(
-                "w-full min-w-0 max-w-full touch-manipulation rounded-[1.5rem] border bg-card select-none text-left",
+                "w-full min-w-0 max-w-full touch-manipulation rounded-xl border bg-card select-none text-left",
                 isOverlay 
                     ? "border-primary/80 ring-2 ring-primary/20 shadow-2xl scale-[1.02] cursor-grabbing bg-card/95 backdrop-blur-md mb-0" 
                     : "border-border shadow-sm hover:shadow-lg hover:border-primary/30 transition-all duration-300 group/card overflow-hidden mb-3",
@@ -349,15 +349,6 @@ export default function DealCard({ deal, stage, isOverlay, onDelete, clientName,
                             </Link>
                         </div>
                     ) : null}
-
-                    {/* Row 3: Deal Owner / Assignee */}
-                    <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground mt-1 min-w-0">
-                        <UserCircle2 className="h-2.5 w-2.5 text-primary/50 shrink-0" />
-                        <span className="shrink-0 text-muted-foreground/80">Assigned to:</span>
-                        <span className="font-semibold text-foreground truncate">
-                            {deal.assignedTo?.name ? toTitleCase(deal.assignedTo.name) : 'Unassigned'}
-                        </span>
-                    </div>
                 </div>
             </div>
             
@@ -447,15 +438,45 @@ export default function DealCard({ deal, stage, isOverlay, onDelete, clientName,
             </DropdownMenu>
         </CardHeader>
 
-        {/* ARCHITECTURAL POINTER (Rule 10 Compact 2-Row Kanban Card):
-            - Re-designs card to 2 compact rows (down from 3) for ~50% height reduction.
-            - Eliminates redundant 'OPEN' status badge and static '50%' probability pill.
-            - Unifies Value & MRR on the left and Urgency & Days in stage on the right.
+        {/* ARCHITECTURAL POINTER (Rule 10 Compact Kanban Card Footer):
+            - Left: Deal assignee followed by urgency / days overdue badge, both left-aligned.
+            - Right: Deal monetary value and MRR badge, right-aligned.
+            - Reduced rounded corners by 50% to rounded-xl for crisp visual density.
         */}
         <CardContent className="px-3.5 pb-3 pt-0">
             <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/40 text-xs">
-                {/* Left: Value & MRR */}
-                <div className="flex items-center gap-1.5 min-w-0">
+                {/* Left: Assignee followed by Days / Urgency (all left-aligned) */}
+                <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+                    <div className="flex items-center gap-1 min-w-0 shrink-0">
+                        <UserCircle2 className="h-2.5 w-2.5 text-primary/60 shrink-0" />
+                        <span 
+                            className="text-[10px] font-semibold text-foreground truncate max-w-[100px] sm:max-w-[120px]" 
+                            title={deal.assignedTo?.name ? `Assigned to: ${toTitleCase(deal.assignedTo.name)}` : 'Unassigned'}
+                        >
+                            {deal.assignedTo?.name ? toTitleCase(deal.assignedTo.name) : 'Unassigned'}
+                        </span>
+                    </div>
+
+                    {deal.expectedCloseDate && (
+                        <>
+                            <span className="text-muted-foreground/30 shrink-0 text-[10px]">·</span>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <div className={cn("flex items-center gap-1 text-[10px] font-semibold cursor-help shrink-0", urgency.colorClass)}>
+                                        {UrgencyIcon && <UrgencyIcon className="h-2.5 w-2.5 shrink-0" />}
+                                        <span className="truncate max-w-[95px]">{urgency.label}</span>
+                                    </div>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom" className="text-[10px]">
+                                    <span>Expected Close: {urgency.label}</span>
+                                </TooltipContent>
+                            </Tooltip>
+                        </>
+                    )}
+                </div>
+
+                {/* Right: Deal Value and MRR (right-aligned) */}
+                <div className="flex items-center justify-end gap-1.5 shrink-0 text-right">
                     <Banknote className="h-3 w-3 text-primary/60 shrink-0" />
                     <span className="text-[11px] font-extrabold tabular-nums tracking-tight text-foreground">
                         {formatCurrency(deal.value)}
@@ -464,23 +485,6 @@ export default function DealCard({ deal, stage, isOverlay, onDelete, clientName,
                         <span className="text-[9px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-md shrink-0">
                             +{formatCurrency(deal.mrr, deal.currency)}/m
                         </span>
-                    )}
-                </div>
-
-                {/* Right: Forecast Urgency Countdown & Overdue */}
-                <div className="flex items-center gap-1.5 shrink-0">
-                    {deal.expectedCloseDate && (
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <div className={cn("flex items-center gap-1 text-[10px] font-semibold cursor-help", urgency.colorClass)}>
-                                    {UrgencyIcon && <UrgencyIcon className="h-2.5 w-2.5 shrink-0" />}
-                                    <span className="truncate max-w-[95px]">{urgency.label}</span>
-                                </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom" className="text-[10px]">
-                                <span>Expected Close: {urgency.label}</span>
-                            </TooltipContent>
-                        </Tooltip>
                     )}
                 </div>
             </div>
