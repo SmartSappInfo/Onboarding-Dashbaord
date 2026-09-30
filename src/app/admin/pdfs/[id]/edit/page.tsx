@@ -38,7 +38,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
@@ -517,55 +517,85 @@ export default function EditPdfPage() {
                             )}
                             {step === 3 && (
                                 <motion.div key="step3" {...stepTransition}>
- <div className="mb-8">
-   <Controller name="seo" control={form.control} render={({ field }) => (
-     <SeoSettingsCard
-       value={(field.value as SeoConfig) || {}}
-       onChange={field.onChange}
-       assetLabel="Brand Logo"
-       assetImageUrl={watch('logoUrl')}
-       entityLogoUrl={watch('logoUrl')}
-       contentTitle={watch('publicTitle')}
-       previewUrl={`smartsapp.com/forms/${watch('slug') || ''}`}
-       description="Configure how this signing document appears in search engines and when shared."
-       renderImagePicker={(val, onChange) => (
-         <MediaSelect value={val} onValueChange={onChange} filterType="image" className="rounded-2xl" />
-       )}
-     />
-   )} />
- </div>
- <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start text-left">
- <div className="space-y-8">
- <Card className="shadow-sm overflow-hidden border border-border">
- <CardHeader className="bg-muted/30 border-b py-2.5 px-6"><div className="flex items-center gap-3"><div className="p-1.5 bg-primary/10 rounded-lg"><Globe className="h-4 w-4 text-primary" /></div><CardTitle className="text-base font-semibold tracking-tight">Finalize & Integrate</CardTitle></div></CardHeader>
- <CardContent className="p-0">
- <div className="p-6">
- <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start text-left">
+                                        <div className="space-y-8">
+                                            <Card className="shadow-sm overflow-hidden border border-border">
+                                                <CardHeader className="bg-muted/30 border-b py-2.5 px-6">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-1.5 bg-primary/10 rounded-lg">
+                                                            <Globe className="h-4 w-4 text-primary" />
+                                                        </div>
+                                                        <CardTitle className="text-base font-semibold tracking-tight">Finalize & Integrate</CardTitle>
+                                                    </div>
+                                                </CardHeader>
+                                                <CardContent className="p-0">
+                                                    <div className="p-6">
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                             <Controller name="status" control={form.control} render={({ field }) => (
- <div className="space-y-2"><Label className="text-sm font-semibold text-foreground">Status</Label><Select onValueChange={field.onChange} value={field.value}>
- <SelectTrigger className="h-11 rounded-xl font-bold">
-                                                                        <SelectValue />
-                                                                    </SelectTrigger>
- <SelectContent className="rounded-xl">
-                                                                        <SelectItem value="draft">Draft</SelectItem>
-                                                                        <SelectItem value="published">Published</SelectItem>
-                                                                        <SelectItem value="archived">Archived</SelectItem>
-                                                                    </SelectContent>
-                                                                </Select></div>
+                                                                <div className="space-y-2">
+                                                                    <Label className="text-sm font-semibold text-foreground">Status</Label>
+                                                                    <Select onValueChange={field.onChange} value={field.value}>
+                                                                        <SelectTrigger className="h-11 rounded-xl font-bold border border-input bg-background/50 shadow-xs focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:border-primary">
+                                                                            <SelectValue />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent className="rounded-xl">
+                                                                            <SelectItem value="draft">Draft</SelectItem>
+                                                                            <SelectItem value="published">Published</SelectItem>
+                                                                            <SelectItem value="archived">Archived</SelectItem>
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                </div>
                                                             )} />
                                                             <Controller name="slug" control={form.control} render={({ field }) => (
- <div className="space-y-2"><Label className="text-sm font-semibold text-foreground">URL Backhalf</Label><div className="flex h-11 border border-input rounded-xl overflow-hidden bg-background/50 focus-within:ring-2 focus-within:ring-primary/25 focus-within:border-primary transition-all shadow-xs"><div className="bg-muted px-3 flex items-center text-xs font-semibold tracking-tight text-muted-foreground border-r border-input">/forms/</div><Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-bold" /></div></div>
+                                                                <div className="space-y-2">
+                                                                    <Label className="text-sm font-semibold text-foreground">URL Backhalf</Label>
+                                                                    <div className="flex h-11 border border-input rounded-xl overflow-hidden bg-background/50 focus-within:ring-2 focus-within:ring-primary/25 focus-within:border-primary transition-all shadow-xs">
+                                                                        <div className="bg-muted px-3 flex items-center text-xs font-semibold tracking-tight text-muted-foreground border-r border-input">/forms/</div>
+                                                                        <Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-bold" />
+                                                                    </div>
+                                                                </div>
                                                             )} />
                                                         </div>
                                                     </div>
- <div className="px-6 pb-6 space-y-4">
- <div className={cn("rounded-2xl border-2 transition-all duration-300 shadow-xs", watch('isContractDocument') ? "border-primary/40 bg-primary/5" : "border-input bg-background/50")}><div className="flex items-center justify-between p-4"><div className="flex items-center gap-3"><div className={cn("p-2 rounded-lg", watch('isContractDocument') ? "bg-primary text-white" : "bg-muted text-muted-foreground")}><ShieldCheck className="h-4 w-4" /></div><div className="space-y-0.5"><Label className="text-sm font-semibold tracking-tight">Contract Template</Label><p className="text-[10px] text-muted-foreground font-medium">Mark as a binding agreement</p></div></div><Controller name="isContractDocument" control={form.control} render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />} /></div></div>
+                                                    <div className="px-6 pb-6 space-y-4">
+                                                        <div className={cn("rounded-2xl border-2 transition-all duration-300 shadow-xs", watch('isContractDocument') ? "border-primary/40 bg-primary/5" : "border-input bg-background/50")}>
+                                                            <div className="flex items-center justify-between p-4">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className={cn("p-2 rounded-lg", watch('isContractDocument') ? "bg-primary text-white" : "bg-muted text-muted-foreground")}>
+                                                                        <ShieldCheck className="h-4 w-4" />
+                                                                    </div>
+                                                                    <div className="space-y-0.5">
+                                                                        <Label className="text-sm font-semibold tracking-tight">Contract Template</Label>
+                                                                        <p className="text-[10px] text-muted-foreground font-medium">Mark as a binding agreement</p>
+                                                                    </div>
+                                                                </div>
+                                                                <Controller name="isContractDocument" control={form.control} render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />} />
+                                                            </div>
+                                                        </div>
                                                         <WebhookManager />
                                                     </div>
                                                 </CardContent>
                                             </Card>
+                                            <InternalNotificationConfig prefix="adminAlert" category="forms" />
                                         </div>
- <div className="space-y-8"><InternalNotificationConfig prefix="adminAlert" category="forms" /></div>
+
+                                        <div className="space-y-8">
+                                            <Controller name="seo" control={form.control} render={({ field }) => (
+                                                <SeoSettingsCard
+                                                    value={(field.value as SeoConfig) || {}}
+                                                    onChange={field.onChange}
+                                                    assetLabel="Brand Logo"
+                                                    assetImageUrl={watch('logoUrl')}
+                                                    entityLogoUrl={watch('logoUrl')}
+                                                    contentTitle={watch('publicTitle')}
+                                                    previewUrl={`smartsapp.com/forms/${watch('slug') || ''}`}
+                                                    description="Configure how this signing document appears in search engines and when shared."
+                                                    renderImagePicker={(val, onChange) => (
+                                                        <MediaSelect value={val} onValueChange={onChange} filterType="image" className="rounded-2xl" />
+                                                    )}
+                                                />
+                                            )} />
+                                        </div>
                                     </div>
                                 </motion.div>
                             )}

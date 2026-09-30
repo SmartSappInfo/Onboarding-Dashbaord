@@ -109,25 +109,25 @@ export function SeoSettingsCard({
     .filter(Boolean);
 
   return (
-    <Card className={cn('rounded-2xl border border-border bg-card overflow-hidden', className)}>
-      <CardHeader className="bg-muted/10 border-b py-4 px-6">
+    <Card className={cn('rounded-2xl border border-border bg-card overflow-hidden shadow-sm', className)}>
+      <CardHeader className="bg-muted/30 border-b py-2.5 px-6">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary/10 rounded-xl shrink-0">
-            <Globe className="h-5 w-5 text-primary" />
+          <div className="p-1.5 bg-primary/10 rounded-lg shrink-0">
+            <Globe className="h-4 w-4 text-primary" />
           </div>
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-sm font-semibold tracking-tight">SEO &amp; Social Sharing</CardTitle>
+          <CardTitle className="text-base font-semibold tracking-tight flex items-center gap-2">
+            <span>SEO &amp; Social Sharing</span>
             <CardInfoTooltip text={description} />
-          </div>
+          </CardTitle>
         </div>
       </CardHeader>
 
       <CardContent className="p-6 space-y-6">
         {/* Fallback toggle */}
-        <div className="flex items-start justify-between p-4 rounded-2xl bg-muted/10 border border-border/30">
+        <div className="flex items-start justify-between p-4 rounded-xl bg-background/50 border border-input shadow-xs">
           <div className="space-y-1 pr-4">
-            <Label className="text-sm font-bold leading-none">Use Page Default Details</Label>
-            <p className="text-[10px] text-muted-foreground font-semibold leading-normal mt-1">
+            <Label className="text-sm font-semibold text-foreground leading-none">Use Page Default Details</Label>
+            <p className="text-[11px] text-muted-foreground font-normal leading-normal mt-1">
               Automatically use this page&apos;s title and description for SEO and sharing.
             </p>
           </div>
@@ -140,14 +140,14 @@ export function SeoSettingsCard({
         {/* Title + Keywords */}
         <div className="grid grid-cols-1 gap-6">
           <div className="space-y-2">
-            <Label className="text-sm font-semibold flex items-center gap-1.5">
+            <Label className="text-sm font-semibold text-foreground flex items-center gap-1.5">
               SEO Meta Title
               {useFallback && (
                 <Badge variant="secondary" className="text-[8px] h-3 px-1 py-0 font-bold uppercase">
                   Fallback Active
                 </Badge>
               )}
-              <span className="ml-auto text-[10px] font-normal text-muted-foreground tabular-nums">
+              <span className="ml-auto text-xs font-normal text-muted-foreground tabular-nums">
                 {(value.title ?? '').length}/{TITLE_MAX}
               </span>
             </Label>
@@ -156,18 +156,18 @@ export function SeoSettingsCard({
               onChange={(e) => patch({ title: e.target.value })}
               placeholder={contentTitle || 'Type a custom title…'}
               disabled={useFallback}
-              className="h-11 rounded-xl bg-card border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30 disabled:opacity-50"
+              className="h-11 rounded-xl font-bold border border-input bg-background/50 shadow-xs focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:border-primary disabled:opacity-50 text-foreground transition-all"
             />
           </div>
 
           <div className="space-y-2">
-            <Label className="text-sm font-semibold">SEO Keywords</Label>
+            <Label className="text-sm font-semibold text-foreground">SEO Keywords</Label>
             <div className="relative flex items-center gap-2">
               <Input
                 value={value.keywords ?? ''}
                 onChange={(e) => patch({ keywords: e.target.value })}
                 placeholder="e.g. feedback, technology, school"
-                className="h-11 rounded-xl bg-card border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30 flex-1"
+                className="h-11 rounded-xl font-bold border border-input bg-background/50 shadow-xs focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:border-primary text-foreground transition-all flex-1"
               />
               {onGenerateKeywords && (
                 <Button
@@ -176,7 +176,7 @@ export function SeoSettingsCard({
                   size="icon"
                   disabled={isGeneratingKeywords}
                   onClick={onGenerateKeywords}
-                  className="h-11 w-11 rounded-xl border border-border/50 shrink-0 hover:bg-primary/5 hover:text-primary transition-all active:scale-95"
+                  className="h-11 w-11 rounded-xl border border-input bg-background/50 shadow-xs shrink-0 hover:bg-primary/5 hover:text-primary transition-all active:scale-95"
                   title="Generate keywords with AI"
                 >
                   {isGeneratingKeywords ? (
@@ -192,14 +192,14 @@ export function SeoSettingsCard({
 
         {/* Description */}
         <div className="space-y-2">
-          <Label className="text-sm font-semibold flex items-center gap-1.5">
+          <Label className="text-sm font-semibold text-foreground flex items-center gap-1.5">
             SEO Meta Description
             {useFallback && (
               <Badge variant="secondary" className="text-[8px] h-3 px-1 py-0 font-bold uppercase">
                 Fallback Active
               </Badge>
             )}
-            <span className="ml-auto text-[10px] font-normal text-muted-foreground tabular-nums">
+            <span className="ml-auto text-xs font-normal text-muted-foreground tabular-nums">
               {(value.description ?? '').length}/{DESC_MAX}
             </span>
           </Label>
@@ -208,7 +208,7 @@ export function SeoSettingsCard({
             onChange={(e) => patch({ description: e.target.value })}
             placeholder={contentDescription || 'Type a custom description…'}
             disabled={useFallback}
-            className="min-h-[100px] rounded-xl bg-card border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30 resize-none disabled:opacity-50"
+            className="min-h-[100px] rounded-xl font-medium border border-input bg-background/50 shadow-xs focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:border-primary resize-none disabled:opacity-50 text-foreground transition-all"
           />
         </div>
 
@@ -216,7 +216,7 @@ export function SeoSettingsCard({
 
         {/* Social image mode */}
         <div className="space-y-4">
-          <Label className="text-sm font-bold">Social Image (Open Graph)</Label>
+          <Label className="text-sm font-semibold text-foreground">Social Image (Open Graph)</Label>
           <RadioGroup
             value={mode}
             onValueChange={(next) => patch({ ogImageMode: next as OgImageMode })}
@@ -227,16 +227,16 @@ export function SeoSettingsCard({
                 key={m}
                 onClick={() => patch({ ogImageMode: m })}
                 className={cn(
-                  'flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition-all duration-200',
-                  mode === m ? 'border-primary bg-primary/[0.02] ring-1 ring-primary/20' : 'border-border/50 hover:bg-muted/10',
+                  'flex items-start gap-3 p-4 rounded-xl border border-input bg-background/50 shadow-xs cursor-pointer transition-all duration-200',
+                  mode === m ? 'border-primary/60 bg-primary/5 ring-1 ring-primary/30' : 'hover:bg-muted/30',
                 )}
               >
                 <RadioGroupItem value={m} id={`og-mode-${m}`} className="mt-1" />
                 <div className="space-y-1">
-                  <Label htmlFor={`og-mode-${m}`} className="text-xs font-bold cursor-pointer">
+                  <Label htmlFor={`og-mode-${m}`} className="text-xs font-bold cursor-pointer text-foreground">
                     {m === 'asset' ? assetLabel : label}
                   </Label>
-                  <p className="text-[9px] text-muted-foreground leading-snug">{hint(assetLabel)}</p>
+                  <p className="text-[10px] text-muted-foreground font-medium leading-snug">{hint(assetLabel)}</p>
                 </div>
               </div>
             ))}
@@ -254,7 +254,7 @@ export function SeoSettingsCard({
                   value={value.ogImageUrl ?? ''}
                   onChange={(e) => patch({ ogImageUrl: e.target.value })}
                   placeholder="https://…/social-image.png"
-                  className="h-11 rounded-xl bg-card border border-border/50"
+                  className="h-11 rounded-xl font-bold border border-input bg-background/50 shadow-xs focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:border-primary text-foreground transition-all"
                 />
               )}
             </div>
