@@ -269,6 +269,7 @@ export async function dispatchCampaignBatchSlice(
           templateVersionId: campaign.templateVersionId,
           status: 'sent',
           routingMode: campaign.routingMode,
+          ...(recipient.entityId ? { entityId: recipient.entityId } : {}),
           recipients: [
             {
               id: randomUUID(),
@@ -278,6 +279,7 @@ export async function dispatchCampaignBatchSlice(
               role: 'signer',
               routingOrder: 1,
               status: 'invited',
+              ...(recipient.contactId ? { crmContactId: recipient.contactId } : {}),
             },
             ...(campaign.routingMode === 'sequential_countersign' && campaign.countersignerEmail
               ? [

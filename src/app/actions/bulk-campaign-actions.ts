@@ -235,111 +235,120 @@ export async function previewBulkCrmRecipientsAction(
       };
     }
 
-    // Query entities in bounded batches of 25 to respect Firestore limits
+    // Query entities in bounded batches of 25 concurrently to respect Firestore limits while preventing timeouts
     const BATCH_SIZE = 25;
-    const resolvedEntities: SearchedEntity[] = [];
-
+    const chunks: string[][] = [];
     for (let i = 0; i < entityIds.length; i += BATCH_SIZE) {
-      const chunk = entityIds.slice(i, i + BATCH_SIZE);
+      chunks.push(entityIds.slice(i, i + BATCH_SIZE));
+    }
 
-      // Check composite tenant-keyed workspace_entities, direct doc IDs, and entities collection
-      const compositeWeRefs = chunk.map((eid) =>
-        adminDb.collection('workspace_entities').doc(`${workspaceId}_${eid}`)
-      );
-      const directWeRefs = chunk.map((eid) =>
-        adminDb.collection('workspace_entities').doc(eid)
-      );
-      const entityRefs = chunk.map((eid) =>
-        adminDb.collection('entities').doc(eid)
-      );
+    const chunkResults = await Promise.all(
+      chunks.map(async (chunk) => {
+        // Check composite tenant-keyed workspace_entities, direct doc IDs, and entities collection
+        const compositeWeRefs = chunk.map((eid) =>
+          adminDb.collection('workspace_entities').doc(`${workspaceId}_${eid}`)
+        );
+        const directWeRefs = chunk.map((eid) =>
+          adminDb.collection('workspace_entities').doc(eid)
+        );
+        const entityRefs = chunk.map((eid) =>
+          adminDb.collection('entities').doc(eid)
+        );
 
-      const [compositeWeSnaps, directWeSnaps, entitySnaps] = await Promise.all([
-        adminDb.getAll(...compositeWeRefs),
-        adminDb.getAll(...directWeRefs),
-        adminDb.getAll(...entityRefs),
-      ]);
+        const [compositeWeSnaps, directWeSnaps, entitySnaps] = await Promise.all([
+          adminDb.getAll(...compositeWeRefs),
+          adminDb.getAll(...directWeRefs),
+          adminDb.getAll(...entityRefs),
+        ]);
 
-      const tempWE: Record<string, FirebaseFirestore.DocumentData> = {};
-      compositeWeSnaps.forEach((snap) => {
-        if (snap.exists) {
-          const data = snap.data();
-          if (data?.entityId) {
-            tempWE[data.entityId] = data;
-          }
-        }
-      });
-      directWeSnaps.forEach((snap) => {
-        if (snap.exists) {
-          const data = snap.data();
-          if (data) {
-            const eid = data.entityId || snap.id;
-            if (!tempWE[eid]) {
-              tempWE[eid] = data;
+        const tempWE: Record<string, FirebaseFirestore.DocumentData> = {};
+        compositeWeSnaps.forEach((snap) => {
+          if (snap.exists) {
+            const data = snap.data();
+            if (data?.entityId) {
+              tempWE[data.entityId] = data;
             }
           }
-        }
-      });
-
-      const tempEntity: Record<string, FirebaseFirestore.DocumentData> = {};
-      entitySnaps.forEach((snap) => {
-        if (snap.exists) {
-          const data = snap.data();
-          if (data) {
-            tempEntity[snap.id] = data;
+        });
+        directWeSnaps.forEach((snap) => {
+          if (snap.exists) {
+            const data = snap.data();
+            if (data) {
+              const eid = data.entityId || snap.id;
+              if (!tempWE[eid]) {
+                tempWE[eid] = data;
+              }
+            }
           }
+        });
+
+        const tempEntity: Record<string, FirebaseFirestore.DocumentData> = {};
+        entitySnaps.forEach((snap) => {
+          if (snap.exists) {
+            const data = snap.data();
+            if (data) {
+              tempEntity[snap.id] = data;
+            }
+          }
+        });
+
+        const batchResolved: SearchedEntity[] = [];
+
+        for (const eid of chunk) {
+          const weData = tempWE[eid];
+          const rawEntityData = tempEntity[eid];
+
+          if (!weData && !rawEntityData) {
+            continue;
+          }
+
+          const rawContacts = (weData?.entityContacts || rawEntityData?.entityContacts || []) as EntityContact[];
+          const validContacts: EntityContact[] = Array.isArray(rawContacts) ? rawContacts : [];
+
+          const searchedEntity: SearchedEntity = {
+            id: eid,
+            organizationId: weData?.organizationId || rawEntityData?.organizationId || '',
+            workspaceId,
+            entityId: eid,
+            entityType: weData?.entityType || rawEntityData?.entityType || 'person',
+            status: weData?.status || rawEntityData?.status || 'active',
+            workspaceTags: weData?.workspaceTags || [],
+            addedAt: weData?.addedAt || rawEntityData?.createdAt || new Date().toISOString(),
+            updatedAt: weData?.updatedAt || rawEntityData?.updatedAt || new Date().toISOString(),
+            displayName:
+              weData?.displayName ||
+              rawEntityData?.displayName ||
+              rawEntityData?.name ||
+              'Unknown Entity',
+            primaryEmail:
+              weData?.primaryEmail ||
+              rawEntityData?.primaryEmail ||
+              rawEntityData?.email ||
+              '',
+            primaryPhone:
+              weData?.primaryPhone ||
+              rawEntityData?.primaryPhone ||
+              rawEntityData?.phone ||
+              '',
+            primaryContactName:
+              weData?.primaryContactName ||
+              rawEntityData?.primaryContactName ||
+              '',
+            entityContacts: validContacts,
+            locationString:
+              weData?.locationString ||
+              rawEntityData?.locationString ||
+              '',
+          };
+
+          batchResolved.push(searchedEntity);
         }
-      });
 
-      for (const eid of chunk) {
-        const weData = tempWE[eid];
-        const rawEntityData = tempEntity[eid];
+        return batchResolved;
+      })
+    );
 
-        if (!weData && !rawEntityData) {
-          continue;
-        }
-
-        const rawContacts = (weData?.entityContacts || rawEntityData?.entityContacts || []) as EntityContact[];
-        const validContacts: EntityContact[] = Array.isArray(rawContacts) ? rawContacts : [];
-
-        const searchedEntity: SearchedEntity = {
-          id: eid,
-          organizationId: weData?.organizationId || rawEntityData?.organizationId || '',
-          workspaceId,
-          entityId: eid,
-          entityType: weData?.entityType || rawEntityData?.entityType || 'person',
-          status: weData?.status || rawEntityData?.status || 'active',
-          workspaceTags: weData?.workspaceTags || [],
-          addedAt: weData?.addedAt || rawEntityData?.createdAt || new Date().toISOString(),
-          updatedAt: weData?.updatedAt || rawEntityData?.updatedAt || new Date().toISOString(),
-          displayName:
-            weData?.displayName ||
-            rawEntityData?.displayName ||
-            rawEntityData?.name ||
-            'Unknown Entity',
-          primaryEmail:
-            weData?.primaryEmail ||
-            rawEntityData?.primaryEmail ||
-            rawEntityData?.email ||
-            '',
-          primaryPhone:
-            weData?.primaryPhone ||
-            rawEntityData?.primaryPhone ||
-            rawEntityData?.phone ||
-            '',
-          primaryContactName:
-            weData?.primaryContactName ||
-            rawEntityData?.primaryContactName ||
-            '',
-          entityContacts: validContacts,
-          locationString:
-            weData?.locationString ||
-            rawEntityData?.locationString ||
-            '',
-        };
-
-        resolvedEntities.push(searchedEntity);
-      }
-    }
+    const resolvedEntities: SearchedEntity[] = chunkResults.flat();
 
     const preview = extractRecipientsFromEntities(resolvedEntities, {
       contactRole,
