@@ -209,7 +209,7 @@ export function TemplateVersionBar({
       {/* ── Row 2 on Mobile / Center on Desktop: Thinner Workflow Stepper ── */}
       <nav
         aria-label="Workflow Steps"
-        className="flex items-center justify-center bg-muted/40 p-0.5 rounded-xl border border-border/60 gap-0.5 max-w-full overflow-x-auto scrollbar-none"
+        className="flex items-center justify-center bg-white dark:bg-card p-0.5 rounded-full border border-border/60 shadow-xs gap-0.5 max-w-full overflow-x-auto scrollbar-none"
       >
         {STEPS.map((stepItem, idx) => {
           const isActive = currentStep === stepItem.stepNum;
@@ -220,11 +220,11 @@ export function TemplateVersionBar({
                 type="button"
                 onClick={() => onStepClick(stepItem.stepNum)}
                 className={cn(
-                  'px-3 sm:px-2.5 py-1.5 sm:py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all select-none min-h-[44px] sm:min-h-[32px] active:scale-[0.97]',
+                  'px-3 sm:px-2.5 py-1.5 sm:py-1 rounded-full text-xs font-medium flex items-center gap-1.5 transition-all select-none min-h-[44px] sm:min-h-[32px] active:scale-[0.97]',
                   isActive
-                    ? 'bg-background text-primary font-semibold shadow-xs ring-1 ring-border/50'
+                    ? 'bg-slate-100/90 dark:bg-muted/80 text-primary font-semibold shadow-xs ring-1 ring-border/50'
                     : isCompleted
-                    ? 'text-primary/90 hover:text-primary hover:bg-background/50'
+                    ? 'text-primary/90 hover:text-primary hover:bg-slate-50 dark:hover:bg-muted/40'
                     : 'text-muted-foreground/60 hover:text-foreground/80'
                 )}
               >

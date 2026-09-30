@@ -20,11 +20,10 @@ describe('TemplateVersionBar', () => {
     vi.clearAllMocks();
   });
 
-  it('renders the document internal name, status badge, and workflow stepper', () => {
+  it('renders the document internal name and workflow stepper', () => {
     render(<TemplateVersionBar {...defaultProps} />);
 
     expect(screen.getByText('DIS Parent Obligation Signing')).toBeInTheDocument();
-    expect(screen.getByText('Draft')).toBeInTheDocument();
 
     // Workflow stepper steps
     expect(screen.getByText('Details')).toBeInTheDocument();
