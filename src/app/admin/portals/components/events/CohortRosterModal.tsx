@@ -77,17 +77,19 @@ export function CohortRosterModal({
   const [isEnrolling, setIsEnrolling] = React.useState(false);
   const [removingUserId, setRemovingUserId] = React.useState<string | null>(null);
 
-  // Query cohort members
+  // Query cohort members. The organizationId filter is what lets the Firestore rule prove the
+  // roster stays inside the staff member's organization; without it the query is rejected.
   const membersQuery = useMemoFirebase(
     () =>
-      firestore && cohort?.id
+      firestore && cohort?.id && cohort.organizationId
         ? query(
             collection(firestore, 'cohort_members'),
+            where('organizationId', '==', cohort.organizationId),
             where('cohortId', '==', cohort.id),
             orderBy('joinedAt', 'desc')
           )
         : null,
-    [firestore, cohort?.id]
+    [firestore, cohort?.id, cohort?.organizationId]
   );
 
   const { data: members, isLoading } = useCollection<CohortMember>(membersQuery);

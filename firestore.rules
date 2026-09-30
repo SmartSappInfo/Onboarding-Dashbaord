@@ -2611,9 +2611,28 @@ service cloud.firestore {
       allow create, update, delete: if isAuthorized();
     }
 
+    // Cohort enrolments hold member names and emails, so reads are narrow:
+    // - a member reads only their own rows (the portal course pages query `userId == uid`);
+    // - staff read rows in their own organization (the roster query filters `organizationId`).
+    // Enrolment and removal run through server actions (Admin SDK). Staff client writes stay
+    // inside the staff member's organization, and `organizationId` cannot change on update.
     match /cohort_members/{memberId} {
-      allow get, list: if isSignedIn() || isAuthorized();
-      allow create, update, delete: if isAuthorized();
+      allow get, list: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId)))
+      );
+      allow create: if isAuthorized() && (
+        isSystemAdmin() || isOrgMatch(request.resource.data.organizationId)
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() || (
+          isOrgMatch(resource.data.organizationId) &&
+          request.resource.data.organizationId == resource.data.organizationId
+        )
+      );
+      allow delete: if isAuthorized() && (
+        isSystemAdmin() || isOrgMatch(resource.data.organizationId)
+      );
     }
 
     // --- {{Org_name}} Experience Platform — Commerce, Offers & Affiliates ---

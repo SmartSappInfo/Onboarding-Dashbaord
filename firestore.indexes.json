@@ -3460,6 +3460,24 @@
       ]
     },
     {
+      "collectionGroup": "cohort_members",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "organizationId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "cohortId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "joinedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "portal_offers",
       "queryScope": "COLLECTION",
       "fields": [
