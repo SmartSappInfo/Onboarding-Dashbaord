@@ -45,6 +45,21 @@ vi.mock('@/lib/services/workforce/invitation-dispatch-service', () => ({
   },
 }));
 
+// The caller is a signed-in user manager of the target organization. Authentication and the
+// workspace/role scope checks have their own suite: src/lib/__tests__/user-invite-actions-auth.test.ts.
+vi.mock('@/lib/auth/require-user-manager', () => ({
+  requireUserManager: vi.fn(async (organizationId: string) => ({
+    uid: 'manager_1', isSystemAdmin: false, organizationId, profile: {},
+  })),
+  requireUserManagerForUser: vi.fn(),
+}));
+
+/** Workspaces and roles in these tests all belong to the inviting organization. */
+const orgScopedDoc = (colName: string) =>
+  colName === 'workspaces' || colName === 'roles'
+    ? { exists: true, data: () => ({ organizationId: 'org_acme_1' }) }
+    : null;
+
 // Mock Identity Migration Service
 const mockGetOrMigratePerson = vi.fn().mockResolvedValue({ id: 'mock-person' });
 
@@ -81,11 +96,12 @@ describe('inviteUserAction Suite', () => {
           exists: true,
           data: () => ({
             name: 'Senior Developer',
+            organizationId: 'org_acme_1',
             permissions: ['view_deals', 'edit_deals'],
           }),
         });
       }
-      return Promise.resolve({ exists: false, data: () => ({}) });
+      return Promise.resolve(orgScopedDoc(colName) ?? { exists: false, data: () => ({}) });
     });
 
     const result = await inviteUserAction({
@@ -158,7 +174,7 @@ describe('inviteUserAction Suite', () => {
           data: () => ({ name: 'Acme Innovations' }),
         });
       }
-      return Promise.resolve({ exists: false, data: () => ({}) });
+      return Promise.resolve(orgScopedDoc(colName) ?? { exists: false, data: () => ({}) });
     });
 
     const result = await inviteUserAction({
@@ -192,7 +208,7 @@ describe('inviteUserAction Suite', () => {
       Promise.resolve(
         colName === 'organizations'
           ? { exists: true, data: () => ({ name: 'Acme Innovations' }) }
-          : { exists: false, data: () => ({}) }
+          : orgScopedDoc(colName) ?? { exists: false, data: () => ({}) }
       )
     );
     const acmeSales = {

@@ -16,6 +16,7 @@ import { PersonService } from './services/identity/person-service';
 import { InviteCryptoService } from './services/crypto/invite-crypto-service';
 import { InvitationLifecycleService } from './services/workforce/invitation-lifecycle-service';
 import { getErrorCode, getErrorMessage } from '@/lib/errors/report-error';
+import { requireUserManager, requireUserManagerForUser } from './auth/require-user-manager';
 
 /**
  * Generates a random secure password.
@@ -28,6 +29,39 @@ function generateRandomPassword(length = 10): string {
         password += chars.charAt(bytes[i] % chars.length);
     }
     return password;
+}
+
+/**
+ * Every workspace and role in an invite must belong to the inviting organization, and only a
+ * platform system admin may hand out a role that carries `system_admin`. Without this, a
+ * manager could attach another tenant's workspaces or roles to the account they create.
+ */
+async function assertInviteScope(params: {
+    organizationId: string;
+    workspaceIds: string[];
+    roleIds: string[];
+    callerIsSystemAdmin: boolean;
+}): Promise<void> {
+    const [workspaceSnaps, roleSnaps] = await Promise.all([
+        Promise.all(params.workspaceIds.map((id) => adminDb.collection('workspaces').doc(id).get())),
+        Promise.all(params.roleIds.map((id) => adminDb.collection('roles').doc(id).get())),
+    ]);
+    const inOrganization = (snap: { exists: boolean; data(): { organizationId?: unknown } | undefined }) =>
+        snap.exists && snap.data()?.organizationId === params.organizationId;
+
+    if (!workspaceSnaps.every(inOrganization)) {
+        throw new Error('Forbidden: every workspace must belong to this organization.');
+    }
+    if (!roleSnaps.every(inOrganization)) {
+        throw new Error('Forbidden: every role must belong to this organization.');
+    }
+    const grantsSystemAdmin = roleSnaps.some((snap) => {
+        const permissions: unknown = snap.data()?.permissions;
+        return Array.isArray(permissions) && permissions.includes('system_admin');
+    });
+    if (grantsSystemAdmin && !params.callerIsSystemAdmin) {
+        throw new Error('Forbidden: only a platform administrator can grant platform administrator access.');
+    }
 }
 
 /**
@@ -45,6 +79,10 @@ export async function inviteUserAction(params: {
     sendMethods: ('email' | 'sms' | 'whatsapp')[];
 }) {
     try {
+        // Server actions are public endpoints: the caller must be signed in and allowed to
+        // manage users in the organization they are inviting into.
+        const caller = await requireUserManager(params.organizationId);
+
         const { fullName, email, phone, organizationId, sendMethods } = params;
         let deptName = params.department?.trim();
         let deptId = params.departmentId?.trim();
@@ -75,6 +113,12 @@ export async function inviteUserAction(params: {
         const workspaceIds = Array.isArray(params.workspaceIds) && params.workspaceIds.length > 0
             ? Array.from(new Set([...params.workspaceIds, ...Object.keys(workspaceRoles)]))
             : Object.keys(workspaceRoles);
+        await assertInviteScope({
+            organizationId,
+            workspaceIds,
+            roleIds: Array.from(new Set(Object.values(workspaceRoles).flat())),
+            callerIsSystemAdmin: caller.isSystemAdmin,
+        });
         const auth = getAuth();
         const tempPassword = generateRandomPassword();
         const loginLink = `${getBaseUrl()}/login`;
@@ -195,7 +239,7 @@ export async function inviteUserAction(params: {
                 workspaceId: primaryWorkspaceId || undefined,
                 roleIds: primaryRoles,
                 departmentId: deptId || undefined,
-                invitedBy: 'system',
+                invitedBy: caller.uid,
                 channels: sendMethods as ('email' | 'sms' | 'whatsapp')[],
             });
             invitationId = inviteRes.invitation.id;
@@ -264,6 +308,9 @@ export async function adminResetUserPasswordAction(params: AdminResetPasswordPar
 }> {
     try {
         const userId = typeof params === 'string' ? params : params.userId;
+        // This returns the new temporary password, so only a signed-in user manager of the
+        // target's organization may call it (and only a system admin for a system admin).
+        await requireUserManagerForUser(userId);
         const auth = getAuth();
         const userSnap = await adminDb.collection('users').doc(userId).get();
         if (!userSnap.exists) throw new Error('User not found.');
@@ -394,6 +441,7 @@ export async function publicResetPasswordViaPhoneAction(phone: string) {
  */
 export async function adminUpdateUserAccessAction(userId: string, isAuthorized: boolean) {
     try {
+        await requireUserManagerForUser(userId);
         const auth = getAuth();
         
         // 1. Get User Profile from Firestore
@@ -521,7 +569,7 @@ export async function adminUpdateUserAccessAction(userId: string, isAuthorized: 
  * DECLINE JOIN REQUEST ACTION
  * Declines a pending join request by setting approvalStatus to 'rejected' and disabling the Firebase Auth account.
  */
-export async function declineJoinRequestAction(userId: string, adminUserId: string): Promise<{
+export async function declineJoinRequestAction(userId: string): Promise<{
     success: boolean;
     message?: string;
     error?: string;
@@ -529,23 +577,15 @@ export async function declineJoinRequestAction(userId: string, adminUserId: stri
 }> {
     try {
         const auth = getAuth();
-        
-        // 1. Authenticate caller (server-auth-actions)
-        if (!adminUserId) throw new Error('Unauthorized: Admin User ID is required.');
-        const adminSnap = await adminDb.collection('users').doc(adminUserId).get();
-        if (!adminSnap.exists) throw new Error('Unauthorized: Admin profile not found.');
-        const adminData = adminSnap.data()!;
-        if (!adminData.isAuthorized || (!adminData.permissions?.includes('system_admin') && !adminData.roles?.includes('administrator'))) {
-            throw new Error('Unauthorized: Insufficient administrative privileges.');
-        }
+
+        // 1. Authenticate the caller from the session. This used to trust a caller-supplied
+        //    "admin user id", so anyone could act as any administrator.
+        await requireUserManagerForUser(userId);
 
         // 2. Fetch User Profile
         const userSnap = await adminDb.collection('users').doc(userId).get();
         if (!userSnap.exists) throw new Error('User not found.');
         const userData = userSnap.data()!;
-        if (userData.organizationId !== adminData.organizationId && !adminData.permissions?.includes('system_admin')) {
-            throw new Error('Unauthorized: Cannot decline users outside your organization.');
-        }
 
         // 3. Disable Auth Account
         await auth.updateUser(userId, { disabled: true });
@@ -658,7 +698,7 @@ export async function declineJoinRequestAction(userId: string, adminUserId: stri
  * Removes a user from the organization by clearing their organization bindings, resetting onboarding state,
  * and removing their workspace permissions, so they are detached from the organization completely.
  */
-export async function removeUserFromOrgAction(userId: string, adminUserId: string): Promise<{
+export async function removeUserFromOrgAction(userId: string): Promise<{
     success: boolean;
     message?: string;
     error?: string;
@@ -666,22 +706,14 @@ export async function removeUserFromOrgAction(userId: string, adminUserId: strin
     try {
         const auth = getAuth();
 
-        // 1. Authenticate caller (server-auth-actions)
-        if (!adminUserId) throw new Error('Unauthorized: Admin User ID is required.');
-        const adminSnap = await adminDb.collection('users').doc(adminUserId).get();
-        if (!adminSnap.exists) throw new Error('Unauthorized: Admin profile not found.');
-        const adminData = adminSnap.data()!;
-        if (!adminData.isAuthorized || (!adminData.permissions?.includes('system_admin') && !adminData.roles?.includes('administrator'))) {
-            throw new Error('Unauthorized: Insufficient administrative privileges.');
-        }
+        // 1. Authenticate the caller from the session. This used to trust a caller-supplied
+        //    "admin user id", so anyone could act as any administrator.
+        await requireUserManagerForUser(userId);
 
         // 2. Fetch User Profile
         const userSnap = await adminDb.collection('users').doc(userId).get();
         if (!userSnap.exists) throw new Error('User not found.');
         const userData = userSnap.data()!;
-        if (userData.organizationId !== adminData.organizationId && !adminData.permissions?.includes('system_admin')) {
-            throw new Error('Unauthorized: Cannot remove users outside your organization.');
-        }
 
         // 3. Clear all organization-bound and workspace-bound fields from user document
         await adminDb.collection('users').doc(userId).update({

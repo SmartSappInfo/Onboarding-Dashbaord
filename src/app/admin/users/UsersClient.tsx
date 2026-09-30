@@ -245,7 +245,8 @@ export default function UsersClient() {
 
     setUpdatingId(targetUser.id);
     try {
-      const res = await removeUserFromOrgAction(targetUser.id, currentUser?.uid || '');
+      // The server identifies the admin from the session; it no longer takes a caller-supplied id.
+      const res = await removeUserFromOrgAction(targetUser.id);
 
       if (res.success) {
         toast({ title: 'Member Removed' });

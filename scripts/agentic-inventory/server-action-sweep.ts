@@ -23,6 +23,8 @@ export const VERIFIED_IDENTITY_GUARDS: ReadonlyMap<string, string> = new Map([
   ['requireAuth', 'src/lib/auth/require-auth.ts (session cookie)'],
   ['requireWorkspace', 'src/lib/auth/require-auth.ts'],
   ['requireOrganization', 'src/lib/auth/require-auth.ts'],
+  ['requireUserManager', 'src/lib/auth/require-user-manager.ts (requireOrganization + canManageUsers)'],
+  ['requireUserManagerForUser', 'src/lib/auth/require-user-manager.ts (requireUserManager / requireSystemAdmin)'],
   ['requireSystemAdmin', 'src/lib/auth/require-auth.ts, require-org-admin.ts (ID token)'],
   ['requireOrgAdmin', 'src/lib/auth/require-org-admin.ts (ID token)'],
   ['authenticateApiRequest', 'src/lib/auth/api-auth-guard.ts (Bearer ID token)'],
