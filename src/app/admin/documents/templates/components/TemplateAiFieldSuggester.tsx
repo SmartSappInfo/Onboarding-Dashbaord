@@ -46,6 +46,7 @@ import {
   RefreshCw,
   Loader2,
   AlertCircle,
+  ArrowRight,
 } from 'lucide-react';
 import { detectTemplateFieldsFromPages } from '@/lib/documents/template-ai-field-detector';
 import {
@@ -189,22 +190,17 @@ export function TemplateAiFieldSuggester({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl max-h-[85vh] p-0 flex flex-col rounded-2xl overflow-hidden border bg-background shadow-2xl">
-        <DialogHeader className="p-5 border-b bg-card/60 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
-              <Sparkles className="h-5 w-5" />
+        <DialogHeader className="px-5 py-3 border-b bg-card/60 flex-shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+              <Sparkles className="h-4 w-4" />
             </div>
-            <div>
-              <DialogTitle className="text-base sm:text-lg font-semibold flex items-center gap-2">
-                Auto-Detect Form & Signature Fields
-                <Badge variant="secondary" className="text-[10px] font-bold uppercase py-0 h-4">
-                  Layout AI
-                </Badge>
-              </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                Automatically identifies form inputs, tables, student/parent details, and signature lines.
-              </DialogDescription>
-            </div>
+            <DialogTitle className="text-base font-semibold text-foreground">
+              Auto-Detect Form & Signature Fields
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Auto-detect form inputs, tables, student/parent details, and signature lines.
+            </DialogDescription>
           </div>
         </DialogHeader>
 
@@ -299,55 +295,70 @@ export function TemplateAiFieldSuggester({
 
               {/* Candidates Scrollable List */}
               <ScrollArea className="flex-1 p-5">
-                <div className="space-y-2.5">
+                <div className="space-y-2">
                   {filteredCandidates.map((candidate) => {
                     const isSelected = selectedIds.has(candidate.id);
+                    const docLabel = (candidate.sourceExcerpt || candidate.label)
+                      .replace(/^["']|["']$/g, '')
+                      .replace(/:\s*$/, '')
+                      .trim();
+
                     return (
                       <div
                         key={candidate.id}
                         onClick={() => toggleCandidate(candidate.id)}
-                        className={`group p-3 rounded-xl border transition-all cursor-pointer select-none flex items-center justify-between gap-3 ${
+                        className={`group p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer select-none flex items-center gap-3 ${
                           isSelected
-                            ? 'border-primary/50 bg-primary/5 shadow-sm'
-                            : 'border-border/60 bg-card hover:border-border opacity-70'
+                            ? 'border-primary/50 bg-primary/5 shadow-xs'
+                            : 'border-border/60 bg-card hover:border-border opacity-70 hover:opacity-100'
                         }`}
                       >
-                        <div className="flex items-start gap-3 min-w-0">
-                          <div
-                            className={`h-5 w-5 rounded-md border flex items-center justify-center mt-0.5 transition-colors shrink-0 ${
-                              isSelected
-                                ? 'bg-primary border-primary text-primary-foreground'
-                                : 'border-muted-foreground/30 bg-background'
-                            }`}
-                          >
-                            {isSelected && <Check className="h-3.5 w-3.5 stroke-[3]" />}
-                          </div>
-
-                          <div className="min-w-0 space-y-0.5">
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-semibold text-xs text-foreground flex items-center gap-1.5 truncate">
-                                {getFieldIcon(candidate.fieldType)}
-                                {candidate.label}
-                              </span>
-                            </div>
-
-                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground flex-wrap">
-                              <span>Page {candidate.pageNumber}</span>
-                              {candidate.sourceExcerpt && (
-                                <>
-                                  <span>•</span>
-                                  <span className="truncate max-w-[260px]">
-                                    Document label: <span className="font-medium text-foreground/80">&ldquo;{candidate.sourceExcerpt}&rdquo;</span>
-                                  </span>
-                                </>
-                              )}
-                            </div>
-                          </div>
+                        {/* Checkbox */}
+                        <div
+                          className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors shrink-0 ${
+                            isSelected
+                              ? 'bg-primary border-primary text-primary-foreground'
+                              : 'border-muted-foreground/30 bg-background'
+                          }`}
+                        >
+                          {isSelected && <Check className="h-3.5 w-3.5 stroke-[3]" />}
                         </div>
 
-                        <Badge variant="outline" className="text-[10px] font-medium shrink-0">
-                          {FIELD_TYPE_LABELS[candidate.fieldType]}
-                        </Badge>
+                        {/* Mapping Content: CONTACT NO <page 1> -> Contact Number <Text Field> */}
+                        <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap min-w-0 flex-1">
+                          {/* Left: Document Label + Page Pill */}
+                          <div className="flex items-center gap-1.5 min-w-0 shrink-0">
+                            <span
+                              className="font-semibold text-xs text-foreground/90 uppercase tracking-tight truncate max-w-[130px] sm:max-w-[200px]"
+                              title={docLabel}
+                            >
+                              {docLabel}
+                            </span>
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] font-medium px-1.5 py-0 h-4 rounded-md bg-muted/60 text-muted-foreground border-border/80 shrink-0 lowercase"
+                            >
+                              page {candidate.pageNumber}
+                            </Badge>
+                          </div>
+
+                          {/* Mapping Arrow */}
+                          <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0 mx-0.5" />
+
+                          {/* Right: Field Name + Field Type Pill */}
+                          <div className="flex items-center gap-1.5 min-w-0 shrink-0">
+                            <span className="font-semibold text-xs text-foreground flex items-center gap-1.5 truncate">
+                              {getFieldIcon(candidate.fieldType)}
+                              {candidate.label}
+                            </span>
+                            <Badge
+                              variant="secondary"
+                              className="text-[10px] font-medium px-1.5 py-0 h-4 rounded-md bg-primary/10 text-primary border-primary/20 shrink-0"
+                            >
+                              {FIELD_TYPE_LABELS[candidate.fieldType]}
+                            </Badge>
+                          </div>
+                        </div>
                       </div>
                     );
                   })}

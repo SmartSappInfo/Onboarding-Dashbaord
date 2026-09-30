@@ -30,12 +30,9 @@ import {
   ChevronRight, 
   History, 
   UploadCloud, 
-  CheckCircle2, 
-  AlertCircle,
   MoreVertical,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
@@ -49,8 +46,8 @@ import type { TemplateVersion } from '@/lib/types/document-signing';
 export interface TemplateVersionBarProps {
   documentName: string;
   onDocumentNameChange?: (name: string) => void;
-  isDraft: boolean;
-  hasUnsavedChanges: boolean;
+  isDraft?: boolean;
+  hasUnsavedChanges?: boolean;
   isSaving: boolean;
   currentStep: number;
   onStepClick: (step: number) => void;
@@ -69,8 +66,8 @@ const STEPS = [
 export function TemplateVersionBar({
   documentName,
   onDocumentNameChange,
-  isDraft,
-  hasUnsavedChanges,
+  isDraft: _isDraft,
+  hasUnsavedChanges: _hasUnsavedChanges,
   isSaving,
   currentStep,
   onStepClick,
@@ -169,40 +166,8 @@ export function TemplateVersionBar({
                   <Pencil className="w-3.5 h-3.5" />
                 </button>
               )}
-
-              <Badge
-                variant="outline"
-                className={cn(
-                  'text-[10px] font-medium px-2 py-0.5 rounded-full border shrink-0',
-                  isDraft
-                    ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30'
-                    : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30'
-                )}
-              >
-                {isDraft ? 'Draft' : 'Published'}
-              </Badge>
             </div>
           )}
-
-          {/* Unsaved changes / Saved indicator (Large desktop view) */}
-          <div className="hidden xl:flex items-center gap-1.5 pl-3 border-l border-border/60 text-xs shrink-0">
-            {isSaving ? (
-              <span className="flex items-center gap-1 text-muted-foreground">
-                <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
-                Saving...
-              </span>
-            ) : hasUnsavedChanges ? (
-              <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium">
-                <AlertCircle className="w-3.5 h-3.5" aria-hidden="true" />
-                Unsaved edits
-              </span>
-            ) : (
-              <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
-                <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
-                All changes saved
-              </span>
-            )}
-          </div>
         </div>
 
         {/* ── Mobile 3-Dots (Doughnut/Kebab) Action Menu ── */}

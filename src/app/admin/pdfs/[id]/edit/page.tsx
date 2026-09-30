@@ -455,30 +455,30 @@ export default function EditPdfPage() {
                                 <motion.div key="step1" {...stepTransition}>
  <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
                                         <Card className="xl:col-span-2 shadow-sm border border-border text-left">
-  <CardHeader className="bg-muted/30 border-b py-3.5 px-6">
+  <CardHeader className="bg-muted/30 border-b py-2.5 px-6">
  <div className="flex items-center gap-3">
- <div className="p-2 bg-primary/10 rounded-xl"><FileText className="h-5 w-5 text-primary" /></div>
- <CardTitle className="text-lg font-semibold tracking-tight">Document Identity</CardTitle>
+ <div className="p-1.5 bg-primary/10 rounded-lg"><FileText className="h-4 w-4 text-primary" /></div>
+ <CardTitle className="text-base font-semibold tracking-tight">Document Identity</CardTitle>
                                                 </div>
                                             </CardHeader>
                                             <CardContent className="p-6 space-y-8">
                                                 <Controller name="workspaceIds" control={form.control} render={({ field }) => (
  <div className="space-y-4">
- <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2"><Layout className="h-3 w-3" /> Shared Context (Workspaces)</Label>
+ <Label className="text-sm font-semibold text-primary flex items-center gap-2 mb-1.5"><Layout className="h-4 w-4" /> Shared Context (Workspaces)</Label>
                                                         <MultiSelect options={workspaceOptions} value={field.value || []} onChange={field.onChange} placeholder="Share across hubs..." />
- <p className="text-[9px] font-bold text-muted-foreground tracking-tight leading-relaxed">Determines which workspace directories this form template is visible in.</p>
+ <p className="text-xs text-muted-foreground leading-relaxed mt-1">Determines which workspace directories this form template is visible in.</p>
                                                     </div>
                                                 )} />
                                                 <Separator />
                                                 <Controller name="name" control={form.control} render={({ field }) => (
- <div className="space-y-2"><Label className="text-[10px] font-semibold text-muted-foreground ml-1">Internal Title</Label><Input {...field} placeholder="e.g. 2024 Enrollment Form" className="h-12 rounded-xl font-bold text-lg" /></div>
+ <div className="space-y-2"><Label className="text-sm font-semibold text-foreground">Internal Title</Label><Input {...field} placeholder="e.g. 2024 Enrollment Form" className="h-12 rounded-xl font-bold text-lg" /></div>
                                                 )} />
                                                 <Controller name="publicTitle" control={form.control} render={({ field }) => (
- <div className="space-y-2"><Label className="text-[10px] font-semibold text-muted-foreground ml-1">User-Facing Header</Label><Input {...field} placeholder="e.g. School Admission Application" className="h-12 rounded-xl font-bold text-lg" /></div>
+ <div className="space-y-2"><Label className="text-sm font-semibold text-foreground">User-Facing Header</Label><Input {...field} placeholder="e.g. School Admission Application" className="h-12 rounded-xl font-bold text-lg" /></div>
                                                 )} />
                                                 <Controller name="entityId" control={form.control} render={({ field }) => (
                                                     <div className="space-y-2">
-                                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Sample Data Context</Label>
+                                                        <Label className="text-sm font-semibold text-foreground">Sample Data Context</Label>
                                                         <EntityCombobox
                                                             value={field.value}
                                                             valueKey="id"
@@ -499,9 +499,9 @@ export default function EditPdfPage() {
                                         </Card>
  <div className="space-y-8 text-left">
  <Card className="shadow-sm border border-border">
- <CardHeader className="bg-muted/30 border-b py-3.5 px-6"><div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><Palette className="h-5 w-5 text-primary" /></div><CardTitle className="text-lg font-semibold tracking-tight">Visual Identity</CardTitle></div></CardHeader>
+ <CardHeader className="bg-muted/30 border-b py-2.5 px-6"><div className="flex items-center gap-3"><div className="p-1.5 bg-primary/10 rounded-lg"><Palette className="h-4 w-4 text-primary" /></div><CardTitle className="text-base font-semibold tracking-tight">Visual Identity</CardTitle></div></CardHeader>
  <CardContent className="p-6 space-y-8">
- <Controller name="logoUrl" control={form.control} render={({ field }) => (<div className="space-y-2"><Label className="text-[10px] font-semibold text-muted-foreground ml-1">Brand Logo</Label><MediaSelect {...field} filterType="image" className="rounded-2xl" /></div>)} />
+ <Controller name="logoUrl" control={form.control} render={({ field }) => (<div className="space-y-2"><Label className="text-sm font-semibold text-foreground">Brand Logo</Label><MediaSelect {...field} filterType="image" className="rounded-2xl" /></div>)} />
                                                 </CardContent>
                                             </Card>
                                         </div>
@@ -537,12 +537,12 @@ export default function EditPdfPage() {
  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start text-left">
  <div className="space-y-8">
  <Card className="shadow-sm overflow-hidden border border-border">
- <CardHeader className="bg-muted/30 border-b py-3.5 px-6"><div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><Globe className="h-5 w-5 text-primary" /></div><CardTitle className="text-lg font-semibold tracking-tight">Finalize & Integrate</CardTitle></div></CardHeader>
+ <CardHeader className="bg-muted/30 border-b py-2.5 px-6"><div className="flex items-center gap-3"><div className="p-1.5 bg-primary/10 rounded-lg"><Globe className="h-4 w-4 text-primary" /></div><CardTitle className="text-base font-semibold tracking-tight">Finalize & Integrate</CardTitle></div></CardHeader>
  <CardContent className="p-0">
  <div className="p-6">
  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                             <Controller name="status" control={form.control} render={({ field }) => (
- <div className="space-y-2"><Label className="text-[10px] font-semibold text-muted-foreground ml-1">Status</Label><Select onValueChange={field.onChange} value={field.value}>
+ <div className="space-y-2"><Label className="text-sm font-semibold text-foreground">Status</Label><Select onValueChange={field.onChange} value={field.value}>
  <SelectTrigger className="h-11 rounded-xl font-bold">
                                                                         <SelectValue />
                                                                     </SelectTrigger>
@@ -554,7 +554,7 @@ export default function EditPdfPage() {
                                                                 </Select></div>
                                                             )} />
                                                             <Controller name="slug" control={form.control} render={({ field }) => (
- <div className="space-y-2"><Label className="text-[10px] font-semibold text-muted-foreground ml-1">URL Backhalf</Label><div className="flex h-11 border border-input rounded-xl overflow-hidden bg-background/50 focus-within:ring-2 focus-within:ring-primary/25 focus-within:border-primary transition-all shadow-xs"><div className="bg-muted px-3 flex items-center text-[10px] font-semibold tracking-tighter text-muted-foreground/80 border-r border-input">/forms/</div><Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-bold" /></div></div>
+ <div className="space-y-2"><Label className="text-sm font-semibold text-foreground">URL Backhalf</Label><div className="flex h-11 border border-input rounded-xl overflow-hidden bg-background/50 focus-within:ring-2 focus-within:ring-primary/25 focus-within:border-primary transition-all shadow-xs"><div className="bg-muted px-3 flex items-center text-xs font-semibold tracking-tight text-muted-foreground border-r border-input">/forms/</div><Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-bold" /></div></div>
                                                             )} />
                                                         </div>
                                                     </div>
