@@ -306,6 +306,37 @@ export class InvitationLifecycleService {
   }
 
   /**
+   * Retrieves an invitation document by ID.
+   */
+  static async getInvitationById(invitationId: string): Promise<Invitation | null> {
+    if (!invitationId) return null;
+    const snap = await adminDb.collection('invitations').doc(invitationId).get();
+    if (!snap.exists) return null;
+    return { id: snap.id, ...snap.data() } as Invitation;
+  }
+
+  /**
+   * Marks an invitation as declined by the invitee.
+   */
+  static async declineInvitation(invitationId: string, reason?: string): Promise<boolean> {
+    if (!invitationId) throw new Error('Missing invitationId');
+
+    const inviteRef = adminDb.collection('invitations').doc(invitationId);
+    const snap = await inviteRef.get();
+    if (!snap.exists) return false;
+
+    const now = new Date().toISOString();
+    await inviteRef.update({
+      status: 'declined',
+      declinedAt: now,
+      ...(reason ? { declinedReason: reason.trim() } : {}),
+      updatedAt: now,
+    });
+
+    return true;
+  }
+
+  /**
    * Lists invitations for an organization.
    */
   static async listInvitations(
