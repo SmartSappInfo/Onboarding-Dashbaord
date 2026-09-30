@@ -147,20 +147,20 @@ describe('InternalUserAudienceSelector', () => {
       } as ReturnType<typeof useWorkspaceUsers>);
     });
 
-    it('renders normalized teammate details including displayName fallback, roles, and department', () => {
+    it('renders normalized teammate details including displayName fallback, roles as subtitle, and omitting department', () => {
       render(<InternalUserAudienceSelector {...defaultProps} />);
 
       // Sarah C. uses displayName over name
       const sarahRow = screen.getByTestId('teammate-row-u1');
       expect(within(sarahRow).getByText('Sarah C.')).toBeInTheDocument();
-      expect(within(sarahRow).getAllByText('Operations').length).toBeGreaterThan(0);
+      expect(within(sarahRow).queryByText('Operations')).toBeNull();
       expect(within(sarahRow).getByText('Admin')).toBeInTheDocument();
 
       // Alex Smith uses roles[0] fallback
       const alexRow = screen.getByTestId('teammate-row-u3');
       expect(within(alexRow).getByText('Alex Smith')).toBeInTheDocument();
       expect(within(alexRow).getByText('Manager')).toBeInTheDocument();
-      expect(within(alexRow).getAllByText('Sales').length).toBeGreaterThan(0);
+      expect(within(alexRow).queryByText('Sales')).toBeNull();
 
       // Kwame Mensah falls back to 'Member' role
       const kwameRow = screen.getByTestId('teammate-row-u4');
@@ -341,7 +341,7 @@ describe('InternalUserAudienceSelector', () => {
   });
 
   describe('Card Content Distribution & Layout', () => {
-    it('distributes name/role on left, department badge in center, and contact info on right', () => {
+    it('distributes name and role as subtext on left, omitting department, and contact info on right', () => {
       const teammatesForLayout: UserProfile[] = [
         {
           id: 'u-full',
@@ -367,7 +367,7 @@ describe('InternalUserAudienceSelector', () => {
       const card = screen.getByTestId('teammate-row-u-full');
       expect(within(card).getByText('Godwin Mawudzro')).toBeInTheDocument();
       expect(within(card).getByText('Admin')).toBeInTheDocument();
-      expect(within(card).getAllByText('Agency Operations & Traffic').length).toBeGreaterThan(0);
+      expect(within(card).queryByText('Agency Operations & Traffic')).toBeNull();
       expect(within(card).getByText('gkwame.gk17@gmail.com')).toBeInTheDocument();
       expect(within(card).getByText('+233557099205')).toBeInTheDocument();
     });

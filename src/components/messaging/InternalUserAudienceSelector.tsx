@@ -27,7 +27,6 @@ import {
   Phone,
   AlertTriangle,
   RotateCcw,
-  Briefcase,
 } from 'lucide-react';
 import { useWorkspaceUsers } from '@/hooks/use-workspace-users';
 import { useWorkspaceRoles } from '@/hooks/use-workspace-roles';
@@ -684,8 +683,8 @@ export function InternalUserAudienceSelector({
                   disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
                 )}
               >
-                {/* ── Left Zone: Selection + Identity (Name, Role Badge, Mobile Dept) ── */}
-                <div className="flex items-center gap-3.5 min-w-0 sm:flex-[1.2] lg:flex-1">
+                {/* ── Left Zone: Selection + Identity (Name, Role as Subtitle) ── */}
+                <div className="flex items-center gap-3.5 min-w-0 flex-1">
                   {/* Dedicated Accessible Checkbox Button (44px tap zone) */}
                   <button
                     type="button"
@@ -740,40 +739,17 @@ export function InternalUserAudienceSelector({
                     )}
                   </div>
 
-                  {/* Name and Role */}
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-sm text-foreground truncate max-w-[180px] sm:max-w-xs">
-                        {teammate.name}
-                      </span>
-
-                      {teammate.role && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-muted/80 text-muted-foreground border border-border/50 shrink-0">
-                          {teammate.role}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Department on mobile (stacked under name) */}
-                    {teammate.department && (
-                      <p className="text-xs text-muted-foreground truncate sm:hidden flex items-center gap-1.5">
-                        <Briefcase className="size-3 text-muted-foreground/70 shrink-0" />
-                        <span>{teammate.department}</span>
+                  {/* Name and Role (role as subtitle under name) */}
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-sm text-foreground truncate">
+                      {teammate.name}
+                    </p>
+                    {teammate.role && (
+                      <p className="text-xs text-muted-foreground truncate leading-normal">
+                        {teammate.role}
                       </p>
                     )}
                   </div>
-                </div>
-
-                {/* ── Center Zone: Department Badge (Tablet & Desktop) ── */}
-                <div className="hidden sm:flex items-center min-w-0 sm:w-44 md:w-52 lg:w-56 shrink-0 text-xs text-muted-foreground">
-                  {teammate.department ? (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-muted/40 border border-border/50 text-muted-foreground truncate max-w-full">
-                      <Briefcase className="size-3.5 text-muted-foreground/70 shrink-0" />
-                      <span className="truncate">{teammate.department}</span>
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground/40 italic text-[11px]">No department</span>
-                  )}
                 </div>
 
                 {/* ── Right Zone: Contact Details + Channel Eligibility Warning ── */}
