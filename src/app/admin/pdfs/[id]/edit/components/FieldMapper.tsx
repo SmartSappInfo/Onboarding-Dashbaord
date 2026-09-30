@@ -12,6 +12,7 @@ import {
     Plus, Trash2, Database, Calculator
 } from 'lucide-react';
 import { TemplateAiFieldSuggester } from '@/app/admin/documents/templates/components/TemplateAiFieldSuggester';
+import { useToast } from '@/hooks/use-toast';
 import { ComputedFormulaPopover } from './ComputedFormulaPopover';
 import type { AiFieldSuggestion } from '@/lib/types/document-signing';
 
@@ -72,8 +73,10 @@ function EditorLayout() {
         zoom, setZoom, addField, undo, redo, canUndo, canRedo, 
         onDetect: _onDetect, isDetecting, onPreview: _onPreview, isFullScreen, setIsFullScreen,
         viewMode, setViewMode, isFieldDeleteConfirmOpen, setIsFieldDeleteConfirmOpen,
-        selectedFieldIds, fields, setFields, setSelectedFieldIds
+        selectedFieldIds, fields, setFields, setSelectedFieldIds,
+        pdf, pdfDoc
     } = useEditor();
+    const { toast } = useToast();
 
     const [isAiSuggesterOpen, setIsAiSuggesterOpen] = React.useState(false);
 
@@ -93,6 +96,10 @@ function EditorLayout() {
             isSuggestion: true,
         }));
         setFields((prev) => [...prev, ...newFields]);
+        toast({
+            title: 'Fields Placed on Canvas',
+            description: `Added ${newFields.length} field${newFields.length === 1 ? '' : 's'} to canvas. Drag to fine-tune placement.`
+        });
     };
 
     const isPreviewing = viewMode === 'preview';
@@ -346,7 +353,8 @@ function EditorLayout() {
             <TemplateAiFieldSuggester
                 open={isAiSuggesterOpen}
                 onOpenChange={setIsAiSuggesterOpen}
-                pageTexts={[]}
+                pdfUrl={pdf?.downloadUrl}
+                pdfDoc={pdfDoc}
                 onApplyFields={handleApplyAiFields}
             />
         </div>

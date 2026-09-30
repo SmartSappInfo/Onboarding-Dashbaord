@@ -21,9 +21,8 @@ import { EditorContextMenu } from './ContextMenu';
 const pdfjsPromise = import('pdfjs-dist');
 
 export function DocumentCanvas() {
-  const { pdf, fields, setFields, selectedFieldIds, setSelectedFieldIds, marquee, setMarquee, zoom, setZoom, setNumPages } = useEditor();
+  const { pdf, pdfDoc, setPdfDoc, fields, setFields, selectedFieldIds, setSelectedFieldIds, marquee, setMarquee, zoom, setZoom, setNumPages } = useEditor();
   const { toast } = useToast();
-  const [pdfDoc, setPdfDoc] = React.useState<PDFDocumentProxy | null>(null);
   const viewportRef = React.useRef<HTMLDivElement>(null);
 
   // Zoom handling refs to maintain state in event listeners

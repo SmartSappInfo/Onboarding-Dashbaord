@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, WorkspaceEntity } from '@/lib/types';
 import type { LocalPDFFormField, AlignmentType, DistributionType, MarqueeState, EditorViewMode } from './types';
 import { calculateAlignment, calculateDistribution } from './utils/alignment';
@@ -10,6 +11,7 @@ export type SidebarTab = 'blocks' | 'tags' | 'properties';
 interface EditorContextType {
   // State
   pdf: PDFForm;
+  pdfDoc: PDFDocumentProxy | null;
   entity?: WorkspaceEntity;
   fields: LocalPDFFormField[];
   selectedFieldIds: string[];
@@ -32,6 +34,7 @@ interface EditorContextType {
   isSaving?: boolean;
   
   // Actions
+  setPdfDoc: React.Dispatch<React.SetStateAction<PDFDocumentProxy | null>>;
   setFields: React.Dispatch<React.SetStateAction<LocalPDFFormField[]>>;
   setSelectedFieldIds: React.Dispatch<React.SetStateAction<string[]>>;
   setZoom: React.Dispatch<React.SetStateAction<number>>;
@@ -118,6 +121,7 @@ export function EditorProvider({
   passwordProtected?: boolean;
   setPasswordProtected: (val: boolean) => void;
 }) {
+  const [pdfDoc, setPdfDoc] = React.useState<PDFDocumentProxy | null>(null);
   const [selectedFieldIds, setSelectedFieldIds] = React.useState<string[]>([]);
   const [zoom, setZoom] = React.useState(1.0);
   const [numPages, setNumPages] = React.useState(0);
@@ -245,7 +249,7 @@ export function EditorProvider({
   }, [selectedFieldIds, setFields, viewMode]);
 
   const value = React.useMemo(() => ({
-    pdf, entity, fields, selectedFieldIds, zoom, numPages, activePageNumber, isSidebarCollapsed, sidebarTab, isFullScreen, viewMode, namingFieldId, marquee, isDetecting,
+    pdf, pdfDoc, setPdfDoc, entity, fields, selectedFieldIds, zoom, numPages, activePageNumber, isSidebarCollapsed, sidebarTab, isFullScreen, viewMode, namingFieldId, marquee, isDetecting,
     password, passwordProtected, isStatusChanging, isSaving, isFieldDeleteConfirmOpen,
     setFields, setSelectedFieldIds, setZoom, setNumPages, setActivePageNumber, setIsSidebarCollapsed, setSidebarTab, setIsFullScreen, setViewMode, setNamingFieldId, setMarquee,
     setIsFieldDeleteConfirmOpen,
@@ -253,7 +257,7 @@ export function EditorProvider({
     addField, updateField, removeField, duplicateFields, alignFields, distributeFields, selectField,
     undo, redo, canUndo, canRedo
   }), [
-    pdf, entity, fields, selectedFieldIds, zoom, numPages, activePageNumber, isSidebarCollapsed, sidebarTab, isFullScreen, viewMode, namingFieldId, marquee, isDetecting,
+    pdf, pdfDoc, entity, fields, selectedFieldIds, zoom, numPages, activePageNumber, isSidebarCollapsed, sidebarTab, isFullScreen, viewMode, namingFieldId, marquee, isDetecting,
     password, passwordProtected, isStatusChanging, isSaving, isFieldDeleteConfirmOpen,
     setFields, setNamingFieldId, setNumPages, setActivePageNumber, setIsFieldDeleteConfirmOpen, setSidebarTab,
     onDetect, onStatusChange, onSave, onPreview, setPassword, setPasswordProtected,

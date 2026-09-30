@@ -99,4 +99,76 @@ Date: _________________________`,
     const fields = detectTemplateFieldsFromPages(textWithoutSignatures);
     expect(fields).toHaveLength(0);
   });
+
+  it('detects student names, grades, and parent fields in tabular form layouts', () => {
+    const formDocument = [
+      `PARENT / GUARDIAN NAME: ________________________   CONTACT NUMBER: __________________
+EMAIL ADDRESS: _________________________________   DATE OF BIRTH: ___________________
+
+4. STUDENT NAME: ___________________________    GRADE: ____________
+5. STUDENT NAME: ___________________________    GRADE: ____________
+
+PARENT OBLIGATION
+The Parent/Guardian agrees to pay all approved fees.
+
+PARENT / GUARDIAN SIGNATURE: ___________________    DATE: _____________`,
+    ];
+
+    const fields = detectTemplateFieldsFromPages(formDocument);
+
+    expect(fields.length).toBeGreaterThanOrEqual(7);
+
+    // Verify student name and grade extraction
+    const studentNames = fields.filter((f) => f.label.includes('Student Name'));
+    expect(studentNames.length).toBe(2);
+    expect(studentNames[0].label).toContain('4');
+    expect(studentNames[1].label).toContain('5');
+
+    const grades = fields.filter((f) => f.label.includes('Grade'));
+    expect(grades.length).toBe(2);
+
+    // Verify signatures and dates
+    const signatures = fields.filter((f) => f.fieldType === 'signature');
+    expect(signatures.length).toBeGreaterThanOrEqual(1);
+
+    const dates = fields.filter((f) => f.fieldType === 'date');
+    expect(dates.length).toBeGreaterThanOrEqual(1);
+
+    // Verify normalized coordinates
+    fields.forEach((f) => {
+      expect(f.leftPct).toBeGreaterThanOrEqual(0);
+      expect(f.topPct).toBeGreaterThanOrEqual(0);
+      expect(f.leftPct + f.widthPct).toBeLessThanOrEqual(100);
+      expect(f.topPct + f.heightPct).toBeLessThanOrEqual(100);
+    });
+  });
+
+  it('uses rich page item bounding boxes when pagesData is provided', () => {
+    const pages = ['STUDENT NAME: John Doe    GRADE: 5th'];
+    const pagesData = [
+      {
+        pageNumber: 1,
+        text: 'STUDENT NAME: John Doe    GRADE: 5th',
+        items: [
+          { str: 'STUDENT NAME:', leftPct: 10, topPct: 25, widthPct: 15, heightPct: 3 },
+          { str: 'GRADE:', leftPct: 60, topPct: 25, widthPct: 10, heightPct: 3 },
+        ],
+      },
+    ];
+
+    const fields = detectTemplateFieldsFromPages(pages, { pagesData });
+
+    expect(fields).toHaveLength(2);
+    const nameField = fields.find((f) => f.label.includes('Student Name'));
+    const gradeField = fields.find((f) => f.label.includes('Grade'));
+
+    expect(nameField).toBeDefined();
+    expect(gradeField).toBeDefined();
+
+    // Bounding boxes should reflect item positions
+    expect(nameField!.leftPct).toBeGreaterThan(15);
+    expect(nameField!.leftPct).toBeLessThan(60);
+    expect(gradeField!.leftPct).toBeGreaterThan(65);
+  });
 });
+
