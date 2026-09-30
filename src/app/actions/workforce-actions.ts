@@ -34,6 +34,7 @@ import { InvitationLifecycleService, CreateInvitationPayload } from '@/lib/servi
 import { InvitationDispatchService } from '@/lib/services/workforce/invitation-dispatch-service';
 import { AccessRequestService, SubmitAccessRequestPayload } from '@/lib/services/workforce/access-request-service';
 import { BulkWorkforceService, BulkActionPayload } from '@/lib/services/workforce/bulk-workforce-service';
+import { InviteCryptoService } from '@/lib/services/crypto/invite-crypto-service';
 import { hasPlatformAdminClaim, isPlatformSystemAdmin } from '@/lib/auth/platform-admin';
 
 interface CallerAuthContext {
@@ -365,7 +366,7 @@ export async function dispatchInvitationsAction(params: {
 }): Promise<{
   success: boolean;
   dispatchedCount: number;
-  results: Array<{ email: string; rawToken: string; invitationId: string }>;
+  results: Array<{ email: string; rawToken: string; invitationId: string; encryptedInviteToken?: string }>;
   errors: Array<{ email: string; error: string }>;
   warnings?: string[];
 }> {
@@ -375,7 +376,10 @@ export async function dispatchInvitationsAction(params: {
       throw new Error('Forbidden: You lack permissions to invite team members.');
     }
 
-    const results: Array<{ email: string; rawToken: string; invitationId: string }> = [];
+    const orgDoc = await adminDb.collection('organizations').doc(params.organizationId).get();
+    const orgName = orgDoc.exists ? orgDoc.data()?.name || 'SmartSapp' : 'SmartSapp';
+
+    const results: Array<{ email: string; rawToken: string; invitationId: string; encryptedInviteToken?: string }> = [];
     const errors: Array<{ email: string; error: string }> = [];
     const allWarnings: string[] = [];
 
@@ -389,14 +393,42 @@ export async function dispatchInvitationsAction(params: {
           }
         );
 
+        let deptName = 'General';
+        if (invitation.departmentId) {
+          try {
+            const dept = await DepartmentService.getDepartmentById(params.organizationId, invitation.departmentId);
+            if (dept) deptName = dept.name;
+          } catch {
+            // Fallback to General
+          }
+        }
+
+        const exp = new Date(invitation.expiresAt).getTime();
+        const encryptedInviteToken = InviteCryptoService.encryptInvitePayload({
+          invitationId: invitation.id,
+          organizationId: params.organizationId,
+          organizationName: orgName,
+          departmentId: invitation.departmentId || '',
+          departmentName: deptName,
+          email: invitation.email,
+          fullName: invitation.invitedPersonName,
+          workspaceId: invitation.workspaceId,
+          workspaceName: invitation.workspaceName,
+          roleIds: invitation.roleIds,
+          roleNames: invitation.roleNames,
+          exp,
+        });
+
         // Multi-channel dispatch (Email, SMS, WhatsApp)
         const dispatchResult = await InvitationDispatchService.dispatch({
           invitationId: invitation.id,
           organizationId: params.organizationId,
+          organizationName: orgName,
           email: invitation.email,
           invitedPersonName: invitation.invitedPersonName,
           phone: invitation.phone,
           rawToken,
+          encryptedInviteToken,
           workspaceName: invitation.workspaceName,
           roleNames: invitation.roleNames,
           channels: invitePayload.channels || ['email'],
@@ -407,7 +439,7 @@ export async function dispatchInvitationsAction(params: {
           allWarnings.push(...dispatchResult.warnings);
         }
 
-        results.push({ email: invitation.email, rawToken, invitationId: invitation.id });
+        results.push({ email: invitation.email, rawToken, invitationId: invitation.id, encryptedInviteToken });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Failed to create invite';
         errors.push({ email: invitePayload.email, error: msg });
@@ -441,6 +473,7 @@ export async function resendInvitationAction(params: {
 }): Promise<{
   success: boolean;
   rawToken?: string;
+  encryptedInviteToken?: string;
   expiresAt?: string;
   warnings?: string[];
   error?: string;
@@ -459,18 +492,50 @@ export async function resendInvitationAction(params: {
     // Re-dispatch notification over requested or existing channels
     const invSnap = await adminDb.collection('invitations').doc(params.invitationId).get();
     let warnings: string[] = [];
+    let encryptedInviteToken: string | undefined;
 
     if (invSnap.exists) {
       const invData = invSnap.data();
+      const orgDoc = await adminDb.collection('organizations').doc(params.organizationId).get();
+      const orgName = orgDoc.exists ? orgDoc.data()?.name || 'SmartSapp' : 'SmartSapp';
+
+      let deptName = 'General';
+      if (invData?.departmentId) {
+        try {
+          const dept = await DepartmentService.getDepartmentById(params.organizationId, invData.departmentId);
+          if (dept) deptName = dept.name;
+        } catch {
+          // Fallback to General
+        }
+      }
+
+      const exp = new Date(res.expiresAt).getTime();
+      encryptedInviteToken = InviteCryptoService.encryptInvitePayload({
+        invitationId: params.invitationId,
+        organizationId: params.organizationId,
+        organizationName: orgName,
+        departmentId: invData?.departmentId || '',
+        departmentName: deptName,
+        email: invData?.email || '',
+        fullName: invData?.invitedPersonName,
+        workspaceId: invData?.workspaceId,
+        workspaceName: invData?.workspaceName,
+        roleIds: invData?.roleIds,
+        roleNames: invData?.roleNames,
+        exp,
+      });
+
       const channelsToUse = params.channels || (Object.keys(invData?.channels || { email: true }) as ('email' | 'sms' | 'whatsapp')[]);
 
       const dispatchResult = await InvitationDispatchService.dispatch({
         invitationId: params.invitationId,
         organizationId: params.organizationId,
+        organizationName: orgName,
         email: invData?.email,
         invitedPersonName: invData?.invitedPersonName,
         phone: invData?.phone,
         rawToken: res.rawToken,
+        encryptedInviteToken,
         workspaceName: invData?.workspaceName,
         roleNames: invData?.roleNames,
         channels: channelsToUse,
@@ -483,6 +548,7 @@ export async function resendInvitationAction(params: {
     return {
       success: true,
       rawToken: res.rawToken,
+      encryptedInviteToken,
       expiresAt: res.expiresAt,
       warnings: warnings.length > 0 ? warnings : undefined,
     };

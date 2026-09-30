@@ -11,6 +11,10 @@ import { resolveAndRender } from './template-resolver';
 import { getBaseUrl } from './utils/url-helpers';
 import { InvitationDispatchService } from './services/workforce/invitation-dispatch-service';
 import { IdentityMigrationService } from './services/identity/identity-migration-service';
+import { DepartmentService } from './services/workforce/department-service';
+import { PersonService } from './services/identity/person-service';
+import { InviteCryptoService } from './services/crypto/invite-crypto-service';
+import { InvitationLifecycleService } from './services/workforce/invitation-lifecycle-service';
 import { getErrorCode, getErrorMessage } from '@/lib/errors/report-error';
 
 /**
@@ -34,13 +38,33 @@ export async function inviteUserAction(params: {
     email: string;
     phone?: string;
     department?: string;
+    departmentId?: string;
     workspaceIds?: string[];
     workspaceRoles: Record<string, string[]>;
     organizationId: string;
     sendMethods: ('email' | 'sms' | 'whatsapp')[];
 }) {
     try {
-        const { fullName, email, phone, department, organizationId, sendMethods } = params;
+        const { fullName, email, phone, organizationId, sendMethods } = params;
+        let deptName = params.department?.trim();
+        let deptId = params.departmentId?.trim();
+
+        if (deptId && !deptName) {
+            try {
+                const dDoc = await DepartmentService.getDepartment(deptId);
+                if (dDoc) deptName = dDoc.name;
+            } catch (err) {
+                console.warn('[inviteUserAction] Could not fetch department by id:', err);
+            }
+        } else if (deptName && !deptId) {
+            try {
+                const resolved = await DepartmentService.findOrCreateDepartmentByName(organizationId, deptName);
+                deptId = resolved.id;
+                deptName = resolved.name;
+            } catch (err) {
+                console.warn('[inviteUserAction] Could not resolve department by name:', err);
+            }
+        }
         const workspaceRoles = params.workspaceRoles || {};
         const workspaceIds = Array.isArray(params.workspaceIds) && params.workspaceIds.length > 0
             ? Array.from(new Set([...params.workspaceIds, ...Object.keys(workspaceRoles)]))
@@ -103,7 +127,7 @@ export async function inviteUserAction(params: {
                     const rData = rolesMap.get(roleId);
                     if (rData) {
                         schemasToMerge.push(rData.permissionsSchema || getBlankPermissions());
-                        if (rData.permissions) rData.permissions.forEach((p: any) => allPerms.add(p));
+                        if (rData.permissions) rData.permissions.forEach((p: import('./types').AppPermissionId) => allPerms.add(p));
                     }
                 });
 
@@ -115,12 +139,14 @@ export async function inviteUserAction(params: {
         }
 
         // 4. Create/Update Firestore Profile
+        const finalDeptName = deptName || 'General';
         const userProfile = {
             id: userRecord.uid,
             name: fullName,
             email,
             phone: phone || '',
-            department: department?.trim() || 'General',
+            department: finalDeptName,
+            ...(deptId ? { departmentId: deptId } : {}),
             workspaceIds,
             workspaceRoles,
             workspacePermissions,
@@ -140,11 +166,54 @@ export async function inviteUserAction(params: {
         // Sync with Canonical Identity Person Graph
         try {
             await IdentityMigrationService.getOrMigratePerson(userRecord.uid, organizationId);
+            if (deptId) {
+                await PersonService.updatePerson(userRecord.uid, {
+                    departmentId: deptId,
+                    departmentName: finalDeptName,
+                });
+                await DepartmentService.recalculateMemberCount(organizationId, deptId);
+            }
         } catch (syncErr) {
             console.warn('[inviteUserAction] Person sync warning:', syncErr);
         }
 
-        // 5. Dispatch credentials over requested channels (Email, SMS, WhatsApp)
+        // 5. Provision formal invitation lifecycle record in Firestore invitations collection
+        let invitationId = '';
+        try {
+            const primaryWorkspaceId = workspaceIds[0];
+            const primaryRoles = (primaryWorkspaceId && workspaceRoles[primaryWorkspaceId]) || ['default_member'];
+            const inviteRes = await InvitationLifecycleService.createInvitation(organizationId, {
+                email,
+                phone: phone || undefined,
+                invitedPersonName: fullName,
+                workspaceId: primaryWorkspaceId || undefined,
+                roleIds: primaryRoles,
+                departmentId: deptId || undefined,
+                invitedBy: 'system',
+                channels: sendMethods as ('email' | 'sms' | 'whatsapp')[],
+            });
+            invitationId = inviteRes.invitation.id;
+        } catch (invErr) {
+            console.warn('[inviteUserAction] Failed to create invitation doc in invitations collection:', invErr);
+        }
+
+        // 6. Generate tamper-proof encrypted onboarding payload
+        const exp = Date.now() + 7 * 24 * 60 * 60 * 1000;
+        const encryptedInviteToken = InviteCryptoService.encryptInvitePayload({
+            invitationId: invitationId || userRecord.uid,
+            organizationId,
+            organizationName: orgName,
+            departmentId: deptId || '',
+            departmentName: finalDeptName,
+            email,
+            fullName,
+            tempPassword,
+            workspaceId: workspaceIds[0] || undefined,
+            roleIds: workspaceRoles[workspaceIds[0]] || [],
+            exp,
+        });
+
+        // 7. Dispatch credentials over requested channels (Email, SMS, WhatsApp)
         const dispatchRes = await InvitationDispatchService.dispatchUserCredentials({
             userId: userRecord.uid,
             organizationId,
@@ -154,6 +223,7 @@ export async function inviteUserAction(params: {
             phone,
             tempPassword,
             loginUrl: loginLink,
+            encryptedInviteToken,
             channels: sendMethods,
         });
 

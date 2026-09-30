@@ -29,6 +29,7 @@ export interface WorkforceInvitationDispatchInput {
   invitedPersonName?: string;
   phone?: string;
   rawToken: string;
+  encryptedInviteToken?: string;
   workspaceName?: string;
   roleNames?: string[];
   channels?: DispatchChannel[];
@@ -44,6 +45,7 @@ export interface UserCredentialsDispatchInput {
   phone?: string;
   tempPassword: string;
   loginUrl: string;
+  encryptedInviteToken?: string;
   workspaceName?: string;
   channels: DispatchChannel[];
 }
@@ -173,7 +175,9 @@ export class InvitationDispatchService {
 
     const orgName = await this.resolveOrgName(organizationId, input.organizationName);
     const origin = input.baseUrl || (typeof window !== 'undefined' ? window.location.origin : 'https://smartsapp.com');
-    const acceptUrl = `${origin.replace(/\/+$/, '')}/accept-invitation?token=${rawToken}`;
+    const acceptUrl = input.encryptedInviteToken
+      ? `${origin.replace(/\/+$/, '')}/accept-invitation?invite=${encodeURIComponent(input.encryptedInviteToken)}`
+      : `${origin.replace(/\/+$/, '')}/accept-invitation?token=${rawToken}`;
     const personName = input.invitedPersonName || '';
 
     const warnings: string[] = [];
@@ -352,6 +356,12 @@ export class InvitationDispatchService {
     } = input;
 
     const orgName = await this.resolveOrgName(organizationId, input.organizationName);
+    const rawOrigin = input.loginUrl ? input.loginUrl.replace(/\/login.*$/, '') : 'https://smartsapp.com';
+    const cleanOrigin = (rawOrigin || 'https://smartsapp.com').replace(/\/+$/, '');
+    const actionUrl = input.encryptedInviteToken
+      ? `${cleanOrigin}/accept-invitation?invite=${encodeURIComponent(input.encryptedInviteToken)}`
+      : loginUrl;
+
     const warnings: string[] = [];
     const errors: string[] = [];
     const channelOutcomes: DispatchInvitationResult['channels'] = {};
@@ -371,7 +381,7 @@ export class InvitationDispatchService {
               <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Login Email:</strong> ${email}</p>
               <p style="margin: 0; font-size: 14px;"><strong>Temporary Password:</strong> <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${tempPassword}</code></p>
             </div>
-            <p><a href="${loginUrl}" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold;">Log In to Platform</a></p>
+            <p><a href="${actionUrl}" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold;">Activate Account & Sign In</a></p>
             <p style="font-size: 12px; color: #64748b;">You will be prompted to reset your password upon first login.</p>
           </div>
         `;
@@ -405,7 +415,7 @@ export class InvitationDispatchService {
         errors.push(`SMS: ${msg}`);
       } else {
         try {
-          const smsText = `Hello ${fullName}, your account for ${orgName} is ready. Temp password: ${tempPassword}. Log in: ${loginUrl}`;
+          const smsText = `Hello ${fullName}, your account for ${orgName} is ready. Temp password: ${tempPassword}. Activate account: ${actionUrl}`;
           await sendSms({
             recipient: cleanPhone,
             message: smsText,
@@ -437,7 +447,7 @@ export class InvitationDispatchService {
       } else {
         try {
           const { sendWhatsApp } = await import('@/lib/whatsapp/whatsapp-send');
-          const waText = `Hello *${fullName}*, your account for *${orgName}* is ready.\n\n*Temporary Password:* ${tempPassword}\n*Log in:* ${loginUrl}`;
+          const waText = `Hello *${fullName}*, your account for *${orgName}* is ready.\n\n*Temporary Password:* ${tempPassword}\n*Activate Account:* ${actionUrl}`;
           await sendWhatsApp({
             organizationId,
             recipient: cleanPhone,

@@ -1412,8 +1412,8 @@ export interface EncryptedInvitePayload {
   invitationId: string;
   organizationId: string;
   organizationName: string;
-  departmentId: string;
-  departmentName: string;
+  departmentId?: string;
+  departmentName?: string;
   email: string;
   fullName?: string;
   tempPassword?: string;
