@@ -1222,6 +1222,12 @@ export const BulkCampaignRecipientStatusSchema = z.enum([
 ]);
 export type BulkCampaignRecipientStatus = z.infer<typeof BulkCampaignRecipientStatusSchema>;
 
+export const BulkCampaignSourceTypeSchema = z.enum([
+  'csv_upload',
+  'crm_entities',
+]);
+export type BulkCampaignSourceType = z.infer<typeof BulkCampaignSourceTypeSchema>;
+
 export const BulkCampaignRecipientSchema = z.object({
   id: z.string().min(1),
   campaignId: z.string().min(1),
@@ -1236,6 +1242,9 @@ export const BulkCampaignRecipientSchema = z.object({
   dispatchedAt: z.string().optional(),
   signedAt: z.string().optional(),
   idempotencyKey: z.string().min(1),
+  entityId: z.string().optional(),
+  contactId: z.string().optional(),
+  sourceType: z.enum(['csv', 'crm']).default('csv'),
 });
 export type BulkCampaignRecipient = z.infer<typeof BulkCampaignRecipientSchema>;
 
@@ -1257,6 +1266,8 @@ export const BulkCampaignSchema = z.object({
   signedCount: z.number().int().min(0),
   failedCount: z.number().int().min(0),
   routingMode: BulkCampaignRoutingModeSchema.default('single_signer'),
+  sourceType: BulkCampaignSourceTypeSchema.default('csv_upload'),
+  entityCount: z.number().int().min(0).optional(),
   countersignerEmail: z.string().email().optional(),
   countersignerName: z.string().optional(),
   createdBy: z.string().min(1),
@@ -1272,6 +1283,9 @@ export const CreateBulkCampaignRecipientInputSchema = z.object({
   email: z.string().email(),
   phone: z.string().optional(),
   variables: z.record(z.string(), z.string()).default({}),
+  entityId: z.string().optional(),
+  contactId: z.string().optional(),
+  sourceType: z.enum(['csv', 'crm']).optional(),
 });
 export type CreateBulkCampaignRecipientInput = z.infer<typeof CreateBulkCampaignRecipientInputSchema>;
 
@@ -1280,6 +1294,9 @@ export const CreateBulkCampaignRequestSchema = z.object({
   templateId: z.string().min(1),
   templateVersionId: z.string().optional(),
   routingMode: BulkCampaignRoutingModeSchema.default('single_signer'),
+  sourceType: BulkCampaignSourceTypeSchema.default('csv_upload'),
+  entityIds: z.array(z.string()).optional(),
+  contactRole: z.enum(['signatory', 'primary', 'all']).optional(),
   countersignerEmail: z.string().email().optional(),
   countersignerName: z.string().optional(),
   tags: z.array(z.string()).default([]),
@@ -1319,6 +1336,10 @@ export const BulkCsvMergePreviewItemSchema = z.object({
   rowIndex: z.number().int().min(1),
   recipientName: z.string(),
   recipientEmail: z.string(),
+  phone: z.string().optional(),
+  entityId: z.string().optional(),
+  contactId: z.string().optional(),
+  sourceType: z.enum(['csv', 'crm']).optional(),
   mappedVariables: z.record(z.string(), z.string()),
   missingVariables: z.array(z.string()),
   isValid: z.boolean(),

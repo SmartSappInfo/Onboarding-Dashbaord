@@ -256,4 +256,55 @@ describe('Phase 9 Domain Schemas: Bulk Campaigns & e-Discovery', () => {
       expect(parsed.previewSample[0].errors.length).toBe(1);
     });
   });
+
+  describe('CRM Entity Source Invariants (Extension)', () => {
+    it('validates CreateBulkCampaignRequest with sourceType = "crm_entities"', () => {
+      const raw = {
+        title: 'Q4 Vendor Bulk MSA Dispatch',
+        templateId: 'tmpl-vendor-msa',
+        sourceType: 'crm_entities',
+        entityIds: ['ent-001', 'ent-002'],
+        contactRole: 'signatory',
+        recipients: [
+          {
+            name: 'Sarah Connor',
+            email: 'sarah@cyberdyne.com',
+            entityId: 'ent-001',
+            contactId: 'cnt-001',
+            sourceType: 'crm',
+            variables: { company_name: 'Cyberdyne Systems' },
+          },
+        ],
+      };
+
+      const parsed = CreateBulkCampaignRequestSchema.parse(raw);
+      expect(parsed.sourceType).toBe('crm_entities');
+      expect(parsed.entityIds).toHaveLength(2);
+      expect(parsed.contactRole).toBe('signatory');
+      expect(parsed.recipients[0].entityId).toBe('ent-001');
+      expect(parsed.recipients[0].sourceType).toBe('crm');
+    });
+
+    it('validates BulkCampaignRecipient with CRM entity provenance fields', () => {
+      const raw = {
+        id: 'rec-crm-01',
+        campaignId: 'camp-crm-01',
+        rowIndex: 1,
+        name: 'John Connor',
+        email: 'john@resistance.org',
+        phone: '+15559876543',
+        variables: { rank: 'Leader' },
+        status: 'queued',
+        idempotencyKey: 'idemp_camp-crm-01_ent-002_john@resistance.org',
+        entityId: 'ent-002',
+        contactId: 'cnt-002',
+        sourceType: 'crm',
+      };
+
+      const parsed: BulkCampaignRecipient = BulkCampaignRecipientSchema.parse(raw);
+      expect(parsed.entityId).toBe('ent-002');
+      expect(parsed.contactId).toBe('cnt-002');
+      expect(parsed.sourceType).toBe('crm');
+    });
+  });
 });
