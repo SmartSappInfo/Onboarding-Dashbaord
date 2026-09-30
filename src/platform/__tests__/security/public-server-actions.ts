@@ -24,4 +24,10 @@ export const PUBLIC_SERVER_ACTIONS: Readonly<Record<string, string>> = {
     'Public portal shell by slug (published portals; public projection).',
   'src/app/actions/portal-actions.ts#validatePortalPasswordAction':
     'Password gate for password-protected portals; returns only pass/fail.',
+  'src/app/actions/invitation-crypto-actions.ts#acceptInvitationLandingAction':
+    'Accepts an invitation using a cryptographically verified AES-256-GCM / SHA-256 token from the onboarding landing card.',
+  'src/app/actions/invitation-crypto-actions.ts#declineInvitationLandingAction':
+    'Declines an invitation using a cryptographically verified token from the public invitation landing card.',
+  'src/app/actions/invitation-crypto-actions.ts#validateEncryptedInvitationAction':
+    'Validates an encrypted invitation token before displaying the onboarding invitation welcome card.',
 };
