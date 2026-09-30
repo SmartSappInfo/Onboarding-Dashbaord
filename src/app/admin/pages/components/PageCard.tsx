@@ -78,14 +78,14 @@ interface OverlayBtnProps {
 // Static base styles hoisted outside component — rendering-hoist-jsx
 const OVERLAY_BTN_BASE =
   'group/btn relative flex h-10 w-10 items-center justify-center rounded-xl ' +
-  'border border-slate-700/80 bg-slate-900/90 text-white shadow-lg ' +
-  'transition-all duration-150 hover:bg-primary hover:border-primary hover:scale-110 ' +
+  'border border-slate-700/60 dark:border-slate-700/80 bg-slate-900/90 text-slate-100 shadow-xl backdrop-blur-md ' +
+  'transition-all duration-150 hover:bg-primary hover:border-primary hover:text-white hover:scale-110 ' +
   'active:scale-95 disabled:opacity-40 disabled:pointer-events-none focus-visible:outline-none ' +
   'focus-visible:ring-2 focus-visible:ring-primary/50';
 
 const OVERLAY_BTN_PRIMARY =
   'group/btn relative flex h-10 w-10 items-center justify-center rounded-xl ' +
-  'border border-primary/50 bg-primary text-white shadow-lg shadow-primary/30 ' +
+  'border border-primary/60 bg-primary text-white shadow-xl shadow-primary/30 backdrop-blur-md ' +
   'transition-all duration-150 hover:bg-primary/90 hover:scale-110 ' +
   'active:scale-95 disabled:opacity-40 disabled:pointer-events-none focus-visible:outline-none ' +
   'focus-visible:ring-2 focus-visible:ring-primary/50';
@@ -295,7 +295,7 @@ export const PageCard = React.memo(function PageCard({
           className={cn(
             'absolute inset-0 z-10',
             'flex items-center justify-center gap-2',
-            'bg-slate-950/85 backdrop-blur-md',
+            'bg-slate-950/35 dark:bg-slate-950/55 backdrop-blur-xs',
             'opacity-0 transition-opacity duration-200 group-hover:opacity-100 p-2',
           )}
         >
