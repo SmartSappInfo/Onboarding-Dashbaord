@@ -9,7 +9,7 @@ import {
     AlignVerticalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd,
     ChevronUp, ChevronDown as ChevronDownIcon, Tag, Database, Pipette,
     CaseUpper, CaseSensitive, Baseline, AlignLeft, AlignCenter, AlignRight,
-    Check, X, Sparkles
+    Check, X
 } from 'lucide-react';
 import { cn, resolveVariableValue, toTitleCase } from '@/lib/utils';
 import { useEditor } from '../EditorContext';
@@ -206,9 +206,9 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
       style={style}
       {...attributes}
       data-field-id={field.id}
- className={cn(
-        "absolute border-2 transition-colors cursor-default select-none overflow-hidden",
-        isSelected ? "border-primary bg-primary/5" : field.isSuggestion ? "border-green-500 bg-green-50/20" : "border-dashed border-primary/40 hover:border-primary/80",
+      className={cn(
+        "absolute border-2 transition-colors cursor-default select-none",
+        isSelected ? "border-primary bg-primary/5" : field.isSuggestion ? "border-emerald-500 bg-emerald-50/20" : "border-dashed border-primary/40 hover:border-primary/80",
         isMediaField ? "flex items-center justify-center p-0" : "p-1",
         (field.type === 'static-text' || field.type === 'variable') && "border-primary/20 bg-primary/5"
       )}
@@ -248,8 +248,8 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
         />
       ) : (
         <div 
- className={cn("z-10 pointer-events-none truncate block w-full px-1", (field.type === 'static-text' || field.type === 'variable') ? "font-bold" : "italic")}
-            style={{ fontSize: 'inherit', color: field.color || 'inherit' }}
+          className={cn("z-10 pointer-events-none truncate block w-full px-1 overflow-hidden", (field.type === 'static-text' || field.type === 'variable') ? "font-bold" : "italic")}
+          style={{ fontSize: 'inherit', color: field.color || 'inherit' }}
         >
             {displayText}
         </div>
@@ -576,47 +576,47 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
       )}
       {field.isSuggestion && (
         <div 
-          className="absolute -top-7 left-0 z-30 flex items-center gap-1.5 bg-emerald-600 text-white text-[10px] font-semibold tracking-wider px-2 py-0.5 rounded-full shadow-lg select-none"
+          className={cn(
+            "absolute z-40 flex items-center gap-1 select-none pointer-events-auto",
+            (currentPosition.y || 0) < 3.5 ? "top-0.5 right-0.5" : "-top-2.5 right-0.5"
+          )}
           onPointerDown={(e) => e.stopPropagation()}
         >
-          <Sparkles className="h-2.5 w-2.5 shrink-0" />
-          <span>AI Suggestion</span>
-          <div className="flex items-center gap-0.5 ml-1 pl-1 border-l border-white/20">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label="Accept suggestion"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      updateField(field.id, { isSuggestion: false });
-                    }}
-                    className="p-0.5 hover:bg-emerald-700/80 rounded transition-colors active:scale-90"
-                  >
-                    <Check className="h-3 w-3 stroke-[3]" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="text-xs py-1 px-2">Accept placement</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label="Reject suggestion"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeField(field.id);
-                    }}
-                    className="p-0.5 hover:bg-rose-600 rounded transition-colors active:scale-90"
-                  >
-                    <X className="h-3 w-3 stroke-[3]" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="text-xs py-1 px-2">Reject placement</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Accept placement"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    updateField(field.id, { isSuggestion: false });
+                  }}
+                  className="h-5 w-5 rounded-full bg-emerald-600 hover:bg-emerald-700 active:scale-90 text-white flex items-center justify-center shadow-md transition-all cursor-pointer ring-1 ring-white/80 dark:ring-black/40 hover:scale-110"
+                >
+                  <Check className="h-3 w-3 stroke-[3]" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs py-1 px-2 font-medium">Accept placement</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Reject placement"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeField(field.id);
+                  }}
+                  className="h-5 w-5 rounded-full bg-rose-600 hover:bg-rose-700 active:scale-90 text-white flex items-center justify-center shadow-md transition-all cursor-pointer ring-1 ring-white/80 dark:ring-black/40 hover:scale-110"
+                >
+                  <X className="h-3 w-3 stroke-[3]" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs py-1 px-2 font-medium">Reject placement</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       )}
     </div>
