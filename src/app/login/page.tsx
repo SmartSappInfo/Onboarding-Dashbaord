@@ -108,9 +108,11 @@ function LoginContent() {
       const userDocRef = doc(firestore, 'users', uid);
       const docSnap = await getDoc(userDocRef);
 
-      // Check and enforce super admin server-side first
-      if (profile.email) {
-        const checkSuper = await enforceSuperAdminProfileAction(uid, profile.email, profile.name || '');
+      // Check and enforce super admin server-side first. The server reads the uid and verified
+      // email from the ID token; it no longer accepts them as parameters.
+      const idToken = await auth.currentUser?.getIdToken();
+      if (profile.email && idToken) {
+        const checkSuper = await enforceSuperAdminProfileAction(idToken, profile.name || '');
         if (checkSuper.success && checkSuper.isSuperAdmin) {
           toast({ title: 'Login Successful', description: 'Super admin access granted.' });
           router.push(returnTo || '/admin/settings/organizations');
@@ -222,9 +224,9 @@ function LoginContent() {
       const userDocRef = doc(firestore, 'users', user.uid);
       const docSnap = await getDoc(userDocRef);
 
-      // Check and enforce super admin server-side first
+      // Check and enforce super admin server-side first (identity from the ID token only).
       if (user.email) {
-        const checkSuper = await enforceSuperAdminProfileAction(user.uid, user.email, user.displayName || '');
+        const checkSuper = await enforceSuperAdminProfileAction(await user.getIdToken(), user.displayName || '');
         if (checkSuper.success && checkSuper.isSuperAdmin) {
           toast({ title: 'Login Successful', description: 'Super admin access granted.' });
           router.push(returnTo || '/admin/settings/organizations');

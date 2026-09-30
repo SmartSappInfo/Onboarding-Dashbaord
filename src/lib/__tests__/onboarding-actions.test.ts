@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { adminDb } from '../firebase-admin';
+import { adminAuth, adminDb } from '../firebase-admin';
 import { 
   validateJoinCodeAction, 
   submitOnboardingProfileAction, 
@@ -20,6 +20,9 @@ const mockTransaction = {
 
 // Mock adminDb with runTransaction support
 vi.mock('../firebase-admin', () => ({
+  adminAuth: {
+    verifyIdToken: vi.fn(),
+  },
   adminDb: {
     collection: vi.fn(),
     runTransaction: vi.fn((callback) => callback(mockTransaction)),
@@ -321,8 +324,9 @@ describe('enforceSuperAdminProfileAction', () => {
       if (name === 'system_config') return mockCollection;
       return {};
     });
+    (adminAuth.verifyIdToken as any).mockResolvedValue({ uid: 'user_123', email: 'other@smartsapp.com', email_verified: true });
 
-    const result = await enforceSuperAdminProfileAction('user_123', 'other@smartsapp.com', 'Other User');
+    const result = await enforceSuperAdminProfileAction('token_user_123', 'Other User');
 
     expect(result.success).toBe(true);
     expect(result.isSuperAdmin).toBe(false);
@@ -360,7 +364,9 @@ describe('enforceSuperAdminProfileAction', () => {
       return {};
     });
 
-    const result = await enforceSuperAdminProfileAction('user_123', 'super@smartsapp.com', 'New Name');
+    (adminAuth.verifyIdToken as any).mockResolvedValue({ uid: 'user_123', email: 'super@smartsapp.com', email_verified: true });
+
+    const result = await enforceSuperAdminProfileAction('token_user_123', 'New Name');
 
     expect(result.success).toBe(true);
     expect(result.isSuperAdmin).toBe(true);
@@ -378,6 +384,56 @@ describe('enforceSuperAdminProfileAction', () => {
       }),
       { merge: true }
     );
+  });
+
+  // SECURITY (hardening H1): the user and email come only from the verified ID token. The action
+  // used to take them as parameters, so anyone could promote their own account to system_admin
+  // by sending a listed address.
+  describe('identity comes only from the verified token', () => {
+    const superAdminConfig = () => ({
+      doc: vi.fn().mockReturnValue({
+        get: vi.fn().mockResolvedValue({ exists: true, data: () => ({ emails: ['super@smartsapp.com'] }) }),
+      }),
+    });
+    let usersDoc: ReturnType<typeof vi.fn>;
+    let userSet: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      userSet = vi.fn().mockResolvedValue(undefined);
+      usersDoc = vi.fn().mockReturnValue({ set: userSet });
+      (adminDb.collection as any).mockImplementation((name) => {
+        if (name === 'system_config') return superAdminConfig();
+        if (name === 'users') return { doc: usersDoc };
+        return {};
+      });
+    });
+
+    it('promotes the token\'s own user, never another uid', async () => {
+      (adminAuth.verifyIdToken as any).mockResolvedValue({ uid: 'signed_in_uid', email: 'super@smartsapp.com', email_verified: true });
+
+      const result = await enforceSuperAdminProfileAction('token', 'Name');
+
+      expect(result.isSuperAdmin).toBe(true);
+      expect(usersDoc).toHaveBeenCalledWith('signed_in_uid');
+      expect(usersDoc).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not promote a listed email that is not verified', async () => {
+      (adminAuth.verifyIdToken as any).mockResolvedValue({ uid: 'attacker', email: 'super@smartsapp.com', email_verified: false });
+
+      const result = await enforceSuperAdminProfileAction('token', 'Name');
+
+      expect(result).toMatchObject({ success: true, isSuperAdmin: false });
+      expect(userSet).not.toHaveBeenCalled();
+    });
+
+    it('refuses an invalid or missing token without writing anything', async () => {
+      (adminAuth.verifyIdToken as any).mockRejectedValue(new Error('invalid token'));
+
+      expect(await enforceSuperAdminProfileAction('forged', 'Name')).toMatchObject({ success: false, isSuperAdmin: false });
+      expect(await enforceSuperAdminProfileAction('', 'Name')).toMatchObject({ success: false, isSuperAdmin: false });
+      expect(userSet).not.toHaveBeenCalled();
+    });
   });
 });
 

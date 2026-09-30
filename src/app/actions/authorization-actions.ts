@@ -84,17 +84,24 @@ async function verifyCallerAuth(idToken: string, targetOrgId: string): Promise<C
     isPlatformSystemAdmin(decoded, profile)
   );
 
+  // Role management is deliberately STRICTER than `canManageUsers` (require-user-manager.ts): it
+  // omits `users.create` and the legacy admin role names, because editing roles can grant any
+  // permission. Keep it separate; do not widen it to the shared user-management test.
+  const permissions: readonly string[] = profile.permissions ?? [];
   const canManageRoles = Boolean(
     isSystemAdmin ||
-    (profile.permissions as unknown as string[])?.includes('users_manage') ||
-    (profile.permissions as unknown as string[])?.includes('management_users') ||
+    permissions.includes('users_manage') ||
+    permissions.includes('management_users') ||
     profile.permissionsSchema?.management?.features?.users?.edit
   );
 
-  const orgId = profile.organizationId || targetOrgId || '';
-  if (targetOrgId && !isSystemAdmin && orgId !== targetOrgId) {
+  // The caller must belong to the target organization (hardening H1). The old
+  // `profile.organizationId || targetOrgId` fallback let a profile with no organization "match"
+  // any organization it named.
+  if (targetOrgId && !isSystemAdmin && profile.organizationId !== targetOrgId) {
     throw new Error('Forbidden: Access to specified organization is denied');
   }
+  const orgId = profile.organizationId || targetOrgId || '';
 
   return {
     uid,

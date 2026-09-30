@@ -59,6 +59,11 @@ describe('canManageUsers', () => {
     expect(canManageUsers({ roles: ['administrator'] })).toBe(true);
     expect(canManageUsers({ permissionsSchema: { management: { features: { users: { edit: true } } } } })).toBe(true);
     expect(canManageUsers({ permissionsSchema: { management: { features: { users: { create: true } } } } })).toBe(true);
+    expect(canManageUsers({ permissions: ['management.users.edit'] })).toBe(true);
+    expect(canManageUsers({ permissions: ['management.users.create'] })).toBe(true);
+    for (const role of ['admin', 'Administrator', 'ORG_ADMIN', 'super_admin']) {
+      expect(canManageUsers({ roles: [role] })).toBe(true);
+    }
     expect(canManageUsers(manager)).toBe(true);
   });
 
@@ -66,6 +71,11 @@ describe('canManageUsers', () => {
     expect(canManageUsers(member)).toBe(false);
     expect(canManageUsers({ roles: ['member'], permissions: ['view_deals'] })).toBe(false);
     expect(canManageUsers({ permissionsSchema: { management: { features: { users: { edit: false } } } } })).toBe(false);
+    // Read-only access never grants management (workforce-actions once accepted it: H1).
+    expect(canManageUsers({ permissions: ['management.users.view'] })).toBe(false);
+    // An approved member with no admin signal: `isAuthorized` alone must not count.
+    expect(member.isAuthorized).toBe(true);
+    expect(canManageUsers(member)).toBe(false);
   });
 });
 

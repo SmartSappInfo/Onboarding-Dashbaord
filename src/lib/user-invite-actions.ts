@@ -17,6 +17,7 @@ import { InviteCryptoService } from './services/crypto/invite-crypto-service';
 import { InvitationLifecycleService } from './services/workforce/invitation-lifecycle-service';
 import { getErrorCode, getErrorMessage } from '@/lib/errors/report-error';
 import { requireUserManager, requireUserManagerForUser } from './auth/require-user-manager';
+import { assertInviteScope } from './services/workforce/invite-scope';
 
 /**
  * Generates a random secure password.
@@ -29,39 +30,6 @@ function generateRandomPassword(length = 10): string {
         password += chars.charAt(bytes[i] % chars.length);
     }
     return password;
-}
-
-/**
- * Every workspace and role in an invite must belong to the inviting organization, and only a
- * platform system admin may hand out a role that carries `system_admin`. Without this, a
- * manager could attach another tenant's workspaces or roles to the account they create.
- */
-async function assertInviteScope(params: {
-    organizationId: string;
-    workspaceIds: string[];
-    roleIds: string[];
-    callerIsSystemAdmin: boolean;
-}): Promise<void> {
-    const [workspaceSnaps, roleSnaps] = await Promise.all([
-        Promise.all(params.workspaceIds.map((id) => adminDb.collection('workspaces').doc(id).get())),
-        Promise.all(params.roleIds.map((id) => adminDb.collection('roles').doc(id).get())),
-    ]);
-    const inOrganization = (snap: { exists: boolean; data(): { organizationId?: unknown } | undefined }) =>
-        snap.exists && snap.data()?.organizationId === params.organizationId;
-
-    if (!workspaceSnaps.every(inOrganization)) {
-        throw new Error('Forbidden: every workspace must belong to this organization.');
-    }
-    if (!roleSnaps.every(inOrganization)) {
-        throw new Error('Forbidden: every role must belong to this organization.');
-    }
-    const grantsSystemAdmin = roleSnaps.some((snap) => {
-        const permissions: unknown = snap.data()?.permissions;
-        return Array.isArray(permissions) && permissions.includes('system_admin');
-    });
-    if (grantsSystemAdmin && !params.callerIsSystemAdmin) {
-        throw new Error('Forbidden: only a platform administrator can grant platform administrator access.');
-    }
 }
 
 /**

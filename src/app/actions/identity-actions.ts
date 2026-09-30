@@ -39,6 +39,7 @@ import { resolveAndRender } from '@/lib/template-resolver';
 import { getBaseUrl } from '@/lib/utils/url-helpers';
 import crypto from 'crypto';
 import { hasPlatformAdminClaim, isPlatformSystemAdmin } from '@/lib/auth/platform-admin';
+import { canManageUsers as canManageUsersFor } from '@/lib/auth/require-user-manager';
 
 interface CallerContext {
   uid: string;
@@ -95,20 +96,17 @@ async function verifyCallerContext(idToken: string, targetOrgId?: string): Promi
     isPlatformSystemAdmin(decodedToken, profile)
   );
 
-  const permissionsList = (profile.permissions || []) as string[];
-  const canManageUsers = Boolean(
-    isSystemAdmin ||
-    permissionsList.includes('users_manage') ||
-    permissionsList.includes('management_users') ||
-    profile.permissionsSchema?.management?.features?.users?.edit ||
-    profile.permissionsSchema?.management?.features?.users?.create
-  );
+  // One shared user-management test (hardening H1), so identity, workforce and invite actions
+  // agree. Change `canManageUsers` in require-user-manager.ts, not here.
+  const canManageUsers = isSystemAdmin || canManageUsersFor(profile);
 
-  const orgId = profile.organizationId || targetOrgId || '';
-
-  if (targetOrgId && !isSystemAdmin && orgId !== targetOrgId) {
+  // The caller must belong to the target organization. The old
+  // `profile.organizationId || targetOrgId` fallback let a profile with no organization "match"
+  // any organization it named.
+  if (targetOrgId && !isSystemAdmin && profile.organizationId !== targetOrgId) {
     throw new Error('Forbidden: Access to requested organization is denied.');
   }
+  const orgId = profile.organizationId || targetOrgId || '';
 
   return {
     uid,

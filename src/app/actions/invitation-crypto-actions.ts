@@ -205,7 +205,8 @@ export async function validateEncryptedInvitationAction(
       let deptName = 'General';
       if (legacyInvite.departmentId) {
         try {
-          const dept = await DepartmentService.getDepartment(legacyInvite.departmentId);
+          // Organization-checked: the invite's department id originally came from a request.
+          const dept = await DepartmentService.getDepartmentForOrganization(legacyInvite.organizationId, legacyInvite.departmentId);
           if (dept) deptName = dept.name;
         } catch {
           // Fallback to default

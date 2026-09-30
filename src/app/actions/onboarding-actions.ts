@@ -412,7 +412,8 @@ export async function submitOnboardingProfileAction(payload: {
     // if the department was deleted or renamed while the onboarding invitation was in flight
     if (deptId) {
       try {
-        const dDoc = await DepartmentService.getDepartment(deptId);
+        // Organization-checked: a department of another organization counts as dangling.
+        const dDoc = await DepartmentService.getDepartmentForOrganization(organizationId, deptId);
         if (dDoc) {
           deptName = dDoc.name; // Enforce canonical name from SSoT
         } else {
@@ -515,14 +516,32 @@ export async function submitOnboardingProfileAction(payload: {
   }
 }
 
+/**
+ * Promotes the SIGNED-IN user to platform super admin when their verified email is on the
+ * `system_config/super_admins` list.
+ *
+ * SECURITY (hardening H1): identity comes ONLY from a verified Firebase ID token. This action used
+ * to take `userId` and `email` as parameters, so anyone could sign up and promote their own
+ * account to `system_admin` by sending a listed address (full platform takeover). The email must
+ * also be verified, so registering a listed address without owning its inbox is not enough.
+ * CAUTION: never add a parameter that names the user or email to promote.
+ */
 export async function enforceSuperAdminProfileAction(
-  userId: string,
-  email: string,
+  idToken: string,
   name?: string
 ): Promise<{ success: boolean; isSuperAdmin: boolean; error?: string }> {
   try {
-    const trimmedEmail = email?.trim().toLowerCase();
-    if (!trimmedEmail) return { success: false, isSuperAdmin: false };
+    if (!idToken) return { success: false, isSuperAdmin: false };
+    let userId: string;
+    let trimmedEmail: string | undefined;
+    try {
+      const decoded = await adminAuth.verifyIdToken(idToken);
+      userId = decoded.uid;
+      trimmedEmail = decoded.email_verified === true ? decoded.email?.trim().toLowerCase() : undefined;
+    } catch {
+      return { success: false, isSuperAdmin: false, error: 'Your session has expired. Please sign in again.' };
+    }
+    if (!trimmedEmail) return { success: true, isSuperAdmin: false };
 
     // SECURITY (audit F8): platform admin is the signed `admin` custom claim, not an
     // email address anyone could register or take over.

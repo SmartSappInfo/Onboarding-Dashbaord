@@ -36,6 +36,8 @@ import { AccessRequestService, SubmitAccessRequestPayload } from '@/lib/services
 import { BulkWorkforceService, BulkActionPayload } from '@/lib/services/workforce/bulk-workforce-service';
 import { InviteCryptoService } from '@/lib/services/crypto/invite-crypto-service';
 import { hasPlatformAdminClaim, isPlatformSystemAdmin } from '@/lib/auth/platform-admin';
+import { canManageUsers } from '@/lib/auth/require-user-manager';
+import { assertInviteScope } from '@/lib/services/workforce/invite-scope';
 
 interface CallerAuthContext {
   uid: string;
@@ -89,24 +91,19 @@ async function verifyCallerAuth(idToken: string, targetOrgId: string): Promise<C
     isPlatformSystemAdmin(decoded, profile)
   );
 
-  const permissionsArray = (profile.permissions as unknown as string[]) || [];
-  const rolesArray = profile.roles || [];
-  const canManageWorkforce = Boolean(
-    isSystemAdmin ||
-    profile.isAuthorized ||
-    permissionsArray.includes('users_manage') ||
-    permissionsArray.includes('management_users') ||
-    permissionsArray.includes('management.users.edit') ||
-    permissionsArray.includes('management.users.view') ||
-    permissionsArray.includes('management.users.create') ||
-    rolesArray.some((r) => ['admin', 'administrator', 'org_admin', 'super_admin'].includes(r.toLowerCase())) ||
-    profile.permissionsSchema?.management?.features?.users?.edit
-  );
+  // SECURITY (hardening H1): this used to OR in `profile.isAuthorized` (true for every approved
+  // staff member) and the read-only `management.users.view`, so any staff member could approve
+  // access requests, send invitations or bulk-assign themselves roles. The shared test below
+  // accepts only real admin signals. Do not widen it here; change `canManageUsers` instead.
+  const canManageWorkforce = isSystemAdmin || canManageUsers(profile);
 
-  const orgId = profile.organizationId || targetOrgId || '';
-  if (targetOrgId && !isSystemAdmin && orgId !== targetOrgId) {
+  // The caller must belong to the target organization. The old
+  // `profile.organizationId || targetOrgId` fallback let a profile with no organization "match"
+  // any organization it named.
+  if (targetOrgId && !isSystemAdmin && profile.organizationId !== targetOrgId) {
     throw new Error('Forbidden: Access to specified organization is denied');
   }
+  const orgId = profile.organizationId || targetOrgId || '';
 
   return {
     uid,
@@ -204,7 +201,11 @@ export async function purgeSampleDepartmentsAction(params: {
   error?: string;
 }> {
   try {
-    await verifyCallerAuth(params.idToken, params.organizationId);
+    // Destructive: deletes departments. Managers only (any member could run it before H1).
+    const caller = await verifyCallerAuth(params.idToken, params.organizationId);
+    if (!caller.canManageWorkforce) {
+      throw new Error('Forbidden: You lack permissions to manage departments.');
+    }
 
     const allSeedNames = new Set(
       ALL_SEED_DEPARTMENT_NAMES.map((name) => name.toLowerCase().trim())
@@ -385,6 +386,15 @@ export async function dispatchInvitationsAction(params: {
 
     for (const invitePayload of params.invites) {
       try {
+        // The workspace and roles are applied when the link is accepted, so check them now: they
+        // must belong to this organization, and only a platform admin may grant system_admin.
+        await assertInviteScope({
+          organizationId: params.organizationId,
+          workspaceIds: invitePayload.workspaceId ? [invitePayload.workspaceId] : [],
+          roleIds: invitePayload.roleIds,
+          callerIsSystemAdmin: caller.isSystemAdmin,
+        });
+
         const { invitation, rawToken } = await InvitationLifecycleService.createInvitation(
           params.organizationId,
           {
@@ -396,7 +406,8 @@ export async function dispatchInvitationsAction(params: {
         let deptName = 'General';
         if (invitation.departmentId) {
           try {
-            const dept = await DepartmentService.getDepartment(invitation.departmentId);
+            // Organization-checked: the department id came from the request.
+            const dept = await DepartmentService.getDepartmentForOrganization(params.organizationId, invitation.departmentId);
             if (dept) deptName = dept.name;
           } catch {
             // Fallback to General
@@ -502,7 +513,8 @@ export async function resendInvitationAction(params: {
       let deptName = 'General';
       if (invData?.departmentId) {
         try {
-          const dept = await DepartmentService.getDepartment(invData.departmentId);
+          // Organization-checked: the stored department id originally came from a request.
+          const dept = await DepartmentService.getDepartmentForOrganization(params.organizationId, invData.departmentId);
           if (dept) deptName = dept.name;
         } catch {
           // Fallback to General
@@ -590,7 +602,11 @@ export async function listInvitationsAction(params: {
   error?: string;
 }> {
   try {
-    await verifyCallerAuth(params.idToken, params.organizationId);
+    // Invitations hold invitee names, emails and phone numbers: managers only (H1).
+    const caller = await verifyCallerAuth(params.idToken, params.organizationId);
+    if (!caller.canManageWorkforce) {
+      throw new Error('Forbidden: Administrative privileges required.');
+    }
     const invitations = await InvitationLifecycleService.listInvitations(
       params.organizationId,
       params.status
@@ -730,7 +746,11 @@ export async function listAccessRequestsAction(params: {
   error?: string;
 }> {
   try {
-    await verifyCallerAuth(params.idToken, params.organizationId);
+    // Access requests hold requesters' personal details: managers only (H1).
+    const caller = await verifyCallerAuth(params.idToken, params.organizationId);
+    if (!caller.canManageWorkforce) {
+      throw new Error('Forbidden: Administrative privileges required.');
+    }
     const requests = await AccessRequestService.listPendingRequests(
       params.organizationId,
       params.workspaceId

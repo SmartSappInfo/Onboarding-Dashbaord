@@ -205,7 +205,8 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
           } else {
             // User doc doesn't exist yet - check if this user is a superadmin first before redirecting to onboarding
             if (user.email) {
-              const checkSuper = await enforceSuperAdminProfileAction(user.uid, user.email, user.displayName || '');
+              // Identity comes from the ID token server-side; uid and email are no longer sent.
+              const checkSuper = await enforceSuperAdminProfileAction(await user.getIdToken(), user.displayName || '');
               if (checkSuper.success && checkSuper.isSuperAdmin) {
                 // Re-fetch document or reload page to let them in
                 window.location.reload();

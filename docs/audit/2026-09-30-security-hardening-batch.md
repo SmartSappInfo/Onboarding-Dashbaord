@@ -8,8 +8,9 @@ Staging shares the production Firebase project, so any rules deploy is a product
 
 | Phase | Item | Severity | Status | Commit |
 | :--- | :--- | :--- | :--- | :--- |
-| H0 | Flaky tag property test | CI reliability | ☑ done | this commit |
-| H1 | Workforce privilege escalation | **Critical (live)** | ☐ | |
+| H0 | Flaky tag property test | CI reliability | ☑ done | `1358bffb` |
+| H1 | Workforce privilege escalation + super-admin self-promotion | **Critical (live)** | ☑ done | this commit |
+| H1c | Onboarding actions trust a caller-supplied `userId` (found in H1) | **High (live)** | ☐ | |
 | H2 | Phone password reset → one-time code | **High (live)** | ☐ | |
 | H3 | Lint step 1 (~311 warnings) | Quality | ☐ | |
 | H4a | `content_items` paywall rule (held PR-0e) | High | ☐ | |
@@ -73,6 +74,23 @@ Mutation-check against the old code.
 **Could go wrong:** a real admin whose only signal is unusual loses access. Mitigation: every
 signal the old code honoured is kept except `isAuthorized` and `.view`; the error message names the
 missing permission so it is fixable in Roles without code (backoffice-manageable).
+
+**Found and fixed during H1 (same privilege-escalation class):**
+- `enforceSuperAdminProfileAction(userId, email)` was unauthenticated and trusted both
+  parameters: anyone could sign up and promote their own account to `system_admin` by sending a
+  listed super-admin address. Now: identity only from a verified ID token, and the email must be
+  verified. Callers (login page, admin layout) send the token.
+- Invitations applied caller-chosen `workspaceId`/`roleIds` on acceptance with no scope check.
+  The check from `inviteUserAction` moved to `src/lib/services/workforce/invite-scope.ts`, and both
+  invite paths use it.
+- Four `getDepartment(id)` lookups on request-supplied ids now use `getDepartmentForOrganization`.
+
+## H1c — Onboarding actions trust a caller-supplied `userId`
+`submitOnboardingProfileAction`, `getOnboardingSetupStateAction` and
+`completeOrganizationOnboardingAction` take the user (and organization) from parameters with no
+authentication: anyone can overwrite another user's onboarding profile or reconfigure any
+organization's onboarding. Fix: derive the user from a verified ID token (onboarding users may not
+be approved yet, so not `requireAuth`), check organization membership, update the callers.
 
 ## H2 — Phone password reset → one-time code
 

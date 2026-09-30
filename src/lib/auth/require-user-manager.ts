@@ -25,11 +25,21 @@ export interface UserManagementGrants {
   permissionsSchema?: { management?: { features?: { users?: { edit?: boolean; create?: boolean } } } };
 }
 
+/** Legacy role names that mean "organization administrator" (compared case-insensitively). */
+const ADMIN_ROLE_NAMES: ReadonlySet<string> = new Set(['admin', 'administrator', 'org_admin', 'super_admin']);
+
 /**
- * Whether a profile may manage users in its organization. Accepts every form in which the app
- * grants this: platform system admin, the legacy `users_manage` / `management_users`
- * permissions, the RBAC schema (management → users: create or edit), and the legacy
- * `administrator` role that the remove and decline actions honoured before.
+ * Whether a profile may manage users and the workforce (departments, teams, invitations, access
+ * requests, bulk role changes) in its organization. The ONE shared test: user-invite-actions,
+ * identity-actions and workforce-actions all use it, so they cannot drift apart again.
+ *
+ * Accepts every legitimate form in which the app grants this: platform system admin; the legacy
+ * `users_manage` / `management_users` ids and their dotted forms `management.users.edit|create`;
+ * the RBAC schema (management → users: create or edit); and the legacy admin role names.
+ *
+ * CAUTION: never accept `isAuthorized` (every approved staff member has it) or a `.view`
+ * permission (read-only). workforce-actions once did both, which let any staff member assign
+ * themselves roles. Tests: src/lib/auth/__tests__/require-user-manager.test.ts.
  */
 export function canManageUsers(profile: UserManagementGrants): boolean {
   const permissions: readonly string[] = profile.permissions ?? [];
@@ -38,9 +48,11 @@ export function canManageUsers(profile: UserManagementGrants): boolean {
     permissions.includes('system_admin') ||
     permissions.includes('users_manage') ||
     permissions.includes('management_users') ||
+    permissions.includes('management.users.edit') ||
+    permissions.includes('management.users.create') ||
     Boolean(usersFeature?.edit) ||
     Boolean(usersFeature?.create) ||
-    (profile.roles ?? []).includes('administrator')
+    (profile.roles ?? []).some((role) => ADMIN_ROLE_NAMES.has(role.toLowerCase()))
   );
 }
 
