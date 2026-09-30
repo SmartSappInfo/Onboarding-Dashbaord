@@ -84,7 +84,7 @@ function McpGovernanceContent() {
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') || 'catalog';
 
-  const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
+  const { activeWorkspaceId } = useWorkspace();
   const { user } = useUser();
   const { toast } = useToast();
 
@@ -99,7 +99,6 @@ function McpGovernanceContent() {
   const [runnerTool, setRunnerTool] = React.useState<GovernedToolInfo | null>(null);
 
   const workspaceId = activeWorkspaceId || '';
-  const organizationId = activeOrganizationId || activeWorkspaceId || '';
   const userId = user?.uid || '';
 
   const loadData = React.useCallback(async () => {
@@ -108,10 +107,10 @@ function McpGovernanceContent() {
     try {
       setIsRefreshing(true);
       const [toolsRes, approvalsRes, keysRes, logsRes] = await Promise.all([
-        listMcpToolsAction({ workspaceId, userId }),
-        listPendingApprovalsAction({ workspaceId, userId }),
-        listMcpApiKeysAction({ workspaceId, userId }),
-        listMcpAuditLogsAction({ workspaceId, userId, limit: 100 }),
+        listMcpToolsAction({ workspaceId }),
+        listPendingApprovalsAction({ workspaceId }),
+        listMcpApiKeysAction({ workspaceId }),
+        listMcpAuditLogsAction({ workspaceId, limit: 100 }),
       ]);
 
       if (toolsRes.success && toolsRes.data) setTools(toolsRes.data);
@@ -141,8 +140,6 @@ function McpGovernanceContent() {
   ): Promise<McpJsonRpcResponse> => {
     const res = await executeMcpToolAction({
       workspaceId,
-      organizationId,
-      userId,
       toolName,
       inputArguments: args,
     });
@@ -162,8 +159,6 @@ function McpGovernanceContent() {
 
     const res = await upsertMcpApprovalPolicyAction({
       workspaceId,
-      organizationId,
-      userId,
       toolName,
       requiresApproval: currentTool.requiresApproval,
       enabled,
@@ -192,8 +187,6 @@ function McpGovernanceContent() {
 
     const res = await upsertMcpApprovalPolicyAction({
       workspaceId,
-      organizationId,
-      userId,
       toolName,
       requiresApproval,
       enabled: currentTool.enabled,
@@ -223,7 +216,6 @@ function McpGovernanceContent() {
   ) => {
     const res = await adjudicateApprovalAction({
       workspaceId,
-      userId,
       approvalId,
       decision,
       notes,
@@ -252,8 +244,6 @@ function McpGovernanceContent() {
   }) => {
     const res = await createMcpApiKeyAction({
       workspaceId,
-      organizationId,
-      userId,
       ...params,
     });
 
@@ -268,7 +258,6 @@ function McpGovernanceContent() {
   const handleRevokeApiKey = async (keyId: string) => {
     const res = await revokeMcpApiKeyAction({
       workspaceId,
-      userId,
       keyId,
     });
 

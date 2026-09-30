@@ -215,7 +215,6 @@ export default function BackofficeCompanyBrainClient() {
     try {
       const res = await listMcpToolsAction({
         workspaceId: 'platform_backoffice',
-        userId: user.uid,
       });
       if (res.success && res.data) {
         setMcpTools(res.data);
@@ -238,8 +237,6 @@ export default function BackofficeCompanyBrainClient() {
     if (!user?.uid) throw new Error('Unauthenticated');
     const res = await executeMcpToolAction({
       workspaceId: 'platform_backoffice',
-      organizationId: 'platform_org',
-      userId: user.uid,
       toolName,
       inputArguments: args,
     });
@@ -253,8 +250,6 @@ export default function BackofficeCompanyBrainClient() {
     if (!currentTool) return;
     const res = await upsertMcpApprovalPolicyAction({
       workspaceId: 'platform_backoffice',
-      organizationId: 'platform_org',
-      userId: user.uid,
       toolName,
       requiresApproval: currentTool.requiresApproval,
       enabled,
@@ -276,8 +271,6 @@ export default function BackofficeCompanyBrainClient() {
     if (!currentTool) return;
     const res = await upsertMcpApprovalPolicyAction({
       workspaceId: 'platform_backoffice',
-      organizationId: 'platform_org',
-      userId: user.uid,
       toolName,
       requiresApproval,
       enabled: currentTool.enabled,
