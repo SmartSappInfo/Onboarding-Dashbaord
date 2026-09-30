@@ -157,8 +157,12 @@ export class IdentityProjectionService {
     if (resolvedDeptId && !resolvedDeptName) {
       try {
         const deptSnap = await adminDb.collection('departments').doc(resolvedDeptId).get();
-        if (deptSnap.exists) {
-          resolvedDeptName = (deptSnap.data() as { name?: string })?.name;
+        const deptName: unknown = deptSnap.get('name');
+        // Only project this organization's own department; never another tenant's id or name.
+        if (deptSnap.exists && deptSnap.get('organizationId') !== organizationId) {
+          resolvedDeptId = undefined;
+        } else if (deptSnap.exists && typeof deptName === 'string') {
+          resolvedDeptName = deptName;
         }
       } catch (dErr) {
         console.warn(`[IdentityProjectionService] Could not resolve department name for ${resolvedDeptId}:`, dErr);

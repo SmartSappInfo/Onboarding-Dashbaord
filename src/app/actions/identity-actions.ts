@@ -32,7 +32,7 @@ import { OrganizationMembershipService } from '@/lib/services/identity/organizat
 import { WorkspaceMembershipService } from '@/lib/services/identity/workspace-membership-service';
 import { IdentityProjectionService } from '@/lib/services/identity/identity-projection-service';
 import { IdentityMigrationService, ReconciliationReport } from '@/lib/services/identity/identity-migration-service';
-import { DepartmentService } from '@/lib/services/workforce/department-service';
+import { DepartmentService, DEPARTMENT_NOT_IN_ORGANIZATION } from '@/lib/services/workforce/department-service';
 import { sendEmail } from '@/lib/resend-service';
 import { sendSms } from '@/lib/mnotify-service';
 import { resolveAndRender } from '@/lib/template-resolver';
@@ -400,6 +400,39 @@ export async function getPersonDetailAction(params: {
 }
 
 /**
+ * Resolves the department fields of a profile update so id and name agree and stay inside the
+ * caller's organization. Returns only the fields to write: `{}` when the update names no
+ * department, so an empty value the caller sent is written as-is.
+ * - An id must belong to the organization; its canonical name replaces any name sent with it.
+ * - A name alone matches an existing department, case-insensitively. Only callers who manage
+ *   users may create a department that way; anyone else gets an error, not a new department.
+ */
+async function resolveProfileDepartment(params: {
+  organizationId: string;
+  departmentId?: string;
+  departmentName?: string;
+  canCreate: boolean;
+}): Promise<{ departmentId?: string; departmentName?: string }> {
+  const id = params.departmentId?.trim();
+  if (id) {
+    const department = await DepartmentService.getDepartmentForOrganization(params.organizationId, id);
+    if (!department) throw new Error(DEPARTMENT_NOT_IN_ORGANIZATION);
+    return { departmentId: department.id, departmentName: department.name };
+  }
+
+  const name = params.departmentName?.trim();
+  if (!name) return {};
+
+  const existing = await DepartmentService.findDepartmentByName(params.organizationId, name);
+  if (existing) return { departmentId: existing.id, departmentName: existing.name };
+  if (!params.canCreate) {
+    throw new Error('Choose an existing department. Only administrators can add new departments.');
+  }
+  const created = await DepartmentService.findOrCreateDepartmentByName(params.organizationId, name);
+  return { departmentId: created.id, departmentName: created.name };
+}
+
+/**
  * Updates a Person's profile information and synchronizes the legacy projection.
  */
 export async function updatePersonProfileAction(params: {
@@ -426,39 +459,45 @@ export async function updatePersonProfileAction(params: {
 }> {
   try {
     const caller = await verifyCallerContext(params.idToken, params.organizationId);
+    const isSelf = caller.uid === params.personId;
 
     // Only allow updating other people if caller is an authorized admin
-    if (caller.uid !== params.personId && !caller.canManageUsers) {
+    if (!isSelf && !caller.canManageUsers) {
       throw new Error('Forbidden: You lack permission to update other team members.');
     }
-
-    // Ensure mutual consistency for departmentId and departmentName
-    let deptId = params.updates.departmentId;
-    let deptName = params.updates.departmentName;
-
-    if (deptId && !deptName) {
-      const d = await DepartmentService.getDepartment(deptId);
-      if (d) deptName = d.name;
-    } else if (deptName && !deptId) {
-      const d = await DepartmentService.findOrCreateDepartmentByName(params.organizationId, deptName);
-      if (d) deptId = d.id;
+    // ...and only people in this organization. verifyCallerContext checks the caller, not the
+    // person being edited: without this, a user manager could edit anyone on the platform by id.
+    if (
+      !isSelf &&
+      !caller.isSystemAdmin &&
+      !(await OrganizationMembershipService.isMemberOfOrganization(params.organizationId, params.personId))
+    ) {
+      throw new Error('Forbidden: This person is not a member of your organization.');
     }
 
-    const updatesWithDept = {
-      ...params.updates,
-      ...(deptId !== undefined ? { departmentId: deptId } : {}),
-      ...(deptName !== undefined ? { departmentName: deptName } : {}),
-    };
+    // Keep departmentId and departmentName consistent and inside this organization.
+    const department = await resolveProfileDepartment({
+      organizationId: params.organizationId,
+      departmentId: params.updates.departmentId,
+      departmentName: params.updates.departmentName,
+      canCreate: caller.canManageUsers,
+    });
+    const previousDepartmentId = department.departmentId
+      ? (await PersonService.getPerson(params.personId))?.departmentId
+      : undefined;
 
     // 1. Update Person document
-    await PersonService.updatePerson(params.personId, updatesWithDept);
+    await PersonService.updatePerson(params.personId, { ...params.updates, ...department });
 
     // 2. Sync to legacy UserProfile projection
     const userProfile = await IdentityProjectionService.syncUserProjection(params.organizationId, params.personId);
 
-    // 3. Recalculate member count
-    if (deptId) {
-      DepartmentService.recalculateMemberCount(params.organizationId, deptId).catch((err) =>
+    // 3. Refresh member counts for the department joined and, when it changed, the one left.
+    const affectedDepartmentIds = new Set(
+      [department.departmentId, previousDepartmentId].filter((id): id is string => Boolean(id))
+    );
+    for (const departmentId of affectedDepartmentIds) {
+      DepartmentService.recalculateMemberCount(params.organizationId, departmentId).catch((err) =>
         console.warn('[updatePersonProfileAction] Recalculate member count warning:', err)
       );
     }

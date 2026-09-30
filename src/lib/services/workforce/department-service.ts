@@ -23,6 +23,9 @@ export interface CreateDepartmentPayload {
   headPersonName?: string;
 }
 
+/** Error for a department id that is missing or belongs to another organization (no difference is revealed). */
+export const DEPARTMENT_NOT_IN_ORGANIZATION = 'That department does not exist in this organization.';
+
 export interface UpdateDepartmentPayload {
   name?: string;
   code?: string;
@@ -81,8 +84,7 @@ export class DepartmentService {
     const cleanName = (name || '').trim();
     if (!cleanName) throw new Error('Department name is required');
 
-    const depts = await this.listDepartments(organizationId);
-    const match = depts.find((d) => d.name.toLowerCase() === cleanName.toLowerCase());
+    const match = await this.findDepartmentByName(organizationId, cleanName);
     if (match) {
       return match;
     }
@@ -206,6 +208,11 @@ export class DepartmentService {
   static async deleteDepartment(organizationId: string, departmentId: string): Promise<boolean> {
     if (!organizationId || !departmentId) throw new Error('Missing parameters');
 
+    // 0. The id comes from the caller: only delete a department of this organization.
+    if (!(await this.getDepartmentForOrganization(organizationId, departmentId))) {
+      throw new Error(DEPARTMENT_NOT_IN_ORGANIZATION);
+    }
+
     // 1. Assert no active people records in this department
     const peopleSnap = await adminDb
       .collection('people')
@@ -234,6 +241,30 @@ export class DepartmentService {
   }
 
   /**
+   * Returns the department only when it belongs to `organizationId`, otherwise null.
+   * Use this for any department id that came from a caller: `getDepartment` alone would
+   * accept another organization's department.
+   */
+  static async getDepartmentForOrganization(
+    organizationId: string,
+    departmentId: string
+  ): Promise<Department | null> {
+    if (!organizationId) return null;
+    const department = await this.getDepartment(departmentId);
+    return department && department.organizationId === organizationId ? department : null;
+  }
+
+  /**
+   * Finds a department of the organization by name, case-insensitively, without creating one.
+   */
+  static async findDepartmentByName(organizationId: string, name: string): Promise<Department | null> {
+    const wanted = (name || '').trim().toLowerCase();
+    if (!organizationId || !wanted) return null;
+    const departments = await this.listDepartments(organizationId);
+    return departments.find((d) => d.name.toLowerCase() === wanted) ?? null;
+  }
+
+  /**
    * Lists all departments for an organization.
    */
   static async listDepartments(organizationId: string): Promise<Department[]> {
@@ -251,6 +282,11 @@ export class DepartmentService {
    * Recalculates and updates the member count for a department.
    */
   static async recalculateMemberCount(organizationId: string, departmentId: string): Promise<number> {
+    // Callers pass ids from requests: never write a count onto another organization's department.
+    if (!(await this.getDepartmentForOrganization(organizationId, departmentId))) {
+      throw new Error(DEPARTMENT_NOT_IN_ORGANIZATION);
+    }
+
     const peopleSnap = await adminDb
       .collection('people')
       .where('organizationId', '==', organizationId)

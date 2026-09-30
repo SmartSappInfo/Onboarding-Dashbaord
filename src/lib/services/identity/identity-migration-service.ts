@@ -114,7 +114,7 @@ export class IdentityMigrationService {
       }
     } else if (deptId && !deptName) {
       try {
-        const canonical = await DepartmentService.getDepartment(deptId);
+        const canonical = await DepartmentService.getDepartmentForOrganization(organizationId, deptId);
         if (canonical) deptName = canonical.name;
       } catch (dErr) {
         console.warn(`[IdentityMigrationService] Could not resolve department name for ${deptId}:`, dErr);

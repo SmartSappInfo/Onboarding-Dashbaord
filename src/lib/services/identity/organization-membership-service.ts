@@ -63,6 +63,21 @@ export class OrganizationMembershipService {
   }
 
   /**
+   * True when the person belongs to the organization: they have a membership there or, for
+   * profiles created before memberships existed, their legacy `users` document names it.
+   *
+   * Server code that acts on ANOTHER person by id must check this. Verifying the caller is not
+   * enough: without it a caller could reach people in other organizations by passing their id.
+   */
+  static async isMemberOfOrganization(organizationId: string, personId: string): Promise<boolean> {
+    if (!organizationId || !personId) return false;
+    if (await this.getMembershipByPersonAndOrg(organizationId, personId)) return true;
+
+    const legacyProfile = await adminDb.collection('users').doc(personId).get();
+    return legacyProfile.exists && legacyProfile.get('organizationId') === organizationId;
+  }
+
+  /**
    * Creates or sets an OrganizationMembership document.
    * Supports optional external Firestore transaction/batch for atomicity.
    */

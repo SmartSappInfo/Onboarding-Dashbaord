@@ -49,14 +49,20 @@ export async function inviteUserAction(params: {
         let deptName = params.department?.trim();
         let deptId = params.departmentId?.trim();
 
-        if (deptId && !deptName) {
+        // A department id from the caller must belong to this organization; its canonical name
+        // wins. Anything else (another tenant's id, or a legacy name sent as the id) is dropped
+        // and the name is resolved below instead.
+        if (deptId) {
             try {
-                const dDoc = await DepartmentService.getDepartment(deptId);
+                const dDoc = await DepartmentService.getDepartmentForOrganization(organizationId, deptId);
+                deptId = dDoc?.id;
                 if (dDoc) deptName = dDoc.name;
             } catch (err) {
+                deptId = undefined;
                 console.warn('[inviteUserAction] Could not fetch department by id:', err);
             }
-        } else if (deptName && !deptId) {
+        }
+        if (deptName && !deptId) {
             try {
                 const resolved = await DepartmentService.findOrCreateDepartmentByName(organizationId, deptName);
                 deptId = resolved.id;

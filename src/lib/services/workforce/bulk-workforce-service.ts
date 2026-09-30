@@ -19,7 +19,7 @@ import { PersonService } from '@/lib/services/identity/person-service';
 import { OrganizationMembershipService } from '@/lib/services/identity/organization-membership-service';
 import { WorkspaceMembershipService } from '@/lib/services/identity/workspace-membership-service';
 import { IdentityProjectionService } from '@/lib/services/identity/identity-projection-service';
-import { DepartmentService } from './department-service';
+import { DepartmentService, DEPARTMENT_NOT_IN_ORGANIZATION } from './department-service';
 
 export interface BulkActionPayload {
   roleIds?: string[];
@@ -60,14 +60,12 @@ export class BulkWorkforceService {
       return { totalProcessed: 0, succeeded: 0, failed: 0, errors: [] };
     }
 
+    // A department id from the caller must belong to this organization; its canonical name wins.
     let resolvedDeptName = payload?.departmentName;
-    if (action === 'assign_department' && payload?.departmentId && !resolvedDeptName) {
-      try {
-        const dDoc = await DepartmentService.getDepartment(payload.departmentId);
-        if (dDoc) resolvedDeptName = dDoc.name;
-      } catch (dErr) {
-        console.warn(`[BulkWorkforceService] Could not resolve department name for ${payload.departmentId}:`, dErr);
-      }
+    if (action === 'assign_department' && payload?.departmentId) {
+      const department = await DepartmentService.getDepartmentForOrganization(organizationId, payload.departmentId);
+      if (!department) throw new Error(DEPARTMENT_NOT_IN_ORGANIZATION);
+      resolvedDeptName = department.name;
     }
 
     const chunks = this.chunkArray(personIds, CHUNK_SIZE);
@@ -82,6 +80,13 @@ export class BulkWorkforceService {
 
       for (const personId of chunk) {
         try {
+          // Every action below writes this person with THIS organization's id and re-projects
+          // their profile, so ids from the caller must be members here. Otherwise a caller could
+          // pull people from other organizations into theirs.
+          if (!(await OrganizationMembershipService.isMemberOfOrganization(organizationId, personId))) {
+            throw new Error('Not a member of this organization.');
+          }
+
           switch (action) {
             case 'assign_roles':
               if (payload?.workspaceId && payload.roleIds) {

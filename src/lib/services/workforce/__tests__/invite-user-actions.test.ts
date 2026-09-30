@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { inviteUserAction } from '@/lib/user-invite-actions';
+import { DepartmentService } from '@/lib/services/workforce/department-service';
 
 // Mock Auth
 const mockCreateUser = vi.fn();
@@ -182,5 +183,53 @@ describe('inviteUserAction Suite', () => {
       }),
       { merge: true }
     );
+  });
+
+  it('never links a department id from another organization; resolves the name instead', async () => {
+    mockGetUserByEmail.mockRejectedValue({ code: 'auth/user-not-found' });
+    mockCreateUser.mockResolvedValue({ uid: 'user_dept_789', email: 'dept@company.com', displayName: 'Dee Partment' });
+    mockDocGet.mockImplementation((colName: string) =>
+      Promise.resolve(
+        colName === 'organizations'
+          ? { exists: true, data: () => ({ name: 'Acme Innovations' }) }
+          : { exists: false, data: () => ({}) }
+      )
+    );
+    const acmeSales = {
+      id: 'dept_acme_sales', organizationId: 'org_acme_1', name: 'Sales', code: 'SALE', memberCount: 0, createdAt: '2026-09-30',
+    };
+    // Only the organization's own department resolves; the foreign id does not.
+    const getInOrg = vi.spyOn(DepartmentService, 'getDepartmentForOrganization')
+      .mockImplementation(async (orgId, id) => (orgId === 'org_acme_1' && id === acmeSales.id ? acmeSales : null));
+    const findOrCreate = vi.spyOn(DepartmentService, 'findOrCreateDepartmentByName').mockResolvedValue(acmeSales);
+    const recount = vi.spyOn(DepartmentService, 'recalculateMemberCount').mockResolvedValue(1);
+
+    try {
+      const result = await inviteUserAction({
+        fullName: 'Dee Partment',
+        email: 'dept@company.com',
+        department: 'Sales',
+        departmentId: 'dept_other_org',
+        workspaceRoles: { ws_default: ['role_member'] },
+        organizationId: 'org_acme_1',
+        sendMethods: ['email'],
+      });
+
+      expect(result.success).toBe(true);
+      expect(getInOrg).toHaveBeenCalledWith('org_acme_1', 'dept_other_org');
+      expect(findOrCreate).toHaveBeenCalledWith('org_acme_1', 'Sales');
+      expect(mockDocSet).toHaveBeenCalledWith(
+        'users',
+        'user_dept_789',
+        expect.objectContaining({ department: 'Sales', departmentId: 'dept_acme_sales' }),
+        { merge: true }
+      );
+      expect(JSON.stringify(mockDocSet.mock.calls)).not.toContain('dept_other_org');
+      expect(recount).toHaveBeenCalledWith('org_acme_1', 'dept_acme_sales');
+    } finally {
+      getInOrg.mockRestore();
+      findOrCreate.mockRestore();
+      recount.mockRestore();
+    }
   });
 });
