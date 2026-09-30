@@ -1195,18 +1195,18 @@ export default function DealDetailsPage() {
                         <div className="space-y-6">
                                 {/* Deal Properties & Core Details Card */}
                                 <Card className="border-border/50 rounded-2xl bg-card shadow-sm overflow-hidden">
-                                    <CardHeader className="bg-muted/30 border-b py-2.5 px-6 flex flex-row items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-1.5 bg-primary/10 rounded-lg">
+                                    <CardHeader className="bg-muted/30 border-b h-[60px] min-h-[60px] px-6 py-0 flex flex-row items-center justify-between gap-3">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="p-1.5 bg-primary/10 rounded-lg shrink-0">
                                                 <Settings2 className="h-4 w-4 text-primary" />
                                             </div>
-                                            <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2 text-foreground">
+                                            <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2 text-foreground truncate">
                                                 <span>Deal Properties & Core Details</span>
                                                 <CardInfoTooltip text="Essential pipeline parameters, assignment, and projected closing schedule." />
                                             </CardTitle>
                                         </div>
                                         {isDirty && (
-                                            <Badge variant="outline" className="text-[10px] font-bold text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10 animate-pulse">
+                                            <Badge variant="outline" className="text-[10px] font-bold text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10 animate-pulse shrink-0">
                                                 Unsaved Changes
                                             </Badge>
                                         )}
@@ -1300,13 +1300,11 @@ export default function DealDetailsPage() {
                                             */}
                                             <div className="space-y-3 pt-2 border-t border-border/40">
                                                 <div className="flex items-center justify-between flex-wrap gap-2">
-                                                    <div className="space-y-0.5">
+                                                    <div className="flex items-center gap-2">
                                                         <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
                                                             <User className="h-3.5 w-3.5 text-primary" /> Key Contacts & Stakeholders
                                                         </Label>
-                                                        <p className="text-[11px] text-muted-foreground">
-                                                            {selectedFocalContactIds.length} focal contacts designated from {entityContacts.length} entity members
-                                                        </p>
+                                                        <CardInfoTooltip text={`${selectedFocalContactIds.length} focal contacts designated from ${entityContacts.length} entity members.`} />
                                                     </div>
                                                     <Button
                                                         type="button"
@@ -1721,12 +1719,12 @@ export default function DealDetailsPage() {
                                 </Card>
 
                                 <Card className="border-border/50 rounded-2xl bg-card shadow-sm overflow-hidden">
-                                    <CardHeader className="bg-muted/30 border-b py-2.5 px-6 flex flex-row items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-1.5 bg-primary/10 rounded-lg">
+                                    <CardHeader className="bg-muted/30 border-b h-[60px] min-h-[60px] px-6 py-0 flex flex-row items-center justify-between gap-3">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="p-1.5 bg-primary/10 rounded-lg shrink-0">
                                                 <Settings2 className="h-4 w-4 text-primary" />
                                             </div>
-                                            <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2 text-foreground">
+                                            <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2 text-foreground truncate">
                                                 <span>Custom Fields</span>
                                                 <CardInfoTooltip text="Manage custom attributes, key-value properties, and metadata for this deal." />
                                             </CardTitle>
@@ -1777,12 +1775,12 @@ export default function DealDetailsPage() {
 
                                 {/* Deal Notes — scoped to this deal; also surface in the entity notes panel */}
                                 <Card className="border-border/50 rounded-2xl bg-card shadow-sm overflow-hidden">
-                                    <CardHeader className="bg-muted/30 border-b py-2.5 px-6 flex flex-row items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-1.5 bg-primary/10 rounded-lg">
+                                    <CardHeader className="bg-muted/30 border-b h-[60px] min-h-[60px] px-6 py-0 flex flex-row items-center justify-between gap-3">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="p-1.5 bg-primary/10 rounded-lg shrink-0">
                                                 <MessageSquare className="h-4 w-4 text-primary" />
                                             </div>
-                                            <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2 text-foreground">
+                                            <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2 text-foreground truncate">
                                                 <span>Deal Notes</span>
                                                 <CardInfoTooltip text="Scoped notes and collaboration logs for this opportunity." />
                                             </CardTitle>
@@ -1798,12 +1796,12 @@ export default function DealDetailsPage() {
                     <div className="lg:col-span-1 space-y-6">
                         {/* Upcoming Tasks */}
                         <Card className="border-border/50 rounded-2xl bg-card shadow-sm overflow-hidden">
-                            <CardHeader className="bg-muted/30 border-b py-2.5 px-6 flex flex-row items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-1.5 bg-primary/10 rounded-lg">
+                            <CardHeader className="bg-muted/30 border-b h-[60px] min-h-[60px] px-6 py-0 flex flex-row items-center justify-between gap-3">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="p-1.5 bg-primary/10 rounded-lg shrink-0">
                                         <CheckCircle2 className="h-4 w-4 text-primary" />
                                     </div>
-                                    <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2 text-foreground">
+                                    <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2 text-foreground truncate">
                                         <span>Upcoming Tasks</span>
                                         <CardInfoTooltip text="Action items, reminders, and scheduled tasks assigned to this deal." />
                                     </CardTitle>
@@ -1811,7 +1809,7 @@ export default function DealDetailsPage() {
                                 <Button 
                                     size="sm" 
                                     onClick={() => setIsCreateTaskOpen(true)} 
-                                    className="h-8 px-3 rounded-xl font-bold text-xs gap-1.5 shadow-sm active:scale-[0.97] transition-all cursor-pointer"
+                                    className="h-9 px-3.5 rounded-xl font-bold text-xs gap-1.5 shadow-sm active:scale-[0.97] transition-all cursor-pointer shrink-0"
                                 >
                                     <Plus className="h-3.5 w-3.5" /> Add Task
                                 </Button>
@@ -1853,12 +1851,12 @@ export default function DealDetailsPage() {
 
                         {/* Activity Feed */}
                         <Card className="border-border/50 rounded-2xl bg-card shadow-sm overflow-hidden">
-                            <CardHeader className="bg-muted/30 border-b py-2.5 px-6 flex flex-row items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-1.5 bg-primary/10 rounded-lg">
+                            <CardHeader className="bg-muted/30 border-b h-[60px] min-h-[60px] px-6 py-0 flex flex-row items-center justify-between gap-3">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="p-1.5 bg-primary/10 rounded-lg shrink-0">
                                         <Activity className="h-4 w-4 text-primary" />
                                     </div>
-                                    <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2 text-foreground">
+                                    <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2 text-foreground truncate">
                                         <span>Activity Feed</span>
                                         <CardInfoTooltip text="Complete chronological history of stage changes, communications, and deal events." />
                                     </CardTitle>

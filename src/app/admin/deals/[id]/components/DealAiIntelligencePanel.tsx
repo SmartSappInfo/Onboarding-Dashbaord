@@ -131,12 +131,12 @@ export default function DealAiIntelligencePanel({ deal, onTaskCreated }: DealAiI
 
   return (
     <Card className="border-border/50 rounded-2xl bg-card shadow-sm overflow-hidden">
-      <CardHeader className="bg-muted/30 border-b py-2.5 px-6 flex flex-row items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-1.5 bg-primary/10 rounded-lg">
+      <CardHeader className="bg-muted/30 border-b h-[60px] min-h-[60px] px-6 py-0 flex flex-row items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="p-1.5 bg-primary/10 rounded-lg shrink-0">
             <Bot className="h-4 w-4 text-primary" />
           </div>
-          <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2 text-foreground">
+          <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2 text-foreground truncate">
             <span>AI Deal Intelligence & Next Best Actions</span>
             <CardInfoTooltip text="Machine intelligence evaluating deal velocity, stakeholder notes, and closing probability." />
           </CardTitle>
@@ -149,7 +149,7 @@ export default function DealAiIntelligencePanel({ deal, onTaskCreated }: DealAiI
             size="sm"
             onClick={handleGenerateInsights}
             disabled={isLoading}
-            className="h-9 rounded-xl font-bold text-xs bg-primary text-primary-foreground shadow-sm gap-1.5 shrink-0 active:scale-[0.97] transition-all cursor-pointer min-h-[38px]"
+            className="h-9 px-3.5 rounded-xl font-bold text-xs bg-primary text-primary-foreground shadow-sm gap-1.5 shrink-0 active:scale-[0.97] transition-all cursor-pointer"
           >
             {isLoading ? (
               <>

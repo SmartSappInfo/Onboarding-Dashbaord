@@ -405,12 +405,12 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
     <div className="space-y-6">
       {/* 1. Products & Line Items Editor Card */}
       <Card className="border-border/50 rounded-2xl bg-card shadow-sm overflow-hidden">
-        <CardHeader className="bg-muted/30 border-b py-2.5 px-6 flex flex-row items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-1.5 bg-primary/10 rounded-lg">
+        <CardHeader className="bg-muted/30 border-b h-[60px] min-h-[60px] px-6 py-0 flex flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="p-1.5 bg-primary/10 rounded-lg shrink-0">
               <ShoppingBag className="h-4 w-4 text-primary" />
             </div>
-            <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2 text-foreground">
+            <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2 text-foreground truncate">
               <span>Products & Commercial Line Items ({items.length})</span>
               <CardInfoTooltip text="Manage billable goods, subscription licenses, discounts, and generate formal customer quotes." />
             </CardTitle>
@@ -422,7 +422,7 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
               type="button"
               size="sm"
               onClick={handleAddItem}
-              className="h-9 rounded-xl font-bold text-xs bg-primary text-primary-foreground shadow-sm gap-1.5 min-h-[38px] active:scale-[0.97] transition-all cursor-pointer"
+              className="h-9 px-3.5 rounded-xl font-bold text-xs bg-primary text-primary-foreground shadow-sm gap-1.5 active:scale-[0.97] transition-all cursor-pointer"
             >
               <Plus className="h-3.5 w-3.5" />
               <span>Add Custom Item</span>
@@ -784,12 +784,12 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
 
       {/* 2. Generated Commercial Quotes History Section */}
       <Card className="border-border/50 rounded-2xl bg-card shadow-sm overflow-hidden">
-        <CardHeader className="bg-muted/30 border-b py-2.5 px-6 flex flex-row items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-1.5 bg-primary/10 rounded-lg">
+        <CardHeader className="bg-muted/30 border-b h-[60px] min-h-[60px] px-6 py-0 flex flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="p-1.5 bg-primary/10 rounded-lg shrink-0">
               <FileText className="h-4 w-4 text-primary" />
             </div>
-            <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2 text-foreground">
+            <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2 text-foreground truncate">
               <span>Commercial Quotes & Client Proposals ({sortedQuotes.length})</span>
               <CardInfoTooltip text="Formal customer quotes with shareable links, digital sign-off, and invoice conversion." />
             </CardTitle>
@@ -804,7 +804,7 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
                 setIsQuoteModalOpen(true);
               }}
               disabled={items.length === 0}
-              className="h-9 rounded-xl font-bold text-xs bg-primary text-primary-foreground shadow-sm gap-1.5 min-h-[38px] active:scale-[0.97] transition-all cursor-pointer"
+              className="h-9 px-3.5 rounded-xl font-bold text-xs bg-primary text-primary-foreground shadow-sm gap-1.5 active:scale-[0.97] transition-all cursor-pointer"
             >
               <Receipt className="h-3.5 w-3.5" />
               <span>Generate Quote</span>

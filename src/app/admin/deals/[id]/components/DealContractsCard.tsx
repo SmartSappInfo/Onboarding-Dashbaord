@@ -123,12 +123,12 @@ export default function DealContractsCard({ deal }: DealContractsCardProps) {
 
   return (
     <Card className="border-border/50 rounded-2xl bg-card shadow-sm overflow-hidden">
-      <CardHeader className="bg-muted/30 border-b py-2.5 px-6 flex flex-row items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-1.5 bg-primary/10 rounded-lg">
+      <CardHeader className="bg-muted/30 border-b h-[60px] min-h-[60px] px-6 py-0 flex flex-row items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="p-1.5 bg-primary/10 rounded-lg shrink-0">
             <FileText className="h-4 w-4 text-primary" />
           </div>
-          <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2 text-foreground">
+          <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2 text-foreground truncate">
             <span>Agreements & Signing</span>
             <CardInfoTooltip text="Commercial contracts, signing workflows, and legal commitments." />
           </CardTitle>
@@ -139,7 +139,7 @@ export default function DealContractsCard({ deal }: DealContractsCardProps) {
           <Button
             asChild
             size="sm"
-            className="rounded-xl font-bold text-xs h-9 px-3.5 bg-primary text-primary-foreground shadow-sm active:scale-[0.97] transition-all min-h-[38px] cursor-pointer gap-1.5"
+            className="rounded-xl font-bold text-xs h-9 px-3.5 bg-primary text-primary-foreground shadow-sm active:scale-[0.97] transition-all cursor-pointer gap-1.5"
           >
             <Link href={`/admin/finance/contracts?dealId=${encodeURIComponent(deal.id)}`}>
               <Plus className="h-3.5 w-3.5" />
