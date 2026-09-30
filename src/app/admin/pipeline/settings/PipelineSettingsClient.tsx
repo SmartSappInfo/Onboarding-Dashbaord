@@ -62,6 +62,7 @@ export default function PipelineSettingsClient() {
         columnWidth: 320,
         showDealTotals: false,
         defaultPresetViewId: 'preset_all_deals',
+        defaultDealValue: 0,
         accessRoles: [],
         assignmentStrategy: 'direct',
         assignmentUserIds: [],
@@ -175,6 +176,7 @@ export default function PipelineSettingsClient() {
                 columnWidth: selectedPipeline.columnWidth || 320,
                 showDealTotals: Boolean(selectedPipeline.showDealTotals),
                 defaultPresetViewId: selectedPipeline.defaultPresetViewId || 'preset_all_deals',
+                defaultDealValue: typeof selectedPipeline.defaultDealValue === 'number' ? selectedPipeline.defaultDealValue : 0,
                 accessRoles: selectedPipeline.accessRoles || [],
                 assignmentStrategy: selectedPipeline.assignmentStrategy || 'direct',
                 assignmentUserIds: selectedPipeline.assignmentUserIds || [],
@@ -191,6 +193,9 @@ export default function PipelineSettingsClient() {
 
         const numOffset = typeof formData.defaultCloseDateOffsetValue === 'number' && formData.defaultCloseDateOffsetValue > 0 ? formData.defaultCloseDateOffsetValue : null;
         const unitOffset = numOffset ? formData.defaultCloseDateOffsetUnit : null;
+        const resolvedDefaultDealValue = typeof formData.defaultDealValue === 'number' && !Number.isNaN(formData.defaultDealValue)
+            ? Math.max(0, formData.defaultDealValue)
+            : 0;
 
         const data = {
             name: formData.name.trim(),
@@ -202,6 +207,7 @@ export default function PipelineSettingsClient() {
             columnWidth: formData.columnWidth,
             showDealTotals: Boolean(formData.showDealTotals),
             defaultPresetViewId: formData.defaultPresetViewId || 'preset_all_deals',
+            defaultDealValue: resolvedDefaultDealValue,
             assignmentStrategy: formData.assignmentStrategy,
             assignmentUserIds: formData.assignmentUserIds,
             defaultCloseDateOffsetValue: numOffset,

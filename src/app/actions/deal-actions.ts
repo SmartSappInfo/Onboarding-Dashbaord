@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { adminDb } from '@/lib/firebase-admin';
 import type { 
     Deal, 
+    Pipeline,
     WorkspaceEntity, 
     DealContact, 
     DealFocalContact, 
@@ -258,6 +259,13 @@ export async function createDeal(data: DealCreationData): Promise<{ id?: string;
             cleanDealName = entity.displayName || (entity as unknown as Record<string, string>).name || 'Deal';
         }
 
+        const resolvedDefaultDealValue = typeof pipeline?.defaultDealValue === 'number' && !Number.isNaN(pipeline.defaultDealValue)
+            ? Math.max(0, pipeline.defaultDealValue)
+            : 0;
+        const resolvedValue = typeof value === 'number' && !Number.isNaN(value) && value > 0
+            ? value
+            : resolvedDefaultDealValue;
+
         const newDeal: Omit<Deal, 'id'> = {
             organizationId,
             workspaceId,
@@ -266,7 +274,7 @@ export async function createDeal(data: DealCreationData): Promise<{ id?: string;
             stageId: stageId || 'default_stage',
             ...(stageName ? { stageName } : {}),
             name: cleanDealName,
-            value: value || 0,
+            value: resolvedValue,
             status: data.status || 'open',
             assignedTo: data.assignedTo !== undefined ? data.assignedTo : assignedTo,
             expectedCloseDate: calculatedCloseDate,
@@ -2115,12 +2123,18 @@ export async function convertLeadToDealAction(
         const resolvedStageId = targetStage.id;
         const stageProbability = typeof targetStage.probability === 'number' ? targetStage.probability : 20;
 
-        // 4. Resolve Expected Close Date
+        // 4. Resolve Target Pipeline Configuration & Expected Close Date
+        const pipelineDoc = await adminDb.collection('pipelines').doc(pipelineId).get();
+        const pipelineData = pipelineDoc.exists ? (pipelineDoc.data() as Pipeline) : null;
+
         let resolvedCloseDate = expectedCloseDate;
         if (!resolvedCloseDate) {
-            const pipelineDoc = await adminDb.collection('pipelines').doc(pipelineId).get();
-            const pipelineConfig = pipelineDoc.exists ? pipelineDoc.data() as import('../admin/pipeline/utils/deal-expected-close').PipelineOffsetConfig : null;
-            const calculated = calculateExpectedCloseDate(pipelineConfig, null, new Date(now), targetStage.slaDays || 30);
+            const calculated = calculateExpectedCloseDate(
+                pipelineData as import('../admin/pipeline/utils/deal-expected-close').PipelineOffsetConfig | null,
+                null,
+                new Date(now),
+                targetStage.slaDays || 30
+            );
             resolvedCloseDate = calculated || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
         }
 
@@ -2168,7 +2182,12 @@ export async function convertLeadToDealAction(
         const dealRef = adminDb.collection('deals').doc();
         const dealId = dealRef.id;
         const resolvedDealName = dealName?.trim() || entityRecord.displayName || 'Converted Lead Deal';
-        const numValue = typeof value === 'number' && value >= 0 ? value : 0;
+        const resolvedDefaultDealValue = typeof pipelineData?.defaultDealValue === 'number' && !Number.isNaN(pipelineData.defaultDealValue)
+            ? Math.max(0, pipelineData.defaultDealValue)
+            : 0;
+        const numValue = typeof value === 'number' && !Number.isNaN(value) && value > 0
+            ? value
+            : resolvedDefaultDealValue;
         const weightedValue = Math.round(numValue * (stageProbability / 100) * 100) / 100;
 
         const newDeal: Partial<Deal> = {

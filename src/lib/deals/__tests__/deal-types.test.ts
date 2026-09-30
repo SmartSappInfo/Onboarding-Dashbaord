@@ -141,4 +141,23 @@ describe('Deals 2.0 Schema & Type Verification', () => {
       });
     }
   });
+
+  it('should support pipeline defaultDealValue configuration defaulting to 0 or positive value', () => {
+    const pipelineDefault: import('@/lib/types').Pipeline = {
+      id: 'pipe-1',
+      name: 'Default Pipeline',
+      workspaceIds: ['ws-1'],
+      stageIds: ['stage-1'],
+      accessRoles: ['admin'],
+      createdAt: '2026-01-01T00:00:00.000Z',
+    };
+
+    const pipelineWithDefaultValue: import('@/lib/types').Pipeline = {
+      ...pipelineDefault,
+      defaultDealValue: 7500,
+    };
+
+    expect(pipelineDefault.defaultDealValue ?? 0).toBe(0);
+    expect(pipelineWithDefaultValue.defaultDealValue).toBe(7500);
+  });
 });

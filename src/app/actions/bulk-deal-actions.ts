@@ -63,6 +63,13 @@ export async function bulkCreateDealsActionCore(data: BulkDealCreationData) {
     if (!pipelineSnap.exists) throw new Error('Pipeline not found');
     const pipeline = pipelineSnap.data() as Pipeline;
 
+    const resolvedDefaultDealValue = typeof pipeline.defaultDealValue === 'number' && !Number.isNaN(pipeline.defaultDealValue)
+      ? Math.max(0, pipeline.defaultDealValue)
+      : 0;
+    const effectiveDealValue = (typeof value === 'number' && !Number.isNaN(value) && value > 0)
+      ? value
+      : resolvedDefaultDealValue;
+
     const calculatedCloseDate = calculateExpectedCloseDate(pipeline);
 
     const stageId = requestedStageId || (stageSnap.empty ? 'default_stage' : stageSnap.docs[0].id);
@@ -163,7 +170,7 @@ export async function bulkCreateDealsActionCore(data: BulkDealCreationData) {
           if (activeStrategy === 'round-robin') {
             userStats[selectedUid] = (userStats[selectedUid] ?? 0) + 1;
           } else {
-            userStats[selectedUid] = (userStats[selectedUid] ?? 0) + (value || 0);
+            userStats[selectedUid] = (userStats[selectedUid] ?? 0) + effectiveDealValue;
           }
           assignedTo = {
             userId: selectedUid,
@@ -269,7 +276,7 @@ export async function bulkCreateDealsActionCore(data: BulkDealCreationData) {
           stageId,
           ...(stageName ? { stageName } : {}),
           name: dealName,
-          value: value || 0,
+          value: effectiveDealValue,
           status: 'open',
           assignedTo,
           focalContacts: resolvedFocalContacts,

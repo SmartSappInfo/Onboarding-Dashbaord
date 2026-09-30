@@ -126,7 +126,6 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
     React.useEffect(() => {
         if (open) {
             setName('');
-            setValue('');
             setDescription('');
             setOwnerUserId('auto');
             setEntityAssignee(null);
@@ -141,19 +140,28 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
                 setSelectedEntityId('');
             }
             
+            let targetPipeId = '';
             if (initialStageId && stages) {
-                const initStage = stages.find((s: any) => s.id === initialStageId);
+                const initStage = stages.find((s: OnboardingStage) => s.id === initialStageId);
                 if (initStage) {
+                    targetPipeId = initStage.pipelineId;
                     setPipelineId(initStage.pipelineId);
                     setStageId(initialStageId);
                 }
             } else if (initialPipelineId) {
+                targetPipeId = initialPipelineId;
                 setPipelineId(initialPipelineId);
                 setStageId('');
             } else if (pipelines && pipelines.length > 0) {
+                targetPipeId = pipelines[0].id;
                 setPipelineId(pipelines[0].id);
                 setStageId('');
             }
+
+            const targetPipeline = pipelines?.find(p => p.id === targetPipeId);
+            setValue(typeof targetPipeline?.defaultDealValue === 'number' && targetPipeline.defaultDealValue > 0
+                ? String(targetPipeline.defaultDealValue)
+                : '');
         }
     }, [open, entityId, initialStageId, initialPipelineId, pipelines, stages]);
 
@@ -205,6 +213,7 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
 
         setIsSubmitting(true);
         try {
+            const parsedVal = value.trim() !== '' ? (parseFloat(value) || 0) : (selectedPipelineObj?.defaultDealValue || 0);
             const result = await createDeal({
                 entityId: finalEntityId,
                 workspaceId: activeWorkspaceId!,
@@ -212,7 +221,7 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
                 pipelineId,
                 stageId: stageId || undefined,
                 name,
-                value: parseFloat(value) || 0,
+                value: parsedVal,
                 description: description || null,
                 assignmentStrategy,
                 ...(explicitAssignedTo !== undefined ? { assignedTo: explicitAssignedTo } : {}),
@@ -439,15 +448,36 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
                                 <Input 
                                     type="number"
                                     min="0"
+                                    step="any"
                                     value={value} 
                                     onChange={e => setValue(e.target.value)} 
-                                    placeholder="0" 
+                                    placeholder={typeof selectedPipelineObj?.defaultDealValue === 'number' && selectedPipelineObj.defaultDealValue > 0 ? selectedPipelineObj.defaultDealValue.toFixed(2) : "0.00"} 
                                     className="h-10 rounded-xl font-bold border border-border bg-background shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 text-xs"
                                 />
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-xs font-semibold text-muted-foreground ml-1">Pipeline</Label>
-                                <Select value={pipelineId} onValueChange={(val) => { setPipelineId(val); setStageId(''); }} disabled={isLoadingPipelines}>
+                                <Select 
+                                    value={pipelineId} 
+                                    onValueChange={(val) => { 
+                                        setPipelineId(val); 
+                                        setStageId(''); 
+                                        const nextPipe = pipelines?.find((p: Pipeline) => p.id === val);
+                                        const nextDefault = typeof nextPipe?.defaultDealValue === 'number' && nextPipe.defaultDealValue > 0
+                                            ? String(nextPipe.defaultDealValue)
+                                            : '';
+                                        setValue(prev => {
+                                            const prevDefault = typeof selectedPipelineObj?.defaultDealValue === 'number' && selectedPipelineObj.defaultDealValue > 0
+                                                ? String(selectedPipelineObj.defaultDealValue)
+                                                : '';
+                                            if (!prev || prev === prevDefault || prev === '0') {
+                                                return nextDefault;
+                                            }
+                                            return prev;
+                                        });
+                                    }} 
+                                    disabled={isLoadingPipelines}
+                                >
                                     <SelectTrigger className="h-10 rounded-xl font-bold border border-border bg-background shadow-sm text-xs hover:bg-muted/10 transition-colors">
                                         <SelectValue placeholder="Select Pipeline" />
                                     </SelectTrigger>

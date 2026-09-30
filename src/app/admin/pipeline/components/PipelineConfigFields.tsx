@@ -46,6 +46,7 @@ export interface PipelineFormData {
   columnWidth: number;
   showDealTotals: boolean;
   defaultPresetViewId?: string;
+  defaultDealValue: number | '';
   accessRoles: string[];
   assignmentStrategy: 'direct' | 'round-robin' | 'value-based' | 'unassigned';
   assignmentUserIds: string[];
@@ -191,6 +192,46 @@ export function PipelineConfigFields({
           disabled={disabled}
           className="shrink-0"
         />
+      </div>
+
+      {/* Default Deal Value */}
+      <div className="space-y-2 text-left">
+        <div className="flex justify-between items-center px-0.5">
+          <Label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+            <DollarSign size={13} className="text-primary" /> Default Deal Value
+          </Label>
+          <Badge variant="outline" className="font-mono text-[11px] bg-background border-primary/20 text-primary rounded-lg font-bold">
+            {typeof formData.defaultDealValue === 'number' && formData.defaultDealValue > 0
+              ? formData.defaultDealValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+              : '0.00'}
+          </Badge>
+        </div>
+        <div className="relative">
+          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
+            <span className="text-xs font-semibold">$</span>
+          </div>
+          <Input
+            type="number"
+            min={0}
+            step="any"
+            value={formData.defaultDealValue ?? ''}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === '') {
+                onChange('defaultDealValue', '');
+              } else {
+                const parsed = parseFloat(val);
+                onChange('defaultDealValue', Number.isNaN(parsed) ? '' : Math.max(0, parsed));
+              }
+            }}
+            placeholder="0.00"
+            disabled={disabled}
+            className="min-h-[44px] pl-8 rounded-xl border border-border bg-background shadow-xs text-sm px-4 focus-visible:ring-1 focus-visible:ring-primary/30 font-medium"
+          />
+        </div>
+        <p className="text-[11px] text-muted-foreground font-normal leading-relaxed">
+          Baseline monetary value automatically assigned to newly created deals in this pipeline. Deals retain this value until manually adjusted in deal details or overwritten by commercial items.
+        </p>
       </div>
 
       {/* Default Landing Filter Preset Selector */}

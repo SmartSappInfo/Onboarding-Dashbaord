@@ -120,11 +120,14 @@ export default function ConvertLeadModal({ entity, open, onOpenChange }: Convert
 
     const { data: users } = useCollection<UserProfile>(usersQuery);
 
+    const targetPipeline = React.useMemo(() => {
+        return pipelines?.find(p => p.id === targetPipelineId);
+    }, [pipelines, targetPipelineId]);
+
     // Initialize defaults when modal opens
     React.useEffect(() => {
         if (open && entity) {
             setDealName(entity.displayName || '');
-            setValue('');
             
             // Default expected close date to +30 days
             const thirtyDaysAhead = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -141,16 +144,43 @@ export default function ConvertLeadModal({ entity, open, onOpenChange }: Convert
             } else {
                 setSelectedFocalContactIds([]);
             }
+
+            const initialPipe = targetPipelineId
+                ? pipelines?.find(p => p.id === targetPipelineId)
+                : (pipelines?.find(p => p.isDefault) || pipelines?.[0]);
+            setValue(typeof initialPipe?.defaultDealValue === 'number' && initialPipe.defaultDealValue > 0
+                ? String(initialPipe.defaultDealValue)
+                : '');
         }
-    }, [open, entity, user]);
+    }, [open, entity, user, pipelines, targetPipelineId]);
 
     // Auto-select first pipeline and first stage
     React.useEffect(() => {
         if (pipelines && pipelines.length > 0 && !targetPipelineId) {
             const defaultPipeline = pipelines.find(p => p.isDefault) || pipelines[0];
             setTargetPipelineId(defaultPipeline.id);
+            if (typeof defaultPipeline.defaultDealValue === 'number' && defaultPipeline.defaultDealValue > 0) {
+                setValue(String(defaultPipeline.defaultDealValue));
+            }
         }
     }, [pipelines, targetPipelineId]);
+
+    const handlePipelineChange = (newPipelineId: string) => {
+        setTargetPipelineId(newPipelineId);
+        const nextPipe = pipelines?.find(p => p.id === newPipelineId);
+        const nextDefault = typeof nextPipe?.defaultDealValue === 'number' && nextPipe.defaultDealValue > 0
+            ? String(nextPipe.defaultDealValue)
+            : '';
+        setValue(prev => {
+            const prevDefault = typeof targetPipeline?.defaultDealValue === 'number' && targetPipeline.defaultDealValue > 0
+                ? String(targetPipeline.defaultDealValue)
+                : '';
+            if (!prev || prev === prevDefault || prev === '0') {
+                return nextDefault;
+            }
+            return prev;
+        });
+    };
 
     React.useEffect(() => {
         if (stages && stages.length > 0) {
@@ -176,12 +206,13 @@ export default function ConvertLeadModal({ entity, open, onOpenChange }: Convert
 
         setIsConverting(true);
         try {
+            const parsedVal = value.trim() !== '' ? (parseFloat(value) || 0) : (targetPipeline?.defaultDealValue || 0);
             const res = await convertLeadToDealAction({
                 leadEntityId: entity.entityId,
                 pipelineId: targetPipelineId,
                 stageId: targetStageId || undefined,
                 dealName: dealName.trim() || entity.displayName,
-                value: value ? parseFloat(value) : 0,
+                value: parsedVal,
                 expectedCloseDate: expectedCloseDate ? new Date(expectedCloseDate).toISOString() : null,
                 assignedTo: assignedUserObj ? {
                     userId: assignedUserObj.id,
@@ -282,7 +313,7 @@ export default function ConvertLeadModal({ entity, open, onOpenChange }: Convert
                                 step="any"
                                 value={value}
                                 onChange={e => setValue(e.target.value)}
-                                placeholder="0.00"
+                                placeholder={typeof targetPipeline?.defaultDealValue === 'number' && targetPipeline.defaultDealValue > 0 ? targetPipeline.defaultDealValue.toFixed(2) : "0.00"}
                                 className="rounded-xl min-h-[44px]"
                             />
                         </div>
@@ -297,7 +328,7 @@ export default function ConvertLeadModal({ entity, open, onOpenChange }: Convert
                             {isLoadingPipelines ? (
                                 <Skeleton className="h-11 w-full rounded-xl" />
                             ) : (
-                                <Select value={targetPipelineId} onValueChange={setTargetPipelineId}>
+                                <Select value={targetPipelineId} onValueChange={handlePipelineChange}>
                                     <SelectTrigger className="rounded-xl min-h-[44px]">
                                         <SelectValue placeholder="Select pipeline..." />
                                     </SelectTrigger>

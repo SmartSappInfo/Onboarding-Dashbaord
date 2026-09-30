@@ -1210,8 +1210,15 @@ export default function DealDetailsPage() {
                                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                                 {/* 1. Value */}
                                                 <div className="space-y-1.5">
-                                                    <Label className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1">
-                                                        <Banknote className="h-3 w-3 text-primary" /> Value ({getCurrencySymbol()})
+                                                    <Label className="text-[10px] font-bold text-muted-foreground uppercase flex items-center justify-between">
+                                                        <span className="flex items-center gap-1">
+                                                            <Banknote className="h-3 w-3 text-primary" /> Value ({getCurrencySymbol()})
+                                                        </span>
+                                                        {deal.lineItems && deal.lineItems.length > 0 && (
+                                                            <span className="text-[9px] font-normal normal-case text-primary/80">
+                                                                From {deal.lineItems.length} {deal.lineItems.length === 1 ? 'item' : 'items'}
+                                                            </span>
+                                                        )}
                                                     </Label>
                                                     <Input 
                                                         type="number" 

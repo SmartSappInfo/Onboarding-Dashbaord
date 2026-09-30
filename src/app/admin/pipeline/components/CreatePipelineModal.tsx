@@ -88,6 +88,7 @@ export function CreatePipelineModal({
     columnWidth: 320,
     showDealTotals: false,
     defaultPresetViewId: 'preset_all_deals',
+    defaultDealValue: 0,
     accessRoles: [],
     assignmentStrategy: 'direct',
     assignmentUserIds: [],
@@ -137,6 +138,8 @@ export function CreatePipelineModal({
         workspaceIds: [activeWorkspaceId],
         columnWidth: 320,
         showDealTotals: false,
+        defaultPresetViewId: 'preset_all_deals',
+        defaultDealValue: 0,
         accessRoles: [],
         assignmentStrategy: 'direct',
         assignmentUserIds: [],
@@ -211,6 +214,9 @@ export function CreatePipelineModal({
         columnWidth: formData.columnWidth,
         showDealTotals: formData.showDealTotals,
         defaultPresetViewId: formData.defaultPresetViewId || 'preset_all_deals',
+        defaultDealValue: typeof formData.defaultDealValue === 'number' && !Number.isNaN(formData.defaultDealValue)
+          ? Math.max(0, formData.defaultDealValue)
+          : 0,
         accessRoles: formData.accessRoles,
         assignmentStrategy: formData.assignmentStrategy,
         assignmentUserIds: formData.assignmentUserIds,

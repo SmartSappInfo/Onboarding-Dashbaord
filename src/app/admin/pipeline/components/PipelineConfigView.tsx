@@ -53,6 +53,7 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
         columnWidth: columnWidth || 320,
         showDealTotals: false,
         defaultPresetViewId: 'preset_all_deals',
+        defaultDealValue: 0,
         accessRoles: [],
         assignmentStrategy: 'direct',
         assignmentUserIds: [],
@@ -224,6 +225,7 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
                 defaultProbability: typeof pipeline.defaultProbability === 'number' ? pipeline.defaultProbability : 50,
                 showDealTotals: Boolean(pipeline.showDealTotals),
                 defaultPresetViewId: pipeline.defaultPresetViewId || 'preset_all_deals',
+                defaultDealValue: typeof pipeline.defaultDealValue === 'number' ? pipeline.defaultDealValue : 0,
                 accessRoles: pipeline.accessRoles || [],
                 workspaceIds: pipeline.workspaceIds || [],
                 columnWidth: pipeline.columnWidth || 320,
@@ -246,6 +248,9 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
 
         const numOffset = typeof formData.defaultCloseDateOffsetValue === 'number' && formData.defaultCloseDateOffsetValue > 0 ? formData.defaultCloseDateOffsetValue : null;
         const unitOffset = numOffset ? formData.defaultCloseDateOffsetUnit : null;
+        const resolvedDefaultDealValue = typeof formData.defaultDealValue === 'number' && !Number.isNaN(formData.defaultDealValue)
+            ? Math.max(0, formData.defaultDealValue)
+            : 0;
 
         try {
             await updateDoc(doc(firestore, 'pipelines', pipelineId), {
@@ -255,6 +260,7 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
                 defaultProbability: Math.min(100, Math.max(0, formData.defaultProbability)),
                 showDealTotals: Boolean(formData.showDealTotals),
                 defaultPresetViewId: formData.defaultPresetViewId || 'preset_all_deals',
+                defaultDealValue: resolvedDefaultDealValue,
                 accessRoles: formData.accessRoles,
                 workspaceIds: formData.workspaceIds,
                 columnWidth: formData.columnWidth,

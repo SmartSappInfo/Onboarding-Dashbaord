@@ -98,6 +98,9 @@ export async function createPipelineWithStagesAction(
       accessRoles: payload.accessRoles || [],
       columnWidth: payload.columnWidth || 320,
       showDealTotals: Boolean(payload.showDealTotals),
+      defaultDealValue: typeof payload.defaultDealValue === 'number' && !Number.isNaN(payload.defaultDealValue)
+        ? Math.max(0, payload.defaultDealValue)
+        : 0,
       assignmentStrategy: payload.assignmentStrategy || 'direct',
       assignmentUserIds: payload.assignmentUserIds || [],
       defaultCloseDateOffsetValue: typeof payload.defaultCloseDateOffsetValue === 'number' && payload.defaultCloseDateOffsetValue > 0

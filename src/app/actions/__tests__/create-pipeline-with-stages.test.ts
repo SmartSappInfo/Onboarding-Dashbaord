@@ -130,4 +130,27 @@ describe('createPipelineWithStagesAction', () => {
     const pipelineCall = batchSetCalls.find(c => c.refId === res.id);
     expect(pipelineCall?.data.showDealTotals).toBe(false);
   });
+
+  it('defaults defaultDealValue to 0 when omitted', async () => {
+    const payload: CreatePipelinePayload = {
+      name: 'Standard Pipeline',
+      workspaceIds: ['ws-1'],
+    };
+    const res = await createPipelineWithStagesAction(payload);
+    expect(res.success).toBe(true);
+    const pipelineCall = batchSetCalls.find(c => c.refId === res.id);
+    expect(pipelineCall?.data.defaultDealValue).toBe(0);
+  });
+
+  it('persists positive defaultDealValue when provided', async () => {
+    const payload: CreatePipelinePayload = {
+      name: 'Enterprise Deals Pipeline',
+      workspaceIds: ['ws-1'],
+      defaultDealValue: 5000,
+    };
+    const res = await createPipelineWithStagesAction(payload);
+    expect(res.success).toBe(true);
+    const pipelineCall = batchSetCalls.find(c => c.refId === res.id);
+    expect(pipelineCall?.data.defaultDealValue).toBe(5000);
+  });
 });

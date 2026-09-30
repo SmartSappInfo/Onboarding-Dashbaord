@@ -900,10 +900,12 @@ export interface Pipeline {
   defaultCloseDateOffsetValue?: number;
   defaultCloseDateOffsetUnit?: 'hours' | 'days' | 'months';
   currency?: string;
-  /** Controls whether deal financial totals are displayed in Kanban stage headers. Defaults to true. */
+  /** Controls whether deal financial totals are displayed in Kanban stage headers. Defaults to false. */
   showDealTotals?: boolean;
   /** Backoffice-configured default landing filter preset for this pipeline (e.g. 'preset_all_deals', 'preset_my_deals'). */
   defaultPresetViewId?: string;
+  /** Default monetary deal value for newly created deals in this pipeline (defaults to 0). */
+  defaultDealValue?: number;
 }
 
 export interface StarterStageConfig {
@@ -921,6 +923,7 @@ export interface CreatePipelinePayload {
   description?: string;
   type?: PipelineType;
   defaultProbability?: number;
+  defaultDealValue?: number;
   workspaceIds: string[];
   columnWidth?: number;
   showDealTotals?: boolean;
