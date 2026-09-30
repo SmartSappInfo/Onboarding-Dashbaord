@@ -1585,301 +1585,421 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                             </div>
                         </CardHeader>
                         <CardContent className="p-6 space-y-8">
-                            {/* Dispatch mode */}
+                            {/* Audience Channel Selector: 3 primary tabs */}
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-bold text-primary uppercase tracking-widest">Delivery Mode</Label>
-                                <div className="grid grid-cols-2 gap-2 bg-muted/30 p-1.5 rounded-xl border border-border/50">
-                                    {([['single', 'Targeted', Target], ['bulk', 'Broadcast (CSV)', Layers]] as const).map(([val, label, Icon]) => (
-                                        <button key={val} type="button" onClick={() => setValue('mode', val)}
-                                            className={cn('flex items-center justify-center gap-2 h-10 rounded-lg font-semibold text-xs transition-all',
-                                                watchedMode === val ? 'bg-card shadow-md text-primary' : 'text-muted-foreground hover:text-foreground'
-                                            )}>
-                                            <Icon className="h-3.5 w-3.5" /> {label}
+                                <Label className="text-[10px] font-bold text-primary uppercase tracking-widest">Audience Channel</Label>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-muted/30 p-1.5 rounded-xl border border-border/50">
+                                    {[
+                                        { val: 'entities' as const, label: 'Workspace Entities', icon: Building, desc: 'Clients & organizations' },
+                                        { val: 'team' as const, label: 'Internal Team', icon: Users, desc: 'Teammates & staff' },
+                                        { val: 'adhoc' as const, label: 'Direct & Spreadsheet', icon: FileText, desc: 'Pills or Excel/CSV' },
+                                    ].map(({ val, label, icon: Icon, desc }) => (
+                                        <button
+                                            key={val}
+                                            type="button"
+                                            onClick={() => setValue('audienceMode', val, { shouldValidate: true })}
+                                            className={cn(
+                                                'flex flex-col items-start justify-center p-3 rounded-lg font-semibold text-xs transition-all active:scale-[0.98] min-h-[44px]',
+                                                watchedAudienceMode === val
+                                                    ? 'bg-card shadow-md text-primary border border-primary/20'
+                                                    : 'text-muted-foreground hover:text-foreground'
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <Icon className="h-4 w-4 shrink-0 text-primary" />
+                                                <span className="font-bold text-xs">{label}</span>
+                                            </div>
+                                            <span className="text-[10px] text-muted-foreground font-normal mt-0.5">{desc}</span>
                                         </button>
                                     ))}
                                 </div>
                             </div>
 
-                            {watchedMode === 'single' ? (
+                            {/* ── Mode 1: Workspace Entities ── */}
+                            {watchedAudienceMode === 'entities' && (
                                 <div className="space-y-6">
-                                    {/* Audience Source Selector */}
-                                    <div className="space-y-3">
-                                        <Label className="text-[10px] font-bold text-primary uppercase tracking-widest">Audience Source</Label>
-                                        <div className="grid grid-cols-3 gap-3">
-                                            {[
-                                                { value: 'individual' as const, icon: <User className="h-4 w-4" />, label: 'Individual Selection' },
-                                                { value: 'manual' as const, icon: <Filter className="h-4 w-4" />, label: 'Custom Filters' },
-                                                { value: 'saved' as const, icon: <BookmarkCheck className="h-4 w-4" />, label: 'Saved Audience' },
-                                            ].map((m) => (
-                                                <button
-                                                    key={m.value}
-                                                    type="button"
-                                                    onClick={() => setAudienceSource(m.value)}
-                                                    className={cn(
-                                                        'flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all font-semibold text-xs h-11',
-                                                        audienceSource === m.value
-                                                            ? 'border-primary bg-primary/5 text-primary'
-                                                            : 'border-border hover:border-primary/20 text-muted-foreground'
-                                                    )}
-                                                >
-                                                    {m.icon}
-                                                    {m.label}
+                                    {/* Dispatch mode */}
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-bold text-primary uppercase tracking-widest">Delivery Mode</Label>
+                                        <div className="grid grid-cols-2 gap-2 bg-muted/30 p-1.5 rounded-xl border border-border/50">
+                                            {([['single', 'Targeted', Target], ['bulk', 'Broadcast (CSV)', Layers]] as const).map(([val, label, Icon]) => (
+                                                <button key={val} type="button" onClick={() => setValue('mode', val)}
+                                                    className={cn('flex items-center justify-center gap-2 h-10 rounded-lg font-semibold text-xs transition-all active:scale-[0.97]',
+                                                        watchedMode === val ? 'bg-card shadow-md text-primary' : 'text-muted-foreground hover:text-foreground'
+                                                    )}>
+                                                    <Icon className="h-3.5 w-3.5" /> {label}
                                                 </button>
                                             ))}
                                         </div>
                                     </div>
 
-                                    {audienceSource === 'individual' ? (
+                                    {watchedMode === 'single' ? (
                                         <div className="space-y-6">
-                                            {/* Entity selector — data is lifted to wizard level so it's always live */}
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] font-bold text-primary uppercase tracking-widest">Individual Selection</Label>
-                                                <EntitySelector
-                                                    channel={contactResolutionChannel(watchedChannel)}
-                                                    selectedEntityIds={watchedSelectedEntityIds}
-                                                    activeContactTypeFilter={watchedContactTypeFilter || []}
-                                                    onContactTypeFilterChange={(keys) => setValue('contactTypeFilter', keys)}
-                                                    onSelectionChange={(ids) => {
-                                                        setValue('selectedEntityIds', ids, { shouldValidate: true });
-                                                        setValue('entityId', ids.length === 1 ? ids[0] : '');
-                                                    }}
-                                                />
-                                            </div>
-
-                                            {/* Contact scope */}
-                                            {watchedSelectedEntityIds.length > 0 && (
-                                                <div className="space-y-3">
-                                                    <div className="flex items-center justify-between">
-                                                        <Label className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-1.5">
-                                                            <Settings2 className="h-3 w-3" /> Contact Targeting
-                                                        </Label>
-                                                        <Badge variant="outline" className="text-[8px] font-bold uppercase opacity-50">Server-side resolution</Badge>
-                                                    </div>
-                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                                        {[
-                                                            { id: 'primary',    label: 'Primary',    desc: 'Main contact for the entity.' },
-                                                            { id: 'signatories',label: 'Signatories', desc: 'Decision makers only.' },
-                                                            { id: 'all',        label: 'Blast All',   desc: 'Every recorded contact.' },
-                                                        ].map(s => (
-                                                            <div key={s.id} onClick={() => setValue('contactScope', s.id as 'primary' | 'signatories' | 'all')}
-                                                                className={cn('cursor-pointer border-2 rounded-xl p-3.5 transition-all relative overflow-hidden',
-                                                                    watchedContactScope === s.id ? 'border-primary bg-primary/5 shadow-md' : 'border-border hover:border-primary/30'
-                                                                )}>
-                                                                <div className="flex items-center justify-between mb-1">
-                                                                    <p className="text-xs font-bold">{s.label}</p>
-                                                                    {watchedContactScope === s.id && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
-                                                                </div>
-                                                                <p className="text-[10px] text-muted-foreground">{s.desc}</p>
-                                                                {watchedContactScope === s.id && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-
-                                                    {/* Active contact-type filter indicator */}
-                                                    {watchedContactTypeFilter && watchedContactTypeFilter.length > 0 && (
-                                                        <div className="flex items-center gap-2 p-3 rounded-xl bg-primary/5 border border-primary/20 text-xs font-semibold text-primary">
-                                                            <Tag className="h-3.5 w-3.5 shrink-0" />
-                                                            Filtering to <span className="capitalize font-bold">{watchedContactTypeFilter.join(', ').replace(/_/g, ' ')}</span> contacts only.
-                                                            <button type="button" onClick={() => setValue('contactTypeFilter', [])} className="ml-auto hover:text-destructive">
-                                                                <X className="h-3.5 w-3.5" />
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-
-                                            {watchedSelectedEntityIds.length === 0 && (
-                                                <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200">
-                                                    <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-                                                    <p className="text-xs font-semibold text-amber-800">Select at least one entity to continue.</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    ) : audienceSource === 'manual' ? (
-                                        <div className="space-y-6">
-                                            {/* Assignee Filter */}
+                                            {/* Audience Source Selector */}
                                             <div className="space-y-3">
-                                                <Label className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-1.5">
-                                                    <User className="h-3.5 w-3.5" /> Filter by Assignee
-                                                </Label>
-                                                <div className="grid grid-cols-2 gap-3">
+                                                <Label className="text-[10px] font-bold text-primary uppercase tracking-widest">Audience Source</Label>
+                                                <div className="grid grid-cols-3 gap-3">
                                                     {[
-                                                        { id: 'all', label: 'All Users' },
-                                                        { id: 'mine', label: `My Assignees` },
-                                                    ].map((opt) => (
+                                                        { value: 'individual' as const, icon: <User className="h-4 w-4" />, label: 'Individual Selection' },
+                                                        { value: 'manual' as const, icon: <Filter className="h-4 w-4" />, label: 'Custom Filters' },
+                                                        { value: 'saved' as const, icon: <BookmarkCheck className="h-4 w-4" />, label: 'Saved Audience' },
+                                                    ].map((m) => (
                                                         <button
-                                                            key={opt.id}
+                                                            key={m.value}
                                                             type="button"
-                                                            onClick={() => setAssigneeFilter(opt.id as 'all' | 'mine')}
+                                                            onClick={() => setAudienceSource(m.value)}
                                                             className={cn(
-                                                                'flex items-center justify-center p-3 rounded-xl border-2 transition-all font-semibold text-xs h-11',
-                                                                assigneeFilter === opt.id
+                                                                'flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all font-semibold text-xs h-11 active:scale-[0.97]',
+                                                                audienceSource === m.value
                                                                     ? 'border-primary bg-primary/5 text-primary'
                                                                     : 'border-border hover:border-primary/20 text-muted-foreground'
                                                             )}
                                                         >
-                                                            {opt.label}
+                                                            {m.icon}
+                                                            {m.label}
                                                         </button>
                                                     ))}
                                                 </div>
                                             </div>
 
-                                            {/* Contact Target Scope */}
-                                            <div className="space-y-3">
-                                                <Label className="text-[10px] font-bold text-primary uppercase tracking-widest">Contact Target Scope</Label>
-                                                <div className="grid grid-cols-4 gap-2">
-                                                    {[
-                                                        { id: 'primary', label: 'Primary Contact' },
-                                                        { id: 'signatories', label: 'Signatories' },
-                                                        { id: 'roles', label: 'Specific Roles' },
-                                                        { id: 'all', label: 'All Contacts' },
-                                                    ].map((opt) => (
-                                                        <button
-                                                            key={opt.id}
-                                                            type="button"
-                                                            onClick={() => setValue('contactScope', opt.id as 'primary' | 'signatories' | 'roles' | 'all')}
-                                                            className={cn('flex items-center justify-center p-3 rounded-xl border transition-all text-[11px] font-bold h-11',
-                                                                watchedContactScope === opt.id
-                                                                    ? 'bg-primary text-white border-primary shadow-sm'
-                                                                    : 'bg-background hover:bg-muted/30 text-muted-foreground'
+                                            {audienceSource === 'individual' ? (
+                                                <div className="space-y-6">
+                                                    {/* Entity selector — data is lifted to wizard level so it's always live */}
+                                                    <div className="space-y-2">
+                                                        <Label className="text-[10px] font-bold text-primary uppercase tracking-widest">Individual Selection</Label>
+                                                        <EntitySelector
+                                                            channel={contactResolutionChannel(watchedChannel)}
+                                                            selectedEntityIds={watchedSelectedEntityIds}
+                                                            activeContactTypeFilter={watchedContactTypeFilter || []}
+                                                            onContactTypeFilterChange={(keys) => setValue('contactTypeFilter', keys)}
+                                                            onSelectionChange={(ids) => {
+                                                                setValue('selectedEntityIds', ids, { shouldValidate: true });
+                                                                setValue('entityId', ids.length === 1 ? ids[0] : '');
+                                                            }}
+                                                        />
+                                                    </div>
+
+                                                    {/* Contact scope */}
+                                                    {watchedSelectedEntityIds.length > 0 && (
+                                                        <div className="space-y-3">
+                                                            <div className="flex items-center justify-between">
+                                                                <Label className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-1.5">
+                                                                    <Settings2 className="h-3 w-3" /> Contact Targeting
+                                                                </Label>
+                                                                <Badge variant="outline" className="text-[8px] font-bold uppercase opacity-50">Server-side resolution</Badge>
+                                                            </div>
+                                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                                                {[
+                                                                    { id: 'primary',    label: 'Primary',    desc: 'Main contact for the entity.' },
+                                                                    { id: 'signatories',label: 'Signatories', desc: 'Decision makers only.' },
+                                                                    { id: 'all',        label: 'Blast All',   desc: 'Every recorded contact.' },
+                                                                ].map(s => (
+                                                                    <div key={s.id} onClick={() => setValue('contactScope', s.id as 'primary' | 'signatories' | 'all')}
+                                                                        className={cn('cursor-pointer border-2 rounded-xl p-3.5 transition-all relative overflow-hidden active:scale-[0.98]',
+                                                                            watchedContactScope === s.id ? 'border-primary bg-primary/5 shadow-md' : 'border-border hover:border-primary/30'
+                                                                        )}>
+                                                                        <div className="flex items-center justify-between mb-1">
+                                                                            <p className="text-xs font-bold">{s.label}</p>
+                                                                            {watchedContactScope === s.id && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
+                                                                        </div>
+                                                                        <p className="text-[10px] text-muted-foreground">{s.desc}</p>
+                                                                        {watchedContactScope === s.id && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+
+                                                            {/* Active contact-type filter indicator */}
+                                                            {watchedContactTypeFilter && watchedContactTypeFilter.length > 0 && (
+                                                                <div className="flex items-center gap-2 p-3 rounded-xl bg-primary/5 border border-primary/20 text-xs font-semibold text-primary">
+                                                                    <Tag className="h-3.5 w-3.5 shrink-0" />
+                                                                    Filtering to <span className="capitalize font-bold">{watchedContactTypeFilter.join(', ').replace(/_/g, ' ')}</span> contacts only.
+                                                                    <button type="button" onClick={() => setValue('contactTypeFilter', [])} className="ml-auto hover:text-destructive">
+                                                                        <X className="h-3.5 w-3.5" />
+                                                                    </button>
+                                                                </div>
                                                             )}
-                                                        >
-                                                            {opt.label}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
+                                                        </div>
+                                                    )}
 
-                                            {/* Roles list */}
-                                            {watchedContactScope === 'roles' && (
-                                                <div className="space-y-2 p-4 rounded-xl bg-muted/20 border border-dashed animate-in fade-in duration-300">
-                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                                                        <Filter className="h-3.5 w-3.5" /> Select Roles
-                                                    </span>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {availableRoles.map((role) => {
-                                                            const isSelected = selectedRoles.includes(role.key);
-                                                            return (
+                                                    {watchedSelectedEntityIds.length === 0 && (
+                                                        <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200">
+                                                            <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                                                            <p className="text-xs font-semibold text-amber-800">Select at least one entity to continue.</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : audienceSource === 'manual' ? (
+                                                <div className="space-y-6">
+                                                    {/* Assignee Filter */}
+                                                    <div className="space-y-3">
+                                                        <Label className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-1.5">
+                                                            <User className="h-3.5 w-3.5" /> Filter by Assignee
+                                                        </Label>
+                                                        <div className="grid grid-cols-2 gap-3">
+                                                            {[
+                                                                { id: 'all', label: 'All Users' },
+                                                                { id: 'mine', label: `My Assignees` },
+                                                            ].map((opt) => (
                                                                 <button
-                                                                    key={role.key}
+                                                                    key={opt.id}
                                                                     type="button"
-                                                                    onClick={() => toggleRole(role.key)}
-                                                                    className={cn('px-3 py-1 rounded-full text-[10px] font-bold border transition-all capitalize',
-                                                                        isSelected ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted text-muted-foreground'
+                                                                    onClick={() => setAssigneeFilter(opt.id as 'all' | 'mine')}
+                                                                    className={cn(
+                                                                        'flex items-center justify-center p-3 rounded-xl border-2 transition-all font-semibold text-xs h-11 active:scale-[0.97]',
+                                                                        assigneeFilter === opt.id
+                                                                            ? 'border-primary bg-primary/5 text-primary'
+                                                                            : 'border-border hover:border-primary/20 text-muted-foreground'
                                                                     )}
                                                                 >
-                                                                    {role.label}
+                                                                    {opt.label}
                                                                 </button>
-                                                            );
-                                                        })}
-                                                        {availableRoles.length === 0 && (
-                                                            <p className="text-xs text-muted-foreground italic">No contact roles found in workspace.</p>
-                                                        )}
+                                                            ))}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Contact Target Scope */}
+                                                    <div className="space-y-3">
+                                                        <Label className="text-[10px] font-bold text-primary uppercase tracking-widest">Contact Target Scope</Label>
+                                                        <div className="grid grid-cols-4 gap-2">
+                                                            {[
+                                                                { id: 'primary', label: 'Primary Contact' },
+                                                                { id: 'signatories', label: 'Signatories' },
+                                                                { id: 'roles', label: 'Specific Roles' },
+                                                                { id: 'all', label: 'All Contacts' },
+                                                            ].map((opt) => (
+                                                                <button
+                                                                    key={opt.id}
+                                                                    type="button"
+                                                                    onClick={() => setValue('contactScope', opt.id as 'primary' | 'signatories' | 'roles' | 'all')}
+                                                                    className={cn('flex items-center justify-center p-3 rounded-xl border transition-all text-[11px] font-bold h-11 active:scale-[0.97]',
+                                                                        watchedContactScope === opt.id
+                                                                            ? 'bg-primary text-white border-primary shadow-sm'
+                                                                            : 'bg-background hover:bg-muted/30 text-muted-foreground'
+                                                                    )}
+                                                                >
+                                                                    {opt.label}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Roles list */}
+                                                    {watchedContactScope === 'roles' && (
+                                                        <div className="space-y-2 p-4 rounded-xl bg-muted/20 border border-dashed animate-in fade-in duration-300">
+                                                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                                                <Filter className="h-3.5 w-3.5" /> Select Roles
+                                                            </span>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {availableRoles.map((role) => {
+                                                                    const isSelected = selectedRoles.includes(role.key);
+                                                                    return (
+                                                                        <button
+                                                                            key={role.key}
+                                                                            type="button"
+                                                                            onClick={() => toggleRole(role.key)}
+                                                                            className={cn('px-3 py-1 rounded-full text-[10px] font-bold border transition-all capitalize active:scale-[0.97]',
+                                                                                isSelected ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted text-muted-foreground'
+                                                                            )}
+                                                                        >
+                                                                            {role.label}
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                                {availableRoles.length === 0 && (
+                                                                    <p className="text-xs text-muted-foreground italic">No contact roles found in workspace.</p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Tag Filters */}
+                                                    <div className="space-y-2">
+                                                        <Label className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-1.5">
+                                                            <Tag className="h-3 w-3" /> Tag-Based Audience
+                                                        </Label>
+                                                        <div className="p-4 rounded-xl bg-muted/20 border border-border/50">
+                                                            <TagAudienceSelector
+                                                                onChange={(seg) => {
+                                                                    setTagSegment(seg);
+                                                                    setValue('tagSegmentInclude', seg.includeTagIds);
+                                                                    setValue('tagSegmentExclude', seg.excludeTagIds);
+                                                                    setValue('tagSegmentLogic', seg.includeLogic);
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-6">
+                                                    {/* Saved Audience Select */}
+                                                    <div className="space-y-3 p-4 rounded-xl bg-primary/5 border border-primary/20 animate-in fade-in duration-300">
+                                                        <span className="text-[10px] font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                                                            <Target className="h-3.5 w-3.5" /> Select Saved Audience
+                                                        </span>
+                                                        <Select value={savedAudienceId} onValueChange={handleSavedAudienceChange}>
+                                                            <SelectTrigger className="h-11 rounded-xl font-bold text-xs bg-card border-border/50">
+                                                                <SelectValue placeholder="Choose an audience..." />
+                                                            </SelectTrigger>
+                                                            <SelectContent className="rounded-xl">
+                                                                {(savedAudiences as SavedAudienceItem[]).map((a) => (
+                                                                    <SelectItem key={a.id} value={a.id} className="text-xs font-semibold">
+                                                                        {a.name} ({a.filters?.length || 0} filters)
+                                                                    </SelectItem>
+                                                                ))}
+                                                                {savedAudiences.length === 0 && (
+                                                                    <SelectItem value="_none" disabled className="text-xs text-muted-foreground italic">
+                                                                        No saved audiences found
+                                                                    </SelectItem>
+                                                                )}
+                                                            </SelectContent>
+                                                        </Select>
                                                     </div>
                                                 </div>
                                             )}
 
-                                            {/* Tag Filters */}
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-1.5">
-                                                    <Tag className="h-3 w-3" /> Tag-Based Audience
-                                                </Label>
-                                                <div className="p-4 rounded-xl bg-muted/20 border border-border/50">
-                                                    <TagAudienceSelector
-                                                        onChange={(seg) => {
-                                                            setTagSegment(seg);
-                                                            setValue('tagSegmentInclude', seg.includeTagIds);
-                                                            setValue('tagSegmentExclude', seg.excludeTagIds);
-                                                            setValue('tagSegmentLogic', seg.includeLogic);
-                                                        }}
-                                                    />
+                                            {/* Live matched recipients count */}
+                                            {audienceSource !== 'individual' && (
+                                                <div className="flex items-center gap-2 p-3.5 rounded-xl bg-muted/20 border border-border/50 text-xs font-semibold text-muted-foreground justify-between">
+                                                    <span className="flex items-center gap-1.5">
+                                                        <Users className="h-4 w-4 text-primary" /> Matched Recipients (Live):
+                                                    </span>
+                                                    <Badge variant="secondary" className="font-bold text-xs gap-1.5 h-6">
+                                                        {isResolvingRecipients && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+                                                        {filteredRecipients.length} {filteredRecipients.length === 1 ? 'recipient' : 'recipients'}
+                                                    </Badge>
                                                 </div>
-                                            </div>
+                                            )}
                                         </div>
                                     ) : (
+                                        /* Bulk CSV */
                                         <div className="space-y-6">
-                                            {/* Saved Audience Select */}
-                                            <div className="space-y-3 p-4 rounded-xl bg-primary/5 border border-primary/20 animate-in fade-in duration-300">
-                                                <span className="text-[10px] font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
-                                                    <Target className="h-3.5 w-3.5" /> Select Saved Audience
-                                                </span>
-                                                <Select value={savedAudienceId} onValueChange={handleSavedAudienceChange}>
-                                                    <SelectTrigger className="h-11 rounded-xl font-bold text-xs bg-card border-border/50">
-                                                        <SelectValue placeholder="Choose an audience..." />
-                                                    </SelectTrigger>
-                                                    <SelectContent className="rounded-xl">
-                                                        {(savedAudiences as SavedAudienceItem[]).map((a) => (
-                                                            <SelectItem key={a.id} value={a.id} className="text-xs font-semibold">
-                                                                {a.name} ({a.filters?.length || 0} filters)
-                                                            </SelectItem>
-                                                        ))}
-                                                        {savedAudiences.length === 0 && (
-                                                            <SelectItem value="_none" disabled className="text-xs text-muted-foreground italic">
-                                                                No saved audiences found
-                                                            </SelectItem>
-                                                        )}
-                                                    </SelectContent>
-                                                </Select>
+                                            <div className="p-4 rounded-xl bg-muted/20 border border-border/50">
+                                                <TagAudienceSelector onChange={setTagSegment} />
                                             </div>
-                                        </div>
-                                    )}
-
-                                    {/* Live matched recipients count */}
-                                    {audienceSource !== 'individual' && (
-                                        <div className="flex items-center gap-2 p-3.5 rounded-xl bg-muted/20 border border-border/50 text-xs font-semibold text-muted-foreground justify-between">
-                                            <span className="flex items-center gap-1.5">
-                                                <Users className="h-4 w-4 text-primary" /> Matched Recipients (Live):
-                                            </span>
-                                            <Badge variant="secondary" className="font-bold text-xs gap-1.5 h-6">
-                                                {isResolvingRecipients && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
-                                                {filteredRecipients.length} {filteredRecipients.length === 1 ? 'recipient' : 'recipients'}
-                                            </Badge>
+                                            {!csvData.length ? (
+                                                <div className="p-12 border-2 border-dashed rounded-2xl flex flex-col items-center gap-4 text-center hover:border-primary/30 transition-colors">
+                                                    <Upload className="h-8 w-8 text-muted-foreground/40" />
+                                                    <input type="file" accept=".csv" className="hidden" id="csv-upload" onChange={handleCsvUpload} />
+                                                    <Button type="button" asChild variant="outline" className="rounded-xl font-semibold h-11 px-8 text-xs active:scale-[0.97]">
+                                                        <label htmlFor="csv-upload" className="cursor-pointer">Upload CSV File</label>
+                                                    </Button>
+                                                    <p className="text-[10px] text-muted-foreground">Must include a header row with recipient, phone, or email column.</p>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-4 p-4 rounded-xl bg-primary/5 border border-primary/20">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-2">
+                                                            <Layers className="h-4 w-4 text-primary" />
+                                                            <span className="text-sm font-bold text-primary">CSV Loaded</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <Badge className="bg-primary text-white text-[10px] font-bold">{csvData.length} records</Badge>
+                                                            <Button type="button" variant="ghost" size="sm" onClick={() => setCsvData([])} className="h-7 text-destructive text-xs gap-1 active:scale-[0.97]">
+                                                                <X className="h-3 w-3" /> Clear
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                        {(selectedTemplate?.declaredVariables || selectedTemplate?.variables || []).map(v => (
+                                                            <div key={v} className="space-y-1">
+                                                                <Label className="text-[10px] font-semibold text-muted-foreground">Map {`{{${v}}}`}</Label>
+                                                                <Select value={columnMapping[v] || ''} onValueChange={(val) => setColumnMapping(p => ({ ...p, [v]: val }))}>
+                                                                    <SelectTrigger className="h-9 rounded-lg bg-card border-border/50 font-semibold text-xs"><SelectValue placeholder="Select column..." /></SelectTrigger>
+                                                                    <SelectContent className="rounded-xl">
+                                                                        {csvHeaders.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
-                            ) : (
-                                /* Bulk CSV */
+                            )}
+
+                            {/* ── Mode 2: Internal Organization Team ── */}
+                            {watchedAudienceMode === 'team' && (
+                                <div className="space-y-4">
+                                    <InternalUserAudienceSelector
+                                        channel={watchedChannel}
+                                        workspaceId={activeWorkspaceId}
+                                        selectedUsers={selectedTeamMembers}
+                                        onChange={setSelectedTeamMembers}
+                                    />
+                                </div>
+                            )}
+
+                            {/* ── Mode 3: Direct Ad-Hoc & Spreadsheet Contacts ── */}
+                            {watchedAudienceMode === 'adhoc' && (
                                 <div className="space-y-6">
-                                    <div className="p-4 rounded-xl bg-muted/20 border border-border/50">
-                                        <TagAudienceSelector onChange={setTagSegment} />
-                                    </div>
-                                    {!csvData.length ? (
-                                        <div className="p-12 border-2 border-dashed rounded-2xl flex flex-col items-center gap-4 text-center hover:border-primary/30 transition-colors">
-                                            <Upload className="h-8 w-8 text-muted-foreground/40" />
-                                            <input type="file" accept=".csv" className="hidden" id="csv-upload" onChange={handleCsvUpload} />
-                                            <Button type="button" asChild variant="outline" className="rounded-xl font-semibold h-11 px-8 text-xs">
-                                                <label htmlFor="csv-upload" className="cursor-pointer">Upload CSV File</label>
+                                    {/* Sub-tab switcher: Pills Input vs Spreadsheet Upload */}
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
+                                        <div className="flex items-center gap-2 bg-muted/40 p-1 rounded-xl border border-border/50">
+                                            <button
+                                                type="button"
+                                                onClick={() => setAdhocSubTab('pills')}
+                                                className={cn(
+                                                    'flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all min-h-[44px] active:scale-[0.97]',
+                                                    adhocSubTab === 'pills' ? 'bg-card shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'
+                                                )}
+                                            >
+                                                <Code className="h-3.5 w-3.5" />
+                                                <span>Delimited Text &amp; Pills</span>
+                                                {adhocContacts.length > 0 && (
+                                                    <Badge variant="secondary" className="text-[10px] ml-1">
+                                                        {adhocContacts.length}
+                                                    </Badge>
+                                                )}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setAdhocSubTab('spreadsheet')}
+                                                className={cn(
+                                                    'flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all min-h-[44px] active:scale-[0.97]',
+                                                    adhocSubTab === 'spreadsheet' ? 'bg-card shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'
+                                                )}
+                                            >
+                                                <Table className="h-3.5 w-3.5" />
+                                                <span>Spreadsheet (.xlsx, .csv)</span>
+                                            </button>
+                                        </div>
+
+                                        {adhocContacts.length > 0 && (
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => setAdhocContacts([])}
+                                                className="text-xs text-destructive hover:bg-destructive/10 min-h-[44px] active:scale-[0.97]"
+                                            >
+                                                <X className="h-3.5 w-3.5 mr-1" /> Clear Contacts
                                             </Button>
-                                            <p className="text-[10px] text-muted-foreground">Must include a header row with recipient, phone, or email column.</p>
-                                        </div>
+                                        )}
+                                    </div>
+
+                                    {adhocSubTab === 'pills' ? (
+                                        <AdHocContactPillsInput
+                                            channel={watchedChannel}
+                                            items={adhocContacts}
+                                            onChange={setAdhocContacts}
+                                        />
                                     ) : (
-                                        <div className="space-y-4 p-4 rounded-xl bg-primary/5 border border-primary/20">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                    <Layers className="h-4 w-4 text-primary" />
-                                                    <span className="text-sm font-bold text-primary">CSV Loaded</span>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <Badge className="bg-primary text-white text-[10px] font-bold">{csvData.length} records</Badge>
-                                                    <Button type="button" variant="ghost" size="sm" onClick={() => setCsvData([])} className="h-7 text-destructive text-xs gap-1">
-                                                        <X className="h-3 w-3" /> Clear
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                {(selectedTemplate?.declaredVariables || selectedTemplate?.variables || []).map(v => (
-                                                    <div key={v} className="space-y-1">
-                                                        <Label className="text-[10px] font-semibold text-muted-foreground">Map {`{{${v}}}`}</Label>
-                                                        <Select value={columnMapping[v] || ''} onValueChange={(val) => setColumnMapping(p => ({ ...p, [v]: val }))}>
-                                                            <SelectTrigger className="h-9 rounded-lg bg-card border-border/50 font-semibold text-xs"><SelectValue placeholder="Select column..." /></SelectTrigger>
-                                                            <SelectContent className="rounded-xl">
-                                                                {csvHeaders.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
+                                        <SpreadsheetRecipientImporter
+                                            channel={watchedChannel}
+                                            declaredVariables={selectedTemplate?.declaredVariables || selectedTemplate?.variables || []}
+                                            onImportComplete={(items, mapping) => {
+                                                setAdhocContacts(items);
+                                                setColumnMapping(mapping);
+                                                setAdhocSubTab('pills');
+                                                toast({
+                                                    title: 'Spreadsheet Loaded',
+                                                    description: `Imported ${items.filter(i => i.isValid).length} valid contacts ready for messaging.`,
+                                                });
+                                            }}
+                                            onCancel={() => setAdhocSubTab('pills')}
+                                        />
                                     )}
                                 </div>
                             )}
@@ -1889,9 +2009,15 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                             onBack={() => setStep(2)}
                             isSubmitting={isSubmitting}
                             nextLabel="Next: Tags & Actions"
-                            nextDisabled={watchedMode === 'single'
-                                ? (audienceSource === 'individual' ? watchedSelectedEntityIds.length === 0 : filteredRecipients.length === 0)
-                                : !csvData.length}
+                            nextDisabled={
+                                watchedAudienceMode === 'entities'
+                                    ? (watchedMode === 'single'
+                                        ? (audienceSource === 'individual' ? watchedSelectedEntityIds.length === 0 : filteredRecipients.length === 0)
+                                        : !csvData.length)
+                                    : watchedAudienceMode === 'team'
+                                        ? selectedTeamMembers.length === 0
+                                        : adhocContacts.filter(c => c.isValid).length === 0
+                            }
                         />
                     </Card>
                 )}
@@ -1963,8 +2089,15 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                         senderProfileId={watchedSenderProfileId}
                                         isScheduled={watchedIsScheduled}
                                         scheduledAt={watch('scheduledAt')}
-                                        recipientCount={audienceSource === 'individual' ? watchedSelectedEntityIds.length : filteredRecipients.length}
+                                        recipientCount={
+                                            watchedAudienceMode === 'entities'
+                                                ? (audienceSource === 'individual' ? watchedSelectedEntityIds.length : filteredRecipients.length)
+                                                : watchedAudienceMode === 'team'
+                                                    ? selectedTeamMembers.length
+                                                    : adhocContacts.filter(c => c.isValid).length
+                                        }
                                         audienceSource={audienceSource}
+                                        audienceMode={watchedAudienceMode}
                                         activeOrganizationId={activeOrganizationId}
                                         activeWorkspaceId={activeWorkspaceId}
                                         onScheduleToggle={(scheduled) => setValue('isScheduled', scheduled, { shouldDirty: true })}
@@ -1978,14 +2111,31 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                 <div className="lg:col-span-8 min-w-0">
                                     <PublishPreviewCanvas
                                         template={selectedTemplate}
-                                        variables={{ ...sampleVariables, ...(getValues('variables') as Record<string, string | number | boolean | null | undefined>), ...(watchedMode === 'bulk' ? (csvData[0] as Record<string, string | number | boolean | null | undefined>) : {}) }}
+                                        variables={{
+                                            ...sampleVariables,
+                                            ...(getValues('variables') as Record<string, string | number | boolean | null | undefined>),
+                                            ...(watchedAudienceMode === 'entities' && watchedMode === 'bulk' ? (csvData[0] as Record<string, string | number | boolean | null | undefined>) : {}),
+                                            ...(watchedAudienceMode === 'adhoc' && adhocContacts.length > 0 ? (adhocContacts[0].customVars || {}) : {}),
+                                        }}
                                         styles={styles || []}
                                         channel={watchedChannel}
                                         onOpenTestModal={() => setIsTestModalOpen(true)}
                                         activeSenderName={selectedSenderProfile?.name || currentOrganization?.name || 'SmartSapp'}
                                         activeSenderIdentifier={selectedSenderProfile?.identifier || currentOrganization?.email || 'info@smartsapp.com'}
-                                        sampleRecipientName="Jane Doe"
-                                        sampleRecipientIdentifier={watchedChannel === 'email' ? 'jane.doe@example.com' : '+233 50 123 4567'}
+                                        sampleRecipientName={
+                                            watchedAudienceMode === 'team' && selectedTeamMembers.length > 0
+                                                ? selectedTeamMembers[0].name
+                                                : watchedAudienceMode === 'adhoc' && adhocContacts.length > 0
+                                                    ? (adhocContacts.find(c => c.isValid)?.displayName || 'Direct Recipient')
+                                                    : 'Jane Doe'
+                                        }
+                                        sampleRecipientIdentifier={
+                                            watchedAudienceMode === 'team' && selectedTeamMembers.length > 0
+                                                ? (watchedChannel === 'email' ? selectedTeamMembers[0].email : (selectedTeamMembers[0].phone || '+233 50 123 4567'))
+                                                : watchedAudienceMode === 'adhoc' && adhocContacts.length > 0
+                                                    ? (adhocContacts.find(c => c.isValid)?.target || (watchedChannel === 'email' ? 'jane.doe@example.com' : '+233 50 123 4567'))
+                                                    : (watchedChannel === 'email' ? 'jane.doe@example.com' : '+233 50 123 4567')
+                                        }
                                         smsBalance={smsBalance}
                                     />
                                 </div>
@@ -2006,9 +2156,30 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                         <NavFooter 
                             onBack={() => setStep(4)} 
                             isSubmitting={isSubmitting}
-                            nextDisabled={!watch('senderProfileId') || (watchedMode === 'single' && (audienceSource === 'individual' ? watchedSelectedEntityIds.length === 0 : filteredRecipients.length === 0))}
-                            nextLabel={watchedIsScheduled ? (watchedMode === 'single' ? 'Schedule Message' : 'Schedule Broadcast') : (watchedMode === 'single' ? 'Send Now' : 'Execute Broadcast')} 
-                            onNext={(audienceSource === 'individual' ? watchedSelectedEntityIds.length : filteredRecipients.length) > blastThreshold && !watchedIsScheduled ? () => setIsBlastModalOpen(true) : undefined}
+                            nextDisabled={
+                                !watch('senderProfileId') ||
+                                (watchedAudienceMode === 'entities'
+                                    ? (watchedMode === 'single'
+                                        ? (audienceSource === 'individual' ? watchedSelectedEntityIds.length === 0 : filteredRecipients.length === 0)
+                                        : !csvData.length)
+                                    : watchedAudienceMode === 'team'
+                                        ? selectedTeamMembers.length === 0
+                                        : adhocContacts.filter(c => c.isValid).length === 0)
+                            }
+                            nextLabel={
+                                watchedIsScheduled
+                                    ? (watchedAudienceMode === 'team' ? 'Schedule Team Message' : watchedAudienceMode === 'adhoc' ? 'Schedule Message' : (watchedMode === 'single' ? 'Schedule Message' : 'Schedule Broadcast'))
+                                    : (watchedAudienceMode === 'team' ? 'Send to Team' : watchedAudienceMode === 'adhoc' ? 'Send Message' : (watchedMode === 'single' ? 'Send Now' : 'Execute Broadcast'))
+                            } 
+                            onNext={
+                                (watchedAudienceMode === 'entities'
+                                    ? (audienceSource === 'individual' ? watchedSelectedEntityIds.length : filteredRecipients.length)
+                                    : watchedAudienceMode === 'team'
+                                        ? selectedTeamMembers.length
+                                        : adhocContacts.filter(c => c.isValid).length) > blastThreshold && !watchedIsScheduled
+                                    ? () => setIsBlastModalOpen(true)
+                                    : undefined
+                            }
                         />
                     </Card>
                 )}
