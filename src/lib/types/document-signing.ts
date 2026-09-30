@@ -1294,7 +1294,7 @@ export const CreateBulkCampaignRequestSchema = z.object({
   templateId: z.string().min(1),
   templateVersionId: z.string().optional(),
   routingMode: BulkCampaignRoutingModeSchema.default('single_signer'),
-  sourceType: BulkCampaignSourceTypeSchema.default('csv_upload'),
+  sourceType: BulkCampaignSourceTypeSchema.optional(),
   entityIds: z.array(z.string()).optional(),
   contactRole: z.enum(['signatory', 'primary', 'all']).optional(),
   countersignerEmail: z.string().email().optional(),

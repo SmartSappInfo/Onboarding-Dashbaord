@@ -271,9 +271,11 @@ export async function previewBulkCrmRecipientsAction(
       directWeSnaps.forEach((snap) => {
         if (snap.exists) {
           const data = snap.data();
-          const eid = data?.entityId || snap.id;
-          if (!tempWE[eid]) {
-            tempWE[eid] = data;
+          if (data) {
+            const eid = data.entityId || snap.id;
+            if (!tempWE[eid]) {
+              tempWE[eid] = data;
+            }
           }
         }
       });
