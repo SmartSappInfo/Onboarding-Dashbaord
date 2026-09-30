@@ -13,6 +13,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import type { Department } from '@/lib/types';
+import { DepartmentSeedService } from './department-seed-service';
 
 export interface CreateDepartmentPayload {
   name: string;
@@ -31,6 +32,67 @@ export interface UpdateDepartmentPayload {
 }
 
 export class DepartmentService {
+  /**
+   * Synchronizes the canonical departments list into the legacy `organizations/{orgId}.departments`
+   * projection array, ensuring total backward-compatibility with zero drift.
+   */
+  static async syncOrganizationDepartmentsProjection(organizationId: string): Promise<string[]> {
+    if (!organizationId) return [];
+    const depts = await this.listDepartments(organizationId);
+    const names = depts.map((d) => d.name);
+    const orgRef = adminDb.collection('organizations').doc(organizationId);
+    await orgRef.set(
+      {
+        departments: names,
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+    return names;
+  }
+
+  /**
+   * Retrieves canonical departments for an organization.
+   * If the organization has 0 departments, automatically invokes `DepartmentSeedService`
+   * to guarantee an industry-tailored initial workforce blueprint.
+   */
+  static async getCanonicalDepartmentsForOrganization(organizationId: string): Promise<Department[]> {
+    if (!organizationId) return [];
+    const existing = await this.listDepartments(organizationId);
+    if (existing.length > 0) {
+      return existing;
+    }
+
+    // Auto-seed industry appropriate defaults
+    const seedRes = await DepartmentSeedService.seedDepartmentsForOrganization(organizationId);
+    if (seedRes.departments && seedRes.departments.length > 0) {
+      return seedRes.departments;
+    }
+
+    return await this.listDepartments(organizationId);
+  }
+
+  /**
+   * Resolves a department by name case-insensitively, or provisions a new canonical
+   * department record if one does not exist.
+   */
+  static async findOrCreateDepartmentByName(organizationId: string, name: string): Promise<Department> {
+    if (!organizationId) throw new Error('Missing organizationId');
+    const cleanName = (name || '').trim();
+    if (!cleanName) throw new Error('Department name is required');
+
+    const depts = await this.listDepartments(organizationId);
+    const match = depts.find((d) => d.name.toLowerCase() === cleanName.toLowerCase());
+    if (match) {
+      return match;
+    }
+
+    return await this.createDepartment(organizationId, {
+      name: cleanName,
+      code: cleanName.substring(0, 4).toUpperCase(),
+    });
+  }
+
   /**
    * Creates a new organizational department within a tenant.
    */
@@ -63,6 +125,7 @@ export class DepartmentService {
       batch.set(deptRef, newDepartment);
     } else {
       await deptRef.set(newDepartment);
+      await this.syncOrganizationDepartmentsProjection(organizationId);
     }
 
     return newDepartment;
@@ -102,6 +165,38 @@ export class DepartmentService {
     };
 
     await deptRef.set(updated, { merge: true });
+
+    // If name changed, synchronize downstream
+    if (payload.name && payload.name.trim() !== current.name) {
+      // 1. Synchronize Person records assigned to this department
+      try {
+        const peopleSnap = await adminDb
+          .collection('people')
+          .where('organizationId', '==', organizationId)
+          .where('departmentId', '==', departmentId)
+          .get();
+
+        if (!peopleSnap.empty) {
+          // Chunk updates into batches of 200 (max 400 write ops per batch, well below Firestore 500 limit)
+          const CHUNK_SIZE = 200;
+          for (let i = 0; i < peopleSnap.docs.length; i += CHUNK_SIZE) {
+            const chunk = peopleSnap.docs.slice(i, i + CHUNK_SIZE);
+            const syncBatch = adminDb.batch();
+            chunk.forEach((doc) => {
+              syncBatch.update(doc.ref, { departmentName: updated.name, updatedAt: now });
+              const userRef = adminDb.collection('users').doc(doc.id);
+              syncBatch.set(userRef, { department: updated.name, updatedAt: now }, { merge: true });
+            });
+            await syncBatch.commit();
+          }
+        }
+      } catch (personSyncErr) {
+        console.warn(`[DepartmentService] Could not update people department names:`, personSyncErr);
+      }
+
+      await this.syncOrganizationDepartmentsProjection(organizationId);
+    }
+
     return updated;
   }
 
@@ -124,6 +219,7 @@ export class DepartmentService {
     }
 
     await adminDb.collection('departments').doc(departmentId).delete();
+    await this.syncOrganizationDepartmentsProjection(organizationId);
     return true;
   }
 
