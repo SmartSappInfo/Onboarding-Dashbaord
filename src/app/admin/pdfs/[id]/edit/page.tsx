@@ -253,7 +253,7 @@ export default function EditPdfPage() {
         width: f.dimensions?.width ?? 20,
         height: f.dimensions?.height ?? 5,
         required: !!f.required,
-        assignedRole: 'signer',
+        assignedRole: f.assignedRole || 'signer',
         variableKey: f.variableKey,
       };
     };

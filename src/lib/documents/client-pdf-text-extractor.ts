@@ -45,6 +45,7 @@ export async function extractPdfDocumentData(
   source: string | PDFDocumentProxy
 ): Promise<ExtractedPageData[]> {
   let doc: PDFDocumentProxy;
+  const shouldDestroy = typeof source === 'string';
 
   if (typeof source === 'string') {
     const pdfjs = await import('pdfjs-dist');
@@ -57,10 +58,11 @@ export async function extractPdfDocumentData(
     doc = source;
   }
 
-  const numPages = doc.numPages;
-  const results: ExtractedPageData[] = [];
+  try {
+    const numPages = doc.numPages;
+    const results: ExtractedPageData[] = [];
 
-  for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
     const page = await doc.getPage(pageNum);
     try {
       const viewport = page.getViewport({ scale: 1.0, rotation: page.rotate });
@@ -161,4 +163,9 @@ export async function extractPdfDocumentData(
   }
 
   return results;
+  } finally {
+    if (shouldDestroy && doc) {
+      doc.destroy().catch(() => {});
+    }
+  }
 }

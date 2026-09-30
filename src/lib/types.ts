@@ -4604,6 +4604,7 @@ export interface PDFFormField {
   staticText?: string;
   variableKey?: string;
   formula?: import('./types/document-signing').ComputedFieldFormula;
+  assignedRole?: import('./types/document-signing').RecipientRole;
 }
 
 export interface Submission {

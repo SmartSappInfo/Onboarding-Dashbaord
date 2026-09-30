@@ -94,6 +94,7 @@ function EditorLayout() {
             pageNumber: sug.pageNumber,
             required: true,
             isSuggestion: true,
+            assignedRole: sug.recipientRole,
         }));
         setFields((prev) => [...prev, ...newFields]);
         toast({

@@ -156,6 +156,7 @@ export function detectTemplateFieldsFromPages(
     }
 
     let fieldCounter = 1;
+    const consumedLineIndices = new Set<number>();
 
     // Branch A: Multi-party execution blocks found (e.g. standard contract closing)
     if (partyBlocks.length > 0) {
@@ -195,6 +196,8 @@ export function detectTemplateFieldsFromPages(
           }
 
           if (detectedType && confidence >= minConfidence) {
+            consumedLineIndices.add(lineIndex);
+
             const estimatedTopPct = Math.min(
               92.0,
               Math.max(10.0, 50.0 + (lineIndex / Math.max(totalLines, 1)) * 45.0 + relativeOffset)
@@ -227,18 +230,20 @@ export function detectTemplateFieldsFromPages(
           }
         });
       });
-      return;
     }
 
     // Branch B: Form fields, table inputs, student/parent information, and signature lines
     rawLines.forEach((line, lineIdx) => {
+      // Skip lines already consumed by explicit party execution blocks
+      if (consumedLineIndices.has(lineIdx)) return;
+
       // Find all field prompt matches in this line
       const matches: MatchedFieldPrompt[] = [];
 
       // Regex matches prompts like:
       // "4. STUDENT NAME:", "GRADE:", "PARENT/GUARDIAN SIGNATURE:", "DATE:", "CONTACT NUMBER:"
       const regex =
-        /(?:(?:^|\s+)(\b\d+[\.\)]\s*)?)(student(?:'s)?\s*name|pupil\s*name|child\s*name|parent(?:\s*[\/\&]\s*guardian)?(?:\s*name)?|guardian(?:\s*name)?|applicant\s*name|full\s*name|printed?\s*name|name|grade(?:\s*level)?|class(?:\s*[\/\&]\s*grade)?|form|year|contact(?:\s*number)?|phone(?:\s*number)?|telephone|mobile|cell|email(?:\s*address)?|home\s*address|residential\s*address|street|address|date\s*of\s*birth|dob|admission\s*(?:no|number)|student\s*id|id\s*number|authorized\s*signature|parent\s*signature|student\s*signature|signature(?:\s*of\s*[^:]+)?|by|date(?:\s*signed)?|signed\s*on|date|title|position|designation|initials?|amount|fee|payment\s*method)\s*[:_]/gi;
+        /(?:(?:^|\s+)(\b\d+[\.\)]\s*)?)(student(?:'s)?\s*name|pupil\s*name|child\s*name|parent(?:\s*[\/\&]\s*guardian)?(?:\s*name)?|guardian(?:\s*name)?|applicant\s*name|full\s*name|printed?\s*name|name|grade(?:\s*level)?|class(?:\s*[\/\&]\s*grade)?|(?:grade|class)\s*[\/\&]\s*form|(?:academic|school|grade)\s*year|contact(?:\s*number)?|phone(?:\s*number)?|telephone|mobile|cell|email(?:\s*address)?|home\s*address|residential\s*address|street|address|date\s*of\s*birth|dob|admission\s*(?:no|number)|student\s*id|id\s*number|authorized\s*signature|parent\s*signature|student\s*signature|signature(?:\s*of\s*[^:]+)?|by|date(?:\s*signed)?|signed\s*on|date|title|position|designation|initials?|amount|fee|payment\s*method)\s*[:_]/gi;
 
       let match: RegExpExecArray | null;
       while ((match = regex.exec(line)) !== null) {
@@ -252,7 +257,7 @@ export function detectTemplateFieldsFromPages(
 
         if (
           kwLower.includes('signature') ||
-          kwLower === 'by' ||
+          (kwLower === 'by' && (line.trim().toLowerCase().startsWith('by') || line.includes('___'))) ||
           kwLower.includes('authorized signature')
         ) {
           fieldType = 'signature';

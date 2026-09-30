@@ -170,5 +170,37 @@ PARENT / GUARDIAN SIGNATURE: ___________________    DATE: _____________`,
     expect(nameField!.leftPct).toBeLessThan(60);
     expect(gradeField!.leftPct).toBeGreaterThan(65);
   });
+
+  it('detects both party execution blocks and tabular form fields on mixed-content pages', () => {
+    const mixedPage = [
+      `IN WITNESS WHEREOF, the parties have executed this Agreement.
+
+STUDENT NAME: ___________________________    GRADE: ____________
+PARENT / GUARDIAN NAME: _________________    PHONE: ____________
+
+Client / Customer:
+By: ___________________________
+Name: John Doe
+Date: _________________________`,
+    ];
+
+    const fields = detectTemplateFieldsFromPages(mixedPage);
+
+    // Should detect the party block fields (signature, name, date)
+    const partySignatures = fields.filter((f) => f.fieldType === 'signature');
+    expect(partySignatures.length).toBeGreaterThanOrEqual(1);
+
+    // AND should detect the form fields (Student Name, Grade, Parent Name, Phone) without suppression
+    const studentNames = fields.filter((f) => f.label.includes('Student Name'));
+    const grades = fields.filter((f) => f.label.includes('Grade'));
+    const parentNames = fields.filter((f) => f.label.includes('Parent'));
+    const phones = fields.filter((f) => f.label.includes('Phone'));
+
+    expect(studentNames.length).toBe(1);
+    expect(grades.length).toBe(1);
+    expect(parentNames.length).toBe(1);
+    expect(phones.length).toBe(1);
+  });
 });
+
 
