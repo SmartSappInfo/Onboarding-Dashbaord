@@ -36,6 +36,8 @@ describe('permissions-engine', () => {
       expect(normalized.operations.features.tasks).toEqual({ view: true, create: true });
       expect(normalized.finance.enabled).toBe(false);
       expect(normalized.studios.enabled).toBe(false);
+      expect(normalized.social.enabled).toBe(false);
+      expect(normalized.workforce.enabled).toBe(false);
       expect(normalized.management.enabled).toBe(false);
     });
 
@@ -58,6 +60,41 @@ describe('permissions-engine', () => {
       expect(normalized.finance.features.invoices.view).toBe(true);
       expect(normalized.finance.features.invoices.create).toBe(true);
       expect(normalized.finance.features.invoices.delete).toBe(false);
+    });
+
+    it('should backfill social, workforce, and studios subtools from legacy schemas', () => {
+      const legacy = {
+        studios: {
+          enabled: true,
+          features: {
+            socialIntelligence: { view: true, create: true, edit: true, delete: false },
+            media: { view: true, create: true, edit: true, delete: false },
+          },
+        },
+        management: {
+          enabled: true,
+          features: {
+            users: { view: true, create: true, edit: true, delete: false },
+          },
+        },
+      };
+
+      const normalized = normalizePermissionsSchema(legacy);
+      // Social Hub backfilled
+      expect(normalized.social.enabled).toBe(true);
+      expect(normalized.social.features.dashboard?.view).toBe(true);
+      expect(normalized.social.features.composer?.create).toBe(true);
+      expect(normalized.social.features.accounts?.edit).toBe(true);
+
+      // Workforce backfilled
+      expect(normalized.workforce.enabled).toBe(true);
+      expect(normalized.workforce.features.users?.view).toBe(true);
+      expect(normalized.workforce.features.intelligence?.view).toBe(true);
+      expect(normalized.workforce.features.onboarding?.create).toBe(true);
+
+      // Studios subtools backfilled
+      expect(normalized.studios.features.flipbooks?.view).toBe(true);
+      expect(normalized.studios.features.thumbnails?.view).toBe(true);
     });
   });
 
@@ -220,7 +257,7 @@ describe('permissions-engine', () => {
 
     it('should correctly map legacy call_centre permissions to callCentre in studios', () => {
       const legacyPerms = ['call_centre_view', 'call_centre_manage'];
-      const migrated = migrateToPermissionsSchema(legacyPerms as any);
+      const migrated = migrateToPermissionsSchema(legacyPerms);
 
       expect(migrated.studios.enabled).toBe(true);
       expect(migrated.studios.features.callCentre.view).toBe(true);
@@ -252,7 +289,7 @@ describe('permissions-engine', () => {
           enabled: true,
           features: {
             messaging: { view: true, create: false, edit: false, delete: false },
-          } as any,
+          },
         },
       };
 

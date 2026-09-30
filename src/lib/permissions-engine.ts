@@ -62,13 +62,15 @@ export function evaluatePermission(
 }
 
 /**
- * Returns a blank schema with all sections and features disabled.
+ * Returns a blank schema with all 6 sections and features disabled.
  */
 export function getBlankPermissions(): PermissionsSchema {
   return {
     operations: { enabled: false, features: {} },
     finance: { enabled: false, features: {} },
     studios: { enabled: false, features: {} },
+    social: { enabled: false, features: {} },
+    workforce: { enabled: false, features: {} },
     management: { enabled: false, features: {} },
   };
 }
@@ -82,14 +84,17 @@ export function getFullAdminPermissions(): PermissionsSchema {
     operations: {
       enabled: true,
       features: {
-        dashboard: { view: true },
+        dashboard: { view: true, edit: true },
         campuses: { view: true, create: true, edit: true, delete: true },
+        leadIntelligence: { view: true },
         pipeline: { view: true, create: true, edit: true, delete: true },
         tasks: { view: true, create: true, edit: true, delete: true },
         meetings: { view: true, create: true, edit: true, delete: true },
         automations: { view: true, create: true, edit: true, delete: true },
         intelligence: { view: true },
+        salesEffort: { view: true },
         quickNotes: { view: true, create: true, edit: true, delete: true },
+        knowledgeGraph: { view: true },
       },
     },
     finance: {
@@ -108,6 +113,8 @@ export function getFullAdminPermissions(): PermissionsSchema {
         publicPortals: { view: true, create: true, edit: true, delete: true },
         landingPages: { view: true, create: true, edit: true, delete: true },
         media: { view: true, create: true, edit: true, delete: true },
+        flipbooks: { view: true, create: true, edit: true, delete: true },
+        thumbnails: { view: true, create: true, edit: true, delete: true },
         surveys: { view: true, create: true, edit: true, delete: true },
         docSigning: { view: true, create: true, edit: true, delete: true },
         messaging: { view: true, create: true, edit: true, delete: true },
@@ -119,13 +126,43 @@ export function getFullAdminPermissions(): PermissionsSchema {
         socialIntelligence: { view: true, create: true, edit: true, delete: true },
       },
     },
+    social: {
+      enabled: true,
+      features: {
+        dashboard: { view: true },
+        composer: { view: true, create: true, edit: true, delete: true },
+        calendar: { view: true, create: true, edit: true },
+        inbox: { view: true, create: true, edit: true, delete: true },
+        accounts: { view: true, create: true, edit: true, delete: true },
+      },
+    },
+    workforce: {
+      enabled: true,
+      features: {
+        intelligence: { view: true },
+        users: { view: true, create: true, edit: true, delete: true },
+        onboarding: { view: true, create: true, edit: true, delete: true },
+        commandCenter: { view: true, edit: true },
+        advisor: { view: true, edit: true },
+        governance: { view: true, edit: true },
+        crmWorkload: { view: true, edit: true },
+        enterpriseIdentity: { view: true, edit: true },
+        roles: { view: true, edit: true },
+      },
+    },
     management: {
       enabled: true,
       features: {
         activities: { view: true },
-        users: { view: true, create: true, edit: true, delete: true },
+        leadScores: { view: true, edit: true },
+        messagingSettings: { view: true, edit: true },
         fields: { view: true, create: true, edit: true, delete: true },
+        aiPrompts: { view: true, create: true, edit: true, delete: true },
+        effortRules: { view: true, edit: true },
         systemSettings: { view: true, edit: true },
+        developerApi: { view: true, edit: true },
+        webhooks: { view: true, create: true, edit: true, delete: true },
+        users: { view: true, create: true, edit: true, delete: true },
       },
     },
   };
@@ -270,7 +307,14 @@ export function normalizePermissionsSchema(raw: unknown): PermissionsSchema {
   }
 
   const rawObj = raw as Record<string, unknown>;
-  const sections: (keyof PermissionsSchema)[] = ['operations', 'finance', 'studios', 'management'];
+  const sections: (keyof PermissionsSchema)[] = [
+    'operations',
+    'finance',
+    'studios',
+    'social',
+    'workforce',
+    'management',
+  ];
 
   for (const sectionKey of sections) {
     const rawSection = rawObj[sectionKey];
@@ -300,6 +344,62 @@ export function normalizePermissionsSchema(raw: unknown): PermissionsSchema {
   // If studios is enabled and callCentre is not explicitly provided in the source schema, default view to true.
   if (base.studios.enabled && !base.studios.features.callCentre) {
     base.studios.features.callCentre = { view: true, create: false, edit: false, delete: false };
+  }
+
+  // ARCHITECTURAL GUIDANCE FOR MAINTAINERS (Rule 10 & Failure Mode FM-RBAC-01/02):
+  // Backward compatibility migration for Social Hub:
+  // If studios.socialIntelligence has permissions, backfill into social section
+  if (base.studios.enabled && base.studios.features.socialIntelligence?.view) {
+    if (!base.social.enabled) {
+      base.social.enabled = true;
+    }
+    if (!base.social.features.dashboard) {
+      base.social.features.dashboard = { view: true };
+    }
+    if (!base.social.features.composer) {
+      base.social.features.composer = { ...base.studios.features.socialIntelligence };
+    }
+    if (!base.social.features.calendar) {
+      base.social.features.calendar = {
+        view: true,
+        create: Boolean(base.studios.features.socialIntelligence.create),
+        edit: Boolean(base.studios.features.socialIntelligence.edit),
+      };
+    }
+    if (!base.social.features.inbox) {
+      base.social.features.inbox = { ...base.studios.features.socialIntelligence };
+    }
+    if (!base.social.features.accounts) {
+      base.social.features.accounts = { ...base.studios.features.socialIntelligence };
+    }
+  }
+
+  // Backward compatibility migration for Workforce:
+  // If management.users has permissions, backfill into workforce section
+  if (base.management.enabled && base.management.features.users) {
+    if (!base.workforce.enabled) {
+      base.workforce.enabled = true;
+    }
+    if (!base.workforce.features.users) {
+      base.workforce.features.users = { ...base.management.features.users };
+    }
+    if (!base.workforce.features.intelligence) {
+      base.workforce.features.intelligence = { view: Boolean(base.management.features.users.view) };
+    }
+    if (!base.workforce.features.onboarding) {
+      base.workforce.features.onboarding = { ...base.management.features.users };
+    }
+  }
+
+  // Backward compatibility migration for Studios sub-tools:
+  // If media is enabled, seed flipbooks and thumbnails
+  if (base.studios.enabled && base.studios.features.media?.view) {
+    if (!base.studios.features.flipbooks) {
+      base.studios.features.flipbooks = { ...base.studios.features.media };
+    }
+    if (!base.studios.features.thumbnails) {
+      base.studios.features.thumbnails = { ...base.studios.features.media };
+    }
   }
 
   return base;
@@ -345,6 +445,13 @@ export function flattenPermissionsSchema(schema: PermissionsSchema): string[] {
     if (std.tags?.create || std.tags?.edit || std.tags?.delete) perms.add('tags_manage');
     if (std.callCentre?.view) perms.add('call_centre_view');
     if (std.callCentre?.create || std.callCentre?.edit || std.callCentre?.delete) perms.add('call_centre_manage');
+  }
+
+  // Workforce
+  if (normalized.workforce.enabled) {
+    const wf = normalized.workforce.features;
+    if (wf.users?.view) perms.add('users_view');
+    if (wf.users?.create || wf.users?.edit || wf.users?.delete) perms.add('users_manage');
   }
 
   // Management
@@ -429,6 +536,8 @@ export function migrateToPermissionsSchema(legacyPermissions: string[]): Permiss
     schema.studios.features.publicPortals = { view: true, create: canEditStudios, edit: canEditStudios, delete: false };
     schema.studios.features.landingPages = { view: true, create: canEditStudios, edit: canEditStudios, delete: false };
     schema.studios.features.media = { view: true, create: canEditStudios, edit: canEditStudios, delete: false };
+    schema.studios.features.flipbooks = { view: true, create: canEditStudios, edit: canEditStudios, delete: false };
+    schema.studios.features.thumbnails = { view: true, create: canEditStudios, edit: canEditStudios, delete: false };
     schema.studios.features.surveys = { view: true, create: canEditStudios, edit: canEditStudios, delete: false };
     schema.studios.features.messaging = { view: true, create: canEditStudios, edit: canEditStudios, delete: false };
     schema.studios.features.qrStudio = { view: true, create: canEditStudios, edit: canEditStudios, delete: false };
@@ -449,20 +558,29 @@ export function migrateToPermissionsSchema(legacyPermissions: string[]): Permiss
     };
   }
 
-  // Management
+  // Management & Workforce
   if (perms.has('activities_view')) {
     schema.management.enabled = true;
     schema.management.features.activities = { view: true };
   }
   if (perms.has('users_view') || perms.has('users_manage') || perms.has('management_users')) {
     schema.management.enabled = true;
+    schema.workforce.enabled = true;
     const canManageUsers = perms.has('users_manage') || perms.has('management_users');
-    schema.management.features.users = {
+    schema.workforce.features.users = {
       view: true,
       create: canManageUsers,
       edit: canManageUsers,
       delete: canManageUsers,
     };
+    schema.workforce.features.intelligence = { view: true };
+    schema.workforce.features.onboarding = {
+      view: true,
+      create: canManageUsers,
+      edit: canManageUsers,
+      delete: canManageUsers,
+    };
+    schema.management.features.users = { ...schema.workforce.features.users };
   }
   if (perms.has('fields_view') || perms.has('fields_manage')) {
     schema.management.enabled = true;
