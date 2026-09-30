@@ -45,12 +45,14 @@ import {
   getAgingReportAction,
   getTaxAuditReportAction
 } from '@/lib/reporting-actions';
-import { 
-  RevenueReportRow, 
-  AgingReportRow, 
-  TaxAuditReportRow 
+// Type-only imports: both services use firebase-admin, and a value import would pull it into
+// this client bundle (the build then fails on fs/net/tls).
+import type {
+  RevenueReportRow,
+  AgingReportRow,
+  TaxAuditReportRow
 } from '@/lib/services/modular-reporting-service';
-import { MonthlyCashflowPoint } from '@/lib/services/finance-reporting-service';
+import type { MonthlyCashflowPoint } from '@/lib/services/finance-reporting-service';
 import { ReportExportService } from '@/lib/services/report-export-service';
 import { ModularReportStudio, ReportTabConfig } from '@/components/finance/reports/ModularReportStudio';
 import { ReportMetricsGrid } from '@/components/finance/reports/ReportMetricsGrid';
