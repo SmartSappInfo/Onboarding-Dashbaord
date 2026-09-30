@@ -93,15 +93,6 @@ const nextConfig: NextConfig = {
     '@genkit-ai/ai',
     'genkit',
   ],
-  turbopack: {
-    resolveAlias: {
-      fs: { browser: './src/lib/empty-stub.ts' },
-      net: { browser: './src/lib/empty-stub.ts' },
-      tls: { browser: './src/lib/empty-stub.ts' },
-      child_process: { browser: './src/lib/empty-stub.ts' },
-      http2: { browser: './src/lib/empty-stub.ts' },
-    },
-  },
   experimental: {
     // Single-thread build worker on Vercel or memory-constrained CI to eliminate OOM SIGKILL
     cpus: process.env.BUILD_CPUS
