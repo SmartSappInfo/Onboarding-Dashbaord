@@ -231,7 +231,10 @@ export default function OrganizationRegionalTab({ organization }: OrganizationRe
                     },
                     defaultCountryCode,
                     defaultRoleId,
-                    departments: departments.map(d => d.name),
+                    // `departments` is deliberately not sent. The server keeps
+                    // organizations/{id}.departments in step with the departments collection
+                    // on every add, rename and delete. Sending this tab's list could wipe the
+                    // legacy names of an organization with no canonical departments yet.
                 }
             );
 
