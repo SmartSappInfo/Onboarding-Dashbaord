@@ -124,7 +124,7 @@ export function EntityCombobox({
           role="combobox"
           aria-expanded={open}
           disabled={disabled}
-          className={cn('h-11 w-full justify-between rounded-xl border-border bg-background font-medium', className)}
+          className={cn('h-11 w-full justify-between rounded-xl border-input bg-background/50 hover:border-foreground/35 font-medium transition-all shadow-xs', className)}
         >
           <span className="truncate">{selectedLabel}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />

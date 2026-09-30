@@ -454,14 +454,14 @@ export default function EditPdfPage() {
                             {step === 1 && (
                                 <motion.div key="step1" {...stepTransition}>
  <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
- <Card className="xl:col-span-2 shadow-sm border-none ring-1 ring-border text-left">
+                                        <Card className="xl:col-span-2 shadow-sm border border-border text-left">
  <CardHeader className="bg-muted/30 border-b pb-6">
  <div className="flex items-center gap-3">
  <div className="p-2 bg-primary/10 rounded-xl"><FileText className="h-5 w-5 text-primary" /></div>
  <div><CardTitle className="text-lg font-semibold tracking-tight">Document Identity</CardTitle><CardDescription className="text-xs font-medium">Naming and hub association details.</CardDescription></div>
                                                 </div>
                                             </CardHeader>
- <CardContent className="p-6 space-y-8 bg-background">
+                                            <CardContent className="p-6 space-y-8">
                                                 <Controller name="workspaceIds" control={form.control} render={({ field }) => (
  <div className="space-y-4">
  <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2"><Layout className="h-3 w-3" /> Shared Context (Workspaces)</Label>
@@ -471,10 +471,10 @@ export default function EditPdfPage() {
                                                 )} />
                                                 <Separator />
                                                 <Controller name="name" control={form.control} render={({ field }) => (
- <div className="space-y-2"><Label className="text-[10px] font-semibold text-muted-foreground ml-1">Internal Title</Label><Input {...field} placeholder="e.g. 2024 Enrollment Form" className="h-12 rounded-xl bg-muted/20 border-none shadow-none font-bold text-lg" /></div>
+ <div className="space-y-2"><Label className="text-[10px] font-semibold text-muted-foreground ml-1">Internal Title</Label><Input {...field} placeholder="e.g. 2024 Enrollment Form" className="h-12 rounded-xl font-bold text-lg" /></div>
                                                 )} />
                                                 <Controller name="publicTitle" control={form.control} render={({ field }) => (
- <div className="space-y-2"><Label className="text-[10px] font-semibold text-muted-foreground ml-1">User-Facing Header</Label><Input {...field} placeholder="e.g. School Admission Application" className="h-12 rounded-xl bg-muted/20 border-none shadow-none font-bold text-lg" /></div>
+ <div className="space-y-2"><Label className="text-[10px] font-semibold text-muted-foreground ml-1">User-Facing Header</Label><Input {...field} placeholder="e.g. School Admission Application" className="h-12 rounded-xl font-bold text-lg" /></div>
                                                 )} />
                                                 <Controller name="entityId" control={form.control} render={({ field }) => (
                                                     <div className="space-y-2">
@@ -498,9 +498,9 @@ export default function EditPdfPage() {
                                             </CardContent>
                                         </Card>
  <div className="space-y-8 text-left">
- <Card className="shadow-sm border-none ring-1 ring-border">
+ <Card className="shadow-sm border border-border">
  <CardHeader className="bg-muted/30 border-b pb-6 px-6"><div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><Palette className="h-5 w-5 text-primary" /></div><div><CardTitle className="text-lg font-semibold tracking-tight">Visual Identity</CardTitle></div></div></CardHeader>
- <CardContent className="p-6 space-y-8 bg-background">
+ <CardContent className="p-6 space-y-8">
  <Controller name="logoUrl" control={form.control} render={({ field }) => (<div className="space-y-2"><Label className="text-[10px] font-semibold text-muted-foreground ml-1">Brand Logo</Label><MediaSelect {...field} filterType="image" className="rounded-2xl" /></div>)} />
                                                 </CardContent>
                                             </Card>
@@ -510,7 +510,7 @@ export default function EditPdfPage() {
                             )}
                             {step === 2 && (
  <motion.div key="step2" {...stepTransition} className="h-full">
- <div className="h-[80vh] border-none ring-1 ring-border rounded-[2rem] overflow-hidden shadow-2xl bg-background">
+ <div className="h-[80vh] border border-border rounded-[2rem] overflow-hidden shadow-2xl bg-card">
                                         <FieldMapper pdf={livePdf} fields={fields} setFields={setFields} namingFieldId={namingFieldId} setNamingFieldId={setNamingFieldId} onSave={() => {}} isSaving={isSaving} onPreview={() => setIsPreviewOpen(true)} isStatusChanging={isStatusChanging} onStatusChange={(s) => setValue('status', s, { shouldDirty: true })} onDetect={() => fields.length > 0 ? setIsDetectionModeOpen(true) : handleDetectClick('overwrite')} isDetecting={isDetecting} undo={handleUndo} redo={handleRedo} canUndo={canUndo} canRedo={canRedo} password={watch('password')} setPassword={(val) => setValue('password', val, { shouldDirty: true })} passwordProtected={watch('passwordProtected')} setPasswordProtected={(val) => setValue('passwordProtected', val, { shouldDirty: true })} entity={selectedSchool ?? undefined} />
                                     </div>
                                 </motion.div>
@@ -536,14 +536,14 @@ export default function EditPdfPage() {
  </div>
  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start text-left">
  <div className="space-y-8">
- <Card className="shadow-sm overflow-hidden border-none ring-1 ring-border">
+ <Card className="shadow-sm overflow-hidden border border-border">
  <CardHeader className="bg-muted/30 border-b pb-6"><div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><Globe className="h-5 w-5 text-primary" /></div><div><CardTitle className="text-lg font-semibold tracking-tight">Finalize & Integrate</CardTitle></div></div></CardHeader>
  <CardContent className="p-0">
- <div className="p-6 bg-background">
+ <div className="p-6">
  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                             <Controller name="status" control={form.control} render={({ field }) => (
  <div className="space-y-2"><Label className="text-[10px] font-semibold text-muted-foreground ml-1">Status</Label><Select onValueChange={field.onChange} value={field.value}>
- <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none font-bold">
+ <SelectTrigger className="h-11 rounded-xl font-bold">
                                                                         <SelectValue />
                                                                     </SelectTrigger>
  <SelectContent className="rounded-xl">
@@ -554,12 +554,12 @@ export default function EditPdfPage() {
                                                                 </Select></div>
                                                             )} />
                                                             <Controller name="slug" control={form.control} render={({ field }) => (
- <div className="space-y-2"><Label className="text-[10px] font-semibold text-muted-foreground ml-1">URL Backhalf</Label><div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 transition-all shadow-inner"><div className="bg-muted px-3 flex items-center text-[10px] font-semibold tracking-tighter text-muted-foreground/60 border-r">/forms/</div><Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-bold" /></div></div>
+ <div className="space-y-2"><Label className="text-[10px] font-semibold text-muted-foreground ml-1">URL Backhalf</Label><div className="flex h-11 border border-input rounded-xl overflow-hidden bg-background/50 focus-within:ring-2 focus-within:ring-primary/25 focus-within:border-primary transition-all shadow-xs"><div className="bg-muted px-3 flex items-center text-[10px] font-semibold tracking-tighter text-muted-foreground/80 border-r border-input">/forms/</div><Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-bold" /></div></div>
                                                             )} />
                                                         </div>
                                                     </div>
  <div className="px-6 pb-6 space-y-4">
- <div className={cn("rounded-2xl border-2 transition-all duration-300", watch('isContractDocument') ? "border-primary/20 bg-primary/5" : "border-border/50 bg-background")}><div className="flex items-center justify-between p-4"><div className="flex items-center gap-3"><div className={cn("p-2 rounded-lg", watch('isContractDocument') ? "bg-primary text-white" : "bg-muted text-muted-foreground")}><ShieldCheck className="h-4 w-4" /></div><div className="space-y-0.5"><Label className="text-sm font-semibold tracking-tight">Contract Template</Label><p className="text-[10px] text-muted-foreground font-medium">Mark as a binding agreement</p></div></div><Controller name="isContractDocument" control={form.control} render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />} /></div></div>
+ <div className={cn("rounded-2xl border-2 transition-all duration-300 shadow-xs", watch('isContractDocument') ? "border-primary/40 bg-primary/5" : "border-input bg-background/50")}><div className="flex items-center justify-between p-4"><div className="flex items-center gap-3"><div className={cn("p-2 rounded-lg", watch('isContractDocument') ? "bg-primary text-white" : "bg-muted text-muted-foreground")}><ShieldCheck className="h-4 w-4" /></div><div className="space-y-0.5"><Label className="text-sm font-semibold tracking-tight">Contract Template</Label><p className="text-[10px] text-muted-foreground font-medium">Mark as a binding agreement</p></div></div><Controller name="isContractDocument" control={form.control} render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />} /></div></div>
                                                         <WebhookManager />
                                                     </div>
                                                 </CardContent>
