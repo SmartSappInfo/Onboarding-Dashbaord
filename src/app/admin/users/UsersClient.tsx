@@ -277,9 +277,13 @@ export default function UsersClient() {
         if (memStatus !== advancedFilters.status) return false;
       }
 
-      // 2. Department Filter
-      if (advancedFilters.departmentId && u.department !== advancedFilters.departmentId) {
-        return false;
+      // 2. Department Filter. The drawer stores a canonical department id, or a plain name for
+      // legacy string departments and saved views. Match on id, and on name for profiles that
+      // predate department ids.
+      if (advancedFilters.departmentId) {
+        const wanted = advancedFilters.departmentId;
+        const wantedName = canonicalDepartments.find((d) => d.id === wanted)?.name ?? wanted;
+        if (u.departmentId !== wanted && u.department !== wantedName) return false;
       }
 
       // 3. Workspace Filter
@@ -308,7 +312,7 @@ export default function UsersClient() {
         (u.phone && u.phone.includes(q))
       );
     });
-  }, [users, selectedStatus, advancedFilters, searchQuery]);
+  }, [users, selectedStatus, advancedFilters, searchQuery, canonicalDepartments]);
 
   const allRolesList = roles || [];
 
