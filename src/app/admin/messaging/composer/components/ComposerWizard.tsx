@@ -2331,31 +2331,31 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
 
             {/* Summary dialog */}
             <AlertDialog open={showSummaryDialog} onOpenChange={setShowSummaryDialog}>
-                <AlertDialogContent className="max-w-lg rounded-2xl sm:rounded-3xl border border-white/10 bg-slate-950 text-slate-100 shadow-2xl p-6 overflow-hidden">
+                <AlertDialogContent className="max-w-lg rounded-2xl sm:rounded-3xl border border-border bg-card text-card-foreground shadow-2xl p-6 overflow-hidden">
                     <AlertDialogHeader className="space-y-1.5 text-left">
                         <div className="flex items-center justify-between">
-                            <AlertDialogTitle className="flex items-center gap-2.5 text-base sm:text-lg font-bold text-slate-100">
+                            <AlertDialogTitle className="flex items-center gap-2.5 text-base sm:text-lg font-bold text-foreground">
                                 {sendSummary?.totalFailed === 0 ? (
                                     <>
                                         <div className="h-8 w-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0">
-                                            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                                            <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                                         </div>
                                         <span>Send Complete</span>
                                     </>
                                 ) : (
                                     <>
                                         <div className="h-8 w-8 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
-                                            <AlertCircle className="h-4 w-4 text-amber-400" />
+                                            <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                                         </div>
                                         <span>Completed with Errors</span>
                                     </>
                                 )}
                             </AlertDialogTitle>
-                            <Badge variant="outline" className="border-white/10 bg-slate-900 text-[10px] font-semibold text-slate-300 uppercase tracking-wider px-2 py-0.5">
+                            <Badge variant="outline" className="border-border bg-muted/60 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-0.5">
                                 {watchedChannel}
                             </Badge>
                         </div>
-                        <AlertDialogDescription className="text-xs text-slate-400">
+                        <AlertDialogDescription className="text-xs text-muted-foreground">
                             {sendSummary?.totalFailed === 0
                                 ? 'All outbound messages have been successfully processed.'
                                 : 'Some recipients encountered delivery errors during dispatch.'}
@@ -2365,61 +2365,61 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                     {sendSummary && (
                         <div className="space-y-4 py-2 text-left">
                             <div className="grid grid-cols-2 gap-3">
-                                <div className="p-3.5 rounded-2xl bg-emerald-950/30 border border-emerald-500/25 flex items-center gap-3">
-                                    <div className="h-9 w-9 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
+                                <div className="p-3.5 rounded-2xl bg-emerald-500/10 dark:bg-emerald-950/30 border border-emerald-500/20 dark:border-emerald-500/25 flex items-center gap-3">
+                                    <div className="h-9 w-9 rounded-xl bg-emerald-500/15 dark:bg-emerald-500/20 border border-emerald-500/25 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
                                         <Check className="h-4 w-4" />
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-bold text-emerald-400/90 tracking-wider uppercase">Sent</p>
-                                        <p className="text-2xl font-black text-emerald-300 tabular-nums leading-none mt-0.5">{sendSummary.totalSent}</p>
+                                        <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 tracking-wider uppercase">Sent</p>
+                                        <p className="text-2xl font-black text-emerald-700 dark:text-emerald-300 tabular-nums leading-none mt-0.5">{sendSummary.totalSent}</p>
                                     </div>
                                 </div>
-                                <div className="p-3.5 rounded-2xl bg-rose-950/30 border border-rose-500/25 flex items-center gap-3">
-                                    <div className="h-9 w-9 rounded-xl bg-rose-500/20 border border-rose-500/30 text-rose-400 flex items-center justify-center shrink-0">
+                                <div className="p-3.5 rounded-2xl bg-rose-500/10 dark:bg-rose-950/30 border border-rose-500/20 dark:border-rose-500/25 flex items-center gap-3">
+                                    <div className="h-9 w-9 rounded-xl bg-rose-500/15 dark:bg-rose-500/20 border border-rose-500/25 dark:border-rose-500/30 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
                                         <X className="h-4 w-4" />
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-bold text-rose-400/90 tracking-wider uppercase">Failed</p>
-                                        <p className="text-2xl font-black text-rose-300 tabular-nums leading-none mt-0.5">{sendSummary.totalFailed}</p>
+                                        <p className="text-[10px] font-bold text-rose-700 dark:text-rose-400 tracking-wider uppercase">Failed</p>
+                                        <p className="text-2xl font-black text-rose-700 dark:text-rose-300 tabular-nums leading-none mt-0.5">{sendSummary.totalFailed}</p>
                                     </div>
                                 </div>
                             </div>
 
                             {sendSummary.totalFailed === 0 && (
-                                <div className="p-4 rounded-2xl bg-emerald-950/20 border border-emerald-500/20 text-center space-y-1 my-1">
-                                    <CheckCircle2 className="h-7 w-7 text-emerald-400 mx-auto" />
-                                    <p className="text-xs font-bold text-emerald-300">All messages dispatched successfully!</p>
-                                    <p className="text-[11px] text-slate-400">Zero delivery failures were recorded for this dispatch batch.</p>
+                                <div className="p-4 rounded-2xl bg-emerald-500/10 dark:bg-emerald-950/20 border border-emerald-500/20 text-center space-y-1 my-1">
+                                    <CheckCircle2 className="h-7 w-7 text-emerald-600 dark:text-emerald-400 mx-auto" />
+                                    <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300">All messages dispatched successfully!</p>
+                                    <p className="text-[11px] text-muted-foreground">Zero delivery failures were recorded for this dispatch batch.</p>
                                 </div>
                             )}
                             
                             {sendSummary.totalFailed > 0 && sendSummary.failedEntities && (
                                 <div className="space-y-2.5">
                                     <div className="flex items-center justify-between">
-                                        <Label className="text-xs font-bold text-rose-400 tracking-wider uppercase flex items-center gap-1.5">
-                                            <AlertCircle className="h-3.5 w-3.5 text-rose-400" />
+                                        <Label className="text-xs font-bold text-rose-600 dark:text-rose-400 tracking-wider uppercase flex items-center gap-1.5">
+                                            <AlertCircle className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
                                             <span>Error Logs</span>
-                                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-mono">
+                                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-rose-500/15 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300 font-mono">
                                                 {sendSummary.failedEntities.length}
                                             </span>
                                         </Label>
 
                                         {/* Export buttons */}
                                         <div className="flex items-center gap-1.5">
-                                            <span className="text-[10px] text-slate-400 font-medium mr-0.5 hidden xs:inline">Export:</span>
+                                            <span className="text-[10px] text-muted-foreground font-medium mr-0.5 hidden xs:inline">Export:</span>
                                             <Button
                                                 type="button"
                                                 size="sm"
                                                 variant="outline"
                                                 disabled={isExporting}
                                                 onClick={handleExportPDF}
-                                                className="h-8 sm:h-7 px-2.5 text-xs sm:text-[11px] font-semibold gap-1.5 rounded-lg border-white/10 bg-slate-900 text-slate-200 hover:bg-slate-800 hover:text-white hover:border-rose-500/40 active:scale-[0.97] transition-all"
+                                                className="h-8 sm:h-7 px-2.5 text-xs sm:text-[11px] font-semibold gap-1.5 rounded-lg border border-border bg-card text-foreground hover:bg-muted active:scale-[0.97] transition-all shadow-xs"
                                                 title="Export failed dispatches as PDF"
                                             >
                                                 {isExporting && exportingType === 'pdf' ? (
-                                                    <Loader2 className="h-3 w-3 animate-spin text-rose-400" />
+                                                    <Loader2 className="h-3 w-3 animate-spin text-rose-600 dark:text-rose-400" />
                                                 ) : (
-                                                    <FileText className="h-3 w-3 text-rose-400" />
+                                                    <FileText className="h-3 w-3 text-rose-600 dark:text-rose-400" />
                                                 )}
                                                 <span>PDF</span>
                                             </Button>
@@ -2429,13 +2429,13 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                                 variant="outline"
                                                 disabled={isExporting}
                                                 onClick={handleExportCSV}
-                                                className="h-8 sm:h-7 px-2.5 text-xs sm:text-[11px] font-semibold gap-1.5 rounded-lg border-white/10 bg-slate-900 text-slate-200 hover:bg-slate-800 hover:text-white hover:border-emerald-500/40 active:scale-[0.97] transition-all"
+                                                className="h-8 sm:h-7 px-2.5 text-xs sm:text-[11px] font-semibold gap-1.5 rounded-lg border border-border bg-card text-foreground hover:bg-muted active:scale-[0.97] transition-all shadow-xs"
                                                 title="Export failed dispatches as CSV"
                                             >
                                                 {isExporting && exportingType === 'csv' ? (
-                                                    <Loader2 className="h-3 w-3 animate-spin text-emerald-400" />
+                                                    <Loader2 className="h-3 w-3 animate-spin text-emerald-600 dark:text-emerald-400" />
                                                 ) : (
-                                                    <Table className="h-3 w-3 text-emerald-400" />
+                                                    <Table className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
                                                 )}
                                                 <span>CSV</span>
                                             </Button>
@@ -2445,37 +2445,37 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                                 variant="outline"
                                                 disabled={isExporting}
                                                 onClick={handleExportJSON}
-                                                className="h-8 sm:h-7 px-2.5 text-xs sm:text-[11px] font-semibold gap-1.5 rounded-lg border-white/10 bg-slate-900 text-slate-200 hover:bg-slate-800 hover:text-white hover:border-amber-500/40 active:scale-[0.97] transition-all"
+                                                className="h-8 sm:h-7 px-2.5 text-xs sm:text-[11px] font-semibold gap-1.5 rounded-lg border border-border bg-card text-foreground hover:bg-muted active:scale-[0.97] transition-all shadow-xs"
                                                 title="Export failed dispatches as JSON"
                                             >
                                                 {isExporting && exportingType === 'json' ? (
-                                                    <Loader2 className="h-3 w-3 animate-spin text-amber-400" />
+                                                    <Loader2 className="h-3 w-3 animate-spin text-amber-600 dark:text-amber-400" />
                                                 ) : (
-                                                    <Code className="h-3 w-3 text-amber-400" />
+                                                    <Code className="h-3 w-3 text-amber-600 dark:text-amber-400" />
                                                 )}
                                                 <span>JSON</span>
                                             </Button>
                                         </div>
                                     </div>
 
-                                    <div className="max-h-44 overflow-y-auto rounded-2xl border border-rose-500/20 bg-slate-900/60 p-2 space-y-1.5">
+                                    <div className="max-h-44 overflow-y-auto rounded-2xl border border-border/80 bg-muted/30 p-2 space-y-1.5">
                                         <div className="space-y-1.5">
                                             {sendSummary.failedEntities.map((f: FailedSendEntity, i: number) => (
-                                                <div key={i} className="p-2.5 rounded-xl bg-slate-950/80 border border-white/5 hover:border-rose-500/25 space-y-1 transition-colors">
+                                                <div key={i} className="p-2.5 rounded-xl bg-card border border-border/70 hover:border-rose-500/30 space-y-1 transition-colors shadow-xs">
                                                     <div className="flex items-center justify-between gap-2">
                                                         <div className="flex items-center gap-1.5 min-w-0">
-                                                            <Building className="h-3 w-3 text-rose-400 shrink-0" />
-                                                            <span className="text-xs font-semibold text-slate-200 truncate">
+                                                            <Building className="h-3 w-3 text-rose-600 dark:text-rose-400 shrink-0" />
+                                                            <span className="text-xs font-semibold text-foreground truncate">
                                                                 {f.entityName}{f.contactName && f.contactName !== f.entityName ? ` — ${f.contactName}` : ''}
                                                             </span>
                                                         </div>
                                                         {f.contactDetail ? (
-                                                            <span className="text-[10px] font-mono text-slate-400 shrink-0 bg-slate-900 px-1.5 py-0.5 rounded border border-white/5">
+                                                            <span className="text-[10px] font-mono text-muted-foreground shrink-0 bg-muted px-1.5 py-0.5 rounded border border-border/60">
                                                                 {f.contactDetail}
                                                             </span>
                                                         ) : null}
                                                     </div>
-                                                    <p className="text-[11px] text-rose-300/90 pl-4.5 break-words font-medium leading-relaxed">
+                                                    <p className="text-[11px] text-rose-600 dark:text-rose-300 pl-4.5 break-words font-medium leading-relaxed">
                                                         {f.error}
                                                     </p>
                                                 </div>
@@ -2486,7 +2486,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                     <Button 
                                         type="button"
                                         variant="outline" 
-                                        className="w-full h-10 rounded-xl font-bold border border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 hover:text-rose-200 active:scale-[0.97] gap-2 text-xs transition-all shadow-sm"
+                                        className="w-full h-10 rounded-xl font-bold border border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300 hover:bg-rose-500/20 hover:text-rose-800 dark:hover:text-rose-200 active:scale-[0.97] gap-2 text-xs transition-all shadow-xs"
                                         onClick={() => {
                                             const failedIds = sendSummary.failedEntities?.map(f => f.entityId).filter(Boolean) as string[];
                                             setAudienceSource('individual');
@@ -2496,19 +2496,19 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                             toast({ title: 'Retry prepared', description: `${failedIds.length} entities selected for retry.` });
                                         }}
                                     >
-                                        <TrendingUp className="h-3.5 w-3.5 text-rose-400" /> Retry Failed Entities
+                                        <TrendingUp className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" /> Retry Failed Entities
                                     </Button>
                                 </div>
                             )}
                         </div>
                     )}
-                    <AlertDialogFooter className="bg-slate-900/80 -mx-6 -mb-6 p-4 border-t border-white/10 flex sm:justify-end gap-2">
+                    <AlertDialogFooter className="bg-muted/30 -mx-6 -mb-6 p-4 border-t border-border flex sm:justify-end gap-2">
                         <AlertDialogAction 
                             onClick={() => { 
                                 setShowSummaryDialog(false); 
                                 setSendSummary(null); 
                             }} 
-                            className="rounded-xl font-bold px-8 h-10 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg active:scale-[0.97] transition-all"
+                            className="rounded-xl font-bold px-8 h-10 bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs active:scale-[0.97] transition-all"
                         >
                             Close
                         </AlertDialogAction>
