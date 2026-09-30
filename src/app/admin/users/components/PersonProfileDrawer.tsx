@@ -36,7 +36,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { useConfirm } from '@/components/ui/confirm-dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
@@ -62,7 +62,7 @@ import {
   HelpCircle,
   ArrowRightLeft,
 } from 'lucide-react';
-import type { UserProfile, Role, Workspace, PersonDetailView, CrmWorkloadSummary, MemberRiskScore } from '@/lib/types';
+import type { UserProfile, Role, Workspace, PersonDetailView, CrmWorkloadSummary, MemberRiskScore, Department } from '@/lib/types';
 import {
   updatePersonProfileAction,
 } from '@/app/actions/identity-actions';
@@ -78,6 +78,7 @@ interface PersonProfileDrawerProps {
   user: UserProfile;
   roles: Role[];
   workspaces: Workspace[];
+  departments?: Department[] | Array<{ id: string; name: string; code?: string }>;
   people?: PersonDetailView[];
   onManageWorkspaces: (user: UserProfile) => void;
   onProfileUpdated?: (updated: UserProfile) => void;
@@ -98,12 +99,12 @@ export function PersonProfileDrawer({
   user,
   roles,
   workspaces,
+  departments = [],
   people = [],
   onManageWorkspaces,
   onProfileUpdated,
 }: PersonProfileDrawerProps) {
   const { toast } = useToast();
-  const confirm = useConfirm();
   const { user: authUser } = useUser();
   const { activeOrganizationId } = useTenant();
 
@@ -119,6 +120,7 @@ export function PersonProfileDrawer({
   const [displayName, setDisplayName] = React.useState(user.name || '');
   const [phone, setPhone] = React.useState(user.phone || '');
   const [department, setDepartment] = React.useState(user.department || '');
+  const [departmentId, setDepartmentId] = React.useState(user.departmentId || '');
   const [facilitatorRole, setFacilitatorRole] = React.useState(user.facilitatorRole || '');
 
   // CRM Workload State
@@ -176,12 +178,27 @@ export function PersonProfileDrawer({
     if (isOpen) {
       setDisplayName(user.name || '');
       setPhone(user.phone || '');
-      setDepartment(user.department || '');
       setFacilitatorRole(user.facilitatorRole || '');
       setActiveTab('overview');
       loadRiskScore();
+
+      let initDeptId = user.departmentId || '';
+      let initDeptName = user.department || '';
+
+      if (departments && departments.length > 0) {
+        if (initDeptId) {
+          const match = departments.find((d) => d.id === initDeptId);
+          if (match && !initDeptName) initDeptName = match.name;
+        } else if (initDeptName) {
+          const match = departments.find((d) => d.name.toLowerCase() === initDeptName.toLowerCase());
+          if (match) initDeptId = match.id;
+        }
+      }
+
+      setDepartment(initDeptName);
+      setDepartmentId(initDeptId);
     }
-  }, [user, isOpen, loadRiskScore]);
+  }, [user, isOpen, loadRiskScore, departments]);
 
   // Status mapping
   const statusBadge = React.useMemo(() => {
@@ -228,6 +245,7 @@ export function PersonProfileDrawer({
           displayName,
           phone,
           departmentName: department,
+          departmentId: departmentId || undefined,
           facilitatorRole,
         },
       });
@@ -486,12 +504,49 @@ export function PersonProfileDrawer({
                       </div>
                       <div className="space-y-1.5">
                         <Label className="text-xs font-medium">Department</Label>
-                        <Input
-                          value={department}
-                          onChange={(e) => setDepartment(e.target.value)}
-                          placeholder="e.g. Admissions, Sales"
-                          className="h-9 text-xs"
-                        />
+                        {departments && departments.length > 0 ? (
+                          <Select
+                            value={departmentId || department || undefined}
+                            onValueChange={(val) => {
+                              const match = departments.find((d) => d.id === val || d.name === val);
+                              if (match) {
+                                setDepartmentId(match.id);
+                                setDepartment(match.name);
+                              } else {
+                                setDepartment(val);
+                                setDepartmentId('');
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="h-9 min-h-[44px] text-xs">
+                              <SelectValue placeholder="Select Department" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {departments.map((d) => (
+                                <SelectItem key={d.id} value={d.id}>
+                                  <div className="flex items-center gap-2">
+                                    {d.code && (
+                                      <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
+                                        {d.code}
+                                      </span>
+                                    )}
+                                    <span>{d.name}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Input
+                            value={department}
+                            onChange={(e) => {
+                              setDepartment(e.target.value);
+                              setDepartmentId('');
+                            }}
+                            placeholder="e.g. Admissions, Sales"
+                            className="h-9 min-h-[44px] text-xs"
+                          />
+                        )}
                       </div>
                     </div>
                     <div className="space-y-1.5">

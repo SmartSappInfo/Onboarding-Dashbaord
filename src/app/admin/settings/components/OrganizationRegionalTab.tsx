@@ -1,9 +1,10 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
-import type { Organization } from '@/lib/types';
+import type { Organization, Department } from '@/lib/types';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { saveOrganizationAction } from '@/lib/organization-actions';
-import { Settings, Loader2, Save, X, ShieldCheck, RefreshCw } from 'lucide-react';
+import { createOrUpdateDepartmentAction, deleteDepartmentAction } from '@/app/actions/workforce-actions';
+import { Settings, Loader2, Save, X, ShieldCheck, RefreshCw, Building2, ExternalLink } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { getErrorMessage } from '@/lib/errors/report-error';
 import { reconcilePhoneHygieneAction } from '@/lib/phone-hygiene-actions';
@@ -74,12 +76,35 @@ export default function OrganizationRegionalTab({ organization }: OrganizationRe
     const [defaultRoleId, setDefaultRoleId] = React.useState(organization.defaultRoleId || '');
     
     const [roles, setRoles] = React.useState<{ id: string; name: string }[]>([]);
-    const [departments, setDepartments] = React.useState<string[]>(organization.departments && organization.departments.length > 0 ? organization.departments : ['General']);
+    const [departments, setDepartments] = React.useState<Department[]>([]);
+    const [isLoadingDepts, setIsLoadingDepts] = React.useState(true);
     const [newDept, setNewDept] = React.useState('');
+    const [isAddingDept, setIsAddingDept] = React.useState(false);
+    const [deletingDeptId, setDeletingDeptId] = React.useState<string | null>(null);
 
     const activeCountry = React.useMemo(() => {
         return COUNTRIES.find(c => c.code === defaultCountryCode) || { code: defaultCountryCode, name: defaultCountryCode, flag: '🌐', dial: '' };
     }, [defaultCountryCode]);
+
+    const loadDepartments = React.useCallback(async () => {
+        if (!firestore || !organization.id) return;
+        setIsLoadingDepts(true);
+        try {
+            const q = query(collection(firestore, 'departments'), where('organizationId', '==', organization.id));
+            const snap = await getDocs(q);
+            const list: Department[] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Department));
+            list.sort((a, b) => a.name.localeCompare(b.name));
+            setDepartments(list);
+        } catch (err) {
+            console.error('[OrganizationRegionalTab] Error loading canonical departments:', err);
+        } finally {
+            setIsLoadingDepts(false);
+        }
+    }, [firestore, organization.id]);
+
+    React.useEffect(() => {
+        loadDepartments();
+    }, [loadDepartments]);
 
     React.useEffect(() => {
         async function loadRoles() {
@@ -96,7 +121,7 @@ export default function OrganizationRegionalTab({ organization }: OrganizationRe
         loadRoles();
     }, [firestore, organization.id]);
 
-    const handleAddDepartment = () => {
+    const handleAddDepartment = async () => {
         const cleanDept = newDept.trim();
         if (!cleanDept) return;
 
@@ -105,17 +130,63 @@ export default function OrganizationRegionalTab({ organization }: OrganizationRe
             return;
         }
 
-        if (departments.some(d => d.toLowerCase() === cleanDept.toLowerCase())) {
+        if (departments.some(d => d.name.toLowerCase() === cleanDept.toLowerCase())) {
             toast({ variant: 'destructive', title: 'Duplicate Department', description: `Already exists.` });
             return;
         }
 
-        setDepartments([...departments, cleanDept]);
-        setNewDept('');
+        if (!user) return;
+        setIsAddingDept(true);
+        try {
+            const idToken = await user.getIdToken();
+            const code = cleanDept.substring(0, 4).toUpperCase();
+            const res = await createOrUpdateDepartmentAction({
+                idToken,
+                organizationId: organization.id,
+                data: {
+                    name: cleanDept,
+                    code,
+                }
+            });
+
+            if (res.success && res.department) {
+                toast({ title: 'Department Added', description: `${res.department.name} [${res.department.code}] added to organizational blueprint.` });
+                setNewDept('');
+                await loadDepartments();
+            } else {
+                throw new Error(res.error || 'Failed to add department');
+            }
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Error creating department';
+            toast({ variant: 'destructive', title: 'Could Not Add Department', description: msg });
+        } finally {
+            setIsAddingDept(false);
+        }
     };
 
-    const handleRemoveDepartment = (deptToRemove: string) => {
-        setDepartments(departments.filter(d => d !== deptToRemove));
+    const handleRemoveDepartment = async (dept: Department) => {
+        if (!user) return;
+        setDeletingDeptId(dept.id);
+        try {
+            const idToken = await user.getIdToken();
+            const res = await deleteDepartmentAction({
+                idToken,
+                organizationId: organization.id,
+                departmentId: dept.id,
+            });
+
+            if (res.success) {
+                toast({ title: 'Department Removed', description: `${dept.name} removed from organization.` });
+                await loadDepartments();
+            } else {
+                throw new Error(res.error || 'Failed to delete department');
+            }
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Error removing department';
+            toast({ variant: 'destructive', title: 'Cannot Delete Department', description: msg });
+        } finally {
+            setDeletingDeptId(null);
+        }
     };
 
     const handleReconcileHygiene = async () => {
@@ -160,7 +231,7 @@ export default function OrganizationRegionalTab({ organization }: OrganizationRe
                     },
                     defaultCountryCode,
                     defaultRoleId,
-                    departments: departments.length > 0 ? departments : ['General']
+                    departments: departments.map(d => d.name),
                 }
             );
 
@@ -275,7 +346,25 @@ export default function OrganizationRegionalTab({ organization }: OrganizationRe
                 <Separator className="opacity-50" />
 
                 <div className="space-y-4">
-                    <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Onboarding Departments</Label>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Onboarding Departments</Label>
+                            <p className="text-xs text-muted-foreground">Canonical departments selectable during onboarding and team assignments.</p>
+                        </div>
+                        <Button
+                            asChild
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs text-primary hover:text-primary/90 h-8 gap-1.5 font-medium shrink-0 active:scale-[0.97] transition-all"
+                        >
+                            <Link href="/admin/users?tab=teams">
+                                <Building2 className="w-3.5 h-3.5" />
+                                Manage in Users Hub
+                                <ExternalLink className="w-3 h-3 ml-0.5 opacity-70" />
+                            </Link>
+                        </Button>
+                    </div>
+
                     <div className="flex gap-2">
                         <Input
                             value={newDept}
@@ -287,35 +376,60 @@ export default function OrganizationRegionalTab({ organization }: OrganizationRe
                                 }
                             }}
                             placeholder="Add department (e.g. Sales, Marketing)..."
-                            className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4 flex-1 animate-none"
+                            disabled={isAddingDept}
+                            className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4 flex-1 animate-none text-sm"
                         />
                         <Button
                             type="button"
                             onClick={handleAddDepartment}
-                            className="h-11 rounded-xl font-semibold bg-primary text-white hover:bg-primary/90 px-5 shrink-0"
+                            disabled={isAddingDept || !newDept.trim()}
+                            className="h-11 rounded-xl font-semibold bg-primary text-white hover:bg-primary/90 px-5 shrink-0 min-h-[44px] active:scale-[0.97] transition-all"
                         >
-                            Add
+                            {isAddingDept ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add'}
                         </Button>
                     </div>
 
                     <div className="flex flex-wrap gap-2 p-4 rounded-2xl bg-muted/10 border border-border/50 min-h-[60px]">
-                        {departments.map((dept, idx) => (
-                            <Badge
-                                key={dept}
-                                variant="secondary"
-                                className="pl-3 pr-2 py-1 bg-muted/50 border border-border rounded-xl text-xs font-semibold flex items-center gap-1.5 group hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive transition-all animate-fade-in duration-300"
-                                style={{ animationDelay: `${idx * 40}ms` }}
-                            >
-                                {dept}
-                                <button
-                                    type="button"
-                                    onClick={() => handleRemoveDepartment(dept)}
-                                    className="w-4 h-4 rounded-full flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
+                        {isLoadingDepts ? (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                                <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                                Loading organizational departments...
+                            </div>
+                        ) : departments.length === 0 ? (
+                            <p className="text-xs text-muted-foreground py-2">No departments provisioned yet.</p>
+                        ) : (
+                            departments.map((dept, idx) => (
+                                <Badge
+                                    key={dept.id}
+                                    variant="secondary"
+                                    className="pl-2.5 pr-2 py-1 bg-muted/50 border border-border rounded-xl text-xs font-semibold flex items-center gap-1.5 group hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive transition-all"
+                                    style={{ animationDelay: `${idx * 40}ms` }}
                                 >
-                                    <X className="w-3 h-3" />
-                                </button>
-                            </Badge>
-                        ))}
+                                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                                        {dept.code}
+                                    </span>
+                                    <span>{dept.name}</span>
+                                    {dept.memberCount > 0 && (
+                                        <span className="text-[10px] text-muted-foreground font-normal">
+                                            ({dept.memberCount} {dept.memberCount === 1 ? 'member' : 'members'})
+                                        </span>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveDepartment(dept)}
+                                        disabled={deletingDeptId === dept.id}
+                                        title={dept.memberCount > 0 ? "Cannot delete department with active members" : `Remove ${dept.name}`}
+                                        className="w-4 h-4 rounded-full flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0 disabled:opacity-50"
+                                    >
+                                        {deletingDeptId === dept.id ? (
+                                            <Loader2 className="w-3 h-3 animate-spin" />
+                                        ) : (
+                                            <X className="w-3 h-3" />
+                                        )}
+                                    </button>
+                                </Badge>
+                            ))
+                        )}
                     </div>
                 </div>
 

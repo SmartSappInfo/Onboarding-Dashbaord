@@ -151,6 +151,34 @@ export class IdentityProjectionService {
 
     const now = new Date().toISOString();
 
+    let resolvedDeptName = person.departmentName || membership?.departmentName || undefined;
+    let resolvedDeptId = person.departmentId || membership?.departmentId || undefined;
+
+    if (resolvedDeptId && !resolvedDeptName) {
+      try {
+        const deptSnap = await adminDb.collection('departments').doc(resolvedDeptId).get();
+        if (deptSnap.exists) {
+          resolvedDeptName = (deptSnap.data() as { name?: string })?.name;
+        }
+      } catch (dErr) {
+        console.warn(`[IdentityProjectionService] Could not resolve department name for ${resolvedDeptId}:`, dErr);
+      }
+    } else if (resolvedDeptName && !resolvedDeptId) {
+      try {
+        const deptQuery = await adminDb
+          .collection('departments')
+          .where('organizationId', '==', organizationId)
+          .where('name', '==', resolvedDeptName)
+          .limit(1)
+          .get();
+        if (!deptQuery.empty) {
+          resolvedDeptId = deptQuery.docs[0].id;
+        }
+      } catch (dErr) {
+        console.warn(`[IdentityProjectionService] Could not resolve department id for ${resolvedDeptName}:`, dErr);
+      }
+    }
+
     // 6. Build the projected UserProfile
     const userProfileProjection: UserProfile = {
       id: personId,
@@ -160,7 +188,8 @@ export class IdentityProjectionService {
       email: person.email,
       phone: person.phone || '',
       photoURL: person.avatarUrl || undefined,
-      department: person.departmentName || membership?.departmentName || undefined,
+      department: resolvedDeptName,
+      departmentId: resolvedDeptId,
       isAuthorized,
       profileCompleted: Boolean(person.displayName && person.phone),
       approvalStatus,

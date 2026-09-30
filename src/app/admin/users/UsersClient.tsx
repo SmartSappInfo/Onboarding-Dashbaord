@@ -189,19 +189,6 @@ export default function UsersClient() {
     loadWorkforceData();
   }, [loadWorkforceData]);
 
-  // Extract unique departments for filter drawer
-  const departmentNames = React.useMemo(() => {
-    if (canonicalDepartments.length > 0) {
-      return canonicalDepartments.map((d) => d.name);
-    }
-    if (!users) return [];
-    const depts = new Set<string>();
-    users.forEach((u) => {
-      if (u.department) depts.add(u.department);
-    });
-    return Array.from(depts);
-  }, [canonicalDepartments, users]);
-
   // Handle Multi-Select Checkboxes
   const handleToggleSelectAll = () => {
     if (!filteredUsers) return;
@@ -621,6 +608,7 @@ export default function UsersClient() {
           user={inspectingUser}
           roles={allRolesList}
           workspaces={accessibleWorkspaces}
+          departments={canonicalDepartments}
           people={canonicalPeople}
           onManageWorkspaces={(u) => {
             setManagingWsUser(u);
@@ -651,7 +639,7 @@ export default function UsersClient() {
         onClose={() => setIsFilterDrawerOpen(false)}
         roles={allRolesList}
         workspaces={accessibleWorkspaces}
-        departments={departmentNames}
+        departments={canonicalDepartments}
         filters={advancedFilters}
         onApplyFilters={setAdvancedFilters}
         onResetFilters={() => setAdvancedFilters({ status: 'all' })}
@@ -662,7 +650,7 @@ export default function UsersClient() {
         open={isInviteModalOpen}
         onOpenChange={setIsInviteModalOpen}
         roles={allRolesList}
-        departments={departmentNames}
+        departments={canonicalDepartments}
         workspaces={accessibleWorkspaces}
       />
     </div>

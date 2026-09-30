@@ -9,6 +9,7 @@ import { requireAuth } from './auth/require-auth';
 import { encryptToken } from './crypto';
 import { getErrorMessage } from '@/lib/errors/report-error';
 import { invalidateOrganizationCountryCache } from './organization-country';
+import { DepartmentSeedService } from './services/workforce/department-seed-service';
 
 /**
  * Generate a random 4-character hex string for slug entropy
@@ -372,4 +373,11 @@ async function provisionOrganizationDefaults(organizationId: string, _userId: st
 
     // Commit all provisioned items atomically
     await batch.commit();
+
+    // Provision canonical seed departments for the new organization
+    try {
+        await DepartmentSeedService.seedDepartmentsForOrganization(organizationId);
+    } catch (seedErr) {
+        console.warn(`[provisionOrganizationDefaults] Department seed warning for ${organizationId}:`, seedErr);
+    }
 }

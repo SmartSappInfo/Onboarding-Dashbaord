@@ -37,6 +37,7 @@ const inviteSchema = z.object({
     email: z.string().email('Please enter a valid email address'),
     phone: z.string().optional(),
     department: z.string().optional(),
+    departmentId: z.string().optional(),
     workspaceIds: z.array(z.string()).min(1, 'Select at least one workspace'),
     roles: z.array(z.string()).min(1, 'Select at least one role'),
     sendMethods: z.array(z.enum(['email', 'sms', 'whatsapp'])).min(1, 'Select at least one invite method'),
@@ -44,11 +45,17 @@ const inviteSchema = z.object({
 
 type InviteFormData = z.infer<typeof inviteSchema>;
 
+interface NormalizedDept {
+    id: string;
+    name: string;
+    code?: string;
+}
+
 interface InviteUserModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     roles: { id: string; name: string }[];
-    departments?: string[];
+    departments?: Array<string | { id: string; name: string; code?: string }>;
     workspaces?: { id: string; name: string }[];
 }
 
@@ -59,10 +66,20 @@ export default function InviteUserModal({ open, onOpenChange, roles, departments
     const [isCustomDept, setIsCustomDept] = React.useState(false);
 
     // Compute available departments ONLY from current organization (no sample fallbacks)
-    const availableDepartments = React.useMemo(() => {
-        if (departments && departments.length > 0) return departments;
+    const availableDepartments: NormalizedDept[] = React.useMemo(() => {
+        if (departments && departments.length > 0) {
+            return departments.map((d) =>
+                typeof d === 'string'
+                    ? { id: d, name: d, code: d.slice(0, 4).toUpperCase() }
+                    : { id: d.id, name: d.name, code: d.code }
+            );
+        }
         if (activeOrganization?.departments && activeOrganization.departments.length > 0) {
-            return activeOrganization.departments;
+            return activeOrganization.departments.map((d) => ({
+                id: d,
+                name: d,
+                code: d.slice(0, 4).toUpperCase(),
+            }));
         }
         return [];
     }, [departments, activeOrganization?.departments]);
@@ -85,7 +102,8 @@ export default function InviteUserModal({ open, onOpenChange, roles, departments
             fullName: '',
             email: '',
             phone: '',
-            department: availableDepartments[0] || '',
+            department: availableDepartments[0]?.name || '',
+            departmentId: availableDepartments[0]?.id || '',
             workspaceIds: activeWorkspaceId ? [activeWorkspaceId] : (availableWorkspaces[0]?.id ? [availableWorkspaces[0].id] : []),
             roles: activeOrganization?.defaultRoleId ? [activeOrganization.defaultRoleId] : [],
             sendMethods: ['email'],
@@ -109,7 +127,8 @@ export default function InviteUserModal({ open, onOpenChange, roles, departments
     // Sync default department if available
     React.useEffect(() => {
         if (!form.getValues('department') && availableDepartments.length > 0) {
-            form.setValue('department', availableDepartments[0]);
+            form.setValue('department', availableDepartments[0].name);
+            form.setValue('departmentId', availableDepartments[0].id);
         }
     }, [availableDepartments, form]);
 
@@ -128,6 +147,7 @@ export default function InviteUserModal({ open, onOpenChange, roles, departments
                 email: data.email.trim(),
                 phone: data.phone?.trim() || undefined,
                 department: data.department?.trim() || undefined,
+                departmentId: data.departmentId?.trim() || undefined,
                 workspaceIds: data.workspaceIds,
                 workspaceRoles,
                 organizationId: activeOrganizationId,
@@ -240,8 +260,10 @@ export default function InviteUserModal({ open, onOpenChange, roles, departments
                                                             setIsCustomDept(!isCustomDept);
                                                             if (!isCustomDept) {
                                                                 field.onChange('');
+                                                                form.setValue('departmentId', '');
                                                             } else {
-                                                                field.onChange(availableDepartments[0] || '');
+                                                                field.onChange(availableDepartments[0]?.name || '');
+                                                                form.setValue('departmentId', availableDepartments[0]?.id || '');
                                                             }
                                                         }}
                                                         className="text-[11px] font-medium text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
@@ -252,16 +274,35 @@ export default function InviteUserModal({ open, onOpenChange, roles, departments
                                             </div>
 
                                             {!isCustomDept && availableDepartments.length > 0 ? (
-                                                <Select value={field.value || undefined} onValueChange={field.onChange}>
+                                                <Select
+                                                    value={form.watch('departmentId') || field.value || undefined}
+                                                    onValueChange={(val) => {
+                                                        const match = availableDepartments.find((d) => d.id === val || d.name === val);
+                                                        if (match) {
+                                                            field.onChange(match.name);
+                                                            form.setValue('departmentId', match.id);
+                                                        } else {
+                                                            field.onChange(val);
+                                                            form.setValue('departmentId', '');
+                                                        }
+                                                    }}
+                                                >
                                                     <FormControl>
-                                                        <SelectTrigger className="rounded-xl h-10 bg-background border-border text-foreground text-sm">
+                                                        <SelectTrigger className="rounded-xl h-10 min-h-[44px] bg-background border-border text-foreground text-sm">
                                                             <SelectValue placeholder="Select department" />
                                                         </SelectTrigger>
                                                     </FormControl>
                                                     <SelectContent className="rounded-xl border-border bg-popover text-popover-foreground">
                                                         {availableDepartments.map((dept) => (
-                                                            <SelectItem key={dept} value={dept}>
-                                                                {dept}
+                                                            <SelectItem key={dept.id || dept.name} value={dept.id || dept.name}>
+                                                                <div className="flex items-center gap-2">
+                                                                    {dept.code && (
+                                                                        <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
+                                                                            {dept.code}
+                                                                        </span>
+                                                                    )}
+                                                                    <span>{dept.name}</span>
+                                                                </div>
                                                             </SelectItem>
                                                         ))}
                                                     </SelectContent>
@@ -270,9 +311,12 @@ export default function InviteUserModal({ open, onOpenChange, roles, departments
                                                 <FormControl>
                                                     <Input
                                                         placeholder={availableDepartments.length === 0 ? "e.g. Sales, Operations" : "Enter department name..."}
-                                                        className="rounded-xl h-10 bg-background border-border text-foreground placeholder:text-muted-foreground text-sm"
+                                                        className="rounded-xl h-10 min-h-[44px] bg-background border-border text-foreground placeholder:text-muted-foreground text-sm"
                                                         value={field.value || ''}
-                                                        onChange={(e) => field.onChange(e.target.value)}
+                                                        onChange={(e) => {
+                                                            field.onChange(e.target.value);
+                                                            form.setValue('departmentId', '');
+                                                        }}
                                                     />
                                                 </FormControl>
                                             )}

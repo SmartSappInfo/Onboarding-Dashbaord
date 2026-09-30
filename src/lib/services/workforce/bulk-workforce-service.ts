@@ -19,6 +19,7 @@ import { PersonService } from '@/lib/services/identity/person-service';
 import { OrganizationMembershipService } from '@/lib/services/identity/organization-membership-service';
 import { WorkspaceMembershipService } from '@/lib/services/identity/workspace-membership-service';
 import { IdentityProjectionService } from '@/lib/services/identity/identity-projection-service';
+import { DepartmentService } from './department-service';
 
 export interface BulkActionPayload {
   roleIds?: string[];
@@ -59,10 +60,21 @@ export class BulkWorkforceService {
       return { totalProcessed: 0, succeeded: 0, failed: 0, errors: [] };
     }
 
+    let resolvedDeptName = payload?.departmentName;
+    if (action === 'assign_department' && payload?.departmentId && !resolvedDeptName) {
+      try {
+        const dDoc = await DepartmentService.getDepartment(payload.departmentId);
+        if (dDoc) resolvedDeptName = dDoc.name;
+      } catch (dErr) {
+        console.warn(`[BulkWorkforceService] Could not resolve department name for ${payload.departmentId}:`, dErr);
+      }
+    }
+
     const chunks = this.chunkArray(personIds, CHUNK_SIZE);
     let succeeded = 0;
     let failed = 0;
     const errors: Array<{ id: string; error: string }> = [];
+    const affectedOldDeptIds = new Set<string>();
 
     for (const chunk of chunks) {
       const batch = adminDb.batch();
@@ -107,6 +119,14 @@ export class BulkWorkforceService {
 
             case 'assign_department':
               if (payload?.departmentId !== undefined) {
+                try {
+                  const existingPerson = await PersonService.getPerson(personId);
+                  if (existingPerson?.departmentId && existingPerson.departmentId !== payload.departmentId) {
+                    affectedOldDeptIds.add(existingPerson.departmentId);
+                  }
+                } catch {
+                  // Non-fatal if lookup fails
+                }
                 await PersonService.upsertPerson(
                   {
                     id: personId,
@@ -114,6 +134,7 @@ export class BulkWorkforceService {
                     displayName: 'User', // Preserved on merge
                     email: '', // Preserved on merge
                     departmentId: payload.departmentId,
+                    departmentName: resolvedDeptName,
                   },
                   batch
                 );
@@ -163,6 +184,23 @@ export class BulkWorkforceService {
       } catch (batchCommitErr: unknown) {
         const msg = batchCommitErr instanceof Error ? batchCommitErr.message : 'Batch commit error';
         console.error('[BulkWorkforceService] Batch commit failed:', msg);
+      }
+    }
+
+    if (action === 'assign_department') {
+      if (payload?.departmentId) {
+        try {
+          await DepartmentService.recalculateMemberCount(organizationId, payload.departmentId);
+        } catch (countErr) {
+          console.warn(`[BulkWorkforceService] Recalculate member count warning:`, countErr);
+        }
+      }
+      for (const oldDeptId of affectedOldDeptIds) {
+        try {
+          await DepartmentService.recalculateMemberCount(organizationId, oldDeptId);
+        } catch (oldCountErr) {
+          console.warn(`[BulkWorkforceService] Recalculate old member count warning:`, oldCountErr);
+        }
       }
     }
 

@@ -20,7 +20,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { PeopleDirectoryFilter, MembershipStatus, Workspace, Role } from '@/lib/types';
+import type { PeopleDirectoryFilter, MembershipStatus, Workspace, Role, Department } from '@/lib/types';
 
 interface PeopleFilterDrawerProps {
   isOpen: boolean;
@@ -30,7 +30,7 @@ interface PeopleFilterDrawerProps {
   onResetFilters: () => void;
   workspaces: Workspace[];
   roles: Role[];
-  departments: string[];
+  departments: Department[] | string[] | Array<{ id: string; name: string; code?: string }>;
 }
 
 export function PeopleFilterDrawer({
@@ -44,6 +44,14 @@ export function PeopleFilterDrawer({
   departments,
 }: PeopleFilterDrawerProps) {
   const [localFilters, setLocalFilters] = React.useState<PeopleDirectoryFilter>(filters);
+
+  const normalizedDepartments = React.useMemo(() => {
+    return (departments || []).map((d) =>
+      typeof d === 'string'
+        ? { id: d, name: d, code: undefined }
+        : { id: d.id, name: d.name, code: d.code }
+    );
+  }, [departments]);
 
   // Sync state when opened
   React.useEffect(() => {
@@ -224,7 +232,7 @@ export function PeopleFilterDrawer({
             </div>
 
             {/* Department Filter (if departments exist) */}
-            {departments.length > 0 && (
+            {normalizedDepartments.length > 0 && (
               <div className="space-y-2">
                 <Label className="text-xs font-medium">Department</Label>
                 <Select
@@ -236,9 +244,16 @@ export function PeopleFilterDrawer({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Departments</SelectItem>
-                    {departments.map((dept) => (
-                      <SelectItem key={dept} value={dept}>
-                        {dept}
+                    {normalizedDepartments.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.id}>
+                        <div className="flex items-center gap-2">
+                          {dept.code && (
+                            <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
+                              {dept.code}
+                            </span>
+                          )}
+                          <span>{dept.name}</span>
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>

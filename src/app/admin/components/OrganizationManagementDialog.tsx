@@ -181,7 +181,7 @@ export default function OrganizationManagementDialog({
             }
 
             setSeedResult(data.result as AISeedResult);
-        } catch (_err: unknown) {
+        } catch {
             setScrapeError('Network error. Please check your connection and try again.');
         } finally {
             setIsScraping(false);
@@ -315,7 +315,21 @@ export default function OrganizationManagementDialog({
             setResendApiKey(organization.resendApiKey || '');
             setResendDomain(organization.resendDomain || '');
             setDefaultRoleId(organization.defaultRoleId || '');
-            setDepartments(organization.departments && organization.departments.length > 0 ? organization.departments : ['General']);
+            if (organization.id && firestore) {
+                getDocs(query(collection(firestore, 'departments'), where('organizationId', '==', organization.id)))
+                    .then(snap => {
+                        if (!snap.empty) {
+                            setDepartments(snap.docs.map(d => d.data().name as string));
+                        } else {
+                            setDepartments(organization.departments && organization.departments.length > 0 ? organization.departments : ['General']);
+                        }
+                    })
+                    .catch(() => {
+                        setDepartments(organization.departments && organization.departments.length > 0 ? organization.departments : ['General']);
+                    });
+            } else {
+                setDepartments(organization.departments && organization.departments.length > 0 ? organization.departments : ['General']);
+            }
         } else {
             // Reset for new organization
             setName('');
@@ -350,7 +364,7 @@ export default function OrganizationManagementDialog({
             setResendApiKey('');
             setResendDomain('');
         }
-    }, [organization, open]);
+    }, [organization, open, firestore]);
 
     // Load Organization Roles
     React.useEffect(() => {

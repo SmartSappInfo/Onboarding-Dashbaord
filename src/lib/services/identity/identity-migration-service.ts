@@ -29,6 +29,7 @@ import { PersonService } from './person-service';
 import { OrganizationMembershipService } from './organization-membership-service';
 import { WorkspaceMembershipService } from './workspace-membership-service';
 import { IdentityProjectionService } from './identity-projection-service';
+import { DepartmentService } from '@/lib/services/workforce/department-service';
 
 export interface ReconciliationReport {
   totalScanned: number;
@@ -101,6 +102,25 @@ export class IdentityMigrationService {
       lastSeenAt: user.updatedAt || now,
     };
 
+    let deptId = user.departmentId;
+    let deptName = user.department;
+    if (!deptId && deptName) {
+      try {
+        const canonical = await DepartmentService.findOrCreateDepartmentByName(organizationId, deptName);
+        deptId = canonical.id;
+        deptName = canonical.name;
+      } catch (dErr) {
+        console.warn(`[IdentityMigrationService] Could not resolve department id for ${deptName}:`, dErr);
+      }
+    } else if (deptId && !deptName) {
+      try {
+        const canonical = await DepartmentService.getDepartment(deptId);
+        if (canonical) deptName = canonical.name;
+      } catch (dErr) {
+        console.warn(`[IdentityMigrationService] Could not resolve department name for ${deptId}:`, dErr);
+      }
+    }
+
     const person: Omit<Person, 'createdAt' | 'updatedAt'> = {
       id: uid,
       organizationId,
@@ -110,7 +130,8 @@ export class IdentityMigrationService {
       email: user.email || '',
       phone: user.phone || '',
       avatarUrl: user.photoURL || undefined,
-      departmentName: user.department || undefined,
+      departmentId: deptId,
+      departmentName: deptName || undefined,
       notificationPreferences: user.notificationPreferences,
       preferredAiModel: user.preferredAiModel,
       preferredAiProvider: user.preferredAiProvider,
@@ -124,7 +145,8 @@ export class IdentityMigrationService {
       organizationId,
       status: membershipStatus,
       memberType: 'employee',
-      departmentName: user.department || undefined,
+      departmentId: deptId,
+      departmentName: deptName || undefined,
       primaryWorkspaceId: user.lastActiveWorkspaceId || user.defaultWorkspaceId || user.workspaceIds?.[0] || undefined,
       source: 'migration',
       joinedAt: user.createdAt || now,

@@ -32,6 +32,7 @@ import { OrganizationMembershipService } from '@/lib/services/identity/organizat
 import { WorkspaceMembershipService } from '@/lib/services/identity/workspace-membership-service';
 import { IdentityProjectionService } from '@/lib/services/identity/identity-projection-service';
 import { IdentityMigrationService, ReconciliationReport } from '@/lib/services/identity/identity-migration-service';
+import { DepartmentService } from '@/lib/services/workforce/department-service';
 import { sendEmail } from '@/lib/resend-service';
 import { sendSms } from '@/lib/mnotify-service';
 import { resolveAndRender } from '@/lib/template-resolver';
@@ -431,11 +432,36 @@ export async function updatePersonProfileAction(params: {
       throw new Error('Forbidden: You lack permission to update other team members.');
     }
 
+    // Ensure mutual consistency for departmentId and departmentName
+    let deptId = params.updates.departmentId;
+    let deptName = params.updates.departmentName;
+
+    if (deptId && !deptName) {
+      const d = await DepartmentService.getDepartment(deptId);
+      if (d) deptName = d.name;
+    } else if (deptName && !deptId) {
+      const d = await DepartmentService.findOrCreateDepartmentByName(params.organizationId, deptName);
+      if (d) deptId = d.id;
+    }
+
+    const updatesWithDept = {
+      ...params.updates,
+      ...(deptId !== undefined ? { departmentId: deptId } : {}),
+      ...(deptName !== undefined ? { departmentName: deptName } : {}),
+    };
+
     // 1. Update Person document
-    await PersonService.updatePerson(params.personId, params.updates);
+    await PersonService.updatePerson(params.personId, updatesWithDept);
 
     // 2. Sync to legacy UserProfile projection
     const userProfile = await IdentityProjectionService.syncUserProjection(params.organizationId, params.personId);
+
+    // 3. Recalculate member count
+    if (deptId) {
+      DepartmentService.recalculateMemberCount(params.organizationId, deptId).catch((err) =>
+        console.warn('[updatePersonProfileAction] Recalculate member count warning:', err)
+      );
+    }
 
     return { success: true, userProfile: userProfile || undefined };
   } catch (err: unknown) {
