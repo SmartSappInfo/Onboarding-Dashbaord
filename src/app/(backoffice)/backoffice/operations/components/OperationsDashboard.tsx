@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Activity, ListOrdered, Wrench, Trash2, Database, ShieldAlert } from 'lucide-react';
+import { Activity, ListOrdered, Wrench, Trash2, Database, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import JobRunner from './JobRunner';
 import TenantDiagnostics from './TenantDiagnostics';
@@ -10,6 +10,7 @@ import StripAccountStatusFer from './StripAccountStatusFer';
 import StripLifecycleStatusFer from './StripLifecycleStatusFer';
 import FixOrgAdminPermissionsFer from './FixOrgAdminPermissionsFer';
 import SeedAllWorkspacesFieldsFer from './SeedAllWorkspacesFieldsFer';
+import SyncRolePermissionsFer from './SyncRolePermissionsFer';
 
 export default function OperationsDashboard() {
   return (
@@ -69,6 +70,12 @@ export default function OperationsDashboard() {
           >
             <Database className="h-3.5 w-3.5 mr-2" /> Seed Workspace Fields
           </TabsTrigger>
+          <TabsTrigger
+            value="fer-sync-roles"
+            className="rounded-lg text-xs font-semibold data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-400 cursor-pointer flex-1 sm:flex-none"
+          >
+            <ShieldCheck className="h-3.5 w-3.5 mr-2" /> Normalize 6-Section Roles
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="jobs" className="mt-4">
@@ -97,6 +104,10 @@ export default function OperationsDashboard() {
 
         <TabsContent value="fer-seed-workspace-fields" className="mt-4">
            <SeedAllWorkspacesFieldsFer />
+        </TabsContent>
+
+        <TabsContent value="fer-sync-roles" className="mt-4">
+           <SyncRolePermissionsFer />
         </TabsContent>
 
       </Tabs>
