@@ -223,22 +223,30 @@ export default function ResultsStep() {
                 <>
                     <LogicSimulator />
 
- <Tabs defaultValue="logic" className="w-full">
- <TabsList className="grid w-full grid-cols-2 h-12 bg-muted/30 p-1 border rounded-xl">
- <TabsTrigger value="logic" className="gap-2 font-bold py-3 rounded-lg data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
- <BrainCircuit className="h-4 w-4" /> Outcome Logic
-                    </TabsTrigger>
- <TabsTrigger value="pages" className="gap-2 font-bold py-3 rounded-lg data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
- <Layout className="h-4 w-4" /> Result Pages
-                    </TabsTrigger>
-                </TabsList>
- <TabsContent value="logic" className="pt-6">
-                    <ResultRuleManager />
-                </TabsContent>
- <TabsContent value="pages" className="pt-6">
-                    <ResultPageBuilder />
-                </TabsContent>
-                </Tabs>
+                    <Tabs defaultValue="logic" className="w-full">
+                        <TabsList className="grid w-full grid-cols-2 h-14 p-1.5 bg-slate-100 dark:bg-zinc-800/90 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl shadow-inner gap-2 select-none">
+                            <TabsTrigger 
+                                value="logic" 
+                                className="gap-2.5 font-bold py-3 px-4 rounded-xl text-sm transition-all duration-200 min-h-[44px] cursor-pointer active:scale-[0.98] data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-900 data-[state=active]:text-primary dark:data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:border-2 data-[state=active]:border-primary/40 dark:data-[state=active]:border-primary/60 data-[state=inactive]:text-slate-700 dark:data-[state=inactive]:text-zinc-300 data-[state=inactive]:hover:text-slate-900 dark:data-[state=inactive]:hover:text-white data-[state=inactive]:hover:bg-slate-200/60 dark:data-[state=inactive]:hover:bg-zinc-700/50 border-2 border-transparent [&[data-state=active]_svg]:text-primary [&[data-state=active]_svg]:stroke-[2.5px]"
+                            >
+                                <BrainCircuit className="h-4 w-4 shrink-0" />
+                                <span>Outcome Logic</span>
+                            </TabsTrigger>
+                            <TabsTrigger 
+                                value="pages" 
+                                className="gap-2.5 font-bold py-3 px-4 rounded-xl text-sm transition-all duration-200 min-h-[44px] cursor-pointer active:scale-[0.98] data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-900 data-[state=active]:text-primary dark:data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:border-2 data-[state=active]:border-primary/40 dark:data-[state=active]:border-primary/60 data-[state=inactive]:text-slate-700 dark:data-[state=inactive]:text-zinc-300 data-[state=inactive]:hover:text-slate-900 dark:data-[state=inactive]:hover:text-white data-[state=inactive]:hover:bg-slate-200/60 dark:data-[state=inactive]:hover:bg-zinc-700/50 border-2 border-transparent [&[data-state=active]_svg]:text-primary [&[data-state=active]_svg]:stroke-[2.5px]"
+                            >
+                                <Layout className="h-4 w-4 shrink-0" />
+                                <span>Result Pages</span>
+                            </TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="logic" className="pt-6">
+                            <ResultRuleManager />
+                        </TabsContent>
+                        <TabsContent value="pages" className="pt-6">
+                            <ResultPageBuilder />
+                        </TabsContent>
+                    </Tabs>
                 </>
             ) : (
                 <div className="space-y-8">

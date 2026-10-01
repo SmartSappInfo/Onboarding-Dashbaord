@@ -171,19 +171,19 @@ function SortableRuleItem({
                 <div className="flex items-start justify-between gap-4">
                     <div className="flex-grow grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="space-y-1.5 md:col-span-1">
-                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Logic Label</Label>
-                            <Input placeholder="e.g. Qualified" {...register(`resultRules.${index}.label`)} className="h-10 font-bold bg-muted/30 border-none shadow-none focus:ring-1 focus:ring-primary/20" />
+                            <Label className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 py-0.5 rounded-md border border-border/70 bg-muted/40 ml-1">Logic Label</Label>
+                            <Input placeholder="e.g. Qualified" {...register(`resultRules.${index}.label`)} className="h-10 font-bold bg-background border border-border/80 dark:border-zinc-700 rounded-xl px-3 shadow-xs hover:border-primary/40 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 transition-all text-foreground" />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Range Start</Label>
-                            <Input type="number" {...register(`resultRules.${index}.minScore`, { valueAsNumber: true })} className="h-10 font-bold bg-muted/30 border-none shadow-none focus:ring-1 focus:ring-primary/20" />
+                            <Label className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 py-0.5 rounded-md border border-border/70 bg-muted/40 ml-1">Range Start</Label>
+                            <Input type="number" {...register(`resultRules.${index}.minScore`, { valueAsNumber: true })} className="h-10 font-bold bg-background border border-border/80 dark:border-zinc-700 rounded-xl px-3 shadow-xs hover:border-primary/40 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 transition-all text-foreground" />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Range End</Label>
-                            <Input type="number" {...register(`resultRules.${index}.maxScore`, { valueAsNumber: true })} className="h-10 font-bold bg-muted/30 border-none shadow-none focus:ring-1 focus:ring-primary/20" />
+                            <Label className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 py-0.5 rounded-md border border-border/70 bg-muted/40 ml-1">Range End</Label>
+                            <Input type="number" {...register(`resultRules.${index}.maxScore`, { valueAsNumber: true })} className="h-10 font-bold bg-background border border-border/80 dark:border-zinc-700 rounded-xl px-3 shadow-xs hover:border-primary/40 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 transition-all text-foreground" />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-semibold text-primary ml-1">Resulting Page</Label>
+                            <Label className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-primary px-2 py-0.5 rounded-md border border-primary/30 bg-primary/10 ml-1">Resulting Page</Label>
                             <Controller
                                 name={`resultRules.${index}.pageId`}
                                 control={control}
@@ -199,7 +199,7 @@ function SortableRuleItem({
                                             }
                                         }}
                                     >
-                                        <SelectTrigger className="h-10 bg-primary/5 border-primary/20 text-primary font-semibold">
+                                        <SelectTrigger className="h-10 bg-primary/5 border border-primary/30 text-primary font-semibold rounded-xl shadow-xs hover:border-primary/50 transition-all">
                                             <SelectValue placeholder="Select page..." />
                                         </SelectTrigger>
                                         <SelectContent className="rounded-xl">
@@ -217,15 +217,15 @@ function SortableRuleItem({
                 </div>
 
                 {currentRulePageId === '__redirect__' && (
-                    <div className="space-y-3 mt-1 p-4 rounded-xl border border-primary/10 bg-primary/5 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="space-y-3 mt-1 p-4 rounded-xl border border-primary/15 bg-primary/5 animate-in fade-in slide-in-from-top-2 duration-300">
                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-bold text-slate-600 flex items-center gap-1.5">
+                            <Label className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md border border-primary/30 bg-primary/10">
                                 🔗 Redirect Destination URL
                             </Label>
                             <Input 
                                 placeholder="https://example.com/thanks?sub_id={{submission_id}}" 
                                 {...register(`resultRules.${index}.redirectUrl`)} 
-                                className="bg-card border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 rounded-xl h-10"
+                                className="bg-card border border-border/80 shadow-xs focus-visible:ring-1 focus-visible:ring-primary/20 rounded-xl h-10"
                             />
                         </div>
                         <div className="p-3 rounded-lg border border-dashed border-primary/20 bg-primary/5 text-[9px] text-slate-500/80 leading-relaxed">
