@@ -148,7 +148,7 @@ describe('getModel (Workspace-Aware Resolution)', () => {
     });
 
     const resolved = await getModel({ workspaceId: 'ws-genkit-1' });
-    expect(resolved.modelString).toBe('claude-3-5-sonnet-20241022');
+    expect(resolved.modelString).toBe('anthropic/claude-3-5-sonnet-20241022');
     expect(resolved.provider).toBe('anthropic');
     expect(resolved.modelId).toBe('claude-3-5-sonnet');
   });

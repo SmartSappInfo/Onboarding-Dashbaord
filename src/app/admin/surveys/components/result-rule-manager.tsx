@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Trash2, Plus, GripVertical, Mail, Smartphone, Pencil, PlusCircle, ArrowUp, ShieldCheck, Tag, Zap, GitMerge, Sparkles, MessageCircle } from 'lucide-react';
+import { Trash2, Plus, GripVertical, Mail, Smartphone, Pencil, PlusCircle, ArrowUp, Tag, Zap, GitMerge, Sparkles, MessageCircle } from 'lucide-react';
 import type { SurveyResultPage, SurveyElement, SurveyQuestion } from '@/lib/types';
 import { PipelineStageSelector } from './PipelineStageSelector';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
@@ -669,7 +669,7 @@ export default function ResultRuleManager() {
     const surveyId = params?.id as string;
     const resultPages = watch('resultPages') || [];
     const sensors = useSensors(useSensor(PointerSensor));
-    const { activeOrganization, activeWorkspaceId } = useWorkspace();
+    const { activeWorkspaceId } = useWorkspace();
 
     const automationsQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
