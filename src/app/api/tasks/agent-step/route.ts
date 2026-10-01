@@ -21,6 +21,7 @@ import { getCapability } from '@/platform/capabilities/registry/capability-regis
 import { ensureCapabilitiesRegistered } from '@/platform/capabilities/registry/register-capabilities';
 import { processAgentStep } from '@/platform/tasks/agent-step-executor';
 import { createFirestoreAgentStepStore } from '@/platform/tasks/firestore-agent-step-store';
+import { createLivePrincipalCheck } from '@/platform/tasks/live-principal-check';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,6 +48,7 @@ export async function POST(request: NextRequest) {
       store: createFirestoreAgentStepStore(adminDb),
       resolveCapability: getCapability,
       approvals: createFirestoreApprovalVerifier(adminDb),
+      principals: createLivePrincipalCheck(adminDb),
     });
 
     console.info(

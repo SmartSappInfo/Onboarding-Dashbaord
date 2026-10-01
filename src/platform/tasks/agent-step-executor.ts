@@ -15,7 +15,13 @@
  * - Never mark a step `completed` unless the capability handler returned success AND its output
  *   passed the output schema. A no-op "completed" silently drops agent work.
  * - Authority is re-evaluated at execution time, not only at enqueue time (TOCTOU, Rule 18):
- *   scopes can be revoked while a step waits in the queue.
+ *   scopes can be revoked while a step waits in the queue. The run stores a SNAPSHOT of its
+ *   principal, so the user behind it is also re-checked live (`deps.principals`, PR-2).
+ * - Order matters (PR-2): authority and the live principal are checked BEFORE the approval is
+ *   bound, so a refused step never consumes a human's approval. Approvals are first verified
+ *   read-only, then re-verified and bound in a transaction just before execution.
+ * - Capabilities with `policies.auditRequired` are refused until the execution audit (PR-6 / 1.4)
+ *   exists; running them without an audit trail would break their contract.
  * - A timed-out handler may still be running, so the lease is NOT released on timeout; the next
  *   delivery gets 409 until the lease expires. The handler receives the idempotency key so a
  *   re-run after lease expiry cannot duplicate side effects (Rule 19).
@@ -30,8 +36,9 @@ import type {
 } from '../capabilities/contracts/capability-definition';
 import { isAutomatedPrincipal } from '../capabilities/contracts/capability-definition';
 import { requiresAgentApproval } from '../capabilities/contracts/risk-levels';
-import { computeApprovalPayloadHash, type ApprovalVerifier } from '../capabilities/policy/approval-verifier';
+import { computeApprovalPayloadHash, type ApprovalRequest, type ApprovalVerifier } from '../capabilities/policy/approval-verifier';
 import { evaluatePrincipalAuthority } from '../capabilities/policy/principal-evaluator';
+import type { LivePrincipalCheck } from './live-principal-check';
 import {
   AgentStepTaskPayloadSchema,
   LEASE_BUFFER_MS,
@@ -71,6 +78,8 @@ export interface AgentStepExecutorDeps {
   resolveCapability: (capabilityId: string) => AnyCapabilityDefinition | undefined;
   /** Required to run approval-requiring agent steps; without it they fail closed. */
   approvals?: ApprovalVerifier;
+  /** Live re-check of the user behind the run's stored principal (required: fail closed). */
+  principals: LivePrincipalCheck;
   nowMs?: () => number;
 }
 
@@ -195,6 +204,15 @@ export async function processAgentStep(rawPayload: unknown, deps: AgentStepExecu
   }
   const input: unknown = parsedInput.data;
 
+  // 5b. No execution audit exists yet (PR-6 / 1.4): capabilities that require one can't run here.
+  if (capability.policies.auditRequired) {
+    return fail({
+      code: 'AUDIT_UNAVAILABLE',
+      message: `Capability '${capability.id}' requires an execution audit, which agent steps do not record yet.`,
+      retryable: false,
+    });
+  }
+
   const principal: AgentPrincipal = {
     ...run.principal,
     runId: run.runId,
@@ -207,6 +225,7 @@ export async function processAgentStep(rawPayload: unknown, deps: AgentStepExecu
   //    VALIDATED input, so an approval can never authorize a different payload.
   let verifiedApproval: VerifiedApproval | undefined;
   let payloadHash: string | undefined;
+  let approvalRequest: ApprovalRequest | undefined;
   if (isAutomatedAgent && requiresAgentApproval(capability.risk)) {
     if (!step.approvalId) {
       return fail({ code: 'APPROVAL_REQUIRED', message: 'Step requires a verified human approval but has none.', retryable: false });
@@ -220,7 +239,7 @@ export async function processAgentStep(rawPayload: unknown, deps: AgentStepExecu
       ...target,
       input,
     });
-    const verification = await deps.approvals.verifyAndBind({
+    approvalRequest = {
       approvalId: step.approvalId,
       capabilityId: capability.id,
       capabilityVersion: capability.version,
@@ -229,7 +248,9 @@ export async function processAgentStep(rawPayload: unknown, deps: AgentStepExecu
       toolInvocationId: principal.toolInvocationId ?? '',
       agentId: principal.agentId,
       nowMs: nowMs(),
-    });
+    };
+    // Read-only here; the approval is bound only after authority and the live principal pass.
+    const verification = await deps.approvals.verify(approvalRequest);
     if (!verification.ok) {
       return fail({ code: verification.code, message: verification.message, retryable: false });
     }
@@ -244,6 +265,22 @@ export async function processAgentStep(rawPayload: unknown, deps: AgentStepExecu
   });
   if (!authority.allowed) {
     return fail({ code: 'AUTHORIZATION_DENIED', message: authority.reason ?? 'Principal is not authorized.', retryable: false });
+  }
+
+  // 7b. The stored principal is a snapshot: confirm the user still exists, is still approved and
+  //     still has access to the run's workspace (live RBAC, Round 4).
+  const live = await deps.principals.check(principal, target);
+  if (!live.ok) {
+    return fail({ code: 'PRINCIPAL_REVOKED', message: live.reason, retryable: false });
+  }
+
+  // 7c. Everything else passed: now bind the approval (transactional re-check).
+  if (approvalRequest && deps.approvals) {
+    const bound = await deps.approvals.verifyAndBind({ ...approvalRequest, nowMs: nowMs() });
+    if (!bound.ok) {
+      return fail({ code: bound.code, message: bound.message, retryable: false });
+    }
+    verifiedApproval = bound.approval;
   }
 
   // 8. Execute, bounded by the capability's declared max duration

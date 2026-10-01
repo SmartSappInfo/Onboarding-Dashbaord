@@ -70,7 +70,8 @@ const sendMessage: CapabilityDefinition<SendInput, SendOutput> = {
     supportsCompensation: false,
     maxPayloadSizeBytes: 8_192,
   },
-  policies: { requiresIdempotencyKey: true, requiresExpectedVersion: false, auditRequired: true },
+  // Agent steps refuse audit-required capabilities until the execution audit exists (PR-6).
+  policies: { requiresIdempotencyKey: true, requiresExpectedVersion: false, auditRequired: false },
   handler: async (): Promise<CapabilityExecutionResult<SendOutput>> => ({
     success: true,
     data: { messageId: 'm-1' },
@@ -202,10 +203,13 @@ describe('evaluatePrincipalAuthority approval rules', () => {
 
 describe('agent-step worker with approvals', () => {
   let db: FakeFirestore;
+  // The live principal check (PR-2): allowed unless a case revokes it.
+  let liveResult: { ok: true } | { ok: false; reason: string } = { ok: true };
 
   beforeEach(() => {
     db = new FakeFirestore();
     resetCapabilityRegistryForTests();
+    liveResult = { ok: true };
     const now = '2026-09-27T10:00:00.000Z';
     db.write('agent_runs/run-9', {
       runId: 'run-9',
@@ -238,6 +242,7 @@ describe('agent-step worker with approvals', () => {
         store: createFirestoreAgentStepStore(db.asFirestore()),
         resolveCapability: getCapability,
         approvals: withVerifier ? createFirestoreApprovalVerifier(db.asFirestore()) : undefined,
+        principals: { check: async () => liveResult },
         nowMs: () => Date.parse('2026-09-27T10:00:00.000Z'),
       }
     );
@@ -266,6 +271,41 @@ describe('agent-step worker with approvals', () => {
     db.write(`${CAPABILITY_APPROVALS_COLLECTION}/appr-1`, approvalRecord());
     const outcome = await process(false);
     expect(outcome.body).toMatchObject({ status: 'failed', code: 'APPROVAL_VERIFIER_UNAVAILABLE' });
+  });
+  // ── PR-2: order and live checks ──────────────────────────────────────────────────────────
+  const approvalStatus = () => db.read(`${CAPABILITY_APPROVALS_COLLECTION}/appr-1`)?.status;
+
+  it('binds the approval only after every other check passes', async () => {
+    registerCapability(sendMessage);
+    db.write(`${CAPABILITY_APPROVALS_COLLECTION}/appr-1`, approvalRecord());
+    expect((await process()).body.status).toBe('completed');
+    expect(approvalStatus()).toBe('bound');
+  });
+
+  it('refuses a step whose user lost access, without consuming the approval', async () => {
+    const handler = vi.fn(sendMessage.handler);
+    registerCapability({ ...sendMessage, handler });
+    db.write(`${CAPABILITY_APPROVALS_COLLECTION}/appr-1`, approvalRecord());
+    liveResult = { ok: false, reason: 'The user is no longer approved.' };
+    expect((await process()).body).toMatchObject({ status: 'failed', code: 'PRINCIPAL_REVOKED' });
+    expect(handler).not.toHaveBeenCalled();
+    expect(approvalStatus()).toBe('approved');
+  });
+
+  it('refuses an unauthorized step without consuming the approval', async () => {
+    registerCapability({ ...sendMessage, permissions: ['messages.send', 'messages.broadcast'] });
+    db.write(`${CAPABILITY_APPROVALS_COLLECTION}/appr-1`, approvalRecord());
+    expect((await process()).body).toMatchObject({ status: 'failed', code: 'AUTHORIZATION_DENIED' });
+    expect(approvalStatus()).toBe('approved');
+  });
+
+  it('refuses audit-required capabilities until the execution audit exists', async () => {
+    const handler = vi.fn(sendMessage.handler);
+    registerCapability({ ...sendMessage, handler, policies: { ...sendMessage.policies, auditRequired: true } });
+    db.write(`${CAPABILITY_APPROVALS_COLLECTION}/appr-1`, approvalRecord());
+    expect((await process()).body).toMatchObject({ status: 'failed', code: 'AUDIT_UNAVAILABLE' });
+    expect(handler).not.toHaveBeenCalled();
+    expect(approvalStatus()).toBe('approved');
   });
 });
 
