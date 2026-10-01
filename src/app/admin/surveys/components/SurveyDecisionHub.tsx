@@ -247,7 +247,7 @@ export function SurveyDecisionHub({ workspaceId }: SurveyDecisionHubProps) {
         "bg-muted/20 py-4 px-5 sm:px-6 transition-all duration-300",
         decisionConfig.enabled ? "border-b border-border/60" : ""
       )}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold shrink-0">
               <Workflow className="h-4.5 w-4.5" />
@@ -260,18 +260,7 @@ export function SurveyDecisionHub({ workspaceId }: SurveyDecisionHubProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0 flex-wrap sm:flex-nowrap">
-            <div className="flex items-center gap-2.5">
-              <Switch
-                id="decision-master-toggle"
-                checked={decisionConfig.enabled}
-                onCheckedChange={(enabled) => updateDecisionConfig({ enabled })}
-              />
-              <Label htmlFor="decision-master-toggle" className="text-xs font-semibold cursor-pointer select-none">
-                {decisionConfig.enabled ? 'Enabled' : 'Disabled'}
-              </Label>
-            </div>
-
+          <div className="flex items-center gap-3 shrink-0 flex-wrap sm:flex-nowrap ml-auto">
             {decisionConfig.enabled && (
               <div className="flex items-center gap-2 animate-in fade-in zoom-in-95 duration-200">
                 <Button
@@ -296,6 +285,17 @@ export function SurveyDecisionHub({ workspaceId }: SurveyDecisionHubProps) {
                 </Button>
               </div>
             )}
+
+            <div className="flex items-center gap-2.5">
+              <Label htmlFor="decision-master-toggle" className="text-xs font-semibold cursor-pointer select-none text-muted-foreground">
+                {decisionConfig.enabled ? 'Enabled' : 'Disabled'}
+              </Label>
+              <Switch
+                id="decision-master-toggle"
+                checked={decisionConfig.enabled}
+                onCheckedChange={(enabled) => updateDecisionConfig({ enabled })}
+              />
+            </div>
           </div>
         </div>
       </CardHeader>

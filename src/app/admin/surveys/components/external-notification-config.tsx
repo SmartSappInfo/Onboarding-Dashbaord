@@ -157,7 +157,7 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                     "bg-muted/20 py-3.5 px-5 sm:px-6 transition-all duration-300",
                     enabled ? "border-b border-border/60" : ""
                 )}>
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="w-full flex items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
                             <div className="h-9 w-9 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold shrink-0">
                                 <Users className="h-4.5 w-4.5" />
@@ -170,7 +170,10 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                             </div>
                         </div>
                         
-                        <div className="flex items-center gap-2.5 shrink-0">
+                        <div className="flex items-center gap-2.5 shrink-0 ml-auto">
+                            <Label htmlFor={`${prefix}s-master-toggle`} className="text-xs font-semibold cursor-pointer select-none text-muted-foreground">
+                                {enabled ? 'Enabled' : 'Disabled'}
+                            </Label>
                             <Controller
                                 name={`${prefix}sEnabled`}
                                 control={control}
@@ -182,9 +185,6 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                                     />
                                 )}
                             />
-                            <Label htmlFor={`${prefix}s-master-toggle`} className="text-xs font-semibold cursor-pointer select-none text-muted-foreground">
-                                {enabled ? 'Enabled' : 'Disabled'}
-                            </Label>
                         </div>
                     </div>
                 </CardHeader>
