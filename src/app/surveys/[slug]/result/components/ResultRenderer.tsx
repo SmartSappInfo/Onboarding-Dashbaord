@@ -23,6 +23,20 @@ import {
     SelectValue 
 } from '@/components/ui/select';
 
+interface SimulationContact {
+    name: string;
+    email: string;
+    phone: string;
+    typeLabel?: string;
+    typeKey?: string;
+}
+
+interface SimulationEntity {
+    id: string;
+    name: string;
+    contacts: SimulationContact[];
+}
+
 interface ResultRendererProps {
     survey: Survey;
     response: SurveyResponse;
@@ -398,7 +412,7 @@ export default function ResultRenderer({
     resolvedThankYouDescription,
     simulatedValues: propSimulatedValues
 }: ResultRendererProps) {
-    const [entities, setEntities] = React.useState<any[]>([]);
+    const [entities, setEntities] = React.useState<SimulationEntity[]>([]);
     const [selectedEntityId, setSelectedEntityId] = React.useState<string>('none');
     const [selectedContactEmail, setSelectedContactEmail] = React.useState<string>('none');
     const [simulatedValues, setSimulatedValues] = React.useState<Record<string, string>>({});
@@ -568,7 +582,7 @@ export default function ResultRenderer({
                                     <SelectValue placeholder="Select Contact" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-slate-800 border-slate-700 text-white rounded-xl">
-                                    {activeContacts.map((c: any) => (
+                                    {activeContacts.map((c: SimulationContact) => (
                                         <SelectItem key={c.email || c.phone} value={c.email} className="text-xs focus:bg-slate-700 focus:text-white rounded-lg">
                                             {c.name} ({c.typeLabel || c.typeKey || 'Contact'})
                                         </SelectItem>

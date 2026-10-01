@@ -82,8 +82,13 @@ function parseInlineTokens(rawText: string): InlineToken[] {
       const splitIdx = matchText.indexOf('](');
       const label = matchText.slice(1, splitIdx);
       const url = matchText.slice(splitIdx + 2, -1);
-      // Safe URL check: only http, https, or relative paths allowed
-      const isSafe = url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/');
+      // Safe URL check: only http, https, relative paths, mailto, or tel allowed
+      const isSafe =
+        url.startsWith('http://') ||
+        url.startsWith('https://') ||
+        url.startsWith('/') ||
+        url.startsWith('mailto:') ||
+        url.startsWith('tel:');
       tokens.push({
         type: 'link',
         text: label,
@@ -501,7 +506,7 @@ export function AiMarkdownRenderer({
                     variant="ghost"
                     size="sm"
                     onClick={onUndoAction}
-                    className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground active:scale-[0.97] transition-all"
+                    className="min-h-[44px] sm:min-h-[32px] px-2.5 text-xs text-muted-foreground hover:text-foreground active:scale-[0.97] transition-all flex items-center"
                   >
                     <RotateCcw className="h-3.5 w-3.5 mr-1" />
                     Undo

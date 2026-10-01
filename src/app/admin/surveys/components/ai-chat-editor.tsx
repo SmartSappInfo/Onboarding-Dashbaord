@@ -592,7 +592,7 @@ function AiChatPanel() {
                                             type="button"
                                             variant="ghost"
                                             size="icon"
- className="h-7 w-7 hover:bg-card/10 text-primary-foreground rounded-lg"
+                                            className="min-h-[44px] min-w-[44px] sm:min-h-[28px] sm:min-w-[28px] sm:h-7 sm:w-7 hover:bg-card/10 text-primary-foreground rounded-lg active:scale-[0.97] transition-all flex items-center justify-center"
                                             onClick={() => setIsFullScreen(!isFullScreen)}
                                             title={isFullScreen ? 'Minimize' : 'Maximize'}
                                         >
@@ -602,7 +602,7 @@ function AiChatPanel() {
                                             type="button"
                                             variant="ghost"
                                             size="icon"
- className="h-7 w-7 hover:bg-card/10 text-primary-foreground rounded-lg"
+                                            className="min-h-[44px] min-w-[44px] sm:min-h-[28px] sm:min-w-[28px] sm:h-7 sm:w-7 hover:bg-card/10 text-primary-foreground rounded-lg active:scale-[0.97] transition-all flex items-center justify-center"
                                             onClick={() => { setIsOpen(false); setIsFullScreen(false); }}
                                         >
  <ChevronDown className="h-3.5 w-3.5" />

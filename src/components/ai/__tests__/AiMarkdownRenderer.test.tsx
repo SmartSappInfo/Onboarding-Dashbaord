@@ -98,4 +98,30 @@ I have updated your post-submission experience.
     fireEvent.click(undoBtn);
     expect(handleUndo).toHaveBeenCalled();
   });
+
+  it('renders safe links (https, relative, mailto, tel) and neutralizes unsafe schemes', () => {
+    const markdown = `
+Check out [Documentation](https://smartsapp.com/docs) or [Local Guide](/guides/surveys).
+Contact us at [Email](mailto:support@smartsapp.com) or [Call Support](tel:+15551234567).
+Avoid [Malicious](javascript:alert(1)).
+    `;
+
+    render(<AiMarkdownRenderer content={markdown} isUser={false} />);
+
+    const docLink = screen.getByRole('link', { name: 'Documentation' });
+    expect(docLink.getAttribute('href')).toBe('https://smartsapp.com/docs');
+
+    const localLink = screen.getByRole('link', { name: 'Local Guide' });
+    expect(localLink.getAttribute('href')).toBe('/guides/surveys');
+
+    const mailLink = screen.getByRole('link', { name: 'Email' });
+    expect(mailLink.getAttribute('href')).toBe('mailto:support@smartsapp.com');
+
+    const telLink = screen.getByRole('link', { name: 'Call Support' });
+    expect(telLink.getAttribute('href')).toBe('tel:+15551234567');
+
+    const unsafeLink = screen.getByRole('link', { name: 'Malicious' });
+    expect(unsafeLink.getAttribute('href')).toBe('#');
+  });
 });
+
