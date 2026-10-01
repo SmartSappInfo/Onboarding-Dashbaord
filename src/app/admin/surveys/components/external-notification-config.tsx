@@ -5,10 +5,11 @@ import { useFormContext, Controller } from 'react-hook-form';
 import type { TemplateCategory } from '@/lib/types';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Users, Mail, Smartphone, MessageCircle, Info, PlusCircle, Pencil, Filter, Sparkles } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Users, Mail, Smartphone, MessageCircle, PlusCircle, Pencil, Filter, Sparkles } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { TagInput } from '@/components/ui/tag-input';
-import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
 import { useTenant } from '@/context/TenantContext';
@@ -148,267 +149,263 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
 
     return (
         <div className="space-y-4">
-            <div className={cn(
-                "rounded-[2rem] border-2 transition-all duration-500",
-                enabled ? "border-primary/20 bg-primary/5 shadow-xl shadow-primary/5" : "border-border/50 bg-background grayscale opacity-60"
+            <Card className={cn(
+                "rounded-2xl border border-border/80 bg-card overflow-hidden shadow-xs transition-all duration-300",
+                !enabled && "hover:border-border"
             )}>
-                <div className="flex items-center justify-between p-4 sm:p-5">
-                    <div className="flex items-center gap-3.5 text-left">
-                        <div className={cn(
-                            "h-10 w-10 rounded-2xl flex items-center justify-center transition-all duration-500 shrink-0", 
-                            enabled ? "bg-primary text-white shadow-md shadow-primary/20 -rotate-3" : "bg-muted text-muted-foreground"
-                        )}>
-                            <Users className="h-5 w-5" />
+                <CardHeader className={cn(
+                    "bg-muted/20 py-3.5 px-5 sm:px-6 transition-all duration-300",
+                    enabled ? "border-b border-border/60" : ""
+                )}>
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="h-9 w-9 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold shrink-0">
+                                <Users className="h-4.5 w-4.5" />
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <CardTitle className="text-sm sm:text-base font-bold text-foreground">
+                                    External Contact Alerts
+                                </CardTitle>
+                                <CardInfoTooltip text="Notify external stakeholders or campus contacts automatically upon survey response submission." />
+                            </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <Label className="text-sm sm:text-base font-semibold tracking-tight cursor-pointer">
-                                External Contact Alerts
+                        
+                        <div className="flex items-center gap-2.5 shrink-0">
+                            <Controller
+                                name={`${prefix}sEnabled`}
+                                control={control}
+                                render={({ field }) => (
+                                    <Switch 
+                                        id={`${prefix}s-master-toggle`}
+                                        checked={!!field.value} 
+                                        onCheckedChange={field.onChange} 
+                                    />
+                                )}
+                            />
+                            <Label htmlFor={`${prefix}s-master-toggle`} className="text-xs font-semibold cursor-pointer select-none text-muted-foreground">
+                                {enabled ? 'Enabled' : 'Disabled'}
                             </Label>
-                            <CardInfoTooltip text="Notify external stakeholders or campus contacts automatically upon survey response submission." />
                         </div>
                     </div>
-                    <Controller
-                        name={`${prefix}sEnabled`}
-                        control={control}
-                        render={({ field }) => (
-                            <Switch 
-                                checked={!!field.value} 
-                                onCheckedChange={field.onChange} 
-                                className="scale-110"
-                            />
-                        )}
-                    />
-                </div>
+                </CardHeader>
 
-                {enabled && (
-                    <div className="p-6 pt-0 space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
-                        <Separator className="bg-primary/10" />
-                        
-                        {/* Routing Logic */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
-                            <div className="space-y-4">
-                                <Label className="text-[10px] font-semibold text-primary ml-1">1. Stakeholder Filtering</Label>
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <Filter className="h-3 w-3 text-muted-foreground" />
-                                            <span className="text-[10px] font-semibold text-muted-foreground">Contact Roles to Notify</span>
-                                        </div>
-                                        <Controller
-                                            name={`${prefix}ContactTypes`}
-                                            control={control}
-                                            render={({ field }) => (
-                                                <TagInput 
-                                                    value={field.value || []}
-                                                    onChange={field.onChange}
-                                                    placeholder="Enter emails, phones, or roles..."
-                                                />
-                                            )}
-                                        />
-                                        <p className="text-[9px] font-bold text-muted-foreground/60 tracking-tight leading-relaxed italic">
-                                            Add comma or semicolon-separated custom contacts or workspace roles.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <Label className="text-[10px] font-semibold text-primary ml-1">2. Delivery Medium (Multi-Select)</Label>
-                                    <span className="text-[9px] text-muted-foreground font-medium">Toggle any combination</span>
-                                </div>
-                                <div className="grid grid-cols-3 gap-2 bg-muted/30 p-1.5 rounded-2xl border">
-                                    {([
-                                        { key: 'email' as const, label: 'Email', icon: Mail },
-                                        { key: 'sms' as const, label: 'SMS', icon: Smartphone },
-                                        { key: 'whatsapp' as const, label: 'WhatsApp', icon: MessageCircle },
-                                    ]).map(({ key: c, label, icon: Icon }) => {
-                                        const isSelected = activeChannels.includes(c);
-                                        return (
-                                            <button
-                                                key={c}
-                                                type="button"
-                                                onClick={() => handleToggleChannel(c)}
-                                                className={cn(
-                                                    "h-11 rounded-xl font-bold uppercase text-[10px] flex items-center justify-center gap-1.5 transition-all min-h-[44px] active:scale-[0.97]",
-                                                    isSelected 
-                                                        ? "bg-card shadow-md text-primary border border-primary/20 ring-1 ring-primary/20" 
-                                                        : "text-muted-foreground opacity-60 hover:opacity-100 hover:bg-card/50"
-                                                )}
-                                                aria-pressed={isSelected}
-                                            >
-                                                <Icon className="h-3.5 w-3.5 shrink-0" />
-                                                <span>{label}</span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                                <div className="p-4 rounded-xl bg-purple-50 border border-purple-100 flex items-start gap-3">
-                                    <Info className="h-4 w-4 text-purple-600 shrink-0 mt-0.5" />
-                                    <p className="text-[9px] font-bold text-purple-800 leading-relaxed tracking-tighter">
-                                        External alerts use public-facing templates across all toggled channels. Ensure the tone is appropriate for your customers.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Template Selection */}
-                        <div className="pt-4 border-t border-primary/10 space-y-4 text-left">
-                            <div className="flex items-center justify-between px-1">
-                                <div>
-                                    <Label className="text-[10px] font-bold text-primary tracking-wider uppercase">2. Stakeholder Template Configuration</Label>
-                                    <p className="text-[10px] text-muted-foreground font-semibold">Assign or generate templates for campus-level alerts</p>
-                                </div>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleGenerateAi()}
-                                    disabled={isGeneratingAi}
-                                    className="min-h-[44px] sm:min-h-[32px] h-auto sm:h-8 px-3 text-[11px] font-bold gap-1.5 text-primary border-primary/30 hover:bg-primary/5 rounded-xl active:scale-[0.97] transition-all shadow-sm"
-                                >
-                                    <Sparkles className="h-3.5 w-3.5 animate-pulse text-primary" />
-                                    AI Generate Stakeholder Alerts
-                                </Button>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {activeChannels.includes('email') && (
-                                <div className="space-y-2">
-                                    <div className="flex justify-between items-center px-1">
-                                        <Label className="text-[10px] font-semibold text-muted-foreground flex items-center gap-2">
-                                            <Mail className="h-3 w-3" /> External Email Template
-                                        </Label>
-                                        <div className="flex items-center gap-1">
-                                            <Controller
-                                                name={`${prefix}EmailTemplateId`}
-                                                control={control}
-                                                render={({ field }) => (
-                                                    <>
-                                                        {field.value && field.value !== 'none' ? (
-                                                            <Button 
-                                                                type="button" 
-                                                                variant="ghost" 
-                                                                className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-primary gap-1 rounded-lg"
-                                                                onClick={() => setQuickCreateState({ channel: 'email', open: true, templateId: field.value })}
-                                                            >
-                                                                <Pencil className="h-3 w-3" /> Edit
-                                                            </Button>
-                                                        ) : null}
-                                                    </>
-                                                )}
-                                            />
-                                            <Button 
-                                                type="button" 
-                                                variant="ghost" 
-                                                className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-primary gap-1 rounded-lg"
-                                                onClick={() => setQuickCreateState({ channel: 'email', open: true })}
-                                            >
-                                                <PlusCircle className="h-3 w-3" /> New
-                                            </Button>
-                                        </div>
-                                    </div>
-                                    <Controller
-                                        name={`${prefix}EmailTemplateId`}
-                                        control={control}
-                                        render={({ field }) => (
-                                            <MessagingTemplateSelector 
-                                                category={category}
-                                                recipientType={prefix === 'externalAlert' ? 'external_alert' : 'internal_alert'}
-                                                channel="email"
-                                                value={field.value}
-                                                onValueChange={field.onChange}
-                                                placeholder="Select email blueprint..."
-                                                compact
-                                            />
-                                        )}
-                                    />
-                                </div>
-                            )}
-
-                            {activeChannels.includes('sms') && (
-                                <div className="space-y-2">
-                                    <div className="flex justify-between items-center px-1">
-                                        <Label className="text-[10px] font-semibold text-muted-foreground flex items-center gap-2">
-                                            <Smartphone className="h-3 w-3" /> External SMS Template
-                                        </Label>
-                                        <div className="flex items-center gap-1">
-                                            <Controller
-                                                name={`${prefix}SmsTemplateId`}
-                                                control={control}
-                                                render={({ field }) => (
-                                                    <>
-                                                        {field.value && field.value !== 'none' ? (
-                                                            <Button 
-                                                                type="button" 
-                                                                variant="ghost" 
-                                                                className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-primary gap-1 rounded-lg"
-                                                                onClick={() => setQuickCreateState({ channel: 'sms', open: true, templateId: field.value })}
-                                                            >
-                                                                <Pencil className="h-3 w-3" /> Edit
-                                                            </Button>
-                                                        ) : null}
-                                                    </>
-                                                )}
-                                            />
-                                            <Button 
-                                                type="button" 
-                                                variant="ghost" 
-                                                className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-primary gap-1 rounded-lg"
-                                                onClick={() => setQuickCreateState({ channel: 'sms', open: true })}
-                                            >
-                                                <PlusCircle className="h-3 w-3" /> New
-                                            </Button>
-                                        </div>
-                                    </div>
-                                    <Controller
-                                        name={`${prefix}SmsTemplateId`}
-                                        control={control}
-                                        render={({ field }) => (
-                                            <MessagingTemplateSelector 
-                                                category={category}
-                                                recipientType={prefix === 'externalAlert' ? 'external_alert' : 'internal_alert'}
-                                                channel="sms"
-                                                value={field.value}
-                                                onValueChange={field.onChange}
-                                                placeholder="Select SMS blueprint..."
-                                                compact
-                                            />
-                                        )}
-                                    />
-                                </div>
-                            )}
-
-                            {activeChannels.includes('whatsapp') && (
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-semibold text-muted-foreground flex items-center gap-2 px-1">
-                                        <MessageCircle className="h-3 w-3" /> WhatsApp Template
+                <AnimatePresence initial={false}>
+                    {enabled && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.25, ease: 'easeInOut' }}
+                            className="overflow-hidden"
+                        >
+                            <CardContent className="p-5 sm:p-6 space-y-6">
+                                {/* Stakeholder Contacts / Roles */}
+                                <div className="space-y-2.5">
+                                    <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                        <Filter className="h-3.5 w-3.5 text-primary" />
+                                        <span>Alert External Contacts &amp; Roles</span>
                                     </Label>
                                     <Controller
-                                        name={`${prefix}WhatsappTemplateId`}
+                                        name={`${prefix}ContactTypes`}
                                         control={control}
                                         render={({ field }) => (
-                                            <MessagingTemplateSelector
-                                                category={category}
-                                                recipientType={prefix === 'externalAlert' ? 'external_alert' : 'internal_alert'}
-                                                channel="whatsapp"
-                                                value={field.value}
-                                                onValueChange={field.onChange}
-                                                placeholder="Select approved WhatsApp template..."
-                                                compact
+                                            <TagInput 
+                                                value={field.value || []}
+                                                onChange={field.onChange}
+                                                placeholder="Enter emails, phones, or roles (press enter)..."
                                             />
                                         )}
                                     />
-                                    <p className="text-[9px] font-semibold text-muted-foreground px-1">
-                                        Only approved templates send. Adopt one from Messaging → Templates.
-                                    </p>
                                 </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
+
+                                {/* Channels & Templates with AI Assistance */}
+                                <div className="space-y-4 pt-2 border-t border-border/50">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                        {/* Icon-only Channel Toggles */}
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs font-semibold text-muted-foreground">Channels:</span>
+                                            <div className="inline-flex items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border/60">
+                                                {([
+                                                    { key: 'email' as const, label: 'Email', icon: Mail },
+                                                    { key: 'sms' as const, label: 'SMS', icon: Smartphone },
+                                                    { key: 'whatsapp' as const, label: 'WhatsApp', icon: MessageCircle },
+                                                ]).map(({ key: c, label, icon: Icon }) => {
+                                                    const isSelected = activeChannels.includes(c);
+                                                    return (
+                                                        <button
+                                                            key={c}
+                                                            type="button"
+                                                            onClick={() => handleToggleChannel(c)}
+                                                            title={label}
+                                                            aria-label={label}
+                                                            aria-pressed={isSelected}
+                                                            className={cn(
+                                                                "h-9 w-9 rounded-lg flex items-center justify-center transition-all min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px] active:scale-[0.97]",
+                                                                isSelected 
+                                                                    ? "bg-primary/10 text-primary border border-primary/30 shadow-xs ring-1 ring-primary/20" 
+                                                                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60 border border-transparent"
+                                                            )}
+                                                        >
+                                                            <Icon className="h-4 w-4 shrink-0" />
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        {/* AI Generate Button */}
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handleGenerateAi()}
+                                            disabled={isGeneratingAi}
+                                            className="min-h-[44px] sm:min-h-[36px] h-auto sm:h-9 px-3.5 text-xs font-semibold gap-1.5 text-primary border-primary/30 hover:bg-primary/5 rounded-xl active:scale-[0.97] transition-all shadow-xs shrink-0 self-start sm:self-auto"
+                                        >
+                                            <Sparkles className="h-3.5 w-3.5 animate-pulse text-primary shrink-0" />
+                                            <span>AI Generate Stakeholder Alerts</span>
+                                        </Button>
+                                    </div>
+
+                                    {/* Active Channel Template Selectors */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-1">
+                                        {activeChannels.includes('email') && (
+                                            <div className="space-y-2 p-3.5 rounded-xl border border-border/70 bg-card shadow-xs animate-in fade-in zoom-in-95 duration-200">
+                                                <div className="flex justify-between items-center px-0.5">
+                                                    <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                                        <Mail className="h-3.5 w-3.5 text-primary" /> External Email Template
+                                                    </Label>
+                                                    <div className="flex items-center gap-1">
+                                                        <Controller
+                                                            name={`${prefix}EmailTemplateId`}
+                                                            control={control}
+                                                            render={({ field }) => (
+                                                                <>
+                                                                    {field.value && field.value !== 'none' ? (
+                                                                        <Button 
+                                                                            type="button" 
+                                                                            variant="ghost" 
+                                                                            className="h-6 px-2 text-[10px] font-semibold text-primary gap-1 rounded-lg"
+                                                                            onClick={() => setQuickCreateState({ channel: 'email', open: true, templateId: field.value })}
+                                                                        >
+                                                                            <Pencil className="h-3 w-3" /> Edit
+                                                                        </Button>
+                                                                    ) : null}
+                                                                </>
+                                                            )}
+                                                        />
+                                                        <Button 
+                                                            type="button" 
+                                                            variant="ghost" 
+                                                            className="h-6 px-2 text-[10px] font-semibold text-primary gap-1 rounded-lg"
+                                                            onClick={() => setQuickCreateState({ channel: 'email', open: true })}
+                                                        >
+                                                            <PlusCircle className="h-3 w-3" /> New
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                                <Controller
+                                                    name={`${prefix}EmailTemplateId`}
+                                                    control={control}
+                                                    render={({ field }) => (
+                                                        <MessagingTemplateSelector 
+                                                            category={category}
+                                                            recipientType="external_alert"
+                                                            channel="email"
+                                                            value={field.value}
+                                                            onValueChange={field.onChange}
+                                                            placeholder="Select email blueprint..."
+                                                            compact
+                                                        />
+                                                    )}
+                                                />
+                                            </div>
+                                        )}
+
+                                        {activeChannels.includes('sms') && (
+                                            <div className="space-y-2 p-3.5 rounded-xl border border-border/70 bg-card shadow-xs animate-in fade-in zoom-in-95 duration-200">
+                                                <div className="flex justify-between items-center px-0.5">
+                                                    <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                                        <Smartphone className="h-3.5 w-3.5 text-primary" /> External SMS Template
+                                                    </Label>
+                                                    <div className="flex items-center gap-1">
+                                                        <Controller
+                                                            name={`${prefix}SmsTemplateId`}
+                                                            control={control}
+                                                            render={({ field }) => (
+                                                                <>
+                                                                    {field.value && field.value !== 'none' ? (
+                                                                        <Button 
+                                                                            type="button" 
+                                                                            variant="ghost" 
+                                                                            className="h-6 px-2 text-[10px] font-semibold text-primary gap-1 rounded-lg"
+                                                                            onClick={() => setQuickCreateState({ channel: 'sms', open: true, templateId: field.value })}
+                                                                        >
+                                                                            <Pencil className="h-3 w-3" /> Edit
+                                                                        </Button>
+                                                                    ) : null}
+                                                                </>
+                                                            )}
+                                                        />
+                                                        <Button 
+                                                            type="button" 
+                                                            variant="ghost" 
+                                                            className="h-6 px-2 text-[10px] font-semibold text-primary gap-1 rounded-lg"
+                                                            onClick={() => setQuickCreateState({ channel: 'sms', open: true })}
+                                                        >
+                                                            <PlusCircle className="h-3 w-3" /> New
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                                <Controller
+                                                    name={`${prefix}SmsTemplateId`}
+                                                    control={control}
+                                                    render={({ field }) => (
+                                                        <MessagingTemplateSelector 
+                                                            category={category}
+                                                            recipientType="external_alert"
+                                                            channel="sms"
+                                                            value={field.value}
+                                                            onValueChange={field.onChange}
+                                                            placeholder="Select SMS blueprint..."
+                                                            compact
+                                                        />
+                                                    )}
+                                                />
+                                            </div>
+                                        )}
+
+                                        {activeChannels.includes('whatsapp') && (
+                                            <div className="space-y-2 p-3.5 rounded-xl border border-border/70 bg-card shadow-xs animate-in fade-in zoom-in-95 duration-200">
+                                                <div className="flex justify-between items-center px-0.5">
+                                                    <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                                        <MessageCircle className="h-3.5 w-3.5 text-primary" /> External WhatsApp Template
+                                                    </Label>
+                                                </div>
+                                                <Controller
+                                                    name={`${prefix}WhatsappTemplateId`}
+                                                    control={control}
+                                                    render={({ field }) => (
+                                                        <MessagingTemplateSelector 
+                                                            category={category}
+                                                            recipientType="external_alert"
+                                                            channel="whatsapp"
+                                                            value={field.value}
+                                                            onValueChange={field.onChange}
+                                                            placeholder="Select approved WhatsApp template..."
+                                                            compact
+                                                        />
+                                                    )}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </Card>
 
             {quickCreateState && (
                 <TemplateWorkshopSheet 

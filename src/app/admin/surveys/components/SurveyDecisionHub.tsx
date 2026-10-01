@@ -226,7 +226,7 @@ export function SurveyDecisionHub({ workspaceId }: SurveyDecisionHubProps) {
       });
 
       setSimulationResult(res);
-    } catch (_err) {
+    } catch {
       toast({
         variant: 'destructive',
         title: 'Simulation Error',
@@ -238,10 +238,11 @@ export function SurveyDecisionHub({ workspaceId }: SurveyDecisionHubProps) {
   };
 
   return (
-    <Card className={cn(
-      "rounded-2xl border border-border/80 bg-card overflow-hidden shadow-xs transition-all duration-300",
-      !decisionConfig.enabled && "hover:border-border"
-    )}>
+    <>
+      <Card className={cn(
+        "rounded-2xl border border-border/80 bg-card overflow-hidden shadow-xs transition-all duration-300",
+        !decisionConfig.enabled && "hover:border-border"
+      )}>
       <CardHeader className={cn(
         "bg-muted/20 py-4 px-5 sm:px-6 transition-all duration-300",
         decisionConfig.enabled ? "border-b border-border/60" : ""
@@ -435,6 +436,7 @@ export function SurveyDecisionHub({ workspaceId }: SurveyDecisionHubProps) {
         )}
       </CardContent>
       )}
+    </Card>
 
       {/* Edit / Create Rule Modal */}
       {isRuleModalOpen && editingRule && (
@@ -1045,6 +1047,6 @@ export function SurveyDecisionHub({ workspaceId }: SurveyDecisionHubProps) {
           </DialogContent>
         </Dialog>
       )}
-    </Card>
+    </>
   );
 }

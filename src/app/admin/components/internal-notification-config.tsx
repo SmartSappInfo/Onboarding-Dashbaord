@@ -8,11 +8,10 @@ import type { UserProfile, TemplateCategory } from '@/lib/types';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Users, Mail, Smartphone, MessageCircle, Info, PlusCircle, Pencil, Bell, UserCheck, Sparkles, ChevronDown } from 'lucide-react';
+import { Users, Mail, Smartphone, MessageCircle, PlusCircle, Pencil, Bell, Sparkles } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
 import { useTenant } from '@/context/TenantContext';
@@ -81,16 +80,6 @@ export default function InternalNotificationConfig({ prefix = "adminAlert", cate
     const [isGeneratingAi, setIsGeneratingAi] = React.useState(false);
     const [aiOutput, setAiOutput] = React.useState<GenerateSurveyMessagingOutput | null>(null);
     const [savedTemplateIds, setSavedTemplateIds] = React.useState<{ emailTemplateId?: string; smsTemplateId?: string; whatsappTemplateId?: string } | undefined>(undefined);
-    const [isCollapsed, setIsCollapsed] = React.useState(false);
-
-    const notifyManager = !!watch(`${prefix}NotifyManager`);
-
-    // Auto-expand when enabled is toggled on
-    React.useEffect(() => {
-        if (enabled) {
-            setIsCollapsed(false);
-        }
-    }, [enabled]);
 
     const handleGenerateAi = async (userPromptInstructions?: string) => {
         if (!activeWorkspaceId || !activeOrganizationId) return;
@@ -183,60 +172,48 @@ export default function InternalNotificationConfig({ prefix = "adminAlert", cate
 
     return (
         <div className="space-y-4">
-            <Card className="shadow-sm overflow-hidden border border-border">
-                <CardHeader className="bg-muted/30 border-b py-2.5 px-6">
-                    <div className="flex items-center justify-between">
-                        <div 
-                            className={cn(
-                                "flex items-center gap-3 select-none",
-                                enabled && "cursor-pointer"
-                            )}
-                            onClick={() => {
-                                if (enabled) setIsCollapsed(prev => !prev);
-                            }}
-                        >
-                            <div className="p-1.5 bg-primary/10 rounded-lg">
-                                <Bell className="h-4 w-4 text-primary" />
+            <Card className={cn(
+                "rounded-2xl border border-border/80 bg-card overflow-hidden shadow-xs transition-all duration-300",
+                !enabled && "hover:border-border"
+            )}>
+                <CardHeader className={cn(
+                    "bg-muted/20 py-3.5 px-5 sm:px-6 transition-all duration-300",
+                    enabled ? "border-b border-border/60" : ""
+                )}>
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="h-9 w-9 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold shrink-0">
+                                <Bell className="h-4.5 w-4.5" />
                             </div>
                             <div className="flex items-center gap-2">
-                                <CardTitle className="text-base font-semibold tracking-tight">
+                                <CardTitle className="text-sm sm:text-base font-bold text-foreground">
                                     Internal Team Alerts
                                 </CardTitle>
                                 <CardInfoTooltip text="Notify your team on completion via Email, SMS, or WhatsApp alerts." />
                             </div>
                         </div>
-                        <div className="flex items-center gap-3">
+                        
+                        <div className="flex items-center gap-2.5 shrink-0">
                             <Controller
                                 name={`${prefix}sEnabled`}
                                 control={control}
                                 render={({ field }) => (
                                     <Switch 
+                                        id={`${prefix}s-master-toggle`}
                                         checked={!!field.value} 
-                                        onCheckedChange={(val) => {
-                                            field.onChange(val);
-                                            if (val) setIsCollapsed(false);
-                                        }} 
+                                        onCheckedChange={field.onChange} 
                                     />
                                 )}
                             />
-                            {enabled && (
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => setIsCollapsed(prev => !prev)}
-                                    className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-lg transition-transform"
-                                    aria-label={isCollapsed ? "Expand internal alerts" : "Collapse internal alerts"}
-                                >
-                                    <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", isCollapsed ? "-rotate-90" : "rotate-0")} />
-                                </Button>
-                            )}
+                            <Label htmlFor={`${prefix}s-master-toggle`} className="text-xs font-semibold cursor-pointer select-none text-muted-foreground">
+                                {enabled ? 'Enabled' : 'Disabled'}
+                            </Label>
                         </div>
                     </div>
                 </CardHeader>
 
                 <AnimatePresence initial={false}>
-                    {enabled && !isCollapsed && (
+                    {enabled && (
                         <motion.div
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
@@ -244,273 +221,233 @@ export default function InternalNotificationConfig({ prefix = "adminAlert", cate
                             transition={{ duration: 0.25, ease: 'easeInOut' }}
                             className="overflow-hidden"
                         >
-                            <CardContent className="p-6 space-y-6">
-                                {/* Routing Logic */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-4">
-                                        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                            1. Recipient Intelligence
+                            <CardContent className="p-5 sm:p-6 space-y-6">
+                                {/* Alert Internal Team & Assigned Manager */}
+                                <div className="space-y-2.5">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                        <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                            <Users className="h-3.5 w-3.5 text-primary" />
+                                            <span>Alert Team Members</span>
                                         </Label>
-                                        <div className="space-y-3">
-                                            <div className={cn(
-                                                "rounded-2xl border-2 transition-all duration-300 shadow-xs",
-                                                notifyManager ? "border-primary/40 bg-primary/5" : "border-input bg-background/50"
-                                            )}>
-                                                <div className="flex items-center justify-between p-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className={cn(
-                                                            "p-2 rounded-lg transition-colors",
-                                                            notifyManager ? "bg-primary text-white" : "bg-muted text-muted-foreground"
-                                                        )}>
-                                                            <UserCheck className="h-4 w-4" />
-                                                        </div>
-                                                        <div className="space-y-0.5">
-                                                            <Label className="text-sm font-semibold tracking-tight cursor-pointer">
-                                                                Notify Assigned Manager
-                                                            </Label>
-                                                            <p className="text-[10px] text-muted-foreground font-medium">
-                                                                Route alerts to the lead or contact owner
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    <Controller
-                                                        name={`${prefix}NotifyManager`}
-                                                        control={control}
-                                                        render={({ field }) => <Switch checked={!!field.value} onCheckedChange={field.onChange} />}
+                                        <div className="flex items-center gap-2">
+                                            <Controller
+                                                name={`${prefix}NotifyManager`}
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <Switch 
+                                                        id={`${prefix}-notify-manager`}
+                                                        checked={!!field.value} 
+                                                        onCheckedChange={field.onChange} 
                                                     />
-                                                </div>
-                                            </div>
-                                            
-                                            <div className="space-y-2">
-                                                <div className="flex items-center gap-2">
-                                                    <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                                                    <Label className="text-sm font-semibold text-foreground">
-                                                        Additional Subscribers
-                                                    </Label>
-                                                </div>
-                                                <Controller
-                                                    name={`${prefix}SpecificUserIds`}
-                                                    control={control}
-                                                    render={({ field }) => (
-                                                        <MultiSelect 
-                                                            options={userOptions}
-                                                            value={field.value || []}
-                                                            onChange={field.onChange}
-                                                            placeholder="Select team members..."
-                                                            className="rounded-xl font-medium"
-                                                        />
-                                                    )}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                                2. Delivery Medium (Multi-Select)
+                                                )}
+                                            />
+                                            <Label htmlFor={`${prefix}-notify-manager`} className="text-xs font-medium cursor-pointer select-none text-muted-foreground">
+                                                Notify Assigned Manager
                                             </Label>
-                                            <span className="text-[10px] text-muted-foreground font-medium">Toggle any combination</span>
-                                        </div>
-                                        <div className="grid grid-cols-3 gap-2 bg-muted/40 p-1.5 rounded-xl border border-input">
-                                            {([
-                                                { key: 'email' as const, label: 'Email', icon: Mail },
-                                                { key: 'sms' as const, label: 'SMS', icon: Smartphone },
-                                                { key: 'whatsapp' as const, label: 'WhatsApp', icon: MessageCircle },
-                                            ]).map(({ key: c, label, icon: Icon }) => {
-                                                const isSelected = activeChannels.includes(c);
-                                                return (
-                                                    <button
-                                                        key={c}
-                                                        type="button"
-                                                        onClick={() => handleToggleChannel(c)}
-                                                        className={cn(
-                                                            "h-11 rounded-lg font-bold text-xs uppercase flex items-center justify-center gap-1.5 transition-all min-h-[44px] active:scale-[0.97]",
-                                                            isSelected 
-                                                                ? "bg-card shadow-xs text-primary border border-input ring-1 ring-primary/20" 
-                                                                : "text-muted-foreground opacity-60 hover:opacity-100 hover:bg-card/40"
-                                                        )}
-                                                        aria-pressed={isSelected}
-                                                    >
-                                                        <Icon className="h-3.5 w-3.5 shrink-0" />
-                                                        <span>{label}</span>
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                        <div className="p-3.5 rounded-xl bg-muted/30 border border-border/60 flex items-start gap-2.5">
-                                            <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                                            <p className="text-xs text-muted-foreground leading-relaxed">
-                                                Alerts use professional internal templates across all toggled channels to maintain team context.
-                                            </p>
                                         </div>
                                     </div>
+                                    <Controller
+                                        name={`${prefix}SpecificUserIds`}
+                                        control={control}
+                                        render={({ field }) => (
+                                            <MultiSelect 
+                                                options={userOptions}
+                                                value={field.value || []}
+                                                onChange={field.onChange}
+                                                placeholder="Select team members to alert..."
+                                                className="rounded-xl font-medium"
+                                            />
+                                        )}
+                                    />
                                 </div>
 
-                                <Separator className="bg-border/60" />
-
-                                {/* Template Selection */}
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <div className="space-y-0.5">
-                                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                                3. Alert Template Configuration
-                                            </Label>
-                                            <p className="text-[10px] text-muted-foreground font-medium">
-                                                Assign or generate templates for active channels
-                                            </p>
+                                {/* Delivery Channels & Template Selectors with AI Assistance */}
+                                <div className="space-y-4 pt-2 border-t border-border/50">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                        {/* Icon-only Channel Toggles */}
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs font-semibold text-muted-foreground">Channels:</span>
+                                            <div className="inline-flex items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border/60">
+                                                {([
+                                                    { key: 'email' as const, label: 'Email', icon: Mail },
+                                                    { key: 'sms' as const, label: 'SMS', icon: Smartphone },
+                                                    { key: 'whatsapp' as const, label: 'WhatsApp', icon: MessageCircle },
+                                                ]).map(({ key: c, label, icon: Icon }) => {
+                                                    const isSelected = activeChannels.includes(c);
+                                                    return (
+                                                        <button
+                                                            key={c}
+                                                            type="button"
+                                                            onClick={() => handleToggleChannel(c)}
+                                                            title={label}
+                                                            aria-label={label}
+                                                            aria-pressed={isSelected}
+                                                            className={cn(
+                                                                "h-9 w-9 rounded-lg flex items-center justify-center transition-all min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px] active:scale-[0.97]",
+                                                                isSelected 
+                                                                    ? "bg-primary/10 text-primary border border-primary/30 shadow-xs ring-1 ring-primary/20" 
+                                                                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60 border border-transparent"
+                                                            )}
+                                                        >
+                                                            <Icon className="h-4 w-4 shrink-0" />
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
+
+                                        {/* AI Generate Button */}
                                         <Button
                                             type="button"
                                             variant="outline"
                                             size="sm"
                                             onClick={() => handleGenerateAi()}
                                             disabled={isGeneratingAi}
-                                            className="min-h-[44px] sm:min-h-[32px] h-auto sm:h-8 px-3 text-xs font-semibold gap-1.5 text-primary border-primary/30 hover:bg-primary/5 rounded-xl active:scale-[0.97] transition-all shadow-xs"
+                                            className="min-h-[44px] sm:min-h-[36px] h-auto sm:h-9 px-3.5 text-xs font-semibold gap-1.5 text-primary border-primary/30 hover:bg-primary/5 rounded-xl active:scale-[0.97] transition-all shadow-xs shrink-0 self-start sm:self-auto"
                                         >
-                                            <Sparkles className="h-3.5 w-3.5 animate-pulse text-primary" />
-                                            AI Generate Team Alerts
+                                            <Sparkles className="h-3.5 w-3.5 animate-pulse text-primary shrink-0" />
+                                            <span>AI Generate Team Alerts</span>
                                         </Button>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {activeChannels.includes('email') && (
-                                        <div className="space-y-2">
-                                            <div className="flex justify-between items-center px-0.5">
-                                                <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                                                    <Mail className="h-3.5 w-3.5 text-muted-foreground" /> Internal Email Template
-                                                </Label>
-                                                <div className="flex items-center gap-1">
-                                                    <Controller
-                                                        name={`${prefix}EmailTemplateId`}
-                                                        control={control}
-                                                        render={({ field }) => (
-                                                            <>
-                                                                {field.value && field.value !== 'none' ? (
-                                                                    <Button 
-                                                                        type="button" 
-                                                                        variant="ghost" 
-                                                                        className="h-6 px-2 text-[10px] font-semibold text-primary gap-1 rounded-lg"
-                                                                        onClick={() => setQuickCreateState({ channel: 'email', open: true, templateId: field.value })}
-                                                                    >
-                                                                        <Pencil className="h-3 w-3" /> Edit
-                                                                    </Button>
-                                                                ) : null}
-                                                            </>
-                                                        )}
-                                                    />
-                                                    <Button 
-                                                        type="button" 
-                                                        variant="ghost" 
-                                                        className="h-6 px-2 text-[10px] font-semibold text-primary gap-1 rounded-lg"
-                                                        onClick={() => setQuickCreateState({ channel: 'email', open: true })}
-                                                    >
-                                                        <PlusCircle className="h-3 w-3" /> New
-                                                    </Button>
+                                    {/* Active Channel Template Selectors */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-1">
+                                        {activeChannels.includes('email') && (
+                                            <div className="space-y-2 p-3.5 rounded-xl border border-border/70 bg-card shadow-xs animate-in fade-in zoom-in-95 duration-200">
+                                                <div className="flex justify-between items-center px-0.5">
+                                                    <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                                        <Mail className="h-3.5 w-3.5 text-primary" /> Internal Email Template
+                                                    </Label>
+                                                    <div className="flex items-center gap-1">
+                                                        <Controller
+                                                            name={`${prefix}EmailTemplateId`}
+                                                            control={control}
+                                                            render={({ field }) => (
+                                                                <>
+                                                                    {field.value && field.value !== 'none' ? (
+                                                                        <Button 
+                                                                            type="button" 
+                                                                            variant="ghost" 
+                                                                            className="h-6 px-2 text-[10px] font-semibold text-primary gap-1 rounded-lg"
+                                                                            onClick={() => setQuickCreateState({ channel: 'email', open: true, templateId: field.value })}
+                                                                        >
+                                                                            <Pencil className="h-3 w-3" /> Edit
+                                                                        </Button>
+                                                                    ) : null}
+                                                                </>
+                                                            )}
+                                                        />
+                                                        <Button 
+                                                            type="button" 
+                                                            variant="ghost" 
+                                                            className="h-6 px-2 text-[10px] font-semibold text-primary gap-1 rounded-lg"
+                                                            onClick={() => setQuickCreateState({ channel: 'email', open: true })}
+                                                        >
+                                                            <PlusCircle className="h-3 w-3" /> New
+                                                        </Button>
+                                                    </div>
                                                 </div>
+                                                <Controller
+                                                    name={`${prefix}EmailTemplateId`}
+                                                    control={control}
+                                                    render={({ field }) => (
+                                                        <MessagingTemplateSelector 
+                                                            category={category}
+                                                            recipientType="internal_alert"
+                                                            channel="email"
+                                                            value={field.value}
+                                                            onValueChange={field.onChange}
+                                                            placeholder="Select email template..."
+                                                            compact
+                                                        />
+                                                    )}
+                                                />
                                             </div>
-                                            <Controller
-                                                name={`${prefix}EmailTemplateId`}
-                                                control={control}
-                                                render={({ field }) => (
-                                                    <MessagingTemplateSelector 
-                                                        category={category}
-                                                        recipientType="internal_alert"
-                                                        channel="email"
-                                                        value={field.value}
-                                                        onValueChange={field.onChange}
-                                                        placeholder="Select email template..."
-                                                        compact
-                                                    />
-                                                )}
-                                            />
-                                        </div>
-                                    )}
+                                        )}
 
-                                    {activeChannels.includes('sms') && (
-                                        <div className="space-y-2">
-                                            <div className="flex justify-between items-center px-0.5">
-                                                <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                                                    <Smartphone className="h-3.5 w-3.5 text-muted-foreground" /> Internal SMS Alert
-                                                </Label>
-                                                <div className="flex items-center gap-1">
-                                                    <Controller
-                                                        name={`${prefix}SmsTemplateId`}
-                                                        control={control}
-                                                        render={({ field }) => (
-                                                            <>
-                                                                {field.value && field.value !== 'none' ? (
-                                                                    <Button 
-                                                                        type="button" 
-                                                                        variant="ghost" 
-                                                                        className="h-6 px-2 text-[10px] font-semibold text-primary gap-1 rounded-lg"
-                                                                        onClick={() => setQuickCreateState({ channel: 'sms', open: true, templateId: field.value })}
-                                                                    >
-                                                                        <Pencil className="h-3 w-3" /> Edit
-                                                                    </Button>
-                                                                ) : null}
-                                                            </>
-                                                        )}
-                                                    />
-                                                    <Button 
-                                                        type="button" 
-                                                        variant="ghost" 
-                                                        className="h-6 px-2 text-[10px] font-semibold text-primary gap-1 rounded-lg"
-                                                        onClick={() => setQuickCreateState({ channel: 'sms', open: true })}
-                                                    >
-                                                        <PlusCircle className="h-3 w-3" /> New
-                                                    </Button>
+                                        {activeChannels.includes('sms') && (
+                                            <div className="space-y-2 p-3.5 rounded-xl border border-border/70 bg-card shadow-xs animate-in fade-in zoom-in-95 duration-200">
+                                                <div className="flex justify-between items-center px-0.5">
+                                                    <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                                        <Smartphone className="h-3.5 w-3.5 text-primary" /> Internal SMS Alert
+                                                    </Label>
+                                                    <div className="flex items-center gap-1">
+                                                        <Controller
+                                                            name={`${prefix}SmsTemplateId`}
+                                                            control={control}
+                                                            render={({ field }) => (
+                                                                <>
+                                                                    {field.value && field.value !== 'none' ? (
+                                                                        <Button 
+                                                                            type="button" 
+                                                                            variant="ghost" 
+                                                                            className="h-6 px-2 text-[10px] font-semibold text-primary gap-1 rounded-lg"
+                                                                            onClick={() => setQuickCreateState({ channel: 'sms', open: true, templateId: field.value })}
+                                                                        >
+                                                                            <Pencil className="h-3 w-3" /> Edit
+                                                                        </Button>
+                                                                    ) : null}
+                                                                </>
+                                                            )}
+                                                        />
+                                                        <Button 
+                                                            type="button" 
+                                                            variant="ghost" 
+                                                            className="h-6 px-2 text-[10px] font-semibold text-primary gap-1 rounded-lg"
+                                                            onClick={() => setQuickCreateState({ channel: 'sms', open: true })}
+                                                        >
+                                                            <PlusCircle className="h-3 w-3" /> New
+                                                        </Button>
+                                                    </div>
                                                 </div>
+                                                <Controller
+                                                    name={`${prefix}SmsTemplateId`}
+                                                    control={control}
+                                                    render={({ field }) => (
+                                                        <MessagingTemplateSelector 
+                                                            category={category}
+                                                            recipientType="internal_alert"
+                                                            channel="sms"
+                                                            value={field.value}
+                                                            onValueChange={field.onChange}
+                                                            placeholder="Select SMS alert..."
+                                                            compact
+                                                        />
+                                                    )}
+                                                />
                                             </div>
-                                            <Controller
-                                                name={`${prefix}SmsTemplateId`}
-                                                control={control}
-                                                render={({ field }) => (
-                                                    <MessagingTemplateSelector 
-                                                        category={category}
-                                                        recipientType="internal_alert"
-                                                        channel="sms"
-                                                        value={field.value}
-                                                        onValueChange={field.onChange}
-                                                        placeholder="Select SMS alert..."
-                                                        compact
-                                                    />
-                                                )}
-                                            />
-                                        </div>
-                                    )}
+                                        )}
 
-                                    {activeChannels.includes('whatsapp') && (
-                                        <div className="space-y-2">
-                                            <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5 px-0.5">
-                                                <MessageCircle className="h-3.5 w-3.5 text-muted-foreground" /> Internal WhatsApp Template
-                                            </Label>
-                                            <Controller
-                                                name={`${prefix}WhatsappTemplateId`}
-                                                control={control}
-                                                render={({ field }) => (
-                                                    <MessagingTemplateSelector
-                                                        category={category}
-                                                        recipientType="internal_alert"
-                                                        channel="whatsapp"
-                                                        value={field.value}
-                                                        onValueChange={field.onChange}
-                                                        placeholder="Select approved WhatsApp template..."
-                                                        compact
-                                                    />
-                                                )}
-                                            />
-                                            <p className="text-[10px] font-medium text-muted-foreground px-0.5">
-                                                Only approved templates send. Adopt one from Messaging → Templates.
-                                            </p>
-                                        </div>
-                                    )}
+                                        {activeChannels.includes('whatsapp') && (
+                                            <div className="space-y-2 p-3.5 rounded-xl border border-border/70 bg-card shadow-xs animate-in fade-in zoom-in-95 duration-200">
+                                                <div className="flex justify-between items-center px-0.5">
+                                                    <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                                        <MessageCircle className="h-3.5 w-3.5 text-primary" /> Internal WhatsApp Template
+                                                    </Label>
+                                                </div>
+                                                <Controller
+                                                    name={`${prefix}WhatsappTemplateId`}
+                                                    control={control}
+                                                    render={({ field }) => (
+                                                        <MessagingTemplateSelector
+                                                            category={category}
+                                                            recipientType="internal_alert"
+                                                            channel="whatsapp"
+                                                            value={field.value}
+                                                            onValueChange={field.onChange}
+                                                            placeholder="Select approved WhatsApp template..."
+                                                            compact
+                                                        />
+                                                    )}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        </CardContent>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                            </CardContent>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
         </Card>
 
             {quickCreateState && (
