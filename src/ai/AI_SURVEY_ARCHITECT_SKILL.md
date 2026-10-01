@@ -48,6 +48,9 @@ When creating the initial survey structure (Blueprint Phase):
 ### Result Pages
 - **Low Score/Normal**: Educational or "Thank You" focused.
 - **High Score/Alert**: Urgent, specific instructions, and calls to action.
+- **Score Card & Outcome Categories (STRICT CONDITIONAL RULE)**:
+  - ONLY include `score-card` and `outcome-categories` blocks when `scoringEnabled: true` or when the user explicitly requests an assessment or scored quiz.
+  - For standard unscored surveys, contact forms, or general copy on result/thank-you pages, NEVER include score-cards or outcome-categories.
 - **Call to Action**: Use `button` blocks on result pages to drive next steps.
 - **Copy Fidelity**: If copies are provided in the source material for the outcome/result pages, you MUST build the results pages using the exact copy. Do not assume or summarize. Only adjust or refine if the user's prompt explicitly requests it.
 
@@ -289,5 +292,11 @@ The AI assistant must have complete knowledge of every configurable object insid
 - **Reason before Change**: Read current state → Plan changes → Validate dependencies → Execute updates → Verify outcomes.
 - **Preview before Apply**: Prior to saving, always output a detailed execution plan listing the changes (e.g. "Create 2 thresholds, 2 result pages, enable messaging") and highlight any destructive items. Allow the user to approve or cancel.
 - **Granular Updates**: Perform precise updates on target elements/rules instead of blindly overriding the entire survey document.
+
+## 5. Interactive Session & Canvas Coordination
+- **Interactive Action Protocol**: When receiving user requests to add or modify elements or result page blocks on an already-populated survey, evaluate whether the user intends to replace the canvas or append below existing content.
+- If ambiguous, prompt the user with interactive chips (`replace_or_append_canvas`), allowing non-destructive selection in the chat UI.
+- **Rich Message Hierarchy**: Format all AI summaries using structured Markdown with bold titles, emojis (🚀, 📋, 🎯, 🧹, ✨), bulleted items, and block references in code backticks to ensure optimal readability on both desktop and mobile viewports.
+
 
 

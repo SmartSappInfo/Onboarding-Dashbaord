@@ -25,6 +25,9 @@ import { useLiveAiModel } from '@/hooks/use-live-ai-model';
 import { saveImageToMediaLibrary } from '@/lib/media-actions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import UnifiedPromptInput from '@/components/shared/UnifiedPromptInput';
+import { AiMarkdownRenderer } from '@/components/ai/AiMarkdownRenderer';
+import type { InteractiveAction } from '@/ai/schemas/survey-schemas';
+import type { Survey } from '@/lib/types';
 
 interface Message {
     role: 'user' | 'assistant';
@@ -35,6 +38,9 @@ interface Message {
         type: 'image' | 'document';
         dataUri?: string;
     };
+    interactiveAction?: InteractiveAction | null;
+    stagedSurvey?: Partial<Survey> | null;
+    appliedActionStatus?: 'replaced' | 'appended' | 'dismissed' | null;
 }
 
 interface AiChatEditorProps {
@@ -62,6 +68,7 @@ function AiChatPanel() {
     const [previewImage, setPreviewImage] = React.useState<{ name: string; url: string; dataUri?: string } | null>(null);
     const [isSavingImage, setIsSavingImage] = React.useState(false);
     const [isImageSaved, setIsImageSaved] = React.useState(false);
+    const [previousSurveyState, setPreviousSurveyState] = React.useState<Survey | null>(null);
 
     // Live model preferences — updated in real time via the hook
     const { provider: liveProvider, modelId: liveModelId } = useLiveAiModel();
@@ -299,9 +306,38 @@ function AiChatPanel() {
                     }
                 }
 
-                reset(mergedSurvey, { keepDirty: true, keepTouched: true });
-                setMessages(prev => [...prev, { role: 'assistant', content: result.aiSummary }]);
-                toast({ title: 'Architecture Updated', description: 'AI has applied your requested changes.' });
+                if (result.interactiveAction && result.interactiveAction.type === 'replace_or_append_canvas') {
+                    // Staged interactive choice (Requirement: Interactive Canvas Management)
+                    setMessages(prev => [
+                        ...prev,
+                        {
+                            role: 'assistant',
+                            content: result.aiSummary,
+                            interactiveAction: result.interactiveAction,
+                            stagedSurvey: result.updatedSurvey as Partial<Survey>,
+                            appliedActionStatus: null,
+                        }
+                    ]);
+                    toast({
+                        title: 'Interactive Choices Ready',
+                        description: 'Please select whether to replace your canvas or append below.',
+                    });
+                } else {
+                    // Standard direct update
+                    const currentTyped = currentData as Survey;
+                    setPreviousSurveyState({ ...currentTyped });
+                    reset(mergedSurvey, { keepDirty: true, keepTouched: true });
+                    setMessages(prev => [
+                        ...prev,
+                        {
+                            role: 'assistant',
+                            content: result.aiSummary,
+                            interactiveAction: null,
+                            appliedActionStatus: null,
+                        }
+                    ]);
+                    toast({ title: 'Architecture Updated', description: 'AI has applied your requested changes.' });
+                }
             }
 
         } catch (error: unknown) {
@@ -342,6 +378,85 @@ function AiChatPanel() {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    /**
+     * Applies an interactive canvas action (Replace or Append) proposed by the AI Survey Architect.
+     * Preserves previous survey state for instant non-destructive rollback.
+     */
+    const handleApplyCanvasAction = (messageIndex: number, actionType: 'replace' | 'append' | 'dismiss') => {
+        const targetMsg = messages[messageIndex];
+        if (!targetMsg) return;
+
+        if (actionType === 'dismiss') {
+            setMessages(prev => prev.map((m, idx) => idx === messageIndex ? { ...m, appliedActionStatus: 'dismissed' } : m));
+            return;
+        }
+
+        if (!targetMsg.stagedSurvey) return;
+
+        const currentData = getValues() as Survey;
+        setPreviousSurveyState({ ...currentData });
+
+        const staged = targetMsg.stagedSurvey;
+
+        if (actionType === 'replace') {
+            const mergedSurvey: Survey = { ...currentData, ...staged };
+            reset(mergedSurvey, { keepDirty: true, keepTouched: true });
+            setMessages(prev => prev.map((m, idx) => idx === messageIndex ? { ...m, appliedActionStatus: 'replaced' } : m));
+            toast({
+                title: 'Canvas Replaced',
+                description: 'Your survey canvas has been updated with the AI blueprint.',
+            });
+        } else if (actionType === 'append') {
+            // Append questions and sections to existing elements
+            const currentElements = Array.isArray(currentData.elements) ? currentData.elements : [];
+            const stagedElements = Array.isArray(staged.elements) ? staged.elements : [];
+            const combinedElements = [...currentElements, ...stagedElements];
+
+            // Append result blocks to the first result page or add new result pages
+            const currentResultPages = Array.isArray(currentData.resultPages) ? [...currentData.resultPages] : [];
+            const stagedResultPages = Array.isArray(staged.resultPages) ? staged.resultPages : [];
+
+            if (currentResultPages.length > 0 && stagedResultPages.length > 0) {
+                const targetPage = currentResultPages[0];
+                const existingBlocks = Array.isArray(targetPage.blocks) ? targetPage.blocks : [];
+                const newBlocks = Array.isArray(stagedResultPages[0].blocks) ? stagedResultPages[0].blocks : [];
+                currentResultPages[0] = {
+                    ...targetPage,
+                    blocks: [...existingBlocks, ...newBlocks],
+                };
+            } else if (stagedResultPages.length > 0) {
+                currentResultPages.push(...stagedResultPages);
+            }
+
+            const mergedSurvey: Survey = {
+                ...currentData,
+                ...staged,
+                elements: combinedElements,
+                resultPages: currentResultPages,
+            };
+
+            reset(mergedSurvey, { keepDirty: true, keepTouched: true });
+            setMessages(prev => prev.map((m, idx) => idx === messageIndex ? { ...m, appliedActionStatus: 'appended' } : m));
+            toast({
+                title: 'Content Appended',
+                description: 'New questions and blocks have been added below your existing items.',
+            });
+        }
+    };
+
+    /**
+     * Rolls back canvas changes to the previous survey state before the interactive action was applied.
+     */
+    const handleUndoCanvasAction = (messageIndex: number) => {
+        if (!previousSurveyState) return;
+        reset(previousSurveyState, { keepDirty: true, keepTouched: true });
+        setMessages(prev => prev.map((m, idx) => idx === messageIndex ? { ...m, appliedActionStatus: null } : m));
+        toast({
+            title: 'Action Undone',
+            description: 'Survey canvas has been restored to its previous state.',
+        });
     };
 
     const handleRate = async (rating: number) => {
@@ -520,7 +635,15 @@ function AiChatPanel() {
                                                                 ? "bg-primary text-primary-foreground rounded-tr-sm"
                                                                 : "bg-card border border-border/60 rounded-tl-sm text-foreground"
                                                         )}>
-                                                            <div>{m.content}</div>
+                                                            <AiMarkdownRenderer 
+                                                                content={m.content}
+                                                                isUser={m.role === 'user'}
+                                                                interactiveAction={m.interactiveAction}
+                                                                appliedActionStatus={m.appliedActionStatus}
+                                                                canUndo={Boolean(previousSurveyState)}
+                                                                onApplyAction={(actionType) => handleApplyCanvasAction(i, actionType)}
+                                                                onUndoAction={() => handleUndoCanvasAction(i)}
+                                                            />
                                                             {m.attachment && (
                                                                 <div className="mt-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                                                     {m.attachment.type === 'image' ? (

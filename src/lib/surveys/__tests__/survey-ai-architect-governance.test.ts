@@ -58,6 +58,8 @@ describe('survey-ai-architect-governance-actions', () => {
       expect(res.config.maxSpreadsheetRows).toBe(500);
       expect(res.config.maxPresentationSlides).toBe(30);
       expect(res.config.imageVisionMode).toBe('multimodal');
+      expect(res.config.enforceStrictScoredOutcomesOnly).toBe(true);
+      expect(res.config.requireCanvasConfirmation).toBe(true);
       expect(res.config.allowedFileTypes).toContain('docx');
       expect(res.config.allowedFileTypes).toContain('image');
     });

@@ -441,6 +441,44 @@ export function SystemAiArchitectGovernanceMatrix() {
                 className="data-[state=checked]:bg-primary"
               />
             </div>
+
+            {/* Strict Scored Outcomes Guardrail */}
+            <div className="flex items-center justify-between p-4 rounded-xl bg-background border border-border/70">
+              <div className="space-y-0.5">
+                <Label className="text-xs font-bold text-foreground">
+                  Strict Scored Outcomes Guardrail
+                </Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Strictly prohibit score cards and outcome categories on unscored surveys unless explicitly requested.
+                </p>
+              </div>
+              <Switch
+                checked={config.enforceStrictScoredOutcomesOnly}
+                onCheckedChange={(checked) =>
+                  setConfig((prev) => ({ ...prev, enforceStrictScoredOutcomesOnly: checked }))
+                }
+                className="data-[state=checked]:bg-primary"
+              />
+            </div>
+
+            {/* Interactive Canvas Confirmation */}
+            <div className="flex items-center justify-between p-4 rounded-xl bg-background border border-border/70">
+              <div className="space-y-0.5">
+                <Label className="text-xs font-bold text-foreground">
+                  Require Canvas Confirmation
+                </Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Prompt users with interactive action chips (Replace vs Append) before modifying populated canvases.
+                </p>
+              </div>
+              <Switch
+                checked={config.requireCanvasConfirmation}
+                onCheckedChange={(checked) =>
+                  setConfig((prev) => ({ ...prev, requireCanvasConfirmation: checked }))
+                }
+                className="data-[state=checked]:bg-primary"
+              />
+            </div>
           </div>
         </div>
 

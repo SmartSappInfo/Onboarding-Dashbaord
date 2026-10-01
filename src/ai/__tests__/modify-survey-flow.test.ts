@@ -129,4 +129,69 @@ describe('modifySurveyFlow Input Schema', () => {
         });
         expect(validResultRule.pageId).toBe('rp_redesign_strategy');
     });
+
+    it('should validate interactiveActionSchema for canvas management', async () => {
+        const { interactiveActionSchema } = await import('../schemas/survey-schemas');
+
+        const validAction = interactiveActionSchema.parse({
+            type: 'replace_or_append_canvas',
+            title: 'Canvas Update Options',
+            message: 'Would you like to replace the existing canvas or append below?',
+            proposedElementsCount: 4,
+            existingElementsCount: 2,
+            proposedResultBlocksCount: 6,
+            existingResultBlocksCount: 3,
+            targetArea: 'result_page_blocks',
+        });
+
+        expect(validAction.type).toBe('replace_or_append_canvas');
+        expect(validAction.targetArea).toBe('result_page_blocks');
+        expect(validAction.proposedElementsCount).toBe(4);
+    });
+
+    it('should prune outcome-categories and score-card blocks when scoring is disabled in mergeSurveyPhases', async () => {
+        const { mergeSurveyPhases } = await import('../utils/merge-survey-phases');
+
+        const blueprint = {
+            title: 'Customer Feedback',
+            description: 'Unscored feedback collection',
+            sections: [{ id: 'sec_1', title: 'Feedback', stepperTitle: 'Feedback', estimatedQuestions: 2 }],
+            scoringEnabled: false,
+            thankYouTitle: 'Thank You',
+            thankYouDescription: 'We appreciate your time',
+            bannerImageQuery: 'feedback',
+        };
+
+        const questions = {
+            elements: [
+                { id: 'q_feedback', type: 'text', title: 'Your Feedback' }
+            ]
+        };
+
+        const logic = {
+            maxScore: 0,
+            resultPages: [
+                {
+                    id: 'rp_thanks',
+                    name: 'Thank You Page',
+                    isDefault: true,
+                    blocks: [
+                        { id: 'b_score', type: 'score-card' as const },
+                        { id: 'b_cat', type: 'outcome-categories' as const },
+                        { id: 'b_head', type: 'heading' as const, title: 'Thank You' },
+                        { id: 'b_text', type: 'text' as const, content: 'Your submission has been recorded.' }
+                    ]
+                }
+            ]
+        };
+
+        const merged = mergeSurveyPhases(blueprint, questions, logic);
+        expect(merged.scoringEnabled).toBe(false);
+        const firstPage = merged.resultPages[0] as { blocks?: Array<{ type?: unknown }> };
+        const pageBlocks = firstPage.blocks || [];
+        expect(pageBlocks.length).toBe(2);
+        expect(pageBlocks.some(b => b.type === 'outcome-categories')).toBe(false);
+        expect(pageBlocks.some(b => b.type === 'score-card')).toBe(false);
+    });
 });
+

@@ -19,6 +19,8 @@ export interface SystemAiArchitectGovernanceConfig {
   defaultModelTier: 'fast' | 'flagship';
   imageVisionMode: 'multimodal' | 'ocr_fallback';
   enablePromptPolishCopilot: boolean;
+  enforceStrictScoredOutcomesOnly: boolean;
+  requireCanvasConfirmation: boolean;
   enabledArchetypeIds: string[];
   allowedFileTypes: string[];
   updatedAt?: string;
@@ -35,6 +37,8 @@ export const DEFAULT_AI_ARCHITECT_GOVERNANCE_CONFIG: SystemAiArchitectGovernance
   defaultModelTier: 'fast',
   imageVisionMode: 'multimodal',
   enablePromptPolishCopilot: true,
+  enforceStrictScoredOutcomesOnly: true,
+  requireCanvasConfirmation: true,
   enabledArchetypeIds: ['csat_nps', 'pulse_360', 'scored_quiz', 'pmf_survey', 'event_feedback', 'lead_intake'],
   allowedFileTypes: ['pdf', 'docx', 'doc', 'image', 'xlsx', 'xls', 'pptx', 'ppt', 'text', 'markdown', 'csv', 'json'],
 };
@@ -53,6 +57,8 @@ export const SystemAiArchitectGovernanceUpdateSchema = z.object({
   defaultModelTier: z.enum(['fast', 'flagship']).optional(),
   imageVisionMode: z.enum(['multimodal', 'ocr_fallback']).optional(),
   enablePromptPolishCopilot: z.boolean().optional(),
+  enforceStrictScoredOutcomesOnly: z.boolean().optional(),
+  requireCanvasConfirmation: z.boolean().optional(),
   enabledArchetypeIds: z.array(z.string().regex(/^[a-z0-9_-]+$/)).max(20).optional(),
   allowedFileTypes: z.array(z.string()).max(20).optional(),
 });

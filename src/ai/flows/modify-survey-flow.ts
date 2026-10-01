@@ -14,6 +14,7 @@ import {
   elementSchema,
   resultPageSchema,
   resultRuleSchema,
+  interactiveActionSchema,
   BACKGROUND_PATTERNS,
 } from '@/ai/schemas/survey-schemas';
 
@@ -80,7 +81,8 @@ const ModifySurveyOutputSchema = z.object({
         showCoverPage: z.boolean().optional(),
         showSurveyTitles: z.boolean().optional(),
     }),
-    aiSummary: z.string().describe('A brief explanation of what changes were made.'),
+    aiSummary: z.string().describe('A structured, beautifully formatted markdown explanation of what changes were made, including headings, bulleted lists, and icons/emojis.'),
+    interactiveAction: interactiveActionSchema.optional().describe('Proposed action for canvas modification (e.g. asking the user whether to replace the canvas or append content).'),
 });
 export type ModifySurveyOutput = z.infer<typeof ModifySurveyOutputSchema>;
 
@@ -122,13 +124,16 @@ If this is a NEW survey (empty current state), your primary goal is to COMPOSE a
     - Map all headers to 'heading' blocks, all body text to 'text' blocks, and all quotes to 'quote' blocks exactly as they are written in the source text, adhering to the Text vs List blocks separation rule. Harness the full block library (\`score-card\`, \`outcome-categories\`, \`heading\`, \`text\`, \`list\`, \`quote\`, \`button\`, \`divider\`, \`image\`, \`video\`, \`audio\`, \`code\`).
     - **Text vs List Blocks (CRITICAL)**: You MUST extract list/bullet items (lines starting with bullets, dashes, asterisks, or numbers like \`•\`, \`-\`, \`*\`, \`1.\`, \`2.\`) into their own dedicated \`list\` blocks. Under no circumstances should you lump bullet items together with normal paragraph text inside a single \`text\` block. Separate the preceding paragraphs into a \`text\` block, place the bullet points in a \`list\` block, and place succeeding paragraphs in another \`text\` block.
     - **Title Case for Headings/Titles**: Convert all heading text, button titles, and page names to **Title Case** (e.g. "What This May Be Costing You" instead of "WHAT THIS MAY BE COSTING YOU" or "what this may be costing you"), even if the source copy is written in ALL CAPS or lowercase.
-    - **Outcome Categories Block Usage**: Every result page MUST include the \`outcome-categories\` block near the top of the page (usually right below the \`score-card\`). This ensures that the user is placed visually inside their matched performance category relative to the other categories.
+    - **Outcome Categories & Score Cards (STRICT CONDITIONAL RULE)**:
+      * ONLY include the \`outcome-categories\` and \`score-card\` blocks IF \`scoringEnabled: true\` OR the user explicitly requested scoring, score brackets, or an assessment.
+      * For unscored surveys, standard feedback forms, or general post-submission Thank You pages (e.g. displaying product goals, redesign focus, instructions, or closing messages), NEVER include \`outcome-categories\` or \`score-card\`.
+      * Instead, use clean structured content blocks: \`heading\`, \`text\`, \`list\`, \`quote\`, \`divider\`, and \`button\`.
     - **Block Properties Matching (CRITICAL)**:
       * For 'heading' blocks: You MUST put the heading text in the 'title' property. Do NOT leave 'title' empty or use the 'content' property.
       * For 'button' blocks: You MUST put the button label text in the 'title' property.
       * For 'text' blocks: You MUST put the paragraph text in the 'content' property.
       * For 'quote' blocks: You MUST put the quote text in the 'content' property.
-      * For 'outcome-categories' blocks: Add this block type to show the visual category list/brackets compared with other entities. Use 'title' to configure a custom section header if desired.
+      * For 'outcome-categories' blocks: Add this block type ONLY when scoring is active to show the visual category list/brackets compared with other entities. Use 'title' to configure a custom section header if desired.
       * For 'code' blocks: Use custom code block ONLY as a last resort when custom widgets (like Calendly scheduling frames or third-party checkouts) are requested by the prompt and cannot be represented by normal builder blocks. Put the raw embed code in the 'content' property.
     - Extract all links and calls-to-action (e.g. "WATCH THE SCHOOL A VS SCHOOL B PRESENTATION" or "FREE 30-MINUTE CONSULTATION") as 'button' blocks with placeholder link '#' rather than omitting them or summarizing them.
     - Ensure score range boundaries ('minScore' and 'maxScore') align exactly with the numbers in the source titles.
@@ -140,6 +145,14 @@ If this is a NEW survey (empty current state), your primary goal is to COMPOSE a
     - **Smart Design Styles**: Build pages matching styles like Professional, Minimal, Luxury, Modern SaaS, Educational, Corporate, Friendly, Dark/Light, and brand color palettes.
     - **Preview & Plan**: Prior to returning changes, always plan internally: read current state → check dependencies → validate logic contiguousness → generate a clear bulleted execution plan summary in 'aiSummary' of what changes will be applied, highlighting any destructive steps.
     - **Guided message workflows**: Guide users step-by-step for template confirmation when creating respondent templates.
+19. **Rich Markdown Formatting for aiSummary (MANDATORY)**:
+    - NEVER return an unformatted wall of text.
+    - Organize your response with clear Markdown headings (e.g. \`### 🚀 Summary\`), bold labels (\`**Changes Made:**\`), indented numbered and bulleted lists (\`- \` or \`1. \`), and paragraph breaks (\`\\n\\n\`).
+    - Use relevant emojis sparingly and professionally (e.g. 📋, 🎯, 🚀, 🧹, ✨) to make the message easily scannable and visually engaging.
+    - Wrap block names and identifiers in backticks (e.g. \`heading\`, \`list\`, \`text\`).
+20. **Interactive Canvas Management (interactiveAction)**:
+    - If the current survey already has elements (questions/sections) or result page blocks, and the user asks to add or compose new content without explicitly stating "clear", "wipe", "start over", or "replace everything", set \`interactiveAction\` with \`type: 'replace_or_append_canvas'\`.
+    - Provide a clear, polite question in \`interactiveAction.message\` asking if they want to replace the canvas or append the new content below existing items.
 
 --- SOURCE MATERIALS ---
 {{#if docContent}}DOCUMENT CONTENT: {{{docContent}}}{{/if}}
@@ -214,6 +227,49 @@ const modifySurveyFlow = ai.defineFlow(
                 });
                 
                 if (!output) throw new Error("The AI model failed to process the request.");
+
+                // ──────────────────────────────────────────────────────────
+                // Deterministic Server-Side Defense Guard (Rule 9 & Completeness Standard)
+                // ──────────────────────────────────────────────────────────
+                // If scoring is not enabled on the updated survey, prune any hallucinated
+                // 'outcome-categories' or 'score-card' blocks from all result pages.
+                // This guarantees unscored surveys never display unwanted score cards or categories.
+                if (!output.updatedSurvey.scoringEnabled) {
+                    output.updatedSurvey.resultPages = output.updatedSurvey.resultPages.map(page => ({
+                        ...page,
+                        blocks: page.blocks.filter(b => b.type !== 'outcome-categories' && b.type !== 'score-card')
+                    }));
+                }
+
+                // Interactive Canvas Action Detection & Fallback
+                const existingElementsCount = Array.isArray(input.currentSurvey.elements) ? input.currentSurvey.elements.length : 0;
+                const existingResultPages = Array.isArray(input.currentSurvey.resultPages) ? input.currentSurvey.resultPages : [];
+                const existingResultBlocksCount = existingResultPages.reduce<number>((acc: number, p: unknown) => {
+                    const pageObj = p as { blocks?: unknown[] };
+                    return acc + (Array.isArray(pageObj.blocks) ? pageObj.blocks.length : 0);
+                }, 0);
+
+                const proposedElementsCount = output.updatedSurvey.elements.length;
+                const proposedResultBlocksCount = output.updatedSurvey.resultPages.reduce<number>((acc: number, p) => acc + (p.blocks?.length || 0), 0);
+
+                if (!output.interactiveAction && (existingElementsCount > 0 || existingResultBlocksCount > 0)) {
+                    const msgLower = (input.userMessage || '').toLowerCase();
+                    const isExplicitWipe = msgLower.includes('clear') || msgLower.includes('wipe') || msgLower.includes('replace') || msgLower.includes('reset');
+
+                    if (!isExplicitWipe) {
+                        output.interactiveAction = {
+                            type: 'replace_or_append_canvas',
+                            title: 'Canvas Update Strategy',
+                            message: 'Would you like to replace your current canvas or append these new items below existing ones?',
+                            proposedElementsCount,
+                            existingElementsCount,
+                            proposedResultBlocksCount,
+                            existingResultBlocksCount,
+                            targetArea: existingResultBlocksCount > 0 && proposedResultBlocksCount > 0 ? 'result_page_blocks' : 'full_survey',
+                        };
+                    }
+                }
+
                 return output;
             } catch (error: unknown) {
                 retries++;

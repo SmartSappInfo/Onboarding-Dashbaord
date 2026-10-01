@@ -127,6 +127,18 @@ export function mergeSurveyPhases(
     return true;
   });
 
+  // 6. Defensive pruning (Rule 9 & Completeness Standard):
+  // If scoring is disabled, strip any outcome-categories or score-card blocks from all result pages
+  const finalResultPages = (logic.resultPages || []).map((page) => {
+    if (!blueprint.scoringEnabled && Array.isArray(page.blocks)) {
+      const filteredBlocks = page.blocks.filter(
+        (b) => b && typeof b === 'object' && 'type' in b && (b as { type: string }).type !== 'outcome-categories' && (b as { type: string }).type !== 'score-card'
+      );
+      return { ...page, blocks: filteredBlocks };
+    }
+    return page;
+  });
+
   return {
     title: blueprint.title,
     description: blueprint.description,
@@ -134,7 +146,7 @@ export function mergeSurveyPhases(
     scoringEnabled: blueprint.scoringEnabled,
     maxScore: computedMaxScore || logic.maxScore || 0,
     resultRules: validRules as unknown as Record<string, unknown>[],
-    resultPages: (logic.resultPages || []) as unknown as Array<Record<string, unknown> & { id: string }>,
+    resultPages: finalResultPages as unknown as Array<Record<string, unknown> & { id: string }>,
     thankYouTitle: blueprint.thankYouTitle,
     thankYouDescription: blueprint.thankYouDescription,
     bannerImageQuery: blueprint.bannerImageQuery || 'abstract background pattern',

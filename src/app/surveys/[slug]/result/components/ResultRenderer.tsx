@@ -312,9 +312,14 @@ function BlockRenderer({
         case 'divider':
             return <hr className="w-full my-8 border-t-2 border-border/30" />;
         case 'score-card':
+            // Defensive Guard (Rule 9 & Completeness Standard):
+            // Suppress score display when survey scoring is disabled or undefined
+            if (survey.scoringEnabled !== true) return null;
             return <ScoreCard score={score} maxScore={maxScore} style={block.style} displayMode={displayMode} />;
         case 'outcome-categories': {
-            if (!survey.resultRules || survey.resultRules.length === 0) return null;
+            // Defensive Guard (Rule 9 & Completeness Standard):
+            // Suppress category brackets when survey scoring is disabled or no result rules exist
+            if (survey.scoringEnabled !== true || !survey.resultRules || survey.resultRules.length === 0) return null;
 
             const sortedRules = [...survey.resultRules].sort((a, b) => b.minScore - a.minScore);
 

@@ -21,7 +21,6 @@ import {
   logicBlockSchema,
   elementSchema,
   phase2ElementSchema,
-  QUESTION_TYPES,
   resultPageSchema,
   resultRuleSchema,
 } from '@/ai/schemas/survey-schemas';
@@ -406,12 +405,14 @@ You MUST return a single JSON object with these keys: "scoringPatches", "logicBl
 
 
 ### RESULT PAGE RULES (CRITICAL DESIGN PRINCIPLES):
-- **Bucket Coverage**: Create 2-4 outcome buckets with NON-OVERLAPPING score ranges. Gaps between ranges must not exist, and ranges must not overlap.
-- **Structure**: Every result page MUST start with a \`score-card\` block (shows animated score).
-- **Outcome Categories Block Usage**: Every result page MUST include the \`outcome-categories\` block near the top of the page (usually right below the \`score-card\`). This ensures that the user is placed visually inside their matched performance category relative to the other categories.
+- **Bucket Coverage**: If scoring is enabled, create 2-4 outcome buckets with NON-OVERLAPPING score ranges. Gaps between ranges must not exist, and ranges must not overlap.
+- **Structure (Score Cards)**: If and ONLY IF scoring is enabled (scoringEnabled === true), start the result page with a \`score-card\` block (shows animated score). If scoring is NOT enabled (scoringEnabled === false or undefined), NEVER include a \`score-card\` block; start with a clear, welcoming \`heading\` block instead.
+- **Outcome Categories Block Usage (STRICT CONDITIONAL RULE)**:
+  - If and ONLY IF scoring is enabled (scoringEnabled === true), include the \`outcome-categories\` block near the top of the page.
+  - If scoring is NOT enabled (scoringEnabled === false or undefined), NEVER include \`outcome-categories\`.
 - **Harness All Block Types**: Do not just write paragraphs. A professional outcome page uses a structured layout of content. Use the full library of blocks to build a rich page design:
-  - \`score-card\`: Standard at the top of every page.
-  - \`outcome-categories\`: Put this block near the top of pages to show the visual category list/brackets compared with other entities. Use \`title\` to configure a custom section header.
+  - \`score-card\`: Standard at the top of scored pages ONLY (when scoringEnabled is true).
+  - \`outcome-categories\`: Included ONLY when scoring is active to show visual category brackets compared with other entities. Use \`title\` to configure a custom section header.
   - \`heading\`: Use to structure different sections with sizes (\`variant: "h1" | "h2" | "h3"\`).
   - \`text\`: Use for main descriptions and explanations.
   - \`list\`: Use to break down key takeaways, pain points, or checklist steps. Always specify \`listStyle: "ordered" | "unordered"\` and \`items: string[]\`.

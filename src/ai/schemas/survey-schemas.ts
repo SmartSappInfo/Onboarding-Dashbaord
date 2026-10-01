@@ -219,3 +219,32 @@ export const resultRuleSchema = z.object({
   redirectEnabled: z.boolean().optional().describe('Whether redirect is enabled instead of showing pageId'),
   redirectUrl: z.string().optional().describe('External URL to redirect to'),
 });
+
+// ──────────────────────────────────────────────────────────
+// Interactive Canvas Action Schema (Requirement: Interactive Session Engine)
+// ──────────────────────────────────────────────────────────
+
+/**
+ * Schema for interactive canvas actions between the AI Survey Architect and the user.
+ * 
+ * ARCHITECTURAL GUIDELINE (Rule 10 & Strict Zero-Any Invariant):
+ * - Used by modify-survey-flow.ts and ai-chat-editor.tsx to enable non-destructive
+ *   interactive decisions (e.g. asking the user whether to replace the existing canvas,
+ *   append new blocks below, or clear the canvas before applying).
+ * - Caution for future maintainers: Do not add polymorphic unions that expand Gemini schema
+ *   branching limits; keep fields optional within a single object schema.
+ */
+export const interactiveActionSchema = z.object({
+  type: z.enum(['replace_or_append_canvas', 'confirm_clear_canvas', 'none']).describe('Type of canvas interaction requested by or presented to the user'),
+  title: z.string().optional().describe('Action heading or prompt question for the user (e.g. "Update Canvas?")'),
+  message: z.string().optional().describe('Clear, concise user-facing explanation of the choice'),
+  proposedElementsCount: z.number().optional().describe('Number of proposed survey questions/elements'),
+  existingElementsCount: z.number().optional().describe('Number of elements currently on the canvas'),
+  proposedResultBlocksCount: z.number().optional().describe('Number of proposed result blocks on the target result page'),
+  existingResultBlocksCount: z.number().optional().describe('Number of existing result blocks on the target result page'),
+  targetArea: z.enum(['survey_elements', 'result_page_blocks', 'full_survey']).optional().default('full_survey').describe('Which part of the survey is being targeted'),
+  pageIndex: z.number().optional().describe('Zero-based index of target result page if modifying a specific result page'),
+});
+
+export type InteractiveAction = z.infer<typeof interactiveActionSchema>;
+
