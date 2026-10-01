@@ -25,6 +25,10 @@ import {
 } from '../workspace-entity-actions';
 
 // Mock dependencies
+// Domain-logic suite: permission is granted here; refusals are covered by
+// src/lib/crm/__tests__/workspace-entity-core-auth.test.ts (agents_mcp N1).
+vi.mock('../workspace-permissions', () => ({ canUser: vi.fn().mockResolvedValue({ granted: true }) }));
+
 vi.mock('../firebase-admin', () => ({
   adminDb: {
     collection: vi.fn(),

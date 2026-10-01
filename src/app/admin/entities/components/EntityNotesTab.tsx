@@ -154,7 +154,7 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
             }
 
             // Log to activity feed (non-blocking server action)
-            logNoteActivity(noteData as unknown as EntityNote, activeOrganizationId);
+            logNoteActivity(noteData as unknown as EntityNote);
             
             toast({ title: parentId ? 'Reply added' : 'Note added successfully' });
         } catch (error) {
@@ -220,8 +220,7 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
             const result = await getEntityAiSummary(
                 notes,
                 undefined, // entityName will fallback inside flow
-                activeWorkspaceId,
-                activeOrganizationId
+                activeWorkspaceId
             );
             if (result.success) {
                 setAiSummary(result.summary ?? null);

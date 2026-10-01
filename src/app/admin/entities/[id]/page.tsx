@@ -304,9 +304,6 @@ export default function EntityDetailPage() {
             const res = await linkEntityToWorkspaceAction({
                 workspaceId: activeWorkspaceId,
                 entityId,
-                userId: currentUser?.uid || 'admin_user',
-                userName: currentUser?.displayName || currentUser?.email || 'Admin User',
-                userEmail: currentUser?.email || undefined,
             });
 
             if (res.success) {

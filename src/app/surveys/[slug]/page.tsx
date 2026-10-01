@@ -186,8 +186,9 @@ export default async function PublicSurveyPage({
      */
     if (resolvedEntityId && resolvedWorkspaceId && surveyOrgId) {
         try {
-            const { ensureEntitySharedToWorkspace } = await import('@/lib/workspace-entity-actions');
-            await ensureEntitySharedToWorkspace({
+            const { ensureEntitySharedToWorkspace } = await import('@/lib/crm/workspace-entity-core');
+            // Server component: runs as the 'surveys' service pinned to the survey's workspace (N1).
+            await ensureEntitySharedToWorkspace({ kind: 'service', service: 'surveys', workspaceId: resolvedWorkspaceId }, {
                 entityId: resolvedEntityId,
                 targetWorkspaceId: resolvedWorkspaceId,
                 organizationId: surveyOrgId,

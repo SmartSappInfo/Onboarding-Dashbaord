@@ -136,9 +136,6 @@ export default function ManageWorkspacesModal({
       const result = await linkEntityToWorkspaceAction({
         entityId,
         workspaceId: targetWorkspace.id,
-        userId: user.uid,
-        userName: user.displayName || undefined,
-        userEmail: user.email || undefined,
       });
 
       if (result.success) {
@@ -163,9 +160,6 @@ export default function ManageWorkspacesModal({
     try {
       const result = await unlinkEntityFromWorkspaceAction({
         workspaceEntityId: weId,
-        userId: user.uid,
-        userName: user.displayName || undefined,
-        userEmail: user.email || undefined,
       });
       if (result.success) {
         toast({

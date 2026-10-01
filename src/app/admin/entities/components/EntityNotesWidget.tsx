@@ -24,7 +24,7 @@ interface EntityNotesWidgetProps {
 export default function EntityNotesWidget({ entityId, onViewAll }: EntityNotesWidgetProps) {
     const firestore = useFirestore();
     const { user } = useUser();
-    const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
+    const { activeWorkspaceId } = useWorkspace();
     const { toast } = useToast();
 
     const [newNote, setNewNote] = React.useState('');
@@ -83,7 +83,7 @@ export default function EntityNotesWidget({ entityId, onViewAll }: EntityNotesWi
             await addDoc(collection(firestore, 'entity_notes'), noteData);
             
             // Log to activity feed (non-blocking server action)
-            logNoteActivity(noteData, activeOrganizationId);
+            logNoteActivity(noteData);
 
             setNewNote('');
             setNoteType('general');

@@ -14,7 +14,19 @@ vi.mock('next/cache', () => ({
   revalidateTag: vi.fn(),
 }));
 
-import { ensureEntitySharedToWorkspace, linkEntityToWorkspaceAction } from '@/lib/workspace-entity-actions';
+import {
+  type EnsureEntitySharedInput,
+  type LinkEntityToWorkspaceInput,
+  ensureEntitySharedToWorkspace as ensureSharedCore,
+  linkEntityToWorkspaceCore,
+} from '@/lib/crm/workspace-entity-core';
+
+// These cases exercise the domain rules (tenant boundary, scope guard, idempotency), so they call
+// the core as a trusted service pinned to the target workspace (agents_mcp N1).
+const ensureEntitySharedToWorkspace = (input: EnsureEntitySharedInput) =>
+  ensureSharedCore({ kind: 'service', service: 'surveys', workspaceId: input.targetWorkspaceId }, input);
+const linkEntityToWorkspaceAction = (input: LinkEntityToWorkspaceInput) =>
+  linkEntityToWorkspaceCore({ kind: 'service', service: 'surveys', workspaceId: input.workspaceId }, input);
 import { resolveOrMatchWorkspaceEntity } from '@/lib/survey-actions';
 
 // Mock dependencies

@@ -24,6 +24,10 @@ const mockWorkspaceEntityGet = vi.fn();
 const mockEntityGet = vi.fn();
 const mockActivityAdd = vi.fn();
 
+// Domain-logic suite: permission is granted here; refusals are covered by
+// src/lib/crm/__tests__/workspace-entity-core-auth.test.ts (agents_mcp N1).
+vi.mock('../workspace-permissions', () => ({ canUser: vi.fn().mockResolvedValue({ granted: true }) }));
+
 vi.mock('../firebase-admin', () => ({
   adminDb: {
     collection: (name: string) => {
@@ -465,7 +469,7 @@ describe('Stage Change Actions - workspace_entities Only', () => {
         entityId: 'entity_1',
         
         displayName: 'Test School',
-        userId: 'user_1',
+        userId: 'test-user', // the session user (setup.ts); a caller-supplied id is ignored (N1)
         type: 'workspace_entity_updated',
         source: 'user_action',
         metadata: expect.objectContaining({

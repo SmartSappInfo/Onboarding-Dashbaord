@@ -110,14 +110,14 @@ export interface UpdateEntityParams {
 }
 
 /** The id written to activity logs: the user, or the user a service works for, or the service. */
-function entityActorLabel(actor: CrmActor): string {
+export function entityActorLabel(actor: CrmActor): string {
   return actor.kind === 'user' ? actor.uid : actor.onBehalfOf ?? `system-${actor.service}`;
 }
 
-async function checkEntityPermission(
+export async function checkEntityPermission(
   actor: CrmActor,
   workspaceId: string,
-  action: 'create' | 'edit'
+  action: 'create' | 'edit' | 'delete'
 ): Promise<{ granted: true } | { granted: false; reason: string }> {
   if (!workspaceId) return { granted: false, reason: 'Workspace not found.' };
   if (actor.kind === 'service') {

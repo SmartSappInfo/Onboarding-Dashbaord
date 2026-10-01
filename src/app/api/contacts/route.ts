@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { EntityInputSchema, createEntityCore } from '@/lib/crm/entity-core';
-import { linkEntityToWorkspaceAction } from '@/lib/workspace-entity-actions';
+import { linkEntityToWorkspaceCore } from '@/lib/crm/workspace-entity-core';
 import { authenticateApiRequest } from '@/lib/auth/api-auth-guard';
 import type { EntityType, EntityContact, EntityCustomData, AssignedUser } from '@/lib/types';
 
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
     const entityId = entityResult.id;
 
     // Step 2: Create workspace_entity record (Requirement 24.5)
-    const workspaceEntityResult = await linkEntityToWorkspaceAction({
+    const workspaceEntityResult = await linkEntityToWorkspaceCore({ kind: 'user', uid: callerId }, {
       entityId,
       workspaceId,
       pipelineId: pipelineId || '',

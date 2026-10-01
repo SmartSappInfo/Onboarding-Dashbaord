@@ -877,9 +877,6 @@ export default function EntitiesClient() {
       const result = await archiveEntityAction({
         workspaceEntityId: entityToDelete.id,
         entityId: entityToDelete.entityId,
-        userId: currentUser.uid,
-        userName: currentUser.displayName || undefined,
-        userEmail: currentUser.email || undefined,
         archiveAllWorkspaces,
       });
 
@@ -918,9 +915,6 @@ export default function EntitiesClient() {
       const result = await deleteEntityPermanentlyAction({
         workspaceEntityId: entityToPermanentDelete.id,
         entityId: entityToPermanentDelete.entityId,
-        userId: currentUser.uid,
-        userName: currentUser.displayName || undefined,
-        userEmail: currentUser.email || undefined,
         deleteAllWorkspaces,
       });
       if (result.success) {
@@ -957,10 +951,8 @@ export default function EntitiesClient() {
     startBulkArchiveTransition(async () => {
       try {
         const result = await bulkArchiveEntitiesAction({
+          workspaceId: activeWorkspaceId,
           workspaceEntityIds: selectedEntityIds,
-          userId: currentUser.uid,
-          userName: currentUser.displayName || undefined,
-          userEmail: currentUser.email || undefined,
           archiveAllWorkspaces: bulkArchiveAll,
         });
 
@@ -999,10 +991,8 @@ export default function EntitiesClient() {
     startBulkDeleteTransition(async () => {
       try {
         const result = await bulkDeleteEntitiesAction({
+          workspaceId: activeWorkspaceId,
           workspaceEntityIds: selectedEntityIds,
-          userId: currentUser.uid,
-          userName: currentUser.displayName || undefined,
-          userEmail: currentUser.email || undefined,
           purgeRootEntity: true,
           deleteAllWorkspaces: bulkDeleteAll,
         });

@@ -20,7 +20,7 @@ import { canUser } from './workspace-permissions';
 import { processLeadCaptureAction } from './lead-actions';
 import { getWorkspaceIndustry } from './industry-cache';
 import { splitFileUrls } from './survey-file-utils';
-import { ensureEntitySharedToWorkspace } from './workspace-entity-actions';
+import { ensureEntitySharedToWorkspace } from './crm/workspace-entity-core';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 // SECURITY (audit F9): opaque client message + server-side detail.
 import { getErrorMessage, toClientErrorMessage } from '@/lib/errors/report-error';
@@ -550,7 +550,7 @@ export async function resolveOrMatchWorkspaceEntity(
 
           // HARD TENANT BOUNDARY: The entity MUST belong to the exact same organization as the survey workspace!
           if (entityOrgId && targetWsOrgId && entityOrgId === targetWsOrgId) {
-            await ensureEntitySharedToWorkspace({
+            await ensureEntitySharedToWorkspace({ kind: 'service', service: 'surveys', workspaceId }, {
               entityId: preTrackedId,
               targetWorkspaceId: workspaceId,
               organizationId: targetWsOrgId,

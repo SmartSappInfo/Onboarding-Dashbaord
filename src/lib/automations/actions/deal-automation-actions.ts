@@ -84,8 +84,8 @@ export async function handleCreateDeal(config: DealAutomationActionConfig, conte
         const entityLinkRef = adminDb.collection('workspace_entities').doc(`${targetWorkspaceId}_${context.entityId}`);
         const entityLinkSnap = await entityLinkRef.get();
         if (!entityLinkSnap.exists) {
-            const { linkEntityToWorkspaceAction } = await import('../../workspace-entity-actions');
-            const linkResult = await linkEntityToWorkspaceAction({
+            const { linkEntityToWorkspaceCore } = await import('../../crm/workspace-entity-core');
+            const linkResult = await linkEntityToWorkspaceCore(automationActor(targetWorkspaceId), {
                 entityId: context.entityId,
                 workspaceId: targetWorkspaceId,
                 userId: 'system-automation',

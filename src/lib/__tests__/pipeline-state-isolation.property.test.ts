@@ -27,6 +27,10 @@ vi.mock('../activity-logger', () => ({
 }));
 
 // Mock Firestore
+// Domain-logic suite: permission is granted here; refusals are covered by
+// src/lib/crm/__tests__/workspace-entity-core-auth.test.ts (agents_mcp N1).
+vi.mock('../workspace-permissions', () => ({ canUser: vi.fn().mockResolvedValue({ granted: true }) }));
+
 vi.mock('../firebase-admin', () => {
   // In-memory storage for testing
   const workspaceEntities = new Map<string, any>();

@@ -4,7 +4,7 @@ import { adminDb } from './firebase-admin';
 import type { School, Entity, WorkspaceEntity, EntityType, ResolvedContact } from './types';
 import { resolveEntityContacts } from './entity-contact-helpers';
 import { zoneDisplayName, type ZoneRef } from './zone-constants';
-import { ensureEntitySharedToWorkspace } from './workspace-entity-actions';
+import { ensureEntitySharedToWorkspace } from './crm/workspace-entity-core';
 import { requireAuth } from '@/lib/auth/require-auth';
 import { getErrorMessage } from '@/lib/errors/report-error';
 
@@ -136,7 +136,8 @@ async function resolveFromEntity(
       try {
         const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
         if (wsSnap.exists && wsSnap.data()?.organizationId === entity.organizationId) {
-          const shareResult = await ensureEntitySharedToWorkspace({
+          // Runs as the contact-adapter service pinned to this workspace (N1).
+          const shareResult = await ensureEntitySharedToWorkspace({ kind: 'service', service: 'contact-adapter', workspaceId }, {
             entityId,
             targetWorkspaceId: workspaceId,
             organizationId: entity.organizationId,

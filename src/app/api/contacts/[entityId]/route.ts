@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { EntityInputSchema, updateEntityCore } from '@/lib/crm/entity-core';
-import { updateWorkspaceEntityAction } from '@/lib/workspace-entity-actions';
+import { updateWorkspaceEntityCore } from '@/lib/crm/workspace-entity-core';
 import { authenticateApiRequest } from '@/lib/auth/api-auth-guard';
 import type { Entity, WorkspaceEntity, EntityContact, EntityCustomData, AssignedUser } from '@/lib/types';
 
@@ -219,7 +219,7 @@ export async function PATCH(
     // Update workspace_entity if operational fields provided (Requirement 11.5)
     const hasOperationalUpdates = assignedTo || workspaceTags || status;
     if (hasOperationalUpdates) {
-      const workspaceEntityResult = await updateWorkspaceEntityAction({
+      const workspaceEntityResult = await updateWorkspaceEntityCore({ kind: 'user', uid: callerId }, {
         workspaceEntityId: `${workspaceId}_${entityId}`,
         userId: callerId,
         assignedTo: assignedTo ? {

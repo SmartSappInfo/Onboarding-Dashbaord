@@ -130,7 +130,6 @@
     "src/app/actions/unsubscribe-actions.ts#updatePreferencesAction",
     "src/app/actions/workforce-actions.ts#acceptInvitationAction",
     "src/app/actions/workforce-actions.ts#validateInvitationTokenAction",
-    "src/lib/activity-actions.ts#getActivitiesForContactCore",
     "src/lib/activity-logger.ts#logActivity",
     "src/lib/analytics-actions.ts#recordInteractionAction",
     "src/lib/analytics-actions.ts#recordPageViewAction",
@@ -333,8 +332,6 @@
     "src/lib/migration-actions.ts#executeFinanceMigrationAction",
     "src/lib/migration-actions.ts#getMigrationParityStatusAction",
     "src/lib/migration-actions.ts#recalibrateSummaryAction",
-    "src/lib/note-actions.ts#getEntityAiSummary",
-    "src/lib/note-actions.ts#logNoteActivity",
     "src/lib/notification-actions.ts#sendReceiptAcknowledgementAction",
     "src/lib/notification-engine.ts#triggerInternalNotification",
     "src/lib/pdf-actions.ts#finalizeAgreementAction",
@@ -480,11 +477,6 @@
     "src/lib/theme-actions.ts#getThemesAction",
     "src/lib/user-invite-actions.ts#publicResetPasswordViaPhoneAction",
     "src/lib/vocabulary-map-actions.ts#updateWorkspaceVocabularyAction",
-    "src/lib/webhook-actions.ts#dispatchSignupWebhook",
-    "src/lib/workspace-entity-actions.ts#bulkArchiveEntitiesAction",
-    "src/lib/workspace-entity-actions.ts#bulkDeleteEntitiesAction",
-    "src/lib/workspace-entity-actions.ts#ensureEntitySharedToWorkspace",
-    "src/lib/workspace-entity-actions.ts#linkEntityToWorkspaceAction",
-    "src/lib/workspace-entity-actions.ts#updateWorkspaceEntityAction"
+    "src/lib/webhook-actions.ts#dispatchSignupWebhook"
   ]
 }

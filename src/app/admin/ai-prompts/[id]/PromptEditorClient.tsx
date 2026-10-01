@@ -215,8 +215,7 @@ export default function PromptEditorClient({ flowName }: PromptEditorClientProps
       const res = await getEntityAiSummary(
         mockNotes,
         sandboxInputs.entityName,
-        activeWorkspaceId,
-        activeOrganizationId
+        activeWorkspaceId
       );
 
       if (res.success && res.summary) {

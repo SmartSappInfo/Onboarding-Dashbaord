@@ -28,8 +28,9 @@ vi.mock('../crm/deal-core', () => ({
 
 // Mock workspace entity actions
 const mockLinkEntityToWorkspaceAction = vi.fn().mockResolvedValue({ success: true });
-vi.mock('../workspace-entity-actions', () => ({
-    linkEntityToWorkspaceAction: (input: Record<string, unknown>) => mockLinkEntityToWorkspaceAction(input),
+// Automations link entities through the workspace-entity core as their service actor (N1).
+vi.mock('../crm/workspace-entity-core', () => ({
+    linkEntityToWorkspaceCore: (actor: unknown, input: Record<string, unknown>) => mockLinkEntityToWorkspaceAction({ actor, ...input }),
 }));
 
 const mockDocGet = vi.fn();
@@ -204,13 +205,11 @@ describe('Automation Deal Routing & Workspace Linking', () => {
 
             await handleCreateDeal(config, mockContext);
 
-            expect(mockLinkEntityToWorkspaceAction).toHaveBeenCalledWith({
+            expect(mockLinkEntityToWorkspaceAction).toHaveBeenCalledWith(expect.objectContaining({
+                actor: { kind: 'service', service: 'automations', workspaceId: 'workspace-target' },
                 entityId: 'entity-456',
                 workspaceId: 'workspace-target',
-                userId: 'system-automation',
-                userName: 'Automation Engine',
-                userEmail: 'automation@smartsapp.com',
-            });
+            }));
 
             expect(mockCreateDeal).toHaveBeenCalledWith(expect.objectContaining({
                 entityId: 'entity-456',

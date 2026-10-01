@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import crypto from 'crypto';
 import { EntityInputSchema, createEntityCore } from '@/lib/crm/entity-core';
-import { linkEntityToWorkspaceAction } from '@/lib/workspace-entity-actions';
+import { linkEntityToWorkspaceCore } from '@/lib/crm/workspace-entity-core';
 import type { EntityType } from '@/lib/types';
 // SECURITY (audit F9): report the detail server-side, return an opaque message.
 import { toClientErrorMessage } from '@/lib/errors/report-error';
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     const entityId = entityResult.id;
 
     // 4. Link Entity to Workspace
-    const workspaceEntityResult = await linkEntityToWorkspaceAction({
+    const workspaceEntityResult = await linkEntityToWorkspaceCore({ kind: 'service', service: 'api', workspaceId }, {
       entityId,
       workspaceId,
       pipelineId: pipelineId || '',
