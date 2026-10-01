@@ -47,7 +47,6 @@ import {
   Pencil,
   Copy,
   Info,
-  Layers,
   Eye,
   Edit3,
   Monitor,
@@ -90,8 +89,19 @@ export interface AiSurveyMessagingModalProps {
     smsTemplateId?: string;
     whatsappTemplateId?: string;
   }) => void;
-  onRegenerate?: () => void;
+  onRegenerate?: (userPromptInstructions?: string) => Promise<void> | void;
   onUpdateOutput?: (output: GenerateSurveyMessagingOutput) => void;
+}
+
+/**
+ * Sanitizes template output by replacing any deprecated tokens like school_name / school_logo
+ * with canonical entity_name / org_logo_url (Single Source of Truth).
+ */
+function sanitizeTemplateVariables(output: GenerateSurveyMessagingOutput): GenerateSurveyMessagingOutput {
+  const serialized = JSON.stringify(output)
+    .replace(/\{\{\s*school_name\s*\}\}/g, '{{entity_name}}')
+    .replace(/\{\{\s*school_logo\s*\}\}/g, '{{org_logo_url}}');
+  return JSON.parse(serialized) as GenerateSurveyMessagingOutput;
 }
 
 const DEFAULT_MOCK_VARIABLES: Record<string, string> = {
@@ -101,7 +111,6 @@ const DEFAULT_MOCK_VARIABLES: Record<string, string> = {
   contact_email: 'alex.j@example.com',
   contact_phone: '+1 (555) 234-5678',
   entity_name: 'Horizon Academy',
-  school_name: 'Horizon Academy',
   workspace_name: 'SmartSapp Campus',
   organization_name: 'SmartSapp Campus',
   sender_name: 'Onboarding Lead',
@@ -160,13 +169,17 @@ export default function AiSurveyMessagingModal({
   const [isSaving, setIsSaving] = React.useState(false);
   const [showPlainTextFallback, setShowPlainTextFallback] = React.useState(false);
 
+  // AI Command Bar Chat state
+  const [chatPrompt, setChatPrompt] = React.useState('');
+  const [isRefining, setIsRefining] = React.useState(false);
+
   // Local editable copy of the generated output
   const [editableOutput, setEditableOutput] = React.useState<GenerateSurveyMessagingOutput | null>(null);
 
-  // Reset editableOutput whenever new generatedOutput arrives
+  // Reset editableOutput whenever new generatedOutput arrives, sanitizing any deprecated tokens
   React.useEffect(() => {
     if (generatedOutput) {
-      setEditableOutput(JSON.parse(JSON.stringify(generatedOutput)) as GenerateSurveyMessagingOutput);
+      setEditableOutput(sanitizeTemplateVariables(generatedOutput));
     } else {
       setEditableOutput(null);
     }
@@ -212,11 +225,41 @@ export default function AiSurveyMessagingModal({
 
   const handleResetToAiOriginal = () => {
     if (!generatedOutput) return;
-    setEditableOutput(JSON.parse(JSON.stringify(generatedOutput)) as GenerateSurveyMessagingOutput);
+    setEditableOutput(sanitizeTemplateVariables(generatedOutput));
     toast({
       title: 'Restored Original AI Copy',
       description: 'All manual edits have been reverted to the initial generation.',
     });
+  };
+
+  const handleAiCommandSubmit = async (promptToRun: string) => {
+    const instruction = promptToRun.trim();
+    if (!instruction || isRefining || isLoading) return;
+    setIsRefining(true);
+    try {
+      if (onRegenerate) {
+        await onRegenerate(instruction);
+        setChatPrompt('');
+        toast({
+          title: 'Templates Refined',
+          description: 'AI updated message templates based on your instructions.',
+        });
+      } else {
+        toast({
+          title: 'Refinement Triggered',
+          description: 'Sent prompt to AI generation pipeline.',
+        });
+      }
+    } catch (err: unknown) {
+      console.error('[AiSurveyMessagingModal] Refinement Error:', err);
+      toast({
+        variant: 'destructive',
+        title: 'Refinement Failed',
+        description: err instanceof Error ? err.message : 'Could not refine templates.',
+      });
+    } finally {
+      setIsRefining(false);
+    }
   };
 
   // Compute merged mock variables for preview
@@ -455,6 +498,273 @@ export default function AiSurveyMessagingModal({
     });
   };
 
+  /**
+   * Renders an individual email block directly on the WYSIWYG visual canvas
+   * with inline editing and authentic typography.
+   */
+  const renderWysiwygBlock = (blk: EmailBlock, idx: number) => {
+    switch (blk.type) {
+      case 'logo':
+      case 'image':
+        return (
+          <div className="py-2 flex items-center justify-between gap-3 border-b border-border/40 pb-3">
+            <div className="flex items-center gap-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={mergedMocks.org_logo_url || blk.url || DEFAULT_MOCK_VARIABLES.org_logo_url}
+                alt="Logo"
+                className="h-10 w-auto max-w-[150px] object-contain rounded"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = DEFAULT_MOCK_VARIABLES.org_logo_url;
+                }}
+              />
+              <span className="text-[11px] font-semibold text-muted-foreground">Header Logo</span>
+            </div>
+            <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="text-[10px] font-mono text-muted-foreground">URL:</span>
+              <Input
+                value={blk.url || ''}
+                onChange={(e) => handleUpdateBlock(idx, { url: e.target.value })}
+                placeholder="{{org_logo_url}}"
+                className="h-7 text-[11px] font-mono w-44 bg-background"
+              />
+            </div>
+          </div>
+        );
+
+      case 'heading':
+        return (
+          <div className="space-y-1">
+            <Input
+              value={blk.title || ''}
+              onChange={(e) => handleUpdateBlock(idx, { title: e.target.value })}
+              placeholder="Enter section heading..."
+              className={cn(
+                "w-full bg-transparent border-0 border-b border-transparent hover:border-primary/40 focus:border-primary focus:bg-background/80 rounded-none px-1 py-0 shadow-none font-black tracking-tight text-slate-900 dark:text-slate-100 transition-all",
+                blk.variant === 'h1' ? 'text-2xl h-10' : blk.variant === 'h2' ? 'text-xl h-9' : 'text-lg h-8'
+              )}
+            />
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pt-1">
+              {(['h1', 'h2', 'h3'] as const).map((level) => (
+                <button
+                  key={level}
+                  type="button"
+                  onClick={() => handleUpdateBlock(idx, { variant: level })}
+                  className={cn(
+                    "px-2 py-0.5 text-[10px] font-mono rounded-md font-bold transition-all",
+                    blk.variant === level
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  )}
+                >
+                  {level.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+
+      case 'text':
+        return (
+          <div className="space-y-1">
+            <Textarea
+              value={blk.content || ''}
+              onChange={(e) => handleUpdateBlock(idx, { content: e.target.value })}
+              placeholder="Enter paragraph copy (supports markdown and {{variables}})..."
+              rows={Math.max(2, Math.min(8, (blk.content || '').split('\n').length + 1))}
+              className="w-full bg-transparent border border-dashed border-border/40 hover:border-primary/40 focus:border-primary focus:bg-background/80 text-sm leading-relaxed text-slate-700 dark:text-slate-300 resize-y p-2.5 rounded-lg transition-all"
+            />
+          </div>
+        );
+
+      case 'button':
+        return (
+          <div className="space-y-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm shadow-md hover:shadow-lg transition-all active:scale-[0.97]">
+                <input
+                  type="text"
+                  value={blk.title || ''}
+                  onChange={(e) => handleUpdateBlock(idx, { title: e.target.value })}
+                  placeholder="Button Label"
+                  className="bg-transparent text-center text-primary-foreground font-bold text-sm focus:outline-none placeholder:text-primary-foreground/60 w-auto min-w-[140px]"
+                />
+              </div>
+
+              <div className="flex items-center gap-1.5 text-xs bg-background px-3 py-1.5 rounded-xl border border-border/70 max-w-sm flex-1">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase shrink-0">Link:</span>
+                <input
+                  type="text"
+                  value={blk.url || blk.link || ''}
+                  onChange={(e) => handleUpdateBlock(idx, { url: e.target.value, link: e.target.value })}
+                  placeholder="https://... or {{survey_link}}"
+                  className="bg-transparent text-xs text-foreground focus:outline-none font-mono w-full"
+                />
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'score-card':
+        return (
+          <div className="p-4 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-800/40 space-y-2">
+            <div className="flex items-center justify-between">
+              <Badge variant="outline" className="text-[10px] font-bold bg-indigo-100/80 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 border-indigo-300">
+                ASSESSMENT SCORE CARD
+              </Badge>
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase">Score:</span>
+                <Input
+                  value={blk.scoreValue || ''}
+                  onChange={(e) => handleUpdateBlock(idx, { scoreValue: e.target.value })}
+                  placeholder="92 or {{score}}"
+                  className="w-24 text-right font-black text-indigo-600 dark:text-indigo-400 bg-background border border-indigo-200 dark:border-indigo-800 rounded-lg px-2 h-7 text-xs"
+                />
+              </div>
+            </div>
+            <Input
+              value={blk.title || ''}
+              onChange={(e) => handleUpdateBlock(idx, { title: e.target.value })}
+              placeholder="Score Title (e.g. Overall Assessment Score)"
+              className="w-full bg-transparent font-bold text-sm text-foreground border-0 border-b border-transparent hover:border-indigo-300 focus:border-indigo-500 rounded-none px-0 h-8 shadow-none"
+            />
+          </div>
+        );
+
+      case 'list':
+        return (
+          <div className="space-y-1.5">
+            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+              Bullet Highlights (one per line)
+            </Label>
+            <Textarea
+              value={(blk.items || []).join('\n')}
+              onChange={(e) =>
+                handleUpdateBlock(idx, {
+                  items: e.target.value.split('\n').filter((l) => l.trim().length > 0),
+                })
+              }
+              rows={Math.max(2, (blk.items || []).length + 1)}
+              placeholder="Respondent: {{contact_name}}\nScore: {{survey_score}}%"
+              className="text-xs font-mono bg-background/80 rounded-xl leading-relaxed"
+            />
+          </div>
+        );
+
+      case 'divider':
+        return (
+          <div className="py-2">
+            <hr className="border-t border-border/80 my-2" />
+          </div>
+        );
+
+      case 'footer':
+        return (
+          <div className="p-2 text-center">
+            <Textarea
+              value={blk.content || ''}
+              onChange={(e) => handleUpdateBlock(idx, { content: e.target.value })}
+              rows={2}
+              placeholder="Footer disclaimer and legal text..."
+              className="w-full text-center text-xs text-muted-foreground bg-transparent border border-dashed border-border/40 hover:border-primary/40 focus:border-primary focus:bg-background/80 rounded-lg p-2"
+            />
+          </div>
+        );
+
+      case 'quote':
+        return (
+          <div className="p-2 border-l-4 border-primary/50 bg-primary/5 rounded-r-lg">
+            <Textarea
+              value={blk.content || ''}
+              onChange={(e) => handleUpdateBlock(idx, { content: e.target.value })}
+              rows={2}
+              placeholder="Quote text..."
+              className="w-full italic text-xs bg-transparent border-0 focus:outline-none p-1"
+            />
+          </div>
+        );
+
+      default:
+        return (
+          <div className="p-2 bg-muted/20 rounded-lg">
+            <Textarea
+              value={blk.content || ''}
+              onChange={(e) => handleUpdateBlock(idx, { content: e.target.value })}
+              rows={2}
+              className="text-xs"
+            />
+          </div>
+        );
+    }
+  };
+
+  /**
+   * Action bar to append new blocks to the visual email canvas
+   */
+  const renderAddBlockBar = () => (
+    <div className="pt-4 border-t border-border/50 flex items-center justify-between flex-wrap gap-2">
+      <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+        Add Block:
+      </span>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => handleAddBlock('heading')}
+          className="h-7 text-[11px] font-semibold gap-1 rounded-lg hover:border-primary/40 active:scale-[0.97]"
+        >
+          <Plus className="w-3 h-3 text-primary" /> Heading
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => handleAddBlock('text')}
+          className="h-7 text-[11px] font-semibold gap-1 rounded-lg hover:border-primary/40 active:scale-[0.97]"
+        >
+          <Plus className="w-3 h-3 text-primary" /> Text
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => handleAddBlock('button')}
+          className="h-7 text-[11px] font-semibold gap-1 rounded-lg hover:border-primary/40 active:scale-[0.97]"
+        >
+          <Plus className="w-3 h-3 text-primary" /> Button
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => handleAddBlock('list')}
+          className="h-7 text-[11px] font-semibold gap-1 rounded-lg hover:border-primary/40 active:scale-[0.97]"
+        >
+          <Plus className="w-3 h-3 text-primary" /> List
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => handleAddBlock('score-card')}
+          className="h-7 text-[11px] font-semibold gap-1 rounded-lg hover:border-primary/40 active:scale-[0.97]"
+        >
+          <Plus className="w-3 h-3 text-primary" /> Score Card
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => handleAddBlock('divider')}
+          className="h-7 text-[11px] font-semibold gap-1 rounded-lg hover:border-primary/40 active:scale-[0.97]"
+        >
+          <Plus className="w-3 h-3 text-primary" /> Divider
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -517,7 +827,7 @@ export default function AiSurveyMessagingModal({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={onRegenerate}
+                    onClick={() => onRegenerate()}
                     className="rounded-xl h-8 text-xs font-semibold gap-1.5 active:scale-[0.97] transition-all min-h-[36px]"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
@@ -713,13 +1023,54 @@ export default function AiSurveyMessagingModal({
                           </div>
                         </div>
                       ) : (
-                        /* ──────────────── EMAIL IN-MODAL EDITOR ──────────────── */
-                        <ScrollArea className="flex-1 pr-3">
-                          <div className="space-y-4 pb-4">
-                            {/* Subject Line Field */}
-                            <div className="p-4 rounded-2xl border bg-card/60 space-y-2">
-                              <div className="flex items-center justify-between">
-                                <Label htmlFor="email-subject-input" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                        /* ──────────────── EMAIL WYSIWYG VISUAL CANVAS & INLINE EDITOR ──────────────── */
+                        <div className="flex-1 flex flex-col overflow-hidden min-h-0 space-y-3">
+                          <div className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-sm flex flex-col flex-1 min-h-0">
+                            {/* Visual Canvas Top Bar: Browser Mock + Subject Line + Device Controls */}
+                            <div className="h-10 border-b border-border/80 bg-muted/40 px-3.5 flex items-center justify-between shrink-0">
+                              <div className="flex gap-1.5 items-center">
+                                <div className="w-2.5 h-2.5 rounded-full bg-rose-400/80" />
+                                <div className="w-2.5 h-2.5 rounded-full bg-amber-400/80" />
+                                <div className="w-2.5 h-2.5 rounded-full bg-emerald-400/80" />
+                                <span className="text-[10px] font-mono text-muted-foreground ml-2 hidden sm:inline">
+                                  WYSIWYG Visual Canvas ({editableOutput.email.blocks?.length || 0} blocks)
+                                </span>
+                              </div>
+
+                              {/* Device Switcher */}
+                              <div className="flex items-center gap-1 bg-muted/70 p-0.5 rounded-lg border border-border/60">
+                                <Button
+                                  type="button"
+                                  variant={emailDevice === 'desktop' ? 'secondary' : 'ghost'}
+                                  size="sm"
+                                  onClick={() => setEmailDevice('desktop')}
+                                  className="h-6 px-2 text-[10px] font-bold gap-1 rounded-md"
+                                  aria-label="Desktop Preview"
+                                >
+                                  <Monitor className="w-3 h-3" />
+                                  Desktop
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant={emailDevice === 'mobile' ? 'secondary' : 'ghost'}
+                                  size="sm"
+                                  onClick={() => setEmailDevice('mobile')}
+                                  className="h-6 px-2 text-[10px] font-bold gap-1 rounded-md"
+                                  aria-label="Mobile Preview"
+                                >
+                                  <Smartphone className="w-3 h-3" />
+                                  Mobile
+                                </Button>
+                              </div>
+                            </div>
+
+                            {/* Email Metadata Bar & Subject Input */}
+                            <div className="p-3 sm:px-4 border-b border-border/60 bg-muted/10 shrink-0 space-y-1.5">
+                              <div className="flex items-center justify-between gap-2">
+                                <Label
+                                  htmlFor="email-subject-input"
+                                  className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider"
+                                >
                                   Email Subject Line
                                 </Label>
                                 <span className="text-[10px] text-muted-foreground font-mono">
@@ -728,6 +1079,7 @@ export default function AiSurveyMessagingModal({
                               </div>
                               <Input
                                 id="email-subject-input"
+                                aria-label="Email Subject Line"
                                 value={editableOutput.email.subject || ''}
                                 onChange={(e) =>
                                   setEditableOutput({
@@ -739,298 +1091,191 @@ export default function AiSurveyMessagingModal({
                                   })
                                 }
                                 placeholder="Enter email subject line..."
-                                className="h-10 rounded-xl font-medium"
+                                className="h-9 rounded-xl font-bold text-sm bg-background border-border/70"
                               />
-                            </div>
-
-                            {/* Blocks Editor */}
-                            <div className="p-4 rounded-2xl border bg-card/60 space-y-3">
-                              <div className="flex items-center justify-between flex-wrap gap-2">
-                                <div className="flex items-center gap-2">
-                                  <Layers className="w-4 h-4 text-primary" />
-                                  <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                                    Layout Blocks ({editableOutput.email.blocks?.length || 0})
-                                  </Label>
-                                </div>
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleAddBlock('heading')}
-                                    className="h-7 text-[11px] font-semibold gap-1 rounded-lg"
-                                  >
-                                    <Plus className="w-3 h-3" /> Heading
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleAddBlock('text')}
-                                    className="h-7 text-[11px] font-semibold gap-1 rounded-lg"
-                                  >
-                                    <Plus className="w-3 h-3" /> Text
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleAddBlock('button')}
-                                    className="h-7 text-[11px] font-semibold gap-1 rounded-lg"
-                                  >
-                                    <Plus className="w-3 h-3" /> Button
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleAddBlock('list')}
-                                    className="h-7 text-[11px] font-semibold gap-1 rounded-lg"
-                                  >
-                                    <Plus className="w-3 h-3" /> List
-                                  </Button>
-                                </div>
-                              </div>
-
-                              {/* List of Block Editor Cards */}
-                              <div className="space-y-3">
-                                {editableOutput.email.blocks?.map((blk, idx) => (
-                                  <div
-                                    key={blk.id || idx}
-                                    className="p-3.5 rounded-xl border border-border/60 bg-muted/20 space-y-2.5 transition-all"
-                                  >
-                                    {/* Block Card Header */}
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-[10px] font-mono text-muted-foreground">
-                                          #{idx + 1}
-                                        </span>
-                                        <Badge variant="outline" className="text-[10px] font-mono capitalize px-2">
-                                          {blk.type}
-                                        </Badge>
-                                      </div>
-
-                                      {/* Reorder and Delete controls */}
-                                      <div className="flex items-center gap-1">
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="icon"
-                                          disabled={idx === 0}
-                                          onClick={() => handleMoveBlock(idx, 'up')}
-                                          className="h-6 w-6 rounded-md text-muted-foreground hover:text-foreground"
-                                          aria-label="Move block up"
-                                        >
-                                          <ArrowUp className="w-3 h-3" />
-                                        </Button>
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="icon"
-                                          disabled={idx === (editableOutput.email!.blocks!.length - 1)}
-                                          onClick={() => handleMoveBlock(idx, 'down')}
-                                          className="h-6 w-6 rounded-md text-muted-foreground hover:text-foreground"
-                                          aria-label="Move block down"
-                                        >
-                                          <ArrowDown className="w-3 h-3" />
-                                        </Button>
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="icon"
-                                          onClick={() => handleDeleteBlock(idx)}
-                                          className="h-6 w-6 rounded-md text-rose-500 hover:text-rose-600 hover:bg-rose-500/10"
-                                          aria-label="Delete block"
-                                        >
-                                          <Trash2 className="w-3 h-3" />
-                                        </Button>
-                                      </div>
-                                    </div>
-
-                                    {/* In-Line Inputs by Block Type */}
-                                    {blk.type === 'heading' && (
-                                      <div className="space-y-1.5">
-                                        <Input
-                                          value={blk.title || ''}
-                                          onChange={(e) => handleUpdateBlock(idx, { title: e.target.value })}
-                                          placeholder="Heading text..."
-                                          className="h-9 text-xs font-semibold rounded-lg"
-                                        />
-                                        <div className="flex items-center gap-1">
-                                          {(['h1', 'h2', 'h3'] as const).map((level) => (
-                                            <Button
-                                              key={level}
-                                              type="button"
-                                              variant={blk.variant === level ? 'default' : 'outline'}
-                                              size="sm"
-                                              onClick={() => handleUpdateBlock(idx, { variant: level })}
-                                              className="h-6 px-2 text-[10px] font-mono rounded"
-                                            >
-                                              {level.toUpperCase()}
-                                            </Button>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    {blk.type === 'text' && (
-                                      <div className="space-y-1">
-                                        <Textarea
-                                          value={blk.content || ''}
-                                          onChange={(e) => handleUpdateBlock(idx, { content: e.target.value })}
-                                          rows={3}
-                                          placeholder="Enter paragraph copy (supports markdown)..."
-                                          className="text-xs leading-relaxed rounded-lg"
-                                        />
-                                        <span className="text-[10px] text-muted-foreground">
-                                          Tip: You can use markdown like **bold text** and variable tokens like {'{{contact_name}}'}.
-                                        </span>
-                                      </div>
-                                    )}
-
-                                    {blk.type === 'button' && (
-                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                        <div>
-                                          <Label className="text-[10px] text-muted-foreground font-semibold">Button Label</Label>
-                                          <Input
-                                            value={blk.title || ''}
-                                            onChange={(e) => handleUpdateBlock(idx, { title: e.target.value })}
-                                            placeholder="e.g. View Submission"
-                                            className="h-9 text-xs rounded-lg mt-0.5"
-                                          />
-                                        </div>
-                                        <div>
-                                          <Label className="text-[10px] text-muted-foreground font-semibold">Target Link / URL</Label>
-                                          <Input
-                                            value={blk.url || blk.link || ''}
-                                            onChange={(e) => handleUpdateBlock(idx, { url: e.target.value, link: e.target.value })}
-                                            placeholder="https://... or {{result_url}}"
-                                            className="h-9 text-xs rounded-lg mt-0.5"
-                                          />
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    {blk.type === 'list' && (
-                                      <div className="space-y-1">
-                                        <Label className="text-[10px] text-muted-foreground font-semibold">
-                                          List Items (one line per bullet)
-                                        </Label>
-                                        <Textarea
-                                          value={(blk.items || []).join('\n')}
-                                          onChange={(e) =>
-                                            handleUpdateBlock(idx, {
-                                              items: e.target.value.split('\n').filter((line) => line.trim().length > 0),
-                                            })
-                                          }
-                                          rows={3}
-                                          placeholder="Respondent: {{contact_name}}\nScore: {{survey_score}}%"
-                                          className="text-xs font-mono leading-relaxed rounded-lg"
-                                        />
-                                      </div>
-                                    )}
-
-                                    {(blk.type === 'logo' || blk.type === 'image') && (
-                                      <div className="space-y-1">
-                                        <Label className="text-[10px] text-muted-foreground font-semibold">Image or Logo URL</Label>
-                                        <Input
-                                          value={blk.url || ''}
-                                          onChange={(e) => handleUpdateBlock(idx, { url: e.target.value })}
-                                          placeholder="https://... or {{org_logo_url}}"
-                                          className="h-9 text-xs font-mono rounded-lg"
-                                        />
-                                      </div>
-                                    )}
-
-                                    {blk.type === 'quote' && (
-                                      <div className="space-y-1">
-                                        <Label className="text-[10px] text-muted-foreground font-semibold">Quote Text</Label>
-                                        <Textarea
-                                          value={blk.content || ''}
-                                          onChange={(e) => handleUpdateBlock(idx, { content: e.target.value })}
-                                          rows={2}
-                                          placeholder="Enter quote copy..."
-                                          className="text-xs italic rounded-lg"
-                                        />
-                                      </div>
-                                    )}
-
-                                    {blk.type === 'footer' && (
-                                      <div className="space-y-1">
-                                        <Label className="text-[10px] text-muted-foreground font-semibold">Footer Disclaimer Copy</Label>
-                                        <Textarea
-                                          value={blk.content || ''}
-                                          onChange={(e) => handleUpdateBlock(idx, { content: e.target.value })}
-                                          rows={2}
-                                          placeholder="Footer legal / unsubscribe text..."
-                                          className="text-xs rounded-lg"
-                                        />
-                                      </div>
-                                    )}
-
-                                    {blk.type === 'score-card' && (
-                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                        <div>
-                                          <Label className="text-[10px] text-muted-foreground font-semibold">Score Title</Label>
-                                          <Input
-                                            value={blk.title || ''}
-                                            onChange={(e) => handleUpdateBlock(idx, { title: e.target.value })}
-                                            placeholder="Overall Assessment Score"
-                                            className="h-9 text-xs rounded-lg mt-0.5"
-                                          />
-                                        </div>
-                                        <div>
-                                          <Label className="text-[10px] text-muted-foreground font-semibold">Fallback Score Value</Label>
-                                          <Input
-                                            value={blk.scoreValue || ''}
-                                            onChange={(e) => handleUpdateBlock(idx, { scoreValue: e.target.value })}
-                                            placeholder="e.g. 95 or {{score}}"
-                                            className="h-9 text-xs rounded-lg mt-0.5"
-                                          />
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    {blk.type === 'divider' && (
-                                      <p className="text-[10px] text-muted-foreground italic">
-                                        Horizontal dividing rule separator.
-                                      </p>
-                                    )}
-                                  </div>
-                                ))}
+                              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                                <span className="font-semibold text-foreground/80">From:</span>
+                                <span>{mergedMocks.org_name} &lt;{mergedMocks.org_email}&gt;</span>
                               </div>
                             </div>
 
-                            {/* Collapsible Plain Text Fallback */}
-                            <div className="p-4 rounded-2xl border bg-card/60 space-y-2">
-                              <button
-                                type="button"
-                                onClick={() => setShowPlainTextFallback(!showPlainTextFallback)}
-                                className="w-full flex items-center justify-between text-left text-xs font-bold text-muted-foreground uppercase tracking-wider"
+                            {/* Visual Email Canvas Body */}
+                            <div className="flex-1 bg-slate-100 dark:bg-slate-950/70 p-3 sm:p-5 overflow-y-auto flex justify-center items-start min-h-[350px]">
+                              {/* Outer Device Frame Container */}
+                              <div
+                                className={cn(
+                                  "w-full transition-all duration-200 flex flex-col items-center",
+                                  emailDevice === 'mobile' ? 'max-w-[360px]' : 'max-w-[620px]'
+                                )}
                               >
-                                <span>Plain-Text Fallback Version</span>
-                                {showPlainTextFallback ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                              </button>
-                              {showPlainTextFallback && (
-                                <Textarea
-                                  value={editableOutput.email.body || ''}
-                                  onChange={(e) =>
-                                    setEditableOutput({
-                                      ...editableOutput,
-                                      email: {
-                                        ...editableOutput.email!,
-                                        body: e.target.value,
-                                      },
-                                    })
-                                  }
-                                  rows={4}
-                                  placeholder="Plain-text version for email clients that do not support rich HTML..."
-                                  className="text-xs font-mono rounded-lg mt-2"
-                                />
-                              )}
+                                {emailDevice === 'mobile' ? (
+                                  <div className="w-[340px] rounded-[2.5rem] border-8 border-slate-900 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl flex flex-col overflow-hidden mb-4">
+                                    {/* Mobile Dynamic Island / Notch */}
+                                    <div className="h-6 bg-slate-900 flex items-center justify-center shrink-0">
+                                      <div className="w-20 h-3 bg-black rounded-full" />
+                                    </div>
+                                    <div className="p-4 sm:p-5 space-y-3.5 bg-white dark:bg-slate-900">
+                                      {/* Block Renderer */}
+                                      {editableOutput.email.blocks?.map((blk, idx) => (
+                                        <div
+                                          key={blk.id || idx}
+                                          className="group relative p-2 rounded-xl border border-transparent hover:border-primary/40 hover:bg-muted/15 transition-all"
+                                        >
+                                          {/* Floating Toolbar on Hover */}
+                                          <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 bg-background/95 backdrop-blur-xs p-1 rounded-lg border border-border/70 shadow-sm z-10">
+                                            <Badge variant="outline" className="text-[8px] font-mono uppercase px-1 py-0 h-4">
+                                              {blk.type}
+                                            </Badge>
+                                            <Button
+                                              type="button"
+                                              variant="ghost"
+                                              size="icon"
+                                              disabled={idx === 0}
+                                              onClick={() => handleMoveBlock(idx, 'up')}
+                                              className="h-5 w-5 rounded text-muted-foreground hover:text-foreground"
+                                              aria-label="Move block up"
+                                            >
+                                              <ArrowUp className="w-3 h-3" />
+                                            </Button>
+                                            <Button
+                                              type="button"
+                                              variant="ghost"
+                                              size="icon"
+                                              disabled={idx === (editableOutput.email!.blocks!.length - 1)}
+                                              onClick={() => handleMoveBlock(idx, 'down')}
+                                              className="h-5 w-5 rounded text-muted-foreground hover:text-foreground"
+                                              aria-label="Move block down"
+                                            >
+                                              <ArrowDown className="w-3 h-3" />
+                                            </Button>
+                                            <Button
+                                              type="button"
+                                              variant="ghost"
+                                              size="icon"
+                                              onClick={() => handleDeleteBlock(idx)}
+                                              className="h-5 w-5 rounded text-rose-500 hover:text-rose-600 hover:bg-rose-500/10"
+                                              aria-label="Delete block"
+                                            >
+                                              <Trash2 className="w-3 h-3" />
+                                            </Button>
+                                          </div>
+
+                                          {/* Block Body in Mobile Frame */}
+                                          {renderWysiwygBlock(blk, idx)}
+                                        </div>
+                                      ))}
+
+                                      {/* Quick Add Block Bar */}
+                                      {renderAddBlockBar()}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  /* Desktop Email Canvas Card */
+                                  <div className="w-full bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 space-y-4 mb-4">
+                                    {editableOutput.email.blocks?.map((blk, idx) => (
+                                      <div
+                                        key={blk.id || idx}
+                                        className="group relative p-2.5 rounded-xl border border-transparent hover:border-primary/40 hover:bg-muted/15 transition-all"
+                                      >
+                                        {/* Floating Toolbar on Hover */}
+                                        <div className="absolute top-1.5 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-background/95 backdrop-blur-xs p-1 rounded-xl border border-border/70 shadow-sm z-10">
+                                          <Badge variant="outline" className="text-[9px] font-mono uppercase px-1.5 py-0 h-5">
+                                            {blk.type}
+                                          </Badge>
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            disabled={idx === 0}
+                                            onClick={() => handleMoveBlock(idx, 'up')}
+                                            className="h-6 w-6 rounded-md text-muted-foreground hover:text-foreground"
+                                            aria-label="Move block up"
+                                          >
+                                            <ArrowUp className="w-3.5 h-3.5" />
+                                          </Button>
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            disabled={idx === (editableOutput.email!.blocks!.length - 1)}
+                                            onClick={() => handleMoveBlock(idx, 'down')}
+                                            className="h-6 w-6 rounded-md text-muted-foreground hover:text-foreground"
+                                            aria-label="Move block down"
+                                          >
+                                            <ArrowDown className="w-3.5 h-3.5" />
+                                          </Button>
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => handleDeleteBlock(idx)}
+                                            className="h-6 w-6 rounded-md text-rose-500 hover:text-rose-600 hover:bg-rose-500/10"
+                                            aria-label="Delete block"
+                                          >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                          </Button>
+                                        </div>
+
+                                        {/* Block Body in Desktop Card */}
+                                        {renderWysiwygBlock(blk, idx)}
+                                      </div>
+                                    ))}
+
+                                    {/* Quick Add Block Bar */}
+                                    {renderAddBlockBar()}
+                                  </div>
+                                )}
+
+                                {/* Collapsible Plain Text Fallback */}
+                                <div className="w-full p-4 rounded-2xl border bg-card/60 space-y-2 mb-4">
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowPlainTextFallback(!showPlainTextFallback)}
+                                    className="w-full flex items-center justify-between text-left text-xs font-bold text-muted-foreground uppercase tracking-wider"
+                                  >
+                                    <span>Plain-Text Fallback Version</span>
+                                    {showPlainTextFallback ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                  </button>
+                                  {showPlainTextFallback && (
+                                    <Textarea
+                                      value={editableOutput.email.body || ''}
+                                      onChange={(e) =>
+                                        setEditableOutput({
+                                          ...editableOutput,
+                                          email: {
+                                            ...editableOutput.email!,
+                                            body: e.target.value,
+                                          },
+                                        })
+                                      }
+                                      rows={4}
+                                      placeholder="Plain-text version for email clients that do not support rich HTML..."
+                                      className="text-xs font-mono rounded-lg mt-2"
+                                    />
+                                  )}
+                                </div>
+                              </div>
                             </div>
                           </div>
-                        </ScrollArea>
+
+                          {/* Quick Switch to Simulation Hint */}
+                          <div className="flex items-center justify-between px-1 shrink-0">
+                            <span className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                              <Info className="w-3.5 h-3.5 text-primary shrink-0" />
+                              WYSIWYG Canvas: Click directly on headings, text, or buttons to edit them in real-time.
+                            </span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setViewMode('preview')}
+                              className="h-7 text-xs font-semibold gap-1 rounded-xl text-primary border-primary/20 hover:bg-primary/5"
+                            >
+                              <Eye className="w-3 h-3" />
+                              View Inbox Simulation
+                            </Button>
+                          </div>
+                        </div>
                       )}
                     </div>
                   )}
@@ -1376,6 +1621,77 @@ export default function AiSurveyMessagingModal({
               </Tabs>
             )}
           </div>
+
+          {/* AI Command / Chat Bar */}
+          {!isLoading && editableOutput && (
+            <div className="border-t border-border/60 bg-muted/30 p-3 sm:px-6 space-y-2 shrink-0">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleAiCommandSubmit(chatPrompt);
+                }}
+                className="flex items-center gap-2"
+              >
+                <div className="relative flex-1">
+                  <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary pointer-events-none" />
+                  <Input
+                    value={chatPrompt}
+                    onChange={(e) => setChatPrompt(e.target.value)}
+                    placeholder="Ask AI to refine copy (e.g. 'Make it more urgent and replace school with organization')..."
+                    disabled={isLoading || isRefining}
+                    className="h-10 pl-9 pr-3 text-xs font-medium rounded-xl border-border/70 bg-background shadow-xs focus-visible:ring-1 focus-visible:ring-primary"
+                    aria-label="AI Command Input"
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  disabled={isLoading || isRefining || !chatPrompt.trim()}
+                  className="h-10 px-4 text-xs font-bold rounded-xl gap-1.5 shadow-sm active:scale-[0.97] transition-all min-h-[40px]"
+                  aria-label="Submit AI Command"
+                >
+                  {isRefining ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span className="hidden sm:inline">Refining...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Refine Copy</span>
+                    </>
+                  )}
+                </Button>
+              </form>
+
+              {/* Quick Suggestion Chips */}
+              <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 no-scrollbar text-[11px]">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider shrink-0 mr-1">
+                  Quick Refine:
+                </span>
+                {[
+                  'More concise & punchy',
+                  'Friendlier warm tone',
+                  'Add urgent CTA button',
+                  'Professional & formal',
+                  'Highlight next steps',
+                  'Replace any school terms with organization',
+                ].map((chip) => (
+                  <button
+                    key={chip}
+                    type="button"
+                    disabled={isLoading || isRefining}
+                    onClick={() => {
+                      setChatPrompt(chip);
+                      handleAiCommandSubmit(chip);
+                    }}
+                    className="shrink-0 px-2.5 py-1 rounded-lg bg-background hover:bg-primary/10 hover:text-primary hover:border-primary/30 border border-border/60 text-[11px] font-semibold text-muted-foreground transition-all active:scale-[0.97]"
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Footer Bar */}
           <DialogFooter className="p-4 border-t border-border/50 bg-muted/20 flex flex-col sm:flex-row items-center justify-between gap-3">

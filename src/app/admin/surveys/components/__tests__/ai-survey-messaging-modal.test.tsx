@@ -276,4 +276,120 @@ describe('AiSurveyMessagingModal', () => {
     // Verify subject reverted to original AI generated text
     expect(screen.getByDisplayValue(sampleAiOutput.email!.subject)).toBeDefined();
   });
+
+  it('allows typing corrections into the AI Command Bar and triggers refinement', async () => {
+    const handleRegenerate = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <AiSurveyMessagingModal
+        open={true}
+        onOpenChange={vi.fn()}
+        generatedOutput={sampleAiOutput}
+        onApply={vi.fn()}
+        onRegenerate={handleRegenerate}
+      />
+    );
+
+    const commandInput = screen.getByLabelText(/AI Command Input/i);
+    expect(commandInput).toBeDefined();
+
+    fireEvent.change(commandInput, {
+      target: { value: 'Make it more urgent and replace school with organization' },
+    });
+
+    const refineButton = screen.getByRole('button', { name: /Submit AI Command/i });
+    fireEvent.click(refineButton);
+
+    await waitFor(() => {
+      expect(handleRegenerate).toHaveBeenCalledWith(
+        'Make it more urgent and replace school with organization'
+      );
+    });
+  });
+
+  it('triggers AI refinement when a quick suggestion chip is clicked', async () => {
+    const handleRegenerate = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <AiSurveyMessagingModal
+        open={true}
+        onOpenChange={vi.fn()}
+        generatedOutput={sampleAiOutput}
+        onApply={vi.fn()}
+        onRegenerate={handleRegenerate}
+      />
+    );
+
+    const conciseChip = screen.getByRole('button', { name: /More concise & punchy/i });
+    expect(conciseChip).toBeDefined();
+
+    fireEvent.click(conciseChip);
+
+    await waitFor(() => {
+      expect(handleRegenerate).toHaveBeenCalledWith('More concise & punchy');
+    });
+  });
+
+  it('automatically sanitizes deprecated school_name and school_logo to canonical tokens', () => {
+    const legacyOutput: GenerateSurveyMessagingOutput = {
+      email: {
+        name: 'Legacy Template',
+        subject: 'Notification for {{school_name}}',
+        body: 'Welcome to {{school_name}} with logo {{school_logo}}',
+        blocks: [
+          {
+            id: 'b1',
+            type: 'heading',
+            title: 'Welcome to {{school_name}}',
+            variant: 'h2',
+          },
+          {
+            id: 'b2',
+            type: 'text',
+            content: 'Dear {{contact_name}}, this is {{school_name}}.',
+          },
+        ],
+        explanation: 'Legacy email copy with deprecated tokens.',
+      },
+      overallSummary: 'Legacy test output',
+    };
+
+    render(
+      <AiSurveyMessagingModal
+        open={true}
+        onOpenChange={vi.fn()}
+        generatedOutput={legacyOutput}
+        onApply={vi.fn()}
+      />
+    );
+
+    // Switch to edit mode
+    fireEvent.click(screen.getByRole('button', { name: /Edit Content/i }));
+
+    // Verify school_name was converted to entity_name in the subject input and heading
+    expect(screen.getByDisplayValue('Notification for {{entity_name}}')).toBeDefined();
+    expect(screen.getByDisplayValue('Welcome to {{entity_name}}')).toBeDefined();
+  });
+
+  it('supports adding and deleting blocks in the WYSIWYG canvas', () => {
+    render(
+      <AiSurveyMessagingModal
+        open={true}
+        onOpenChange={vi.fn()}
+        generatedOutput={sampleAiOutput}
+        onApply={vi.fn()}
+      />
+    );
+
+    // Switch to edit mode
+    fireEvent.click(screen.getByRole('button', { name: /Edit Content/i }));
+
+    // Click "+ Heading" in Add Block toolbar
+    const addHeadingButtons = screen.getAllByRole('button', { name: /Heading/i });
+    // Use the add block button (has Plus icon)
+    fireEvent.click(addHeadingButtons[0]);
+
+    // Verify a new heading block was added with default text
+    expect(screen.getByDisplayValue('New Section Heading')).toBeDefined();
+  });
 });

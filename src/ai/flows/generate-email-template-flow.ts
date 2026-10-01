@@ -60,7 +60,7 @@ Analyze the prompt to detect the relevant module and automatically use these var
 - **Meeting Invite**: Use {{'{{meeting_time}}'}}, {{'{{meeting_link}}'}}, {{'{{meeting_type}}'}}.
 - **Survey Result**: Use {{'{{survey_score}}'}}, {{'{{outcome_label}}'}}, {{'{{result_url}}'}}.
 - **Doc Signed**: Use {{'{{form_name}}'}}, {{'{{submission_date}}'}}.
-- **General**: Use {{'{{school_name}}'}}, {{'{{contact_name}}'}}.
+- **General**: Use {{'{{entity_name}}'}}, {{'{{contact_name}}'}}.
 
 ### ARCHITECTURE (FOR EMAIL):
 If the channel is **Email**, you MUST return a structured 'blocks' array.
@@ -68,7 +68,7 @@ If the channel is **Email**, you MUST return a structured 'blocks' array.
 - Use 'heading' (variants h1, h2, h3) for titles.
 - Use 'text' for paragraphs.
 - Use 'button' for calls-to-action (links can use variables).
-- Use 'logo' at the top (defaults to {{'{{school_logo}}'}}).
+- Use 'logo' at the top (defaults to {{'{{org_logo_url}}'}}).
 
 ### ARCHITECTURE (FOR WHATSAPP):
 If the channel is **whatsapp**, the message must fit a Meta-approvable template:
@@ -80,12 +80,13 @@ If the channel is **whatsapp**, the message must fit a Meta-approvable template:
 
 ### RULES:
 1. **TAG PRECISION**: You MUST use the exact syntax: {{'{{variable_name}}'}}.
-2. **VARIABLE INJECTION**: Use the available variables provided below whenever appropriate.
+2. **VARIABLE DEPRECATION**: 'school_name' and 'school_logo' are DEPRECATED. Always use {{'{{entity_name}}'}} and {{'{{org_logo_url}}'}}.
+3. **VARIABLE INJECTION**: Use the available variables provided below whenever appropriate.
 Available Keys:
 {{#if availableVariables}}
 {{#each availableVariables}}- {{this}}
 {{/each}}
-{{else}}- school_name
+{{else}}- entity_name
 - contact_name
 - survey_score
 - meeting_time

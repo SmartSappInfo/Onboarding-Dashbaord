@@ -57,7 +57,7 @@ function SortableRuleItem({
     const [aiOutput, setAiOutput] = React.useState<GenerateSurveyMessagingOutput | null>(null);
     const [savedTemplateIds, setSavedTemplateIds] = React.useState<{ emailTemplateId?: string; smsTemplateId?: string; whatsappTemplateId?: string } | undefined>(undefined);
 
-    const handleGenerateAiForRule = async () => {
+    const handleGenerateAiForRule = async (userPromptInstructions?: string) => {
         if (!activeWorkspaceId || !activeOrganizationId) return;
         setIsGeneratingAi(true);
         setIsAiModalOpen(true);
@@ -98,6 +98,7 @@ function SortableRuleItem({
                 keyQuestions: questions,
                 scoringEnabled,
                 maxScore: surveyMaxScore,
+                userPromptInstructions,
                 autoSave: true,
             });
 
@@ -396,7 +397,7 @@ function SortableRuleItem({
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    onClick={handleGenerateAiForRule}
+                                    onClick={() => handleGenerateAiForRule()}
                                     disabled={isGeneratingAi}
                                     className="min-h-[44px] sm:min-h-[32px] h-auto sm:h-8 px-3 text-[11px] font-bold gap-1.5 text-primary border-primary/30 hover:bg-primary/5 rounded-xl active:scale-[0.97] transition-all shadow-sm"
                                 >

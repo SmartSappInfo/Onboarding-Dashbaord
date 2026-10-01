@@ -75,7 +75,7 @@ describe('AI Survey Messaging Schemas & Flow', () => {
           { id: 'q_1', title: 'Total Student Enrollment', type: 'multiple-choice' },
           { id: 'q_2', title: 'Curriculum Standards Met', type: 'yes-no' },
         ],
-        availableVariables: ['contact_name', 'school_name', 'survey_score', 'outcome_label', 'result_url'],
+        availableVariables: ['contact_name', 'entity_name', 'survey_score', 'outcome_label', 'result_url'],
       };
 
       const parsed = SurveyMessagingContextInputSchema.parse(input);
@@ -90,7 +90,7 @@ describe('AI Survey Messaging Schemas & Flow', () => {
         target: 'internal_team_alert',
         channels: ['email', 'sms'],
         scoringEnabled: true,
-        availableVariables: ['school_name', 'contact_name', 'contact_email', 'contact_phone', 'survey_score'],
+        availableVariables: ['entity_name', 'contact_name', 'contact_email', 'contact_phone', 'survey_score'],
       };
 
       const parsed = SurveyMessagingContextInputSchema.parse(input);

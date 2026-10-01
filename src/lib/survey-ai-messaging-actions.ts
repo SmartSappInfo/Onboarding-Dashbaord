@@ -123,7 +123,12 @@ export async function generateSurveyMessagingTemplatesAction(
       workspaceId,
       organizationId,
     });
-    const availableVarKeys = activeVariables.map((v) => v.key);
+    const availableVarKeys = activeVariables
+      .map((v) => v.key)
+      .filter((k) => k !== 'school_name' && k !== 'school_logo');
+    if (!availableVarKeys.includes('entity_name')) {
+      availableVarKeys.unshift('entity_name');
+    }
 
     // 2. Invoke Genkit AI flow
     // ARCHITECTURAL POINTER (Rule 10):
@@ -144,7 +149,45 @@ export async function generateSurveyMessagingTemplatesAction(
       userPromptInstructions,
     };
 
-    const generatedOutput: GenerateSurveyMessagingOutput = await generateSurveyMessagingFlow(aiInput);
+    const rawOutput: GenerateSurveyMessagingOutput = await generateSurveyMessagingFlow(aiInput);
+
+    // Deep sanitize any legacy/deprecated variable tokens from the generated output
+    const sanitizeText = (txt?: string): string => {
+      if (!txt) return txt || '';
+      return txt
+        .replace(/\{\{\s*school_name\s*\}\}/g, '{{entity_name}}')
+        .replace(/\{\{\s*school_logo\s*\}\}/g, '{{org_logo_url}}')
+        .replace(/\{\{\s*school_email\s*\}\}/g, '{{org_email}}')
+        .replace(/\{\{\s*school_phone\s*\}\}/g, '{{org_phone}}')
+        .replace(/\{\{\s*school_address\s*\}\}/g, '{{org_address}}');
+    };
+
+    const generatedOutput: GenerateSurveyMessagingOutput = {
+      ...rawOutput,
+      email: rawOutput.email ? {
+        ...rawOutput.email,
+        subject: sanitizeText(rawOutput.email.subject),
+        body: sanitizeText(rawOutput.email.body),
+        blocks: (rawOutput.email.blocks || []).map((blk) => ({
+          ...blk,
+          title: blk.title ? sanitizeText(blk.title) : blk.title,
+          content: blk.content ? sanitizeText(blk.content) : blk.content,
+          url: blk.url ? sanitizeText(blk.url) : blk.url,
+          link: blk.link ? sanitizeText(blk.link) : blk.link,
+          items: blk.items ? blk.items.map((i) => sanitizeText(i)) : blk.items,
+        })),
+      } : undefined,
+      sms: rawOutput.sms ? {
+        ...rawOutput.sms,
+        body: sanitizeText(rawOutput.sms.body),
+      } : undefined,
+      whatsapp: rawOutput.whatsapp ? {
+        ...rawOutput.whatsapp,
+        header: rawOutput.whatsapp.header ? sanitizeText(rawOutput.whatsapp.header) : undefined,
+        body: sanitizeText(rawOutput.whatsapp.body),
+        footer: rawOutput.whatsapp.footer ? sanitizeText(rawOutput.whatsapp.footer) : undefined,
+      } : undefined,
+    };
 
     const savedTemplateIds: {
       emailTemplateId?: string;

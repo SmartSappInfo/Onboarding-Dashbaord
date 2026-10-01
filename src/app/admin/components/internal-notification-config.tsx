@@ -92,7 +92,7 @@ export default function InternalNotificationConfig({ prefix = "adminAlert", cate
         }
     }, [enabled]);
 
-    const handleGenerateAi = async () => {
+    const handleGenerateAi = async (userPromptInstructions?: string) => {
         if (!activeWorkspaceId || !activeOrganizationId) return;
         setIsGeneratingAi(true);
         setIsAiModalOpen(true);
@@ -118,6 +118,7 @@ export default function InternalNotificationConfig({ prefix = "adminAlert", cate
                 keyQuestions: questions,
                 scoringEnabled,
                 maxScore,
+                userPromptInstructions,
                 autoSave: true,
             });
 
@@ -363,7 +364,7 @@ export default function InternalNotificationConfig({ prefix = "adminAlert", cate
                                             type="button"
                                             variant="outline"
                                             size="sm"
-                                            onClick={handleGenerateAi}
+                                            onClick={() => handleGenerateAi()}
                                             disabled={isGeneratingAi}
                                             className="min-h-[44px] sm:min-h-[32px] h-auto sm:h-8 px-3 text-xs font-semibold gap-1.5 text-primary border-primary/30 hover:bg-primary/5 rounded-xl active:scale-[0.97] transition-all shadow-xs"
                                         >

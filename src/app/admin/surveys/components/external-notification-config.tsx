@@ -73,7 +73,7 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
     const [aiOutput, setAiOutput] = React.useState<GenerateSurveyMessagingOutput | null>(null);
     const [savedTemplateIds, setSavedTemplateIds] = React.useState<{ emailTemplateId?: string; smsTemplateId?: string; whatsappTemplateId?: string } | undefined>(undefined);
 
-    const handleGenerateAi = async () => {
+    const handleGenerateAi = async (userPromptInstructions?: string) => {
         if (!activeWorkspaceId || !activeOrganizationId) return;
         setIsGeneratingAi(true);
         setIsAiModalOpen(true);
@@ -99,6 +99,7 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                 keyQuestions: questions,
                 scoringEnabled,
                 maxScore,
+                userPromptInstructions,
                 autoSave: true,
             });
 
@@ -262,7 +263,7 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    onClick={handleGenerateAi}
+                                    onClick={() => handleGenerateAi()}
                                     disabled={isGeneratingAi}
                                     className="min-h-[44px] sm:min-h-[32px] h-auto sm:h-8 px-3 text-[11px] font-bold gap-1.5 text-primary border-primary/30 hover:bg-primary/5 rounded-xl active:scale-[0.97] transition-all shadow-sm"
                                 >

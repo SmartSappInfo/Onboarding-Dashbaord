@@ -50,7 +50,7 @@ function buildSurveyMessagingPrompt(input: SurveyMessagingContextInput): string 
 - **Score Range**: ${outcomeRule?.minScore !== undefined ? `${outcomeRule.minScore} - ${outcomeRule.maxScore ?? 100} points` : 'N/A'}
 - **Outcome Page Context**: ${outcomeRule?.pageTitle ? `Page Title: "${outcomeRule.pageTitle}"` : ''} ${outcomeRule?.pageContentSummary ? `Summary: "${outcomeRule.pageContentSummary}"` : ''}
 - **Tone**: Warm, encouraging, clear, and actionable. Provide next steps and instructions.
-- **Recommended Variables**: {{contact_name}}, {{survey_score}}, {{outcome_label}}, {{result_url}}, {{school_name}}.
+- **Recommended Variables**: {{contact_name}}, {{survey_score}}, {{outcome_label}}, {{result_url}}, {{entity_name}}.
 `;
   } else if (target === 'internal_team_alert') {
     targetInstructions = `
@@ -58,7 +58,7 @@ function buildSurveyMessagingPrompt(input: SurveyMessagingContextInput): string 
 - **Goal**: Immediately notify internal staff, sales reps, or onboarding managers that a survey was completed.
 - **Tone**: Professional, urgent, concise, and informative.
 - **Content**: Highlight the respondent's contact details, score, key qualified answers, and call-to-action to review in CRM console.
-- **Recommended Variables**: {{school_name}}, {{contact_name}}, {{contact_email}}, {{contact_phone}}, {{survey_score}}, {{outcome_label}}, {{entity_console_url}}.
+- **Recommended Variables**: {{entity_name}}, {{contact_name}}, {{contact_email}}, {{contact_phone}}, {{survey_score}}, {{outcome_label}}, {{entity_console_link}}.
 `;
   } else if (target === 'external_stakeholder_alert') {
     targetInstructions = `
@@ -66,7 +66,7 @@ function buildSurveyMessagingPrompt(input: SurveyMessagingContextInput): string 
 - **Goal**: Provide campus leadership or designated external contacts with an executive summary of survey submission.
 - **Tone**: Formal, respectful, executive, and structured.
 - **Content**: Outline key status, compliance / assessment standing, and next milestone.
-- **Recommended Variables**: {{school_name}}, {{contact_name}}, {{survey_score}}, {{outcome_label}}, {{submission_date}}.
+- **Recommended Variables**: {{entity_name}}, {{contact_name}}, {{survey_score}}, {{outcome_label}}, {{submission_date}}.
 `;
   } else {
     targetInstructions = `
@@ -83,9 +83,15 @@ ${keyQuestions.slice(0, 15).map((q, idx) => `${idx + 1}. [${q.type}] ${q.title}`
 `;
   }
 
-  const varList = availableVariables && availableVariables.length > 0
-    ? availableVariables.map(v => `- {{${v}}}`).join('\n')
-    : `- {{contact_name}}\n- {{school_name}}\n- {{survey_score}}\n- {{outcome_label}}\n- {{result_url}}\n- {{contact_email}}\n- {{contact_phone}}`;
+  const sanitizedVars = (availableVariables || [])
+    .filter((v) => v !== 'school_name' && v !== 'school_logo');
+  if (!sanitizedVars.includes('entity_name')) {
+    sanitizedVars.unshift('entity_name');
+  }
+
+  const varList = sanitizedVars.length > 0
+    ? sanitizedVars.map(v => `- {{${v}}}`).join('\n')
+    : `- {{contact_name}}\n- {{entity_name}}\n- {{survey_score}}\n- {{outcome_label}}\n- {{result_url}}\n- {{contact_email}}\n- {{contact_phone}}`;
 
   return `You are an expert Copywriter, Email Design Architect, and Messaging Strategist for SmartSapp.
 
@@ -104,7 +110,7 @@ ${targetInstructions}
 
 1. **EMAIL CHANNEL** (Rich Block Builder):
    - You MUST provide structured 'blocks' array:
-     - 'logo' at top (default url: "{{school_logo}}" or fallback)
+     - 'logo' at top (default url: "{{org_logo_url}}")
      - 'heading' (h1 or h2) for prominent headline
      - 'text' for formatted paragraphs
      - 'button' for primary call-to-action (e.g. "View Full Assessment Results" linking to "{{result_url}}" or CRM link)
@@ -124,12 +130,15 @@ ${targetInstructions}
    - Set 'whatsappCategory' to UTILITY (for transactional/outcome updates) or MARKETING.
    - Optionally provide a short 'header' and/or 'footer' (<= 60 chars each).
 
-4. **VARIABLE SYNTAX**:
+4. **VARIABLE SYNTAX & DEPRECATION RULES**:
    - For Email and SMS: Use exact syntax {{variable_name}}.
+   - CRITICAL REQUIREMENT: "school_name" and "school_logo" are DEPRECATED and STRICTLY FORBIDDEN.
+   - Always use {{entity_name}} to refer to the school, company, campus, or client institution.
+   - Always use {{org_logo_url}} for the organization brand logo.
    - Available Variables:
 ${varList}
 
-${userPromptInstructions ? `### ADDITIONAL USER INSTRUCTIONS:\n${userPromptInstructions}\n` : ''}
+${userPromptInstructions ? `### ADDITIONAL USER CORRECTIONS & INSTRUCTIONS:\n${userPromptInstructions}\n` : ''}
 `;
 }
 
