@@ -1,5 +1,13 @@
 import { adminDb } from '../../firebase-admin';
-import { createDeal, updateDealStageAction, updateDealValueAction, updateDealStatusAction } from '../../../app/actions/deal-actions';
+import {
+    type CrmActor,
+    createDealCore,
+    loadAuthorizedDeal,
+    updateDealOwnerCore,
+    updateDealStageCore,
+    updateDealStatusCore,
+    updateDealValueCore,
+} from '../../crm/deal-core';
 import type { ExecutionContext } from '../execution-types';
 import { FieldsVariablesService } from '../../services/fields-variables-service-impl';
 
@@ -15,18 +23,32 @@ export interface DealAutomationActionConfig {
 }
 
 /**
- * Resolves the target deal ID for a given automation context.
- * Prioritizes dealId in trigger payload, falling back to the active open deal of the entity.
+ * The automation engine acts on deals as a trusted service, pinned to one workspace: the deal
+ * core refuses any deal stored outside it (agents_mcp PR-1 / N1). A `dealId` in the trigger
+ * payload can therefore never reach another tenant's deal.
  */
-async function resolveTargetDealId(config: DealAutomationActionConfig, context: ExecutionContext): Promise<string | null> {
-    if (context.payload && context.payload.dealId) {
-        return context.payload.dealId as string;
+function automationActor(workspaceId: string): CrmActor {
+    return { kind: 'service', service: 'automations', workspaceId };
+}
+
+/**
+ * Resolves the target deal ID for a given automation context, and the workspace the automation
+ * acts in. Prioritizes dealId in trigger payload, falling back to the active open deal of the entity.
+ */
+async function resolveTargetDeal(
+    config: DealAutomationActionConfig,
+    context: ExecutionContext
+): Promise<{ dealId: string; actor: CrmActor } | null> {
+    const { resolveWorkspaceGuid } = await import('../workspace-resolver');
+    const { workspaceId: targetWorkspaceId } = await resolveWorkspaceGuid(config.workspaceId || context.workspaceId);
+    const actor = automationActor(targetWorkspaceId);
+
+    if (context.payload && typeof context.payload.dealId === 'string' && context.payload.dealId) {
+        return { dealId: context.payload.dealId, actor };
     }
     
     if (!context.entityId) return null;
     
-    const { resolveWorkspaceGuid } = await import('../workspace-resolver');
-    const { workspaceId: targetWorkspaceId } = await resolveWorkspaceGuid(config.workspaceId || context.workspaceId);
     let query = adminDb.collection('deals')
         .where('entityId', '==', context.entityId)
         .where('workspaceId', '==', targetWorkspaceId)
@@ -38,7 +60,7 @@ async function resolveTargetDealId(config: DealAutomationActionConfig, context: 
     
     const snap = await query.orderBy('updatedAt', 'desc').limit(1).get();
     if (!snap.empty) {
-        return snap.docs[0].id;
+        return { dealId: snap.docs[0].id, actor };
     }
     
     return null;
@@ -111,7 +133,7 @@ export async function handleCreateDeal(config: DealAutomationActionConfig, conte
 
     const value = config.value ? Number(config.value) : 0;
     
-    const result = await createDeal({
+    const result = await createDealCore(automationActor(targetWorkspaceId), {
         entityId: context.entityId,
         workspaceId: targetWorkspaceId,
         organizationId: context.organizationId || 'default',
@@ -133,11 +155,12 @@ export async function handleCreateDeal(config: DealAutomationActionConfig, conte
 export async function handleUpdateDealStage(config: DealAutomationActionConfig, context: ExecutionContext) {
     if (!config.stageId) throw new Error("Target stageId is required for update deal stage action");
     
-    const dealId = await resolveTargetDealId(config, context);
-    if (!dealId) {
+    const target = await resolveTargetDeal(config, context);
+    if (!target) {
         console.warn(">>> [DEAL:AUTO] No target deal resolved for stage update.");
         return;
     }
+    const { dealId, actor } = target;
     
     // Loop / Recursion protection: check if deal is already at that stage
     const dealSnap = await adminDb.collection('deals').doc(dealId).get();
@@ -146,7 +169,7 @@ export async function handleUpdateDealStage(config: DealAutomationActionConfig, 
         return;
     }
     
-    const result = await updateDealStageAction(dealId, config.stageId);
+    const result = await updateDealStageCore(actor, dealId, config.stageId);
     if (!result.success) throw new Error(result.error);
 }
 
@@ -158,11 +181,12 @@ export async function handleUpdateDealValue(config: DealAutomationActionConfig, 
         throw new Error("Value is required for update deal value action");
     }
     
-    const dealId = await resolveTargetDealId(config, context);
-    if (!dealId) {
+    const target = await resolveTargetDeal(config, context);
+    if (!target) {
         console.warn(">>> [DEAL:AUTO] No target deal resolved for value update.");
         return;
     }
+    const { dealId, actor } = target;
     
     let targetValue = 0;
     const valueStr = String(config.value).trim();
@@ -178,7 +202,7 @@ export async function handleUpdateDealValue(config: DealAutomationActionConfig, 
         targetValue = Number(valueStr);
     }
     
-    const result = await updateDealValueAction(dealId, targetValue);
+    const result = await updateDealValueCore(actor, dealId, targetValue);
     if (!result.success) throw new Error(result.error);
 }
 
@@ -188,11 +212,12 @@ export async function handleUpdateDealValue(config: DealAutomationActionConfig, 
 export async function handleUpdateDealStatus(config: DealAutomationActionConfig, context: ExecutionContext) {
     if (!config.status) throw new Error("Status is required for update deal status action");
     
-    const dealId = await resolveTargetDealId(config, context);
-    if (!dealId) {
+    const target = await resolveTargetDeal(config, context);
+    if (!target) {
         console.warn(">>> [DEAL:AUTO] No target deal resolved for status update.");
         return;
     }
+    const { dealId, actor } = target;
     
     const status = config.status as 'open' | 'won' | 'lost';
     if (!['open', 'won', 'lost'].includes(status)) {
@@ -206,7 +231,7 @@ export async function handleUpdateDealStatus(config: DealAutomationActionConfig,
         return;
     }
     
-    const result = await updateDealStatusAction(dealId, status);
+    const result = await updateDealStatusCore(actor, dealId, status);
     if (!result.success) throw new Error(result.error);
 }
 
@@ -214,14 +239,13 @@ export async function handleUpdateDealStatus(config: DealAutomationActionConfig,
  * Automation Handler: ASSIGN_DEAL_OWNER
  */
 export async function handleAssignDealOwner(config: DealAutomationActionConfig & { userId?: string; userName?: string; userEmail?: string }, context: ExecutionContext) {
-    const dealId = await resolveTargetDealId(config, context);
-    if (!dealId) {
+    const target = await resolveTargetDeal(config, context);
+    if (!target) {
         console.warn(">>> [DEAL:AUTO] No target deal resolved for owner assignment.");
         return;
     }
+    const { dealId, actor } = target;
 
-    const { updateDealOwnerAction } = await import('../../../app/actions/deal-actions');
-    
     let targetUserId = config.userId || null;
     let targetUserName = config.userName || null;
     let targetUserEmail = config.userEmail || null;
@@ -232,7 +256,7 @@ export async function handleAssignDealOwner(config: DealAutomationActionConfig &
         targetUserId = config.eligibleUserIds[randomIndex];
     }
 
-    const result = await updateDealOwnerAction(dealId, targetUserId, targetUserName, targetUserEmail);
+    const result = await updateDealOwnerCore(actor, dealId, targetUserId, targetUserName, targetUserEmail);
     if (!result.success) throw new Error(result.error);
 }
 
@@ -244,16 +268,19 @@ export async function handleUpdateDealProbability(config: DealAutomationActionCo
         throw new Error("Probability is required for update deal probability action");
     }
 
-    const dealId = await resolveTargetDealId(config, context);
-    if (!dealId) {
+    const target = await resolveTargetDeal(config, context);
+    if (!target) {
         console.warn(">>> [DEAL:AUTO] No target deal resolved for probability update.");
         return;
     }
+    const { dealId, actor } = target;
+
+    // The deal must live in the automation's workspace (a payload dealId is not trusted).
+    const loaded = await loadAuthorizedDeal(actor, dealId, 'edit');
+    if (!loaded.ok) throw new Error(loaded.error);
 
     const probability = Math.max(0, Math.min(100, Number(config.probability)));
-    const dealRef = adminDb.collection('deals').doc(dealId);
-    
-    await dealRef.update({
+    await loaded.ref.update({
         probability,
         isProbabilityManual: true,
         updatedAt: new Date().toISOString(),
@@ -266,7 +293,10 @@ export async function handleUpdateDealProbability(config: DealAutomationActionCo
 export async function handleCreateDealTask(config: { title?: string; description?: string; dueDate?: string; priority?: string; assigneeId?: string; workspaceId?: string }, context: ExecutionContext) {
     if (!config.title) throw new Error("Task title is required");
 
-    const dealId = await resolveTargetDealId(config as DealAutomationActionConfig, context);
+    const target = await resolveTargetDeal(config as DealAutomationActionConfig, context);
+    // Link the task to the deal only when that deal lives in the automation's workspace.
+    const linked = target ? await loadAuthorizedDeal(target.actor, target.dealId, 'edit') : null;
+    const dealId = target && linked?.ok ? target.dealId : null;
     const { resolveWorkspaceGuid } = await import('../workspace-resolver');
     const { workspaceId: targetWorkspaceId } = await resolveWorkspaceGuid(config.workspaceId || context.workspaceId);
 
@@ -304,11 +334,14 @@ export async function handleCreateDealTask(config: { title?: string; description
 export async function handleAddDealNote(config: { content?: string; workspaceId?: string }, context: ExecutionContext) {
     if (!config.content) throw new Error("Note content is required");
 
-    const dealId = await resolveTargetDealId(config as DealAutomationActionConfig, context);
-    if (!dealId) {
+    const target = await resolveTargetDeal(config as DealAutomationActionConfig, context);
+    if (!target) {
         console.warn(">>> [DEAL:AUTO] No target deal resolved for adding deal note.");
         return;
     }
+    const { dealId, actor } = target;
+    const loaded = await loadAuthorizedDeal(actor, dealId, 'edit');
+    if (!loaded.ok) throw new Error(loaded.error);
 
     const { resolveWorkspaceGuid } = await import('../workspace-resolver');
     const { workspaceId: targetWorkspaceId } = await resolveWorkspaceGuid(config.workspaceId || context.workspaceId);

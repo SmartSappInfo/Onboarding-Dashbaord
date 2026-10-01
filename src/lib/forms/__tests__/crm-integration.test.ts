@@ -105,8 +105,10 @@ vi.mock('@/lib/firebase-admin', () => {
 });
 
 const mockCreateDeal = vi.fn().mockResolvedValue({ id: 'deal_999' });
-vi.mock('@/app/actions/deal-actions', () => ({
-  createDeal: (data: any) => mockCreateDeal(data),
+// Forms create deals through the deal core as the 'forms' service (agents_mcp PR-1 / N1).
+const recordedDealActors: unknown[] = [];
+vi.mock('@/lib/crm/deal-core', () => ({
+  createDealCore: (actor: unknown, data: any) => { recordedDealActors.push(actor); return mockCreateDeal(data); },
 }));
 
 const mockCreateTask = vi.fn().mockResolvedValue({ success: true, id: 'task_888' });
@@ -223,6 +225,7 @@ describe('SmartSapp Forms 2.0: CRM Integration Studio & Automated Actions', () =
         pipelineId: 'pipe_1',
         stageId: 'st_1',
       }));
+      expect(recordedDealActors).toEqual([expect.objectContaining({ kind: 'service', service: 'forms' })]);
 
       // Verify the task core was invoked (system actor) with templated title and priority
       expect(mockCreateTask).toHaveBeenCalledWith(expect.objectContaining({

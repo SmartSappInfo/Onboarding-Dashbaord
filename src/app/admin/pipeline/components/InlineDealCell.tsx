@@ -37,12 +37,11 @@ import {
 
 interface InlineValueCellProps {
   deal: Deal;
-  userId: string;
   field: 'value' | 'mrr';
   onUpdated?: (newVal: number) => void;
 }
 
-export function InlineValueCell({ deal, userId, field, onUpdated }: InlineValueCellProps) {
+export function InlineValueCell({ deal, field, onUpdated }: InlineValueCellProps) {
   const { toast } = useToast();
   const [isEditing, setIsEditing] = React.useState(false);
   const [val, setVal] = React.useState<string>(String(deal[field] ?? 0));
@@ -80,7 +79,7 @@ export function InlineValueCell({ deal, userId, field, onUpdated }: InlineValueC
       if (field === 'value') {
         res = await updateDealValueAction(deal.id, num);
       } else {
-        res = await updateDealAction(deal.id, { mrr: num }, userId);
+        res = await updateDealAction(deal.id, { mrr: num }, deal.workspaceId);
       }
 
       if (res.success) {
@@ -155,11 +154,10 @@ export function InlineValueCell({ deal, userId, field, onUpdated }: InlineValueC
 
 interface InlineProbabilityCellProps {
   deal: Deal;
-  userId: string;
   onUpdated?: (newProb: number) => void;
 }
 
-export function InlineProbabilityCell({ deal, userId, onUpdated }: InlineProbabilityCellProps) {
+export function InlineProbabilityCell({ deal, onUpdated }: InlineProbabilityCellProps) {
   const { toast } = useToast();
   const [isOpen, setIsOpen] = React.useState(false);
   const [prob, setProb] = React.useState<number>(deal.probability ?? 50);
@@ -174,7 +172,7 @@ export function InlineProbabilityCell({ deal, userId, onUpdated }: InlineProbabi
     setProb(clamped);
     setIsSaving(true);
     try {
-      const res = await updateDealProbabilityAction(deal.id, clamped, userId);
+      const res = await updateDealProbabilityAction(deal.id, clamped);
       if (res.success) {
         onUpdated?.(clamped);
         setIsOpen(false);
@@ -239,11 +237,10 @@ export function InlineProbabilityCell({ deal, userId, onUpdated }: InlineProbabi
 interface InlineStageCellProps {
   deal: Deal;
   stages: OnboardingStage[];
-  userId: string;
   onUpdated?: (newStageId: string) => void;
 }
 
-export function InlineStageCell({ deal, stages, userId, onUpdated }: InlineStageCellProps) {
+export function InlineStageCell({ deal, stages, onUpdated }: InlineStageCellProps) {
   const { toast } = useToast();
   const [isOpen, setIsOpen] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -258,7 +255,7 @@ export function InlineStageCell({ deal, stages, userId, onUpdated }: InlineStage
 
     setIsSaving(true);
     try {
-      const res = await updateDealStageAction(deal.id, stageId, userId);
+      const res = await updateDealStageAction(deal.id, stageId);
       if (res.success) {
         onUpdated?.(stageId);
         setIsOpen(false);
@@ -321,11 +318,10 @@ export function InlineStageCell({ deal, stages, userId, onUpdated }: InlineStage
 interface InlineOwnerCellProps {
   deal: Deal;
   users: UserProfile[];
-  userId: string;
   onUpdated?: (newOwnerId: string, newOwnerName: string) => void;
 }
 
-export function InlineOwnerCell({ deal, users, userId, onUpdated }: InlineOwnerCellProps) {
+export function InlineOwnerCell({ deal, users, onUpdated }: InlineOwnerCellProps) {
   const { toast } = useToast();
   const [isOpen, setIsOpen] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -333,7 +329,9 @@ export function InlineOwnerCell({ deal, users, userId, onUpdated }: InlineOwnerC
   const handleSelectOwner = async (ownerId: string, ownerName: string) => {
     setIsSaving(true);
     try {
-      const res = await updateDealOwnerAction(deal.id, ownerId, ownerName, userId);
+      // The owner's email comes from the workspace user list (this used to send the viewer's uid here).
+      const ownerEmail = users.find((u) => u.id === ownerId)?.email ?? null;
+      const res = await updateDealOwnerAction(deal.id, ownerId, ownerName, ownerEmail);
       if (res.success) {
         onUpdated?.(ownerId, ownerName);
         setIsOpen(false);

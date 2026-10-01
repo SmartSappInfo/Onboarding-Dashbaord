@@ -209,6 +209,13 @@ vi.mock('@/lib/firebase-admin', () => {
         }),
         commit: vi.fn().mockResolvedValue(undefined),
       })),
+      // The bulk worker reads each deal first so it only touches deals of the job's workspace (N1).
+      getAll: vi.fn(async (...refs: Array<{ id: string }>) =>
+        refs.map((ref) => {
+          const data = mockDealsStore.get(ref.id);
+          return { id: ref.id, exists: Boolean(data), get: (field: string) => (data as Record<string, unknown> | undefined)?.[field] };
+        })
+      ),
     },
   };
 });
@@ -309,9 +316,7 @@ describe('Phase 5 Automation & SLA Suite', () => {
         'bulk_archive',
         dealIds,
         {},
-        'ws-1',
-        'admin-user',
-        'Admin User'
+        'ws-1'
       );
 
       expect(res.success).toBe(true);

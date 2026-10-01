@@ -192,7 +192,7 @@ describe('Phase 1 Deal Server Actions Suite', () => {
     it('should duplicate deal with cloned line items and reset stage history', async () => {
       const res = await duplicateDealAction('deal-1', {
         newName: 'St. Patrick Expansion (2027 Cohort)',
-      }, 'user-admin');
+      });
 
       expect(res.success).toBe(true);
       expect(res.newDealId).toBeDefined();
@@ -213,7 +213,7 @@ describe('Phase 1 Deal Server Actions Suite', () => {
 
     it('should respect permission denial during duplicate', async () => {
       permissionGranted = false;
-      const res = await duplicateDealAction('deal-1', {}, 'unauthorized-user');
+      const res = await duplicateDealAction('deal-1', {});
       expect(res.success).toBe(false);
       expect(res.error).toBe('Permission denied');
     });
@@ -221,20 +221,20 @@ describe('Phase 1 Deal Server Actions Suite', () => {
 
   describe('archiveDealAction & unarchiveDealAction', () => {
     it('should soft-archive a deal and log activity', async () => {
-      const res = await archiveDealAction('deal-1', 'user-admin');
+      const res = await archiveDealAction('deal-1');
       expect(res.success).toBe(true);
 
       const deal = mockDealsStore.get('deal-1');
       expect(deal?.isArchived).toBe(true);
       expect(deal?.archivedAt).toBeDefined();
-      expect(deal?.archivedBy).toBe('user-admin');
+      expect(deal?.archivedBy).toBe('test-user') // the session user (setup.ts);
 
       expect(loggedActivities.some(a => a.type === 'deal_archived')).toBe(true);
     });
 
     it('should restore an archived deal', async () => {
-      await archiveDealAction('deal-1', 'user-admin');
-      const unarchiveRes = await unarchiveDealAction('deal-1', 'user-admin');
+      await archiveDealAction('deal-1');
+      const unarchiveRes = await unarchiveDealAction('deal-1');
       expect(unarchiveRes.success).toBe(true);
 
       const deal = mockDealsStore.get('deal-1');
@@ -259,7 +259,7 @@ describe('Phase 1 Deal Server Actions Suite', () => {
         mergeTasksAndNotes: true,
       };
 
-      const result = await mergeDealsAction(mergeOptions, 'ws-1', 'user-admin');
+      const result = await mergeDealsAction(mergeOptions, 'ws-1');
 
       expect(result.success).toBe(true);
       expect(result.masterDealId).toBe('deal-1');
@@ -303,7 +303,7 @@ describe('Phase 1 Deal Server Actions Suite', () => {
         mergeLineItems: true,
         mergeCustomFields: true,
         mergeTasksAndNotes: false,
-      }, 'ws-1', 'user-admin');
+      }, 'ws-1');
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Cannot merge deals across different workspaces');

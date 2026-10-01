@@ -102,7 +102,7 @@ export default function StageColumn({
 
         setIsClearing(true);
         try {
-            const res = await clearStageDealsAction(stage.id, activeWorkspaceId, user.uid);
+            const res = await clearStageDealsAction(stage.id, activeWorkspaceId);
             if (res.success) {
                 toast({ title: 'Stage Cleared', description: `Successfully cleared ${res.count ?? 0} deals.` });
             } else {

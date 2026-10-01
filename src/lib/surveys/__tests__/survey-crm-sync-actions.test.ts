@@ -47,8 +47,9 @@ vi.mock('@/lib/firebase-admin', () => ({
   },
 }));
 
-vi.mock('@/app/actions/deal-actions', () => ({
-  createDeal: vi.fn().mockResolvedValue({
+// Surveys create deals through the deal core as the 'surveys' service (N1).
+vi.mock('@/lib/crm/deal-core', () => ({
+  createDealCore: vi.fn().mockResolvedValue({
     success: true,
     deal: { id: 'deal_123' },
   }),

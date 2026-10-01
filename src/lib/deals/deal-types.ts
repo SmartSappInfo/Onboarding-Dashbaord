@@ -368,7 +368,6 @@ export interface LeadConversionOptions {
   } | null;
   focalContactIds?: string[];
   notes?: string;
-  userId: string;
   workspaceId: string;
 }
 

@@ -283,7 +283,6 @@ export default function DealQuickActions({
             const res = await logDealInteractionAction(
                 deal.id,
                 payload,
-                user.uid,
                 effectiveWorkspaceId
             );
 

@@ -337,7 +337,7 @@ export default function DealDetailsPage() {
         setIsArchiving(true);
         try {
             if (deal.isArchived) {
-                const res = await unarchiveDealAction(deal.id, currentUser?.uid);
+                const res = await unarchiveDealAction(deal.id);
                 if (res.success) {
                     toast({ title: 'Deal Restored', description: 'Opportunity returned to active pipeline.' });
                 } else {
@@ -352,7 +352,7 @@ export default function DealDetailsPage() {
                 });
                 if (!confirmed) return;
 
-                const res = await archiveDealAction(deal.id, currentUser?.uid);
+                const res = await archiveDealAction(deal.id);
                 if (res.success) {
                     toast({ title: 'Deal Archived', description: 'Opportunity moved to archive.' });
                 } else {
@@ -379,7 +379,7 @@ export default function DealDetailsPage() {
         if (!confirmed) return;
 
         try {
-            const res = await deleteDealAction(deal.id, deal.workspaceId, currentUser?.uid);
+            const res = await deleteDealAction(deal.id, deal.workspaceId);
             if (res.success) {
                 toast({ title: 'Deal Deleted', description: 'Opportunity permanently removed.' });
                 router.push('/admin/pipeline');
@@ -715,7 +715,6 @@ export default function DealDetailsPage() {
         try {
             const res = await updateDealStageAction(deal.id, newStageId, {
                 status: deal.status,
-                userId: currentUser?.uid,
             });
             if (res.error) {
                 toast({
@@ -853,8 +852,7 @@ export default function DealDetailsPage() {
             // 2. If stage changed, execute stage transition with process gate validation
             if (stageId && stageId !== deal.stageId) {
                 const stageRes = await updateDealStageAction(deal.id, stageId, { 
-                    status, 
-                    userId: currentUser?.uid 
+                    status,
                 });
                 if (stageRes.error) throw new Error(stageRes.error);
             } else if (status !== deal.status) {

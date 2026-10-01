@@ -23,7 +23,7 @@ import {
   where,
 } from 'firebase/firestore';
 
-import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { Deal, OnboardingStage, Task, Automation } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -72,7 +72,6 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
   const { toast } = useToast();
   const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
   const { activeWorkspaceId } = useWorkspace();
-  const { user } = useUser();
   // Resolve only the entities referenced by the visible deals (for tag filtering)
   // instead of loading the entire workspace into memory (Phase 5).
   const { entitiesById, resolveIds } = useEntityResolver();
@@ -311,7 +310,6 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
       const res = await updateDealStageAction(deal.id, targetStage.id, {
         status: 'lost',
         lostReason: lostReasonString,
-        userId: user?.uid,
       });
       if (!res.success) throw new Error(res.error || 'Failed to update deal stage');
 
@@ -374,7 +372,7 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
 
           const orderedIds = reorderedStages.map((s) => s.id);
           try {
-            const res = await updateStageOrdersAction(pipelineId, orderedIds, activeWorkspaceId, user?.uid);
+            const res = await updateStageOrdersAction(pipelineId, orderedIds, activeWorkspaceId);
             if (!res.success) {
               toast({ variant: 'destructive', title: 'Reorder Failed', description: res.error });
             }
@@ -432,7 +430,6 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
 
         const resStage = await updateDealStageAction(deal.id, newStage.id, {
           status: targetStatus,
-          userId: user?.uid,
         });
         if (!resStage.success) {
           throw new Error(resStage.error || 'Failed to update deal stage');

@@ -14,11 +14,16 @@ const mockUpdateDealStageAction = vi.fn().mockResolvedValue({ success: true });
 const mockUpdateDealValueAction = vi.fn().mockResolvedValue({ success: true });
 const mockUpdateDealStatusAction = vi.fn().mockResolvedValue({ success: true });
 
-vi.mock('../../app/actions/deal-actions', () => ({
-    createDeal: (data: Record<string, unknown>) => mockCreateDeal(data),
-    updateDealStageAction: (dealId: string, stageId: string) => mockUpdateDealStageAction(dealId, stageId),
-    updateDealValueAction: (dealId: string, value: number) => mockUpdateDealValueAction(dealId, value),
-    updateDealStatusAction: (dealId: string, status: 'open' | 'won' | 'lost') => mockUpdateDealStatusAction(dealId, status),
+// The automation engine calls the deal core with a service actor (agents_mcp PR-1 / N1).
+// Actors are recorded separately so each case can check which workspace the call was pinned to.
+const recordedActors: unknown[] = [];
+vi.mock('../crm/deal-core', () => ({
+    createDealCore: (actor: unknown, data: Record<string, unknown>) => { recordedActors.push(actor); return mockCreateDeal(data); },
+    updateDealStageCore: (actor: unknown, dealId: string, stageId: string) => { recordedActors.push(actor); return mockUpdateDealStageAction(dealId, stageId); },
+    updateDealValueCore: (actor: unknown, dealId: string, value: number) => { recordedActors.push(actor); return mockUpdateDealValueAction(dealId, value); },
+    updateDealStatusCore: (actor: unknown, dealId: string, status: 'open' | 'won' | 'lost') => { recordedActors.push(actor); return mockUpdateDealStatusAction(dealId, status); },
+    updateDealOwnerCore: vi.fn(),
+    loadAuthorizedDeal: vi.fn(),
 }));
 
 // Mock workspace entity actions
@@ -147,6 +152,7 @@ describe('Automation Deal Routing & Workspace Linking', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        recordedActors.length = 0;
         mockDocGet.mockReset();
         mockQueryGet.mockReset();
     });
@@ -250,6 +256,8 @@ describe('Automation Deal Routing & Workspace Linking', () => {
             await handleUpdateDealStage(config, mockContext);
 
             expect(mockUpdateDealStageAction).toHaveBeenCalledWith('deal-target-abc', 'stage-new');
+            // Pinned to the automation's target workspace: the core refuses deals stored elsewhere.
+            expect(recordedActors).toEqual([{ kind: 'service', service: 'automations', workspaceId: 'workspace-target' }]);
         });
 
         it('should skip update if deal is already at the target stage', async () => {

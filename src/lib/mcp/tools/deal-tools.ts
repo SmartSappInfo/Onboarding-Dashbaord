@@ -16,7 +16,7 @@
 import { z } from 'zod';
 import { McpToolDefinition } from '../types';
 import { adminDb } from '@/lib/firebase-admin';
-import { updateDealStageAction } from '@/app/actions/deal-actions';
+import { updateDealStageCore } from '@/lib/crm/deal-core';
 
 // ==========================================
 // 1. deal.get (Read-Only)
@@ -103,10 +103,18 @@ export const dealUpdateStageTool: McpToolDefinition<
   parameters: updateStageInputSchema,
   responseSchema: updateStageOutputSchema,
   handler: async (params, context) => {
-    const result = await updateDealStageAction(params.dealId, params.stageId, {
-      userId: context.callerId,
-      reason: params.reason,
-    });
+    // SECURITY (N1): the tool may only touch deals of the calling workspace, and runs with the
+    // caller's own pipeline permission (checked by the core against the deal's stored workspace).
+    const dealSnap = await adminDb.collection('deals').doc(params.dealId).get();
+    if (!dealSnap.exists || dealSnap.get('workspaceId') !== context.workspaceId) {
+      throw new Error(`Deal ${params.dealId} was not found in this workspace.`);
+    }
+    const result = await updateDealStageCore(
+      { kind: 'user', uid: context.userId ?? context.callerId },
+      params.dealId,
+      params.stageId,
+      { reason: params.reason }
+    );
 
     if (!result.success) {
       throw new Error(result.error || `Failed to transition deal ${params.dealId} to stage ${params.stageId}.`);

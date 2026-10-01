@@ -47,7 +47,6 @@ interface MoveDealModalProps {
   onClose: () => void;
   deal: Deal | null;
   stages: OnboardingStage[];
-  userId: string;
   onSuccess?: (newStageId: string) => void;
 }
 
@@ -56,7 +55,6 @@ export default function MoveDealModal({
   onClose,
   deal,
   stages,
-  userId,
   onSuccess,
 }: MoveDealModalProps) {
   const { toast } = useToast();
@@ -111,7 +109,6 @@ export default function MoveDealModal({
         deal.id,
         targetStage.id,
         {
-          userId,
           lostReason: isTerminalLost ? lossReason.trim() : undefined,
         }
       );

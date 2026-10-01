@@ -20,6 +20,7 @@ import { MEETING_TYPES } from '../types';
 import { parseGraph, getOutcomeAutomations } from '../call-centre-graph';
 // Server engine (webhook/session-less paths): task core with an explicit system actor.
 import { createTaskCore } from '../tasks/task-core';
+import type { CrmActor } from '../crm/deal-core';
 import { sendSms } from '../mnotify-service';
 import { sendEmail } from '../resend-service';
 import { logActivity } from '../activity-logger';
@@ -1273,6 +1274,9 @@ export class CallCentreService {
   ): Promise<{ success: boolean; unsupported?: boolean; error?: string; meetingId?: string }> {
     const { entityId, userId, workspaceId, organizationId, contactId } = ctx;
     const systemActor = `system-call-centre:${userId}`;
+    // Deal changes from call outcomes run as the call centre service, pinned to the call's workspace
+    // and attributed to the agent. The call centre action layer has already authorized the agent.
+    const dealActor: CrmActor = { kind: 'service', service: 'call-centre', workspaceId, onBehalfOf: userId };
 
     try {
       switch (type) {
@@ -1294,15 +1298,15 @@ export class CallCentreService {
             .limit(1)
             .get();
 
-          const { updateDealStageAction, createDeal } = await import('../../app/actions/deal-actions');
+          const { updateDealStageCore, createDealCore } = await import('../crm/deal-core');
 
           if (!dealsSnap.empty) {
             const dealId = dealsSnap.docs[0].id;
-            await updateDealStageAction(dealId, params.stageId);
+            await updateDealStageCore(dealActor, dealId, params.stageId);
           } else {
             const entitySnap = await adminDb.collection('entities').doc(entityId).get();
             const entityName = entitySnap.exists ? entitySnap.data()?.name || 'Contact' : 'Contact';
-            await createDeal({
+            await createDealCore(dealActor, {
               entityId,
               workspaceId,
               organizationId,
@@ -1341,15 +1345,15 @@ export class CallCentreService {
             .limit(1)
             .get();
 
-          const { updateDealStageAction, createDeal } = await import('../../app/actions/deal-actions');
+          const { updateDealStageCore, createDealCore } = await import('../crm/deal-core');
 
           if (!dealsSnap.empty) {
             const dealId = dealsSnap.docs[0].id;
-            await updateDealStageAction(dealId, params.stageId);
+            await updateDealStageCore(dealActor, dealId, params.stageId);
           } else {
             const entitySnap = await adminDb.collection('entities').doc(entityId).get();
             const entityName = entitySnap.exists ? entitySnap.data()?.name || 'Contact' : 'Contact';
-            await createDeal({
+            await createDealCore(dealActor, {
               entityId,
               workspaceId,
               organizationId,

@@ -43,7 +43,6 @@ import { calculateWeightedValue } from '@/lib/deals/deal-health-engine';
 import { calculateForecastRiskSummary } from '@/lib/deals/deal-analytics-engine';
 import { updateDealAction } from '@/app/actions/deal-actions';
 import { useToast } from '@/hooks/use-toast';
-import { useUser } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import PipelineTargetModal from './PipelineTargetModal';
 import Link from 'next/link';
@@ -109,7 +108,6 @@ export default function DealsForecastView({
   onOpenDeal,
   onTargetSaved,
 }: DealsForecastViewProps) {
-  const { user } = useUser();
   const { activeWorkspaceId } = useWorkspace();
   const { toast } = useToast();
   const [timeframe, setTimeframe] = React.useState<'all' | 'this_month' | 'this_quarter'>('all');
@@ -203,7 +201,7 @@ export default function DealsForecastView({
     try {
       const res = await updateDealAction(dealId, {
         forecastCategory: newCategory,
-      }, activeWorkspaceId, user?.uid);
+      }, activeWorkspaceId);
 
       if (res.success) {
         toast({

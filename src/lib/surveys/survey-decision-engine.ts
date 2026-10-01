@@ -26,7 +26,7 @@ import type {
   SurveyDecisionSimulationResult,
 } from '@/lib/types';
 import { isAuthorizedForWorkspace } from './survey-hydration-adapter';
-import { createDeal } from '@/app/actions/deal-actions';
+import { createDealCore } from '@/lib/crm/deal-core';
 import { FieldsVariablesService } from '@/lib/services/fields-variables-service-impl';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 // SECURITY (audit F9): report detail server-side; return an opaque message + ref.
@@ -119,7 +119,7 @@ export async function executeSingleDecisionAction(
           return { success: false, actionType: action.type, error: 'Missing pipelineId, stageId or entityId' };
         }
 
-        await createDeal({
+        await createDealCore({ kind: 'service', service: 'surveys', workspaceId }, {
           workspaceId,
           organizationId: organizationId || '',
           pipelineId: action.pipelineId,
@@ -176,7 +176,7 @@ export async function executeSingleDecisionAction(
         const rawTitle = action.dealConfig?.titleTemplate || `Deal: ${ctx.entityName || contactName || 'Prospect'}`;
         const dealTitle = interpolateDecisionTemplate(rawTitle, ctx);
 
-        await createDeal({
+        await createDealCore({ kind: 'service', service: 'surveys', workspaceId }, {
           workspaceId,
           organizationId: organizationId || '',
           pipelineId: action.pipelineId,

@@ -5,10 +5,8 @@ import { adminDb } from '@/lib/firebase-admin';
 import type { 
     Deal, 
     Pipeline,
-    WorkspaceEntity, 
     DealContact, 
     DealFocalContact, 
-    EntityType, 
     DealDuplicateOptions, 
     DealMergeOptions, 
     DealMergeResult, 
@@ -21,7 +19,6 @@ import { triggerAutomationProtocols } from '@/lib/automations/orchestrator';
 import { calculateLineItemsTotals } from '@/lib/deals/deal-health-engine';
 import { emitDealDomainEvent } from '@/lib/deals/deal-event-bus';
 import { 
-    validateStageTransition, 
     resolveStageTerminalStatus, 
 } from '@/lib/deals/deal-stage-validation';
 import type { 
@@ -33,507 +30,71 @@ import type {
 import type { OnboardingStage } from '@/lib/types';
 import { nanoid } from 'nanoid';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+import {
+    type CrmActor,
+    type DealCreationData,
+    type DealPermissionAction,
+    type UpdateDealStageOptions,
+    actorAttributionUid,
+    checkPipelinePermission,
+    createDealCore,
+    loadAuthorizedDeal,
+    resolveWorkspaceEntityRecord,
+    updateDealOwnerCore,
+    updateDealStageCore,
+    updateDealStatusCore,
+    updateDealValueCore,
+    workspaceOrganizationId,
+} from '@/lib/crm/deal-core';
 
-export type AssignmentStrategy = 'direct' | 'round-robin' | 'value-based' | 'unassigned';
+/*
+ * SECURITY (agents_mcp PR-1 / N1): the deal logic lives in `src/lib/crm/deal-core.ts`, which is
+ * NOT a Server Action module. Every export below is a public endpoint, so each one:
+ * - takes identity from the session only (any caller-supplied `userId` was removed);
+ * - authorizes against the deal's STORED workspace (the core does this), or the workspace named
+ *   in the request after `requireWorkspace` has confirmed membership.
+ * Trusted server code (automations, call centre, forms, surveys, bulk jobs, MCP) must import the
+ * core directly with an explicit actor instead of calling these wrappers.
+ */
+export type { AssignmentStrategy, UpdateDealStageOptions } from '@/lib/crm/deal-core';
 
-interface DealCreationData extends Partial<Deal> {
-    entityId: string;
-    workspaceId: string;
-    organizationId: string;
-    pipelineId: string;
-    name: string;
-    value?: number;
-    assignmentStrategy?: AssignmentStrategy;
-    eligibleUserIds?: string[];
-    suppressAutomations?: boolean;
-}
+/** Fields that identify a deal or its tenant; client updates may never change them. */
+const IMMUTABLE_DEAL_FIELDS = ['id', 'workspaceId', 'organizationId', 'createdAt'] as const;
 
-async function resolveAssigneeDetails(userId: string): Promise<{ userId: string; name: string; email: string }> {
-    try {
-        const userSnap = await adminDb.collection('users').doc(userId).get();
-        if (userSnap.exists) {
-            const userData = userSnap.data();
-            return {
-                userId,
-                name: userData?.name || 'Assigned User',
-                email: userData?.email || '',
-            };
-        }
-    } catch (e) {
-        console.error('Failed to resolve assignee details:', e);
-    }
-    return { userId, name: 'Assigned User', email: '' };
+/** The signed-in user as a deal actor. Workspace access is checked by the core per record. */
+async function sessionActor(): Promise<CrmActor> {
+    const { uid } = await requireAuth();
+    return { kind: 'user', uid };
 }
 
 /**
- * ARCHITECTURAL NOTE & CAUTION (Zero Double-Prefix Entity ID & Multi-Pattern Resolution - Rule 10):
- * Safely resolves a workspace entity record across 4 storage patterns:
- * 1. Composite key: `${workspaceId}_${cleanEntityId}`
- * 2. Direct key: `cleanEntityId`
- * 3. Query lookup: where('workspaceId', '==', workspaceId).where('entityId', '==', cleanEntityId)
- * 4. Canonical entities collection fallback: doc('entities', cleanEntityId)
- * Guarantees zero "Entity not found" false negatives during pipeline deal creation or contact mapping.
+ * Session check for actions that name a workspace: membership (requireWorkspace) plus the
+ * operations/pipeline permission. Returns the verified uid or the reason for refusal.
  */
-export async function resolveWorkspaceEntityRecord(
+async function authorizeWorkspacePipeline(
     workspaceId: string,
-    entityId: string,
-    organizationId: string = 'default'
-): Promise<WorkspaceEntity | null> {
-    if (!workspaceId || !entityId) return null;
-    const cleanEntityId = entityId.startsWith(`${workspaceId}_`) ? entityId.slice(workspaceId.length + 1) : entityId;
-
-    // Tier 1: Composite key
-    const compositeSnap = await adminDb.collection('workspace_entities').doc(`${workspaceId}_${cleanEntityId}`).get();
-    if (compositeSnap.exists) {
-        const data = compositeSnap.data();
-        if (!data?.workspaceId || data.workspaceId === workspaceId) {
-            return { id: compositeSnap.id, ...data } as WorkspaceEntity;
-        }
-    }
-
-    // Tier 2: Direct key with tenant boundary verification
-    const directSnap = await adminDb.collection('workspace_entities').doc(cleanEntityId).get();
-    if (directSnap.exists) {
-        const data = directSnap.data();
-        if (!data?.workspaceId || data.workspaceId === workspaceId) {
-            return { id: directSnap.id, ...data } as WorkspaceEntity;
-        }
-    }
-
-    // Tier 3: Query lookup (strictly scoped to workspaceId)
-    const querySnap = await adminDb.collection('workspace_entities')
-        .where('workspaceId', '==', workspaceId)
-        .where('entityId', '==', cleanEntityId)
-        .limit(1)
-        .get();
-    if (!querySnap.empty) {
-        return { id: querySnap.docs[0].id, ...querySnap.docs[0].data() } as WorkspaceEntity;
-    }
-
-    // Tier 4: Canonical entities collection fallback with tenant ownership verification
-    const entSnap = await adminDb.collection('entities').doc(cleanEntityId).get();
-    if (entSnap.exists) {
-        const rawEnt = entSnap.data() || {};
-        const wsIds: string[] = Array.isArray(rawEnt.workspaceIds) ? rawEnt.workspaceIds : [];
-        const isWsAllowed = wsIds.length === 0 || wsIds.includes(workspaceId);
-        const isOrgAllowed = !rawEnt.organizationId || rawEnt.organizationId === organizationId || organizationId === 'default';
-
-        if (isWsAllowed && isOrgAllowed) {
-            const entType: EntityType = (rawEnt.entityType === 'family' || rawEnt.entityType === 'person') ? rawEnt.entityType : 'institution';
-            return {
-                id: entSnap.id,
-                entityId: entSnap.id,
-                entityType: entType,
-                workspaceId,
-                organizationId: rawEnt.organizationId || organizationId,
-                displayName: String(rawEnt.name || rawEnt.displayName || ''),
-                entityName: String(rawEnt.name || rawEnt.displayName || ''),
-                primaryEmail: String(rawEnt.primaryEmail || rawEnt.email || ''),
-                primaryPhone: String(rawEnt.primaryPhone || rawEnt.phone || ''),
-                entityContacts: Array.isArray(rawEnt.entityContacts) ? rawEnt.entityContacts : [],
-                workspaceTags: Array.isArray(rawEnt.workspaceTags) ? rawEnt.workspaceTags : [],
-                assignedTo: rawEnt.assignedTo || null,
-                status: rawEnt.status === 'archived' ? 'archived' : 'active',
-                addedAt: String(rawEnt.addedAt || rawEnt.createdAt || new Date().toISOString()),
-                updatedAt: String(rawEnt.updatedAt || new Date().toISOString()),
-            };
-        }
-    }
-
-    return null;
+    action: DealPermissionAction
+): Promise<{ ok: true; uid: string } | { ok: false; error: string }> {
+    const { uid } = await requireWorkspace(workspaceId);
+    const permission = await checkPipelinePermission({ kind: 'user', uid }, workspaceId, action);
+    return permission.granted ? { ok: true, uid } : { ok: false, error: permission.reason };
 }
 
 export async function createDeal(data: DealCreationData): Promise<{ id?: string; error?: string }> {
-    try {
-        const { entityId, workspaceId, organizationId, pipelineId, name, value, assignmentStrategy, eligibleUserIds = [], suppressAutomations = false, ...rest } = data;
-
-        const cleanEntityId = entityId.startsWith(`${workspaceId}_`) ? entityId.slice(workspaceId.length + 1) : entityId;
-        const pipelineRef = adminDb.collection('pipelines').doc(pipelineId);
-        
-        let stageSnap: FirebaseFirestore.DocumentSnapshot | FirebaseFirestore.QuerySnapshot | null = null;
-        if (!data.stageId) {
-            stageSnap = await adminDb.collection('onboardingStages').where('pipelineId', '==', pipelineId).orderBy('order', 'asc').limit(1).get();
-        } else if (!data.stageName) {
-            stageSnap = await adminDb.collection('onboardingStages').doc(data.stageId).get();
-        }
-
-        const [entity, pipelineSnap] = await Promise.all([
-            resolveWorkspaceEntityRecord(workspaceId, cleanEntityId, organizationId),
-            pipelineRef.get(),
-        ]);
-
-        if (!entity) throw new Error('Entity not found');
-
-        const pipeline = pipelineSnap.exists ? pipelineSnap.data() : null;
-
-        // Resolve final strategy and eligible assignees
-        const activeStrategy = assignmentStrategy || pipeline?.assignmentStrategy || 'direct';
-        const activeEligibleUserIds = eligibleUserIds.length > 0
-            ? eligibleUserIds
-            : (pipeline?.assignmentUserIds || []);
-
-        let assignedTo = null;
-
-        if (activeStrategy === 'direct') {
-            assignedTo = entity.assignedTo || null;
-        } else if (activeStrategy === 'round-robin' && activeEligibleUserIds.length > 0) {
-            let minDeals = Infinity;
-            let selectedUserId = activeEligibleUserIds[0];
-            
-            for (const uid of activeEligibleUserIds) {
-                const snap = await adminDb.collection('deals').where('assignedTo.userId', '==', uid).where('status', '==', 'open').get();
-                if (snap.size < minDeals) {
-                    minDeals = snap.size;
-                    selectedUserId = uid;
-                }
-            }
-            assignedTo = await resolveAssigneeDetails(selectedUserId);
-        } else if (activeStrategy === 'value-based' && activeEligibleUserIds.length > 0) {
-            let minVal = Infinity;
-            let selectedUserId = activeEligibleUserIds[0];
-            
-            for (const uid of activeEligibleUserIds) {
-                const snap = await adminDb.collection('deals').where('assignedTo.userId', '==', uid).where('status', '==', 'open').get();
-                let totalValue = 0;
-                snap.forEach(doc => totalValue += (doc.data().value || 0));
-                
-                if (totalValue < minVal) {
-                    minVal = totalValue;
-                    selectedUserId = uid;
-                }
-            }
-            assignedTo = await resolveAssigneeDetails(selectedUserId);
-        } else if (activeStrategy === 'unassigned') {
-            assignedTo = null;
-        }
-
-        let stageId = data.stageId;
-        let stageName = data.stageName;
-
-        if (stageSnap) {
-            if (!stageId && 'docs' in stageSnap) {
-                stageId = stageSnap.empty ? 'default_stage' : stageSnap.docs[0].id;
-                stageName = stageSnap.empty ? undefined : (stageSnap.docs[0].data()?.name as string | undefined);
-            } else if (!stageName && 'exists' in stageSnap && stageSnap.exists) {
-                stageName = (stageSnap.data() as { name?: string } | undefined)?.name;
-            }
-        }
-
-        const calculatedCloseDate = calculateExpectedCloseDate(
-            pipeline,
-            rest.expectedCloseDate
-        );
-
-        // ARCHITECTURAL NOTE & CAUTION: Contact Resolution for Deals
-        // If focalContacts is not explicitly passed, automatically populate primary contact from entity
-        // so pipeline cards display contact avatar/initials badges (Requirement 10 & 18).
-        let resolvedFocalContacts: DealFocalContact[] = data.focalContacts ?? [];
-        const legacyFocal = ((entity as unknown as Record<string, unknown>).focalContacts as Array<Record<string, string>> | undefined) || [];
-        if (resolvedFocalContacts.length === 0 && entity.entityContacts && entity.entityContacts.length > 0) {
-            const primary = entity.entityContacts.find(c => c.isPrimary) || entity.entityContacts[0];
-            resolvedFocalContacts = [{
-                id: primary.id,
-                name: primary.name,
-                role: primary.typeLabel || undefined,
-                email: primary.email || undefined,
-                phone: primary.phone || undefined,
-            }];
-        } else if (resolvedFocalContacts.length === 0 && legacyFocal.length > 0) {
-            const legacy = legacyFocal[0];
-            resolvedFocalContacts = [{
-                id: legacy.id || 'contact_1',
-                name: legacy.name || 'Contact',
-                role: legacy.role || legacy.typeLabel || undefined,
-                email: legacy.email || undefined,
-                phone: legacy.phone || undefined,
-            }];
-        }
-
-        // ARCHITECTURAL POINTER:
-        // Automatically sanitize deal names: strip legacy 'Deal for ' / 'Deal For ' prefix
-        let cleanDealName = (name || '').trim();
-        if (/^deal\s+for\s+/i.test(cleanDealName)) {
-            cleanDealName = cleanDealName.replace(/^deal\s+for\s+/i, '').trim();
-        }
-        if (!cleanDealName && entity) {
-            cleanDealName = entity.displayName || (entity as unknown as Record<string, string>).name || 'Deal';
-        }
-
-        const resolvedDefaultDealValue = typeof pipeline?.defaultDealValue === 'number' && !Number.isNaN(pipeline.defaultDealValue)
-            ? Math.max(0, pipeline.defaultDealValue)
-            : 0;
-        const resolvedValue = typeof value === 'number' && !Number.isNaN(value) && value > 0
-            ? value
-            : resolvedDefaultDealValue;
-
-        const newDeal: Omit<Deal, 'id'> = {
-            organizationId,
-            workspaceId,
-            entityId: cleanEntityId,
-            pipelineId,
-            stageId: stageId || 'default_stage',
-            ...(stageName ? { stageName } : {}),
-            name: cleanDealName,
-            value: resolvedValue,
-            status: data.status || 'open',
-            assignedTo: data.assignedTo !== undefined ? data.assignedTo : assignedTo,
-            expectedCloseDate: calculatedCloseDate,
-            description: rest.description || null,
-            focalContacts: resolvedFocalContacts,
-            customFields: rest.customFields || {},
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-        };
-
-        const docRef = await adminDb.collection('deals').add(newDeal);
-
-        if (!suppressAutomations) {
-            emitDealDomainEvent('deal.created', {
-                dealId: docRef.id,
-                dealName: cleanDealName,
-                workspaceId,
-                organizationId,
-                entityId: cleanEntityId,
-                pipelineId,
-                stageId: stageId || 'default_stage',
-                status: data.status || 'open',
-                value: newDeal.value || 0,
-                assignedTo: newDeal.assignedTo,
-            });
-        }
-
-        return { id: docRef.id };
-    } catch (e: unknown) {
-        console.error('Failed to create deal:', e);
-        return { error: e instanceof Error ? e.message : String(e) };
-    }
-}
-
-export interface UpdateDealStageOptions {
-    status?: 'open' | 'won' | 'lost' | 'cancelled';
-    lostReason?: string;
-    reason?: string;
-    userId?: string;
-    bypassValidation?: boolean;
+    const { uid } = await requireWorkspace(data.workspaceId);
+    return createDealCore({ kind: 'user', uid }, data);
 }
 
 export async function updateDealStageAction(
-    dealId: string, 
+    dealId: string,
     stageId: string,
-    options?: UpdateDealStageOptions | string
+    options?: UpdateDealStageOptions
 ): Promise<{ success: boolean; error?: string }> {
-    try {
-        const opts: UpdateDealStageOptions = typeof options === 'string' ? { userId: options } : (options || {});
-        if (opts.reason && !opts.lostReason) {
-            opts.lostReason = opts.reason;
-        }
-        const dealRef = adminDb.collection('deals').doc(dealId);
-        const dealSnap = await dealRef.get();
-        if (!dealSnap.exists) throw new Error('Deal not found');
-        const deal = dealSnap.data() as Deal;
-
-        if (opts.userId) {
-            const permission = await canUser(opts.userId, 'operations', 'pipeline', 'edit', deal.workspaceId);
-            if (!permission.granted) {
-                return { success: false, error: permission.reason || 'Permission denied.' };
-            }
-        }
-
-        const stageSnap = await adminDb.collection('onboardingStages').doc(stageId).get();
-        if (!stageSnap.exists) throw new Error('Stage not found');
-        const targetStage = stageSnap.data() as OnboardingStage;
-        const stageName = targetStage?.name || stageId;
-
-        // ARCHITECTURAL POINTER (Phase 2 — Entry Gate Validation):
-        // Validate required fields before advancing stage unless explicitly bypassed
-        if (!opts.bypassValidation) {
-            const validation = validateStageTransition(deal, targetStage);
-            if (!validation.valid) {
-                return {
-                    success: false,
-                    error: validation.message || `Deal does not meet the entry requirements for "${stageName}".`,
-                };
-            }
-        }
-
-        const oldStageName = deal.stageName || deal.stageId;
-        const oldStageId = deal.stageId;
-
-        const timestamp = new Date().toISOString();
-
-        // Calculate duration spent in the stage being exited
-        const lastEntered = deal.stageEnteredAt || deal.createdAt || timestamp;
-        const lastEnteredTime = new Date(lastEntered).getTime();
-        const durationSeconds = !isNaN(lastEnteredTime) ? Math.max(0, Math.floor((new Date(timestamp).getTime() - lastEnteredTime) / 1000)) : 0;
-
-        const previousHistory = Array.isArray(deal.stageHistory) ? deal.stageHistory : [];
-        const updatedHistory: import('@/lib/types').DealStageHistory[] = oldStageId !== stageId ? [
-            ...previousHistory,
-            {
-                stageId: oldStageId,
-                stageName: oldStageName,
-                enteredAt: lastEntered,
-                exitedAt: timestamp,
-                durationSeconds,
-                changedByUserId: opts.userId || 'system',
-                notes: opts.lostReason || undefined
-            }
-        ] : previousHistory;
-
-        // Automated Terminal State Resolution (PRD Section 14)
-        let resolvedStatus: 'open' | 'won' | 'lost' | 'cancelled' = opts.status || deal.status || 'open';
-        if (!opts.status) {
-            const autoStatus = resolveStageTerminalStatus(targetStage);
-            if (autoStatus === 'won' || autoStatus === 'lost') {
-                resolvedStatus = autoStatus;
-            } else if (deal.status === 'won' || deal.status === 'lost') {
-                resolvedStatus = 'open';
-            }
-        }
-
-        const updatePayload: Record<string, unknown> = {
-            stageId,
-            stageName,
-            stageEnteredAt: oldStageId !== stageId ? timestamp : (deal.stageEnteredAt || timestamp),
-            stageHistory: updatedHistory,
-            status: resolvedStatus,
-            updatedAt: timestamp
-        };
-
-        // Sync stage win probability if configured and moving to a new stage
-        if (typeof targetStage.probability === 'number' && (deal.probability == null || deal.probability === 0 || oldStageId !== stageId)) {
-            updatePayload.probability = targetStage.probability;
-        }
-
-        if (resolvedStatus === 'lost' && opts.lostReason) {
-            updatePayload.lostReason = opts.lostReason;
-        }
-
-        await dealRef.update(updatePayload);
-
-        // ARCHITECTURAL POINTER:
-        // Broadcast stage change signal to Activity Log & trigger stage-scoped automations.
-        await logActivity({
-            organizationId: deal.organizationId,
-            entityId: deal.entityId,
-            userId: opts.userId || null,
-            workspaceId: deal.workspaceId,
-            type: opts.status === 'lost' ? 'deal_lost' : (opts.status === 'won' ? 'deal_won' : 'deal_stage_changed'),
-            source: opts.userId ? 'user' : 'system',
-            description: opts.status === 'lost' 
-                ? `marked deal "${deal.name}" as lost in "${stageName}"${opts.lostReason ? ` (${opts.lostReason})` : ''}`
-                : (opts.status === 'won' 
-                    ? `won deal "${deal.name}" in "${stageName}"`
-                    : `progressed deal "${deal.name}" from "${oldStageName}" to "${stageName}"`),
-            metadata: { 
-                dealId, 
-                from: oldStageName, 
-                to: stageName, 
-                stageId, 
-                pipelineId: deal.pipelineId,
-                status: opts.status || deal.status,
-                lostReason: opts.lostReason
-            }
-        });
-
-        // Emit Domain Events via Event Bus
-        emitDealDomainEvent('deal.stage.changed', {
-            dealId,
-            dealName: deal.name,
-            workspaceId: deal.workspaceId,
-            organizationId: deal.organizationId,
-            entityId: deal.entityId,
-            pipelineId: deal.pipelineId,
-            stageId,
-            previousStageId: oldStageId,
-            status: (opts.status === 'won' || opts.status === 'lost' ? opts.status : (deal.status || 'open')),
-            value: deal.value || 0,
-            assignedTo: deal.assignedTo,
-            lostReason: opts.lostReason || null,
-        });
-
-        if (opts.status === 'won') {
-            emitDealDomainEvent('deal.won', {
-                dealId,
-                dealName: deal.name,
-                workspaceId: deal.workspaceId,
-                organizationId: deal.organizationId,
-                entityId: deal.entityId,
-                pipelineId: deal.pipelineId,
-                stageId,
-                status: 'won',
-                value: deal.value || 0,
-                assignedTo: deal.assignedTo,
-            });
-        } else if (opts.status === 'lost') {
-            emitDealDomainEvent('deal.lost', {
-                dealId,
-                dealName: deal.name,
-                workspaceId: deal.workspaceId,
-                organizationId: deal.organizationId,
-                entityId: deal.entityId,
-                pipelineId: deal.pipelineId,
-                stageId,
-                status: 'lost',
-                value: deal.value || 0,
-                assignedTo: deal.assignedTo,
-                lostReason: opts.lostReason || null,
-            });
-        }
-
-        return { success: true };
-    } catch (e: unknown) {
-        console.error('Failed to update deal stage:', e);
-        return { success: false, error: e instanceof Error ? e.message : String(e) };
-    }
+    return updateDealStageCore(await sessionActor(), dealId, stageId, options);
 }
 
 export async function updateDealValueAction(dealId: string, value: number): Promise<{ success: boolean; error?: string }> {
-    try {
-        const dealRef = adminDb.collection('deals').doc(dealId);
-        const dealSnap = await dealRef.get();
-        if (!dealSnap.exists) throw new Error('Deal not found');
-        const deal = dealSnap.data() as Deal;
-
-        const oldVal = deal.value || 0;
-        if (oldVal === value) return { success: true };
-
-        const timestamp = new Date().toISOString();
-        await dealRef.update({
-            value,
-            updatedAt: timestamp
-        });
-
-        await logActivity({
-            organizationId: deal.organizationId,
-            entityId: deal.entityId,
-            userId: null,
-            workspaceId: deal.workspaceId,
-            type: 'deal_value_changed',
-            source: 'system',
-            description: `updated deal "${deal.name}" value from $${oldVal} to $${value}`,
-            metadata: { dealId, fromValue: oldVal, toValue: value }
-        });
-
-        emitDealDomainEvent('deal.value.changed', {
-            dealId,
-            dealName: deal.name,
-            workspaceId: deal.workspaceId,
-            organizationId: deal.organizationId,
-            entityId: deal.entityId,
-            pipelineId: deal.pipelineId,
-            stageId: deal.stageId,
-            value,
-            previousValue: oldVal,
-            status: deal.status,
-            assignedTo: deal.assignedTo,
-        });
-
-        return { success: true };
-    } catch (e: unknown) {
-        console.error('Failed to update deal value:', e);
-        return { success: false, error: e instanceof Error ? e.message : String(e) };
-    }
+    return updateDealValueCore(await sessionActor(), dealId, value);
 }
 
 /**
@@ -541,17 +102,14 @@ export async function updateDealValueAction(dealId: string, value: number): Prom
  */
 export async function updateDealProbabilityAction(
     dealId: string,
-    probability: number,
-    userId?: string
+    probability: number
 ): Promise<{ success: boolean; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
+    const actor = await sessionActor();
 
     try {
-        const dealRef = adminDb.collection('deals').doc(dealId);
-        const dealSnap = await dealRef.get();
-        if (!dealSnap.exists) throw new Error('Deal not found');
-        const deal = dealSnap.data() as Deal;
+        const loaded = await loadAuthorizedDeal(actor, dealId, 'edit');
+        if (!loaded.ok) return { success: false, error: loaded.error };
+        const { deal, ref: dealRef } = loaded;
 
         const clampedProbability = Math.max(0, Math.min(100, Math.round(probability)));
         const oldProbability = deal.probability ?? 0;
@@ -566,7 +124,7 @@ export async function updateDealProbabilityAction(
         await logActivity({
             organizationId: deal.organizationId,
             entityId: deal.entityId,
-            userId: userId || null,
+            userId: actorAttributionUid(actor),
             workspaceId: deal.workspaceId,
             type: 'deal_updated',
             source: 'user',
@@ -582,149 +140,20 @@ export async function updateDealProbabilityAction(
 }
 
 export async function updateDealStatusAction(
-    dealId: string, 
+    dealId: string,
     status: 'open' | 'won' | 'lost',
     lostReason?: string
 ): Promise<{ success: boolean; error?: string }> {
-    try {
-        const dealRef = adminDb.collection('deals').doc(dealId);
-        const dealSnap = await dealRef.get();
-        if (!dealSnap.exists) throw new Error('Deal not found');
-        const deal = dealSnap.data() as Deal;
-
-        const oldStatus = deal.status || 'open';
-        const finalLostReason = status === 'lost' ? (lostReason || 'Not Specified') : null;
-        if (oldStatus === status && (status !== 'lost' || deal.lostReason === finalLostReason)) {
-            return { success: true };
-        }
-
-        const timestamp = new Date().toISOString();
-        await dealRef.update({
-            status,
-            lostReason: finalLostReason,
-            updatedAt: timestamp
-        });
-
-        await logActivity({
-            organizationId: deal.organizationId,
-            entityId: deal.entityId,
-            userId: null,
-            workspaceId: deal.workspaceId,
-            type: 'deal_status_changed',
-            source: 'system',
-            description: status === 'lost'
-                ? `marked deal "${deal.name}" as CLOSED LOST: ${finalLostReason}`
-                : `marked deal "${deal.name}" as ${status.toUpperCase()}`,
-            metadata: { 
-                dealId, 
-                fromStatus: oldStatus, 
-                toStatus: status, 
-                value: deal.value || 0,
-                pipelineId: deal.pipelineId,
-                lostReason: finalLostReason
-            }
-        });
-
-        emitDealDomainEvent('deal.status.changed', {
-            dealId,
-            dealName: deal.name,
-            workspaceId: deal.workspaceId,
-            organizationId: deal.organizationId,
-            entityId: deal.entityId,
-            pipelineId: deal.pipelineId,
-            stageId: deal.stageId,
-            status,
-            previousStatus: oldStatus,
-            value: deal.value || 0,
-            assignedTo: deal.assignedTo,
-            lostReason: finalLostReason,
-        });
-
-        if (status === 'won') {
-            emitDealDomainEvent('deal.won', {
-                dealId,
-                dealName: deal.name,
-                workspaceId: deal.workspaceId,
-                organizationId: deal.organizationId,
-                entityId: deal.entityId,
-                pipelineId: deal.pipelineId,
-                stageId: deal.stageId,
-                status: 'won',
-                value: deal.value || 0,
-                assignedTo: deal.assignedTo,
-            });
-        } else if (status === 'lost') {
-            emitDealDomainEvent('deal.lost', {
-                dealId,
-                dealName: deal.name,
-                workspaceId: deal.workspaceId,
-                organizationId: deal.organizationId,
-                entityId: deal.entityId,
-                pipelineId: deal.pipelineId,
-                stageId: deal.stageId,
-                status: 'lost',
-                value: deal.value || 0,
-                assignedTo: deal.assignedTo,
-                lostReason: finalLostReason,
-            });
-        }
-
-        return { success: true };
-    } catch (e: unknown) {
-        console.error('Failed to update deal status:', e);
-        return { success: false, error: e instanceof Error ? e.message : String(e) };
-    }
+    return updateDealStatusCore(await sessionActor(), dealId, status, lostReason);
 }
 
 export async function updateDealOwnerAction(
-    dealId: string, 
-    userId: string | null, 
-    userName: string | null, 
+    dealId: string,
+    userId: string | null,
+    userName: string | null,
     userEmail: string | null
 ): Promise<{ success: boolean; error?: string }> {
-    try {
-        const dealRef = adminDb.collection('deals').doc(dealId);
-        const dealSnap = await dealRef.get();
-        if (!dealSnap.exists) throw new Error('Deal not found');
-        const deal = dealSnap.data() as Deal;
-
-        const assignedTo = userId ? { userId, name: userName, email: userEmail } : null;
-
-        const timestamp = new Date().toISOString();
-        await dealRef.update({
-            assignedTo,
-            updatedAt: timestamp
-        });
-
-        emitDealDomainEvent('deal.owner.changed', {
-            dealId,
-            dealName: deal.name,
-            workspaceId: deal.workspaceId,
-            organizationId: deal.organizationId,
-            entityId: deal.entityId,
-            pipelineId: deal.pipelineId,
-            stageId: deal.stageId,
-            status: deal.status,
-            value: deal.value || 0,
-            assignedTo,
-        });
-
-        await logActivity({
-            organizationId: deal.organizationId,
-            entityId: deal.entityId,
-            userId: null,
-            workspaceId: deal.workspaceId,
-            type: 'deal_owner_changed',
-            source: 'system',
-            description: `reassigned deal "${deal.name}" to ${userName || 'Unassigned'}`,
-            metadata: { dealId, ownerId: userId, ownerName: userName }
-        });
-
-        return { success: true };
-    } catch (e: unknown) {
-        console.error('Failed to update deal owner:', e);
-        return { success: false, error: e instanceof Error ? e.message : String(e) };
-    }
+    return updateDealOwnerCore(await sessionActor(), dealId, userId, userName, userEmail);
 }
 
 export async function updateDealDetailsAction(
@@ -742,14 +171,12 @@ export async function updateDealDetailsAction(
         customFields?: Record<string, unknown>;
     }
 ): Promise<{ success: boolean; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
+    const actor = await sessionActor();
 
     try {
-        const dealRef = adminDb.collection('deals').doc(dealId);
-        const dealSnap = await dealRef.get();
-        if (!dealSnap.exists) throw new Error('Deal not found');
-        const deal = dealSnap.data() as Deal;
+        const loaded = await loadAuthorizedDeal(actor, dealId, 'edit');
+        if (!loaded.ok) return { success: false, error: loaded.error };
+        const { deal, ref: dealRef } = loaded;
 
         const timestamp = new Date().toISOString();
         // ARCHITECTURAL POINTER (Rule 10): Strip undefined values so Firestore does not reject with invalid argument
@@ -767,10 +194,10 @@ export async function updateDealDetailsAction(
         await logActivity({
             organizationId: deal.organizationId,
             entityId: deal.entityId,
-            userId: null,
+            userId: actorAttributionUid(actor),
             workspaceId: deal.workspaceId,
             type: 'deal_updated',
-            source: 'system',
+            source: 'user',
             description: `updated core information for deal "${updates.name || deal.name}"`,
             metadata: { dealId, updates }
         });
@@ -787,14 +214,12 @@ export async function addDealContactAction(
     entityId: string, 
     role: string
 ): Promise<{ success: boolean; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
+    const actor = await sessionActor();
 
     try {
-        const dealRef = adminDb.collection('deals').doc(dealId);
-        const dealSnap = await dealRef.get();
-        if (!dealSnap.exists) throw new Error('Deal not found');
-        const deal = dealSnap.data() as Deal;
+        const loaded = await loadAuthorizedDeal(actor, dealId, 'edit');
+        if (!loaded.ok) return { success: false, error: loaded.error };
+        const { deal, ref: dealRef } = loaded;
 
         // Resolve contact name and email via resilient entity resolver
         const entity = await resolveWorkspaceEntityRecord(deal.workspaceId, entityId, deal.organizationId);
@@ -824,10 +249,10 @@ export async function addDealContactAction(
         await logActivity({
             organizationId: deal.organizationId,
             entityId: deal.entityId,
-            userId: null,
+            userId: actorAttributionUid(actor),
             workspaceId: deal.workspaceId,
             type: 'deal_updated',
-            source: 'system',
+            source: 'user',
             description: `associated contact "${newContact.name}" to deal "${deal.name}" as ${role}`,
             metadata: { dealId, entityId, role, contactName: newContact.name }
         });
@@ -843,14 +268,12 @@ export async function removeDealContactAction(
     dealId: string, 
     entityId: string
 ): Promise<{ success: boolean; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
+    const actor = await sessionActor();
 
     try {
-        const dealRef = adminDb.collection('deals').doc(dealId);
-        const dealSnap = await dealRef.get();
-        if (!dealSnap.exists) throw new Error('Deal not found');
-        const deal = dealSnap.data() as Deal;
+        const loaded = await loadAuthorizedDeal(actor, dealId, 'edit');
+        if (!loaded.ok) return { success: false, error: loaded.error };
+        const { deal, ref: dealRef } = loaded;
 
         const currentContacts = deal.contacts || [];
         const contactToRemove = currentContacts.find(c => c.entityId === entityId);
@@ -869,10 +292,10 @@ export async function removeDealContactAction(
         await logActivity({
             organizationId: deal.organizationId,
             entityId: deal.entityId,
-            userId: null,
+            userId: actorAttributionUid(actor),
             workspaceId: deal.workspaceId,
             type: 'deal_updated',
-            source: 'system',
+            source: 'user',
             description: `removed contact association "${contactToRemove.name || entityId}" from deal "${deal.name}"`,
             metadata: { dealId, entityId }
         });
@@ -886,17 +309,14 @@ export async function removeDealContactAction(
 
 export async function clearStageDealsAction(
     stageId: string,
-    workspaceId: string,
-    userId: string
+    workspaceId: string
 ): Promise<{ success: boolean; error?: string; count?: number }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireWorkspace(workspaceId);
+    // SECURITY (N1): identity from the session. Deleting deals has always required pipeline 'edit'.
+    const auth = await authorizeWorkspacePipeline(workspaceId, 'edit');
+    if (!auth.ok) return { success: false, error: auth.error };
+    const userId = auth.uid;
 
     try {
-        const permission = await canUser(userId, 'operations', 'pipeline', 'edit', workspaceId);
-        if (!permission.granted) {
-            return { success: false, error: permission.reason };
-        }
 
         const workspaceSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
         if (!workspaceSnap.exists) {
@@ -956,31 +376,20 @@ export async function clearStageDealsAction(
  */
 export async function deleteDealAction(
     dealId: string,
-    workspaceId: string,
-    userId?: string
+    workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireWorkspace(workspaceId);
+    const actor = await sessionActor();
+    const userId = actorAttributionUid(actor);
 
     try {
         if (!dealId || !workspaceId) {
             return { success: false, error: 'Missing dealId or workspaceId' };
         }
 
-        const dealRef = adminDb.collection('deals').doc(dealId);
-        const dealSnap = await dealRef.get();
-        if (!dealSnap.exists) {
-            return { success: false, error: 'Deal not found.' };
-        }
-
-        const deal = dealSnap.data() as Deal;
-
-        if (userId) {
-            const permission = await canUser(userId, 'operations', 'pipeline', 'edit', workspaceId);
-            if (!permission.granted) {
-                return { success: false, error: permission.reason };
-            }
-        }
+        // SECURITY (N1): authorized against the deal's STORED workspace, not the one in the request.
+        const loaded = await loadAuthorizedDeal(actor, dealId, 'edit');
+        if (!loaded.ok) return { success: false, error: loaded.error };
+        const { deal, ref: dealRef } = loaded;
 
         await dealRef.delete();
 
@@ -1013,27 +422,17 @@ export async function deleteDealAction(
  * - Resolves full canonical entity displayName from Firestore, restoring untruncated names.
  * - Uses batching (400 ops per chunk) to adhere to Firestore rate limits and avoid memory exhaustion.
  */
-export async function cleanLegacyDealNamesAction(params?: {
-    workspaceId?: string;
-    userId?: string;
+export async function cleanLegacyDealNamesAction(params: {
+    workspaceId: string;
 }): Promise<{ success: boolean; totalChecked: number; updatedCount: number; errors?: string[] }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
+    // SECURITY (N1): this used to scan every tenant's deals when no workspace was given.
+    // It is now always scoped to one workspace the session user can edit.
+    const { workspaceId } = params;
+    const auth = await authorizeWorkspacePipeline(workspaceId, 'edit');
+    if (!auth.ok) return { success: false, totalChecked: 0, updatedCount: 0, errors: [auth.error] };
 
     try {
-        const { workspaceId, userId } = params || {};
-        
-        if (userId && workspaceId) {
-            const permission = await canUser(userId, 'operations', 'pipeline', 'edit', workspaceId);
-            if (!permission.granted) {
-                return { success: false, totalChecked: 0, updatedCount: 0, errors: [permission.reason || 'Permission denied'] };
-            }
-        }
-
-        let dealsQuery: FirebaseFirestore.Query = adminDb.collection('deals');
-        if (workspaceId) {
-            dealsQuery = dealsQuery.where('workspaceId', '==', workspaceId);
-        }
+        const dealsQuery: FirebaseFirestore.Query = adminDb.collection('deals').where('workspaceId', '==', workspaceId);
 
         const snapshot = await dealsQuery.get();
         if (snapshot.empty) {
@@ -1129,22 +528,26 @@ export async function cleanLegacyDealNamesAction(params?: {
 export async function updateStageOrdersAction(
     pipelineId: string,
     orderedStageIds: string[],
-    workspaceId?: string,
-    userId?: string
+    workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
+    const auth = await authorizeWorkspacePipeline(workspaceId, 'edit');
+    if (!auth.ok) return { success: false, error: auth.error };
 
     try {
         if (!pipelineId || !orderedStageIds || orderedStageIds.length === 0) {
             return { success: false, error: 'Pipeline ID and stage IDs are required.' };
         }
 
-        if (userId && workspaceId) {
-            const permission = await canUser(userId, 'operations', 'pipeline', 'edit', workspaceId);
-            if (!permission.granted) {
-                return { success: false, error: permission.reason };
-            }
+        // SECURITY (N1): the pipeline must be shared to this workspace, and every stage must belong
+        // to that pipeline. Otherwise any user could reorder another tenant's stages by id.
+        const pipelineSnap = await adminDb.collection('pipelines').doc(pipelineId).get();
+        const pipelineWorkspaces: unknown = pipelineSnap.exists ? pipelineSnap.get('workspaceIds') : undefined;
+        if (!Array.isArray(pipelineWorkspaces) || !pipelineWorkspaces.includes(workspaceId)) {
+            return { success: false, error: 'Pipeline not found.' };
+        }
+        const stageSnaps = await adminDb.getAll(...orderedStageIds.map((id) => adminDb.collection('onboardingStages').doc(id)));
+        if (stageSnaps.some((snap) => !snap.exists || snap.get('pipelineId') !== pipelineId)) {
+            return { success: false, error: 'One or more stages do not belong to this pipeline.' };
         }
 
         const batch = adminDb.batch();
@@ -1173,36 +576,26 @@ export async function updateStageOrdersAction(
 export async function updateDealAction(
     dealId: string,
     updates: Partial<Deal>,
-    workspaceId: string,
-    userId?: string
+    workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireWorkspace(workspaceId);
+    const actor = await sessionActor();
+    const userId = actorAttributionUid(actor);
 
     try {
         if (!dealId || !workspaceId) {
             return { success: false, error: 'Missing dealId or workspaceId' };
         }
 
-        if (userId) {
-            const permission = await canUser(userId, 'operations', 'pipeline', 'edit', workspaceId);
-            if (!permission.granted) {
-                return { success: false, error: permission.reason };
-            }
-        }
-
-        const dealRef = adminDb.collection('deals').doc(dealId);
-        const dealSnap = await dealRef.get();
-        if (!dealSnap.exists) {
-            return { success: false, error: 'Deal not found.' };
-        }
-
-        const currentData = dealSnap.data() as Deal;
-
-        // Cross-tenant protection
-        if (currentData.workspaceId && currentData.workspaceId !== workspaceId) {
+        // SECURITY (N1): checked against the deal's STORED workspace.
+        const loaded = await loadAuthorizedDeal(actor, dealId, 'edit');
+        if (!loaded.ok) return { success: false, error: loaded.error };
+        const { deal: currentData, ref: dealRef } = loaded;
+        if (currentData.workspaceId !== workspaceId) {
             return { success: false, error: 'Unauthorized: Deal belongs to a different workspace.' };
         }
+
+        // SECURITY (N1): a deal can never be moved to another tenant or re-identified by an update.
+        for (const field of IMMUTABLE_DEAL_FIELDS) delete updates[field];
 
         // Sanitize name if updated
         let cleanName = updates.name;
@@ -1243,22 +636,16 @@ export async function updateDealAction(
 export async function bulkUpdateDealsStageAction(
     dealIds: string[],
     targetStageId: string,
-    workspaceId: string,
-    userId?: string
+    workspaceId: string
 ): Promise<{ success: boolean; updatedCount: number; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireWorkspace(workspaceId);
+    // SECURITY (N1): identity from the session; only deals stored in this workspace are touched.
+    const auth = await authorizeWorkspacePipeline(workspaceId, 'edit');
+    if (!auth.ok) return { success: false, updatedCount: 0, error: auth.error };
+    const userId = auth.uid;
 
     try {
         if (!dealIds || dealIds.length === 0 || !targetStageId || !workspaceId) {
             return { success: false, updatedCount: 0, error: 'Missing required parameters' };
-        }
-
-        if (userId) {
-            const permission = await canUser(userId, 'operations', 'pipeline', 'edit', workspaceId);
-            if (!permission.granted) {
-                return { success: false, updatedCount: 0, error: permission.reason };
-            }
         }
 
         const stageSnap = await adminDb.collection('onboardingStages').doc(targetStageId).get();
@@ -1281,7 +668,7 @@ export async function bulkUpdateDealsStageAction(
                 if (snap.exists) {
                     const data = snap.data() as Deal;
                     // Multi-tenant check
-                    if (!data.workspaceId || data.workspaceId === workspaceId) {
+                    if (data.workspaceId === workspaceId) {
                         const oldStageId = data.stageId;
                         const oldStageName = data.stageName || data.stageId;
                         const lastEntered = data.stageEnteredAt || data.createdAt || now;
@@ -1335,7 +722,7 @@ export async function bulkUpdateDealsStageAction(
                     const snap = await adminDb.collection('deals').doc(dealId).get();
                     if (snap.exists) {
                         const d = snap.data() as Deal;
-                        if (!d.workspaceId || d.workspaceId === workspaceId) {
+                        if (d.workspaceId === workspaceId) {
                             // ARCHITECTURAL POINTER (Rule 10 - Standardized Automation Trigger Payload):
                             // Provide top-level payload properties matching single-deal transition structure
                             // so trigger evaluators accurately match stageId, pipelineId, and deal value.
@@ -1386,22 +773,16 @@ export async function bulkUpdateDealsStageAction(
 export async function bulkAssignDealsAction(
     dealIds: string[],
     assignedTo: { userId: string | null; name: string | null; email: string | null } | null,
-    workspaceId: string,
-    userId?: string
+    workspaceId: string
 ): Promise<{ success: boolean; updatedCount: number; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireWorkspace(workspaceId);
+    // SECURITY (N1): identity from the session; only deals stored in this workspace are touched.
+    const auth = await authorizeWorkspacePipeline(workspaceId, 'edit');
+    if (!auth.ok) return { success: false, updatedCount: 0, error: auth.error };
+    const userId = auth.uid;
 
     try {
         if (!dealIds || dealIds.length === 0 || !workspaceId) {
             return { success: false, updatedCount: 0, error: 'Missing required parameters' };
-        }
-
-        if (userId) {
-            const permission = await canUser(userId, 'operations', 'pipeline', 'edit', workspaceId);
-            if (!permission.granted) {
-                return { success: false, updatedCount: 0, error: permission.reason };
-            }
         }
 
         const now = new Date().toISOString();
@@ -1418,7 +799,7 @@ export async function bulkAssignDealsAction(
             for (const snap of snaps) {
                 if (snap.exists) {
                     const data = snap.data() as Deal;
-                    if (!data.workspaceId || data.workspaceId === workspaceId) {
+                    if (data.workspaceId === workspaceId) {
                         batch.update(snap.ref, {
                             assignedTo: assignedTo || null,
                             updatedAt: now,
@@ -1458,22 +839,16 @@ export async function bulkAssignDealsAction(
  */
 export async function bulkDeleteDealsAction(
     dealIds: string[],
-    workspaceId: string,
-    userId?: string
+    workspaceId: string
 ): Promise<{ success: boolean; deletedCount: number; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireWorkspace(workspaceId);
+    // SECURITY (N1): identity from the session; only deals stored in this workspace are touched.
+    const auth = await authorizeWorkspacePipeline(workspaceId, 'edit');
+    if (!auth.ok) return { success: false, deletedCount: 0, error: auth.error };
+    const userId = auth.uid;
 
     try {
         if (!dealIds || dealIds.length === 0 || !workspaceId) {
             return { success: false, deletedCount: 0, error: 'Missing required parameters' };
-        }
-
-        if (userId) {
-            const permission = await canUser(userId, 'operations', 'pipeline', 'edit', workspaceId);
-            if (!permission.granted) {
-                return { success: false, deletedCount: 0, error: permission.reason };
-            }
         }
 
         const chunkSize = 200;
@@ -1489,7 +864,7 @@ export async function bulkDeleteDealsAction(
             for (const snap of snaps) {
                 if (snap.exists) {
                     const data = snap.data() as Deal;
-                    if (!data.workspaceId || data.workspaceId === workspaceId) {
+                    if (data.workspaceId === workspaceId) {
                         batch.delete(snap.ref);
                         batchOps++;
                     }
@@ -1531,30 +906,20 @@ export async function bulkDeleteDealsAction(
  */
 export async function duplicateDealAction(
     dealId: string,
-    options?: DealDuplicateOptions,
-    userId?: string
+    options?: DealDuplicateOptions
 ): Promise<{ success: boolean; newDealId?: string; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
+    const actor = await sessionActor();
+    const userId = actorAttributionUid(actor);
 
     try {
         if (!dealId) {
             return { success: false, error: 'Deal ID is required' };
         }
 
-        const sourceDoc = await adminDb.collection('deals').doc(dealId).get();
-        if (!sourceDoc.exists) {
-            return { success: false, error: 'Source deal not found' };
-        }
-
-        const sourceDeal = sourceDoc.data() as Deal;
-
-        if (userId && sourceDeal.workspaceId) {
-            const perm = await canUser(userId, 'operations', 'pipeline', 'create', sourceDeal.workspaceId);
-            if (!perm.granted) {
-                return { success: false, error: perm.reason };
-            }
-        }
+        // SECURITY (N1): the copy lands in the source deal's own workspace, so 'create' is checked there.
+        const loaded = await loadAuthorizedDeal(actor, dealId, 'create');
+        if (!loaded.ok) return { success: false, error: loaded.error };
+        const sourceDeal = loaded.deal;
 
         const now = new Date().toISOString();
         const targetPipelineId = options?.targetPipelineId || sourceDeal.pipelineId;
@@ -1666,23 +1031,17 @@ export async function duplicateDealAction(
  * Soft-archives a deal without physical deletion, preserving all data and timeline history.
  */
 export async function archiveDealAction(
-    dealId: string,
-    userId?: string
+    dealId: string
 ): Promise<{ success: boolean; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
+    const actor = await sessionActor();
+    const userId = actorAttributionUid(actor);
 
     try {
         if (!dealId) return { success: false, error: 'Deal ID is required' };
 
-        const dealDoc = await adminDb.collection('deals').doc(dealId).get();
-        if (!dealDoc.exists) return { success: false, error: 'Deal not found' };
-
-        const deal = dealDoc.data() as Deal;
-        if (userId && deal.workspaceId) {
-            const perm = await canUser(userId, 'operations', 'pipeline', 'edit', deal.workspaceId);
-            if (!perm.granted) return { success: false, error: perm.reason };
-        }
+        const loaded = await loadAuthorizedDeal(actor, dealId, 'edit');
+        if (!loaded.ok) return { success: false, error: loaded.error };
+        const deal = loaded.deal;
 
         const now = new Date().toISOString();
         await adminDb.collection('deals').doc(dealId).update({
@@ -1714,23 +1073,17 @@ export async function archiveDealAction(
  * Restores a soft-archived deal back into active pipeline tracking.
  */
 export async function unarchiveDealAction(
-    dealId: string,
-    userId?: string
+    dealId: string
 ): Promise<{ success: boolean; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
+    const actor = await sessionActor();
+    const userId = actorAttributionUid(actor);
 
     try {
         if (!dealId) return { success: false, error: 'Deal ID is required' };
 
-        const dealDoc = await adminDb.collection('deals').doc(dealId).get();
-        if (!dealDoc.exists) return { success: false, error: 'Deal not found' };
-
-        const deal = dealDoc.data() as Deal;
-        if (userId && deal.workspaceId) {
-            const perm = await canUser(userId, 'operations', 'pipeline', 'edit', deal.workspaceId);
-            if (!perm.granted) return { success: false, error: perm.reason };
-        }
+        const loaded = await loadAuthorizedDeal(actor, dealId, 'edit');
+        if (!loaded.ok) return { success: false, error: loaded.error };
+        const deal = loaded.deal;
 
         const now = new Date().toISOString();
         await adminDb.collection('deals').doc(dealId).update({
@@ -1763,22 +1116,16 @@ export async function unarchiveDealAction(
  */
 export async function bulkArchiveDealsAction(
     dealIds: string[],
-    workspaceId: string,
-    userId?: string
+    workspaceId: string
 ): Promise<{ success: boolean; archivedCount: number; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireWorkspace(workspaceId);
+    // SECURITY (N1): identity from the session; only deals stored in this workspace are touched.
+    const auth = await authorizeWorkspacePipeline(workspaceId, 'edit');
+    if (!auth.ok) return { success: false, archivedCount: 0, error: auth.error };
+    const userId = auth.uid;
 
     try {
         if (!dealIds || dealIds.length === 0 || !workspaceId) {
             return { success: false, archivedCount: 0, error: 'Missing required parameters' };
-        }
-
-        if (userId) {
-            const permission = await canUser(userId, 'operations', 'pipeline', 'edit', workspaceId);
-            if (!permission.granted) {
-                return { success: false, archivedCount: 0, error: permission.reason };
-            }
         }
 
         const chunkSize = 200;
@@ -1795,7 +1142,7 @@ export async function bulkArchiveDealsAction(
             for (const snap of snaps) {
                 if (snap.exists) {
                     const data = snap.data() as Deal;
-                    if (!data.workspaceId || data.workspaceId === workspaceId) {
+                    if (data.workspaceId === workspaceId) {
                         batch.update(snap.ref, {
                             isArchived: true,
                             archivedAt: now,
@@ -1842,15 +1189,10 @@ export async function bulkArchiveDealsAction(
  */
 export async function mergeDealsAction(
     options: DealMergeOptions,
-    workspaceId: string,
-    userId?: string
+    workspaceId: string
 ): Promise<DealMergeResult> {
-  // SECURITY (audit F2): the identity below feeds a permission check. The caller used
-  // to supply it, so an authenticated low-privilege user could pass an administrator's
-  // uid and pass the check as them. The caller-supplied value is discarded here and
-  // replaced with the verified session identity before any check runs.
-  const __verified = await requireWorkspace(workspaceId);
-  userId = __verified.uid;
+    // SECURITY (audit F2 / N1): identity comes from the session only.
+    const { uid: userId } = await requireWorkspace(workspaceId);
 
     try {
         const { masterDealId, secondaryDealId } = options;
@@ -2066,8 +1408,8 @@ export async function mergeDealsAction(
 export async function convertLeadToDealAction(
     options: LeadConversionOptions
 ): Promise<LeadConversionResult> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
+    // SECURITY (N1): identity comes from the session; the caller used to supply `userId`.
+    const { uid: userId } = await requireWorkspace(options.workspaceId);
 
     try {
         const {
@@ -2080,11 +1422,10 @@ export async function convertLeadToDealAction(
             assignedTo,
             focalContactIds = [],
             notes,
-            userId,
             workspaceId
         } = options;
 
-        if (!leadEntityId || !pipelineId || !userId || !workspaceId) {
+        if (!leadEntityId || !pipelineId || !workspaceId) {
             return { success: false, error: 'Missing required parameters for lead conversion.' };
         }
 
@@ -2094,14 +1435,19 @@ export async function convertLeadToDealAction(
             return { success: false, error: permission.reason || 'Unauthorized to create opportunities.' };
         }
 
+        // SECURITY (N1): the deal's organization is its workspace's organization.
+        const organizationId = await workspaceOrganizationId(workspaceId);
+        if (organizationId === null) {
+            return { success: false, error: 'Workspace not found.' };
+        }
+
         // 2. Resolve Lead Entity Record
-        const entityRecord = await resolveWorkspaceEntityRecord(workspaceId, leadEntityId);
+        const entityRecord = await resolveWorkspaceEntityRecord(workspaceId, leadEntityId, organizationId || 'default');
         if (!entityRecord) {
             return { success: false, error: 'Lead entity not found in target workspace.' };
         }
 
         const now = new Date().toISOString();
-        const organizationId = entityRecord.organizationId || 'default';
 
         // 3. Resolve Target Pipeline Stages
         const stagesSnap = await adminDb.collection('onboardingStages')
@@ -2305,15 +1651,10 @@ export async function convertLeadToDealAction(
 export async function logDealInteractionAction(
     dealId: string,
     interactionData: DealInteractionData,
-    userId: string,
     workspaceId: string
 ): Promise<DealInteractionResult> {
-  // SECURITY (audit F2): the identity below feeds a permission check. The caller used
-  // to supply it, so an authenticated low-privilege user could pass an administrator's
-  // uid and pass the check as them. The caller-supplied value is discarded here and
-  // replaced with the verified session identity before any check runs.
-  const __verified = await requireWorkspace(workspaceId);
-  userId = __verified.uid;
+    // SECURITY (audit F2 / N1): identity comes from the session only.
+    const { uid: userId } = await requireWorkspace(workspaceId);
 
     try {
         if (!dealId || !interactionData || !userId || !workspaceId) {
@@ -2333,6 +1674,10 @@ export async function logDealInteractionAction(
         }
 
         const deal = { id: dealSnap.id, ...dealSnap.data() } as Deal;
+        // SECURITY (N1): the permission above was for `workspaceId`; the deal must live there.
+        if (deal.workspaceId !== workspaceId) {
+            return { success: false, error: 'Deal record not found.' };
+        }
         const now = new Date().toISOString();
         const organizationId = deal.organizationId || 'default';
 

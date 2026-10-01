@@ -392,7 +392,7 @@ describe('Phase 4: Revenue & Commercial Layer Unit Tests', () => {
         updatedAt: '2026-08-01T00:00:00Z',
       });
 
-      const dupRes = await duplicateDealAction(dealId, { newName: 'Master Deal (Clone)' }, uId);
+      const dupRes = await duplicateDealAction(dealId, { newName: 'Master Deal (Clone)' });
       expect(dupRes.success).toBe(true);
       expect(dupRes.newDealId).toBeDefined();
 

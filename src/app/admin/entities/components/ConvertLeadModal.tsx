@@ -221,7 +221,6 @@ export default function ConvertLeadModal({ entity, open, onOpenChange }: Convert
                 } : null,
                 focalContactIds: selectedFocalContactIds,
                 notes: handoverNotes.trim() || undefined,
-                userId: user.uid,
                 workspaceId: effectiveWorkspaceId,
             });
 

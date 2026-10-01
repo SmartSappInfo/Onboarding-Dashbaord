@@ -49,7 +49,6 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
-import { useUser } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { formatCurrency } from '@/lib/currency-utils';
 import { mergeDealsAction } from '@/app/actions/deal-actions';
@@ -71,7 +70,6 @@ export default function MergeDealsModal({
   onClose,
   onMerged,
 }: MergeDealsModalProps) {
-  const { user } = useUser();
   const { toast } = useToast();
   const { activeWorkspaceId } = useWorkspace();
 
@@ -167,7 +165,7 @@ export default function MergeDealsModal({
         mergeTasksAndNotes,
       };
 
-      const result = await mergeDealsAction(options, activeWorkspaceId, user?.uid);
+      const result = await mergeDealsAction(options, activeWorkspaceId);
 
       if (result.success) {
         toast({

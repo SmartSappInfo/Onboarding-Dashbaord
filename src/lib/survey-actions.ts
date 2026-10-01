@@ -14,7 +14,7 @@ import type { Survey, SurveyResponse, Webhook, EntityType, ContactIdentifierPoli
 import { mergeRespondentContact } from './surveys/respondent-contact-merge';
 import { validateContactIdentifier } from './contact-policy';
 import { createEntityAction, updateEntityAction } from './entity-actions';
-import { createDeal } from '../app/actions/deal-actions';
+import { createDealCore, resolveWorkspaceEntityRecord } from './crm/deal-core';
 import { stripHtml } from './utils';
 import { canUser } from './workspace-permissions';
 import { processLeadCaptureAction } from './lead-actions';
@@ -2350,7 +2350,6 @@ export async function executeSurveyResultButtonActions(params: {
 
     // ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
     // Multi-Pattern Workspace Entity Resolution via canonical resolver in deal-actions:
-    const { resolveWorkspaceEntityRecord } = await import('@/app/actions/deal-actions');
     const cleanEntityId = entityId.startsWith(`${workspaceId}_`) ? entityId.slice(workspaceId.length + 1) : entityId;
     const weData = await resolveWorkspaceEntityRecord(workspaceId, cleanEntityId, organizationId);
 
@@ -2623,7 +2622,8 @@ export async function addOrMoveEntityInPipeline(params: PipelineRouteParams): Pr
       // 4. No open deal found → Create a new deal in the targeted pipeline & stage
       const resolvedName = entityName ? `[Lead] ${entityName} - ${stripHtml(scoreDetails.surveyTitle)}` : `Survey Lead - ${stripHtml(scoreDetails.surveyTitle)}`;
 
-      const createRes = await createDeal({
+      // Survey routing acts as a trusted service pinned to the survey's workspace.
+      const createRes = await createDealCore({ kind: 'service', service: 'surveys', workspaceId }, {
         entityId: cleanEntityId,
         workspaceId,
         organizationId: organizationId || 'default',

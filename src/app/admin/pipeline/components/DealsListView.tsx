@@ -17,7 +17,7 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { collection, query, where, orderBy } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { Deal, OnboardingStage, UserProfile } from '@/lib/types';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
@@ -119,7 +119,6 @@ export default function DealsListView({
   const router = useRouter();
   const { toast } = useToast();
   const confirm = useConfirm();
-  const { user } = useUser();
   const { activeWorkspaceId } = useWorkspace();
   const { assignedUserId } = useGlobalFilter();
   const { entitiesById, resolveIds } = useEntityResolver();
@@ -245,8 +244,7 @@ export default function DealsListView({
       const res = await bulkUpdateDealsStageAction(
         selectedDealIds,
         targetStage.id,
-        activeWorkspaceId,
-        user?.uid
+        activeWorkspaceId
       );
       if (res.success) {
         toast({
@@ -278,8 +276,7 @@ export default function DealsListView({
       const res = await bulkAssignDealsAction(
         selectedDealIds,
         assignedObj,
-        activeWorkspaceId,
-        user?.uid
+        activeWorkspaceId
       );
       if (res.success) {
         toast({
@@ -317,8 +314,7 @@ export default function DealsListView({
     try {
       const res = await bulkDeleteDealsAction(
         selectedDealIds,
-        activeWorkspaceId,
-        user?.uid
+        activeWorkspaceId
       );
       if (res.success) {
         toast({
@@ -354,8 +350,7 @@ export default function DealsListView({
     try {
       const res = await bulkArchiveDealsAction(
         selectedDealIds,
-        activeWorkspaceId,
-        user?.uid
+        activeWorkspaceId
       );
       if (res.success) {
         toast({
@@ -391,7 +386,7 @@ export default function DealsListView({
     e.stopPropagation();
     try {
       if (deal.isArchived) {
-        const res = await unarchiveDealAction(deal.id, user?.uid);
+        const res = await unarchiveDealAction(deal.id);
         if (res.success) {
           toast({ title: 'Deal Restored', description: `Restored "${deal.name}".` });
         } else {
@@ -405,7 +400,7 @@ export default function DealsListView({
         });
         if (!confirmed) return;
 
-        const res = await archiveDealAction(deal.id, user?.uid);
+        const res = await archiveDealAction(deal.id);
         if (res.success) {
           toast({ title: 'Deal Archived', description: `Archived "${deal.name}".` });
         } else {
@@ -430,7 +425,7 @@ export default function DealsListView({
     if (!approved) return;
 
     try {
-      const res = await deleteDealAction(deal.id, deal.workspaceId, user?.uid);
+      const res = await deleteDealAction(deal.id, deal.workspaceId);
       if (res.success) {
         toast({ title: 'Deal Deleted', description: `Deleted "${deal.name}".` });
       } else {
@@ -594,13 +589,13 @@ export default function DealsListView({
 
                 {activeCols.includes('value') && (
                   <td className={cn("px-3 border-y border-border text-right", cellPaddingClass)} onClick={(e) => e.stopPropagation()}>
-                    <InlineValueCell deal={deal} userId={user?.uid || ''} field="value" />
+                    <InlineValueCell deal={deal} field="value" />
                   </td>
                 )}
 
                 {activeCols.includes('mrr') && (
                   <td className={cn("px-3 border-y border-border", cellPaddingClass)} onClick={(e) => e.stopPropagation()}>
-                    <InlineValueCell deal={deal} userId={user?.uid || ''} field="mrr" />
+                    <InlineValueCell deal={deal} field="mrr" />
                   </td>
                 )}
 
@@ -618,7 +613,7 @@ export default function DealsListView({
 
                 {activeCols.includes('probability') && (
                   <td className={cn("px-3 border-y border-border", cellPaddingClass)} onClick={(e) => e.stopPropagation()}>
-                    <InlineProbabilityCell deal={deal} userId={user?.uid || ''} />
+                    <InlineProbabilityCell deal={deal} />
                   </td>
                 )}
 
@@ -632,7 +627,7 @@ export default function DealsListView({
 
                 {activeCols.includes('stage') && (
                   <td className={cn("px-3 border-y border-border", cellPaddingClass)} onClick={(e) => e.stopPropagation()}>
-                    <InlineStageCell deal={deal} stages={stages || []} userId={user?.uid || ''} />
+                    <InlineStageCell deal={deal} stages={stages || []} />
                   </td>
                 )}
 
@@ -656,7 +651,7 @@ export default function DealsListView({
 
                 {activeCols.includes('assignee') && (
                   <td className={cn("px-3 border-y border-border", cellPaddingClass)} onClick={(e) => e.stopPropagation()}>
-                    <InlineOwnerCell deal={deal} users={workspaceUsers || []} userId={user?.uid || ''} />
+                    <InlineOwnerCell deal={deal} users={workspaceUsers || []} />
                   </td>
                 )}
 

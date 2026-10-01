@@ -88,15 +88,15 @@ vi.mock('../services/fields-variables-service-impl', () => ({
 }));
 
 const mockUpdateDealStageAction = vi.fn();
-vi.mock('../../app/actions/deal-actions', () => ({
-  updateDealStageAction: (...args: unknown[]) => mockUpdateDealStageAction(...args),
+// The engine calls the deal core with a service actor pinned to the message's workspace (N1).
+vi.mock('../crm/deal-core', () => ({
+  updateDealStageCore: (...args: unknown[]) => mockUpdateDealStageAction(...args),
 }));
 
 const mockBulkCreateDealsAction = vi.fn();
-vi.mock('../../app/actions/bulk-deal-actions', () => ({
-  bulkCreateDealsAction: (...args: unknown[]) => mockBulkCreateDealsAction(...args),
-  // The automation engine calls the unguarded core, not the guarded Server Action (audit F2).
-  bulkCreateDealsActionCore: (...args: unknown[]) => mockBulkCreateDealsAction(...args),
+// The automation engine calls the bulk deal core with a service actor, never the Server Action (N1).
+vi.mock('../crm/bulk-deal-core', () => ({
+  bulkCreateDealsCore: (_actor: unknown, data: unknown) => mockBulkCreateDealsAction(data),
 }));
 
 const mockBulkCreateTasksAction = vi.fn();
@@ -225,7 +225,11 @@ describe('executeMessageStatusAutomations', () => {
 
     expect(result.success).toBe(true);
     expect(result.executedCount).toBe(1);
-    expect(mockUpdateDealStageAction).toHaveBeenCalledWith('deal-active-99', 'stage-demo-booked');
+    expect(mockUpdateDealStageAction).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'service', service: 'automations' }),
+      'deal-active-99',
+      'stage-demo-booked'
+    );
     // Verify dedup record was updated to 'completed' (not created again)
     expect(mockUpdate).toHaveBeenCalled();
   });

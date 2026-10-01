@@ -162,7 +162,7 @@ describe('Phase 2 — Pipeline Engine Server Actions', () => {
 
   describe('updateDealStageAction (Process Gates & Validation)', () => {
     it('blocks stage transition when deal is missing required fields for the destination stage', async () => {
-      const res = await updateDealStageAction('deal-1', 'stage-proposal', { userId: 'user-admin' });
+      const res = await updateDealStageAction('deal-1', 'stage-proposal');
       expect(res.success).toBe(false);
       expect(res.error).toContain('Cannot move to "Technical Proposal"');
       expect(res.error).toContain('Deal Value');
@@ -180,7 +180,7 @@ describe('Phase 2 — Pipeline Engine Server Actions', () => {
         expectedCloseDate: '2026-11-15T00:00:00.000Z',
       });
 
-      const res = await updateDealStageAction('deal-1', 'stage-proposal', { userId: 'user-admin' });
+      const res = await updateDealStageAction('deal-1', 'stage-proposal');
       expect(res.success).toBe(true);
 
       const deal = mockDealsStore.get('deal-1');
@@ -193,7 +193,6 @@ describe('Phase 2 — Pipeline Engine Server Actions', () => {
 
     it('allows bypassing validation if explicitly requested by administrative bypass', async () => {
       const res = await updateDealStageAction('deal-1', 'stage-proposal', {
-        userId: 'user-admin',
         bypassValidation: true,
       });
       expect(res.success).toBe(true);
@@ -203,7 +202,7 @@ describe('Phase 2 — Pipeline Engine Server Actions', () => {
     });
 
     it('automatically transitions deal status to "won" when moved to terminal won stage', async () => {
-      const res = await updateDealStageAction('deal-1', 'stage-won', { userId: 'user-admin' });
+      const res = await updateDealStageAction('deal-1', 'stage-won');
       expect(res.success).toBe(true);
 
       const deal = mockDealsStore.get('deal-1');
@@ -214,7 +213,6 @@ describe('Phase 2 — Pipeline Engine Server Actions', () => {
 
     it('automatically transitions deal status to "lost" and captures lostReason when moved to terminal lost stage', async () => {
       const res = await updateDealStageAction('deal-1', 'stage-lost', {
-        userId: 'user-admin',
         lostReason: 'Budget constraints',
       });
       expect(res.success).toBe(true);
@@ -234,7 +232,7 @@ describe('Phase 2 — Pipeline Engine Server Actions', () => {
         status: 'lost',
       });
 
-      const res = await updateDealStageAction('deal-1', 'stage-qualification', { userId: 'user-admin' });
+      const res = await updateDealStageAction('deal-1', 'stage-qualification');
       expect(res.success).toBe(true);
 
       const deal = mockDealsStore.get('deal-1');
@@ -244,7 +242,7 @@ describe('Phase 2 — Pipeline Engine Server Actions', () => {
 
     it('enforces RBAC permission check before advancing stage', async () => {
       permissionGranted = false;
-      const res = await updateDealStageAction('deal-1', 'stage-won', { userId: 'restricted-user' });
+      const res = await updateDealStageAction('deal-1', 'stage-won');
       expect(res.success).toBe(false);
       expect(res.error).toBe('Permission denied');
     });
@@ -270,8 +268,7 @@ describe('Phase 2 — Pipeline Engine Server Actions', () => {
       const res = await bulkUpdateDealsStageAction(
         ['deal-1', 'deal-2'],
         'stage-won',
-        'ws-main',
-        'user-admin'
+        'ws-main'
       );
 
       expect(res.success).toBe(true);

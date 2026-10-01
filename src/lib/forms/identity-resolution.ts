@@ -293,8 +293,8 @@ export async function resolveAndEnrichCrmEntity({
           }
         );
 
-        const { createDeal } = await import('@/app/actions/deal-actions');
-        const dealRes = await createDeal({
+        const { createDealCore } = await import('@/lib/crm/deal-core');
+        const dealRes = await createDealCore({ kind: 'service', service: 'forms', workspaceId }, {
           name: dealName,
           entityId: resolvedEntityId,
           workspaceId,

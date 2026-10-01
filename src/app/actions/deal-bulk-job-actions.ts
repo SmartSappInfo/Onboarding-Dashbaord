@@ -23,7 +23,7 @@ import { after } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { canUser } from '@/lib/workspace-permissions';
 import { logActivity } from '@/lib/activity-logger';
-import { updateDealStageAction } from './deal-actions';
+import { updateDealStageCore } from '@/lib/crm/deal-core';
 import type { DealBulkJob } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 import { requireWorkspace } from '@/lib/auth/require-auth';
@@ -47,12 +47,11 @@ export async function createDealBulkJobAction(
   jobType: DealBulkJob['jobType'],
   dealIds: string[],
   payload: Record<string, unknown>,
-  workspaceId: string,
-  userId: string,
-  userName?: string
+  workspaceId: string
 ): Promise<{ success: boolean; jobId?: string; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireWorkspace(workspaceId);
+  // SECURITY (audit F2 / N1): identity (and the display name on the job) come from the session only.
+  const { uid: userId, profile } = await requireWorkspace(workspaceId);
+  const userName = profile.name;
 
   try {
     if (!dealIds || dealIds.length === 0) {
@@ -99,19 +98,36 @@ export async function createDealBulkJobAction(
 }
 
 /**
- * Internal worker that chunks and executes the bulk job.
+ * Only the ids of deals stored in `workspaceId`. Bulk jobs refuse foreign ids (N1): the caller's
+ * permission was checked for this workspace only.
  */
-export async function processDealBulkJob(
+async function dealIdsInWorkspace(dealIds: string[], workspaceId: string): Promise<Set<string>> {
+  const owned = new Set<string>();
+  for (let i = 0; i < dealIds.length; i += BATCH_SIZE) {
+    const refs = dealIds.slice(i, i + BATCH_SIZE).map((id) => adminDb.collection('deals').doc(id));
+    const snaps = refs.length > 0 ? await adminDb.getAll(...refs) : [];
+    for (const snap of snaps) {
+      if (snap.exists && snap.get('workspaceId') === workspaceId) owned.add(snap.id);
+    }
+  }
+  return owned;
+}
+
+/**
+ * Internal worker that chunks and executes the bulk job.
+ *
+ * SECURITY (N1): NOT exported. Every export of this `'use server'` module is a public endpoint,
+ * and this worker trusts its arguments; it runs only after `createDealBulkJobAction` has
+ * verified the session user and their pipeline permission for `workspaceId`.
+ */
+async function processDealBulkJob(
   jobId: string,
-  dealIds: string[],
+  requestedDealIds: string[],
   jobType: DealBulkJob['jobType'],
   payload: Record<string, unknown>,
   workspaceId: string,
   userId: string
 ): Promise<void> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireWorkspace(workspaceId);
-
   const jobRef = adminDb.collection('deal_bulk_jobs').doc(jobId);
 
   try {
@@ -120,9 +136,18 @@ export async function processDealBulkJob(
       updatedAt: new Date().toISOString(),
     });
 
+    const owned = await dealIdsInWorkspace(requestedDealIds, workspaceId);
+    const dealIds = requestedDealIds.filter((id) => owned.has(id));
+
     let processed = 0;
     let failed = 0;
     const errors: Array<{ dealId: string; error: string }> = [];
+    for (const id of requestedDealIds) {
+      if (!owned.has(id)) {
+        failed++;
+        errors.push({ dealId: id, error: 'Deal not found.' });
+      }
+    }
 
     if (jobType === 'bulk_stage_update') {
       const targetStageId = payload.stageId as string;
@@ -131,11 +156,14 @@ export async function processDealBulkJob(
 
       for (const dealId of dealIds) {
         try {
-          const res = await updateDealStageAction(dealId, targetStageId, {
-            status: targetStatus,
-            lostReason,
-            userId,
-          });
+          // Runs as the bulk-job service pinned to the job's workspace (the creator's pipeline
+          // permission was checked when the job was created); deals outside it are refused.
+          const res = await updateDealStageCore(
+            { kind: 'service', service: 'deal-bulk-job', workspaceId, onBehalfOf: userId },
+            dealId,
+            targetStageId,
+            { status: targetStatus, lostReason }
+          );
           if (res.success) {
             processed++;
           } else {

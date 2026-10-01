@@ -19,7 +19,6 @@
 import * as React from 'react';
 import type { Deal, OnboardingStage, StageRequiredField } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { useUser } from '@/firebase';
 import { updateDealAction, updateDealStageAction } from '@/app/actions/deal-actions';
 import {
   Dialog,
@@ -62,7 +61,6 @@ export default function StageValidationModal({
   onSuccess,
 }: StageValidationModalProps) {
   const { toast } = useToast();
-  const { user } = useUser();
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [value, setValue] = React.useState<number | ''>('');
@@ -109,16 +107,14 @@ export default function StageValidationModal({
       }
 
       if (Object.keys(updateData).length > 0) {
-        const updateRes = await updateDealAction(deal.id, updateData, user?.uid || '');
+        const updateRes = await updateDealAction(deal.id, updateData, deal.workspaceId);
         if (!updateRes.success) {
           throw new Error(updateRes.error || 'Failed to update deal fields');
         }
       }
 
       // 2. Perform the stage transition
-      const stageRes = await updateDealStageAction(deal.id, targetStage.id, {
-        userId: user?.uid,
-      });
+      const stageRes = await updateDealStageAction(deal.id, targetStage.id);
 
       if (!stageRes.success) {
         throw new Error(stageRes.error || 'Failed to advance stage');

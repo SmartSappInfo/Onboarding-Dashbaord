@@ -24,7 +24,7 @@ import type {
   SystemCrmFieldMappingTemplate,
 } from '@/lib/types';
 import { isAuthorizedForWorkspace } from './survey-hydration-adapter';
-import { createDeal } from '@/app/actions/deal-actions';
+import { createDealCore } from '@/lib/crm/deal-core';
 import { triggerAutomationProtocols } from '@/lib/automations/orchestrator';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 import { resolveTextWithMap } from '@/lib/utils/variable-replacer';
@@ -307,7 +307,7 @@ export async function executeSurveyCrmSyncAction(
           }
 
           if (cleanEntityId) {
-            const dealRes = await createDeal({
+            const dealRes = await createDealCore({ kind: 'service', service: 'surveys', workspaceId }, {
               workspaceId,
               organizationId,
               pipelineId: rule.pipelineId,

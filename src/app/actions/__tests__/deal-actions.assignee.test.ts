@@ -19,6 +19,8 @@ const ENTITY_OWNER = { userId: 'owner-1', name: 'Ada Owner', email: 'ada@example
 let lastAddedDeal: any = null;
 
 vi.mock('@/lib/activity-logger', () => ({ logActivity: vi.fn().mockResolvedValue(undefined) }));
+// createDeal now checks operations/pipeline:create for the session user (N1); granted here.
+vi.mock('@/lib/workspace-permissions', () => ({ canUser: vi.fn().mockResolvedValue({ granted: true }) }));
 
 vi.mock('@/lib/firebase-admin', () => {
   const mockUsers = {
@@ -29,6 +31,14 @@ vi.mock('@/lib/firebase-admin', () => {
   return {
     adminDb: {
       collection: vi.fn((name: string) => {
+        if (name === 'workspaces') {
+          // The deal's organization is read from its workspace (N1).
+          return {
+            doc: vi.fn(() => ({
+              get: vi.fn().mockResolvedValue({ exists: true, data: () => ({ organizationId: 'org-1' }) }),
+            })),
+          };
+        }
         if (name === 'workspace_entities') {
           return {
             doc: vi.fn(() => ({

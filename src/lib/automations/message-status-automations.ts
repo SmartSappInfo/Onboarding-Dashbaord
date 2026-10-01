@@ -197,8 +197,12 @@ export async function executeMessageStatusAutomations(
                 const currentStageId = openDealDoc.data().stageId as string | undefined;
 
                 if (targetStageId && currentStageId !== targetStageId) {
-                  const { updateDealStageAction } = await import('../../app/actions/deal-actions');
-                  const updateResult = await updateDealStageAction(openDealDoc.id, targetStageId);
+                  const { updateDealStageCore } = await import('../crm/deal-core');
+                  const updateResult = await updateDealStageCore(
+                    { kind: 'service', service: 'automations', workspaceId },
+                    openDealDoc.id,
+                    targetStageId
+                  );
                   if (updateResult.error) {
                     console.error(`[EVENT-AUTOMATION] Failed to update deal ${openDealDoc.id} stage to ${targetStageId}: ${updateResult.error}`);
                   }
@@ -212,10 +216,10 @@ export async function executeMessageStatusAutomations(
                   ? '{{entityName}} - Delivery Failed'
                   : '{{entityName}} - Opened Email';
 
-                const { bulkCreateDealsActionCore: bulkCreateDealsAction } = await import('../../app/actions/bulk-deal-actions');
-                // CAUTION: organizationId MUST be forwarded here for multi-tenant isolation.
-                // Using '' as fallback is safe but limits cross-org query scoping.
-                await bulkCreateDealsAction({
+                // Runs as the automation service pinned to the message's workspace; the core takes the
+                // organization from that workspace (organizationId below is only a legacy fallback).
+                const { bulkCreateDealsCore } = await import('../crm/bulk-deal-core');
+                await bulkCreateDealsCore({ kind: 'service', service: 'automations', workspaceId }, {
                   entityIds: [entityId],
                   workspaceId,
                   organizationId,

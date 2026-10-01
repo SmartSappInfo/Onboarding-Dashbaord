@@ -10,7 +10,7 @@ Staging shares the production Firebase project, so any rules deploy is a product
 | :--- | :--- | :--- | :--- | :--- |
 | H0 | Flaky tag property test | CI reliability | ☑ done | `1358bffb` |
 | H1 | Workforce privilege escalation + super-admin self-promotion | **Critical (live)** | ☑ deployed | `31e1196f` |
-| H1c | Onboarding actions trust a caller-supplied `userId`; org owners got platform `system_admin` (found in H1) | **Critical (live)** | ☑ done | this commit |
+| H1c | Onboarding actions trust a caller-supplied `userId`; org owners got platform `system_admin` (found in H1) | **Critical (live)** | ☑ deployed | `9e817561` |
 | H2 | Phone password reset → one-time code | **High (live)** | ☐ | |
 | H3 | Lint step 1 (~311 warnings) | Quality | ☐ | |
 | H4a | `content_items` paywall rule (held PR-0e) | High | ☐ | |

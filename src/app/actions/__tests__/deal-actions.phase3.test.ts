@@ -87,6 +87,15 @@ vi.mock('@/lib/firebase-admin', () => {
             })),
           };
         }
+        if (name === 'workspaces') {
+          // Lead conversion takes the deal's organization from the workspace (N1).
+          return {
+            doc: vi.fn((id: string) => ({
+              id,
+              get: vi.fn().mockResolvedValue({ exists: id === 'ws-1', data: () => ({ organizationId: 'org-1' }) }),
+            })),
+          };
+        }
         if (name === 'workspace_entities') {
           return {
             doc: vi.fn((id: string) => ({
@@ -170,7 +179,6 @@ describe('Phase 3 — CRM Activity Graph & Lead Conversion Server Actions', () =
       const res = await convertLeadToDealAction({
         leadEntityId: 'lead-1',
         pipelineId: 'pipe-1',
-        userId: 'user-1',
         workspaceId: 'ws-1',
       });
 
@@ -183,7 +191,6 @@ describe('Phase 3 — CRM Activity Graph & Lead Conversion Server Actions', () =
       const res = await convertLeadToDealAction({
         leadEntityId: 'non-existent-lead',
         pipelineId: 'pipe-1',
-        userId: 'user-1',
         workspaceId: 'ws-1',
       });
 
@@ -259,7 +266,6 @@ describe('Phase 3 — CRM Activity Graph & Lead Conversion Server Actions', () =
           email: 'sarah@smartsapp.com',
         },
         notes: 'Customer attended live webinar and requested expedited onboarding.',
-        userId: 'user-1',
         workspaceId: 'ws-1',
       };
 
@@ -290,7 +296,7 @@ describe('Phase 3 — CRM Activity Graph & Lead Conversion Server Actions', () =
       const updatedLead = mockWorkspaceEntitiesStore.get('ws-1_lead-100');
       expect(updatedLead?.isConverted).toBe(true);
       expect(updatedLead?.convertedDealId).toBe(res.dealId);
-      expect(updatedLead?.convertedBy).toBe('user-1');
+      expect(updatedLead?.convertedBy).toBe('test-user'); // the session user (setup.ts), never a caller-supplied id
 
       // Verify activity was logged with top-level dealId
       expect(loggedActivities.length).toBe(1);
@@ -309,7 +315,7 @@ describe('Phase 3 — CRM Activity Graph & Lead Conversion Server Actions', () =
         subject: 'Introductory call',
       };
 
-      const res = await logDealInteractionAction('deal-1', interaction, 'user-1', 'ws-1');
+      const res = await logDealInteractionAction('deal-1', interaction, 'ws-1');
       expect(res.success).toBe(false);
       expect(res.error).toContain('Permission denied');
     });
@@ -331,7 +337,7 @@ describe('Phase 3 — CRM Activity Graph & Lead Conversion Server Actions', () =
         description: 'Discussed timeline for term 1 rollout. Client asked for quote.',
       };
 
-      const res = await logDealInteractionAction('deal-1', interaction, 'user-1', 'ws-1');
+      const res = await logDealInteractionAction('deal-1', interaction, 'ws-1');
 
       expect(res.success).toBe(true);
       expect(loggedActivities.length).toBe(1);
@@ -360,7 +366,7 @@ describe('Phase 3 — CRM Activity Graph & Lead Conversion Server Actions', () =
         description: 'Live demo of onboarding dashboard and finance integration.',
       };
 
-      const res = await logDealInteractionAction('deal-2', interaction, 'user-1', 'ws-1');
+      const res = await logDealInteractionAction('deal-2', interaction, 'ws-1');
 
       expect(res.success).toBe(true);
       expect(loggedActivities.length).toBe(1);
@@ -383,7 +389,7 @@ describe('Phase 3 — CRM Activity Graph & Lead Conversion Server Actions', () =
         description: 'Sent standard enterprise agreement for review.',
       };
 
-      const res = await logDealInteractionAction('deal-3', interaction, 'user-1', 'ws-1');
+      const res = await logDealInteractionAction('deal-3', interaction, 'ws-1');
 
       expect(res.success).toBe(true);
       expect(loggedActivities.length).toBe(1);

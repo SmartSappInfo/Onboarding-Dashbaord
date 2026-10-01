@@ -49,7 +49,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { useUser } from '@/firebase';
 import { duplicateDealAction } from '@/app/actions/deal-actions';
 
 interface DuplicateDealModalProps {
@@ -69,7 +68,6 @@ export default function DuplicateDealModal({
   pipelines = [],
   stages = [],
 }: DuplicateDealModalProps) {
-  const { user } = useUser();
   const { toast } = useToast();
 
   const [newName, setNewName] = React.useState('');
@@ -133,7 +131,7 @@ export default function DuplicateDealModal({
         copyCustomFields,
       };
 
-      const res = await duplicateDealAction(deal.id, options, user?.uid);
+      const res = await duplicateDealAction(deal.id, options);
 
       if (res.success && res.newDealId) {
         toast({

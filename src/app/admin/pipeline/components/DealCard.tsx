@@ -54,7 +54,7 @@ import Link from 'next/link';
 import { useTerminology } from '@/hooks/use-terminology';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { useUser, useDoc, useFirestore } from '@/firebase';
+import { useDoc, useFirestore } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { deleteDealAction, archiveDealAction, unarchiveDealAction } from '@/app/actions/deal-actions';
@@ -95,7 +95,6 @@ export default function DealCard({ deal, stage, isOverlay, onDelete, clientName,
   const { singular } = useTerminology();
   const confirm = useConfirm();
   const { toast } = useToast();
-  const { user } = useUser();
   const firestore = useFirestore();
 
   // Reactive fallback to resolve client/entity name if not provided by parent cache
@@ -119,7 +118,7 @@ export default function DealCard({ deal, stage, isOverlay, onDelete, clientName,
     setIsArchiving(true);
     try {
       if (deal.isArchived) {
-        const res = await unarchiveDealAction(deal.id, user?.uid);
+        const res = await unarchiveDealAction(deal.id);
         if (res.success) {
           toast({ title: 'Deal Restored', description: `Restored "${displayName}".` });
         } else {
@@ -133,7 +132,7 @@ export default function DealCard({ deal, stage, isOverlay, onDelete, clientName,
         });
         if (!confirmed) return;
 
-        const res = await archiveDealAction(deal.id, user?.uid);
+        const res = await archiveDealAction(deal.id);
         if (res.success) {
           toast({ title: 'Deal Archived', description: `Archived "${displayName}".` });
         } else {
@@ -220,7 +219,7 @@ export default function DealCard({ deal, stage, isOverlay, onDelete, clientName,
 
     setIsDeleting(true);
     try {
-      const res = await deleteDealAction(deal.id, effectiveWorkspaceId, user?.uid);
+      const res = await deleteDealAction(deal.id, effectiveWorkspaceId);
       if (res.success) {
         toast({
           title: 'Deal Deleted',

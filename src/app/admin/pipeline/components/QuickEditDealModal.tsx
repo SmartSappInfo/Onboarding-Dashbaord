@@ -29,7 +29,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Save, UserCircle2 } from 'lucide-react';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import { useUser } from '@/firebase';
 import { useWorkspaceUsers } from '@/hooks/use-workspace-users';
 import { updateDealAction, updateDealStageAction } from '@/app/actions/deal-actions';
 import type { Deal, OnboardingStage } from '@/lib/types';
@@ -50,7 +49,6 @@ export default function QuickEditDealModal({
 }: QuickEditDealModalProps) {
   const { toast } = useToast();
   const { activeWorkspaceId } = useWorkspace();
-  const { user } = useUser();
   const { data: workspaceUsers } = useWorkspaceUsers(activeWorkspaceId);
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -104,7 +102,6 @@ export default function QuickEditDealModal({
       if (stageId && stageId !== deal.stageId) {
         const stageRes = await updateDealStageAction(deal.id, stageId, {
           status,
-          userId: user?.uid,
         });
         if (!stageRes.success) {
           throw new Error(stageRes.error || 'Failed to update deal stage.');
@@ -121,8 +118,7 @@ export default function QuickEditDealModal({
           expectedCloseDate: expectedCloseDate ? new Date(expectedCloseDate).toISOString() : null,
           assignedTo: assignedToObj,
         },
-        activeWorkspaceId,
-        user?.uid
+        activeWorkspaceId
       );
 
       if (!res.success) {
