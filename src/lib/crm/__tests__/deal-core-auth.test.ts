@@ -120,6 +120,8 @@ import {
   bulkDeleteDealsAction,
   bulkAssignDealsAction,
   archiveDealAction,
+  duplicateDealAction,
+  updateDealDetailsAction,
   logDealInteractionAction,
   updateStageOrdersAction,
 } from '@/app/actions/deal-actions';
@@ -249,6 +251,42 @@ describe('deal authorization (N1)', () => {
 
       expect(await updateStageOrdersAction('pipe_a', ['stage_a2', 'stage_a1'], 'ws_a')).toMatchObject({ success: true });
       expect(read('onboardingStages', 'stage_a2')?.order).toBe(0);
+    });
+  });
+
+  describe('pipeline and stage placement (FU-15)', () => {
+    beforeEach(() => { h.session = EDITOR; });
+    const before = () => ({ ...read('deals', 'deal_a') });
+
+    it('refuses creating a deal in a pipeline or stage not shared to the workspace', async () => {
+      expect(await createDeal({ entityId: 'ent_1', workspaceId: 'ws_a', pipelineId: 'pipe_b', name: 'X' })).toMatchObject({ error: 'Pipeline not found.' });
+      expect(await createDeal({ entityId: 'ent_1', workspaceId: 'ws_a', pipelineId: 'pipe_a', stageId: 'stage_b1', name: 'X' })).toMatchObject({ error: 'Stage not found.' });
+      expect(await createDeal({ entityId: 'ent_1', workspaceId: 'ws_a', pipelineId: 'pipe_a', stageId: 'stage_a2', name: 'X' })).toHaveProperty('id');
+    });
+
+    it('refuses moving a deal to another tenant\'s stage', async () => {
+      const prior = before();
+      expect(await updateDealStageAction('deal_a', 'stage_b1')).toMatchObject({ success: false, error: 'Stage not found.' });
+      expect(read('deals', 'deal_a')).toEqual(prior);
+    });
+
+    it('refuses edits and copies that point at another tenant\'s pipeline or stage', async () => {
+      const prior = before();
+      expect(await updateDealAction('deal_a', { pipelineId: 'pipe_b' }, 'ws_a')).toMatchObject({ success: false, error: 'Pipeline not found.' });
+      expect(await updateDealDetailsAction('deal_a', { stageId: 'stage_b1' })).toMatchObject({ success: false, error: 'Stage not found.' });
+      expect(await duplicateDealAction('deal_a', { targetPipelineId: 'pipe_b' })).toMatchObject({ success: false, error: 'Pipeline not found.' });
+      expect(read('deals', 'deal_a')).toEqual(prior);
+      expect(h.store.get('deals')?.size).toBe(3);
+    });
+
+    it('still allows edits that leave placement alone', async () => {
+      expect(await updateDealAction('deal_a', { name: 'Fine' }, 'ws_a')).toMatchObject({ success: true });
+      expect(await updateDealDetailsAction('deal_a', { stageId: 'stage_a2' })).toMatchObject({ success: true });
+    });
+
+    it('refuses bulk creation into a foreign pipeline', async () => {
+      const res = await bulkCreateDealsAction({ entityIds: ['ent_1'], workspaceId: 'ws_a', pipelineId: 'pipe_b', dealNamePattern: 'X', value: 0, assignmentStrategy: 'unassigned' });
+      expect(res).toMatchObject({ success: false, error: 'Pipeline not found.' });
     });
   });
 

@@ -14,7 +14,7 @@ import type { Survey, SurveyResponse, Webhook, EntityType, ContactIdentifierPoli
 import { mergeRespondentContact } from './surveys/respondent-contact-merge';
 import { validateContactIdentifier } from './contact-policy';
 import { createEntityAction, updateEntityAction } from './entity-actions';
-import { createDealCore, resolveWorkspaceEntityRecord } from './crm/deal-core';
+import { checkDealPlacement, createDealCore, resolveWorkspaceEntityRecord } from './crm/deal-core';
 import { stripHtml } from './utils';
 import { canUser } from './workspace-permissions';
 import { processLeadCaptureAction } from './lead-actions';
@@ -1747,7 +1747,13 @@ export async function finalizeSurveySubmission(
  * Handles outcome-specific and survey-level pipeline moves (Fallback vs Additional),
  * custom automations, global triggers, and auto-tagging.
  */
-export async function executeSurveyPipelineAndAutomations(params: {
+/*
+ * SECURITY (agents_mcp N1 / FU-14): NOT exported. Every export of this `'use server'` module is a
+ * public endpoint, and this function trusts its `workspaceId`. It runs only inside the public
+ * submission flow, which takes the workspace from the STORED survey. It used to be exported with
+ * `requireAuth()`, which also made it fail for anonymous respondents (the normal case).
+ */
+async function executeSurveyPipelineAndAutomations(params: {
   surveyData: Survey;
   responseId: string;
   responseData: {
@@ -1765,9 +1771,6 @@ export async function executeSurveyPipelineAndAutomations(params: {
   entityName?: string | null;
   outcomeId?: string | null;
 }): Promise<{ outcomeMovedDeal: boolean; workbenchMovedDeal: boolean }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
-
   const { surveyData, responseId, responseData, workspaceId, organizationId, entityId, entityName, outcomeId } = params;
 
   let outcomeMovedDeal = false;
@@ -1968,8 +1971,8 @@ export async function executeSurveyPipelineAndAutomations(params: {
 
     // 8. Phase 6: Deep CRM Intelligence Sync (Fields, Contacts, Tasks, Timeline)
     try {
-      const { executeSurveyCrmSyncAction } = await import('./surveys/survey-crm-sync-actions');
-      await executeSurveyCrmSyncAction({
+      const { runSurveyCrmSync } = await import('./surveys/survey-crm-sync-runner');
+      await runSurveyCrmSync({
         survey: surveyData,
         responseId,
         responseData: {
@@ -1989,8 +1992,8 @@ export async function executeSurveyPipelineAndAutomations(params: {
     // 9. Phase 7: Autonomous Decisioning & Automation Rules Pipeline
     try {
       if (surveyData.decisionConfig?.enabled) {
-        const { executeSurveyDecisioningPipelineAction } = await import('./surveys/survey-decision-engine');
-        await executeSurveyDecisioningPipelineAction({
+        const { runSurveyDecisionPipeline } = await import('./surveys/survey-decision-runner');
+        await runSurveyDecisionPipeline({
           survey: surveyData,
           responseId,
           score: responseData.score,
@@ -2331,38 +2334,61 @@ async function triggerPostSubmissionAutomations(
   }).catch(console.error);
 }
 
+/**
+ * Runs the side effects of a results-page button (tags, automation, webhook) for a respondent.
+ *
+ * SECURITY (agents_mcp N1 / FU-14): this is a PUBLIC endpoint used by anonymous respondents. It
+ * used to take the tag ids, automation id and webhook URL from the browser, so anyone could tag
+ * any entity, run any automation, or post an entity's contact details to any URL. Now:
+ * - the browser names only the button (`blockId`); what it does comes from the stored survey;
+ * - the response must belong to this survey and be linked to this entity;
+ * - the webhook goes through the SSRF-safe fetch.
+ */
 export async function executeSurveyResultButtonActions(params: {
   surveyId: string;
   responseId: string;
   entityId: string;
-  addTagIds?: string[];
-  triggerAutomationId?: string;
-  fireWebhookUrl?: string;
+  blockId: string;
 }) {
-  const { surveyId, responseId, entityId, addTagIds, triggerAutomationId, fireWebhookUrl } = params;
-  
+  const { surveyId, responseId, entityId, blockId } = params;
+
   try {
+    if (!surveyId || !responseId || !entityId || !blockId) throw new Error('Missing parameters');
     const surveySnap = await adminDb.collection('surveys').doc(surveyId).get();
     if (!surveySnap.exists) throw new Error('Survey not found');
     const surveyData = { id: surveySnap.id, ...surveySnap.data() } as Survey;
     const organizationId = surveyData.organizationId || 'default';
     const workspaceId = surveyData.workspaceIds?.[0] || '';
+    if (!workspaceId) throw new Error('Survey not found');
+
+    const block = (surveyData.resultPages || [])
+      .flatMap((page) => page.blocks || [])
+      .find((b) => b.id === blockId && b.type === 'button');
+    if (!block) throw new Error('Button not found');
+
+    // The response must be this survey's and already linked to this entity.
+    const cleanEntityId = entityId.startsWith(`${workspaceId}_`) ? entityId.slice(workspaceId.length + 1) : entityId;
+    const responseSnap = await adminDb.collection('surveys').doc(surveyId).collection('responses').doc(responseId).get();
+    const linkedEntity: unknown = responseSnap.exists ? responseSnap.get('entityId') : undefined;
+    const linkedClean = typeof linkedEntity === 'string' && linkedEntity.startsWith(`${workspaceId}_`)
+      ? linkedEntity.slice(workspaceId.length + 1)
+      : linkedEntity;
+    if (!linkedClean || linkedClean !== cleanEntityId) throw new Error('Response not found');
 
     // ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
-    // Multi-Pattern Workspace Entity Resolution via canonical resolver in deal-actions:
-    const cleanEntityId = entityId.startsWith(`${workspaceId}_`) ? entityId.slice(workspaceId.length + 1) : entityId;
+    // Multi-Pattern Workspace Entity Resolution via the canonical resolver in the deal core.
     const weData = await resolveWorkspaceEntityRecord(workspaceId, cleanEntityId, organizationId);
 
     if (!weData) throw new Error('Contact/entity not found');
 
     // 1. Add Tag(s)
-    if (addTagIds && addTagIds.length > 0) {
+    if (block.addTagIds && block.addTagIds.length > 0) {
       const { applyTagsAction } = await import('./tag-actions');
-      await applyTagsAction(cleanEntityId, 'workspace_entity', addTagIds, 'system-survey-results-button');
+      await applyTagsAction(cleanEntityId, 'workspace_entity', block.addTagIds, 'system-survey-results-button');
     }
 
     // 2. Trigger Automation
-    if (triggerAutomationId && triggerAutomationId !== 'none') {
+    if (block.triggerAutomationId && block.triggerAutomationId !== 'none') {
       const { runAutomationById } = await import('./automation-processor');
       const automationPayload = {
         entityId: cleanEntityId,
@@ -2374,37 +2400,32 @@ export async function executeSurveyResultButtonActions(params: {
         submissionId: responseId,
         source: 'survey_results_button',
       };
-      await runAutomationById(triggerAutomationId, automationPayload);
+      await runAutomationById(block.triggerAutomationId, automationPayload);
     }
 
-    // 3. Fire Webhook (with SSRF protocol validation)
-    if (fireWebhookUrl) {
+    // 3. Fire Webhook (configured by the survey owner; SSRF-safe, DNS-pinned fetch)
+    if (block.fireWebhookEnabled && block.fireWebhookUrl) {
       try {
-        const parsedUrl = new URL(fireWebhookUrl);
-        if (parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:') {
-          const payload = {
-            surveyId,
-            surveyTitle: surveyData.title,
-            responseId,
-            entityId: cleanEntityId,
-            entityName: weData.displayName || '',
-            primaryEmail: weData.primaryEmail || '',
-            primaryPhone: weData.primaryPhone || '',
-            contacts: weData.entityContacts || [],
-            timestamp: new Date().toISOString()
-          };
-          await fetch(fireWebhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          }).catch(err => {
-            console.error(`[survey-actions] Webhook fire failed:`, err);
-          });
-        } else {
-          console.warn(`[survey-actions] Blocked invalid webhook protocol: ${parsedUrl.protocol}`);
-        }
-      } catch (urlErr) {
-        console.error(`[survey-actions] Invalid webhook URL provided: ${fireWebhookUrl}`, urlErr);
+        const { safeUrlFetch } = await import('./security/ssrf-guard');
+        const payload = {
+          surveyId,
+          surveyTitle: surveyData.title,
+          responseId,
+          entityId: cleanEntityId,
+          entityName: weData.displayName || '',
+          primaryEmail: weData.primaryEmail || '',
+          primaryPhone: weData.primaryPhone || '',
+          contacts: weData.entityContacts || [],
+          timestamp: new Date().toISOString()
+        };
+        await safeUrlFetch(block.fireWebhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(8000),
+        });
+      } catch (webhookErr) {
+        console.error('[survey-actions] Results-button webhook failed or was blocked:', webhookErr);
       }
     }
 
@@ -2532,10 +2553,13 @@ export interface PipelineRouteParams {
   };
 }
 
-export async function addOrMoveEntityInPipeline(params: PipelineRouteParams): Promise<{ success: boolean; dealId?: string; action?: 'created' | 'moved'; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
-
+/*
+ * SECURITY (agents_mcp N1 / FU-14): NOT exported. Every export of this `'use server'` module is a
+ * public endpoint, and this function trusts its `workspaceId`. It runs only inside the public
+ * submission flow, which takes the workspace from the STORED survey. It used to be exported with
+ * `requireAuth()`, which also made it fail for anonymous respondents (the normal case).
+ */
+async function addOrMoveEntityInPipeline(params: PipelineRouteParams): Promise<{ success: boolean; dealId?: string; action?: 'created' | 'moved'; error?: string }> {
   try {
     const { entityId, entityName, workspaceId, organizationId, pipelineId, stageId, scoreDetails } = params;
     if (!entityId || !workspaceId || !pipelineId || !stageId) {
@@ -2576,6 +2600,10 @@ export async function addOrMoveEntityInPipeline(params: PipelineRouteParams): Pr
       .map(d => ({ id: d.id, data: d.data() }))
       .filter(d => d.data.status === 'open' && d.data.pipelineId === pipelineId)
       .sort((a, b) => (b.data.updatedAt || '').localeCompare(a.data.updatedAt || ''));
+
+    // FU-15: the configured pipeline and stage must be shared to this workspace.
+    const placement = await checkDealPlacement(workspaceId, { pipelineId, stageId });
+    if (!placement.granted) return { success: false, error: placement.reason };
 
     if (matchingOpenDeals.length > 0) {
       // 3. Open deal found → Move stage and update score details

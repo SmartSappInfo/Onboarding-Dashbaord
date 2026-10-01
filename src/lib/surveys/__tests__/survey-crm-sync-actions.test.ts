@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { runSurveyCrmSync as executeSurveyCrmSyncAction } from '../survey-crm-sync-runner';
 import {
-  executeSurveyCrmSyncAction,
   getSurveyCrmFieldDefinitionsAction,
   saveSurveyCrmConfigAction,
 } from '../survey-crm-sync-actions';

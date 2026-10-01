@@ -1,4 +1,10 @@
-'use server';
+/*
+ * SECURITY (agents_mcp N1 / FU-14): deliberately NOT a `'use server'` module any more.
+ * Both exports trust their `workspaceId`: `resolveAndEnrichCrmEntity` writes entities, tags and
+ * deals; `getKnownRespondentProfile` returns an entity's contact details. As Server Actions anyone
+ * could call them for any workspace. Callers are server-only and pass the STORED form's workspace:
+ * `processFormSubmissionAction` (forms-actions.ts) and the public form page (server component).
+ */
 
 /**
  * SmartSapp Forms 2.0: Progressive Profiling & Multi-Attribute CRM Identity Resolution
@@ -20,7 +26,6 @@ import { logActivity } from '@/lib/activity-logger';
 import { applyTagsAction } from '@/lib/tag-actions';
 import { createEntityAction, updateEntityAction } from '@/lib/entity-actions';
 import { normalizeEmail, normalizePhone } from './form-utils';
-import { requireAuth } from '@/lib/auth/require-auth';
 
 export interface IdentityResolutionResult {
   matched: boolean;
@@ -59,8 +64,7 @@ export async function resolveAndEnrichCrmEntity({
   appliedTags?: string[];
   metadata?: Record<string, unknown>;
 }): Promise<IdentityResolutionResult> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
+  // No session check: public form submissions are anonymous. The caller supplies the stored form.
 
   try {
     let resolvedEntityId: string | null = null;
@@ -74,7 +78,8 @@ export async function resolveAndEnrichCrmEntity({
     // ── Tier 1: Explicit Entity ID Match ──
     if (explicitEntityId) {
       const explicitDoc = await adminDb.collection('workspace_entities').doc(explicitEntityId).get();
-      if (explicitDoc.exists && (!explicitDoc.data()?.workspaceId || explicitDoc.data()?.workspaceId === workspaceId)) {
+      // The explicit (client-supplied) entity must already belong to this form's workspace.
+      if (explicitDoc.exists && explicitDoc.data()?.workspaceId === workspaceId) {
         resolvedEntityId = explicitDoc.id;
         matchKey = 'entityId';
       }

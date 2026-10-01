@@ -64,6 +64,15 @@ vi.mock('@/lib/firebase-admin', () => {
             }),
           };
         }
+        if (name === 'pipelines') {
+          // Deals may only reference pipelines shared to their workspace (FU-15).
+          return {
+            doc: vi.fn((id: string) => ({
+              id,
+              get: vi.fn().mockResolvedValue({ exists: id === 'pipe-1', data: () => ({ workspaceIds: ['ws-1'] }) }),
+            })),
+          };
+        }
         if (name === 'onboardingStages') {
           return {
             where: vi.fn((field: string, op: string, val: string) => ({

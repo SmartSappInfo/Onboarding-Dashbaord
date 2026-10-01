@@ -220,7 +220,8 @@ describe('Forms Actions', () => {
       ] as unknown as AppField[];
       fields.forEach(f => mockStore.app_fields.set(f.id, f));
 
-      mockStore.entities.set('entity-1', { id: 'entity-1', name: 'Old Name', organizationId: 'org-1' });
+      // A bound entity belongs to the form's workspace (FU-14: explicit ids must match the workspace).
+      mockStore.entities.set('entity-1', { id: 'entity-1', name: 'Old Name', organizationId: 'org-1', workspaceId: 'ws-1' });
 
       const payload = {
         formId: 'form-1',
@@ -233,6 +234,12 @@ describe('Forms Actions', () => {
 
       const updatedEntity = mockStore.entities.get('entity-1');
       expect(updatedEntity.name).toBe('New Name');
+
+      // An entity id from another workspace, supplied by the (anonymous) submitter, is not updated.
+      mockStore.entities.set('entity-foreign', { id: 'entity-foreign', name: 'Victim', organizationId: 'org-2', workspaceId: 'ws-2' });
+      const foreign = await processFormSubmissionAction({ formId: 'form-1', entityId: 'entity-foreign', data: { name: 'Pwned' } });
+      expect(foreign.success).toBe(true);
+      expect(mockStore.entities.get('entity-foreign').name).toBe('Victim');
     });
 
     it('should resolve and update entity if match is found by email', async () => {

@@ -17,6 +17,9 @@ const ENTITY_OWNER = { userId: 'owner-1', name: 'Ada Owner', email: 'ada@example
 
 // Captures the document handed to deals.add(...)
 let lastAddedDeal: any = null;
+// The stage used by these cases belongs to whichever pipeline the case creates the deal in
+// (createDeal checks the pipeline before the stage, FU-15).
+let lastPipelineId = '';
 
 vi.mock('@/lib/activity-logger', () => ({ logActivity: vi.fn().mockResolvedValue(undefined) }));
 // createDeal now checks operations/pipeline:create for the session user (N1); granted here.
@@ -51,17 +54,17 @@ vi.mock('@/lib/firebase-admin', () => {
         }
         if (name === 'pipelines') {
           return {
-            doc: vi.fn((id: string) => ({
+            doc: vi.fn((id: string) => (lastPipelineId = id, {
               get: vi.fn().mockResolvedValue({
                 exists: true,
                 data: () => {
                   if (id === 'pipe-rr') {
-                    return { assignmentStrategy: 'round-robin', assignmentUserIds: ['user-1', 'user-2'] };
+                    return { workspaceIds: ['ws-1'], assignmentStrategy: 'round-robin', assignmentUserIds: ['user-1', 'user-2'] };
                   }
                   if (id === 'pipe-val') {
-                    return { assignmentStrategy: 'value-based', assignmentUserIds: ['user-1', 'user-2'] };
+                    return { workspaceIds: ['ws-1'], assignmentStrategy: 'value-based', assignmentUserIds: ['user-1', 'user-2'] };
                   }
-                  return { assignmentStrategy: 'direct', assignmentUserIds: [] };
+                  return { workspaceIds: ['ws-1'], assignmentStrategy: 'direct', assignmentUserIds: [] };
                 },
               }),
             })),
@@ -72,7 +75,7 @@ vi.mock('@/lib/firebase-admin', () => {
             doc: vi.fn(() => ({
               get: vi.fn().mockResolvedValue({
                 exists: true,
-                data: () => ({ name: 'Discovery' }),
+                data: () => ({ name: 'Discovery', pipelineId: lastPipelineId }),
               }),
             })),
           };

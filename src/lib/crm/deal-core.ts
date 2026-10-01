@@ -101,6 +101,56 @@ export async function workspaceOrganizationId(workspaceId: string): Promise<stri
   return parsed.success ? parsed.data.organizationId ?? '' : '';
 }
 
+/**
+ * SECURITY (FU-15): a deal may only reference a pipeline shared to its workspace, and a stage of
+ * such a pipeline. Pipelines are shared through `workspaceIds` (the same field every pipeline
+ * list in the UI queries), so this never rejects a pipeline the user could pick in the app.
+ */
+export async function checkPipelineInWorkspace(pipelineId: string, workspaceId: string): Promise<PermissionOutcome> {
+  if (!pipelineId) return { granted: false, reason: 'Pipeline not found.' };
+  const snap = await adminDb.collection('pipelines').doc(pipelineId).get();
+  const shared: unknown = snap.exists ? snap.data()?.workspaceIds : undefined;
+  return Array.isArray(shared) && shared.includes(workspaceId)
+    ? { granted: true }
+    : { granted: false, reason: 'Pipeline not found.' };
+}
+
+/**
+ * The stage must exist and belong to a pipeline shared to the workspace. When `pipelineId` is
+ * given, the stage must belong to exactly that pipeline.
+ */
+export async function checkStageInWorkspace(
+  stageId: string,
+  workspaceId: string,
+  pipelineId?: string
+): Promise<PermissionOutcome> {
+  if (!stageId) return { granted: false, reason: 'Stage not found.' };
+  const snap = await adminDb.collection('onboardingStages').doc(stageId).get();
+  const stagePipelineId: unknown = snap.exists ? snap.data()?.pipelineId : undefined;
+  if (typeof stagePipelineId !== 'string' || (pipelineId && stagePipelineId !== pipelineId)) {
+    return { granted: false, reason: 'Stage not found.' };
+  }
+  const pipelineCheck = await checkPipelineInWorkspace(stagePipelineId, workspaceId);
+  return pipelineCheck.granted ? pipelineCheck : { granted: false, reason: 'Stage not found.' };
+}
+
+/**
+ * Checks a requested pipeline / stage change for a deal in `workspaceId`. Only the values the
+ * caller asks to set are checked, so deals already pointing at legacy values keep working.
+ */
+export async function checkDealPlacement(
+  workspaceId: string,
+  placement: { pipelineId?: string | null; stageId?: string | null }
+): Promise<PermissionOutcome> {
+  const { pipelineId, stageId } = placement;
+  if (pipelineId) {
+    const pipelineCheck = await checkPipelineInWorkspace(pipelineId, workspaceId);
+    if (!pipelineCheck.granted) return pipelineCheck;
+  }
+  if (stageId) return checkStageInWorkspace(stageId, workspaceId, pipelineId ?? undefined);
+  return { granted: true };
+}
+
 async function resolveAssigneeDetails(userId: string): Promise<{ userId: string; name: string; email: string }> {
   try {
     const userSnap = await adminDb.collection('users').doc(userId).get();
@@ -228,6 +278,13 @@ export async function createDealCore(actor: CrmActor, data: DealCreationData): P
     const fromWorkspace = await workspaceOrganizationId(workspaceId);
     if (fromWorkspace === null && actor.kind === 'user') return { error: 'Workspace not found.' };
     const organizationId = fromWorkspace ?? suppliedOrganizationId ?? '';
+
+    const pipelineCheck = await checkPipelineInWorkspace(pipelineId, workspaceId);
+    if (!pipelineCheck.granted) return { error: pipelineCheck.reason };
+    if (data.stageId) {
+      const stageCheck = await checkStageInWorkspace(data.stageId, workspaceId, pipelineId);
+      if (!stageCheck.granted) return { error: stageCheck.reason };
+    }
 
     const cleanEntityId = entityId.startsWith(`${workspaceId}_`) ? entityId.slice(workspaceId.length + 1) : entityId;
     const pipelineRef = adminDb.collection('pipelines').doc(pipelineId);
@@ -416,8 +473,10 @@ export async function updateDealStageCore(
     const { deal, ref: dealRef } = loaded;
     const actorUid = actorAttributionUid(actor);
 
+    // The target stage must belong to a pipeline shared to the deal's workspace (FU-15).
+    const stageCheck = await checkStageInWorkspace(stageId, deal.workspaceId);
+    if (!stageCheck.granted) return { success: false, error: stageCheck.reason };
     const stageSnap = await adminDb.collection('onboardingStages').doc(stageId).get();
-    if (!stageSnap.exists) throw new Error('Stage not found');
     const targetStage = stageSnap.data() as OnboardingStage;
     const stageName = targetStage?.name || stageId;
 

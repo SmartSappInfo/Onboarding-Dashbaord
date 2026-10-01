@@ -36,6 +36,7 @@ import {
     type DealPermissionAction,
     type UpdateDealStageOptions,
     actorAttributionUid,
+    checkDealPlacement,
     checkPipelinePermission,
     createDealCore,
     loadAuthorizedDeal,
@@ -177,6 +178,8 @@ export async function updateDealDetailsAction(
         const loaded = await loadAuthorizedDeal(actor, dealId, 'edit');
         if (!loaded.ok) return { success: false, error: loaded.error };
         const { deal, ref: dealRef } = loaded;
+        const placement = await checkDealPlacement(deal.workspaceId, { pipelineId: updates.pipelineId, stageId: updates.stageId });
+        if (!placement.granted) return { success: false, error: placement.reason };
 
         const timestamp = new Date().toISOString();
         // ARCHITECTURAL POINTER (Rule 10): Strip undefined values so Firestore does not reject with invalid argument
@@ -596,6 +599,8 @@ export async function updateDealAction(
 
         // SECURITY (N1): a deal can never be moved to another tenant or re-identified by an update.
         for (const field of IMMUTABLE_DEAL_FIELDS) delete updates[field];
+        const placement = await checkDealPlacement(currentData.workspaceId, { pipelineId: updates.pipelineId, stageId: updates.stageId });
+        if (!placement.granted) return { success: false, error: placement.reason };
 
         // Sanitize name if updated
         let cleanName = updates.name;
@@ -647,6 +652,9 @@ export async function bulkUpdateDealsStageAction(
         if (!dealIds || dealIds.length === 0 || !targetStageId || !workspaceId) {
             return { success: false, updatedCount: 0, error: 'Missing required parameters' };
         }
+
+        const placement = await checkDealPlacement(workspaceId, { stageId: targetStageId });
+        if (!placement.granted) return { success: false, updatedCount: 0, error: placement.reason };
 
         const stageSnap = await adminDb.collection('onboardingStages').doc(targetStageId).get();
         const stageData = stageSnap.exists ? (stageSnap.data() as OnboardingStage) : null;
@@ -920,6 +928,13 @@ export async function duplicateDealAction(
         const loaded = await loadAuthorizedDeal(actor, dealId, 'create');
         if (!loaded.ok) return { success: false, error: loaded.error };
         const sourceDeal = loaded.deal;
+
+        // FU-15: a requested target pipeline / stage must be shared to the source deal's workspace.
+        const placement = await checkDealPlacement(sourceDeal.workspaceId, {
+            pipelineId: options?.targetPipelineId,
+            stageId: options?.targetStageId,
+        });
+        if (!placement.granted) return { success: false, error: placement.reason };
 
         const now = new Date().toISOString();
         const targetPipelineId = options?.targetPipelineId || sourceDeal.pipelineId;
@@ -1434,6 +1449,9 @@ export async function convertLeadToDealAction(
         if (!permission.granted) {
             return { success: false, error: permission.reason || 'Unauthorized to create opportunities.' };
         }
+
+        const placement = await checkDealPlacement(workspaceId, { pipelineId, stageId: requestedStageId });
+        if (!placement.granted) return { success: false, error: placement.reason };
 
         // SECURITY (N1): the deal's organization is its workspace's organization.
         const organizationId = await workspaceOrganizationId(workspaceId);

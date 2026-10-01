@@ -30,4 +30,6 @@ export const PUBLIC_SERVER_ACTIONS: Readonly<Record<string, string>> = {
     'Declines an invitation using a cryptographically verified token from the public invitation landing card.',
   'src/app/actions/invitation-crypto-actions.ts#validateEncryptedInvitationAction':
     'Validates an encrypted invitation token before displaying the onboarding invitation welcome card.',
+  'src/lib/survey-actions.ts#executeSurveyResultButtonActions':
+    'Results-page button for anonymous respondents. Takes only the button id; tags, automation and webhook come from the stored survey; the response must belong to the survey and be linked to the entity; webhook via SSRF-safe fetch (FU-14).',
 };

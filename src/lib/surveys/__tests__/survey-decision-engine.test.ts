@@ -5,8 +5,10 @@ import {
   type SurveyDecisionContext,
 } from '../survey-decision-evaluator';
 import {
-  executeSingleDecisionAction,
-  executeSurveyDecisioningPipelineAction,
+  runSingleDecisionAction as executeSingleDecisionAction,
+  runSurveyDecisionPipeline as executeSurveyDecisioningPipelineAction,
+} from '../survey-decision-runner';
+import {
   testSurveyDecisionRuleAction,
   getSurveyDecisionConfigAction,
   saveSurveyDecisionConfigAction,

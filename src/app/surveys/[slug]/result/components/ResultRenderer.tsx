@@ -150,9 +150,8 @@ function ActionButton({
                     surveyId,
                     responseId,
                     entityId,
-                    addTagIds: block.addTagIds,
-                    triggerAutomationId: block.triggerAutomationId,
-                    fireWebhookUrl: block.fireWebhookEnabled ? block.fireWebhookUrl : undefined
+                    // The server reads what this button does from the stored survey.
+                    blockId: block.id,
                 });
             } catch (err) {
                 console.error('Failed to execute results button actions:', err);

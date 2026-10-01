@@ -9,7 +9,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { Deal, Pipeline, WorkspaceEntity, DealFocalContact } from '@/lib/types';
 import { calculateExpectedCloseDate } from '@/app/admin/pipeline/utils/deal-expected-close';
-import { type CrmActor, checkPipelinePermission, workspaceOrganizationId } from './deal-core';
+import { type CrmActor, checkDealPlacement, checkPipelinePermission, workspaceOrganizationId } from './deal-core';
 
 export interface BulkDealCreationData {
   entityIds: string[];
@@ -43,6 +43,10 @@ export async function bulkCreateDealsCore(actor: CrmActor, data: BulkDealCreatio
     const fromWorkspace = await workspaceOrganizationId(data.workspaceId);
     if (fromWorkspace === null && actor.kind === 'user') return { success: false, error: 'Workspace not found.' };
     const organizationId = fromWorkspace ?? data.organizationId ?? '';
+
+    // FU-15: the pipeline (and any requested stage) must be shared to the workspace.
+    const placement = await checkDealPlacement(data.workspaceId, { pipelineId: data.pipelineId || '', stageId: data.stageId });
+    if (!placement.granted) return { success: false, error: placement.reason };
 
     const {
       entityIds,
