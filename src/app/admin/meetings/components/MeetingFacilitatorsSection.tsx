@@ -18,6 +18,40 @@ import type { MediaAsset } from '@/lib/types';
 // @ts-ignore
 import { v4 as uuidv4 } from 'uuid';
 
+// ─── Interfaces ──────────────────────────────────────────────────────
+interface TeamUser {
+  id: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  photoURL?: string;
+  facilitatorRole?: string;
+  facilitatorBio?: string;
+  organizationId?: string;
+}
+
+interface FacilitatorItem {
+  id: string;
+  type: 'workspace_user' | 'custom';
+  userId?: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  role?: string;
+  bio?: string;
+  image?: string;
+  joinLink?: string;
+}
+
+interface CustomFacilitatorState {
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
+  bio: string;
+  image: string;
+}
+
 // ─── Constants (rerender-no-inline-components) ───────────────────────
 const CUSTOM_FACILITATOR_SENTINEL = '__add_custom__';
 
@@ -37,7 +71,7 @@ export function MeetingFacilitatorsSection() {
   });
 
   const [isAddingCustom, setIsAddingCustom] = React.useState(false);
-  const [customFacilitator, setCustomFacilitator] = React.useState({
+  const [customFacilitator, setCustomFacilitator] = React.useState<CustomFacilitatorState>({
     name: '', email: '', phone: '', role: '', bio: '', image: '',
   });
 
@@ -50,14 +84,15 @@ export function MeetingFacilitatorsSection() {
     );
   }, [firestore, activeOrganizationId]);
 
-  const { data: teamUsers, isLoading: isLoadingUsers } = useCollection(usersQuery);
+  const { data: teamUsers, isLoading: isLoadingUsers } = useCollection<TeamUser>(usersQuery);
 
   // ── Derived: available users not yet added ──
   const availableWorkspaceUsers = React.useMemo(() => {
+    const rawFields = fields as unknown as FacilitatorItem[];
     const filtered = (teamUsers || []).filter(
-      (u: any) => !fields.some((f: any) => f.userId === u.id),
+      (u: TeamUser) => !rawFields.some((f) => f.userId === u.id),
     );
-    return filtered.sort((a: any, b: any) =>
+    return filtered.sort((a: TeamUser, b: TeamUser) =>
       (a.name || a.email || '').localeCompare(b.name || b.email || ''),
     );
   }, [teamUsers, fields]);
@@ -69,16 +104,17 @@ export function MeetingFacilitatorsSection() {
       return;
     }
 
-    const selected = teamUsers?.find((u: any) => u.id === value);
+    const selected = teamUsers?.find((u) => u.id === value);
     if (!selected) return;
-    if (fields.some((f: any) => f.userId === value)) return;
+    const rawFields = fields as unknown as FacilitatorItem[];
+    if (rawFields.some((f) => f.userId === value)) return;
 
     append({
       id: uuidv4(),
       type: 'workspace_user',
       userId: selected.id,
-      name: selected.name || selected.email,
-      email: selected.email,
+      name: selected.name || selected.email || 'Team Member',
+      email: selected.email || '',
       phone: selected.phone || '',
       role: selected.facilitatorRole || '',
       bio: selected.facilitatorBio || '',
@@ -108,7 +144,7 @@ export function MeetingFacilitatorsSection() {
 
   const handleUpdateFacilitatorField = React.useCallback(
     async (index: number, key: string, value: string) => {
-      const field = fields[index] as any;
+      const field = fields[index] as unknown as FacilitatorItem;
       const updated = { ...field, [key]: value };
       update(index, updated);
 
@@ -150,7 +186,7 @@ export function MeetingFacilitatorsSection() {
       <div className="space-y-1.5">
         <Label className="text-[10px] font-semibold text-muted-foreground/60">Add Facilitator</Label>
         <Select onValueChange={handleDropdownChange} disabled={isLoadingUsers} value="">
-          <SelectTrigger className="w-full bg-muted/20 border-none shadow-none h-10 rounded-xl">
+          <SelectTrigger className="w-full bg-background border border-input shadow-xs h-11 min-h-[44px] rounded-xl hover:border-foreground/30 focus:ring-2 focus:ring-primary/20">
             <SelectValue placeholder={isLoadingUsers ? 'Loading team...' : 'Select team member or add custom...'} />
           </SelectTrigger>
           <SelectContent className="rounded-xl">
@@ -159,7 +195,7 @@ export function MeetingFacilitatorsSection() {
                 <div className="px-2 py-1.5 text-[8px] font-black text-muted-foreground/50 uppercase tracking-widest">
                   Team Members
                 </div>
-                {availableWorkspaceUsers.map((user: any) => (
+                {availableWorkspaceUsers.map((user: TeamUser) => (
                   <SelectItem key={user.id} value={user.id}>
                     <div className="flex items-center gap-2">
                       <Avatar className="h-5 w-5">
@@ -203,10 +239,10 @@ export function MeetingFacilitatorsSection() {
             Assigned Facilitators ({fields.length})
           </Label>
           <div className="grid grid-cols-1 gap-3">
-            {fields.map((field: any, index) => (
+            {fields.map((field, index) => (
               <FacilitatorCard
                 key={field.id}
-                field={field}
+                field={field as unknown as FacilitatorItem}
                 index={index}
                 onRemove={remove}
                 onUpdate={handleUpdateFacilitatorField}
@@ -222,7 +258,7 @@ export function MeetingFacilitatorsSection() {
 // ─── Facilitator Card (hoisted per rerender-no-inline-components) ────
 
 interface FacilitatorCardProps {
-  field: any;
+  field: FacilitatorItem;
   index: number;
   onRemove: (index: number) => void;
   onUpdate: (index: number, key: string, value: string) => void;
@@ -267,7 +303,7 @@ function FacilitatorCard({ field, index, onRemove, onUpdate }: FacilitatorCardPr
 
   return (
     <>
-      <div className="group relative p-4 bg-muted/10 border border-border/40 rounded-2xl transition-all hover:border-border/70 hover:shadow-sm">
+      <div className="group relative p-4 bg-card border border-border/80 shadow-sm rounded-2xl transition-all hover:border-border hover:shadow-md">
         <div className="flex gap-4">
           {/* Avatar — clickable to change */}
           <button
@@ -296,7 +332,7 @@ function FacilitatorCard({ field, index, onRemove, onUpdate }: FacilitatorCardPr
                   onChange={(e) => setDraftRole(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Presenter role, e.g. Keynote Speaker"
-                  className="h-8 rounded-lg text-xs font-semibold bg-card border"
+                  className="h-9 min-h-[36px] rounded-xl text-xs font-semibold bg-background border border-input shadow-xs focus-visible:ring-2 focus-visible:ring-primary/20"
                   autoFocus
                 />
                 <Textarea
@@ -304,7 +340,7 @@ function FacilitatorCard({ field, index, onRemove, onUpdate }: FacilitatorCardPr
                   onChange={(e) => setDraftBio(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Short biography..."
-                  className="min-h-[60px] rounded-lg text-xs bg-card border resize-none"
+                  className="min-h-[60px] rounded-xl text-xs bg-background border border-input shadow-xs focus-visible:ring-2 focus-visible:ring-primary/20 resize-none"
                 />
                 <Button
                   type="button"
@@ -385,8 +421,8 @@ function FacilitatorCard({ field, index, onRemove, onUpdate }: FacilitatorCardPr
 // ─── Custom Facilitator Form (hoisted) ───────────────────────────────
 
 interface CustomFacilitatorFormProps {
-  value: { name: string; email: string; phone: string; role: string; bio: string; image: string };
-  onChange: (v: any) => void;
+  value: CustomFacilitatorState;
+  onChange: (v: CustomFacilitatorState) => void;
   onSave: () => void;
   onCancel: () => void;
 }
@@ -401,7 +437,7 @@ function CustomFacilitatorForm({ value, onChange, onSave, onCancel }: CustomFaci
 
   return (
     <>
-      <div className="p-4 bg-muted/10 border-2 border-dashed border-primary/20 rounded-2xl space-y-4 animate-in fade-in slide-in-from-top-2">
+      <div className="p-4 bg-card border-2 border-dashed border-primary/30 rounded-2xl space-y-4 shadow-xs animate-in fade-in slide-in-from-top-2">
         <div className="flex items-center justify-between">
           <h4 className="text-xs font-bold text-primary flex items-center gap-1.5">
             <UserPlus className="h-3.5 w-3.5" /> New Custom Facilitator
@@ -437,7 +473,7 @@ function CustomFacilitatorForm({ value, onChange, onSave, onCancel }: CustomFaci
             <div className="space-y-1">
               <Label className="text-[10px] font-semibold text-muted-foreground/60">Full Name *</Label>
               <Input
-                className="h-8 rounded-lg text-xs"
+                className="h-10 min-h-[40px] rounded-xl text-xs bg-background border border-input shadow-xs focus-visible:ring-2 focus-visible:ring-primary/20"
                 value={value.name}
                 onChange={e => onChange({ ...value, name: e.target.value })}
                 placeholder="Jane Doe"
@@ -446,7 +482,7 @@ function CustomFacilitatorForm({ value, onChange, onSave, onCancel }: CustomFaci
             <div className="space-y-1">
               <Label className="text-[10px] font-semibold text-muted-foreground/60">Presenter Role</Label>
               <Input
-                className="h-8 rounded-lg text-xs"
+                className="h-10 min-h-[40px] rounded-xl text-xs bg-background border border-input shadow-xs focus-visible:ring-2 focus-visible:ring-primary/20"
                 value={value.role}
                 onChange={e => onChange({ ...value, role: e.target.value })}
                 placeholder="Guest Speaker"
@@ -455,7 +491,7 @@ function CustomFacilitatorForm({ value, onChange, onSave, onCancel }: CustomFaci
             <div className="space-y-1">
               <Label className="text-[10px] font-semibold text-muted-foreground/60">Email</Label>
               <Input
-                className="h-8 rounded-lg text-xs"
+                className="h-10 min-h-[40px] rounded-xl text-xs bg-background border border-input shadow-xs focus-visible:ring-2 focus-visible:ring-primary/20"
                 type="email"
                 value={value.email}
                 onChange={e => onChange({ ...value, email: e.target.value })}
@@ -465,7 +501,7 @@ function CustomFacilitatorForm({ value, onChange, onSave, onCancel }: CustomFaci
             <div className="space-y-1">
               <Label className="text-[10px] font-semibold text-muted-foreground/60">Phone</Label>
               <Input
-                className="h-8 rounded-lg text-xs"
+                className="h-10 min-h-[40px] rounded-xl text-xs bg-background border border-input shadow-xs focus-visible:ring-2 focus-visible:ring-primary/20"
                 value={value.phone}
                 onChange={e => onChange({ ...value, phone: e.target.value })}
                 placeholder="+1 234 567 8900"
@@ -474,7 +510,7 @@ function CustomFacilitatorForm({ value, onChange, onSave, onCancel }: CustomFaci
             <div className="space-y-1 col-span-2">
               <Label className="text-[10px] font-semibold text-muted-foreground/60">Bio</Label>
               <Textarea
-                className="min-h-[50px] rounded-lg text-xs resize-none"
+                className="min-h-[60px] rounded-xl text-xs bg-background border border-input shadow-xs focus-visible:ring-2 focus-visible:ring-primary/20 resize-none"
                 value={value.bio}
                 onChange={e => onChange({ ...value, bio: e.target.value })}
                 placeholder="Short professional biography..."

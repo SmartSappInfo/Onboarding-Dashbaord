@@ -380,17 +380,17 @@ export default function NewMeetingPage() {
   React.useEffect(() => {
     if (watchedType) {
       const defaults = getMeetingHeroDefaults(watchedType.id);
-      const entityName = watchedEntity?.displayName || `{{${singular}}}`;
+      const entityName = watchedEntity?.displayName || '{{entity_name}}';
       const currentTitle = form.getValues('heroTitle');
       const currentDesc = form.getValues('heroDescription');
       if (!currentTitle) {
-        setValue('heroTitle', defaults.title.replace(/\{\{school\}\}/g, entityName));
+        setValue('heroTitle', defaults.title.replace(/\{\{(school|entity_name)\}\}/g, entityName));
       }
       if (!currentDesc) {
-        setValue('heroDescription', defaults.description.replace(/\{\{school\}\}/g, entityName));
+        setValue('heroDescription', defaults.description.replace(/\{\{(school|entity_name)\}\}/g, entityName));
       }
     }
-  }, [watchedType?.id, watchedEntity?.id, singular]);
+  }, [watchedType?.id, watchedEntity?.id]);
 
   const handleSelectTemplate = (template: typeof MEETING_TEMPLATES[number]) => {
     setSelectedTemplateId(template.id);
@@ -591,9 +591,9 @@ export default function NewMeetingPage() {
 
   if (isLoadingCustomTemplates) {
       return (
-        <div className="h-full w-full overflow-y-auto bg-background">
+        <div className="h-full w-full overflow-y-auto">
           <div className="w-full p-8 space-y-8">
-            <Card className="max-w-3xl mx-auto shadow-sm border-none ring-1 ring-border rounded-2xl">
+            <Card className="max-w-3xl mx-auto shadow-sm border border-border/80 rounded-2xl bg-card">
               <CardHeader><Skeleton className="h-8 w-1/3" /></CardHeader>
               <CardContent className="space-y-8">
                 <Skeleton className="h-12 w-full rounded-xl" />
@@ -607,7 +607,7 @@ export default function NewMeetingPage() {
   }
 
     return (
-        <div className="h-full w-full overflow-y-auto bg-background">
+        <div className="h-full w-full overflow-y-auto">
         <div className="w-full p-8 space-y-8 pb-24 text-left">
              {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -661,14 +661,13 @@ export default function NewMeetingPage() {
                     <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider mt-1.5">Internal Webinar/Session Title</p>
                 </div>
             </div>
-            <div className="flex items-center gap-2 text-[10px] font-semibold text-muted-foreground bg-background px-3 py-1 rounded-full border shadow-sm w-fit">
+            <div className="flex items-center gap-2 text-[10px] font-semibold text-muted-foreground bg-card px-3 py-1 rounded-full border border-border/80 shadow-sm w-fit">
                 <Settings2 className="h-3 w-3" />
                 Wizard Mode
             </div>
         </div>
 
-        {/* Step Indicator */}
- <div className="flex items-center gap-2 p-2 bg-background rounded-2xl border shadow-sm overflow-x-auto">
+        <div className="flex items-center gap-2 p-2 bg-card rounded-2xl border border-border/80 shadow-sm overflow-x-auto">
           {WIZARD_STEPS.map((step, index) => {
             const StepIcon = step.icon;
             const isActive = index === currentStep;
@@ -682,7 +681,7 @@ export default function NewMeetingPage() {
                     "flex-1 flex items-center gap-3 p-3 rounded-xl transition-all duration-300 text-left min-w-[140px]",
                     isActive && "bg-primary/10 ring-1 ring-primary/20 shadow-sm",
                     isCompleted && "bg-emerald-50 dark:bg-emerald-950/20",
-                    !isActive && !isCompleted && "hover:bg-background0 opacity-60"
+                    !isActive && !isCompleted && "hover:bg-muted/50 opacity-70"
                   )}
                 >
  <div className={cn(
@@ -786,14 +785,14 @@ export default function NewMeetingPage() {
             {currentStep === stepIndex('config') && (
                 <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
  <div className="xl:col-span-7 space-y-8">
- <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
- <CardHeader className="bg-muted/30 border-b py-4">
+                        <Card className="border border-border/80 shadow-sm rounded-2xl overflow-hidden bg-card text-card-foreground">
+                            <CardHeader className="bg-muted/15 border-b border-border/70 py-4">
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 bg-primary/10 rounded-xl"><Calendar className="h-5 w-5 text-primary" /></div>
                                     <CardTitle className="text-lg font-semibold tracking-tight">Session Configuration</CardTitle>
                                 </div>
                             </CardHeader>
- <CardContent className="p-6 space-y-8 bg-background">
+                            <CardContent className="p-6 space-y-8 bg-card">
  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <FormField
                                     control={form.control}
@@ -808,7 +807,7 @@ export default function NewMeetingPage() {
                                                 noneLabel="No Entity Context Binding"
                                                 noneValue="__none__"
                                                 placeholder={`Select ${singular.toLowerCase()}...`}
-                                                className="h-12 rounded-xl bg-muted/20 border-none shadow-none font-bold"
+                                                className="h-12 rounded-xl bg-background border border-input shadow-xs hover:border-foreground/30 focus:ring-2 focus:ring-primary/20 font-semibold"
                                                 onChange={(val, entity) => {
                                                     if (val === '__none__' || !entity) {
                                                         field.onChange(null);
@@ -831,13 +830,13 @@ export default function NewMeetingPage() {
                                     name="type"
                                     render={({ field }) => (
                                     <FormItem>
- <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Session Category</FormLabel>
+                                        <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Session Category</FormLabel>
                                         <Select
                                             onValueChange={(typeId: string) => field.onChange(MEETING_TYPES.find(t => t.id === typeId))}
                                             value={field.value?.id}
                                         >
                                             <FormControl>
- <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all">
+                                                <SelectTrigger className="h-12 rounded-xl bg-background border border-input shadow-xs hover:border-foreground/30 focus:ring-2 focus:ring-primary/20 font-semibold transition-all">
                                                     <SelectValue placeholder="Select type..." />
                                                 </SelectTrigger>
                                             </FormControl>
@@ -876,9 +875,9 @@ export default function NewMeetingPage() {
                                     <FormItem>
  <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Meeting URL (e.g. Google Meet)</FormLabel>
                                         <FormControl>
- <div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 transition-all shadow-inner">
- <div className="bg-muted px-3 flex items-center text-[10px] font-semibold tracking-tighter text-muted-foreground/60 border-r"><Video className="h-3 w-3" /></div>
- <Input placeholder="https://meet.google.com/..." {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-mono text-sm" />
+                                            <div className="flex h-12 border border-input rounded-xl overflow-hidden bg-background focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all shadow-xs">
+                                                <div className="bg-muted/40 px-3.5 flex items-center text-xs font-semibold text-muted-foreground border-r border-input"><Video className="h-4 w-4" /></div>
+                                                <Input placeholder="https://meet.google.com/..." {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-mono text-xs px-3" />
                                             </div>
                                         </FormControl>
                                         <FormMessage />
@@ -887,23 +886,23 @@ export default function NewMeetingPage() {
                                 />
                             </div>
 
- <Separator className="bg-border/50" />
+                            <Separator className="bg-border/50" />
 
                             <FormField
                                 control={form.control}
                                 name="meetingSlug"
                                 render={({ field }) => (
                                     <FormItem>
- <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Meeting URL Slug</FormLabel>
- <div className="flex flex-col sm:flex-row group transition-all">
- <div className="flex h-12 items-center bg-muted border border-border border-r-0 rounded-t-xl sm:rounded-l-xl sm:rounded-tr-none px-4 text-[10px] font-semibold tracking-tighter text-muted-foreground/60 shrink-0">
+                                        <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Meeting URL Slug</FormLabel>
+                                        <div className="flex flex-col sm:flex-row group transition-all">
+                                            <div className="flex h-12 items-center bg-muted/40 border border-input sm:border-r-0 rounded-t-xl sm:rounded-l-xl sm:rounded-tr-none px-4 text-xs font-medium text-muted-foreground shrink-0">
                                                 /meetings/{watchedType?.slug || 'parent-engagement'}/
                                             </div>
                                             <FormControl>
                                                 <Input 
                                                     {...field} 
                                                     placeholder="e.g. q3-kickoff-session" 
- className="h-12 rounded-t-none sm:rounded-l-none rounded-b-xl sm:rounded-r-xl bg-card border-2 border-slate-200 focus:border-primary focus-visible:ring-0 shadow-none font-bold text-lg px-4 transition-all" 
+                                                    className="h-12 rounded-t-none sm:rounded-l-none rounded-b-xl sm:rounded-r-xl bg-background border border-input focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 shadow-xs font-bold text-sm px-4 transition-all" 
                                                 />
                                             </FormControl>
                                         </div>
@@ -944,14 +943,14 @@ export default function NewMeetingPage() {
             {currentStep === stepIndex('branding') && (
                 <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
  <div className="xl:col-span-7 space-y-8">
- <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
- <CardHeader className="bg-muted/30 border-b py-4">
+                        <Card className="border border-border/80 shadow-sm rounded-2xl overflow-hidden bg-card text-card-foreground">
+                            <CardHeader className="bg-muted/15 border-b border-border/70 py-4">
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 bg-primary/10 rounded-xl"><Palette className="h-5 w-5 text-primary" /></div>
                                     <CardTitle className="text-lg font-semibold tracking-tight">Branding & Layout</CardTitle>
                                 </div>
                             </CardHeader>
- <CardContent className="p-6 space-y-8 bg-background">
+                            <CardContent className="p-6 space-y-8 bg-card">
                                 {/* Logo Override */}
                                 <FormField
                                     control={form.control}
@@ -975,7 +974,7 @@ export default function NewMeetingPage() {
                                     control={form.control}
                                     name="brandingEnabled"
                                     render={({ field }) => (
-                                        <FormItem className="flex flex-row items-center justify-between p-4 bg-muted/20 rounded-xl border">
+                                        <FormItem className="flex flex-row items-center justify-between p-4 bg-muted/10 rounded-xl border border-border/80">
                                             <div className="space-y-1 text-left">
                                                 <FormLabel className="font-bold flex items-center gap-2">
                                                     {field.value ? <Eye className="h-4 w-4 text-primary" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
@@ -1000,7 +999,7 @@ export default function NewMeetingPage() {
                                                     <FormItem className="text-left">
                                                         <FormLabel className="text-[10px] font-semibold text-primary ml-1">Branding Name</FormLabel>
                                                         <FormControl>
-                                                            <Input {...field} placeholder="e.g. My Organization" className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" />
+                                                            <Input {...field} placeholder="e.g. My Organization" className="h-11 rounded-xl bg-background border border-input shadow-xs hover:border-foreground/30 focus-visible:ring-2 focus-visible:ring-primary/20 font-semibold" />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -1013,7 +1012,7 @@ export default function NewMeetingPage() {
                                                     <FormItem className="text-left">
                                                         <FormLabel className="text-[10px] font-semibold text-primary ml-1">Branding Slogan</FormLabel>
                                                         <FormControl>
-                                                            <Input {...field} placeholder="e.g. Excellence in Education" className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" />
+                                                            <Input {...field} placeholder="e.g. Excellence in Education" className="h-11 rounded-xl bg-background border border-input shadow-xs hover:border-foreground/30 focus-visible:ring-2 focus-visible:ring-primary/20 font-semibold" />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -1141,7 +1140,7 @@ export default function NewMeetingPage() {
                                                             <Textarea 
                                                                 {...field} 
                                                                 placeholder="<iframe ...></iframe>" 
-                                                                className="min-h-[100px] bg-background border-none ring-1 ring-border focus-visible:ring-primary/40 font-mono text-[10px]" 
+                                                                className="min-h-[100px] bg-background border border-input shadow-xs hover:border-foreground/30 focus-visible:ring-2 focus-visible:ring-primary/20 font-mono text-[11px] rounded-xl" 
                                                             />
                                                         </FormControl>
                                                         <FormMessage />
@@ -1154,26 +1153,26 @@ export default function NewMeetingPage() {
                             </CardContent>
                         </Card>
 
-                        {/* Hero Content Card (merged from old Step 4) */}
-                        <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-                            <CardHeader className="bg-muted/30 border-b py-4">
+                        {/* Top Of Page Content Card */}
+                        <Card className="border border-border/80 shadow-sm rounded-2xl overflow-hidden bg-card text-card-foreground">
+                            <CardHeader className="bg-muted/15 border-b border-border/70 py-4">
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 bg-violet-500/10 rounded-xl"><Type className="h-5 w-5 text-violet-600" /></div>
-                                    <CardTitle className="text-lg font-semibold tracking-tight">Hero Content</CardTitle>
+                                    <CardTitle className="text-lg font-semibold tracking-tight">Top Of Page Content</CardTitle>
                                 </div>
                             </CardHeader>
-                            <CardContent className="p-6 space-y-8 bg-background">
+                            <CardContent className="p-6 space-y-8 bg-card">
                                 <FormField control={form.control} name="heroTitle" render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Hero Title</FormLabel>
-                                        <FormControl><Input {...field} placeholder="e.g. Join Our Transformation Journey" className="h-14 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold text-lg" /></FormControl>
+                                        <FormControl><Input {...field} placeholder="e.g. Join Our Transformation Journey" className="h-14 rounded-xl bg-background border border-input shadow-xs hover:border-foreground/30 focus-visible:ring-2 focus-visible:ring-primary/20 font-bold text-lg" /></FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )} />
                                 <FormField control={form.control} name="heroDescription" render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Hero Description</FormLabel>
-                                        <FormControl><Textarea {...field} placeholder="Supporting text..." rows={4} className="rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-medium resize-none" /></FormControl>
+                                        <FormControl><Textarea {...field} placeholder="Supporting text..." rows={4} className="rounded-xl bg-background border border-input shadow-xs hover:border-foreground/30 focus-visible:ring-2 focus-visible:ring-primary/20 font-medium resize-none" /></FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )} />
@@ -1182,14 +1181,14 @@ export default function NewMeetingPage() {
                                     <FormField control={form.control} name="heroTagline" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Tagline</FormLabel>
-                                            <FormControl><Input {...field} placeholder="e.g. Free for all parents" className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20" /></FormControl>
+                                            <FormControl><Input {...field} placeholder="e.g. Free for all parents" className="h-11 rounded-xl bg-background border border-input shadow-xs hover:border-foreground/30 focus-visible:ring-2 focus-visible:ring-primary/20" /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )} />
                                     <FormField control={form.control} name="heroCtaLabel" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">{registrationEnabled ? 'Register Button Label' : 'CTA Button Label'}</FormLabel>
-                                            <FormControl><Input {...field} placeholder={registrationEnabled ? 'Register Now' : 'Join Session'} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20" /></FormControl>
+                                            <FormControl><Input {...field} placeholder={registrationEnabled ? 'Register Now' : 'Join Session'} className="h-11 rounded-xl bg-background border border-input shadow-xs hover:border-foreground/30 focus-visible:ring-2 focus-visible:ring-primary/20" /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )} />
@@ -1232,8 +1231,8 @@ export default function NewMeetingPage() {
             {currentStep === stepIndex('registration') && (
                 <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
  <div className="xl:col-span-7 space-y-8">
- <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
- <CardHeader className="bg-muted/30 border-b py-4">
+                        <Card className="border border-border/80 shadow-sm rounded-2xl overflow-hidden bg-card text-card-foreground">
+                            <CardHeader className="bg-muted/15 border-b border-border/70 py-4">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 bg-amber-500/10 rounded-xl"><ClipboardCheck className="h-5 w-5 text-amber-600" /></div>
@@ -1243,8 +1242,8 @@ export default function NewMeetingPage() {
                                         control={form.control}
                                         name="registrationEnabled"
                                         render={({ field }) => (
- <FormItem className="flex items-center gap-2 space-y-0 text-left">
- <Label htmlFor="reg-enable" className="text-[10px] font-semibold text-muted-foreground">Enable Registration</Label>
+                                            <FormItem className="flex items-center gap-2 space-y-0 text-left">
+                                                <Label htmlFor="reg-enable" className="text-[10px] font-semibold text-muted-foreground">Enable Registration</Label>
                                                 <FormControl>
                                                     <Switch checked={field.value} onCheckedChange={field.onChange} id="reg-enable" />
                                                 </FormControl>
@@ -1255,19 +1254,19 @@ export default function NewMeetingPage() {
                             </CardHeader>
 
                             {registrationEnabled ? (
- <CardContent className="p-6 space-y-8 bg-background animate-in fade-in slide-in-from-top-2">
- <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-muted/20 p-4 rounded-xl border">
+                                <CardContent className="p-6 space-y-8 bg-card animate-in fade-in slide-in-from-top-2">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-muted/10 p-4 rounded-xl border border-border/80">
                                         <FormField
                                             control={form.control}
                                             name="registrationRequiredToJoin"
                                             render={({ field }) => (
- <FormItem className="flex flex-row items-start space-x-3 space-y-0 text-left">
+                                                <FormItem className="flex flex-row items-start space-x-3 space-y-0 text-left">
                                                     <FormControl>
                                                         <Switch checked={field.value} onCheckedChange={field.onChange} />
                                                     </FormControl>
- <div className="space-y-1 leading-none">
- <FormLabel className="font-bold">Require Registration to Join</FormLabel>
- <FormDescription className="text-xs">If off, attendees can bypass registration via the original join form.</FormDescription>
+                                                    <div className="space-y-1 leading-none">
+                                                        <FormLabel className="font-bold">Require Registration to Join</FormLabel>
+                                                        <FormDescription className="text-xs">If off, attendees can bypass registration via the original join form.</FormDescription>
                                                     </div>
                                                 </FormItem>
                                             )}
@@ -1276,51 +1275,51 @@ export default function NewMeetingPage() {
                                             control={form.control}
                                             name="registrationMode"
                                             render={({ field }) => (
- <FormItem className="text-left">
- <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Approval Mode</FormLabel>
-                                                <Select onValueChange={field.onChange} value={field.value}>
-                                                    <FormControl>
- <SelectTrigger className="h-10 rounded-xl bg-card focus:ring-1 focus:ring-primary/20">
-                                                            <SelectValue placeholder="Approval mode..." />
-                                                        </SelectTrigger>
-                                                    </FormControl>
- <SelectContent className="rounded-xl">
-                                                        <SelectItem value="open">Open (Auto-Approve)</SelectItem>
-                                                        <SelectItem value="approval_required">Manual Approval Required</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </FormItem>
+                                                <FormItem className="text-left">
+                                                    <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Approval Mode</FormLabel>
+                                                    <Select onValueChange={field.onChange} value={field.value}>
+                                                        <FormControl>
+                                                            <SelectTrigger className="h-11 min-h-[44px] rounded-xl bg-background border border-input shadow-xs hover:border-foreground/30 focus:ring-2 focus:ring-primary/20">
+                                                                <SelectValue placeholder="Approval mode..." />
+                                                            </SelectTrigger>
+                                                        </FormControl>
+                                                        <SelectContent className="rounded-xl">
+                                                            <SelectItem value="open">Open (Auto-Approve)</SelectItem>
+                                                            <SelectItem value="approval_required">Manual Approval Required</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </FormItem>
                                             )}
                                         />
                                     </div>
 
- <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <FormField
                                             control={form.control}
                                             name="capacityLimit"
                                             render={({ field }) => (
- <FormItem className="text-left">
- <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Capacity Limit (0 for unlimited)</FormLabel>
-                                                <FormControl>
-                                                    <Input 
-                                                        type="number" 
-                                                        min={0}
-                                                        onChange={e => field.onChange(parseInt(e.target.value) || 0)}
-                                                        value={field.value || 0}
- className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold tabular-nums" 
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
+                                                <FormItem className="text-left">
+                                                    <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Capacity Limit (0 for unlimited)</FormLabel>
+                                                    <FormControl>
+                                                        <Input 
+                                                            type="number" 
+                                                            min={0}
+                                                            onChange={e => field.onChange(parseInt(e.target.value) || 0)}
+                                                            value={field.value || 0}
+                                                            className="h-11 rounded-xl bg-background border border-input shadow-xs hover:border-foreground/30 focus-visible:ring-2 focus-visible:ring-primary/20 font-bold tabular-nums" 
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
                                             )}
                                         />
                                         <FormField
                                             control={form.control}
                                             name="waitlistEnabled"
                                             render={({ field }) => (
- <FormItem className="flex flex-row items-center justify-between p-3 h-11 bg-muted/20 rounded-xl mt-6">
- <div className="space-y-0.5 text-left">
- <FormLabel className="text-xs font-bold">Enable Waitlist</FormLabel>
+                                                <FormItem className="flex flex-row items-center justify-between p-3 h-11 bg-muted/10 rounded-xl border border-border/80 mt-6">
+                                                    <div className="space-y-0.5 text-left">
+                                                        <FormLabel className="text-xs font-bold">Enable Waitlist</FormLabel>
                                                     </div>
                                                     <FormControl>
                                                         <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -1330,13 +1329,13 @@ export default function NewMeetingPage() {
                                         />
                                     </div>
 
- <Separator className="bg-border/50" />
+                                    <Separator className="bg-border/50" />
 
                                     <FormField
                                         control={form.control}
                                         name="registrationFields"
                                         render={({ field }) => (
- <FormItem className="text-left">
+                                            <FormItem className="text-left">
                                                 <FormControl>
                                                     <RegistrationFieldBuilder value={field.value} onChange={field.onChange} />
                                                 </FormControl>
@@ -1345,20 +1344,20 @@ export default function NewMeetingPage() {
                                         )}
                                     />
 
- <Separator className="bg-border/50" />
+                                    <Separator className="bg-border/50" />
 
                                     <FormField
                                         control={form.control}
                                         name="registrationSuccessMessage"
                                         render={({ field }) => (
- <FormItem className="text-left">
- <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Confirmation Message</FormLabel>
+                                            <FormItem className="text-left">
+                                                <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Confirmation Message</FormLabel>
                                                 <FormControl>
                                                     <Textarea 
                                                         {...field} 
                                                         placeholder="Message shown after successful registration..."
                                                         rows={2}
- className="rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 resize-none font-medium text-sm"
+                                                        className="rounded-xl bg-background border border-input shadow-xs hover:border-foreground/30 focus-visible:ring-2 focus-visible:ring-primary/20 resize-none font-medium text-sm"
                                                     />
                                                 </FormControl>
                                                 {/* V3: Variable interpolation chip picker */}
@@ -1441,26 +1440,26 @@ export default function NewMeetingPage() {
                 <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
                     {/* ── Assets Card: Recording & Brochure ── */}
-                    <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-                        <CardHeader className="bg-muted/30 border-b py-4">
+                    <Card className="border border-border/80 shadow-sm rounded-2xl overflow-hidden bg-card text-card-foreground">
+                        <CardHeader className="bg-muted/15 border-b border-border/70 py-4">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-blue-500/10 rounded-xl"><Video className="h-4 w-4 text-blue-600" /></div>
                                 <CardTitle className="text-sm font-semibold tracking-tight">Meeting Assets</CardTitle>
                             </div>
                         </CardHeader>
-                        <CardContent className="p-6 space-y-4 bg-background">
+                        <CardContent className="p-6 space-y-4 bg-card">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FormField control={form.control} name="recordingUrl" render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Video Recording (YouTube)</FormLabel>
-                                        <FormControl><Input placeholder="https://youtu.be/..." {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20" /></FormControl>
+                                        <FormControl><Input placeholder="https://youtu.be/..." {...field} className="h-11 rounded-xl bg-background border border-input shadow-xs hover:border-foreground/30 focus-visible:ring-2 focus-visible:ring-primary/20" /></FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )} />
                                 <FormField control={form.control} name="brochureUrl" render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Public Brochure</FormLabel>
-                                        <FormControl><BrochureSelect value={field.value} onValueChange={field.onChange} className="rounded-xl border-none shadow-none bg-muted/20" /></FormControl>
+                                        <FormControl><BrochureSelect value={field.value} onValueChange={field.onChange} className="rounded-xl border border-input bg-background shadow-xs hover:border-foreground/30" /></FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )} />
@@ -1469,8 +1468,8 @@ export default function NewMeetingPage() {
                     </Card>
 
                     {/* ── Registration Webhook Card ── */}
-                    <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-                        <CardHeader className="bg-muted/30 border-b py-4">
+                    <Card className="border border-border/80 shadow-sm rounded-2xl overflow-hidden bg-card text-card-foreground">
+                        <CardHeader className="bg-muted/15 border-b border-border/70 py-4">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 bg-violet-500/10 rounded-xl"><Webhook className="h-4 w-4 text-violet-600" /></div>
@@ -1486,7 +1485,7 @@ export default function NewMeetingPage() {
                             </div>
                         </CardHeader>
                         {form.watch('registrationWebhookEnabled') && (
-                            <CardContent className="p-6 space-y-4 bg-background animate-in fade-in slide-in-from-top-2">
+                            <CardContent className="p-6 space-y-4 bg-card animate-in fade-in slide-in-from-top-2">
                                 <FormField control={form.control} name="registrationWebhookUrl" render={({ field }) => (
                                     <FormItem className="text-left">
                                         <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">POST Endpoint URL</FormLabel>
@@ -1494,7 +1493,7 @@ export default function NewMeetingPage() {
                                             <Input
                                                 {...field}
                                                 placeholder="https://your-crm.com/webhooks/registrations"
-                                                className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-mono text-xs"
+                                                className="h-11 rounded-xl bg-background border border-input shadow-xs hover:border-foreground/30 focus-visible:ring-2 focus-visible:ring-primary/20 font-mono text-xs"
                                             />
                                         </FormControl>
                                         <FormMessage />
@@ -1508,7 +1507,7 @@ export default function NewMeetingPage() {
                                                 {...field}
                                                 type="password"
                                                 placeholder="Enter a secret to sign payloads..."
-                                                className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-mono text-xs"
+                                                className="h-11 rounded-xl bg-background border border-input shadow-xs hover:border-foreground/30 focus-visible:ring-2 focus-visible:ring-primary/20 font-mono text-xs"
                                             />
                                         </FormControl>
                                         <FormMessage />
@@ -1524,14 +1523,14 @@ export default function NewMeetingPage() {
                     </Card>
 
                     {/* ── Publish Card ── */}
-                    <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-                        <CardHeader className="bg-muted/30 border-b py-4">
+                    <Card className="border border-border/80 shadow-sm rounded-2xl overflow-hidden bg-card text-card-foreground">
+                        <CardHeader className="bg-muted/15 border-b border-border/70 py-4">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-emerald-500/10 rounded-xl"><Rocket className="h-5 w-5 text-emerald-600" /></div>
                                 <CardTitle className="text-lg font-semibold tracking-tight">Launch Your Session</CardTitle>
                             </div>
                         </CardHeader>
-                        <CardContent className="p-6 space-y-6 bg-background">
+                        <CardContent className="p-6 space-y-6 bg-card">
                             {/* Publish Status */}
                             <FormField
                                 control={form.control}
@@ -1539,7 +1538,7 @@ export default function NewMeetingPage() {
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Meeting Status</FormLabel>
-                                        <div className="grid grid-cols-3 gap-2 bg-muted/30 p-1.5 rounded-2xl border">
+                                        <div className="grid grid-cols-3 gap-2 bg-muted/20 p-1.5 rounded-2xl border border-border/80">
                                             {[
                                                 { value: 'draft', label: 'Draft', icon: '📝' },
                                                 { value: 'published', label: 'Published', icon: '🚀' },
@@ -1571,7 +1570,7 @@ export default function NewMeetingPage() {
                                         <Link2 className="h-4 w-4 text-primary" />
                                         <h4 className="text-sm font-bold tracking-tight">Public URL Preview</h4>
                                     </div>
-                                    <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-xl border">
+                                    <div className="flex items-center gap-2 p-3 bg-muted/10 rounded-xl border border-border/80">
                                         <code className="flex-1 text-xs font-mono text-primary truncate">{publicUrl}</code>
                                         <Button
                                             type="button"

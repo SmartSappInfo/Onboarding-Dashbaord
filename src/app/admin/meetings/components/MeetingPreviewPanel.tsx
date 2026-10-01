@@ -113,10 +113,10 @@ export default function MeetingPreviewPanel({ data, className }: MeetingPreviewP
                                     </span>
                                 )}
                                 <h1 className="text-xl font-extrabold tracking-tight text-slate-900 leading-tight">
-                                    {data.heroTitle || 'Your Session Title'}
+                                    {(data.heroTitle || 'Your Session Title').replace(/\{\{(school|entity_name)\}\}/g, data.entityName || 'Our School')}
                                 </h1>
                                 <p className="text-[10px] leading-relaxed text-slate-500 font-medium">
-                                    {data.heroDescription || 'Provide a compelling description of what attendees will learn or achieve during this session.'}
+                                    {(data.heroDescription || 'Provide a compelling description of what attendees will learn or achieve during this session.').replace(/\{\{(school|entity_name)\}\}/g, data.entityName || 'Our School')}
                                 </p>
                             </div>
 

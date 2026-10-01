@@ -11,8 +11,8 @@ export const MEETING_TEMPLATES = [
         color: 'bg-blue-500',
         defaults: {
             title: 'Parent Orientation Session',
-            heroTitle: 'Welcome to Our School Community',
-            heroDescription: 'Join us for an essential orientation session to learn about our curriculum, values, and how we support your child\'s growth.',
+            heroTitle: "We're Digitalizing {{entity_name}} to Serve You Better",
+            heroDescription: "Join us for an essential orientation session to learn how we've improved security and safety of your child, made it easy for parents to be involved in their children's school life, and how we support your child's growth.",
             heroTagline: 'ORIENTATION & ONBOARDING',
             heroCtaLabel: 'Register Now',
             registrationEnabled: true,

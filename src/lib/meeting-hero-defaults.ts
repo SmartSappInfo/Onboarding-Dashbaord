@@ -15,14 +15,14 @@ export interface MeetingHeroDefaults {
 
 const DEFAULTS: Record<string, MeetingHeroDefaults> = {
   parent: {
-    title: '{{school}} is digitalizing to serve you better',
+    title: "We're Digitalizing {{entity_name}} to Serve You Better",
     description:
-      "Join us for a short onboarding session where we'll show you how SmartSapp improves communication, payments, and school engagement for parents.",
+      "Join us for an essential orientation session to learn how we've improved security and safety of your child, made it easy for parents to be involved in their children's school life, and how we support your child's growth.",
   },
   kickoff: {
     title: 'Institutional Kickoff Meeting',
     description:
-      "Welcome to the kickoff meeting for {{school}}. We'll discuss the onboarding process, set timelines, and answer your initial questions to ensure a smooth start.",
+      "Welcome to the kickoff meeting for {{entity_name}}. We'll discuss the onboarding process, set timelines, and answer your initial questions to ensure a smooth start.",
   },
   training: {
     title: 'Staff Training Session',
@@ -30,7 +30,7 @@ const DEFAULTS: Record<string, MeetingHeroDefaults> = {
       'This session is designed to get your staff comfortable with the SmartSapp platform. We will cover key features for student management, parent communication, and daily operations.',
   },
   webinar: {
-    title: 'Live Webinar — {{school}}',
+    title: 'Live Webinar — {{entity_name}}',
     description:
       'Register for this exclusive live session to learn about digital transformation in education. Seats are limited — secure your spot today.',
     ctaLabel: 'Register Now',
@@ -40,30 +40,32 @@ const DEFAULTS: Record<string, MeetingHeroDefaults> = {
 /**
  * Returns the resolved hero title for a meeting.
  * Priority: meeting override → type default → generic fallback.
+ * Automatically resolves {{entity_name}} or {{school}} tokens.
  */
 export function getHeroTitle(
   meetingTypeId: string,
   entityName: string,
   override?: string,
 ): string {
-  if (override) return override;
   const d = DEFAULTS[meetingTypeId];
-  const raw = d?.title ?? 'Upcoming Session';
-  return raw.replace(/\{\{school\}\}/g, entityName);
+  const raw = override || d?.title || 'Upcoming Session';
+  if (!entityName) return raw;
+  return raw.replace(/\{\{(school|entity_name)\}\}/g, entityName);
 }
 
 /**
  * Returns the resolved hero description for a meeting.
+ * Automatically resolves {{entity_name}} or {{school}} tokens.
  */
 export function getHeroDescription(
   meetingTypeId: string,
   entityName: string,
   override?: string,
 ): string {
-  if (override) return override;
   const d = DEFAULTS[meetingTypeId];
-  const raw = d?.description ?? '';
-  return raw.replace(/\{\{school\}\}/g, entityName);
+  const raw = override || d?.description || '';
+  if (!entityName) return raw;
+  return raw.replace(/\{\{(school|entity_name)\}\}/g, entityName);
 }
 
 /**
