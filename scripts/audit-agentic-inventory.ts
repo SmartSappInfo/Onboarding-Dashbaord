@@ -37,6 +37,8 @@ import {
   type RiskLevel,
   type RouteKind,
 } from './agentic-inventory/analysis';
+import { exportKey, sweepRepository } from './agentic-inventory/server-action-sweep';
+import { PUBLIC_SERVER_ACTIONS } from '../src/platform/__tests__/security/public-server-actions';
 
 export type CapabilityDomain =
   | 'identity_access'
@@ -85,6 +87,11 @@ interface DiscoveredItem {
   cloudRunSafe: boolean;
   consumers: { ui: boolean; ai: boolean; automation: boolean; api: boolean };
   hasTests: boolean;
+  /**
+   * Server actions only: the STRICT sweep's verdict (agents_mcp PR-2, FU-8). 'guarded' = a verified
+   * identity guard; 'public' = in PUBLIC_SERVER_ACTIONS with a reason; 'unguarded' otherwise.
+   */
+  sweepVerdict?: 'guarded' | 'public' | 'unguarded';
 }
 
 const ROOT_DIR = process.cwd();
@@ -488,12 +495,23 @@ function runInventoryAudit(): void {
   console.log('>>> Agentic capability inventory (TypeScript AST)…');
 
   // 1. Discover surfaces
-  const actionFiles = walkDir(SRC_DIR, (f) => isSource(f) && !isTest(f) && /action/i.test(path.basename(f)));
+  // Server actions come from the strict sweep (same parser as the CI guard test): every export of
+  // every 'use server' module, whatever the file is called (PR-2: the old filename filter missed
+  // modules such as forms/identity-resolution.ts).
+  const sweep = sweepRepository(ROOT_DIR);
+  const sweepVerdicts = new Map(
+    sweep.map((e) => [exportKey(e), e.guarded ? 'guarded' : exportKey(e) in PUBLIC_SERVER_ACTIONS ? 'public' : 'unguarded'] as const)
+  );
+  const actionFiles = [...new Set(sweep.map((e) => path.join(ROOT_DIR, e.file)))];
   const routeFiles = walkDir(path.join(SRC_DIR, 'app', 'api'), (f) => /route\.(ts|js)$/.test(f));
   const flowFiles = walkDir(path.join(SRC_DIR, 'ai', 'flows'), (f) => isSource(f) && !isTest(f));
   const serviceFiles = [
     ...walkDir(path.join(SRC_DIR, 'lib', 'services'), (f) => isSource(f) && !isTest(f)),
     ...walkDir(path.join(SRC_DIR, 'lib', 'lead-intelligence'), (f) => isSource(f) && !isTest(f)),
+    // PR-2: the CompanyBrain / agent stack predates Phase 1 and must be in the inventory too.
+    ...['mcp', 'agents', 'memory', 'workflows', 'supervisor'].flatMap((dir) =>
+      walkDir(path.join(SRC_DIR, 'lib', dir), (f) => isSource(f) && !isTest(f))
+    ),
   ];
   const portalFiles = walkDir(path.join(SRC_DIR, 'lib', 'page-builder', 'blocks', 'portal'), (f) => isSource(f) && !isTest(f));
 
@@ -518,6 +536,11 @@ function runInventoryAudit(): void {
     byKey.set(key, item);
   }
   const inventory = [...byKey.values()];
+  for (const item of inventory) {
+    const verdict = sweepVerdicts.get(`${item.filePath.split(path.sep).join('/')}#${item.exportName}`);
+    if (verdict) item.sweepVerdict = verdict;
+    else if (item.category === 'server_action') item.sweepVerdict = 'unguarded';
+  }
 
   // 3. Consumers and tests
   const allSource = walkDir(SRC_DIR, isSource);
@@ -566,8 +589,12 @@ function runInventoryAudit(): void {
   // 5. Gap lists (tools §7.3)
   const missingTools = catalogCoverage.filter((c) => c.matches.length === 0).map((c) => c.tool);
   const unmapped = inventory.filter((i) => i.status === 'unmapped' && (i.category === 'server_action' || i.category === 'service'));
+  // Server actions: the strict sweep's verdict (a caller-trusting check is NOT a guard). API routes
+  // keep the guard-call heuristic until the route sweep exists (FU-4).
   const authGaps = inventory.filter(
-    (i) => (i.category === 'server_action' || i.category === 'api_route') && i.authChecks.length === 0
+    (i) =>
+      i.sweepVerdict === 'unguarded' ||
+      (i.category === 'api_route' && i.authChecks.length === 0)
   );
   const testGaps = inventory.filter((i) => !i.hasTests && (i.category === 'server_action' || i.category === 'api_route'));
   const duplicates = new Map<string, DiscoveredItem[]>();
@@ -610,6 +637,14 @@ function runInventoryAudit(): void {
     withPermissionId: inventory.filter((i) => i.permissionsRequired.length > 0).length,
     catalogTools: catalog.length,
     catalogToolsWithCandidate: catalog.length - missingTools.length,
+    // The sweep is authoritative for server actions (some exports, e.g. constants or Genkit flows,
+    // are categorised differently in the list below).
+    serverActionSweep: {
+      exports: sweep.length,
+      guarded: [...sweepVerdicts.values()].filter((v) => v === 'guarded').length,
+      public: [...sweepVerdicts.values()].filter((v) => v === 'public').length,
+      unguarded: [...sweepVerdicts.values()].filter((v) => v === 'unguarded').length,
+    },
     gaps: {
       missingCatalogTools: missingTools.length,
       unmappedCapabilities: unmapped.length,
@@ -647,7 +682,8 @@ function runInventoryAudit(): void {
     `| Catalog tools with at least one candidate | ${summary.catalogToolsWithCandidate} / ${summary.catalogTools} |`,
     `| Missing catalog tools | ${summary.gaps.missingCatalogTools} |`,
     `| Unmapped existing capabilities (actions/services) | ${summary.gaps.unmappedCapabilities} |`,
-    `| Auth gaps (actions/routes with no guard detected) | ${summary.gaps.authGaps} |`,
+    `| Server action exports (strict sweep): guarded / public by design / unguarded | ${summary.serverActionSweep.guarded} / ${summary.serverActionSweep.public} / ${summary.serverActionSweep.unguarded} (of ${summary.serverActionSweep.exports}) |`,
+    `| Auth gaps listed below (unguarded server actions + API routes with no guard call) | ${summary.gaps.authGaps} |`,
     `| Test gaps (actions/routes with no test reference) | ${summary.gaps.testGaps} |`,
     `| Duplicate-implementation groups | ${summary.gaps.duplicateGroups} |`,
     '',
