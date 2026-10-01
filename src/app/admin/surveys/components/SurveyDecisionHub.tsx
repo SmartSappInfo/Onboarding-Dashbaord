@@ -238,8 +238,14 @@ export function SurveyDecisionHub({ workspaceId }: SurveyDecisionHubProps) {
   };
 
   return (
-    <Card className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-sm">
-      <CardHeader className="bg-muted/20 border-b border-border/60 py-4 px-5 sm:px-6">
+    <Card className={cn(
+      "rounded-2xl border border-border/80 bg-card overflow-hidden shadow-xs transition-all duration-300",
+      !decisionConfig.enabled && "hover:border-border"
+    )}>
+      <CardHeader className={cn(
+        "bg-muted/20 py-4 px-5 sm:px-6 transition-all duration-300",
+        decisionConfig.enabled ? "border-b border-border/60" : ""
+      )}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold shrink-0">
@@ -253,53 +259,49 @@ export function SurveyDecisionHub({ workspaceId }: SurveyDecisionHubProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3 shrink-0 flex-wrap sm:flex-nowrap">
+            <div className="flex items-center gap-2.5">
               <Switch
                 id="decision-master-toggle"
                 checked={decisionConfig.enabled}
                 onCheckedChange={(enabled) => updateDecisionConfig({ enabled })}
               />
-              <Label htmlFor="decision-master-toggle" className="text-xs font-semibold cursor-pointer">
+              <Label htmlFor="decision-master-toggle" className="text-xs font-semibold cursor-pointer select-none">
                 {decisionConfig.enabled ? 'Enabled' : 'Disabled'}
               </Label>
             </div>
 
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setIsPlaybookModalOpen(true)}
-              className="h-9 px-3 text-xs font-semibold gap-1.5 rounded-xl border-purple-200 dark:border-purple-900 bg-purple-50/50 dark:bg-purple-950/20 text-purple-700 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/40 active:scale-[0.97]"
-            >
-              <BookOpen className="h-3.5 w-3.5" />
-              Import Playbook
-            </Button>
+            {decisionConfig.enabled && (
+              <div className="flex items-center gap-2 animate-in fade-in zoom-in-95 duration-200">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsPlaybookModalOpen(true)}
+                  className="h-9 px-3 text-xs font-semibold gap-1.5 rounded-xl border-purple-200 dark:border-purple-900 bg-purple-50/50 dark:bg-purple-950/20 text-purple-700 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/40 active:scale-[0.97]"
+                >
+                  <BookOpen className="h-3.5 w-3.5" />
+                  Import Playbook
+                </Button>
 
-            <Button
-              type="button"
-              size="sm"
-              onClick={handleAddRule}
-              disabled={!decisionConfig.enabled}
-              className="h-9 px-3 text-xs font-semibold gap-1.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.97]"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Add Rule
-            </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleAddRule}
+                  className="h-9 px-3 text-xs font-semibold gap-1.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.97]"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add Rule
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </CardHeader>
 
-      <CardContent className="p-6 space-y-4">
-        {!decisionConfig.enabled ? (
-          <div className="p-8 text-center border border-dashed border-border/80 rounded-2xl bg-muted/10 space-y-2">
-            <Zap className="h-8 w-8 text-muted-foreground/40 mx-auto" />
-            <h4 className="text-xs font-bold text-foreground">Decisioning is currently disabled</h4>
-            <p className="text-xs text-muted-foreground max-w-md mx-auto">
-              Enable the master switch above to activate real-time automation rules for this survey.
-            </p>
-          </div>
-        ) : decisionConfig.rules.length === 0 ? (
+      {decisionConfig.enabled && (
+        <CardContent className="p-6 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+          {decisionConfig.rules.length === 0 ? (
           <div className="p-8 text-center border border-dashed border-border/80 rounded-2xl bg-muted/10 space-y-3">
             <GitMerge className="h-8 w-8 text-muted-foreground/40 mx-auto" />
             <div>
@@ -432,6 +434,7 @@ export function SurveyDecisionHub({ workspaceId }: SurveyDecisionHubProps) {
           </div>
         )}
       </CardContent>
+      )}
 
       {/* Edit / Create Rule Modal */}
       {isRuleModalOpen && editingRule && (
