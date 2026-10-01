@@ -37,7 +37,7 @@ const principal: AgentPrincipal & { actorType: 'agent' } = {
   organizationId: 'org-1',
   workspaceId: 'ws-1',
   agentId: 'crm-agent',
-  grantedScopes: ['tasks.create'],
+  grantedScopes: ['rbac:operations.tasks.create'],
   effectiveRole: 'agent',
 };
 
@@ -58,7 +58,7 @@ function buildCapability(
     // `.trim()` proves the handler receives PARSED data, not raw stored input.
     inputSchema: z.object({ title: z.string().trim().min(1), workspaceId: z.string().optional() }),
     outputSchema: z.object({ taskId: z.string() }),
-    permissions: ['tasks.create'],
+    permissions: ['rbac:operations.tasks.create'],
     workspaceScoped: true,
     tenantScoped: true,
     risk: {

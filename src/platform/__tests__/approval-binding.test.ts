@@ -38,7 +38,7 @@ const agent: AgentPrincipal = {
   agentId: 'sdr-agent',
   runId: 'run-9',
   toolInvocationId: 'run-9:0',
-  grantedScopes: ['messages.send'],
+  grantedScopes: ['rbac:studios.messaging.create'],
   effectiveRole: 'agent',
 };
 
@@ -51,7 +51,7 @@ const sendMessage: CapabilityDefinition<SendInput, SendOutput> = {
   operation: 'execute',
   inputSchema: z.object({ to: z.string().trim(), body: z.string() }),
   outputSchema: z.object({ messageId: z.string() }),
-  permissions: ['messages.send'],
+  permissions: ['rbac:studios.messaging.create'],
   workspaceScoped: true,
   tenantScoped: true,
   risk: {
@@ -195,7 +195,7 @@ describe('evaluatePrincipalAuthority approval rules', () => {
   });
 
   it('refuses when the target organization is missing (no fail-open)', () => {
-    const human: AgentPrincipal = { actorType: 'user', userId: 'u', ...tenant, grantedScopes: ['messages.send'], effectiveRole: 'admin' };
+    const human: AgentPrincipal = { actorType: 'user', userId: 'u', ...tenant, grantedScopes: ['rbac:studios.messaging.create'], effectiveRole: 'admin' };
     const result = evaluatePrincipalAuthority(human, sendMessage, { organizationId: '', workspaceId: 'ws-1' });
     expect(result.violationCodes).toContain('TENANT_SCOPE_MISSING');
   });
@@ -214,7 +214,7 @@ describe('agent-step worker with approvals', () => {
     db.write('agent_runs/run-9', {
       runId: 'run-9',
       ...tenant,
-      principal: { actorType: 'agent', userId: 'user-1', ...tenant, agentId: 'sdr-agent', grantedScopes: ['messages.send'], effectiveRole: 'agent' },
+      principal: { actorType: 'agent', userId: 'user-1', ...tenant, agentId: 'sdr-agent', grantedScopes: ['rbac:studios.messaging.create'], effectiveRole: 'agent' },
       status: 'running',
       correlationId: 'corr',
       createdAt: now,
@@ -293,7 +293,7 @@ describe('agent-step worker with approvals', () => {
   });
 
   it('refuses an unauthorized step without consuming the approval', async () => {
-    registerCapability({ ...sendMessage, permissions: ['messages.send', 'messages.broadcast'] });
+    registerCapability({ ...sendMessage, permissions: ['rbac:studios.messaging.create', 'rbac:studios.messaging.edit'] });
     db.write(`${CAPABILITY_APPROVALS_COLLECTION}/appr-1`, approvalRecord());
     expect((await process()).body).toMatchObject({ status: 'failed', code: 'AUTHORIZATION_DENIED' });
     expect(approvalStatus()).toBe('approved');
@@ -316,7 +316,7 @@ describe('dispatcher approval gate', () => {
     const schedule = vi.fn(async () => 'task');
     resetCapabilityRegistryForTests();
     registerCapability(sendMessage);
-    const principal = { actorType: 'agent' as const, userId: 'user-1', ...tenant, agentId: 'sdr-agent', grantedScopes: ['messages.send'], effectiveRole: 'agent' };
+    const principal = { actorType: 'agent' as const, userId: 'user-1', ...tenant, agentId: 'sdr-agent', grantedScopes: ['rbac:studios.messaging.create'], effectiveRole: 'agent' };
     const base = { runId: 'run-7', stepNumber: 0, capabilityId: sendMessage.id, input, idempotencyKey: 'idem-key-7000', principal };
 
     await expect(enqueueAsyncCapabilityStep(base, { db: db.asFirestore(), schedule })).rejects.toMatchObject({ code: 'APPROVAL_REQUIRED' });
@@ -329,7 +329,7 @@ describe('dispatcher approval gate', () => {
 });
 
 describe('agent identity cannot be dodged (round-3 finding #1)', () => {
-  const noAgentId: AgentPrincipal = { actorType: 'agent', userId: 'user-1', ...tenant, grantedScopes: ['*', 'messages.send'], effectiveRole: 'admin' };
+  const noAgentId: AgentPrincipal = { actorType: 'agent', userId: 'user-1', ...tenant, grantedScopes: ['*', 'rbac:studios.messaging.create'], effectiveRole: 'admin' };
 
   it('applies agent rules to actorType "agent" even without agentId/delegationId', () => {
     const result = evaluatePrincipalAuthority(noAgentId, sendMessage, tenant);
@@ -351,7 +351,7 @@ describe('agent identity cannot be dodged (round-3 finding #1)', () => {
   it('MCP forces agent rules even when getPrincipal resolves an interactive user', async () => {
     const { createCapabilityToolHandler } = await import('../mcp/create-stateless-handler');
     const handler = vi.fn(sendMessage.handler);
-    const human: AgentPrincipal = { actorType: 'user', userId: 'u', ...tenant, grantedScopes: ['messages.send'], effectiveRole: 'admin' };
+    const human: AgentPrincipal = { actorType: 'user', userId: 'u', ...tenant, grantedScopes: ['rbac:studios.messaging.create'], effectiveRole: 'admin' };
     const tool = createCapabilityToolHandler({ ...sendMessage, handler }, { getPrincipal: () => human, audit: () => undefined });
     const response = await tool(input);
     expect(response.isError).toBe(true);
@@ -364,7 +364,7 @@ describe('agent identity cannot be dodged (round-3 finding #1)', () => {
     const db = new FakeFirestore();
     resetCapabilityRegistryForTests();
     registerCapability(sendMessage);
-    const human: AgentPrincipal = { actorType: 'user', userId: 'u', ...tenant, grantedScopes: ['messages.send'], effectiveRole: 'admin' };
+    const human: AgentPrincipal = { actorType: 'user', userId: 'u', ...tenant, grantedScopes: ['rbac:studios.messaging.create'], effectiveRole: 'admin' };
     const base = { runId: 'run-h', stepNumber: 0, capabilityId: sendMessage.id, input, idempotencyKey: 'idem-key-h000', principal: human };
     await expect(enqueueAsyncCapabilityStep(base, { db: db.asFirestore(), schedule: vi.fn(async () => 't') })).rejects.toMatchObject({
       code: 'APPROVAL_REQUIRED',
