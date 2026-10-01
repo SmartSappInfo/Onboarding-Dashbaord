@@ -30,6 +30,7 @@ export const EmailBlockSchema = z.object({
   variant: z.enum(['h1', 'h2', 'h3']).optional(),
   items: z.array(z.string()).optional(),
   listStyle: z.enum(['ordered', 'unordered']).optional(),
+  scoreValue: z.string().optional().describe('Custom score value or fallback token (e.g. "95", "{{score | 85}}")'),
   style: z.object({
     textAlign: z.enum(['left', 'center', 'right', 'justify']).optional(),
   }).optional(),

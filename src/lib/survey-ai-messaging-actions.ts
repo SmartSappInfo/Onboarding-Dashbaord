@@ -314,6 +314,13 @@ export async function quickSaveSurveyTemplateAction(
       updatedAt: now,
     };
 
+    // Strip undefined properties to prevent Firestore rejecting undefined values in update()
+    Object.keys(docPayload).forEach((key) => {
+      if (docPayload[key] === undefined) {
+        delete docPayload[key];
+      }
+    });
+
     if (templateId) {
       await adminDb.collection('message_templates').doc(templateId).update(docPayload);
       return { success: true, templateId };

@@ -540,8 +540,12 @@ export default function InternalNotificationConfig({ prefix = "adminAlert", cate
                 generatedOutput={aiOutput}
                 savedTemplateIds={savedTemplateIds}
                 isLoading={isGeneratingAi}
+                workspaceId={activeWorkspaceId || undefined}
+                organizationId={activeOrganizationId || undefined}
+                userId={user?.uid}
                 onApply={handleApplyAiTemplates}
                 onRegenerate={handleGenerateAi}
+                onUpdateOutput={setAiOutput}
             />
         </div>
     );

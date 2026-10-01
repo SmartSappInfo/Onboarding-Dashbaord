@@ -643,8 +643,12 @@ function SortableRuleItem({
                 generatedOutput={aiOutput}
                 savedTemplateIds={savedTemplateIds}
                 isLoading={isGeneratingAi}
+                workspaceId={activeWorkspaceId || undefined}
+                organizationId={activeOrganizationId || undefined}
+                userId={user?.uid}
                 onApply={handleApplyAiTemplates}
                 onRegenerate={handleGenerateAiForRule}
+                onUpdateOutput={setAiOutput}
             />
         </div>
     );
