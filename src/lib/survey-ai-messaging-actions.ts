@@ -126,7 +126,11 @@ export async function generateSurveyMessagingTemplatesAction(
     const availableVarKeys = activeVariables.map((v) => v.key);
 
     // 2. Invoke Genkit AI flow
+    // ARCHITECTURAL POINTER (Rule 10):
+    // workspaceId must be explicitly passed into the flow so getModel({ workspaceId, organizationId })
+    // can resolve tenant workspace-level AI preferences (WorkspaceAiService) and tenant keys in Firestore.
     const aiInput: SurveyMessagingContextInput = {
+      workspaceId,
       surveyTitle: surveyTitle || 'Untitled Survey',
       surveyDescription,
       target,

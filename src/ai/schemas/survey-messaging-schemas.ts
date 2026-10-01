@@ -64,6 +64,7 @@ export const GeneratedWhatsappTemplateSchema = z.object({
 export type GeneratedWhatsappTemplate = z.infer<typeof GeneratedWhatsappTemplateSchema>;
 
 export const SurveyMessagingContextInputSchema = z.object({
+  workspaceId: z.string().optional().describe('Active workspace ID for resolving workspace-level AI preferences'),
   surveyTitle: z.string(),
   surveyDescription: z.string().optional(),
   target: z.enum(SURVEY_MESSAGING_TARGETS),

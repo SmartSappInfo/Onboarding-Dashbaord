@@ -3,6 +3,7 @@ import {
   generateSurveyMessagingTemplatesAction,
   quickSaveSurveyTemplateAction,
 } from '../survey-ai-messaging-actions';
+import { generateSurveyMessagingFlow } from '@/ai/flows/generate-survey-messaging-flow';
 
 const { mockAdd, mockUpdate, mockDoc, mockCollection } = vi.hoisted(() => {
   let docIdCounter = 1;
@@ -121,6 +122,14 @@ describe('Survey AI Messaging Server Actions', () => {
       });
 
       expect(res.success).toBe(true);
+      expect(generateSurveyMessagingFlow).toHaveBeenCalledWith(
+        expect.objectContaining({
+          workspaceId: 'ws_alpha',
+          organizationId: 'org_main',
+          surveyTitle: 'Annual Readiness Assessment',
+          target: 'respondent_outcome',
+        })
+      );
       expect(res.output?.email?.subject).toContain('{{survey_score}}');
       expect(res.savedTemplateIds?.emailTemplateId).toBeDefined();
       expect(res.savedTemplateIds?.smsTemplateId).toBeDefined();
