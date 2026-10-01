@@ -129,6 +129,10 @@ export default function InternalNotificationConfig({ prefix = "adminAlert", cate
                     variant: 'destructive',
                     title: 'AI Generation Failed',
                     description: res.error || 'Could not generate team alert templates.',
+                    actionConfig: {
+                        label: 'Check AI Settings',
+                        path: '/admin/settings?tab=ai',
+                    },
                 });
                 setIsAiModalOpen(false);
             }
@@ -137,6 +141,10 @@ export default function InternalNotificationConfig({ prefix = "adminAlert", cate
                 variant: 'destructive',
                 title: 'AI Generation Error',
                 description: err instanceof Error ? err.message : 'Unknown error during AI generation.',
+                actionConfig: {
+                    label: 'Check AI Settings',
+                    path: '/admin/settings?tab=ai',
+                },
             });
             setIsAiModalOpen(false);
         } finally {
@@ -357,7 +365,7 @@ export default function InternalNotificationConfig({ prefix = "adminAlert", cate
                                             size="sm"
                                             onClick={handleGenerateAi}
                                             disabled={isGeneratingAi}
-                                            className="h-8 px-3 text-xs font-semibold gap-1.5 text-primary border-primary/30 hover:bg-primary/5 rounded-xl active:scale-[0.97] transition-all shadow-xs"
+                                            className="min-h-[44px] sm:min-h-[32px] h-auto sm:h-8 px-3 text-xs font-semibold gap-1.5 text-primary border-primary/30 hover:bg-primary/5 rounded-xl active:scale-[0.97] transition-all shadow-xs"
                                         >
                                             <Sparkles className="h-3.5 w-3.5 animate-pulse text-primary" />
                                             AI Generate Team Alerts
