@@ -30,13 +30,19 @@ const APP_PERMISSION_IDS = new Set<string>(APP_PERMISSIONS.map((p) => p.id));
 const isAppPermissionId = (id: string): id is AppPermissionId => APP_PERMISSION_IDS.has(id);
 const isRbacAction = (value: string): value is RbacAction => (RBAC_ACTIONS as readonly string[]).includes(value);
 
+/** Every `PermissionsSchema` section. The check below fails to compile if a section is added there. */
+const RBAC_SECTIONS = ['operations', 'finance', 'studios', 'social', 'workforce', 'management'] as const satisfies readonly RbacSection[];
+type UnlistedSection = Exclude<RbacSection, (typeof RBAC_SECTIONS)[number]>;
+const sectionsAreExhaustive: [UnlistedSection] extends [never] ? true : never = true;
+void sectionsAreExhaustive;
+
 /** section → feature → actions that exist, from the full-admin schema. */
 const RBAC_VOCABULARY: ReadonlyMap<string, ReadonlyMap<string, ReadonlySet<string>>> = (() => {
   const full = getFullAdminPermissions();
   const sections = new Map<string, Map<string, Set<string>>>();
-  for (const [section, permissions] of Object.entries(full)) {
+  for (const section of RBAC_SECTIONS) {
     const features = new Map<string, Set<string>>();
-    for (const [feature, actions] of Object.entries(permissions.features)) {
+    for (const [feature, actions] of Object.entries(full[section].features)) {
       features.set(feature, new Set(Object.keys(actions ?? {})));
     }
     sections.set(section, features);

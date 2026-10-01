@@ -705,7 +705,7 @@ Status: ☐ not started · ◐ in progress · ☑ done (with evidence link).
 | :--- | :--- | :--- | :--- | :--- |
 | PR-0 | Branch split + sweep test + PR template (A20) + lint enforcement (A2) | ◐ deployed; (e) held (H4a) | **On local `main` (fast-forwards, not pushed):** (a) `b14373c5` SSRF guard → (b) `efddec34` Phase 0 platform → (c) `1b188b3b` + `e44aa55b` portal/task auth hotfix and task-core fix → (f) `9e133625` DocSigning auth/SSRF/hook fix → (d) `6f8931ca`…`5d658fc6` guardrails. Each step was verified on a clean checkout before merging: (f) tsc 0, lint 0 errors / 663 warnings, vitest 749 files / 5,672 tests; (d) = stack top, vitest 750 / 5,680, baseline 44 / 452, sweep 0 new / 0 stale (also against the main checkout with its uncommitted work). **Held:** (e) `agentic/pr0e-content-items-rule` (rules 39 pass). Merge only after the app release containing (c) is deployed; it needs a trivial rebase onto `main` first. Backups: `../agentic-pr0-2026-09-29{,-rebased}.bundle`. | Remaining to close PR-0: deploy (needs your approval), then (e). See follow-ups below. |
 | PR-1 | 1.1b CRM + MCP-governance hotfix | ☑ done (local; push pending) | **N2** ☑ deployed `3645630d` (10 tests, 9 fail on old code; baseline 508 → 499). **N1 step 1 (deals)** ☑ this commit: `src/lib/crm/deal-core.ts` + `bulk-deal-core.ts`, all `deal-actions` wrappers session-only (15 tests, 10 of 11 wrapper tests fail on old code; baseline 499 → 492). | Next: N1 entity core, workspace-entity core, activity core. See PR-1 notes. |
-| PR-2 | 1.0 Phase 0 closure + OTel/auth deps governance (A10) | ☐ | | Secret rotation needs approval |
+| PR-2 | 1.0 Phase 0 closure + OTel/auth deps governance (A10) | ◐ code done (local) | `931756d4` Cloud Tasks secret + OIDC; `4b9546bb` worker live re-check, approval bound last, audit gate; `bb402a82` D6 permission refs, non-delegable remap, registry validation; `7a48509a` inventory on the strict sweep + agent stack; governance record `docs/agentic/16-dependency-governance.md`. | Ops (yours): rotate `CLOUD_TASKS_SECRET`; after a week of clean logs set `CLOUD_TASKS_OIDC_MODE=enforce`. See PR-2 notes. |
 | PR-3 | 1.1 portal permission ids + lint | ☐ | | FER dry-run first |
 | PR-4 | Gateway + errors + contract additions (A3, A4, A6, A7, A9, A10, A17) | ☐ | | |
 | PR-5 | Principals + parity | ☐ | | |
@@ -720,6 +720,14 @@ Status: ☐ not started · ◐ in progress · ☑ done (with evidence link).
 | PR-14 | Context Action System v1 (A16, A17) | ☐ | | |
 | PR-15 | Wave C portals | ☐ | | |
 | PR-16 | Generated docs, fingerprints (A4), telemetry, exit evidence | ☐ | | |
+
+**PR-2 notes (2026-10-01):**
+
+- **Cloud Tasks secret.** The literal fallback in `gcp-tasks-client.ts` (also accepted by the worker check in development) is gone. Production refuses to start without `CLOUD_TASKS_SECRET` (`src/instrumentation.ts`); comparisons are constant-time. **The old literal is still in the public git history**, so if the value in Secret Manager was ever that literal, it is public: rotate it (new Secret Manager version, then redeploy; in-flight tasks signed with the old value will fail once and retry).
+- **OIDC.** Workers verify the Google-signed token Cloud Tasks already sends (audience `https://go.smartsapp.com`, signer = the task service account, default `<project>@appspot.gserviceaccount.com`). Production starts in `CLOUD_TASKS_OIDC_MODE=report`: failures are logged as `[CLOUD_TASKS_AUTH] OIDC check failed`, requests with the correct secret are still accepted. Once the logs are clean, set `enforce` on both Cloud Run services. If the queue-missing fallback is used in production, add the Cloud Run runtime service account to `CLOUD_TASKS_SERVICE_ACCOUNT_EMAILS` first (its direct calls now carry an ID token from that account).
+- **Worker.** Live re-check of the run's user (exists, approved, same organization, a role granting the workspace) before execution; approvals verified read-only, then bound in a transaction only after authority and the live check pass; `auditRequired` capabilities refused until PR-6.
+- **Registry.** D6 permission references (`app:` / `rbac:`) derived from the RBAC engine; `NON_DELEGABLE_ACTIONS` remapped to real permissions (it matched nothing before); definitions validated on registration. No capability is registered in production yet, so nothing live changes.
+- **Inventory.** Server actions counted by the strict sweep (1,973 exports; 477 unguarded = the baseline); the agent stack folders are scanned.
 
 **PR-1 notes (2026-09-30):**
 
