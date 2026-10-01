@@ -32,7 +32,7 @@
  */
 
 import * as React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -605,10 +605,13 @@ ${fieldsHtml}
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[640px] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col rounded-[2rem] border border-border/80 bg-card text-card-foreground shadow-2xl animate-in fade-in zoom-in-95 duration-300">
-          {/* Header Demarcation with Title, CardInfoTooltip & Accessible Screen-Reader Description */}
-          <DialogHeader className="px-6 py-4.5 border-b border-border/80 bg-muted/20 flex flex-row items-center justify-between shrink-0 space-y-0">
-            <div className="flex items-center gap-2.5 pr-10">
+        <DialogContent
+          showCloseButton={false}
+          className="sm:max-w-[640px] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl animate-in fade-in zoom-in-95 duration-300"
+        >
+          {/* Header Demarcation with Title, CardInfoTooltip & Flex-Centered Close Button */}
+          <DialogHeader className="px-6 py-5 min-h-[64px] border-b border-border/80 bg-muted/20 flex flex-row items-center justify-between shrink-0 space-y-0">
+            <div className="flex items-center gap-2.5">
               <DialogTitle className="text-base sm:text-lg font-bold tracking-tight text-foreground">
                 {title}
               </DialogTitle>
@@ -620,10 +623,20 @@ ${fieldsHtml}
                 Share this {resourceName.toLowerCase()} directly, distribute via trackable shortcode, or embed it across websites and physical prints.
               </DialogDescription>
             </div>
+            <DialogClose asChild>
+              <button
+                type="button"
+                className="rounded-full h-8 w-8 inline-flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none active:scale-95 cursor-pointer shrink-0"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+                <span className="sr-only">Close</span>
+              </button>
+            </DialogClose>
           </DialogHeader>
 
           {/* Modal Body Container with Standard Padding & Responsive Scroll */}
-          <div className="p-6 overflow-y-auto max-h-[calc(90vh-68px)] flex-1">
+          <div className="p-6 overflow-y-auto max-h-[calc(90vh-76px)] flex-1">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid grid-cols-5 w-full p-1 bg-muted/80 border border-border/60 rounded-xl mb-4 text-xs">
               <TabsTrigger value="link" className="rounded-lg font-semibold gap-1.5 py-2 px-1 text-xs text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all">

@@ -128,6 +128,10 @@ describe('ShareEmbedDialog with Shortcode & QR Code Tabs', () => {
     const srDescription = document.querySelector('.sr-only');
     expect(srDescription).not.toBeNull();
     expect(srDescription?.textContent).toContain('Share this survey directly');
+
+    // Close button is rendered in the header
+    const closeBtn = screen.getByRole('button', { name: /close/i });
+    expect(closeBtn).toBeDefined();
   });
 
   it('fetches existing QR/shortcode on open and populates shortcode info', async () => {
