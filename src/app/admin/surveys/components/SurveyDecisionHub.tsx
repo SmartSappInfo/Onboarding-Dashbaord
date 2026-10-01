@@ -58,6 +58,7 @@ import {
   X,
   Sliders,
 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { cn, stripHtml } from '@/lib/utils';
 
 export interface SurveyDecisionHubProps {
@@ -247,7 +248,7 @@ export function SurveyDecisionHub({ workspaceId }: SurveyDecisionHubProps) {
         "bg-muted/20 py-4 px-5 sm:px-6 transition-all duration-300",
         decisionConfig.enabled ? "border-b border-border/60" : ""
       )}>
-        <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="w-full flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold shrink-0">
               <Workflow className="h-4.5 w-4.5" />
@@ -260,182 +261,196 @@ export function SurveyDecisionHub({ workspaceId }: SurveyDecisionHubProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0 flex-wrap sm:flex-nowrap ml-auto">
-            {decisionConfig.enabled && (
-              <div className="flex items-center gap-2 animate-in fade-in zoom-in-95 duration-200">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsPlaybookModalOpen(true)}
-                  className="h-9 px-3 text-xs font-semibold gap-1.5 rounded-xl border-purple-200 dark:border-purple-900 bg-purple-50/50 dark:bg-purple-950/20 text-purple-700 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/40 active:scale-[0.97]"
-                >
-                  <BookOpen className="h-3.5 w-3.5" />
-                  Import Playbook
-                </Button>
-
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={handleAddRule}
-                  className="h-9 px-3 text-xs font-semibold gap-1.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.97]"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Add Rule
-                </Button>
-              </div>
-            )}
-
-            <div className="flex items-center gap-2.5">
-              <Label htmlFor="decision-master-toggle" className="text-xs font-semibold cursor-pointer select-none text-muted-foreground">
-                {decisionConfig.enabled ? 'Enabled' : 'Disabled'}
-              </Label>
-              <Switch
-                id="decision-master-toggle"
-                checked={decisionConfig.enabled}
-                onCheckedChange={(enabled) => updateDecisionConfig({ enabled })}
-              />
-            </div>
+          <div className="flex items-center gap-2.5 shrink-0 ml-auto">
+            <Label htmlFor="decision-master-toggle" className="text-xs font-semibold cursor-pointer select-none text-muted-foreground">
+              {decisionConfig.enabled ? 'Enabled' : 'Disabled'}
+            </Label>
+            <Switch
+              id="decision-master-toggle"
+              checked={decisionConfig.enabled}
+              onCheckedChange={(enabled) => updateDecisionConfig({ enabled })}
+            />
           </div>
         </div>
       </CardHeader>
 
-      {decisionConfig.enabled && (
-        <CardContent className="p-6 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-          {decisionConfig.rules.length === 0 ? (
-          <div className="p-8 text-center border border-dashed border-border/80 rounded-2xl bg-muted/10 space-y-3">
-            <GitMerge className="h-8 w-8 text-muted-foreground/40 mx-auto" />
-            <div>
-              <h4 className="text-xs font-bold text-foreground">No Decision Rules Configured</h4>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Add an automation rule or import a pre-configured playbook to get started.
-              </p>
-            </div>
-            <div className="flex items-center justify-center gap-2 pt-1">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setIsPlaybookModalOpen(true)}
-                className="h-8 text-xs font-semibold gap-1.5 active:scale-[0.97]"
-              >
-                <BookOpen className="h-3 w-3" />
-                Browse Playbooks
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                onClick={handleAddRule}
-                className="h-8 text-xs font-semibold gap-1.5 active:scale-[0.97]"
-              >
-                <Plus className="h-3 w-3" />
-                Create Custom Rule
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {decisionConfig.rules.map((rule, _idx) => (
-              <div
-                key={rule.id}
-                className={cn(
-                  'p-4 rounded-2xl border transition-all space-y-3',
-                  rule.enabled
-                    ? 'border-border bg-card shadow-sm'
-                    : 'border-border/60 bg-muted/20 opacity-70'
-                )}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-foreground">{rule.name}</span>
-                      <Badge variant="outline" className="text-[10px] font-mono">
-                        Logic: {rule.conditionLogic}
-                      </Badge>
-                      {!rule.enabled && (
-                        <Badge variant="secondary" className="text-[10px]">
-                          Paused
-                        </Badge>
-                      )}
-                    </div>
-                    {rule.description && (
-                      <p className="text-xs text-muted-foreground">{rule.description}</p>
-                    )}
+      <AnimatePresence initial={false}>
+        {decisionConfig.enabled && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+            className="overflow-hidden"
+          >
+            <CardContent className="p-5 sm:p-6 space-y-4">
+              {decisionConfig.rules.length === 0 ? (
+                <div className="p-8 text-center border border-dashed border-border/80 rounded-2xl bg-muted/10 space-y-3">
+                  <GitMerge className="h-8 w-8 text-muted-foreground/40 mx-auto" />
+                  <div>
+                    <h4 className="text-xs font-bold text-foreground">No Decision Rules Configured</h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Add an automation rule or import a pre-configured playbook to get started.
+                    </p>
                   </div>
-
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={rule.enabled}
-                      onCheckedChange={(enabled) => handleToggleRule(rule.id, enabled)}
-                    />
+                  <div className="flex items-center justify-center gap-2 pt-1">
                     <Button
                       type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEditRule(rule)}
-                      className="h-8 px-2.5 text-xs font-semibold active:scale-[0.97]"
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDeleteRule(rule.id)}
-                      className="h-8 w-8 text-rose-500 hover:text-rose-700 hover:bg-rose-500/10 active:scale-[0.97]"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Conditions Summary */}
-                <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                  <span className="text-[11px] font-semibold text-muted-foreground">When:</span>
-                  {rule.conditions.map((cond, cIdx) => (
-                    <React.Fragment key={cond.id}>
-                      {cIdx > 0 && (
-                        <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase">
-                          {rule.conditionLogic}
-                        </span>
-                      )}
-                      <Badge
-                        variant="secondary"
-                        className="text-[11px] font-normal py-0.5 px-2 bg-muted/60 text-foreground"
-                      >
-                        <span className="font-semibold capitalize mr-1">{cond.type.replace('_', ' ')}</span>
-                        <span className="text-muted-foreground mr-1">{cond.operator}</span>
-                        <span className="font-bold">{String(cond.value)}</span>
-                      </Badge>
-                    </React.Fragment>
-                  ))}
-                </div>
-
-                {/* Actions Summary */}
-                <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-border/40">
-                  <span className="text-[11px] font-semibold text-muted-foreground">Then:</span>
-                  {rule.actions.map((act) => (
-                    <Badge
-                      key={act.id}
                       variant="outline"
-                      className="text-[11px] font-medium py-0.5 px-2 border-purple-300 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 flex items-center gap-1"
+                      size="sm"
+                      onClick={() => setIsPlaybookModalOpen(true)}
+                      className="h-8 text-xs font-semibold gap-1.5 active:scale-[0.97]"
                     >
-                      <Zap className="h-3 w-3 fill-purple-600" />
-                      <span className="capitalize">{act.type.replace(/_/g, ' ')}</span>
-                      {act.delayMinutes && act.delayMinutes > 0 ? (
-                        <span className="text-[10px] opacity-75 font-mono ml-0.5">
-                          (+{act.delayMinutes >= 1440 ? `${Math.round(act.delayMinutes / 1440)}d` : `${Math.round(act.delayMinutes / 60)}h`})
-                        </span>
-                      ) : null}
-                    </Badge>
-                  ))}
+                      <BookOpen className="h-3 w-3" />
+                      Browse Playbooks
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleAddRule}
+                      className="h-8 text-xs font-semibold gap-1.5 active:scale-[0.97]"
+                    >
+                      <Plus className="h-3 w-3" />
+                      Create Custom Rule
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/50">
+                    <div className="space-y-0.5">
+                      <span className="text-xs font-bold text-foreground">Decision Rules ({decisionConfig.rules.length})</span>
+                      <p className="text-[11px] text-muted-foreground">Evaluated sequentially upon survey response submission.</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsPlaybookModalOpen(true)}
+                        className="h-8 px-3 text-xs font-semibold gap-1.5 rounded-xl border-purple-200 dark:border-purple-900 bg-purple-50/50 dark:bg-purple-950/20 text-purple-700 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/40 active:scale-[0.97]"
+                      >
+                        <BookOpen className="h-3.5 w-3.5" />
+                        Import Playbook
+                      </Button>
+
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleAddRule}
+                        className="h-8 px-3 text-xs font-semibold gap-1.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.97]"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Add Rule
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {decisionConfig.rules.map((rule, _idx) => (
+                      <div
+                        key={rule.id}
+                        className={cn(
+                          'p-4 rounded-2xl border transition-all space-y-3',
+                          rule.enabled
+                            ? 'border-border bg-card shadow-sm'
+                            : 'border-border/60 bg-muted/20 opacity-70'
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-foreground">{rule.name}</span>
+                              <Badge variant="outline" className="text-[10px] font-mono">
+                                Logic: {rule.conditionLogic}
+                              </Badge>
+                              {!rule.enabled && (
+                                <Badge variant="secondary" className="text-[10px]">
+                                  Paused
+                                </Badge>
+                              )}
+                            </div>
+                            {rule.description && (
+                              <p className="text-xs text-muted-foreground">{rule.description}</p>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={rule.enabled}
+                              onCheckedChange={(enabled) => handleToggleRule(rule.id, enabled)}
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditRule(rule)}
+                              className="h-8 px-2.5 text-xs font-semibold active:scale-[0.97]"
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteRule(rule.id)}
+                              className="h-8 w-8 text-rose-500 hover:text-rose-700 hover:bg-rose-500/10 active:scale-[0.97]"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Conditions Summary */}
+                        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                          <span className="text-[11px] font-semibold text-muted-foreground">When:</span>
+                          {rule.conditions.map((cond, cIdx) => (
+                            <React.Fragment key={cond.id}>
+                              {cIdx > 0 && (
+                                <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase">
+                                  {rule.conditionLogic}
+                                </span>
+                              )}
+                              <Badge
+                                variant="secondary"
+                                className="text-[11px] font-normal py-0.5 px-2 bg-muted/60 text-foreground"
+                              >
+                                <span className="font-semibold capitalize mr-1">{cond.type.replace('_', ' ')}</span>
+                                <span className="text-muted-foreground mr-1">{cond.operator}</span>
+                                <span className="font-bold">{String(cond.value)}</span>
+                              </Badge>
+                            </React.Fragment>
+                          ))}
+                        </div>
+
+                        {/* Actions Summary */}
+                        <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-border/40">
+                          <span className="text-[11px] font-semibold text-muted-foreground">Then:</span>
+                          {rule.actions.map((act) => (
+                            <Badge
+                              key={act.id}
+                              variant="outline"
+                              className="text-[11px] font-medium py-0.5 px-2 border-purple-300 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 flex items-center gap-1"
+                            >
+                              <Zap className="h-3 w-3 fill-purple-600" />
+                              <span className="capitalize">{act.type.replace(/_/g, ' ')}</span>
+                              {act.delayMinutes && act.delayMinutes > 0 ? (
+                                <span className="text-[10px] opacity-75 font-mono ml-0.5">
+                                  (+{act.delayMinutes >= 1440 ? `${Math.round(act.delayMinutes / 1440)}d` : `${Math.round(act.delayMinutes / 60)}h`})
+                                </span>
+                              ) : null}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </motion.div>
         )}
-      </CardContent>
-      )}
+      </AnimatePresence>
     </Card>
 
       {/* Edit / Create Rule Modal */}
