@@ -2271,6 +2271,7 @@ interface SortableBlockItemProps {
     index: number;
     block: MessageBlock;
     isSelected: boolean;
+    isEditing?: boolean;
     simulationVars: Record<string, any>;
     autocompleteVariables?: TemplateVariable[];
     onSelect: () => void;
@@ -2293,7 +2294,7 @@ interface SortableBlockItemProps {
 }
 
 export function SortableBlockItem({ 
-    id, index, block, isSelected, simulationVars, autocompleteVariables, onSelect, onRemove, onDuplicate, onSwap, totalCount, onUpdate,
+    id, index, block, isSelected, isEditing, simulationVars, autocompleteVariables, onSelect, onRemove, onDuplicate, onSwap, totalCount, onUpdate,
     selectedSubBlockId, onSelectSubBlock, onRemoveSubBlock, onDuplicateSubBlock, onSwapSubBlocks, onUpdateSubBlock,
     isMultiSelected, onToggleSelect, onMoveToTop, onMoveToBottom
 }: SortableBlockItemProps) {
@@ -2401,7 +2402,7 @@ export function SortableBlockItem({
                 <VisualBlock 
                     block={block} 
                     simulationVars={simulationVars} 
-                    isEditing={isSelected}
+                    isEditing={isEditing !== undefined ? isEditing : isSelected}
                     onContentUpdate={onUpdate}
                     autocompleteVariables={autocompleteVariables}
                     selectedSubBlockId={selectedSubBlockId}

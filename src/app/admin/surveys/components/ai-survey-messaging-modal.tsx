@@ -74,8 +74,11 @@ import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/Template
 import { renderBlocksToHtml, resolveVariables, plainTextToHtml } from '@/lib/messaging-utils';
 import { quickSaveSurveyTemplateAction } from '@/lib/survey-ai-messaging-actions';
 import PromptBar from '@/components/PromptBar';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import { SortableBlockItem } from '@/app/admin/messaging/templates/components/visual-block';
 import type { GenerateSurveyMessagingOutput, EmailBlock } from '@/ai/schemas/survey-messaging-schemas';
-import type { MessageBlock, MessageStyle, RecipientType, TemplateTarget } from '@/lib/types';
+import type { MessageBlock, MessageStyle, RecipientType, TemplateTarget, TemplateVariable } from '@/lib/types';
 
 export interface AiSurveyMessagingModalProps {
   open: boolean;
@@ -220,6 +223,15 @@ export default function AiSurveyMessagingModal({
   const [copiedField, setCopiedField] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
   const [showPlainTextFallback, setShowPlainTextFallback] = React.useState(false);
+  const [selectedBlockId, setSelectedBlockId] = React.useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    })
+  );
 
   // Track saved/created template IDs locally so drafts remain in-memory until explicitly applied
   const [currentSavedTemplateIds, setCurrentSavedTemplateIds] = React.useState<{
@@ -378,6 +390,40 @@ export default function AiSurveyMessagingModal({
     }
     return mocks;
   }, [activeOrganization, editableOutput]);
+
+  // Autocomplete variables for SlashInput and SortableBlockItem
+  const autocompleteVariables = React.useMemo<TemplateVariable[]>(() => {
+    return Object.entries(mergedMocks).map(([key, value]) => ({
+      id: key,
+      name: key,
+      label: key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+      description: `Sample value: ${value}`,
+      dataType: key.includes('link') || key.includes('url') ? 'url' : 'string',
+      context: 'custom',
+      exampleValue: String(value),
+      isDynamic: false,
+      isComputed: false,
+    }));
+  }, [mergedMocks]);
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !editableOutput?.email?.blocks) return;
+
+    const oldIndex = editableOutput.email.blocks.findIndex((b) => b.id === active.id);
+    const newIndex = editableOutput.email.blocks.findIndex((b) => b.id === over.id);
+
+    if (oldIndex !== -1 && newIndex !== -1) {
+      const reordered = arrayMove(editableOutput.email.blocks, oldIndex, newIndex);
+      setEditableOutput({
+        ...editableOutput,
+        email: {
+          ...editableOutput.email,
+          blocks: reordered,
+        },
+      });
+    }
+  };
 
   // Resolve style and branding wrapper for current organization
   const styleWrapperHtml = React.useMemo(() => {
@@ -629,51 +675,112 @@ export default function AiSurveyMessagingModal({
     }
   };
 
-  // Helper mutators for Email Blocks
-  const handleUpdateBlock = (index: number, patch: Partial<EmailBlock>) => {
-    if (!editableOutput?.email?.blocks) return;
-    const newBlocks = [...editableOutput.email.blocks];
-    newBlocks[index] = { ...newBlocks[index], ...patch };
-    setEditableOutput({
-      ...editableOutput,
-      email: {
-        ...editableOutput.email,
-        blocks: newBlocks,
-      },
-    });
-  };
+  // ─── Standardized Message Template Builder Block Handlers ──────────────────
+  const handleUpdateBlock = React.useCallback(
+    (index: number, patch: Partial<MessageBlock>) => {
+      if (!editableOutput?.email?.blocks) return;
+      const newBlocks = [...editableOutput.email.blocks];
+      newBlocks[index] = { ...newBlocks[index], ...patch } as EmailBlock;
+      setEditableOutput({
+        ...editableOutput,
+        email: {
+          ...editableOutput.email,
+          blocks: newBlocks,
+        },
+      });
+    },
+    [editableOutput]
+  );
 
-  const handleMoveBlock = (index: number, direction: 'up' | 'down') => {
-    if (!editableOutput?.email?.blocks) return;
-    const targetIdx = direction === 'up' ? index - 1 : index + 1;
-    if (targetIdx < 0 || targetIdx >= editableOutput.email.blocks.length) return;
+  const handleDuplicateBlock = React.useCallback(
+    (index: number) => {
+      if (!editableOutput?.email?.blocks) return;
+      const blockToDupe = editableOutput.email.blocks[index];
+      if (!blockToDupe) return;
+      const duplicated: EmailBlock = {
+        ...blockToDupe,
+        id: `blk_${blockToDupe.type}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      };
+      const newBlocks = [...editableOutput.email.blocks];
+      newBlocks.splice(index + 1, 0, duplicated);
+      setEditableOutput({
+        ...editableOutput,
+        email: {
+          ...editableOutput.email,
+          blocks: newBlocks,
+        },
+      });
+      setSelectedBlockId(duplicated.id);
+    },
+    [editableOutput]
+  );
 
-    const newBlocks = [...editableOutput.email.blocks];
-    const [moved] = newBlocks.splice(index, 1);
-    newBlocks.splice(targetIdx, 0, moved);
+  const handleDeleteBlock = React.useCallback(
+    (index: number) => {
+      if (!editableOutput?.email?.blocks) return;
+      const blockId = editableOutput.email.blocks[index]?.id;
+      const newBlocks = editableOutput.email.blocks.filter((_, idx) => idx !== index);
+      setEditableOutput({
+        ...editableOutput,
+        email: {
+          ...editableOutput.email,
+          blocks: newBlocks,
+        },
+      });
+      if (selectedBlockId === blockId) {
+        setSelectedBlockId(null);
+      }
+    },
+    [editableOutput, selectedBlockId]
+  );
 
-    setEditableOutput({
-      ...editableOutput,
-      email: {
-        ...editableOutput.email,
-        blocks: newBlocks,
-      },
-    });
-  };
+  const handleSwapBlocks = React.useCallback(
+    (a: number, b: number) => {
+      if (!editableOutput?.email?.blocks) return;
+      if (a < 0 || a >= editableOutput.email.blocks.length || b < 0 || b >= editableOutput.email.blocks.length) return;
+      const newBlocks = arrayMove(editableOutput.email.blocks, a, b);
+      setEditableOutput({
+        ...editableOutput,
+        email: {
+          ...editableOutput.email,
+          blocks: newBlocks,
+        },
+      });
+    },
+    [editableOutput]
+  );
 
-  const handleDeleteBlock = (index: number) => {
-    if (!editableOutput?.email?.blocks) return;
-    const newBlocks = editableOutput.email.blocks.filter((_, idx) => idx !== index);
-    setEditableOutput({
-      ...editableOutput,
-      email: {
-        ...editableOutput.email,
-        blocks: newBlocks,
-      },
-    });
-  };
+  const handleMoveBlockToTop = React.useCallback(
+    (index: number) => {
+      if (!editableOutput?.email?.blocks || index === 0) return;
+      const newBlocks = arrayMove(editableOutput.email.blocks, index, 0);
+      setEditableOutput({
+        ...editableOutput,
+        email: {
+          ...editableOutput.email,
+          blocks: newBlocks,
+        },
+      });
+    },
+    [editableOutput]
+  );
 
-  const handleAddBlock = (type: EmailBlock['type']) => {
+  const handleMoveBlockToBottom = React.useCallback(
+    (index: number) => {
+      if (!editableOutput?.email?.blocks || index === editableOutput.email.blocks.length - 1) return;
+      const newBlocks = arrayMove(editableOutput.email.blocks, index, editableOutput.email.blocks.length - 1);
+      setEditableOutput({
+        ...editableOutput,
+        email: {
+          ...editableOutput.email,
+          blocks: newBlocks,
+        },
+      });
+    },
+    [editableOutput]
+  );
+
+  const handleAddBlock = (type: MessageBlock['type']) => {
     if (!editableOutput?.email) return;
     const currentBlocks = editableOutput.email.blocks || [];
     const newId = `blk_${type}_${Date.now()}`;
@@ -689,14 +796,38 @@ export default function AiSurveyMessagingModal({
       case 'button':
         newBlock = { id: newId, type: 'button', title: 'Take Action', url: '{{survey_link}}' };
         break;
+      case 'dual-button':
+        newBlock = {
+          id: newId,
+          type: 'dual-button',
+          title: 'View Results',
+          url: '{{result_url}}',
+          secondaryTitle: 'Survey Details',
+          secondaryLink: '{{survey_link}}',
+        };
+        break;
       case 'list':
         newBlock = { id: newId, type: 'list', items: ['First key highlight', 'Second key highlight'] };
+        break;
+      case 'score-card':
+        newBlock = { id: newId, type: 'score-card', title: 'Assessment Score', scoreValue: '{{survey_score | 95}}' };
+        break;
+      case 'quote':
+        newBlock = { id: newId, type: 'quote', content: 'Notable respondent feedback or quote highlight.' };
         break;
       case 'divider':
         newBlock = { id: newId, type: 'divider' };
         break;
+      case 'logo':
+        newBlock = { id: newId, type: 'logo', url: '{{org_logo_url}}' };
+        break;
       case 'footer':
-        newBlock = { id: newId, type: 'footer', content: 'You received this automated notification from SmartSapp.' };
+        newBlock = {
+          id: newId,
+          type: 'footer',
+          footerStyle: 'organization',
+          content: 'You received this automated notification from SmartSapp.',
+        };
         break;
       default:
         newBlock = { id: newId, type, content: 'Block content' };
@@ -709,210 +840,48 @@ export default function AiSurveyMessagingModal({
         blocks: [...currentBlocks, newBlock],
       },
     });
+    setSelectedBlockId(newId);
   };
 
   /**
-   * Renders an individual email block directly on the WYSIWYG visual canvas
-   * with inline editing and authentic typography.
+   * Renders the canonical Message Template Builder visual canvas using SortableBlockItem.
+   * Matches TemplateWorkshop block interactions, styling, hover action bars, and variable pills.
    */
-  const renderWysiwygBlock = (blk: EmailBlock, idx: number) => {
-    switch (blk.type) {
-      case 'logo':
-      case 'image':
-        return (
-          <div className="py-2 flex items-center justify-between gap-3 border-b border-border/40 pb-3">
-            <div className="flex items-center gap-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={mergedMocks.org_logo_url || blk.url || DEFAULT_MOCK_VARIABLES.org_logo_url}
-                alt="Logo"
-                className="h-10 w-auto max-w-[150px] object-contain rounded"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = DEFAULT_MOCK_VARIABLES.org_logo_url;
-                }}
+  const renderEmailBlocksCanvas = () => {
+    const blocks = (editableOutput?.email?.blocks || []) as unknown as MessageBlock[];
+
+    return (
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
+          <div className="space-y-4">
+            {blocks.map((block, idx) => (
+              <SortableBlockItem
+                key={block.id}
+                id={block.id}
+                index={idx}
+                block={block}
+                isSelected={selectedBlockId === block.id}
+                isEditing={true}
+                simulationVars={mergedMocks}
+                autocompleteVariables={autocompleteVariables}
+                onSelect={() => setSelectedBlockId(block.id)}
+                onRemove={() => handleDeleteBlock(idx)}
+                onDuplicate={() => handleDuplicateBlock(idx)}
+                onSwap={(a, b) => handleSwapBlocks(a, b)}
+                onMoveToTop={() => handleMoveBlockToTop(idx)}
+                onMoveToBottom={() => handleMoveBlockToBottom(idx)}
+                totalCount={blocks.length}
+                onUpdate={(patch) => handleUpdateBlock(idx, patch)}
               />
-              <span className="text-[11px] font-semibold text-muted-foreground">Header Logo</span>
-            </div>
-            <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-              <span className="text-[10px] font-mono text-muted-foreground">URL:</span>
-              <Input
-                value={blk.url || ''}
-                onChange={(e) => handleUpdateBlock(idx, { url: e.target.value })}
-                placeholder="{{org_logo_url}}"
-                className="h-7 text-[11px] font-mono w-44 bg-background"
-              />
-            </div>
+            ))}
           </div>
-        );
-
-      case 'heading':
-        return (
-          <div className="space-y-1">
-            <Input
-              value={blk.title || ''}
-              onChange={(e) => handleUpdateBlock(idx, { title: e.target.value })}
-              placeholder="Enter section heading..."
-              className={cn(
-                "w-full bg-transparent border-0 border-b border-transparent hover:border-primary/40 focus:border-primary focus:bg-background/80 rounded-none px-1 py-0 shadow-none font-black tracking-tight text-slate-900 dark:text-slate-100 transition-all",
-                blk.variant === 'h1' ? 'text-2xl h-10' : blk.variant === 'h2' ? 'text-xl h-9' : 'text-lg h-8'
-              )}
-            />
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pt-1">
-              {(['h1', 'h2', 'h3'] as const).map((level) => (
-                <button
-                  key={level}
-                  type="button"
-                  onClick={() => handleUpdateBlock(idx, { variant: level })}
-                  className={cn(
-                    "px-2 py-0.5 text-[10px] font-mono rounded-md font-bold transition-all",
-                    blk.variant === level
-                      ? "bg-primary text-primary-foreground shadow-xs"
-                      : "bg-muted text-muted-foreground hover:bg-muted/80"
-                  )}
-                >
-                  {level.toUpperCase()}
-                </button>
-              ))}
-            </div>
-          </div>
-        );
-
-      case 'text':
-        return (
-          <div className="space-y-1">
-            <Textarea
-              value={blk.content || ''}
-              onChange={(e) => handleUpdateBlock(idx, { content: e.target.value })}
-              placeholder="Enter paragraph copy (supports markdown and {{variables}})..."
-              rows={Math.max(2, Math.min(8, (blk.content || '').split('\n').length + 1))}
-              className="w-full bg-transparent border border-dashed border-border/40 hover:border-primary/40 focus:border-primary focus:bg-background/80 text-sm leading-relaxed text-slate-700 dark:text-slate-300 resize-y p-2.5 rounded-lg transition-all"
-            />
-          </div>
-        );
-
-      case 'button':
-        return (
-          <div className="space-y-2">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm shadow-md hover:shadow-lg transition-all active:scale-[0.97]">
-                <input
-                  type="text"
-                  value={blk.title || ''}
-                  onChange={(e) => handleUpdateBlock(idx, { title: e.target.value })}
-                  placeholder="Button Label"
-                  className="bg-transparent text-center text-primary-foreground font-bold text-sm focus:outline-none placeholder:text-primary-foreground/60 w-auto min-w-[140px]"
-                />
-              </div>
-
-              <div className="flex items-center gap-1.5 text-xs bg-background px-3 py-1.5 rounded-xl border border-border/70 max-w-sm flex-1">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase shrink-0">Link:</span>
-                <input
-                  type="text"
-                  value={blk.url || blk.link || ''}
-                  onChange={(e) => handleUpdateBlock(idx, { url: e.target.value, link: e.target.value })}
-                  placeholder="https://... or {{survey_link}}"
-                  className="bg-transparent text-xs text-foreground focus:outline-none font-mono w-full"
-                />
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'score-card':
-        return (
-          <div className="p-4 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-800/40 space-y-2">
-            <div className="flex items-center justify-between">
-              <Badge variant="outline" className="text-[10px] font-bold bg-indigo-100/80 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 border-indigo-300">
-                ASSESSMENT SCORE CARD
-              </Badge>
-              <div className="flex items-center gap-1.5 text-xs">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase">Score:</span>
-                <Input
-                  value={blk.scoreValue || ''}
-                  onChange={(e) => handleUpdateBlock(idx, { scoreValue: e.target.value })}
-                  placeholder="92 or {{score}}"
-                  className="w-24 text-right font-black text-indigo-600 dark:text-indigo-400 bg-background border border-indigo-200 dark:border-indigo-800 rounded-lg px-2 h-7 text-xs"
-                />
-              </div>
-            </div>
-            <Input
-              value={blk.title || ''}
-              onChange={(e) => handleUpdateBlock(idx, { title: e.target.value })}
-              placeholder="Score Title (e.g. Overall Assessment Score)"
-              className="w-full bg-transparent font-bold text-sm text-foreground border-0 border-b border-transparent hover:border-indigo-300 focus:border-indigo-500 rounded-none px-0 h-8 shadow-none"
-            />
-          </div>
-        );
-
-      case 'list':
-        return (
-          <div className="space-y-1.5">
-            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-              Bullet Highlights (one per line)
-            </Label>
-            <Textarea
-              value={(blk.items || []).join('\n')}
-              onChange={(e) =>
-                handleUpdateBlock(idx, {
-                  items: e.target.value.split('\n').filter((l) => l.trim().length > 0),
-                })
-              }
-              rows={Math.max(2, (blk.items || []).length + 1)}
-              placeholder="Respondent: {{contact_name}}\nScore: {{survey_score}}%"
-              className="text-xs font-mono bg-background/80 rounded-xl leading-relaxed"
-            />
-          </div>
-        );
-
-      case 'divider':
-        return (
-          <div className="py-2">
-            <hr className="border-t border-border/80 my-2" />
-          </div>
-        );
-
-      case 'footer':
-        return (
-          <div className="p-2 text-center">
-            <Textarea
-              value={blk.content || ''}
-              onChange={(e) => handleUpdateBlock(idx, { content: e.target.value })}
-              rows={2}
-              placeholder="Footer disclaimer and legal text..."
-              className="w-full text-center text-xs text-muted-foreground bg-transparent border border-dashed border-border/40 hover:border-primary/40 focus:border-primary focus:bg-background/80 rounded-lg p-2"
-            />
-          </div>
-        );
-
-      case 'quote':
-        return (
-          <div className="p-2 border-l-4 border-primary/50 bg-primary/5 rounded-r-lg">
-            <Textarea
-              value={blk.content || ''}
-              onChange={(e) => handleUpdateBlock(idx, { content: e.target.value })}
-              rows={2}
-              placeholder="Quote text..."
-              className="w-full italic text-xs bg-transparent border-0 focus:outline-none p-1"
-            />
-          </div>
-        );
-
-      default:
-        return (
-          <div className="p-2 bg-muted/20 rounded-lg">
-            <Textarea
-              value={blk.content || ''}
-              onChange={(e) => handleUpdateBlock(idx, { content: e.target.value })}
-              rows={2}
-              className="text-xs"
-            />
-          </div>
-        );
-    }
+        </SortableContext>
+      </DndContext>
+    );
   };
 
   /**
-   * Action bar to append new blocks to the visual email canvas
+   * Action bar to append new blocks to the visual email canvas matching Template Workshop presets
    */
   const renderAddBlockBar = () => (
     <div className="pt-4 border-t border-border/50 flex items-center justify-between flex-wrap gap-2">
@@ -951,6 +920,15 @@ export default function AiSurveyMessagingModal({
           type="button"
           variant="outline"
           size="sm"
+          onClick={() => handleAddBlock('dual-button')}
+          className="h-7 text-[11px] font-semibold gap-1 rounded-lg hover:border-primary/40 active:scale-[0.97]"
+        >
+          <Plus className="w-3 h-3 text-primary" /> Dual Button
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
           onClick={() => handleAddBlock('list')}
           className="h-7 text-[11px] font-semibold gap-1 rounded-lg hover:border-primary/40 active:scale-[0.97]"
         >
@@ -969,10 +947,28 @@ export default function AiSurveyMessagingModal({
           type="button"
           variant="outline"
           size="sm"
+          onClick={() => handleAddBlock('quote')}
+          className="h-7 text-[11px] font-semibold gap-1 rounded-lg hover:border-primary/40 active:scale-[0.97]"
+        >
+          <Plus className="w-3 h-3 text-primary" /> Quote
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
           onClick={() => handleAddBlock('divider')}
           className="h-7 text-[11px] font-semibold gap-1 rounded-lg hover:border-primary/40 active:scale-[0.97]"
         >
           <Plus className="w-3 h-3 text-primary" /> Divider
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => handleAddBlock('footer')}
+          className="h-7 text-[11px] font-semibold gap-1 rounded-lg hover:border-primary/40 active:scale-[0.97]"
+        >
+          <Plus className="w-3 h-3 text-primary" /> Footer
         </Button>
       </div>
     </div>
@@ -1400,7 +1396,10 @@ export default function AiSurveyMessagingModal({
                             </div>
 
                             {/* Visual Email Canvas Body */}
-                            <div className="flex-1 bg-slate-100 dark:bg-slate-950/70 p-3 sm:p-5 overflow-y-auto flex justify-center items-start min-h-[350px]">
+                            <div
+                              className="flex-1 bg-slate-100 dark:bg-slate-950/70 p-3 sm:p-5 overflow-y-auto flex justify-center items-start min-h-[350px]"
+                              onClick={() => setSelectedBlockId(null)}
+                            >
                               {/* Outer Device Frame Container */}
                               <div
                                 className={cn(
@@ -1414,114 +1413,15 @@ export default function AiSurveyMessagingModal({
                                     <div className="h-6 bg-slate-900 flex items-center justify-center shrink-0">
                                       <div className="w-20 h-3 bg-black rounded-full" />
                                     </div>
-                                    <div className="p-4 sm:p-5 space-y-3.5 bg-white dark:bg-slate-900">
-                                      {/* Block Renderer */}
-                                      {editableOutput.email.blocks?.map((blk, idx) => (
-                                        <div
-                                          key={blk.id || idx}
-                                          className="group relative p-2 rounded-xl border border-transparent hover:border-primary/40 hover:bg-muted/15 transition-all"
-                                        >
-                                          {/* Floating Toolbar on Hover */}
-                                          <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 bg-background/95 backdrop-blur-xs p-1 rounded-lg border border-border/70 shadow-sm z-10">
-                                            <Badge variant="outline" className="text-[8px] font-mono uppercase px-1 py-0 h-4">
-                                              {blk.type}
-                                            </Badge>
-                                            <Button
-                                              type="button"
-                                              variant="ghost"
-                                              size="icon"
-                                              disabled={idx === 0}
-                                              onClick={() => handleMoveBlock(idx, 'up')}
-                                              className="h-5 w-5 rounded text-muted-foreground hover:text-foreground"
-                                              aria-label="Move block up"
-                                            >
-                                              <ArrowUp className="w-3 h-3" />
-                                            </Button>
-                                            <Button
-                                              type="button"
-                                              variant="ghost"
-                                              size="icon"
-                                              disabled={idx === (editableOutput.email!.blocks!.length - 1)}
-                                              onClick={() => handleMoveBlock(idx, 'down')}
-                                              className="h-5 w-5 rounded text-muted-foreground hover:text-foreground"
-                                              aria-label="Move block down"
-                                            >
-                                              <ArrowDown className="w-3 h-3" />
-                                            </Button>
-                                            <Button
-                                              type="button"
-                                              variant="ghost"
-                                              size="icon"
-                                              onClick={() => handleDeleteBlock(idx)}
-                                              className="h-5 w-5 rounded text-rose-500 hover:text-rose-600 hover:bg-rose-500/10"
-                                              aria-label="Delete block"
-                                            >
-                                              <Trash2 className="w-3 h-3" />
-                                            </Button>
-                                          </div>
-
-                                          {/* Block Body in Mobile Frame */}
-                                          {renderWysiwygBlock(blk, idx)}
-                                        </div>
-                                      ))}
-
-                                      {/* Quick Add Block Bar */}
+                                    <div className="p-4 sm:p-5 space-y-4 bg-white dark:bg-slate-900">
+                                      {renderEmailBlocksCanvas()}
                                       {renderAddBlockBar()}
                                     </div>
                                   </div>
                                 ) : (
                                   /* Desktop Email Canvas Card */
                                   <div className="w-full bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 space-y-4 mb-4">
-                                    {editableOutput.email.blocks?.map((blk, idx) => (
-                                      <div
-                                        key={blk.id || idx}
-                                        className="group relative p-2.5 rounded-xl border border-transparent hover:border-primary/40 hover:bg-muted/15 transition-all"
-                                      >
-                                        {/* Floating Toolbar on Hover */}
-                                        <div className="absolute top-1.5 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-background/95 backdrop-blur-xs p-1 rounded-xl border border-border/70 shadow-sm z-10">
-                                          <Badge variant="outline" className="text-[9px] font-mono uppercase px-1.5 py-0 h-5">
-                                            {blk.type}
-                                          </Badge>
-                                          <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            disabled={idx === 0}
-                                            onClick={() => handleMoveBlock(idx, 'up')}
-                                            className="h-6 w-6 rounded-md text-muted-foreground hover:text-foreground"
-                                            aria-label="Move block up"
-                                          >
-                                            <ArrowUp className="w-3.5 h-3.5" />
-                                          </Button>
-                                          <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            disabled={idx === (editableOutput.email!.blocks!.length - 1)}
-                                            onClick={() => handleMoveBlock(idx, 'down')}
-                                            className="h-6 w-6 rounded-md text-muted-foreground hover:text-foreground"
-                                            aria-label="Move block down"
-                                          >
-                                            <ArrowDown className="w-3.5 h-3.5" />
-                                          </Button>
-                                          <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => handleDeleteBlock(idx)}
-                                            className="h-6 w-6 rounded-md text-rose-500 hover:text-rose-600 hover:bg-rose-500/10"
-                                            aria-label="Delete block"
-                                          >
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                          </Button>
-                                        </div>
-
-                                        {/* Block Body in Desktop Card */}
-                                        {renderWysiwygBlock(blk, idx)}
-                                      </div>
-                                    ))}
-
-                                    {/* Quick Add Block Bar */}
+                                    {renderEmailBlocksCanvas()}
                                     {renderAddBlockBar()}
                                   </div>
                                 )}

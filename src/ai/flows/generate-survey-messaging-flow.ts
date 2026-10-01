@@ -110,14 +110,17 @@ ${targetInstructions}
 
 ### ARCHITECTURAL RULES PER CHANNEL:
 
-1. **EMAIL CHANNEL** (Rich Block Builder):
-   - You MUST provide structured 'blocks' array:
+1. **EMAIL CHANNEL** (Rich Message Block Builder matching Template Workshop):
+   - You MUST provide structured 'blocks' array using canonical MessageBlock components:
      - 'logo' at top (default url: "{{org_logo_url}}")
-     - 'heading' (h1 or h2) for prominent headline
-     - 'text' for formatted paragraphs
-     - 'button' for primary call-to-action (e.g. "View Full Assessment Results" linking to "{{result_url}}" or CRM link)
-     - 'score-card' block if scoring is enabled
-     - 'footer' at the bottom
+     - 'heading' (variant 'h1' or 'h2') for prominent headline
+     - 'text' for formatted paragraphs (supports markdown bold **text** and newlines)
+     - 'score-card' if scoring is enabled (title: "Assessment Score", scoreValue: "{{survey_score}}")
+     - 'button' for primary call-to-action (title e.g. "View Full Assessment Results", url: "{{result_url}}") OR 'dual-button' for primary + secondary actions (title, url, secondaryTitle, secondaryLink)
+     - 'list' for bulleted key highlights (items array, listStyle: 'ordered' or 'unordered')
+     - 'quote' for notable quotes or testimonials
+     - 'divider' for visual section separation
+     - 'footer' at the bottom (content e.g. "You received this automated notification from SmartSapp.", footerStyle: "organization")
    - Provide a compelling 'subject' line.
    - Provide a 'body' plain-text fallback.
 

@@ -736,6 +736,13 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
             {placeholder}
           </div>
         )}
+        <input
+          className="sr-only"
+          tabIndex={-1}
+          aria-hidden="true"
+          readOnly
+          value={value}
+        />
         <div
           {...props}
           contentEditable
@@ -1103,6 +1110,13 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
             {placeholder}
           </div>
         )}
+        <textarea
+          className="sr-only"
+          tabIndex={-1}
+          aria-hidden="true"
+          readOnly
+          value={value}
+        />
         <div
           {...props}
           contentEditable
