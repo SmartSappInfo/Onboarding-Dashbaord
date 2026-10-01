@@ -38,6 +38,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import {
   Copy,
@@ -603,36 +604,36 @@ ${fieldsHtml}
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto p-6 gap-6 rounded-[2rem] border border-border/40 bg-background/80 backdrop-blur-xl shadow-2xl animate-in fade-in zoom-in-95 duration-300">
+        <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto p-6 gap-6 rounded-[2rem] border border-border/80 bg-card text-card-foreground shadow-2xl animate-in fade-in zoom-in-95 duration-300">
           <DialogHeader className="space-y-1">
-            <DialogTitle className="text-xl font-bold tracking-tight">{title}</DialogTitle>
+            <DialogTitle className="text-xl font-bold tracking-tight text-foreground">{title}</DialogTitle>
             <DialogDescription className="text-muted-foreground text-sm">
               Share this {resourceName.toLowerCase()} directly, distribute via trackable shortcode, or embed it across websites and physical prints.
             </DialogDescription>
           </DialogHeader>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid grid-cols-5 w-full p-1 bg-muted/60 dark:bg-zinc-800/50 rounded-xl mb-4 text-xs">
-              <TabsTrigger value="link" className="rounded-lg font-semibold gap-1.5 py-2 px-1 text-xs">
+            <TabsList className="grid grid-cols-5 w-full p-1 bg-muted/80 border border-border/60 rounded-xl mb-4 text-xs">
+              <TabsTrigger value="link" className="rounded-lg font-semibold gap-1.5 py-2 px-1 text-xs text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all">
                 <LinkIcon className="h-3.5 w-3.5 shrink-0" />
                 <span className="hidden sm:inline">Direct Link</span>
                 <span className="sm:hidden">Link</span>
               </TabsTrigger>
-              <TabsTrigger value="shortcode" className="rounded-lg font-semibold gap-1.5 py-2 px-1 text-xs">
+              <TabsTrigger value="shortcode" className="rounded-lg font-semibold gap-1.5 py-2 px-1 text-xs text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all">
                 <Radio className="h-3.5 w-3.5 shrink-0" />
                 <span className="hidden sm:inline">Shortcode</span>
                 <span className="sm:hidden">Short</span>
               </TabsTrigger>
-              <TabsTrigger value="qr" className="rounded-lg font-semibold gap-1.5 py-2 px-1 text-xs">
+              <TabsTrigger value="qr" className="rounded-lg font-semibold gap-1.5 py-2 px-1 text-xs text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all">
                 <QrCode className="h-3.5 w-3.5 shrink-0" />
                 <span className="hidden sm:inline">QR Code</span>
                 <span className="sm:hidden">QR</span>
               </TabsTrigger>
-              <TabsTrigger value="embed" className="rounded-lg font-semibold gap-1.5 py-2 px-1 text-xs">
+              <TabsTrigger value="embed" className="rounded-lg font-semibold gap-1.5 py-2 px-1 text-xs text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all">
                 <Code className="h-3.5 w-3.5 shrink-0" />
                 <span>Iframe</span>
               </TabsTrigger>
-              <TabsTrigger value="code" className="rounded-lg font-semibold gap-1.5 py-2 px-1 text-xs">
+              <TabsTrigger value="code" className="rounded-lg font-semibold gap-1.5 py-2 px-1 text-xs text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all">
                 <Terminal className="h-3.5 w-3.5 shrink-0" />
                 <span className="hidden sm:inline">Code Embed</span>
                 <span className="sm:hidden">Widget</span>
@@ -649,11 +650,11 @@ ${fieldsHtml}
                   <Input
                     readOnly
                     value={publicUrl}
-                    className="rounded-xl border-border/40 bg-zinc-500/5 focus-visible:ring-primary font-mono text-xs py-5"
+                    className="rounded-xl border-border/80 bg-muted/40 text-foreground focus-visible:ring-primary font-mono text-xs py-5"
                   />
                   <Button
                     onClick={handleCopyLink}
-                    className="rounded-xl px-4 py-5 font-semibold gap-2 active:scale-[0.97] transition-all duration-200 min-h-[44px]"
+                    className="rounded-xl px-4 py-5 font-semibold gap-2 active:scale-[0.97] transition-all duration-200 min-h-[44px] bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
                   >
                     <AnimatePresence mode="wait" initial={false}>
                       {copiedLink ? (
@@ -684,12 +685,12 @@ ${fieldsHtml}
                 </div>
               </div>
 
-              <div className="flex justify-between items-center bg-zinc-500/5 dark:bg-white/5 border border-border/40 p-4 rounded-2xl">
+              <div className="flex justify-between items-center bg-muted/40 border border-border/80 p-4 rounded-2xl">
                 <div className="space-y-0.5 pr-2">
-                  <h4 className="text-sm font-semibold">Open Public Page</h4>
+                  <h4 className="text-sm font-semibold text-foreground">Open Public Page</h4>
                   <p className="text-xs text-muted-foreground">Test the live landing page link in a new browser tab.</p>
                 </div>
-                <Button variant="outline" size="sm" className="rounded-xl font-semibold gap-1.5 shrink-0 min-h-[44px]" asChild>
+                <Button variant="outline" size="sm" className="rounded-xl font-semibold gap-1.5 shrink-0 min-h-[44px] border-border/80 bg-card text-foreground hover:bg-muted active:scale-[0.97]" asChild>
                   <a href={publicUrl} target="_blank" rel="noopener noreferrer">
                     <ExternalLink className="h-3.5 w-3.5" />
                     View Live
@@ -712,7 +713,7 @@ ${fieldsHtml}
                       <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                         Trackable Shortlink
                       </label>
-                      <Badge variant="outline" className="text-[10px] font-semibold text-emerald-600 bg-emerald-500/10 border-emerald-500/20">
+                      <Badge variant="outline" className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20">
                         ⚡ Active Dynamic Link
                       </Badge>
                     </div>
@@ -721,11 +722,11 @@ ${fieldsHtml}
                       <Input
                         readOnly
                         value={shortUrl}
-                        className="rounded-xl border-border/40 bg-zinc-500/5 focus-visible:ring-primary font-mono text-xs py-5"
+                        className="rounded-xl border-border/80 bg-muted/40 text-foreground focus-visible:ring-primary font-mono text-xs py-5"
                       />
                       <Button
                         onClick={handleCopyShortUrl}
-                        className="rounded-xl px-4 py-5 font-semibold gap-2 active:scale-[0.97] transition-all duration-200 min-h-[44px]"
+                        className="rounded-xl px-4 py-5 font-semibold gap-2 active:scale-[0.97] transition-all duration-200 min-h-[44px] bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
                       >
                         <AnimatePresence mode="wait" initial={false}>
                           {copiedShortcode ? (
@@ -757,19 +758,19 @@ ${fieldsHtml}
                   </div>
 
                   {/* Telemetry & Quick Action Card */}
-                  <div className="border border-border/40 bg-zinc-500/5 dark:bg-white/5 rounded-2xl p-4 space-y-3">
+                  <div className="border border-border/80 bg-muted/40 rounded-2xl p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <span className="text-xs font-semibold text-foreground">Scan Analytics</span>
                         <p className="text-[11px] text-muted-foreground">Real-time scan counter logged via Firestore telemetry.</p>
                       </div>
-                      <Badge className="bg-primary/10 text-primary hover:bg-primary/15 font-bold border-0 text-xs px-2.5 py-1">
+                      <Badge className="bg-primary/10 text-primary hover:bg-primary/15 font-bold border border-primary/20 text-xs px-2.5 py-1">
                         {totalScans} Total Scans
                       </Badge>
                     </div>
 
                     {isEditingSlug ? (
-                      <div className="pt-2 border-t border-border/40 space-y-2">
+                      <div className="pt-2 border-t border-border/60 space-y-2">
                         <Label className="text-xs font-medium text-muted-foreground">Custom Shortcode Slug</Label>
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-mono text-muted-foreground">/q/</span>
@@ -777,13 +778,13 @@ ${fieldsHtml}
                             value={customSlugDraft}
                             onChange={(e) => setCustomSlugDraft(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
                             placeholder="my-custom-slug"
-                            className="h-9 rounded-lg font-mono text-xs flex-1"
+                            className="h-9 rounded-lg font-mono text-xs flex-1 border-border/80 bg-card text-foreground"
                           />
                           <Button
                             size="sm"
                             onClick={handleUpdateShortcodeSlug}
                             disabled={isSavingSlug || !customSlugDraft.trim() || customSlugDraft === shortcode}
-                            className="rounded-lg font-semibold gap-1 min-h-[36px] active:scale-[0.97]"
+                            className="rounded-lg font-semibold gap-1 min-h-[36px] active:scale-[0.97] bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
                           >
                             {isSavingSlug ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
                             Save
@@ -795,19 +796,19 @@ ${fieldsHtml}
                               setIsEditingSlug(false);
                               setCustomSlugDraft(shortcode);
                             }}
-                            className="rounded-lg h-9 w-9 p-0"
+                            className="rounded-lg h-9 w-9 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
                           >
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
                     ) : (
-                      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/40">
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/60">
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => setIsEditingSlug(true)}
-                          className="rounded-xl text-xs font-semibold gap-1.5 h-9 active:scale-[0.97]"
+                          className="rounded-xl text-xs font-semibold gap-1.5 h-9 text-foreground hover:bg-muted/60 active:scale-[0.97]"
                         >
                           <Edit2 className="h-3.5 w-3.5" />
                           Customize Slug
@@ -817,7 +818,7 @@ ${fieldsHtml}
                           <Button
                             variant="outline"
                             size="sm"
-                            className="rounded-xl text-xs font-semibold gap-1.5 h-9"
+                            className="rounded-xl text-xs font-semibold gap-1.5 h-9 border-border/80 bg-card text-foreground hover:bg-muted active:scale-[0.97]"
                             asChild
                           >
                             <a href={shortUrl} target="_blank" rel="noopener noreferrer">
@@ -830,7 +831,7 @@ ${fieldsHtml}
                             variant="secondary"
                             size="sm"
                             onClick={() => setActiveTab('qr')}
-                            className="rounded-xl text-xs font-semibold gap-1.5 h-9 active:scale-[0.97]"
+                            className="rounded-xl text-xs font-semibold gap-1.5 h-9 bg-secondary text-secondary-foreground hover:bg-secondary/80 active:scale-[0.97]"
                           >
                             <QrCode className="h-3.5 w-3.5" />
                             View QR Code
@@ -842,12 +843,12 @@ ${fieldsHtml}
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="border border-dashed border-border/60 bg-zinc-500/5 dark:bg-white/5 rounded-2xl p-6 text-center space-y-3">
+                  <div className="border border-dashed border-border/80 bg-muted/20 rounded-2xl p-6 text-center space-y-3">
                     <div className="h-10 w-10 mx-auto rounded-full bg-primary/10 text-primary flex items-center justify-center">
                       <Radio className="h-5 w-5" />
                     </div>
                     <div className="space-y-1">
-                      <h4 className="text-sm font-bold">Generate Dynamic Shortcode</h4>
+                      <h4 className="text-sm font-bold text-foreground">Generate Dynamic Shortcode</h4>
                       <p className="text-xs text-muted-foreground max-w-sm mx-auto">
                         Create a trackable `/q/...` short link with live scan analytics, instant redirection, and vector QR capabilities.
                       </p>
@@ -861,7 +862,7 @@ ${fieldsHtml}
                           value={customSlugDraft}
                           onChange={(e) => setCustomSlugDraft(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
                           placeholder="e.g. onboard-2026"
-                          className="h-9 rounded-lg font-mono text-xs"
+                          className="h-9 rounded-lg font-mono text-xs border-border/80 bg-card text-foreground"
                         />
                       </div>
                     </div>
@@ -869,7 +870,7 @@ ${fieldsHtml}
                     <Button
                       onClick={handleCreateShortcode}
                       disabled={isGeneratingShortcode}
-                      className="rounded-xl px-5 py-5 font-semibold gap-2 active:scale-[0.97] transition-all min-h-[44px] w-full max-w-xs"
+                      className="rounded-xl px-5 py-5 font-semibold gap-2 active:scale-[0.97] transition-all min-h-[44px] w-full max-w-xs bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
                     >
                       {isGeneratingShortcode ? (
                         <>
@@ -892,8 +893,8 @@ ${fieldsHtml}
             <TabsContent value="qr" className="space-y-4 outline-none">
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-5 items-center">
                 {/* Visual Preview Container */}
-                <div className="sm:col-span-5 flex flex-col items-center justify-center p-4 rounded-2xl border border-border/40 bg-zinc-500/5 dark:bg-white/5 space-y-2">
-                  <div className="p-3 bg-white rounded-2xl shadow-sm border border-black/5 flex items-center justify-center">
+                <div className="sm:col-span-5 flex flex-col items-center justify-center p-4 rounded-2xl border border-border/80 bg-muted/40 space-y-2">
+                  <div className="p-3.5 bg-white rounded-2xl shadow-sm border border-border/60 flex items-center justify-center">
                     <QRPreview
                       data={resolvedQrData}
                       size={180}
@@ -908,7 +909,7 @@ ${fieldsHtml}
                       showFrame={false}
                     />
                   </div>
-                  <span className="text-[11px] font-mono text-muted-foreground text-center truncate max-w-[200px]" title={resolvedQrData}>
+                  <span className="text-[11px] font-mono text-muted-foreground text-center truncate max-w-[200px] font-medium" title={resolvedQrData}>
                     {qrTarget === 'short' && shortcode ? `/q/${shortcode}` : 'Direct URL'}
                   </span>
                 </div>
@@ -926,28 +927,28 @@ ${fieldsHtml}
                         onClick={() => setQrTarget('short')}
                         disabled={!shortcode}
                         className={cn(
-                          "flex flex-col items-start p-2.5 rounded-xl border text-left transition-all duration-200 min-h-[44px] cursor-pointer",
+                          "flex flex-col items-start p-2.5 rounded-xl border text-left transition-all duration-200 min-h-[44px] cursor-pointer active:scale-[0.97]",
                           qrTarget === 'short' && shortcode
-                            ? "border-primary bg-primary/5 text-primary"
-                            : "border-border/40 hover:bg-muted/30 disabled:opacity-40 disabled:cursor-not-allowed"
+                            ? "border-primary bg-primary/10 text-primary dark:bg-primary/20 shadow-xs ring-1 ring-primary/40 font-semibold"
+                            : "border-border/80 bg-card text-foreground hover:bg-muted/60 dark:hover:bg-muted/40 disabled:opacity-40 disabled:cursor-not-allowed font-medium"
                         )}
                       >
                         <span className="text-xs font-semibold">Shortlink (/q/…)</span>
-                        <span className="text-[10px] text-muted-foreground">Dynamic & trackable</span>
+                        <span className="text-[10px] text-muted-foreground font-normal">Dynamic & trackable</span>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => setQrTarget('direct')}
                         className={cn(
-                          "flex flex-col items-start p-2.5 rounded-xl border text-left transition-all duration-200 min-h-[44px] cursor-pointer",
+                          "flex flex-col items-start p-2.5 rounded-xl border text-left transition-all duration-200 min-h-[44px] cursor-pointer active:scale-[0.97]",
                           qrTarget === 'direct'
-                            ? "border-primary bg-primary/5 text-primary"
-                            : "border-border/40 hover:bg-muted/30"
+                            ? "border-primary bg-primary/10 text-primary dark:bg-primary/20 shadow-xs ring-1 ring-primary/40 font-semibold"
+                            : "border-border/80 bg-card text-foreground hover:bg-muted/60 dark:hover:bg-muted/40 font-medium"
                         )}
                       >
                         <span className="text-xs font-semibold">Direct Full URL</span>
-                        <span className="text-[10px] text-muted-foreground">Standard web page</span>
+                        <span className="text-[10px] text-muted-foreground font-normal">Standard web page</span>
                       </button>
                     </div>
                   </div>
@@ -959,31 +960,49 @@ ${fieldsHtml}
                         <Palette className="h-3 w-3" />
                         Dot Color
                       </Label>
-                      <span className="text-[11px] font-mono text-muted-foreground">{qrDotColor}</span>
+                      <span className="text-[11px] font-mono text-muted-foreground font-semibold">{qrDotColor}</span>
                     </div>
 
                     <div className="flex items-center gap-2">
-                      {QR_COLOR_PRESETS.map((preset) => (
-                        <button
-                          key={preset.label}
-                          type="button"
-                          onClick={() => setQrDotColor(preset.color)}
-                          title={preset.label}
-                          className={cn(
-                            "h-7 w-7 rounded-full border transition-transform duration-150 cursor-pointer flex items-center justify-center",
-                            qrDotColor.toLowerCase() === preset.color.toLowerCase()
-                              ? "ring-2 ring-primary ring-offset-2 scale-110"
-                              : "hover:scale-105 border-border/40"
-                          )}
-                          style={{ backgroundColor: preset.color }}
+                      {QR_COLOR_PRESETS.map((preset) => {
+                        const isSelected = qrDotColor.toLowerCase() === preset.color.toLowerCase();
+                        return (
+                          <button
+                            key={preset.label}
+                            type="button"
+                            onClick={() => setQrDotColor(preset.color)}
+                            title={preset.label}
+                            className={cn(
+                              "h-7 w-7 rounded-full border border-black/20 dark:border-white/30 transition-all duration-150 cursor-pointer flex items-center justify-center shadow-xs",
+                              isSelected
+                                ? "ring-2 ring-primary ring-offset-2 ring-offset-card scale-110"
+                                : "hover:scale-105 opacity-90 hover:opacity-100"
+                            )}
+                            style={{ backgroundColor: preset.color }}
+                          >
+                            {isSelected && (
+                              <Check className="h-3.5 w-3.5 text-white drop-shadow-sm stroke-[3px]" />
+                            )}
+                          </button>
+                        );
+                      })}
+                      <div
+                        className={cn(
+                          "relative h-7 w-7 rounded-full border border-dashed border-border/90 hover:border-primary transition-all duration-150 cursor-pointer flex items-center justify-center shadow-xs overflow-hidden",
+                          !QR_COLOR_PRESETS.some((p) => p.color.toLowerCase() === qrDotColor.toLowerCase()) &&
+                            "ring-2 ring-primary ring-offset-2 ring-offset-card scale-110"
+                        )}
+                        title="Custom Hex Color"
+                      >
+                        <input
+                          type="color"
+                          value={qrDotColor}
+                          onChange={(e) => setQrDotColor(e.target.value)}
+                          className="absolute -inset-4 w-16 h-16 cursor-pointer opacity-0"
+                          aria-label="Pick custom dot color"
                         />
-                      ))}
-                      <Input
-                        type="color"
-                        value={qrDotColor}
-                        onChange={(e) => setQrDotColor(e.target.value)}
-                        className="h-7 w-8 p-0 border border-border/40 rounded-lg cursor-pointer"
-                      />
+                        <div className="w-full h-full rounded-full" style={{ backgroundColor: qrDotColor }} />
+                      </div>
                     </div>
                   </div>
 
@@ -999,10 +1018,10 @@ ${fieldsHtml}
                           type="button"
                           onClick={() => setQrDotType(style)}
                           className={cn(
-                            "py-1.5 px-2 rounded-lg border text-center capitalize transition-colors cursor-pointer text-xs font-medium",
+                            "py-2 px-2 rounded-xl border text-center capitalize transition-all duration-150 cursor-pointer text-xs min-h-[36px] active:scale-[0.97]",
                             qrDotType === style
-                              ? "border-primary bg-primary/10 text-primary font-semibold"
-                              : "border-border/40 hover:bg-muted/30"
+                              ? "border-primary bg-primary text-primary-foreground font-semibold shadow-xs"
+                              : "border-border/80 bg-card text-foreground hover:bg-muted/60 dark:hover:bg-muted/40 font-medium"
                           )}
                         >
                           {style}
@@ -1013,26 +1032,24 @@ ${fieldsHtml}
 
                   {/* Logo Overlay Toggle */}
                   <div className="flex items-center justify-between pt-1">
-                    <Label htmlFor="qr-logo-toggle" className="text-xs font-medium text-foreground cursor-pointer">
+                    <Label htmlFor="qr-logo-toggle" className="text-xs font-semibold text-foreground cursor-pointer select-none">
                       Include Center Brand Logo
                     </Label>
-                    <input
+                    <Switch
                       id="qr-logo-toggle"
-                      type="checkbox"
                       checked={qrIncludeLogo}
-                      onChange={(e) => setQrIncludeLogo(e.target.checked)}
-                      className="h-4 w-4 rounded border-border/40 text-primary focus:ring-primary cursor-pointer"
+                      onCheckedChange={setQrIncludeLogo}
                     />
                   </div>
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-border/40">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-3 border-t border-border/80">
                 <Button
                   onClick={() => handleDownloadQR('png')}
                   disabled={isDownloadingQr}
-                  className="rounded-xl font-semibold gap-1.5 min-h-[44px] active:scale-[0.97]"
+                  className="rounded-xl font-semibold gap-1.5 min-h-[44px] active:scale-[0.97] bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
                 >
                   <Download className="h-4 w-4" />
                   Download PNG
@@ -1042,7 +1059,7 @@ ${fieldsHtml}
                   variant="outline"
                   onClick={() => handleDownloadQR('svg')}
                   disabled={isDownloadingQr}
-                  className="rounded-xl font-semibold gap-1.5 min-h-[44px] active:scale-[0.97]"
+                  className="rounded-xl font-semibold gap-1.5 min-h-[44px] active:scale-[0.97] border-border/80 bg-card text-foreground hover:bg-muted"
                 >
                   <Download className="h-4 w-4" />
                   Download SVG
@@ -1051,7 +1068,7 @@ ${fieldsHtml}
                 <Button
                   variant="secondary"
                   onClick={() => setIsQrStudioSheetOpen(true)}
-                  className="rounded-xl font-semibold gap-1.5 min-h-[44px] active:scale-[0.97]"
+                  className="rounded-xl font-semibold gap-1.5 min-h-[44px] active:scale-[0.97] bg-secondary text-secondary-foreground hover:bg-secondary/80"
                 >
                   <Sparkles className="h-4 w-4 text-primary" />
                   QR Studio Designer
@@ -1066,13 +1083,13 @@ ${fieldsHtml}
                   <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Iframe HTML Snippet
                   </label>
-                  <span className="text-[10px] font-medium text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full uppercase tracking-wider">
                     embed=true enabled
                   </span>
                 </div>
                 
                 <div className="relative">
-                  <pre className="p-4 rounded-2xl bg-zinc-950 text-zinc-100 overflow-x-auto text-[11px] font-mono leading-relaxed border border-zinc-800 max-h-[140px] text-wrap select-all">
+                  <pre className="p-4 rounded-2xl bg-zinc-950 text-zinc-100 overflow-x-auto text-[11px] font-mono leading-relaxed border border-border/80 max-h-[140px] text-wrap select-all">
                     {embedCode}
                   </pre>
                 </div>
@@ -1081,7 +1098,7 @@ ${fieldsHtml}
               <div className="flex justify-end">
                 <Button
                   onClick={handleCopyEmbed}
-                  className="rounded-xl font-semibold gap-2 active:scale-[0.97] transition-all duration-200 w-full py-5 min-h-[44px]"
+                  className="rounded-xl font-semibold gap-2 active:scale-[0.97] transition-all duration-200 w-full py-5 min-h-[44px] bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
                 >
                   <AnimatePresence mode="wait" initial={false}>
                     {copiedEmbed ? (
@@ -1127,10 +1144,10 @@ ${fieldsHtml}
                     type="button"
                     onClick={() => setEmbedStyle('inline-widget')}
                     className={cn(
-                      "flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-colors duration-200 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 min-h-[44px]",
+                      "flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all duration-200 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 min-h-[44px] active:scale-[0.97]",
                       embedStyle === 'inline-widget'
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "border-border/40 hover:bg-muted/30"
+                        ? "border-primary bg-primary/10 text-primary dark:bg-primary/20 font-semibold shadow-xs ring-1 ring-primary/40"
+                        : "border-border/80 bg-card text-foreground hover:bg-muted/60 dark:hover:bg-muted/40 font-medium"
                     )}
                   >
                     <span className="text-xs font-semibold">Inline Widget</span>
@@ -1139,10 +1156,10 @@ ${fieldsHtml}
                     type="button"
                     onClick={() => setEmbedStyle('popup-modal')}
                     className={cn(
-                      "flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-colors duration-200 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 min-h-[44px]",
+                      "flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all duration-200 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 min-h-[44px] active:scale-[0.97]",
                       embedStyle === 'popup-modal'
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "border-border/40 hover:bg-muted/30"
+                        ? "border-primary bg-primary/10 text-primary dark:bg-primary/20 font-semibold shadow-xs ring-1 ring-primary/40"
+                        : "border-border/80 bg-card text-foreground hover:bg-muted/60 dark:hover:bg-muted/40 font-medium"
                     )}
                   >
                     <span className="text-xs font-semibold">Popup Modal</span>
@@ -1151,10 +1168,10 @@ ${fieldsHtml}
                     type="button"
                     onClick={() => setEmbedStyle('slide-drawer')}
                     className={cn(
-                      "flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-colors duration-200 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 min-h-[44px]",
+                      "flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all duration-200 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 min-h-[44px] active:scale-[0.97]",
                       embedStyle === 'slide-drawer'
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "border-border/40 hover:bg-muted/30"
+                        ? "border-primary bg-primary/10 text-primary dark:bg-primary/20 font-semibold shadow-xs ring-1 ring-primary/40"
+                        : "border-border/80 bg-card text-foreground hover:bg-muted/60 dark:hover:bg-muted/40 font-medium"
                     )}
                   >
                     <span className="text-xs font-semibold">Slide Panel</span>
@@ -1164,10 +1181,10 @@ ${fieldsHtml}
                     disabled={resourceName !== 'Form' || !fields}
                     onClick={() => setEmbedStyle('raw-html')}
                     className={cn(
-                      "flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-colors duration-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 min-h-[44px]",
+                      "flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all duration-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 min-h-[44px] active:scale-[0.97]",
                       embedStyle === 'raw-html'
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "border-border/40 hover:bg-muted/30"
+                        ? "border-primary bg-primary/10 text-primary dark:bg-primary/20 font-semibold shadow-xs ring-1 ring-primary/40"
+                        : "border-border/80 bg-card text-foreground hover:bg-muted/60 dark:hover:bg-muted/40 font-medium"
                     )}
                   >
                     <span className="text-xs font-semibold">Raw HTML Form</span>
@@ -1176,7 +1193,7 @@ ${fieldsHtml}
               </div>
 
               {/* Advanced Configuration Options */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border border-border/40 p-4 rounded-2xl bg-zinc-500/5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border border-border/80 p-4 rounded-2xl bg-muted/40">
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-1">
                     <Settings2 className="h-3.5 w-3.5 text-muted-foreground" />
@@ -1186,14 +1203,14 @@ ${fieldsHtml}
                     disabled={embedStyle === 'inline-widget' || embedStyle === 'raw-html'}
                     value={buttonText}
                     onChange={(e) => setButtonText(e.target.value)}
-                    className="h-9 rounded-lg border-border/40 text-xs"
+                    className="h-9 rounded-lg border-border/80 bg-card text-foreground text-xs"
                     placeholder="e.g. Open Form"
                   />
                 </div>
 
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-1">
-                    <span className="h-3 w-3 rounded-full border border-border/40" style={{ backgroundColor: accentColor }} />
+                    <span className="h-3 w-3 rounded-full border border-border/80" style={{ backgroundColor: accentColor }} />
                     <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground font-semibold">Accent Theme Color</span>
                   </div>
                   <div className="flex gap-2">
@@ -1201,13 +1218,13 @@ ${fieldsHtml}
                       type="color"
                       value={accentColor}
                       onChange={(e) => setAccentColor(e.target.value)}
-                      className="h-9 w-12 p-0.5 rounded-lg border-border/40 cursor-pointer"
+                      className="h-9 w-12 p-0.5 rounded-lg border-border/80 bg-card cursor-pointer"
                     />
                     <Input
                       type="text"
                       value={accentColor}
                       onChange={(e) => setAccentColor(e.target.value)}
-                      className="h-9 flex-1 rounded-lg border-border/40 text-xs font-mono"
+                      className="h-9 flex-1 rounded-lg border-border/80 bg-card text-foreground text-xs font-mono"
                       placeholder="#3B5FFF"
                     />
                   </div>
@@ -1220,7 +1237,7 @@ ${fieldsHtml}
                   Copy Code Snippet
                 </label>
                 <div className="relative">
-                  <pre className="p-4 rounded-2xl bg-zinc-950 text-zinc-100 overflow-x-auto text-[11px] font-mono leading-relaxed border border-zinc-800 max-h-[140px] text-wrap select-all">
+                  <pre className="p-4 rounded-2xl bg-zinc-950 text-zinc-100 overflow-x-auto text-[11px] font-mono leading-relaxed border border-border/80 max-h-[140px] text-wrap select-all">
                     {generatedCode}
                   </pre>
                 </div>
@@ -1229,7 +1246,7 @@ ${fieldsHtml}
               <div className="flex justify-end">
                 <Button
                   onClick={handleCopyCustomCode}
-                  className="rounded-xl font-semibold gap-2 active:scale-[0.97] transition-all duration-200 w-full py-5 min-h-[44px]"
+                  className="rounded-xl font-semibold gap-2 active:scale-[0.97] transition-all duration-200 w-full py-5 min-h-[44px] bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
                 >
                   <AnimatePresence mode="wait" initial={false}>
                     {copiedCode ? (
