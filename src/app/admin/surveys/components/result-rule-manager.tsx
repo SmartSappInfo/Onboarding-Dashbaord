@@ -15,7 +15,6 @@ import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { Badge } from '@/components/ui/badge';
 import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
 import { useParams } from 'next/navigation';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
@@ -171,19 +170,19 @@ function SortableRuleItem({
                 <div className="flex items-start justify-between gap-4">
                     <div className="flex-grow grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="space-y-1.5 md:col-span-1">
-                            <Label className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 py-0.5 rounded-md border border-border/70 bg-muted/40 ml-1">Logic Label</Label>
+                            <Label className="text-xs font-semibold text-foreground ml-1">Logic Label</Label>
                             <Input placeholder="e.g. Qualified" {...register(`resultRules.${index}.label`)} className="h-10 font-bold bg-background border border-border/80 dark:border-zinc-700 rounded-xl px-3 shadow-xs hover:border-primary/40 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 transition-all text-foreground" />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 py-0.5 rounded-md border border-border/70 bg-muted/40 ml-1">Range Start</Label>
+                            <Label className="text-xs font-semibold text-foreground ml-1">Range Start</Label>
                             <Input type="number" {...register(`resultRules.${index}.minScore`, { valueAsNumber: true })} className="h-10 font-bold bg-background border border-border/80 dark:border-zinc-700 rounded-xl px-3 shadow-xs hover:border-primary/40 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 transition-all text-foreground" />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 py-0.5 rounded-md border border-border/70 bg-muted/40 ml-1">Range End</Label>
+                            <Label className="text-xs font-semibold text-foreground ml-1">Range End</Label>
                             <Input type="number" {...register(`resultRules.${index}.maxScore`, { valueAsNumber: true })} className="h-10 font-bold bg-background border border-border/80 dark:border-zinc-700 rounded-xl px-3 shadow-xs hover:border-primary/40 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 transition-all text-foreground" />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-primary px-2 py-0.5 rounded-md border border-primary/30 bg-primary/10 ml-1">Resulting Page</Label>
+                            <Label className="text-xs font-semibold text-primary ml-1">Resulting Page</Label>
                             <Controller
                                 name={`resultRules.${index}.pageId`}
                                 control={control}
@@ -219,7 +218,7 @@ function SortableRuleItem({
                 {currentRulePageId === '__redirect__' && (
                     <div className="space-y-3 mt-1 p-4 rounded-xl border border-primary/15 bg-primary/5 animate-in fade-in slide-in-from-top-2 duration-300">
                         <div className="space-y-1.5">
-                            <Label className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md border border-primary/30 bg-primary/10">
+                            <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5 ml-1">
                                 🔗 Redirect Destination URL
                             </Label>
                             <Input 
@@ -242,8 +241,9 @@ function SortableRuleItem({
 
             <div className="pt-4 border-t border-dashed space-y-4">
                 <div className="flex items-center gap-2 mb-2">
-                    <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-[8px] h-5 uppercase px-2 font-semibold">Outcome Actions</Badge>
-                    <p className="text-[10px] font-bold text-muted-foreground tracking-tighter">Configure tag, workflow, and message automations</p>
+                    <span className="text-xs font-semibold text-foreground">Outcome Actions</span>
+                    <span className="text-muted-foreground/40">•</span>
+                    <p className="text-[11px] font-medium text-muted-foreground">Configure tag, workflow, and message automations</p>
                 </div>
 
                 {/* Toggles Row */}
