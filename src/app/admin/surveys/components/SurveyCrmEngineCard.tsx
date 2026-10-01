@@ -697,12 +697,6 @@ export function SurveyCrmEngineCard() {
                     </span>
                   </button>
                 </div>
-                {existingEntityCorePolicy === 'preserve' && (
-                  <p className="text-[10px] text-muted-foreground bg-muted/30 border border-border/50 rounded-lg px-3 py-2">
-                    Answers, custom fields, tags and new contacts are still saved. Only the
-                    existing name, email and phone are left alone.
-                  </p>
-                )}
               </div>
 
               {/* Lead Capture Mode Selector */}

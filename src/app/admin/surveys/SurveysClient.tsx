@@ -631,6 +631,8 @@ export default function SurveysClient() {
               ? `${window.location.origin}/surveys/${shareSurvey.slug}?ref=${shareSurvey.assignedUsers[0]}&embed=true`
               : `${window.location.origin}/surveys/${shareSurvey.slug}?embed=true`
           }
+          workspaceId={shareSurvey.workspaceIds?.[0] || activeWorkspaceId || undefined}
+          organizationId={shareSurvey.organizationId || undefined}
         />
       )}
             </PageContainer>

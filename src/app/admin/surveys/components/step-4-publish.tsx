@@ -506,6 +506,8 @@ export default function Step4Publish() {
                     resourceName="Survey"
                     publicUrl={getFullUrl()}
                     embedUrl={`${getFullUrl()}?embed=true`}
+                    workspaceId={workspaceIds[0] || undefined}
+                    organizationId={organizationId || undefined}
                 />
             )}
         </div>
