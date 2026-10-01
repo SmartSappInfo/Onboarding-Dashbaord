@@ -360,6 +360,10 @@ export default function AiSurveyMessagingModal({
         variant: 'destructive',
         title: 'Refinement Failed',
         description: err instanceof Error ? err.message : 'Could not refine templates.',
+        actionConfig: {
+          label: 'AI Settings',
+          path: '/admin/settings?tab=ai',
+        },
       });
     } finally {
       setIsRefining(false);
@@ -669,6 +673,10 @@ export default function AiSurveyMessagingModal({
         variant: 'destructive',
         title: 'Failed to Save Changes',
         description: err instanceof Error ? err.message : 'Could not save message template edits.',
+        actionConfig: {
+          label: 'Templates',
+          path: '/admin/messaging/templates',
+        },
       });
     } finally {
       setIsSaving(false);

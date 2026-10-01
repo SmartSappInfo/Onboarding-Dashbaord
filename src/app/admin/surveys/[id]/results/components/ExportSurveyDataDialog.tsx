@@ -18,6 +18,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -94,30 +95,31 @@ export function ExportSurveyDataDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md rounded-2xl">
-        <DialogHeader>
-          <div className="flex items-center gap-2">
+      <DialogContent className="sm:max-w-md p-0 overflow-hidden sm:rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+        <DialogHeader demarcated className="px-6 py-3.5 sm:py-4 min-h-[52px] sm:min-h-[56px] border-b border-border/80 bg-muted/20 flex flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-primary/10 text-primary">
-              <Download className="h-5 w-5" />
+              <Download className="h-4 w-4" />
             </div>
-            <div>
+            <div className="flex items-center gap-2">
               <DialogTitle className="text-base font-bold">Export Survey Responses</DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground">
+              <CardInfoTooltip text="Download survey responses with entity name, contact person, phone, email, and role." />
+              <DialogDescription className="sr-only">
                 Download survey responses with entity name, contact person, phone, email, and role.
               </DialogDescription>
             </div>
           </div>
         </DialogHeader>
 
-        <div className="space-y-4 py-2 text-xs">
+        <div className="p-6 space-y-4 text-xs">
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Export File Format</Label>
+            <Label className="text-xs text-muted-foreground font-semibold">Export File Format</Label>
             <div className="grid grid-cols-2 gap-2">
               <Button
                 type="button"
                 variant={format === 'csv' ? 'default' : 'outline'}
                 onClick={() => setFormat('csv')}
-                className="h-12 flex items-center justify-center gap-2 rounded-xl active:scale-[0.97]"
+                className="h-11 flex items-center justify-center gap-2 rounded-xl active:scale-[0.97]"
               >
                 <FileSpreadsheet className="h-4 w-4" />
                 <span className="font-bold">CSV Spreadsheet</span>
@@ -126,7 +128,7 @@ export function ExportSurveyDataDialog({
                 type="button"
                 variant={format === 'json' ? 'default' : 'outline'}
                 onClick={() => setFormat('json')}
-                className="h-12 flex items-center justify-center gap-2 rounded-xl active:scale-[0.97]"
+                className="h-11 flex items-center justify-center gap-2 rounded-xl active:scale-[0.97]"
               >
                 <FileCode className="h-4 w-4" />
                 <span className="font-bold">JSON Document</span>
@@ -135,7 +137,7 @@ export function ExportSurveyDataDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Distribution Channel Filter</Label>
+            <Label className="text-xs text-muted-foreground font-semibold">Distribution Channel Filter</Label>
             <Select value={channelFilter} onValueChange={setChannelFilter}>
               <SelectTrigger className="h-11 rounded-xl text-xs">
                 <SelectValue placeholder="All Distribution Channels" />
@@ -153,7 +155,7 @@ export function ExportSurveyDataDialog({
           </div>
 
           <div className="flex items-center justify-between p-3.5 rounded-xl bg-muted/30 border border-border/50">
-            <div className="space-y-0.5">
+            <div className="space-y-0.5 pr-2">
               <Label className="text-xs font-bold">Include Entity & Contact Details</Label>
               <p className="text-[11px] text-muted-foreground">Includes entity name, contact person name, phone, email, and role for linked and non-linked respondents.</p>
             </div>
@@ -166,12 +168,12 @@ export function ExportSurveyDataDialog({
           </div>
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="h-11 rounded-xl active:scale-[0.97]"
+            className="h-10 px-4 rounded-xl text-xs font-semibold active:scale-[0.97]"
           >
             Cancel
           </Button>
@@ -179,7 +181,7 @@ export function ExportSurveyDataDialog({
             type="button"
             disabled={isExporting}
             onClick={handleExport}
-            className="h-11 rounded-xl font-bold active:scale-[0.97]"
+            className="h-10 px-4 rounded-xl text-xs font-bold active:scale-[0.97]"
           >
             {isExporting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
             {isExporting ? 'Generating Dataset...' : 'Download File'}
