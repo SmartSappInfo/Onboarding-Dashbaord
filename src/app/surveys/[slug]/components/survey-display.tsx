@@ -643,7 +643,7 @@ function LeadCaptureFormView({
         company: { show: false, label: 'Company Name', required: false }
     };
 
-    const title = survey.leadCaptureTitle ? interpolateWithMap(survey.leadCaptureTitle, simulatedValues || {}) : 'Save Your Results';
+    const title = survey.leadCaptureTitle ? interpolateWithMap(survey.leadCaptureTitle, simulatedValues || {}) : 'Where Do We Send Your Results?';
     const description = survey.leadCaptureDescription ? interpolateWithMap(survey.leadCaptureDescription, simulatedValues || {}) : 'Kindly provide your details so that we can send you your results';
 
     React.useEffect(() => {

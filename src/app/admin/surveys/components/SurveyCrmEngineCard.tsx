@@ -163,7 +163,7 @@ export function SurveyCrmEngineCard() {
   React.useEffect(() => {
     if (createEntity) {
       if (!watch('leadCaptureTitle')) {
-        setValue('leadCaptureTitle', 'Claim Your Results', { shouldDirty: true });
+        setValue('leadCaptureTitle', 'Where Do We Send Your Results?', { shouldDirty: true });
       }
       if (!watch('leadCaptureDescription')) {
         setValue('leadCaptureDescription', 'Kindly provide your details so that we can send you your results', { shouldDirty: true });
@@ -871,7 +871,7 @@ export function SurveyCrmEngineCard() {
                             type="text"
                             {...field}
                             value={field.value || ''}
-                            placeholder="Claim Your Results"
+                            placeholder="Where Do We Send Your Results?"
                             className="w-full text-lg sm:text-xl font-bold tracking-tight bg-transparent border-b border-dashed border-transparent hover:border-muted-foreground/30 focus:border-primary focus:outline-none text-center transition-all px-2 py-1 text-foreground"
                           />
                         )}
