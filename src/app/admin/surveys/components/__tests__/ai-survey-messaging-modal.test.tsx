@@ -106,7 +106,7 @@ describe('AiSurveyMessagingModal', () => {
     );
 
     expect(screen.getByText('AI Generated Team Alerts')).toBeDefined();
-    expect(screen.getByText('Auto-generated alert templates for internal team members.')).toBeDefined();
+    expect(screen.getAllByText('Auto-generated alert templates for internal team members.').length).toBeGreaterThanOrEqual(1);
 
     // Verify visual preview mode is default and shows subject & email mockup
     expect(screen.getByText(/New Submission from/i)).toBeDefined();
@@ -175,7 +175,7 @@ describe('AiSurveyMessagingModal', () => {
     fireEvent.change(smsTextarea, { target: { value: 'Quick test SMS alert text.' } });
 
     expect(screen.getByDisplayValue('Quick test SMS alert text.')).toBeDefined();
-    expect(screen.getByText(/26 \/ 160 characters/i)).toBeDefined();
+    expect(screen.getAllByText(/26 \/ 160 characters/i).length).toBeGreaterThanOrEqual(1);
   });
 
   it('persists edits to Firestore and invokes onApply when Apply is clicked', async () => {
@@ -290,15 +290,15 @@ describe('AiSurveyMessagingModal', () => {
       />
     );
 
-    const commandInput = screen.getByLabelText(/AI Command Input/i);
+    const commandInput = screen.getByLabelText(/Prompt/i);
     expect(commandInput).toBeDefined();
 
     fireEvent.change(commandInput, {
       target: { value: 'Make it more urgent and replace school with organization' },
     });
 
-    const refineButton = screen.getByRole('button', { name: /Submit AI Command/i });
-    fireEvent.click(refineButton);
+    const sendButton = screen.getByRole('button', { name: /Send/i });
+    fireEvent.click(sendButton);
 
     await waitFor(() => {
       expect(handleRegenerate).toHaveBeenCalledWith(
@@ -392,4 +392,71 @@ describe('AiSurveyMessagingModal', () => {
     // Verify a new heading block was added with default text
     expect(screen.getByDisplayValue('New Section Heading')).toBeDefined();
   });
+
+  it('allows turning off a channel so its template is not linked upon applying', async () => {
+    const handleApply = vi.fn();
+
+    render(
+      <AiSurveyMessagingModal
+        open={true}
+        onOpenChange={vi.fn()}
+        generatedOutput={sampleAiOutput}
+        savedTemplateIds={{
+          emailTemplateId: 'tmpl_email_1',
+          smsTemplateId: 'tmpl_sms_1',
+          whatsappTemplateId: 'tmpl_wa_1',
+        }}
+        workspaceId="ws_123"
+        organizationId="org_456"
+        userId="user_789"
+        onApply={handleApply}
+      />
+    );
+
+    // Find and click the SMS toggle switch to disable it
+    const smsSwitch = screen.getByRole('switch', { name: /Toggle SMS channel/i });
+    expect(smsSwitch.getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(smsSwitch);
+    expect(smsSwitch.getAttribute('aria-checked')).toBe('false');
+
+    // Click Apply to Survey
+    const applyButton = screen.getByRole('button', { name: /Apply to Survey/i });
+    fireEvent.click(applyButton);
+
+    await waitFor(() => {
+      // smsTemplateId should be undefined since SMS channel was turned off
+      expect(handleApply).toHaveBeenCalledWith({
+        emailTemplateId: 'tmpl_email_1',
+        smsTemplateId: undefined,
+        whatsappTemplateId: 'tmpl_wa_1',
+      });
+    });
+  });
+
+  it('renders preview/edit mode toggle and regenerate buttons in the bottom control bar', () => {
+    const handleRegenerate = vi.fn();
+
+    render(
+      <AiSurveyMessagingModal
+        open={true}
+        onOpenChange={vi.fn()}
+        generatedOutput={sampleAiOutput}
+        onApply={vi.fn()}
+        onRegenerate={handleRegenerate}
+      />
+    );
+
+    // Verify Visual Preview, Edit Content, and Regenerate buttons exist
+    const previewBtn = screen.getByRole('button', { name: /Visual Preview/i });
+    const editBtn = screen.getByRole('button', { name: /Edit Content/i });
+    const regenBtn = screen.getByRole('button', { name: /Regenerate/i });
+
+    expect(previewBtn).toBeDefined();
+    expect(editBtn).toBeDefined();
+    expect(regenBtn).toBeDefined();
+
+    fireEvent.click(regenBtn);
+    expect(handleRegenerate).toHaveBeenCalled();
+  });
 });
+

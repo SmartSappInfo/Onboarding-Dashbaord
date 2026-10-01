@@ -136,14 +136,16 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
     };
 
     const handleApplyAiTemplates = (ids: { emailTemplateId?: string; smsTemplateId?: string; whatsappTemplateId?: string }) => {
-        if (ids.emailTemplateId) {
-            setValue(`${prefix}EmailTemplateId`, ids.emailTemplateId, { shouldDirty: true });
-        }
-        if (ids.smsTemplateId) {
-            setValue(`${prefix}SmsTemplateId`, ids.smsTemplateId, { shouldDirty: true });
-        }
-        if (ids.whatsappTemplateId) {
-            setValue(`${prefix}WhatsappTemplateId`, ids.whatsappTemplateId, { shouldDirty: true });
+        setValue(`${prefix}EmailTemplateId`, ids.emailTemplateId || '', { shouldDirty: true });
+        setValue(`${prefix}SmsTemplateId`, ids.smsTemplateId || '', { shouldDirty: true });
+        setValue(`${prefix}WhatsappTemplateId`, ids.whatsappTemplateId || '', { shouldDirty: true });
+
+        const nextChannels: ('email' | 'sms' | 'whatsapp')[] = [];
+        if (ids.emailTemplateId) nextChannels.push('email');
+        if (ids.smsTemplateId) nextChannels.push('sms');
+        if (ids.whatsappTemplateId) nextChannels.push('whatsapp');
+        if (nextChannels.length > 0) {
+            setActiveChannels(nextChannels);
         }
     };
 

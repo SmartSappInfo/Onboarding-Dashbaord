@@ -30,6 +30,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -65,6 +66,7 @@ import { useTenant } from '@/context/TenantContext';
 import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
 import { renderBlocksToHtml, resolveVariables, plainTextToHtml } from '@/lib/messaging-utils';
 import { quickSaveSurveyTemplateAction } from '@/lib/survey-ai-messaging-actions';
+import PromptBar from '@/components/PromptBar';
 import type { GenerateSurveyMessagingOutput, EmailBlock } from '@/ai/schemas/survey-messaging-schemas';
 import type { MessageBlock } from '@/lib/types';
 
@@ -169,6 +171,24 @@ export default function AiSurveyMessagingModal({
   const [isSaving, setIsSaving] = React.useState(false);
   const [showPlainTextFallback, setShowPlainTextFallback] = React.useState(false);
 
+  // Channel enable/disable state allowing user to turn off email, sms, or whatsapp
+  const [enabledChannels, setEnabledChannels] = React.useState<{
+    email: boolean;
+    sms: boolean;
+    whatsapp: boolean;
+  }>({
+    email: true,
+    sms: true,
+    whatsapp: true,
+  });
+
+  const toggleChannel = React.useCallback((channel: 'email' | 'sms' | 'whatsapp') => {
+    setEnabledChannels((prev) => ({
+      ...prev,
+      [channel]: !prev[channel],
+    }));
+  }, []);
+
   // AI Command Bar Chat state
   const [chatPrompt, setChatPrompt] = React.useState('');
   const [isRefining, setIsRefining] = React.useState(false);
@@ -180,10 +200,16 @@ export default function AiSurveyMessagingModal({
   React.useEffect(() => {
     if (generatedOutput) {
       setEditableOutput(sanitizeTemplateVariables(generatedOutput));
+      // Initialize channel enabled states based on availability
+      setEnabledChannels({
+        email: !!generatedOutput.email && (savedTemplateIds?.emailTemplateId ? true : !savedTemplateIds || !!generatedOutput.email),
+        sms: !!generatedOutput.sms && (savedTemplateIds?.smsTemplateId ? true : !savedTemplateIds || !!generatedOutput.sms),
+        whatsapp: !!generatedOutput.whatsapp && (savedTemplateIds?.whatsappTemplateId ? true : !savedTemplateIds || !!generatedOutput.whatsapp),
+      });
     } else {
       setEditableOutput(null);
     }
-  }, [generatedOutput]);
+  }, [generatedOutput, savedTemplateIds]);
 
   // Set default active tab based on what was generated
   React.useEffect(() => {
@@ -393,9 +419,13 @@ export default function AiSurveyMessagingModal({
       // 2. Notify parent of updated output
       onUpdateOutput?.(editableOutput);
 
-      // 3. Link template IDs to the survey form
+      // 3. Link template IDs to the survey form for enabled channels only
       if (savedTemplateIds) {
-        onApply(savedTemplateIds);
+        onApply({
+          emailTemplateId: enabledChannels.email ? savedTemplateIds.emailTemplateId : undefined,
+          smsTemplateId: enabledChannels.sms ? savedTemplateIds.smsTemplateId : undefined,
+          whatsappTemplateId: enabledChannels.whatsapp ? savedTemplateIds.whatsappTemplateId : undefined,
+        });
       }
 
       toast({
@@ -768,72 +798,26 @@ export default function AiSurveyMessagingModal({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl w-[94vw] max-h-[92vh] flex flex-col p-0 overflow-hidden border-2 shadow-2xl rounded-3xl font-figtree">
+        <DialogContent className="max-w-4xl w-[94vw] max-h-[92vh] flex flex-col p-0 overflow-hidden sm:rounded-2xl border border-border/80 shadow-2xl bg-card text-card-foreground font-figtree">
           {/* Header */}
-          <DialogHeader className="p-5 sm:p-6 pb-4 border-b border-border/50 bg-muted/20">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-2xl bg-primary/10 text-primary border border-primary/20 shadow-xs">
-                  <Sparkles className="w-5 h-5 animate-pulse text-primary" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <DialogTitle className="text-base sm:text-lg font-bold tracking-tight">
-                      {title}
-                    </DialogTitle>
-                    {hasEdits && (
-                      <Badge variant="outline" className="text-[10px] font-semibold text-primary border-primary/30 bg-primary/5">
-                        Customized
-                      </Badge>
-                    )}
-                  </div>
-                  <DialogDescription className="text-xs text-muted-foreground mt-0.5 line-clamp-1 sm:line-clamp-none">
-                    {targetDescription}
-                  </DialogDescription>
-                </div>
+          <DialogHeader className="px-6 py-3.5 sm:py-4 min-h-[52px] sm:min-h-[56px] border-b border-border/80 bg-muted/20 flex flex-row items-center justify-between gap-3 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/20 shadow-xs">
+                <Sparkles className="w-4 h-4 animate-pulse text-primary" />
               </div>
-
-              {/* Top View Mode Controls & Regenerate */}
-              <div className="flex items-center gap-2 self-end sm:self-center">
-                {/* Segmented Mode Switcher: Preview vs Edit */}
-                {!isLoading && editableOutput && (
-                  <div className="flex items-center bg-muted/60 p-1 rounded-xl border border-border/60 shadow-inner">
-                    <Button
-                      type="button"
-                      variant={viewMode === 'preview' ? 'default' : 'ghost'}
-                      size="sm"
-                      onClick={() => setViewMode('preview')}
-                      className="h-8 rounded-lg text-xs font-bold gap-1.5 px-3 active:scale-[0.97] transition-all"
-                      aria-label="Visual Preview Mode"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      Visual Preview
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={viewMode === 'edit' ? 'default' : 'ghost'}
-                      size="sm"
-                      onClick={() => setViewMode('edit')}
-                      className="h-8 rounded-lg text-xs font-bold gap-1.5 px-3 active:scale-[0.97] transition-all"
-                      aria-label="Edit Content Mode"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                      Edit Content
-                    </Button>
-                  </div>
-                )}
-
-                {onRegenerate && !isLoading && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onRegenerate()}
-                    className="rounded-xl h-8 text-xs font-semibold gap-1.5 active:scale-[0.97] transition-all min-h-[36px]"
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    Regenerate
-                  </Button>
-                )}
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <DialogTitle className="text-base font-bold tracking-tight">
+                    {title}
+                  </DialogTitle>
+                  {targetDescription && <CardInfoTooltip text={targetDescription} />}
+                  {targetDescription && <DialogDescription className="sr-only">{targetDescription}</DialogDescription>}
+                  {hasEdits && (
+                    <Badge variant="outline" className="text-[10px] font-semibold text-primary border-primary/30 bg-primary/5">
+                      Customized
+                    </Badge>
+                  )}
+                </div>
               </div>
             </div>
           </DialogHeader>
@@ -864,38 +848,154 @@ export default function AiSurveyMessagingModal({
                 className="h-full flex flex-col overflow-hidden"
               >
                 {/* Channel Selector */}
-                <TabsList className="grid grid-cols-3 w-full h-11 p-1 bg-muted/60 rounded-2xl mb-4 shrink-0">
+                <TabsList className="grid grid-cols-3 w-full h-12 p-1 bg-muted/60 rounded-2xl mb-4 shrink-0">
                   <TabsTrigger
                     value="email"
                     disabled={!editableOutput.email}
-                    className="rounded-xl font-bold text-xs gap-1.5 min-h-[36px] data-[state=active]:bg-background data-[state=active]:shadow-xs"
+                    className="rounded-xl font-bold text-xs gap-2 min-h-[40px] transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md text-muted-foreground hover:text-foreground"
                   >
-                    <Mail className="w-3.5 h-3.5" />
-                    Email
-                    {savedTemplateIds?.emailTemplateId && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 ml-1" />
+                    <span
+                      role="switch"
+                      aria-checked={enabledChannels.email}
+                      aria-label="Toggle Email channel"
+                      tabIndex={0}
+                      title={enabledChannels.email ? 'Turn off Email alert' : 'Turn on Email alert'}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleChannel('email');
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === ' ' || e.key === 'Enter') {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          toggleChannel('email');
+                        }
+                      }}
+                      className={cn(
+                        'relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
+                        enabledChannels.email
+                          ? (activeTab === 'email' ? 'bg-primary-foreground/90' : 'bg-primary')
+                          : (activeTab === 'email' ? 'bg-primary-foreground/30' : 'bg-muted-foreground/30')
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'pointer-events-none inline-block h-3 w-3 transform rounded-full shadow-sm transition duration-200 ease-in-out',
+                          enabledChannels.email
+                            ? 'translate-x-3 ' + (activeTab === 'email' ? 'bg-primary' : 'bg-primary-foreground')
+                            : 'translate-x-0 bg-background'
+                        )}
+                      />
+                    </span>
+                    <Mail className="w-3.5 h-3.5 shrink-0" />
+                    <span>Email</span>
+                    {savedTemplateIds?.emailTemplateId && enabledChannels.email && (
+                      <span className={cn('w-1.5 h-1.5 rounded-full ml-0.5', activeTab === 'email' ? 'bg-primary-foreground' : 'bg-emerald-500')} />
+                    )}
+                    {!enabledChannels.email && (
+                      <span className={cn('text-[9px] font-semibold px-1 rounded', activeTab === 'email' ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-muted text-muted-foreground')}>
+                        Off
+                      </span>
                     )}
                   </TabsTrigger>
+
                   <TabsTrigger
                     value="sms"
                     disabled={!editableOutput.sms}
-                    className="rounded-xl font-bold text-xs gap-1.5 min-h-[36px] data-[state=active]:bg-background data-[state=active]:shadow-xs"
+                    className="rounded-xl font-bold text-xs gap-2 min-h-[40px] transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md text-muted-foreground hover:text-foreground"
                   >
-                    <Smartphone className="w-3.5 h-3.5" />
-                    SMS
-                    {savedTemplateIds?.smsTemplateId && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 ml-1" />
+                    <span
+                      role="switch"
+                      aria-checked={enabledChannels.sms}
+                      aria-label="Toggle SMS channel"
+                      tabIndex={0}
+                      title={enabledChannels.sms ? 'Turn off SMS alert' : 'Turn on SMS alert'}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleChannel('sms');
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === ' ' || e.key === 'Enter') {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          toggleChannel('sms');
+                        }
+                      }}
+                      className={cn(
+                        'relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
+                        enabledChannels.sms
+                          ? (activeTab === 'sms' ? 'bg-primary-foreground/90' : 'bg-primary')
+                          : (activeTab === 'sms' ? 'bg-primary-foreground/30' : 'bg-muted-foreground/30')
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'pointer-events-none inline-block h-3 w-3 transform rounded-full shadow-sm transition duration-200 ease-in-out',
+                          enabledChannels.sms
+                            ? 'translate-x-3 ' + (activeTab === 'sms' ? 'bg-primary' : 'bg-primary-foreground')
+                            : 'translate-x-0 bg-background'
+                        )}
+                      />
+                    </span>
+                    <Smartphone className="w-3.5 h-3.5 shrink-0" />
+                    <span>SMS</span>
+                    {savedTemplateIds?.smsTemplateId && enabledChannels.sms && (
+                      <span className={cn('w-1.5 h-1.5 rounded-full ml-0.5', activeTab === 'sms' ? 'bg-primary-foreground' : 'bg-emerald-500')} />
+                    )}
+                    {!enabledChannels.sms && (
+                      <span className={cn('text-[9px] font-semibold px-1 rounded', activeTab === 'sms' ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-muted text-muted-foreground')}>
+                        Off
+                      </span>
                     )}
                   </TabsTrigger>
+
                   <TabsTrigger
                     value="whatsapp"
                     disabled={!editableOutput.whatsapp}
-                    className="rounded-xl font-bold text-xs gap-1.5 min-h-[36px] data-[state=active]:bg-background data-[state=active]:shadow-xs"
+                    className="rounded-xl font-bold text-xs gap-2 min-h-[40px] transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md text-muted-foreground hover:text-foreground"
                   >
-                    <MessageCircle className="w-3.5 h-3.5" />
-                    WhatsApp
-                    {savedTemplateIds?.whatsappTemplateId && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 ml-1" />
+                    <span
+                      role="switch"
+                      aria-checked={enabledChannels.whatsapp}
+                      aria-label="Toggle WhatsApp channel"
+                      tabIndex={0}
+                      title={enabledChannels.whatsapp ? 'Turn off WhatsApp alert' : 'Turn on WhatsApp alert'}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleChannel('whatsapp');
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === ' ' || e.key === 'Enter') {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          toggleChannel('whatsapp');
+                        }
+                      }}
+                      className={cn(
+                        'relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
+                        enabledChannels.whatsapp
+                          ? (activeTab === 'whatsapp' ? 'bg-primary-foreground/90' : 'bg-primary')
+                          : (activeTab === 'whatsapp' ? 'bg-primary-foreground/30' : 'bg-muted-foreground/30')
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'pointer-events-none inline-block h-3 w-3 transform rounded-full shadow-sm transition duration-200 ease-in-out',
+                          enabledChannels.whatsapp
+                            ? 'translate-x-3 ' + (activeTab === 'whatsapp' ? 'bg-primary' : 'bg-primary-foreground')
+                            : 'translate-x-0 bg-background'
+                        )}
+                      />
+                    </span>
+                    <MessageCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>WhatsApp</span>
+                    {savedTemplateIds?.whatsappTemplateId && enabledChannels.whatsapp && (
+                      <span className={cn('w-1.5 h-1.5 rounded-full ml-0.5', activeTab === 'whatsapp' ? 'bg-primary-foreground' : 'bg-emerald-500')} />
+                    )}
+                    {!enabledChannels.whatsapp && (
+                      <span className={cn('text-[9px] font-semibold px-1 rounded', activeTab === 'whatsapp' ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-muted text-muted-foreground')}>
+                        Off
+                      </span>
                     )}
                   </TabsTrigger>
                 </TabsList>
@@ -904,6 +1004,25 @@ export default function AiSurveyMessagingModal({
                 <TabsContent value="email" className="flex-1 overflow-hidden mt-0 flex flex-col min-h-0">
                   {editableOutput.email && (
                     <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+                      {!enabledChannels.email && (
+                        <div className="bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 rounded-xl px-4 py-2 flex items-center justify-between text-xs font-medium shrink-0 mb-2.5">
+                          <div className="flex items-center gap-2">
+                            <Info className="w-4 h-4 text-amber-500 shrink-0" />
+                            <span>
+                              <strong>EMAIL</strong> is currently turned off and will not be linked to this survey.
+                            </span>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => toggleChannel('email')}
+                            className="h-7 text-xs font-semibold rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border-amber-500/40 text-amber-900 dark:text-amber-100 active:scale-[0.97]"
+                          >
+                            Turn On Email
+                          </Button>
+                        </div>
+                      )}
                       {viewMode === 'preview' ? (
                         /* ──────────────── EMAIL VISUAL PREVIEW ──────────────── */
                         <div className="flex-1 flex flex-col overflow-hidden min-h-0 space-y-3">
@@ -1002,24 +1121,6 @@ export default function AiSurveyMessagingModal({
                                 </div>
                               )}
                             </div>
-                          </div>
-
-                          {/* Quick Edit Hint */}
-                          <div className="flex items-center justify-between px-1 shrink-0">
-                            <span className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                              <Info className="w-3.5 h-3.5 text-primary shrink-0" />
-                              {editableOutput.email.explanation || 'Visual preview reflects all active blocks and branding tokens.'}
-                            </span>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setViewMode('edit')}
-                              className="h-7 text-xs font-semibold gap-1 rounded-xl text-primary border-primary/20 hover:bg-primary/5"
-                            >
-                              <Edit3 className="w-3 h-3" />
-                              Edit Copy & Blocks
-                            </Button>
                           </div>
                         </div>
                       ) : (
@@ -1257,24 +1358,6 @@ export default function AiSurveyMessagingModal({
                               </div>
                             </div>
                           </div>
-
-                          {/* Quick Switch to Simulation Hint */}
-                          <div className="flex items-center justify-between px-1 shrink-0">
-                            <span className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                              <Info className="w-3.5 h-3.5 text-primary shrink-0" />
-                              WYSIWYG Canvas: Click directly on headings, text, or buttons to edit them in real-time.
-                            </span>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setViewMode('preview')}
-                              className="h-7 text-xs font-semibold gap-1 rounded-xl text-primary border-primary/20 hover:bg-primary/5"
-                            >
-                              <Eye className="w-3 h-3" />
-                              View Inbox Simulation
-                            </Button>
-                          </div>
                         </div>
                       )}
                     </div>
@@ -1285,6 +1368,25 @@ export default function AiSurveyMessagingModal({
                 <TabsContent value="sms" className="flex-1 overflow-hidden mt-0 flex flex-col min-h-0">
                   {editableOutput.sms && (
                     <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+                      {!enabledChannels.sms && (
+                        <div className="bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 rounded-xl px-4 py-2 flex items-center justify-between text-xs font-medium shrink-0 mb-2.5">
+                          <div className="flex items-center gap-2">
+                            <Info className="w-4 h-4 text-amber-500 shrink-0" />
+                            <span>
+                              <strong>SMS</strong> is currently turned off and will not be linked to this survey.
+                            </span>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => toggleChannel('sms')}
+                            className="h-7 text-xs font-semibold rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border-amber-500/40 text-amber-900 dark:text-amber-100 active:scale-[0.97]"
+                          >
+                            Turn On SMS
+                          </Button>
+                        </div>
+                      )}
                       {viewMode === 'preview' ? (
                         /* ──────────────── SMS VISUAL PREVIEW ──────────────── */
                         <div className="flex-1 flex flex-col overflow-hidden min-h-0 space-y-3">
@@ -1317,38 +1419,6 @@ export default function AiSurveyMessagingModal({
                                 </span>
                               </div>
                             </div>
-                          </div>
-
-                          {/* SMS Character & Segment Analysis */}
-                          <div className="flex items-center justify-between px-1 shrink-0 flex-wrap gap-2">
-                            <div className="flex items-center gap-2">
-                              <Badge
-                                variant="outline"
-                                className={cn(
-                                  'text-[10px] font-mono',
-                                  editableOutput.sms.body.length <= 160
-                                    ? 'text-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/20'
-                                    : 'text-amber-600 bg-amber-50/50'
-                                )}
-                              >
-                                {editableOutput.sms.body.length} / 160 characters (~{Math.ceil(editableOutput.sms.body.length / 160)} SMS)
-                              </Badge>
-                              {editableOutput.sms.explanation && (
-                                <span className="text-[11px] text-muted-foreground italic hidden sm:inline">
-                                  &bull; {editableOutput.sms.explanation}
-                                </span>
-                              )}
-                            </div>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setViewMode('edit')}
-                              className="h-7 text-xs font-semibold gap-1 rounded-xl text-primary border-primary/20 hover:bg-primary/5"
-                            >
-                              <Edit3 className="w-3 h-3" />
-                              Edit SMS Text
-                            </Button>
                           </div>
                         </div>
                       ) : (
@@ -1433,6 +1503,25 @@ export default function AiSurveyMessagingModal({
                 <TabsContent value="whatsapp" className="flex-1 overflow-hidden mt-0 flex flex-col min-h-0">
                   {editableOutput.whatsapp && (
                     <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+                      {!enabledChannels.whatsapp && (
+                        <div className="bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 rounded-xl px-4 py-2 flex items-center justify-between text-xs font-medium shrink-0 mb-2.5">
+                          <div className="flex items-center gap-2">
+                            <Info className="w-4 h-4 text-amber-500 shrink-0" />
+                            <span>
+                              <strong>WHATSAPP</strong> is currently turned off and will not be linked to this survey.
+                            </span>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => toggleChannel('whatsapp')}
+                            className="h-7 text-xs font-semibold rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border-amber-500/40 text-amber-900 dark:text-amber-100 active:scale-[0.97]"
+                          >
+                            Turn On WhatsApp
+                          </Button>
+                        </div>
+                      )}
                       {viewMode === 'preview' ? (
                         /* ──────────────── WHATSAPP VISUAL PREVIEW ──────────────── */
                         <div className="flex-1 flex flex-col overflow-hidden min-h-0 space-y-3">
@@ -1477,28 +1566,10 @@ export default function AiSurveyMessagingModal({
                                     <span>✓✓</span>
                                   </div>
                                 </div>
-                              </div>
                             </div>
                           </div>
-
-                          {/* Bottom Action / Meta Details */}
-                          <div className="flex items-center justify-between px-1 shrink-0 flex-wrap gap-2">
-                            <span className="text-[11px] text-muted-foreground flex items-center gap-1">
-                              <Info className="w-3.5 h-3.5 text-emerald-500" />
-                              Positional tokens {'{{1}}, {{2}}'} are filled with sample preview values.
-                            </span>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setViewMode('edit')}
-                              className="h-7 text-xs font-semibold gap-1 rounded-xl text-primary border-primary/20 hover:bg-primary/5"
-                            >
-                              <Edit3 className="w-3 h-3" />
-                              Edit WhatsApp Copy
-                            </Button>
-                          </div>
                         </div>
+                      </div>
                       ) : (
                         /* ──────────────── WHATSAPP IN-MODAL EDITOR ──────────────── */
                         <ScrollArea className="flex-1 pr-3">
@@ -1618,50 +1689,112 @@ export default function AiSurveyMessagingModal({
                     </div>
                   )}
                 </TabsContent>
+
+                {/* ════════════ CONTROL BAR BELOW PREVIEW AREA ════════════ */}
+                <div className="pt-3 pb-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shrink-0 border-t border-border/40 mt-2">
+                  {/* Left: View Mode Toggle */}
+                  <div className="flex items-center bg-muted/60 p-1 rounded-xl border border-border/60 shadow-xs">
+                    <Button
+                      type="button"
+                      variant={viewMode === 'preview' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setViewMode('preview')}
+                      className={cn(
+                        "h-8 rounded-lg text-xs font-bold gap-1.5 px-3 active:scale-[0.97] transition-all",
+                        viewMode === 'preview' && "bg-primary text-primary-foreground shadow-xs"
+                      )}
+                      aria-label="Visual Preview Mode"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      Visual Preview
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={viewMode === 'edit' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setViewMode('edit')}
+                      className={cn(
+                        "h-8 rounded-lg text-xs font-bold gap-1.5 px-3 active:scale-[0.97] transition-all",
+                        viewMode === 'edit' && "bg-primary text-primary-foreground shadow-xs"
+                      )}
+                      aria-label="Edit Content Mode"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      Edit Content
+                    </Button>
+                  </div>
+
+                  {/* Center: SMS character count or channel disabled badge */}
+                  <div className="flex items-center gap-2">
+                    {activeTab === 'sms' && editableOutput.sms && (
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          'text-[10px] font-mono',
+                          editableOutput.sms.body.length <= 160
+                            ? 'text-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/20'
+                            : 'text-amber-600 bg-amber-50/50'
+                        )}
+                      >
+                        {editableOutput.sms.body.length} / 160 characters (~{Math.ceil(editableOutput.sms.body.length / 160)} SMS)
+                      </Badge>
+                    )}
+                    {!enabledChannels[activeTab] && (
+                      <Badge variant="outline" className="text-[10px] font-semibold text-rose-500 border-rose-500/30 bg-rose-500/5">
+                        {activeTab.toUpperCase()} Disabled
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* Right: Regenerate Button */}
+                  {onRegenerate && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onRegenerate()}
+                      disabled={isLoading || isRefining}
+                      className="rounded-xl h-8 text-xs font-semibold gap-1.5 active:scale-[0.97] transition-all min-h-[36px] hover:bg-primary/5 hover:text-primary hover:border-primary/30"
+                      aria-label="Regenerate"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-primary" />
+                      Regenerate
+                    </Button>
+                  )}
+                </div>
               </Tabs>
             )}
           </div>
 
-          {/* AI Command / Chat Bar */}
+          {/* AI Refinement Unified PromptBar */}
           {!isLoading && editableOutput && (
-            <div className="border-t border-border/60 bg-muted/30 p-3 sm:px-6 space-y-2 shrink-0">
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleAiCommandSubmit(chatPrompt);
-                }}
-                className="flex items-center gap-2"
-              >
-                <div className="relative flex-1">
-                  <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary pointer-events-none" />
-                  <Input
-                    value={chatPrompt}
-                    onChange={(e) => setChatPrompt(e.target.value)}
-                    placeholder="Ask AI to refine copy (e.g. 'Make it more urgent and replace school with organization')..."
-                    disabled={isLoading || isRefining}
-                    className="h-10 pl-9 pr-3 text-xs font-medium rounded-xl border-border/70 bg-background shadow-xs focus-visible:ring-1 focus-visible:ring-primary"
-                    aria-label="AI Command Input"
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  disabled={isLoading || isRefining || !chatPrompt.trim()}
-                  className="h-10 px-4 text-xs font-bold rounded-xl gap-1.5 shadow-sm active:scale-[0.97] transition-all min-h-[40px]"
-                  aria-label="Submit AI Command"
-                >
-                  {isRefining ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span className="hidden sm:inline">Refining...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Refine Copy</span>
-                    </>
-                  )}
-                </Button>
-              </form>
+            <div className="border-t border-border/80 bg-muted/20 p-3 sm:px-6 space-y-2 shrink-0">
+              <div className="flex justify-center w-full">
+                <PromptBar
+                  placeholder="Ask AI to refine copy (e.g. 'Make it more urgent and replace school with organization')..."
+                  value={chatPrompt}
+                  onChange={setChatPrompt}
+                  busy={isRefining || isLoading}
+                  commands={[
+                    { key: 'concise', name: '/concise', description: 'More concise & punchy', promptText: 'More concise & punchy' },
+                    { key: 'warm', name: '/warm', description: 'Friendlier warm tone', promptText: 'Friendlier warm tone' },
+                    { key: 'cta', name: '/cta', description: 'Add urgent CTA button', promptText: 'Add urgent CTA button' },
+                    { key: 'formal', name: '/formal', description: 'Professional & formal', promptText: 'Professional & formal' },
+                    { key: 'steps', name: '/next-steps', description: 'Highlight next steps', promptText: 'Highlight next steps' },
+                    { key: 'org', name: '/org-terms', description: 'Replace school with organization', promptText: 'Replace any school terms with organization' },
+                  ]}
+                  sources={[]}
+                  models={[]}
+                  efforts={[]}
+                  background="hsl(var(--card))"
+                  color="hsl(var(--card-foreground))"
+                  menuBackground="hsl(var(--popover))"
+                  sparkColor="hsl(var(--primary))"
+                  width="100%"
+                  onSend={(text) => handleAiCommandSubmit(text)}
+                  className="w-full"
+                />
+              </div>
 
               {/* Quick Suggestion Chips */}
               <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 no-scrollbar text-[11px]">
@@ -1694,7 +1827,7 @@ export default function AiSurveyMessagingModal({
           )}
 
           {/* Footer Bar */}
-          <DialogFooter className="p-4 border-t border-border/50 bg-muted/20 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <Button
                 variant="ghost"

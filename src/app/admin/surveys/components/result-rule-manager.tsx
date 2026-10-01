@@ -134,15 +134,9 @@ function SortableRuleItem({
 
     const handleApplyAiTemplates = (ids: { emailTemplateId?: string; smsTemplateId?: string; whatsappTemplateId?: string }) => {
         setValue(`resultRules.${index}.messagingEnabled`, true, { shouldDirty: true });
-        if (ids.emailTemplateId) {
-            setValue(`resultRules.${index}.emailTemplateId`, ids.emailTemplateId, { shouldDirty: true });
-        }
-        if (ids.smsTemplateId) {
-            setValue(`resultRules.${index}.smsTemplateId`, ids.smsTemplateId, { shouldDirty: true });
-        }
-        if (ids.whatsappTemplateId) {
-            setValue(`resultRules.${index}.whatsappTemplateId`, ids.whatsappTemplateId, { shouldDirty: true });
-        }
+        setValue(`resultRules.${index}.emailTemplateId`, ids.emailTemplateId || '', { shouldDirty: true });
+        setValue(`resultRules.${index}.smsTemplateId`, ids.smsTemplateId || '', { shouldDirty: true });
+        setValue(`resultRules.${index}.whatsappTemplateId`, ids.whatsappTemplateId || '', { shouldDirty: true });
     };
 
     const style = {
