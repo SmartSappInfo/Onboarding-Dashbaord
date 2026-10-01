@@ -26,7 +26,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   // 1. Authenticate Cloud Tasks handshake (fail-closed)
-  if (!isAuthorizedCloudTaskRequest(request.headers)) {
+  if (!(await isAuthorizedCloudTaskRequest(request.headers))) {
     console.warn('[AGENT-STEP-WORKER] Unauthorized Cloud Tasks handshake signature.');
     return NextResponse.json({ error: 'Unauthorized handshake signature' }, { status: 401 });
   }

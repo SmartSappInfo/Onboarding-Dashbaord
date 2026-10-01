@@ -1,20 +1,23 @@
 import type { CloudTasksClient } from '@google-cloud/tasks';
 import { adminDb } from './firebase-admin';
 import { getErrorNumericCode, getErrorStatus } from '@/lib/errors/report-error';
+import {
+  cloudTasksProjectId,
+  cloudTasksPublicBaseUrl,
+  cloudTasksServiceAccountEmail,
+  getCloudTasksSecret,
+} from '@/lib/security/cloud-tasks-auth';
 
 // Configurations
-const PROJECT = process.env.GCP_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID || '';
+const PROJECT = cloudTasksProjectId();
 const LOCATION = process.env.GCP_LOCATION || 'us-central1';
-const SECRET = process.env.CLOUD_TASKS_SECRET || 'cc6442af1b849d2250ab115c340ac11b7635b0a27c47d98741659fb98c7f1aaf';
+// SECURITY (agents_mcp PR-2): there is no built-in secret any more. The old literal fallback is in
+// the public repo history; `getCloudTasksSecret()` throws in production when it is not configured.
 const BASE_URL = process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://go.smartsapp.com' : 'http://127.0.0.1:3000');
 const QUEUE_PREFIX = process.env.GCP_QUEUE_PREFIX ? `${process.env.GCP_QUEUE_PREFIX}-` : '';
 
 async function resolvePublicBaseUrl(): Promise<string> {
-  const envUrl = process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || '';
-  if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
-    return envUrl.endsWith('/') ? envUrl.slice(0, -1) : envUrl;
-  }
-  return 'https://go.smartsapp.com';
+  return cloudTasksPublicBaseUrl();
 }
 
 async function resolveRequestBaseUrl(): Promise<string> {
@@ -38,11 +41,30 @@ async function resolveRequestBaseUrl(): Promise<string> {
 }
 
 function resolveServiceAccountEmail(): string {
-  return (
-    process.env.GCP_SERVICE_ACCOUNT_EMAIL ||
-    process.env.SERVICE_ACCOUNT_EMAIL ||
-    `${PROJECT || 'studio-9220106300-f74cb'}@appspot.gserviceaccount.com`
-  );
+  return cloudTasksServiceAccountEmail();
+}
+
+/**
+ * Headers for a direct worker call (emulator mode or the queue-missing fallback). In production the
+ * call also carries a Google ID token from this service's own identity, so it passes the workers'
+ * OIDC check like a real Cloud Tasks request (see `src/lib/security/cloud-tasks-auth.ts`).
+ */
+async function workerFetchHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'x-cloud-tasks-secret': getCloudTasksSecret(),
+  };
+  if (process.env.NODE_ENV === 'production') {
+    try {
+      const { GoogleAuth } = await import('google-auth-library');
+      const audience = cloudTasksPublicBaseUrl();
+      const idTokenClient = await new GoogleAuth().getIdTokenClient(audience);
+      headers.Authorization = `Bearer ${await idTokenClient.idTokenProvider.fetchIdToken(audience)}`;
+    } catch (err: unknown) {
+      console.warn('[GCP-TASKS] Could not attach an ID token to a direct worker call:', err instanceof Error ? err.message : err);
+    }
+  }
+  return headers;
 }
 
 // Global cache for local mock timers in emulator mode (Next.js HMR-resilient)
@@ -100,10 +122,7 @@ async function dispatchLocalHttpWorker(endpoint: string, payload: Record<string,
       try {
         const response = await fetch(`${resolvedBaseUrl}${endpoint}`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-cloud-tasks-secret': SECRET,
-          },
+          headers: await workerFetchHeaders(),
           body: JSON.stringify(payload),
         });
         if (!response.ok) {
@@ -122,10 +141,7 @@ async function dispatchLocalHttpWorker(endpoint: string, payload: Record<string,
           if (altHost) {
             const altRes = await fetch(`${altHost}${endpoint}`, {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'x-cloud-tasks-secret': SECRET,
-              },
+              headers: await workerFetchHeaders(),
               body: JSON.stringify(payload),
             });
             if (altRes.ok) {
@@ -289,10 +305,7 @@ export async function scheduleDelayTask({
       try {
         const response = await fetch(`${resolvedBaseUrl}/api/automations/resume`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-cloud-tasks-secret': SECRET,
-          },
+          headers: await workerFetchHeaders(),
           body: JSON.stringify({ runId, nodeId, automationId, payload }),
         });
 
@@ -357,7 +370,7 @@ export async function scheduleDelayTask({
       url: `${publicBaseUrl}/api/automations/resume`,
       headers: {
         'Content-Type': 'application/json',
-        'x-cloud-tasks-secret': SECRET,
+        'x-cloud-tasks-secret': getCloudTasksSecret(),
       },
       body: Buffer.from(JSON.stringify(taskPayload)).toString('base64'),
       oidcToken: {
@@ -538,10 +551,7 @@ export async function scheduleBulkTriggerTask({
       try {
         const response = await fetch(`${resolvedBaseUrl}/api/automations/bulk-trigger`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-cloud-tasks-secret': SECRET,
-          },
+          headers: await workerFetchHeaders(),
           body: JSON.stringify({ automationId, workspaceId, organizationId, trigger, targets }),
         });
 
@@ -581,7 +591,7 @@ export async function scheduleBulkTriggerTask({
       url: `${publicBaseUrl}/api/automations/bulk-trigger`,
       headers: {
         'Content-Type': 'application/json',
-        'x-cloud-tasks-secret': SECRET,
+        'x-cloud-tasks-secret': getCloudTasksSecret(),
       },
       body: Buffer.from(JSON.stringify(taskPayload)).toString('base64'),
       oidcToken: {
@@ -635,10 +645,7 @@ export async function scheduleBulkRetryTask({
       try {
         const response = await fetch(`${resolvedBaseUrl}/api/automations/runs/bulk-retry`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-cloud-tasks-secret': SECRET,
-          },
+          headers: await workerFetchHeaders(),
           body: JSON.stringify({ automationId, workspaceId, userId, runIds, retryAll }),
         });
 
@@ -678,7 +685,7 @@ export async function scheduleBulkRetryTask({
       url: `${publicBaseUrl}/api/automations/runs/bulk-retry`,
       headers: {
         'Content-Type': 'application/json',
-        'x-cloud-tasks-secret': SECRET,
+        'x-cloud-tasks-secret': getCloudTasksSecret(),
       },
       body: Buffer.from(JSON.stringify(taskPayload)).toString('base64'),
       oidcToken: {
@@ -734,10 +741,7 @@ export async function scheduleBulkResendMessagesTask({
       try {
         const response = await fetch(`${resolvedBaseUrl}/api/automations/messages/bulk-resend`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-cloud-tasks-secret': SECRET,
-          },
+          headers: await workerFetchHeaders(),
           body: JSON.stringify({ automationId, workspaceId, userId, logIds, resendAll }),
         });
 
@@ -777,7 +781,7 @@ export async function scheduleBulkResendMessagesTask({
       url: `${publicBaseUrl}/api/automations/messages/bulk-resend`,
       headers: {
         'Content-Type': 'application/json',
-        'x-cloud-tasks-secret': SECRET,
+        'x-cloud-tasks-secret': getCloudTasksSecret(),
       },
       body: Buffer.from(JSON.stringify(taskPayload)).toString('base64'),
       oidcToken: {
@@ -833,10 +837,7 @@ export async function scheduleBulkForceAdvanceTask({
       try {
         const response = await fetch(`${resolvedBaseUrl}/api/automations/runs/bulk-force-advance`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-cloud-tasks-secret': SECRET,
-          },
+          headers: await workerFetchHeaders(),
           body: JSON.stringify({ automationId, workspaceId, userId, runIds, advanceAllWaiting }),
         });
 
@@ -876,7 +877,7 @@ export async function scheduleBulkForceAdvanceTask({
       url: `${publicBaseUrl}/api/automations/runs/bulk-force-advance`,
       headers: {
         'Content-Type': 'application/json',
-        'x-cloud-tasks-secret': SECRET,
+        'x-cloud-tasks-secret': getCloudTasksSecret(),
       },
       body: Buffer.from(JSON.stringify(taskPayload)).toString('base64'),
       oidcToken: {
@@ -927,10 +928,7 @@ export async function scheduleTaskWithKey(
       try {
         await fetch(`${resolvedBaseUrl}${endpoint}`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-cloud-tasks-secret': SECRET,
-          },
+          headers: await workerFetchHeaders(),
           body: JSON.stringify(payload),
         });
       } catch (err) {
@@ -956,7 +954,7 @@ export async function scheduleTaskWithKey(
       url: `${publicBaseUrl}${endpoint}`,
       headers: {
         'Content-Type': 'application/json',
-        'x-cloud-tasks-secret': SECRET,
+        'x-cloud-tasks-secret': getCloudTasksSecret(),
       },
       body: Buffer.from(JSON.stringify(payload)).toString('base64'),
       oidcToken: {
