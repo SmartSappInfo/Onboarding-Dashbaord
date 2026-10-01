@@ -102,11 +102,15 @@ export const ACTIVE_AI_MODELS: readonly AiModelDefinition[] = [
   },
 
   // --- Anthropic Claude Models ---
+  // ARCHITECTURAL INVARIANT (Rule 10):
+  // Genkit's @genkit-ai/anthropic plugin registers models under the 'anthropic/*' namespace.
+  // Wire strings MUST include the 'anthropic/' prefix (e.g. 'anthropic/claude-3-5-sonnet-20241022')
+  // so that Genkit model action lookups resolve correctly without NOT_FOUND errors.
   {
     id: 'claude-3-5-sonnet',
     name: 'Claude 3.5 Sonnet',
     provider: 'anthropic',
-    providerModelString: 'claude-3-5-sonnet-20241022',
+    providerModelString: 'anthropic/claude-3-5-sonnet-20241022',
     description: 'Industry-leading reasoning, nuanced writing, and complex tool orchestration.',
     tier: 'reasoning',
     capabilities: {
@@ -122,7 +126,7 @@ export const ACTIVE_AI_MODELS: readonly AiModelDefinition[] = [
     id: 'claude-3-5-haiku',
     name: 'Claude 3.5 Haiku',
     provider: 'anthropic',
-    providerModelString: 'claude-3-5-haiku-20241022',
+    providerModelString: 'anthropic/claude-3-5-haiku-20241022',
     description: 'Rapid responsiveness with high intelligence for agentic workflows.',
     tier: 'fast',
     capabilities: {
@@ -137,7 +141,7 @@ export const ACTIVE_AI_MODELS: readonly AiModelDefinition[] = [
     id: 'claude-3-opus',
     name: 'Claude 3 Opus',
     provider: 'anthropic',
-    providerModelString: 'claude-3-opus-20240229',
+    providerModelString: 'anthropic/claude-3-opus-20240229',
     description: 'Deep synthesis and philosophical reasoning for highly complex dilemmas.',
     tier: 'reasoning',
     capabilities: {

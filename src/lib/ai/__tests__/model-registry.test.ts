@@ -169,7 +169,13 @@ describe('AiModelRegistry (Single Source of Truth)', () => {
       ).toBe('googleai/gemini-3-flash-preview');
       expect(
         AiModelRegistry.getWireModelString('claude-3-5-sonnet', 'anthropic')
-      ).toBe('claude-3-5-sonnet-20241022');
+      ).toBe('anthropic/claude-3-5-sonnet-20241022');
+      expect(
+        AiModelRegistry.getWireModelString('claude-3-5-haiku', 'anthropic')
+      ).toBe('anthropic/claude-3-5-haiku-20241022');
+      expect(
+        AiModelRegistry.getWireModelString('claude-3-opus', 'anthropic')
+      ).toBe('anthropic/claude-3-opus-20240229');
       expect(
         AiModelRegistry.getWireModelString('gemini-2.5-flash', 'googleai')
       ).toBe('googleai/gemini-3-flash-preview');
