@@ -358,53 +358,81 @@ export async function getModel(
                 'googleai/gemini-3.1-flash-lite-preview',
               ].filter((candidate) => candidate !== resolvedOptions.model);
 
-              // Attempt fallback across candidates on CURRENT key
-              for (const candidate of fallbackCandidates) {
-                try {
-                  console.log(`[AI] Attempting resilient fallback model on current key: "${candidate}"`);
-                  return await originalGenerate({
-                    ...resolvedOptions,
-                    model: candidate,
-                  });
-                } catch (candidateErr) {
-                  const candidateMsg = candidateErr instanceof Error ? candidateErr.message : String(candidateErr);
-                  console.warn(`[AI] Fallback candidate "${candidate}" unavailable (${candidateMsg.slice(0, 80)}). Trying next candidate...`);
+              // Step 1: If current instance is already Google AI, attempt fallback models on current key
+              if (finalProvider === 'googleai') {
+                for (const candidate of fallbackCandidates) {
+                  try {
+                    console.log(`[AI] Attempting resilient fallback model on current Gemini key: "${candidate}"`);
+                    return await originalGenerate({
+                      ...resolvedOptions,
+                      model: candidate,
+                    });
+                  } catch (candidateErr) {
+                    const candidateMsg = candidateErr instanceof Error ? candidateErr.message : String(candidateErr);
+                    console.warn(`[AI] Fallback candidate "${candidate}" unavailable (${candidateMsg.slice(0, 80)}). Trying next candidate...`);
+                  }
                 }
               }
 
-              // If current key exhausted candidates, attempt with global Backoffice key if distinct
+              // Step 2: Cross-Provider Fallback (Rule 10 & Multi-Tenancy):
+              // If current provider is NOT googleai (e.g. Anthropic or OpenRouter key failed with 401/404/quota),
+              // we CANNOT execute 'googleai/*' models on the Anthropic-only instance.
+              // We must resolve a valid Gemini key and route to a Google AI Genkit instance:
+              //   (a) Organization custom Gemini key from Firestore
+              //   (b) Backoffice Global Gemini key from system_settings/ai_keys
+              //   (c) Environment GEMINI_API_KEY
               try {
-                const globalKeys = await getGlobalBackofficeKeys();
-                const geminiKey = globalKeys.geminiApiKey || process.env.GEMINI_API_KEY;
-                if (geminiKey && geminiKey !== apiKey) {
+                let geminiKey: string | undefined;
+
+                if (organizationId) {
+                  try {
+                    const orgDoc = await adminDb.collection('organizations').doc(organizationId).get();
+                    if (orgDoc.exists) {
+                      geminiKey = openSecret(orgDoc.data()?.geminiApiKey);
+                    }
+                  } catch (orgKeyErr) {
+                    console.warn(`[AI] Failed to read organization Gemini fallback key:`, orgKeyErr);
+                  }
+                }
+
+                if (!geminiKey) {
+                  const globalKeys = await getGlobalBackofficeKeys();
+                  geminiKey = globalKeys.geminiApiKey;
+                }
+
+                if (!geminiKey) {
+                  geminiKey = process.env.GEMINI_API_KEY;
+                }
+
+                if (geminiKey) {
                   const fallbackInstance = getOrCreateGenkitInstance('googleai', geminiKey);
                   for (const candidate of fallbackCandidates) {
                     try {
+                      console.log(`[AI] Attempting cross-provider fallback to "${candidate}" on Google AI instance`);
                       return await fallbackInstance.generate({
                         ...resolvedOptions,
                         model: candidate,
                       });
-                    } catch {
-                      // Continue to next candidate on global key
+                    } catch (crossErr) {
+                      const crossMsg = crossErr instanceof Error ? crossErr.message : String(crossErr);
+                      console.warn(`[AI] Cross-provider fallback candidate "${candidate}" failed (${crossMsg.slice(0, 80)}). Trying next...`);
                     }
                   }
                 }
-              } catch (fallbackErr) {
-                const fbMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
-                console.warn(`[AI] Global Backoffice fallback resolution notice: ${fbMsg.slice(0, 80)}`);
+              } catch (crossProviderErr) {
+                console.warn('[AI] Cross-provider fallback resolution notice:', crossProviderErr);
               }
 
-              // If environment key is distinct, attempt final fallback
-              if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== apiKey) {
-                for (const candidate of fallbackCandidates) {
-                  try {
-                    return await ai.generate({
-                      ...resolvedOptions,
-                      model: candidate,
-                    });
-                  } catch {
-                    // Continue
-                  }
+              // Step 3: Final attempt with ambient system default instance (has both Google AI and Anthropic plugins)
+              for (const candidate of fallbackCandidates) {
+                try {
+                  console.log(`[AI] Attempting final system default instance fallback: "${candidate}"`);
+                  return await ai.generate({
+                    ...resolvedOptions,
+                    model: candidate,
+                  });
+                } catch {
+                  // Continue to next candidate
                 }
               }
             }
