@@ -105,6 +105,31 @@ describe('ShareEmbedDialog with Shortcode & QR Code Tabs', () => {
     expect(screen.getByRole('tab', { name: /code embed|widget/i })).toBeDefined();
   });
 
+  it('renders modal header with CardInfoTooltip and hides raw description text from visible flow', () => {
+    render(
+      <ShareEmbedDialog
+        isOpen={true}
+        onOpenChange={vi.fn()}
+        title="Share & Embed Survey"
+        resourceName="Survey"
+        publicUrl="https://smartsapp.com/surveys/onboarding-survey"
+        embedUrl="https://smartsapp.com/surveys/onboarding-survey?embed=true"
+      />
+    );
+
+    // Title is present
+    expect(screen.getByText('Share & Embed Survey')).toBeDefined();
+
+    // CardInfoTooltip button is rendered alongside title
+    const infoBtn = screen.getByRole('button', { name: /more information/i });
+    expect(infoBtn).toBeDefined();
+
+    // Screen-reader description has sr-only class to prevent raw visible description text clutter
+    const srDescription = document.querySelector('.sr-only');
+    expect(srDescription).not.toBeNull();
+    expect(srDescription?.textContent).toContain('Share this survey directly');
+  });
+
   it('fetches existing QR/shortcode on open and populates shortcode info', async () => {
     mockGetQRCodeByUrl.mockResolvedValueOnce({
       id: 'qr_existing',
