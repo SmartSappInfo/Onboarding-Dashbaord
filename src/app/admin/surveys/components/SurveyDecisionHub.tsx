@@ -43,7 +43,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import {
   Workflow,
   Plus,
@@ -456,18 +456,42 @@ export function SurveyDecisionHub({ workspaceId }: SurveyDecisionHubProps) {
       {/* Edit / Create Rule Modal */}
       {isRuleModalOpen && editingRule && (
         <Dialog open={isRuleModalOpen} onOpenChange={setIsRuleModalOpen}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-base font-bold flex items-center gap-2">
-                <Workflow className="h-5 w-5 text-purple-600" />
-                {editingRule.id.startsWith('rule_') ? 'Configure Decision Rule' : 'Edit Decision Rule'}
-              </DialogTitle>
-              <DialogDescription className="text-xs">
-                Configure compound conditions and sequential actions for this decision rule.
-              </DialogDescription>
+          <DialogContent
+            showCloseButton={false}
+            className="max-w-3xl max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+          >
+            {/* Header Demarcation with Title, CardInfoTooltip & Flex-Centered Close Button */}
+            <DialogHeader
+              demarcated
+              className="px-6 py-3.5 sm:py-4 min-h-[52px] sm:min-h-[56px]"
+            >
+              <div className="flex items-center gap-2.5">
+                <Workflow className="h-4.5 w-4.5 text-purple-600 dark:text-purple-400" />
+                <DialogTitle className="text-base font-bold tracking-tight text-foreground">
+                  {editingRule.id.startsWith('rule_') ? 'Configure Decision Rule' : 'Edit Decision Rule'}
+                </DialogTitle>
+                <CardInfoTooltip
+                  text="Configure compound conditions and sequential actions for this decision rule."
+                  side="bottom"
+                />
+                <DialogDescription className="sr-only">
+                  Configure compound conditions and sequential actions for this decision rule.
+                </DialogDescription>
+              </div>
+              <DialogClose asChild>
+                <button
+                  type="button"
+                  className="rounded-full h-8 w-8 inline-flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none active:scale-95 cursor-pointer shrink-0"
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Close</span>
+                </button>
+              </DialogClose>
             </DialogHeader>
 
-            <div className="space-y-6 py-2">
+            {/* Modal Body Container with Standard Padding & Responsive Scroll */}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)] flex-1 space-y-6">
               {/* Basic Details */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="sm:col-span-2 space-y-1.5">
@@ -997,13 +1021,13 @@ export function SurveyDecisionHub({ workspaceId }: SurveyDecisionHubProps) {
               </div>
             </div>
 
-            <DialogFooter className="pt-3 border-t border-border">
+            <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5 shrink-0">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => setIsRuleModalOpen(false)}
-                className="h-9 px-4 text-xs font-semibold active:scale-[0.97]"
+                className="h-9 px-4 text-xs font-semibold active:scale-[0.97] rounded-xl"
               >
                 Cancel
               </Button>
@@ -1011,7 +1035,7 @@ export function SurveyDecisionHub({ workspaceId }: SurveyDecisionHubProps) {
                 type="button"
                 size="sm"
                 onClick={handleSaveRule}
-                className="h-9 px-4 text-xs font-semibold active:scale-[0.97]"
+                className="h-9 px-4 text-xs font-semibold active:scale-[0.97] rounded-xl"
               >
                 Save Decision Rule
               </Button>
@@ -1023,18 +1047,41 @@ export function SurveyDecisionHub({ workspaceId }: SurveyDecisionHubProps) {
       {/* Import Playbook Modal */}
       {isPlaybookModalOpen && (
         <Dialog open={isPlaybookModalOpen} onOpenChange={setIsPlaybookModalOpen}>
-          <DialogContent className="max-w-xl">
-            <DialogHeader>
-              <DialogTitle className="text-base font-bold flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-purple-600" />
-                Import Enterprise Decision Playbook
-              </DialogTitle>
-              <DialogDescription className="text-xs">
-                Select a proven automation playbook to auto-configure conditions and action pipelines.
-              </DialogDescription>
+          <DialogContent
+            showCloseButton={false}
+            className="max-w-xl max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+          >
+            {/* Header Demarcation with Title, CardInfoTooltip & Flex-Centered Close Button */}
+            <DialogHeader
+              demarcated
+              className="px-6 py-3.5 sm:py-4 min-h-[52px] sm:min-h-[56px]"
+            >
+              <div className="flex items-center gap-2.5">
+                <BookOpen className="h-4.5 w-4.5 text-purple-600 dark:text-purple-400" />
+                <DialogTitle className="text-base font-bold tracking-tight text-foreground">
+                  Import Enterprise Decision Playbook
+                </DialogTitle>
+                <CardInfoTooltip
+                  text="Select a proven automation playbook to auto-configure conditions and action pipelines."
+                  side="bottom"
+                />
+                <DialogDescription className="sr-only">
+                  Select a proven automation playbook to auto-configure conditions and action pipelines.
+                </DialogDescription>
+              </div>
+              <DialogClose asChild>
+                <button
+                  type="button"
+                  className="rounded-full h-8 w-8 inline-flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none active:scale-95 cursor-pointer shrink-0"
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Close</span>
+                </button>
+              </DialogClose>
             </DialogHeader>
 
-            <div className="grid grid-cols-1 gap-3 py-2">
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-70px)] flex-1 grid grid-cols-1 gap-3">
               {playbooks.map((pb) => (
                 <div
                   key={pb.id}
@@ -1052,7 +1099,7 @@ export function SurveyDecisionHub({ workspaceId }: SurveyDecisionHubProps) {
                     type="button"
                     size="sm"
                     onClick={() => handleImportPlaybook(pb)}
-                    className="h-8 px-3 text-xs font-semibold shrink-0 active:scale-[0.97]"
+                    className="h-8 px-3 text-xs font-semibold shrink-0 active:scale-[0.97] rounded-lg"
                   >
                     Import
                   </Button>
