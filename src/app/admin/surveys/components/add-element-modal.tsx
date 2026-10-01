@@ -8,6 +8,7 @@ import {
     DialogTitle,
     DialogDescription,
 } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -100,14 +101,17 @@ export default function AddElementModal({ open, onOpenChange, onSelect }: AddEle
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
- <DialogContent className="sm:max-w-4xl rounded-[2rem] border border-border bg-card p-0 overflow-hidden shadow-2xl">
-                <DialogHeader className="p-8 pb-6 bg-muted/10 border-b">
-                    <DialogTitle className="text-2xl font-bold tracking-tight">Add a New Element</DialogTitle>
-                    <DialogDescription className="text-sm font-medium text-muted-foreground/80 mt-1">
-                        Select the type of element you want to add to your survey.
-                    </DialogDescription>
+            <DialogContent className="sm:max-w-4xl sm:rounded-2xl border border-border/80 bg-card text-card-foreground p-0 overflow-hidden shadow-2xl">
+                <DialogHeader demarcated>
+                    <div className="flex items-center gap-2">
+                        <DialogTitle className="text-base font-bold tracking-tight">Add a New Element</DialogTitle>
+                        <CardInfoTooltip text="Select the type of element you want to add to your survey." />
+                        <DialogDescription className="sr-only">
+                            Select the type of element you want to add to your survey.
+                        </DialogDescription>
+                    </div>
                 </DialogHeader>
- <ScrollArea className="max-h-[70vh] -mx-6">
+                <ScrollArea className="max-h-[70vh]">
  <div className="space-y-6 px-6 py-4">
                         <div>
  <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-4 px-1">Question Elements</h3>

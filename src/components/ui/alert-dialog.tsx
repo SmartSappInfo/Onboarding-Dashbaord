@@ -66,13 +66,20 @@ const AlertDialogContent = React.forwardRef<
 })
 AlertDialogContent.displayName = AlertDialogPrimitive.Content.displayName
 
+export interface AlertDialogHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
+  demarcated?: boolean;
+}
+
 const AlertDialogHeader = ({
   className,
+  demarcated,
   ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
+}: AlertDialogHeaderProps) => (
   <div
     className={cn(
       "flex flex-col space-y-2 text-center sm:text-left",
+      demarcated &&
+        "px-6 py-3.5 sm:py-4 min-h-[52px] sm:min-h-[56px] border-b border-border/80 bg-muted/20 flex flex-row items-center justify-between shrink-0 space-y-0 text-left",
       className
     )}
     {...props}

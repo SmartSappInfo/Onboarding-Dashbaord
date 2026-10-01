@@ -21,6 +21,7 @@ import {
   DialogFooter
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -194,25 +195,25 @@ export function ExecuteRecurringBillingModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="sm:max-w-[540px] rounded-3xl p-6 border-border shadow-2xl bg-card">
-        <DialogHeader className="space-y-2 text-left">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
-              <Zap className="h-5 w-5 fill-primary/20" />
+      <DialogContent className="sm:max-w-[540px] p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+        <DialogHeader demarcated className="px-6 py-3.5 sm:py-4 border-b border-border/80 bg-muted/20 flex flex-row items-center justify-between shrink-0 space-y-0 text-left">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
+              <Zap className="h-4 w-4 fill-primary/20" />
             </div>
-            <div>
-              <DialogTitle className="text-lg font-black tracking-tight text-foreground">
-                Run Recurring Cycle Billing
-              </DialogTitle>
-              <DialogDescription className="text-xs font-semibold text-muted-foreground">
-                Generate batch invoices for all active institutional agreements
-              </DialogDescription>
-            </div>
+            <DialogTitle className="text-base sm:text-lg font-semibold tracking-tight text-foreground flex items-center gap-1.5">
+              Run Recurring Cycle Billing
+              <CardInfoTooltip text="Generate batch invoices for all active institutional agreements" />
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Generate batch invoices for all active institutional agreements
+            </DialogDescription>
           </div>
         </DialogHeader>
 
-        {!batchResult ? (
-          <div className="space-y-5 py-3">
+        <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+          {!batchResult ? (
+            <div className="space-y-5">
             {/* Cycle Selection */}
             <div className="space-y-1.5 text-left">
               <Label className="text-xs font-bold text-foreground">Target Billing Cycle / Period *</Label>
@@ -336,20 +337,21 @@ export function ExecuteRecurringBillingModal({
             )}
           </div>
         )}
+        </div>
 
-        <DialogFooter className="flex flex-row items-center justify-end gap-2 pt-2">
+        <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5 shrink-0">
           {!batchResult ? (
             <>
               <Button
                 variant="outline"
-                className="h-11 min-h-[44px] rounded-xl px-5 text-xs font-bold active:scale-[0.97]"
+                className="h-11 min-h-[44px] rounded-xl px-5 text-xs font-medium active:scale-[0.97]"
                 onClick={handleClose}
                 disabled={isProcessing}
               >
                 Cancel
               </Button>
               <Button
-                className="h-11 min-h-[44px] rounded-xl px-6 text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.97]"
+                className="h-11 min-h-[44px] rounded-xl px-6 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.97]"
                 onClick={handleExecute}
                 disabled={isProcessing || eligibleStats.eligible === 0}
               >
@@ -370,14 +372,14 @@ export function ExecuteRecurringBillingModal({
             <>
               <Button
                 variant="outline"
-                className="h-11 min-h-[44px] rounded-xl px-5 text-xs font-bold active:scale-[0.97]"
+                className="h-11 min-h-[44px] rounded-xl px-5 text-xs font-medium active:scale-[0.97]"
                 onClick={handleClose}
               >
                 Done
               </Button>
               <Button
                 asChild
-                className="h-11 min-h-[44px] rounded-xl px-6 text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.97]"
+                className="h-11 min-h-[44px] rounded-xl px-6 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.97]"
               >
                 <Link href="/admin/finance/invoices">
                   View Invoices <ArrowRight className="h-4 w-4 ml-2" />

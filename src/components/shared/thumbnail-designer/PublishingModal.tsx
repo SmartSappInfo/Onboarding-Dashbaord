@@ -27,7 +27,8 @@ import {
   publishCreativeToChannelAction,
   scheduleCreativePublicationAction,
 } from '@/app/actions/creative-publishing-actions';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -146,22 +147,27 @@ export function PublishingModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl bg-slate-950 border-slate-800 text-slate-100 p-6 rounded-3xl">
-        <DialogHeader>
-          <DialogTitle className="text-lg font-black flex items-center gap-2 text-white">
-            <Globe className="w-5 h-5 text-blue-400" /> Multi-Platform Publishing
-          </DialogTitle>
+      <DialogContent className="sm:max-w-xl p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+        <DialogHeader demarcated className="px-6 py-3.5 sm:py-4">
+          <div className="flex items-center gap-2">
+            <Globe className="w-5 h-5 text-primary" />
+            <DialogTitle className="text-base sm:text-lg font-bold">Multi-Platform Publishing</DialogTitle>
+            <CardInfoTooltip text="Configure target destination channels and schedule or distribute visual assets." />
+          </div>
+          <DialogDescription className="sr-only">
+            Configure destination channels and publish or schedule creative visual assets.
+          </DialogDescription>
         </DialogHeader>
 
         {publishedUrl ? (
           /* Success Platform View */
-          <div className="py-6 text-center space-y-4">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 mx-auto flex items-center justify-center">
+          <div className="p-6 text-center space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 mx-auto flex items-center justify-center">
               <CheckCircle2 className="w-6 h-6" />
             </div>
             <div className="space-y-1">
-              <h3 className="text-base font-bold text-white">Published Successfully</h3>
-              <p className="text-xs text-slate-400">
+              <h3 className="text-base font-bold text-foreground">Published Successfully</h3>
+              <p className="text-xs text-muted-foreground">
                 Visual has been synchronized to {activeSpec.name}.
               </p>
             </div>
@@ -170,7 +176,7 @@ export function PublishingModal({
                 href={publishedUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold text-white hover:bg-slate-850 active:scale-[0.97]"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-muted/60 border border-border/80 text-xs font-bold text-foreground hover:bg-muted active:scale-[0.97]"
               >
                 <ExternalLink className="w-3.5 h-3.5" /> View on {activeSpec.name}
               </a>
@@ -179,135 +185,137 @@ export function PublishingModal({
                   setPublishedUrl(null);
                   onOpenChange(false);
                 }}
-                className="bg-emerald-500 hover:bg-emerald-600 font-bold text-xs text-slate-950 h-9 px-5 rounded-xl active:scale-[0.97]"
+                className="font-bold text-xs h-9 px-5 rounded-xl active:scale-[0.97]"
               >
                 Done
               </Button>
             </div>
           </div>
         ) : (
-          <div className="space-y-5 pt-2">
-            {/* Channel Selection Grid */}
-            <div className="space-y-2">
-              <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                Destination Channel
-              </Label>
-              <div className="grid grid-cols-5 gap-2">
-                {(['youtube', 'facebook', 'instagram', 'linkedin', 'crm_asset'] as const).map((ch) => {
-                  const spec = CHANNEL_SPECS[ch];
-                  const Icon = CHANNEL_ICONS[ch];
-                  const isSelected = selectedChannel === ch;
+          <div className="flex flex-col flex-1 overflow-hidden">
+            <div className="p-6 space-y-5 overflow-y-auto max-h-[70vh]">
+              {/* Channel Selection Grid */}
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                  Destination Channel
+                </Label>
+                <div className="grid grid-cols-5 gap-2">
+                  {(['youtube', 'facebook', 'instagram', 'linkedin', 'crm_asset'] as const).map((ch) => {
+                    const spec = CHANNEL_SPECS[ch];
+                    const Icon = CHANNEL_ICONS[ch];
+                    const isSelected = selectedChannel === ch;
 
-                  return (
-                    <button
-                      key={ch}
-                      onClick={() => setSelectedChannel(ch)}
-                      className={cn(
-                        'p-2.5 rounded-2xl border text-xs flex flex-col items-center justify-center gap-1.5 transition-all active:scale-[0.96]',
-                        isSelected
-                          ? 'bg-slate-900 border-blue-500/50 shadow-lg shadow-blue-500/10 text-white'
-                          : 'bg-slate-950/60 border-slate-850 text-slate-400 hover:border-slate-800'
-                      )}
-                    >
-                      <Icon className="w-5 h-5" />
-                      <span className="text-[10px] font-bold truncate w-full text-center">{spec.name}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Target Identifier Input */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-slate-300">
-                {activeSpec.name} Target
-              </Label>
-              <Input
-                value={targetId}
-                onChange={(e) => setTargetId(e.target.value)}
-                placeholder={activeSpec.targetPlaceholder}
-                className="h-10 bg-slate-900 border-slate-800 text-xs font-semibold text-white rounded-xl"
-              />
-            </div>
-
-            {/* Pre-Flight Checklist */}
-            <div className="p-3.5 rounded-2xl bg-slate-900/50 border border-slate-800 space-y-2">
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                Pre-Flight Confidence Checklist
-              </div>
-              <div className="space-y-1.5">
-                {preFlightChecks.map((check) => (
-                  <div
-                    key={check.id}
-                    className="flex items-start gap-2 text-xs"
-                  >
-                    {check.passed ? (
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                    ) : check.severity === 'error' ? (
-                      <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-0.5" />
-                    ) : (
-                      <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-                    )}
-                    <span className={cn('text-[11px]', check.passed ? 'text-slate-300' : check.severity === 'error' ? 'text-rose-300' : 'text-amber-300')}>
-                      {check.message}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Publishing Mode: Instant vs Scheduled */}
-            <div className="space-y-2">
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setPublishMode('instant')}
-                  className={cn(
-                    'p-2.5 rounded-xl text-xs font-bold border transition-all',
-                    publishMode === 'instant'
-                      ? 'bg-blue-600/15 border-blue-500/40 text-blue-400'
-                      : 'bg-slate-900 border-slate-800 text-slate-400'
-                  )}
-                >
-                  <Send className="w-3.5 h-3.5 mx-auto mb-1" /> Publish Immediately
-                </button>
-                <button
-                  onClick={() => setPublishMode('schedule')}
-                  className={cn(
-                    'p-2.5 rounded-xl text-xs font-bold border transition-all',
-                    publishMode === 'schedule'
-                      ? 'bg-blue-600/15 border-blue-500/40 text-blue-400'
-                      : 'bg-slate-900 border-slate-800 text-slate-400'
-                  )}
-                >
-                  <Calendar className="w-3.5 h-3.5 mx-auto mb-1" /> Schedule Distribution
-                </button>
-              </div>
-
-              {publishMode === 'schedule' && (
-                <div className="pt-2">
-                  <Input
-                    type="datetime-local"
-                    value={scheduleDateTime}
-                    onChange={(e) => setScheduleDateTime(e.target.value)}
-                    className="h-10 bg-slate-900 border-slate-800 text-xs text-white rounded-xl"
-                  />
+                    return (
+                      <button
+                        key={ch}
+                        onClick={() => setSelectedChannel(ch)}
+                        className={cn(
+                          'p-2.5 rounded-2xl border text-xs flex flex-col items-center justify-center gap-1.5 transition-all active:scale-[0.96]',
+                          isSelected
+                            ? 'bg-primary/10 border-primary text-primary shadow-sm font-semibold'
+                            : 'bg-muted/30 border-border/80 text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                        )}
+                      >
+                        <Icon className="w-5 h-5" />
+                        <span className="text-[10px] font-bold truncate w-full text-center">{spec.name}</span>
+                      </button>
+                    );
+                  })}
                 </div>
-              )}
+              </div>
+
+              {/* Target Identifier Input */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-foreground">
+                  {activeSpec.name} Target
+                </Label>
+                <Input
+                  value={targetId}
+                  onChange={(e) => setTargetId(e.target.value)}
+                  placeholder={activeSpec.targetPlaceholder}
+                  className="h-10 bg-background border-border text-xs font-semibold text-foreground rounded-xl"
+                />
+              </div>
+
+              {/* Pre-Flight Checklist */}
+              <div className="p-3.5 rounded-2xl bg-muted/30 border border-border/80 space-y-2">
+                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                  Pre-Flight Confidence Checklist
+                </div>
+                <div className="space-y-1.5">
+                  {preFlightChecks.map((check) => (
+                    <div
+                      key={check.id}
+                      className="flex items-start gap-2 text-xs"
+                    >
+                      {check.passed ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                      ) : check.severity === 'error' ? (
+                        <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0 mt-0.5" />
+                      ) : (
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                      )}
+                      <span className={cn('text-[11px]', check.passed ? 'text-foreground' : check.severity === 'error' ? 'text-destructive font-medium' : 'text-amber-600 dark:text-amber-400 font-medium')}>
+                        {check.message}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Publishing Mode: Instant vs Scheduled */}
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setPublishMode('instant')}
+                    className={cn(
+                      'p-2.5 rounded-xl text-xs font-bold border transition-all active:scale-[0.97]',
+                      publishMode === 'instant'
+                        ? 'bg-primary/10 border-primary text-primary'
+                        : 'bg-muted/40 border-border/80 text-muted-foreground hover:bg-muted/60'
+                    )}
+                  >
+                    <Send className="w-3.5 h-3.5 mx-auto mb-1" /> Publish Immediately
+                  </button>
+                  <button
+                    onClick={() => setPublishMode('schedule')}
+                    className={cn(
+                      'p-2.5 rounded-xl text-xs font-bold border transition-all active:scale-[0.97]',
+                      publishMode === 'schedule'
+                        ? 'bg-primary/10 border-primary text-primary'
+                        : 'bg-muted/40 border-border/80 text-muted-foreground hover:bg-muted/60'
+                    )}
+                  >
+                    <Calendar className="w-3.5 h-3.5 mx-auto mb-1" /> Schedule Distribution
+                  </button>
+                </div>
+
+                {publishMode === 'schedule' && (
+                  <div className="pt-2">
+                    <Input
+                      type="datetime-local"
+                      value={scheduleDateTime}
+                      onChange={(e) => setScheduleDateTime(e.target.value)}
+                      className="h-10 bg-background border-border text-xs text-foreground rounded-xl"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Actions */}
-            <div className="pt-2 flex justify-end gap-2 border-t border-slate-850">
+            {/* Demarcated Footer */}
+            <div className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
               <Button
                 onClick={() => onOpenChange(false)}
                 variant="outline"
-                className="h-10 text-xs font-bold border-slate-800 bg-slate-900 rounded-xl"
+                className="h-10 text-xs font-bold rounded-xl active:scale-[0.97]"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleExecutePublish}
                 disabled={isPending || hasBlockingError || !targetId.trim() || (publishMode === 'schedule' && !scheduleDateTime)}
-                className="h-10 px-5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs rounded-xl shadow-lg active:scale-[0.97]"
+                className="h-10 px-5 font-bold text-xs rounded-xl shadow-sm active:scale-[0.97]"
               >
                 {isPending ? (
                   <>

@@ -79,20 +79,24 @@ export function AiArchitectDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && !isExtracting && onClose()}>
-      <DialogContent className="sm:max-w-2xl rounded-3xl border-none shadow-2xl bg-card p-0 overflow-hidden">
-        <DialogHeader className="p-8 pb-4 text-left border-b bg-muted/20 relative">
-          <div className="absolute top-8 right-8 bg-primary/10 p-2.5 rounded-xl text-primary animate-pulse">
-            <Sparkles className="h-5 w-5" />
+      <DialogContent className="sm:max-w-2xl rounded-2xl border border-border/80 shadow-2xl bg-card text-card-foreground p-0 overflow-hidden">
+        <DialogHeader demarcated className="px-6 py-3.5 sm:py-4 min-h-[52px] sm:min-h-[56px]">
+          <div className="flex items-center gap-2.5">
+            <div className="bg-primary/10 p-2 rounded-xl text-primary shrink-0">
+              <Sparkles className="h-4 w-4" />
+            </div>
+            <div>
+              <DialogTitle className="text-base font-bold tracking-tight text-foreground">
+                AI Form Architect
+              </DialogTitle>
+              <DialogDescription className="sr-only">
+                Paste any unstructured profile, memo, or email. AI will organize and map the data into the form fields.
+              </DialogDescription>
+            </div>
           </div>
-          <DialogTitle className="text-2xl font-bold tracking-tight text-foreground">
-            AI Form Architect
-          </DialogTitle>
-          <DialogDescription className="text-sm font-medium text-muted-foreground mt-1.5">
-            Paste any unstructured profile, memo, or email. AI will organize and map the data into the form fields.
-          </DialogDescription>
         </DialogHeader>
 
-        <div className="p-8 space-y-6">
+        <div className="p-6 space-y-5">
           <div className="space-y-2">
             <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
               Profile or memo text
@@ -102,32 +106,32 @@ export function AiArchitectDialog({
               onChange={(e) => setText(e.target.value)}
               placeholder="Paste raw text here... (memos, emails, descriptions)"
               disabled={isExtracting}
-              className="min-h-[220px] rounded-2xl bg-muted/30 border-none shadow-inner p-5 text-base leading-relaxed focus-visible:ring-1 focus-visible:ring-primary/20 resize-none"
+              className="min-h-[200px] rounded-xl bg-muted/20 border border-border/70 p-4 text-sm leading-relaxed focus-visible:ring-1 focus-visible:ring-ring resize-none"
             />
           </div>
 
           {text.trim() && text.trim().length < 50 && (
-            <div className="flex items-center gap-2 text-[10px] font-bold text-amber-600 bg-amber-500/5 p-3.5 rounded-xl border border-amber-500/10">
+            <div className="flex items-center gap-2 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 p-3 rounded-xl border border-amber-500/20">
               <AlertCircle size={14} className="shrink-0" />
               Provide at least {50 - text.trim().length} more characters to enable extraction.
             </div>
           )}
         </div>
 
-        <DialogFooter className="p-8 pt-4 border-t bg-muted/10 gap-3">
+        <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             onClick={onClose}
             disabled={isExtracting}
-            className="rounded-xl font-semibold text-xs h-11 px-6"
+            className="rounded-xl font-semibold text-xs h-10 px-4 border-border text-muted-foreground hover:text-foreground hover:bg-muted/80 active:scale-[0.97]"
           >
             Cancel
           </Button>
           <Button
             onClick={handleExtract}
             disabled={isExtracting || text.trim().length < 50}
-            className="rounded-xl font-bold text-xs h-11 px-8 gap-2 shadow-lg shadow-primary/15"
+            className="rounded-xl font-bold text-xs h-10 px-5 gap-2 bg-primary text-primary-foreground hover:opacity-90 shadow-sm active:scale-[0.97]"
           >
             {isExtracting ? (
               <>

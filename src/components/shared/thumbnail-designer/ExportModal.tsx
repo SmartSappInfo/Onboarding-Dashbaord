@@ -19,9 +19,10 @@ import type {
   CreativeDocument,
   ExportOptions,
 } from '@/lib/creative/creative-types';
-import { getExportDimensions } from '@/lib/creative/creative-performance-engine';
 import { exportHighResolutionAssetAction } from '@/app/actions/creative-performance-actions';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { getExportDimensions } from '@/lib/creative/creative-performance-engine';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
@@ -78,17 +79,26 @@ export function ExportModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-slate-950 border-slate-800 text-slate-100 p-6 rounded-3xl">
-        <DialogHeader>
-          <DialogTitle className="text-lg font-black flex items-center gap-2 text-white">
-            <Download className="w-5 h-5 text-emerald-400" /> Export Production Asset
-          </DialogTitle>
+      <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+        <DialogHeader demarcated className="px-6 py-3.5 sm:py-4 border-b border-border/80 bg-muted/20 flex flex-row items-center justify-between shrink-0 space-y-0 text-left">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <Download className="w-4 h-4" />
+            </div>
+            <DialogTitle className="text-base sm:text-lg font-semibold tracking-tight text-foreground flex items-center gap-1.5">
+              Export Production Asset
+              <CardInfoTooltip text="Multi-format asset export generation (PNG, JPEG, WebP, SVG, Print PDF) with scale multipliers and transparency options." />
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Multi-format asset export generation (PNG, JPEG, WebP, SVG, Print PDF) with scale multipliers and transparency options.
+            </DialogDescription>
+          </div>
         </DialogHeader>
 
-        <div className="space-y-5 pt-2">
+        <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
           {/* Format Selector */}
           <div className="space-y-2">
-            <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
               Export Format
             </Label>
             <div className="grid grid-cols-5 gap-2">
@@ -97,18 +107,19 @@ export function ExportModal({
                 return (
                   <button
                     key={fmt}
+                    type="button"
                     onClick={() => setFormat(fmt)}
                     className={cn(
-                      'p-2.5 rounded-2xl border text-xs flex flex-col items-center justify-center gap-1 transition-all active:scale-[0.96]',
+                      'p-2.5 rounded-xl border text-xs flex flex-col items-center justify-center gap-1 transition-all cursor-pointer active:scale-[0.96]',
                       isSelected
-                        ? 'bg-slate-900 border-emerald-500/50 shadow-lg shadow-emerald-500/10 text-white'
-                        : 'bg-slate-950/60 border-slate-850 text-slate-400 hover:border-slate-800'
+                        ? 'bg-muted border-emerald-500/50 shadow-sm text-foreground'
+                        : 'bg-background border-border/80 text-muted-foreground hover:border-border'
                     )}
                   >
                     {fmt === 'pdf' ? (
-                      <FileText className="w-4 h-4 text-rose-400" />
+                      <FileText className="w-4 h-4 text-rose-500" />
                     ) : (
-                      <FileImage className="w-4 h-4 text-emerald-400" />
+                      <FileImage className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                     )}
                     <span className="text-[10px] font-bold uppercase">{fmt}</span>
                   </button>
@@ -119,7 +130,7 @@ export function ExportModal({
 
           {/* Scale Resolution Selector */}
           <div className="space-y-2">
-            <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
               Resolution Scale
             </Label>
             <div className="grid grid-cols-3 gap-2">
@@ -132,16 +143,17 @@ export function ExportModal({
                 return (
                   <button
                     key={opt.scale}
+                    type="button"
                     onClick={() => setScale(opt.scale)}
                     className={cn(
-                      'p-3 rounded-2xl border text-left transition-all active:scale-[0.96]',
+                      'p-3 rounded-xl border text-left transition-all cursor-pointer active:scale-[0.96]',
                       isSelected
-                        ? 'bg-slate-900 border-emerald-500/50 shadow-lg text-white'
-                        : 'bg-slate-950/60 border-slate-850 text-slate-400 hover:border-slate-800'
+                        ? 'bg-muted border-emerald-500/50 shadow-sm text-foreground'
+                        : 'bg-background border-border/80 text-muted-foreground hover:border-border'
                     )}
                   >
-                    <div className="text-xs font-bold text-white">{opt.label}</div>
-                    <div className="text-[10px] text-slate-400">{opt.sub}</div>
+                    <div className="text-xs font-bold text-foreground">{opt.label}</div>
+                    <div className="text-[10px] text-muted-foreground">{opt.sub}</div>
                   </button>
                 );
               })}
@@ -150,16 +162,17 @@ export function ExportModal({
 
           {/* Transparency Toggle (for PNG, WebP, SVG) */}
           {(format === 'png' || format === 'webp' || format === 'svg') && (
-            <div className="p-3 rounded-2xl bg-slate-900/50 border border-slate-800 flex items-center justify-between">
+            <div className="p-3 rounded-xl bg-muted/40 border border-border/80 flex items-center justify-between">
               <div>
-                <div className="text-xs font-bold text-slate-200">Transparent Background</div>
-                <div className="text-[10px] text-slate-400">Omit canvas background layer on export</div>
+                <div className="text-xs font-bold text-foreground">Transparent Background</div>
+                <div className="text-[10px] text-muted-foreground">Omit canvas background layer on export</div>
               </div>
               <button
+                type="button"
                 onClick={() => setTransparent(!transparent)}
                 className={cn(
-                  'w-10 h-6 rounded-full transition-colors relative',
-                  transparent ? 'bg-emerald-500' : 'bg-slate-800'
+                  'w-10 h-6 rounded-full transition-colors relative cursor-pointer',
+                  transparent ? 'bg-emerald-600' : 'bg-muted border border-border'
                 )}
               >
                 <div
@@ -173,39 +186,39 @@ export function ExportModal({
           )}
 
           {/* Dimensions Geometry Info */}
-          <div className="p-3 rounded-2xl bg-slate-900 border border-slate-850 flex items-center justify-between text-xs">
-            <span className="text-slate-400">Output Geometry:</span>
-            <span className="font-mono font-bold text-emerald-400">
+          <div className="p-3 rounded-xl bg-muted/40 border border-border/80 flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">Output Geometry:</span>
+            <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
               {dimensions.width} × {dimensions.height} px ({dimensions.dpi} DPI)
             </span>
           </div>
-
-          {/* Actions */}
-          <div className="pt-2 flex justify-end gap-2 border-t border-slate-850">
-            <Button
-              onClick={() => onOpenChange(false)}
-              variant="outline"
-              className="h-10 text-xs font-bold border-slate-800 bg-slate-900 rounded-xl"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleExecuteExport}
-              disabled={isPending}
-              className="h-10 px-5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-xs rounded-xl shadow-lg active:scale-[0.97]"
-            >
-              {isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Rendering...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-3.5 h-3.5 mr-1.5" /> Download {format.toUpperCase()}
-                </>
-              )}
-            </Button>
-          </div>
         </div>
+
+        {/* Actions Footer */}
+        <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5 shrink-0">
+          <Button
+            onClick={() => onOpenChange(false)}
+            variant="outline"
+            className="h-10 text-xs font-medium rounded-xl active:scale-[0.97]"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleExecuteExport}
+            disabled={isPending}
+            className="h-10 px-5 font-medium text-xs rounded-xl shadow-sm active:scale-[0.97]"
+          >
+            {isPending ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Rendering...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-3.5 h-3.5 mr-1.5" /> Download {format.toUpperCase()}
+              </>
+            )}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

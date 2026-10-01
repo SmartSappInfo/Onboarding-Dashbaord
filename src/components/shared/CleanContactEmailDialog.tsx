@@ -120,15 +120,15 @@ export function CleanContactEmailDialog({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(val) => !val && onClose()}>
-        <DialogContent className="sm:max-w-[480px] bg-slate-900 border-slate-800 text-slate-100 font-figtree p-6 rounded-3xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
+        <DialogContent className="sm:max-w-[480px] rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl font-figtree p-6 max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold flex items-center gap-2 text-indigo-400">
-              <Sparkles className="h-5 w-5 text-indigo-400 animate-pulse" />
+            <DialogTitle className="text-xl font-bold flex items-center gap-2 text-primary">
+              <Sparkles className="h-5 w-5 text-primary animate-pulse" />
               Clean Bounced Contact
             </DialogTitle>
-            <DialogDescription className="text-slate-400 text-sm mt-1">
+            <DialogDescription className="text-muted-foreground text-sm mt-1">
               Select an action to resolve deliverability failure for contact:
-              <span className="block mt-1 font-semibold text-slate-200 break-all">{email}</span>
+              <span className="block mt-1 font-semibold text-foreground break-all">{email}</span>
             </DialogDescription>
           </DialogHeader>
 
@@ -139,13 +139,13 @@ export function CleanContactEmailDialog({
               className="grid gap-3"
             >
               {/* Correct Option */}
-              <div className="flex items-start space-x-3 rounded-2xl border border-slate-800 bg-slate-950 p-4 hover:border-slate-700 transition">
+              <div className="flex items-start space-x-3 rounded-xl border border-border/70 bg-muted/20 p-4 hover:border-border transition">
                 <RadioGroupItem value="correct" id="mode-correct" className="mt-1" />
                 <div className="flex-1 space-y-2">
-                  <Label htmlFor="mode-correct" className="font-semibold text-sm text-slate-200 cursor-pointer">
+                  <Label htmlFor="mode-correct" className="font-semibold text-sm text-foreground cursor-pointer">
                     Correct Email Address
                   </Label>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-muted-foreground">
                     Replace spelling mistakes, reset status, and lift suppressions.
                   </p>
                   {mode === 'correct' && (
@@ -155,7 +155,7 @@ export function CleanContactEmailDialog({
                         placeholder="new.email@example.com"
                         value={replacement}
                         onChange={(e) => setReplacement(e.target.value)}
-                        className="bg-slate-900 border-slate-800 text-slate-100 rounded-xl text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                        className="bg-background border-border text-foreground rounded-xl text-sm focus-visible:ring-1 focus-visible:ring-ring"
                       />
                     </div>
                   )}
@@ -163,28 +163,28 @@ export function CleanContactEmailDialog({
               </div>
 
               {/* Archive Option */}
-              <div className="flex items-start space-x-3 rounded-2xl border border-slate-800 bg-slate-950 p-4 hover:border-slate-700 transition">
+              <div className="flex items-start space-x-3 rounded-xl border border-border/70 bg-muted/20 p-4 hover:border-border transition">
                 <RadioGroupItem value="archive" id="mode-archive" className="mt-1" />
                 <div className="flex-1 space-y-1">
-                  <Label htmlFor="mode-archive" className="font-semibold text-sm text-slate-200 cursor-pointer flex items-center gap-1.5">
+                  <Label htmlFor="mode-archive" className="font-semibold text-sm text-foreground cursor-pointer flex items-center gap-1.5">
                     <Archive className="h-4 w-4 text-amber-500" />
                     Archive Contact Email
                   </Label>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-muted-foreground">
                     Mark contact status as archived to stop sending campaigns.
                   </p>
                 </div>
               </div>
 
               {/* Delete Option */}
-              <div className="flex items-start space-x-3 rounded-2xl border border-slate-800 bg-slate-950 p-4 hover:border-slate-700 transition">
+              <div className="flex items-start space-x-3 rounded-xl border border-border/70 bg-muted/20 p-4 hover:border-border transition">
                 <RadioGroupItem value="delete" id="mode-delete" className="mt-1" />
                 <div className="flex-1 space-y-1">
-                  <Label htmlFor="mode-delete" className="font-semibold text-sm text-slate-200 cursor-pointer flex items-center gap-1.5">
+                  <Label htmlFor="mode-delete" className="font-semibold text-sm text-foreground cursor-pointer flex items-center gap-1.5">
                     <Trash2 className="h-4 w-4 text-red-500" />
                     Delete Contact Record
                   </Label>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-muted-foreground">
                     Remove contact from entity. Safely reassigns primary roles.
                   </p>
                 </div>
@@ -197,14 +197,14 @@ export function CleanContactEmailDialog({
               variant="outline"
               onClick={onClose}
               disabled={loading}
-              className="border-slate-800 hover:bg-slate-800 text-slate-300 w-full sm:w-auto"
+              className="border-border text-muted-foreground hover:text-foreground hover:bg-muted/80 w-full sm:w-auto rounded-xl active:scale-[0.97]"
             >
               Cancel
             </Button>
             <Button
               onClick={handleClean}
               disabled={loading}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white w-full sm:w-auto"
+              className="bg-primary text-primary-foreground hover:opacity-90 w-full sm:w-auto rounded-xl active:scale-[0.97]"
             >
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-1" />
@@ -219,17 +219,17 @@ export function CleanContactEmailDialog({
 
       {/* High z-index confirmation modal */}
       {showConfirmDelete && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in font-figtree">
-          <div className="bg-slate-900 border border-slate-850 p-6 rounded-3xl max-w-sm w-full text-slate-100 shadow-2xl space-y-4">
-            <div className="flex items-center gap-2.5 text-red-400 font-bold text-lg">
-              <AlertTriangle className="h-6 w-6 text-red-400" />
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in font-figtree">
+          <div className="bg-card border border-border/80 p-6 rounded-2xl max-w-sm w-full text-card-foreground shadow-2xl space-y-4">
+            <div className="flex items-center gap-2.5 text-destructive font-bold text-lg">
+              <AlertTriangle className="h-6 w-6 text-destructive" />
               Confirm Contact Deletion
             </div>
-            <p className="text-sm text-slate-300 leading-relaxed">
+            <p className="text-sm text-muted-foreground leading-relaxed">
               Are you sure you want to delete this contact?
             </p>
-            <div className="bg-slate-950 p-3 rounded-2xl border border-slate-800 text-xs text-slate-400 space-y-1">
-              <span className="font-semibold text-slate-300">Important safety checks:</span>
+            <div className="bg-muted/30 p-3 rounded-xl border border-border/60 text-xs text-muted-foreground space-y-1">
+              <span className="font-semibold text-foreground">Important safety checks:</span>
               <ul className="list-disc pl-4 space-y-1">
                 <li>Primary/Signatory roles will automatically transfer to the next contact.</li>
                 <li>If this is the entity&apos;s sole contact, the entire company/entity will be permanently deleted.</li>
@@ -239,14 +239,15 @@ export function CleanContactEmailDialog({
               <Button
                 variant="outline"
                 onClick={() => setShowConfirmDelete(false)}
-                className="border-slate-800 text-slate-300 hover:bg-slate-800 rounded-xl"
+                className="border-border text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-xl active:scale-[0.97]"
               >
                 No, Go Back
               </Button>
               <Button
                 onClick={handleDeleteConfirm}
                 disabled={loading}
-                className="bg-red-600 hover:bg-red-500 text-white rounded-xl"
+                variant="destructive"
+                className="rounded-xl active:scale-[0.97]"
               >
                 {loading && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
                 Yes, Delete

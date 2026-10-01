@@ -55,40 +55,40 @@ export default function PasswordGatedForm({ pdfForm, entity, orgBranding }: Pass
     <div className="flex flex-col min-h-screen relative overflow-hidden" style={{ backgroundColor: bgColor }}>
       <div className="flex-grow flex items-center justify-center p-4 relative z-10">
         <Dialog open={!isUnlocked} onOpenChange={(open) => { if (open === false) { /* prevent closing */ } }}>
-          <DialogContent className="sm:max-w-md rounded-[2rem] border-none shadow-2xl overflow-hidden p-0">
-            <DialogHeader className="p-8 bg-slate-50 border-b">
-              <div className="flex justify-center mb-4">
+          <DialogContent showCloseButton={false} className="sm:max-w-md p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+            <DialogHeader className="px-6 py-6 border-b border-border/80 bg-muted/20 text-center flex flex-col items-center justify-center space-y-2">
+              <div className="flex justify-center mb-2">
                 {logoUrl ? (
                     <div className="relative h-12 w-48">
                         <Image src={logoUrl} alt="Logo" fill sizes="192px" className="object-contain" unoptimized={logoUrl.startsWith('http')} />
                     </div>
                 ) : (
-                    <SmartSappIcon className="h-12 w-12 text-primary" />
+                    <SmartSappIcon className="h-10 w-10 text-primary" />
                 )}
               </div>
-              <DialogTitle className="text-center font-black uppercase tracking-tight">{pdfForm.publicTitle || pdfForm.name}</DialogTitle>
-              <DialogDescription className="text-center text-xs font-medium uppercase tracking-widest">
+              <DialogTitle className="text-center font-bold text-base sm:text-lg tracking-tight text-foreground">{pdfForm.publicTitle || pdfForm.name}</DialogTitle>
+              <DialogDescription className="text-center text-xs text-muted-foreground">
                 This document from <strong>{entity?.displayName || pdfForm.entityName || 'SmartSapp'}</strong> is password protected.
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-8">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-6">
                 <FormField
                   control={form.control}
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Access Password</FormLabel>
+                      <FormLabel className="text-xs font-semibold text-foreground">Access Password</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="Enter password to unlock..." {...field} className="h-12 rounded-xl bg-slate-50 border-none shadow-inner font-bold" />
+                        <Input type="password" placeholder="Enter password to unlock..." {...field} className="h-11 rounded-xl bg-background border border-border/80 text-foreground font-medium text-xs min-h-[44px]" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                {error && <p className="text-sm font-bold text-destructive text-center animate-pulse">{error}</p>}
-                <DialogFooter>
-                  <Button type="submit" className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all" disabled={form.formState.isSubmitting}>
+                {error && <p className="text-xs font-medium text-destructive text-center animate-pulse">{error}</p>}
+                <DialogFooter className="pt-2">
+                  <Button type="submit" className="w-full h-11 rounded-xl font-medium shadow-sm active:scale-[0.97] transition-all min-h-[44px]" disabled={form.formState.isSubmitting}>
                     {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Unlock Document
                   </Button>

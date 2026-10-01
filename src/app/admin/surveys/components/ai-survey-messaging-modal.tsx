@@ -68,13 +68,16 @@ import { renderBlocksToHtml, resolveVariables, plainTextToHtml } from '@/lib/mes
 import { quickSaveSurveyTemplateAction } from '@/lib/survey-ai-messaging-actions';
 import PromptBar from '@/components/PromptBar';
 import type { GenerateSurveyMessagingOutput, EmailBlock } from '@/ai/schemas/survey-messaging-schemas';
-import type { MessageBlock } from '@/lib/types';
+import type { MessageBlock, RecipientType, TemplateTarget } from '@/lib/types';
 
 export interface AiSurveyMessagingModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title?: string;
   targetDescription?: string;
+  surveyTitle?: string;
+  surveyId?: string;
+  target?: 'internal_team_alert' | 'external_stakeholder_alert' | 'respondent_outcome';
   generatedOutput: GenerateSurveyMessagingOutput | null;
   defaultChannel?: 'email' | 'sms' | 'whatsapp';
   savedTemplateIds?: {
@@ -148,6 +151,9 @@ export default function AiSurveyMessagingModal({
   onOpenChange,
   title = 'AI Generated Messaging Templates',
   targetDescription = 'Review and assign the generated templates to this survey.',
+  surveyTitle = 'Survey',
+  surveyId,
+  target = 'internal_team_alert',
   generatedOutput,
   defaultChannel,
   savedTemplateIds,
@@ -170,6 +176,17 @@ export default function AiSurveyMessagingModal({
   const [copiedField, setCopiedField] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
   const [showPlainTextFallback, setShowPlainTextFallback] = React.useState(false);
+
+  // Track saved/created template IDs locally so drafts remain in-memory until explicitly applied
+  const [currentSavedTemplateIds, setCurrentSavedTemplateIds] = React.useState<{
+    emailTemplateId?: string;
+    smsTemplateId?: string;
+    whatsappTemplateId?: string;
+  } | undefined>(savedTemplateIds);
+
+  React.useEffect(() => {
+    setCurrentSavedTemplateIds(savedTemplateIds);
+  }, [savedTemplateIds]);
 
   // Channel enable/disable state allowing user to turn off email, sms, or whatsapp
   const [enabledChannels, setEnabledChannels] = React.useState<{
@@ -200,11 +217,16 @@ export default function AiSurveyMessagingModal({
   React.useEffect(() => {
     if (generatedOutput) {
       setEditableOutput(sanitizeTemplateVariables(generatedOutput));
-      // Initialize channel enabled states based on availability
+      // Initialize channel enabled states based on availability and pre-existing saved IDs
+      const hasSavedIds = !!(
+        savedTemplateIds?.emailTemplateId ||
+        savedTemplateIds?.smsTemplateId ||
+        savedTemplateIds?.whatsappTemplateId
+      );
       setEnabledChannels({
-        email: !!generatedOutput.email && (savedTemplateIds?.emailTemplateId ? true : !savedTemplateIds || !!generatedOutput.email),
-        sms: !!generatedOutput.sms && (savedTemplateIds?.smsTemplateId ? true : !savedTemplateIds || !!generatedOutput.sms),
-        whatsapp: !!generatedOutput.whatsapp && (savedTemplateIds?.whatsappTemplateId ? true : !savedTemplateIds || !!generatedOutput.whatsapp),
+        email: !!generatedOutput.email && (!hasSavedIds || !!savedTemplateIds?.emailTemplateId),
+        sms: !!generatedOutput.sms && (!hasSavedIds || !!savedTemplateIds?.smsTemplateId),
+        whatsapp: !!generatedOutput.whatsapp && (!hasSavedIds || !!savedTemplateIds?.whatsappTemplateId),
       });
     } else {
       setEditableOutput(null);
@@ -357,76 +379,151 @@ export default function AiSurveyMessagingModal({
 
     setIsSaving(true);
     try {
-      // 1. If we have template IDs and tenant scope, persist any customizations to Firestore
-      if (savedTemplateIds && workspaceId && organizationId) {
-        const savePromises: Promise<unknown>[] = [];
+      const appliedIds: {
+        emailTemplateId?: string;
+        smsTemplateId?: string;
+        whatsappTemplateId?: string;
+      } = {
+        emailTemplateId: currentSavedTemplateIds?.emailTemplateId,
+        smsTemplateId: currentSavedTemplateIds?.smsTemplateId,
+        whatsappTemplateId: currentSavedTemplateIds?.whatsappTemplateId,
+      };
 
-        // Save email updates
-        if (editableOutput.email && savedTemplateIds.emailTemplateId) {
+      // 1. If we have tenant scope, persist or update enabled channel templates to Firestore
+      if (workspaceId && organizationId) {
+        const purposeTag = target === 'respondent_outcome'
+          ? 'survey_outcome'
+          : (target === 'internal_team_alert' ? 'survey_team_alert' : 'survey_stakeholder_alert');
+
+        const recipientType: RecipientType = target === 'internal_team_alert'
+          ? 'internal_alert'
+          : (target === 'external_stakeholder_alert' ? 'external_alert' : 'respondent');
+
+        const targetAudience: TemplateTarget = target === 'internal_team_alert'
+          ? 'internal_team'
+          : 'external_client';
+
+        const targetLabel = target === 'internal_team_alert'
+          ? 'Team Alert'
+          : (target === 'external_stakeholder_alert' ? 'Stakeholder Alert' : 'Outcome');
+
+        const savePromises: Promise<void>[] = [];
+
+        // Save or create email updates if enabled
+        if (enabledChannels.email && editableOutput.email) {
           savePromises.push(
-            quickSaveSurveyTemplateAction({
-              workspaceId,
-              organizationId,
-              userId,
-              templateId: savedTemplateIds.emailTemplateId,
-              templateData: {
-                name: editableOutput.email.name,
-                subject: editableOutput.email.subject,
-                body: editableOutput.email.body,
-                blocks: (editableOutput.email.blocks || []) as unknown as MessageBlock[],
-              },
-            })
+            (async () => {
+              const res = await quickSaveSurveyTemplateAction({
+                workspaceId,
+                organizationId,
+                userId,
+                templateId: currentSavedTemplateIds?.emailTemplateId || undefined,
+                templateData: {
+                  name: editableOutput.email!.name || `${surveyTitle} - Email (${targetLabel})`,
+                  subject: editableOutput.email!.subject,
+                  body: editableOutput.email!.body,
+                  blocks: (editableOutput.email!.blocks || []) as unknown as MessageBlock[],
+                  contentMode: 'rich_builder',
+                  channel: 'email',
+                  category: 'surveys',
+                  target: targetAudience,
+                  recipientType,
+                  scope: 'organization',
+                  status: 'active',
+                  isActive: true,
+                  templateType: purposeTag,
+                  sourceSurveyId: surveyId || undefined,
+                },
+              });
+              if (!res.success || !res.templateId) {
+                throw new Error(res.error || 'Failed to save email template.');
+              }
+              appliedIds.emailTemplateId = res.templateId;
+            })()
           );
+        } else {
+          appliedIds.emailTemplateId = undefined;
         }
 
-        // Save SMS updates
-        if (editableOutput.sms && savedTemplateIds.smsTemplateId) {
+        // Save or create SMS updates if enabled
+        if (enabledChannels.sms && editableOutput.sms) {
           savePromises.push(
-            quickSaveSurveyTemplateAction({
-              workspaceId,
-              organizationId,
-              userId,
-              templateId: savedTemplateIds.smsTemplateId,
-              templateData: {
-                name: editableOutput.sms.name,
-                body: editableOutput.sms.body,
-              },
-            })
+            (async () => {
+              const res = await quickSaveSurveyTemplateAction({
+                workspaceId,
+                organizationId,
+                userId,
+                templateId: currentSavedTemplateIds?.smsTemplateId || undefined,
+                templateData: {
+                  name: editableOutput.sms!.name || `${surveyTitle} - SMS (${targetLabel})`,
+                  body: editableOutput.sms!.body,
+                  contentMode: 'plain_text',
+                  channel: 'sms',
+                  category: 'surveys',
+                  target: targetAudience,
+                  recipientType,
+                  scope: 'organization',
+                  status: 'active',
+                  isActive: true,
+                  templateType: purposeTag,
+                  sourceSurveyId: surveyId || undefined,
+                },
+              });
+              if (!res.success || !res.templateId) {
+                throw new Error(res.error || 'Failed to save SMS template.');
+              }
+              appliedIds.smsTemplateId = res.templateId;
+            })()
           );
+        } else {
+          appliedIds.smsTemplateId = undefined;
         }
 
-        // Save WhatsApp updates
-        if (editableOutput.whatsapp && savedTemplateIds.whatsappTemplateId) {
+        // Save or create WhatsApp updates if enabled
+        if (enabledChannels.whatsapp && editableOutput.whatsapp) {
           savePromises.push(
-            quickSaveSurveyTemplateAction({
-              workspaceId,
-              organizationId,
-              userId,
-              templateId: savedTemplateIds.whatsappTemplateId,
-              templateData: {
-                name: editableOutput.whatsapp.name,
-                body: editableOutput.whatsapp.body,
-                whatsappSamples: editableOutput.whatsapp.bodyParams || [],
-                whatsappMetaCategory: editableOutput.whatsapp.whatsappCategory,
-              },
-            })
+            (async () => {
+              const res = await quickSaveSurveyTemplateAction({
+                workspaceId,
+                organizationId,
+                userId,
+                templateId: currentSavedTemplateIds?.whatsappTemplateId || undefined,
+                templateData: {
+                  name: editableOutput.whatsapp!.name || `${surveyTitle} - WhatsApp (${targetLabel})`,
+                  body: editableOutput.whatsapp!.body,
+                  whatsappSamples: editableOutput.whatsapp!.bodyParams || [],
+                  whatsappMetaCategory: editableOutput.whatsapp!.whatsappCategory,
+                  contentMode: 'plain_text',
+                  channel: 'whatsapp',
+                  category: 'surveys',
+                  target: targetAudience,
+                  recipientType,
+                  scope: 'organization',
+                  status: 'active',
+                  isActive: false, // WhatsApp Meta templates require review
+                  templateType: purposeTag,
+                  sourceSurveyId: surveyId || undefined,
+                },
+              });
+              if (!res.success || !res.templateId) {
+                throw new Error(res.error || 'Failed to save WhatsApp template.');
+              }
+              appliedIds.whatsappTemplateId = res.templateId;
+            })()
           );
+        } else {
+          appliedIds.whatsappTemplateId = undefined;
         }
 
         await Promise.all(savePromises);
+        setCurrentSavedTemplateIds(appliedIds);
       }
 
       // 2. Notify parent of updated output
       onUpdateOutput?.(editableOutput);
 
       // 3. Link template IDs to the survey form for enabled channels only
-      if (savedTemplateIds) {
-        onApply({
-          emailTemplateId: enabledChannels.email ? savedTemplateIds.emailTemplateId : undefined,
-          smsTemplateId: enabledChannels.sms ? savedTemplateIds.smsTemplateId : undefined,
-          whatsappTemplateId: enabledChannels.whatsapp ? savedTemplateIds.whatsappTemplateId : undefined,
-        });
-      }
+      onApply(appliedIds);
 
       toast({
         title: 'Templates Linked Successfully',
@@ -889,7 +986,7 @@ export default function AiSurveyMessagingModal({
                     </span>
                     <Mail className="w-3.5 h-3.5 shrink-0" />
                     <span>Email</span>
-                    {savedTemplateIds?.emailTemplateId && enabledChannels.email && (
+                    {currentSavedTemplateIds?.emailTemplateId && enabledChannels.email && (
                       <span className={cn('w-1.5 h-1.5 rounded-full ml-0.5', activeTab === 'email' ? 'bg-primary-foreground' : 'bg-emerald-500')} />
                     )}
                     {!enabledChannels.email && (
@@ -939,7 +1036,7 @@ export default function AiSurveyMessagingModal({
                     </span>
                     <Smartphone className="w-3.5 h-3.5 shrink-0" />
                     <span>SMS</span>
-                    {savedTemplateIds?.smsTemplateId && enabledChannels.sms && (
+                    {currentSavedTemplateIds?.smsTemplateId && enabledChannels.sms && (
                       <span className={cn('w-1.5 h-1.5 rounded-full ml-0.5', activeTab === 'sms' ? 'bg-primary-foreground' : 'bg-emerald-500')} />
                     )}
                     {!enabledChannels.sms && (
@@ -989,7 +1086,7 @@ export default function AiSurveyMessagingModal({
                     </span>
                     <MessageCircle className="w-3.5 h-3.5 shrink-0" />
                     <span>WhatsApp</span>
-                    {savedTemplateIds?.whatsappTemplateId && enabledChannels.whatsapp && (
+                    {currentSavedTemplateIds?.whatsappTemplateId && enabledChannels.whatsapp && (
                       <span className={cn('w-1.5 h-1.5 rounded-full ml-0.5', activeTab === 'whatsapp' ? 'bg-primary-foreground' : 'bg-emerald-500')} />
                     )}
                     {!enabledChannels.whatsapp && (
@@ -1850,11 +1947,11 @@ export default function AiSurveyMessagingModal({
             </div>
 
             <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-              {savedTemplateIds?.emailTemplateId && activeTab === 'email' && (
+              {currentSavedTemplateIds?.emailTemplateId && activeTab === 'email' && (
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handleOpenWorkshop(savedTemplateIds.emailTemplateId)}
+                  onClick={() => handleOpenWorkshop(currentSavedTemplateIds.emailTemplateId)}
                   className="h-11 min-h-[44px] text-xs font-bold gap-1.5 rounded-xl active:scale-[0.97] text-primary hover:text-primary"
                 >
                   <Pencil className="w-3.5 h-3.5" />
@@ -1864,7 +1961,7 @@ export default function AiSurveyMessagingModal({
 
               <Button
                 onClick={handleApplyAndClose}
-                disabled={isLoading || isSaving || !savedTemplateIds}
+                disabled={isLoading || isSaving || !editableOutput}
                 className="rounded-xl h-11 min-h-[44px] px-6 text-xs font-bold shadow-lg shadow-primary/20 gap-2 active:scale-[0.97]"
               >
                 {isSaving ? (

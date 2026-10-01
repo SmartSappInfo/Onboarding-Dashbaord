@@ -191,15 +191,19 @@ export default function MessageJobsView({ noPadding = false }: MessageJobsViewPr
 
             {selectedJob && (
                 <Dialog open={!!selectedJob} onOpenChange={(open) => !open && setSelectedJob(null)}>
-                    <DialogContent className="max-w-2xl rounded-3xl p-0 overflow-hidden bg-card border border-border">
-                        <DialogHeader className="p-6 pb-4 bg-muted/20 border-b border-border/50">
-                            <DialogTitle className="text-lg font-bold flex items-center gap-2">
+                    <DialogContent className="max-w-2xl rounded-2xl p-0 overflow-hidden bg-card border border-border/80 shadow-2xl text-card-foreground">
+                        <DialogHeader demarcated className="px-6 py-3.5 sm:py-4 min-h-[52px] sm:min-h-[56px]">
+                            <div className="flex items-center gap-2.5">
                                 <Layers className="h-5 w-5 text-primary" />
-                                Batch Send Details
-                            </DialogTitle>
-                            <DialogDescription className="text-xs text-muted-foreground">
-                                Batch ID: {selectedJob.id} • Created at {format(new Date(selectedJob.createdAt), 'PPPP p')}
-                            </DialogDescription>
+                                <div>
+                                    <DialogTitle className="text-base font-bold text-foreground">
+                                        Batch Send Details
+                                    </DialogTitle>
+                                    <DialogDescription className="sr-only">
+                                        Batch ID: {selectedJob.id} • Created at {format(new Date(selectedJob.createdAt), 'PPPP p')}
+                                    </DialogDescription>
+                                </div>
+                            </div>
                         </DialogHeader>
                         <ScrollArea className="max-h-[450px] p-6">
                             <div className="space-y-6">

@@ -13,6 +13,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ShieldAlert, User, Loader2 } from 'lucide-react';
@@ -54,21 +55,21 @@ export function FinancialAuditLogModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-lg rounded-2xl p-6 max-h-[85vh] flex flex-col">
-        <DialogHeader className="text-left space-y-1">
-          <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
-            <ShieldAlert className="h-4 w-4" />
-            Immutable Audit Trail
+      <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl max-h-[85vh]">
+        <DialogHeader demarcated className="px-6 py-3.5 sm:py-4">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="h-5 w-5 text-primary" />
+            <DialogTitle className="text-base sm:text-lg font-bold">
+              Audit History: {documentNumber || documentId}
+            </DialogTitle>
+            <CardInfoTooltip text={`Complete chronological record of all modifications, state changes, and authorizations for this ${documentType}.`} />
           </div>
-          <DialogTitle className="text-xl font-bold tracking-tight">
-            Audit History: {documentNumber || documentId}
-          </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
+          <DialogDescription className="sr-only">
             Complete chronological record of all modifications, state changes, and authorizations for this {documentType}.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto pr-1 py-3 space-y-3">
+        <div className="flex-1 overflow-y-auto p-6 space-y-3">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -105,7 +106,7 @@ export function FinancialAuditLogModal({
           )}
         </div>
 
-        <div className="pt-2 border-t flex justify-end">
+        <div className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
           <Button
             variant="outline"
             onClick={onClose}

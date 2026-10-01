@@ -43,6 +43,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { useTheme } from 'next-themes';
 import { useWorkspaceAiModel } from '@/hooks/use-workspace-ai-model';
 import { AiModelRegistry } from '@/lib/ai/model-registry';
@@ -785,31 +786,32 @@ export function UnifiedAiArchitectStudio({
 
       {/* Survey Archetype Catalog Modal */}
       <Dialog open={isArchetypesModalOpen} onOpenChange={setIsArchetypesModalOpen}>
-        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden rounded-3xl">
-          <DialogHeader className="p-6 pb-4 border-b border-border/60">
-            <div className="flex items-center gap-3">
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden sm:rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+          <DialogHeader demarcated>
+            <div className="flex items-center gap-2.5">
               <div className="p-2 rounded-xl bg-primary/10 text-primary">
-                <Layers className="h-5 w-5" />
+                <Layers className="h-4 w-4" />
               </div>
-              <div>
-                <DialogTitle className="text-lg font-bold text-foreground">Survey Archetype Catalog</DialogTitle>
-                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+              <div className="flex items-center gap-2">
+                <DialogTitle className="text-base font-bold text-foreground">Survey Archetype Catalog</DialogTitle>
+                <CardInfoTooltip text="Select a curated survey blueprint preset to jumpstart your prompt, structure, and scoring intent." />
+                <DialogDescription className="sr-only">
                   Select a curated survey blueprint preset to jumpstart your prompt, structure, and scoring intent.
                 </DialogDescription>
               </div>
             </div>
-            <div className="pt-3">
-              <div className="relative">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search archetypes by title, description, or tag..."
-                  value={archetypeSearch}
-                  onChange={(e) => setArchetypeSearch(e.target.value)}
-                  className="pl-10 h-10 rounded-xl text-xs bg-muted/30"
-                />
-              </div>
-            </div>
           </DialogHeader>
+          <div className="px-6 py-3 border-b border-border/80 bg-muted/10">
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search archetypes by title, description, or tag..."
+                value={archetypeSearch}
+                onChange={(e) => setArchetypeSearch(e.target.value)}
+                className="pl-10 h-10 rounded-xl text-xs bg-card border-border/80"
+              />
+            </div>
+          </div>
 
           <div className="flex-1 overflow-y-auto p-6 space-y-3">
             {filteredArchetypes.length === 0 ? (
@@ -862,7 +864,7 @@ export function UnifiedAiArchitectStudio({
             )}
           </div>
 
-          <DialogFooter className="p-4 border-t border-border/60 bg-muted/20 flex justify-between items-center sm:justify-between">
+          <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex justify-between items-center sm:justify-between">
             <span className="text-xs text-muted-foreground">
               Showing {filteredArchetypes.length} of {activeArchetypes.length} presets
             </span>
@@ -881,15 +883,16 @@ export function UnifiedAiArchitectStudio({
 
       {/* Survey Architect Options Modal */}
       <Dialog open={isSettingsModalOpen} onOpenChange={setIsSettingsModalOpen}>
-        <DialogContent className="max-w-xl p-0 overflow-hidden rounded-3xl">
-          <DialogHeader className="p-6 pb-4 border-b border-border/60">
-            <div className="flex items-center gap-3">
+        <DialogContent className="max-w-xl p-0 overflow-hidden sm:rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+          <DialogHeader demarcated>
+            <div className="flex items-center gap-2.5">
               <div className="p-2 rounded-xl bg-primary/10 text-primary">
-                <SlidersHorizontal className="h-5 w-5" />
+                <SlidersHorizontal className="h-4 w-4" />
               </div>
-              <div>
-                <DialogTitle className="text-lg font-bold text-foreground">Survey Architect Options</DialogTitle>
-                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+              <div className="flex items-center gap-2">
+                <DialogTitle className="text-base font-bold text-foreground">Survey Architect Options</DialogTitle>
+                <CardInfoTooltip text="Configure question depth, scoring architecture, and generation parameters." />
+                <DialogDescription className="sr-only">
                   Configure question depth, scoring architecture, and generation parameters.
                 </DialogDescription>
               </div>
@@ -1011,7 +1014,7 @@ export function UnifiedAiArchitectStudio({
             )}
           </div>
 
-          <DialogFooter className="p-4 border-t border-border/60 bg-muted/20 flex justify-end">
+          <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex justify-end">
             <Button
               type="button"
               onClick={() => setIsSettingsModalOpen(false)}
@@ -1025,15 +1028,16 @@ export function UnifiedAiArchitectStudio({
 
       {/* Reference URL Modal */}
       <Dialog open={isLinkModalOpen} onOpenChange={setIsLinkModalOpen}>
-        <DialogContent className="max-w-md p-0 overflow-hidden rounded-3xl">
-          <DialogHeader className="p-6 pb-4 border-b border-border/60">
-            <div className="flex items-center gap-3">
+        <DialogContent className="max-w-md p-0 overflow-hidden sm:rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+          <DialogHeader demarcated>
+            <div className="flex items-center gap-2.5">
               <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500">
-                <Globe className="h-5 w-5" />
+                <Globe className="h-4 w-4" />
               </div>
-              <div>
-                <DialogTitle className="text-lg font-bold text-foreground">Add Reference URL</DialogTitle>
-                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+              <div className="flex items-center gap-2">
+                <DialogTitle className="text-base font-bold text-foreground">Add Reference URL</DialogTitle>
+                <CardInfoTooltip text="Link to an online rubric, guideline, or article to parse as survey context." />
+                <DialogDescription className="sr-only">
                   Link to an online rubric, guideline, or article to parse as survey context.
                 </DialogDescription>
               </div>
@@ -1059,7 +1063,7 @@ export function UnifiedAiArchitectStudio({
             )}
           </div>
 
-          <DialogFooter className="p-4 border-t border-border/60 bg-muted/20 flex justify-between items-center sm:justify-between">
+          <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex justify-between items-center sm:justify-between">
             <Button
               type="button"
               variant="ghost"
@@ -1069,7 +1073,7 @@ export function UnifiedAiArchitectStudio({
                 setRawLinkInput('');
                 setIsLinkModalOpen(false);
               }}
-              className="rounded-xl h-9 text-xs font-semibold"
+              className="rounded-xl h-9 text-xs font-semibold active:scale-[0.97]"
             >
               Cancel
             </Button>

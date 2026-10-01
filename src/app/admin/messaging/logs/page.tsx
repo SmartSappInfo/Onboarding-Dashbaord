@@ -364,16 +364,16 @@ export default function MessageLogsPage() {
             </div>
 
             <Dialog open={!!selectedLog} onOpenChange={(open) => !open && setSelectedLog(null)}>
- <DialogContent className="max-w-2xl h-[85vh] flex flex-col p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl">
- <DialogHeader className="p-6 border-b bg-muted/30 shrink-0">
- <div className="flex items-center justify-between pr-8">
- <div className="flex items-center gap-3">
- <div className={cn("p-2 rounded-xl", selectedLog?.channel === 'email' ? "bg-blue-500/10 text-blue-500" : "bg-orange-500/10 text-orange-500")}>
- {selectedLog?.channel === 'email' ? <Mail className="h-5 w-5" /> : <Smartphone className="h-5 w-5" />}
+                <DialogContent className="max-w-2xl h-[85vh] flex flex-col p-0 overflow-hidden rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+                    <DialogHeader demarcated className="px-6 py-3.5 sm:py-4 min-h-[52px] sm:min-h-[56px]">
+                        <div className="flex items-center justify-between w-full pr-8">
+                            <div className="flex items-center gap-2.5">
+                                <div className={cn("p-1.5 rounded-xl shrink-0", selectedLog?.channel === 'email' ? "bg-blue-500/10 text-blue-500" : "bg-orange-500/10 text-orange-500")}>
+                                    {selectedLog?.channel === 'email' ? <Mail className="h-4 w-4" /> : <Smartphone className="h-4 w-4" />}
                                 </div>
                                 <div>
- <DialogTitle className="text-xl font-semibold tracking-tight text-left">Message Details</DialogTitle>
- <DialogDescription className="text-xs font-bold text-muted-foreground text-left">Full message log and delivery status</DialogDescription>
+                                    <DialogTitle className="text-base font-bold tracking-tight text-foreground text-left">Message Details</DialogTitle>
+                                    <DialogDescription className="sr-only">Full message log and delivery status</DialogDescription>
                                 </div>
                             </div>
                             {selectedLog && getStatusBadge(selectedLog)}

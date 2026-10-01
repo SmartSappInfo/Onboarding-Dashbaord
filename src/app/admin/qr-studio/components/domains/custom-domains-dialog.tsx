@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/context/TenantContext';
 import { useUser } from '@/firebase';
@@ -169,24 +170,23 @@ export default function CustomDomainsDialog({ open, onOpenChange }: CustomDomain
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl bg-card border-border shadow-2xl p-6 rounded-3xl overflow-hidden">
-        <DialogHeader className="border-b border-border/50 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-primary/10 text-primary">
-              <Globe className="h-5 w-5" />
+      <DialogContent className="sm:max-w-2xl p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+        <DialogHeader demarcated className="px-6 py-3.5 sm:py-4 border-b border-border/80 bg-muted/20 flex flex-row items-center justify-between shrink-0 space-y-0 text-left">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
+              <Globe className="h-4 w-4" />
             </div>
-            <div>
-              <DialogTitle className="text-xl font-bold text-foreground">
-                Custom Short Domains
-              </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                Serve dynamic QR codes from your own branded domain (e.g. <code>go.myschool.com/q/...</code>).
-              </DialogDescription>
-            </div>
+            <DialogTitle className="text-base sm:text-lg font-semibold tracking-tight text-foreground flex items-center gap-1.5">
+              Custom Short Domains
+              <CardInfoTooltip text="Serve dynamic QR codes from your own branded domain (e.g. go.myschool.com/q/...)." />
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Serve dynamic QR codes from your own branded domain (e.g. go.myschool.com/q/...).
+            </DialogDescription>
           </div>
         </DialogHeader>
 
-        <div className="space-y-6 pt-2 max-h-[70vh] overflow-y-auto pr-1">
+        <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto pr-4">
           {/* Add Domain Input Form */}
           <form onSubmit={handleAddDomain} className="flex gap-2">
             <div className="relative flex-1">
@@ -196,7 +196,7 @@ export default function CustomDomainsDialog({ open, onOpenChange }: CustomDomain
                 value={newDomainInput}
                 onChange={(e) => setNewDomainInput(e.target.value)}
                 disabled={isAdding}
-                className="pl-9 h-11 rounded-2xl text-xs font-mono"
+                className="pl-9 h-11 rounded-xl text-xs font-mono"
               />
             </div>
             <Button

@@ -539,7 +539,7 @@ export default function DocumentStudioClient() {
 
       {/* Quick Create Document Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-xl rounded-3xl p-6 sm:p-8 bg-card border-border shadow-2xl">
+        <DialogContent className="max-w-xl rounded-2xl p-6 sm:p-8 bg-card border border-border/80 shadow-2xl text-card-foreground">
           <DialogHeader className="space-y-2 text-left">
             <div className="flex items-center gap-3">
               <div className="p-3 bg-primary/10 text-primary rounded-2xl">

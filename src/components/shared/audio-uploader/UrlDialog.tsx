@@ -1,5 +1,15 @@
+'use client';
+
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -16,7 +26,7 @@ export function UrlDialog({
   open,
   onOpenChange,
   onConfirm,
-  initialValue = ''
+  initialValue = '',
 }: UrlDialogProps) {
   const [url, setUrl] = useState(initialValue);
   const [error, setError] = useState('');
@@ -54,52 +64,53 @@ export function UrlDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-card border-border">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-base font-bold">
-            <LinkIcon className="w-4 h-4 text-primary" />
-            Link Audio URL
-          </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
-            Paste a direct URL to an MP3, WAV, or streaming audio file.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+        <form onSubmit={handleSubmit} className="flex flex-col m-0">
+          <DialogHeader demarcated className="px-6 py-3.5 sm:py-4">
+            <div className="flex items-center gap-2">
+              <LinkIcon className="w-4 h-4 text-primary shrink-0" />
+              <DialogTitle className="font-bold text-base tracking-tight">Link Audio URL</DialogTitle>
+              <CardInfoTooltip text="Paste a direct URL to an MP3, WAV, or streaming audio file." />
+            </div>
+            <DialogDescription className="sr-only">
+              Paste a direct URL to an MP3, WAV, or streaming audio file.
+            </DialogDescription>
+          </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="audio-url" className="text-xs font-semibold">
-              Audio Link
-            </Label>
-            <Input
-              id="audio-url"
-              placeholder="https://example.com/audio.mp3"
-              value={url}
-              onChange={(e) => {
-                setUrl(e.target.value);
-                if (error) setError('');
-              }}
-              className="text-xs font-mono"
-              autoFocus
-            />
-            {error && (
-              <p className="text-[10px] text-destructive font-medium">{error}</p>
-            )}
+          <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+            <div className="space-y-1.5">
+              <Label htmlFor="audio-url" className="text-xs font-semibold">
+                Audio Link
+              </Label>
+              <Input
+                id="audio-url"
+                placeholder="https://example.com/audio.mp3"
+                value={url}
+                onChange={(e) => {
+                  setUrl(e.target.value);
+                  if (error) setError('');
+                }}
+                className="text-xs font-mono rounded-xl"
+                autoFocus
+              />
+              {error && (
+                <p className="text-[10px] text-destructive font-medium">{error}</p>
+              )}
+            </div>
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
             <Button
               type="button"
-              variant="outline"
-              size="sm"
+              variant="ghost"
               onClick={() => onOpenChange(false)}
-              className="text-xs"
+              className="rounded-xl font-bold min-h-[44px] active:scale-[0.97]"
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              size="sm"
-              className="text-xs font-bold bg-primary text-primary-foreground"
+              className="rounded-xl font-bold min-h-[44px] active:scale-[0.97] bg-primary text-primary-foreground hover:bg-primary/90"
             >
               Apply Link
             </Button>

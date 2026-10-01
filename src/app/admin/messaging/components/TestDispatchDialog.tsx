@@ -26,6 +26,7 @@ import {
     DialogDescription, 
     DialogFooter 
 } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -69,7 +70,7 @@ interface TestDispatchDialogProps {
     rawBody?: string;
     rawSubject?: string;
     senderProfileId?: string;
-    variables?: Record<string, any>;
+    variables?: Record<string, unknown>;
     entityId?: string;
 }
 
@@ -333,20 +334,21 @@ export default function TestDispatchDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-xl max-h-[85vh] flex flex-col p-0 border border-border/50 shadow-2xl overflow-hidden rounded-3xl bg-card">
+            <DialogContent className="sm:max-w-xl max-h-[85vh] flex flex-col p-0 border border-border/80 shadow-2xl overflow-hidden sm:rounded-2xl bg-card text-card-foreground">
                 
-                {/* ── HEADER: Icon and Title Aligned Inline (No Sub-description) ── */}
-                <DialogHeader className="px-6 py-4 border-b border-border/40 shrink-0 text-left bg-muted/20">
-                    <div className="flex items-center gap-3">
+                {/* ── HEADER: Demarcated Header with CardInfoTooltip ── */}
+                <DialogHeader demarcated className="px-6 py-3.5 sm:py-4 shrink-0 bg-muted/20">
+                    <div className="flex items-center gap-2.5">
                         <div className={cn(
-                            "p-2.5 rounded-xl shadow-sm shrink-0 flex items-center justify-center",
+                            "p-2 rounded-xl shadow-sm shrink-0 flex items-center justify-center",
                             channel === 'email' ? "bg-primary/10 text-primary" : "bg-orange-500/10 text-orange-500"
                         )}>
-                            <FlaskConical className="h-5 w-5" aria-hidden="true" />
+                            <FlaskConical className="h-4 w-4" aria-hidden="true" />
                         </div>
-                        <DialogTitle className="text-lg font-bold tracking-tight text-foreground">
+                        <DialogTitle className="text-base font-bold tracking-tight text-foreground">
                             Send Test Message
                         </DialogTitle>
+                        <CardInfoTooltip text="Preview and test your message with real contact variables before dispatching." />
                         <DialogDescription className="sr-only">
                             Preview and test your message before sending.
                         </DialogDescription>
@@ -511,12 +513,12 @@ export default function TestDispatchDialog({
                 </div>
 
                 {/* ── FOOTER ── */}
-                <DialogFooter className="px-6 py-4 border-t border-border/40 shrink-0 flex items-center justify-end gap-3 bg-muted/10">
+                <DialogFooter className="px-6 py-3.5 border-t border-border/80 shrink-0 flex flex-row items-center justify-end gap-2.5 bg-muted/15">
                     <Button 
                         variant="ghost" 
                         onClick={() => onOpenChange(false)} 
                         disabled={isSending} 
-                        className="font-medium text-xs rounded-xl h-10 px-5 cursor-pointer"
+                        className="font-bold text-xs rounded-xl min-h-[44px] px-5 active:scale-[0.97]"
                     >
                         Discard
                     </Button>
@@ -524,8 +526,8 @@ export default function TestDispatchDialog({
                         onClick={handleSend} 
                         disabled={isSending || !recipient.trim() || isRateLimited}
                         className={cn(
-                            "rounded-xl font-semibold text-xs h-10 px-6 shadow-md flex items-center gap-2 cursor-pointer active:scale-95 transition-all duration-200",
-                            isRateLimited ? "bg-amber-500 text-white" : "bg-primary text-primary-foreground"
+                            "rounded-xl font-bold text-xs min-h-[44px] px-6 shadow-md flex items-center gap-2 active:scale-[0.97] transition-all",
+                            isRateLimited ? "bg-amber-500 text-white" : "bg-primary text-primary-foreground hover:bg-primary/90"
                         )}
                     >
                         {isRateLimited ? (

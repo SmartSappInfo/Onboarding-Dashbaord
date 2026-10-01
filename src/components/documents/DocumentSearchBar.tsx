@@ -54,14 +54,14 @@ export function DocumentSearchBar({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl rounded-3xl border-white/20 bg-slate-900/95 text-white backdrop-blur-2xl p-6 shadow-2xl text-left">
+      <DialogContent className="max-w-xl rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl p-6 text-left">
         <DialogHeader className="space-y-1 text-left">
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-lg font-black text-white flex items-center gap-2">
-              <Search className="h-5 w-5 text-indigo-400" />
+            <DialogTitle className="text-lg font-black text-foreground flex items-center gap-2">
+              <Search className="h-5 w-5 text-primary" />
               Search Document
             </DialogTitle>
-            <Badge variant="outline" className="border-white/10 bg-white/5 text-slate-300 font-mono text-[10px]">
+            <Badge variant="outline" className="border-border bg-muted/30 text-muted-foreground font-mono text-[10px]">
               {pages.length} Pages Indexed
             </Badge>
           </div>
@@ -69,19 +69,19 @@ export function DocumentSearchBar({
 
         {/* Search Input Bar */}
         <div className="relative pt-2">
-          <Search className="absolute left-3.5 top-5 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-3.5 top-5 h-4 w-4 text-muted-foreground" />
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search keywords, topics, or phrases..."
             autoFocus
-            className="h-12 pl-10 pr-10 rounded-2xl bg-slate-800/90 border-white/10 text-white placeholder:text-slate-500 font-medium text-sm min-h-[44px] focus-visible:ring-indigo-500"
+            className="h-12 pl-10 pr-10 rounded-xl bg-background border-border text-foreground placeholder:text-muted-foreground font-medium text-sm min-h-[44px] focus-visible:ring-1 focus-visible:ring-ring"
           />
           {query && (
             <button
               type="button"
               onClick={() => setQuery('')}
-              className="absolute right-3.5 top-4.5 p-1 rounded-lg text-slate-400 hover:text-white"
+              className="absolute right-3.5 top-4.5 p-1 rounded-lg text-muted-foreground hover:text-foreground active:scale-95"
             >
               <X className="h-4 w-4" />
             </button>
@@ -91,14 +91,14 @@ export function DocumentSearchBar({
         {/* Search Results List */}
         <div className="max-h-[360px] overflow-y-auto space-y-2 py-2 pr-1 custom-scrollbar">
           {query.trim() === '' ? (
-            <div className="py-8 text-center space-y-2 text-slate-500">
-              <BookOpen className="h-8 w-8 mx-auto text-slate-600" />
+            <div className="py-8 text-center space-y-2 text-muted-foreground">
+              <BookOpen className="h-8 w-8 mx-auto text-muted-foreground/60" />
               <p className="text-xs font-medium">Type any term to find matching pages and snippets.</p>
             </div>
           ) : searchResults.length === 0 ? (
-            <div className="py-8 text-center space-y-1.5 text-slate-400">
-              <p className="text-sm font-bold">No matches found</p>
-              <p className="text-xs text-slate-500">Try searching with a broader keyword.</p>
+            <div className="py-8 text-center space-y-1.5 text-muted-foreground">
+              <p className="text-sm font-bold text-foreground">No matches found</p>
+              <p className="text-xs text-muted-foreground">Try searching with a broader keyword.</p>
             </div>
           ) : (
             searchResults.map((result) => (
@@ -106,21 +106,21 @@ export function DocumentSearchBar({
                 key={`search_page_${result.pageNumber}`}
                 type="button"
                 onClick={() => handleSelect(result.pageNumber)}
-                className="w-full text-left p-3.5 rounded-2xl border border-white/5 bg-slate-800/40 hover:bg-slate-800 hover:border-indigo-500/40 transition-all duration-200 group flex items-start justify-between gap-3 min-h-[44px]"
+                className="w-full text-left p-3.5 rounded-xl border border-border/70 bg-muted/20 hover:bg-muted/40 hover:border-border transition-all duration-200 group flex items-start justify-between gap-3 min-h-[44px] active:scale-[0.98]"
               >
                 <div className="space-y-1 flex-1">
                   <div className="flex items-center gap-2">
-                    <Badge className="bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 text-[10px] font-bold border border-indigo-500/30">
+                    <Badge className="bg-primary/10 text-primary hover:bg-primary/20 text-[10px] font-bold border border-primary/20">
                       Page {result.pageNumber}
                     </Badge>
-                    <span className="text-[10px] text-slate-400 font-mono">Match score: {result.matchScore}</span>
+                    <span className="text-[10px] text-muted-foreground font-mono">Match score: {result.matchScore}</span>
                   </div>
-                  <p className="text-xs text-slate-300 leading-relaxed group-hover:text-white">
+                  <p className="text-xs text-muted-foreground leading-relaxed group-hover:text-foreground">
                     {result.snippet}
                   </p>
                 </div>
 
-                <div className="p-2 rounded-xl bg-white/5 group-hover:bg-indigo-600 text-slate-400 group-hover:text-white shrink-0 mt-1 transition-colors">
+                <div className="p-2 rounded-xl bg-muted/30 group-hover:bg-primary group-hover:text-primary-foreground text-muted-foreground shrink-0 mt-1 transition-colors">
                   <ArrowRight className="h-4 w-4" />
                 </div>
               </button>
@@ -130,7 +130,7 @@ export function DocumentSearchBar({
 
         {/* Footer info */}
         {searchResults.length > 0 && (
-          <div className="flex items-center justify-between pt-2 border-t border-white/10 text-[11px] text-slate-400">
+          <div className="flex items-center justify-between pt-2 border-t border-border/80 text-[11px] text-muted-foreground">
             <span>Found {searchResults.length} matching page{searchResults.length === 1 ? '' : 's'}</span>
             <span className="flex items-center gap-1">
               Click a match to navigate <CornerDownLeft className="h-3 w-3" />

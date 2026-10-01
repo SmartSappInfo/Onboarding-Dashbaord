@@ -97,23 +97,23 @@ export function AiScriptBuilderModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl rounded-[2.5rem] p-6 overflow-hidden border-none shadow-2xl bg-card">
+      <DialogContent className="sm:max-w-2xl sm:rounded-2xl p-0 overflow-hidden border border-border/80 shadow-2xl bg-card text-card-foreground">
         <AiAssistantModalHeader
           title="AI Conversational Script Architect"
           description="Draft high-converting messaging copy for SMS or WhatsApp with merge tags."
           onClose={() => onOpenChange(false)}
         />
         
-        <div className="space-y-6 mt-4 text-left">
+        <div className="p-6 space-y-5 text-left">
           {/* Channel and Tone Selectors */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Channel</Label>
               <Select value={channel} onValueChange={(val: 'sms' | 'whatsapp') => setChannel(val)}>
-                <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none font-bold">
+                <SelectTrigger className="h-10 rounded-xl bg-card border border-border/80 font-medium">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl">
+                <SelectContent className="rounded-xl border border-border/80">
                   <SelectItem value="sms">SMS (Text Only)</SelectItem>
                   <SelectItem value="whatsapp">WhatsApp Business</SelectItem>
                 </SelectContent>
@@ -122,11 +122,11 @@ export function AiScriptBuilderModal({
             
             <div className="space-y-2">
               <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Tone of Voice</Label>
-              <Select value={tone} onValueChange={(val: any) => setTone(val)}>
-                <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none font-bold">
+              <Select value={tone} onValueChange={(val: 'friendly' | 'professional' | 'warm' | 'urgent') => setTone(val)}>
+                <SelectTrigger className="h-10 rounded-xl bg-card border border-border/80 font-medium">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl">
+                <SelectContent className="rounded-xl border border-border/80">
                   <SelectItem value="friendly">Friendly & Casual</SelectItem>
                   <SelectItem value="professional">Professional & Direct</SelectItem>
                   <SelectItem value="warm">Warm & Encouraging</SelectItem>
@@ -143,25 +143,25 @@ export function AiScriptBuilderModal({
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="e.g. Write a friendly notification warning the client about their outstanding balance. Remind them to pay before Friday."
-              className="min-h-[160px] rounded-[2rem] bg-muted/20 border-none shadow-inner p-6 leading-relaxed text-base"
+              className="min-h-[150px] rounded-xl bg-muted/20 border border-border/80 shadow-inner p-4 leading-relaxed text-sm"
               autoFocus
             />
           </div>
         </div>
 
-        <DialogFooter className="bg-muted/10 p-4 border-t flex justify-between items-center sm:justify-between mt-4">
+        <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex justify-between items-center sm:justify-between">
           <Button
             variant="ghost"
             onClick={() => onOpenChange(false)}
             disabled={isGenerating}
-            className="font-bold rounded-xl h-12 px-8"
+            className="font-semibold rounded-xl h-10 px-6 active:scale-[0.97]"
           >
             Discard
           </Button>
           <RainbowButton
             onClick={handleGenerate}
             disabled={isGenerating || !prompt.trim()}
-            className="h-12 px-12 font-semibold shadow-2xl text-sm"
+            className="h-10 px-8 font-semibold shadow-xl text-xs active:scale-[0.97]"
           >
             {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MessageSquare className="mr-2 h-4 w-4" />}
             {isGenerating ? 'Drafting…' : 'Generate Script'}

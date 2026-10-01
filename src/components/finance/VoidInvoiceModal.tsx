@@ -15,6 +15,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -111,75 +112,77 @@ export const VoidInvoiceModal: React.FC<VoidInvoiceModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-lg rounded-2xl p-6">
-        <DialogHeader className="text-left space-y-1">
-          <div className="flex items-center gap-2 text-destructive font-bold text-xs uppercase tracking-wider">
-            <ShieldAlert className="h-4 w-4" />
-            Financial Audit Control
+      <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+        <DialogHeader demarcated className="px-6 py-3.5 sm:py-4">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="h-5 w-5 text-destructive" />
+            <DialogTitle className="text-base sm:text-lg font-bold text-foreground">
+              Void Invoice {invoice.invoiceNumber}
+            </DialogTitle>
+            <CardInfoTooltip text="Voiding an issued invoice is an immutable accounting event. The invoice will not be deleted." />
           </div>
-          <DialogTitle className="text-xl font-bold tracking-tight text-foreground">
-            Void Invoice {invoice.invoiceNumber}
-          </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
+          <DialogDescription className="sr-only">
             Voiding an issued invoice is an immutable accounting event. The invoice will not be deleted.
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-          {/* Reversal Summary Box */}
-          <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-xl space-y-2 text-xs">
-            <div className="flex items-center gap-2 font-bold text-rose-700 dark:text-rose-400">
-              <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-              Sub-Ledger Reversal Impact
-            </div>
-            <div className="space-y-1 text-muted-foreground text-[11px] leading-relaxed">
-              <div className="flex justify-between items-center text-foreground font-semibold">
-                <span>Ledger Debit Reversal:</span>
-                <span className="text-rose-600 dark:text-rose-400 font-bold">
-                  -{currency} {totalPayable.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                </span>
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+            {/* Reversal Summary Box */}
+            <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-xl space-y-2 text-xs">
+              <div className="flex items-center gap-2 font-bold text-rose-700 dark:text-rose-400">
+                <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                Sub-Ledger Reversal Impact
               </div>
-              {amountPaid > 0 && (
-                <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 font-semibold pt-1 border-t border-rose-500/20">
-                  <span className="flex items-center gap-1">
-                    <ArrowDownLeft className="h-3 w-3" /> Allocated Payment Release:
-                  </span>
-                  <span>
-                    +{currency} {amountPaid.toLocaleString(undefined, { minimumFractionDigits: 2 })} (To Available Credit)
+              <div className="space-y-1 text-muted-foreground text-[11px] leading-relaxed">
+                <div className="flex justify-between items-center text-foreground font-semibold">
+                  <span>Ledger Debit Reversal:</span>
+                  <span className="text-rose-600 dark:text-rose-400 font-bold">
+                    -{currency} {totalPayable.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </span>
                 </div>
-              )}
+                {amountPaid > 0 && (
+                  <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 font-semibold pt-1 border-t border-rose-500/20">
+                    <span className="flex items-center gap-1">
+                      <ArrowDownLeft className="h-3 w-3" /> Allocated Payment Release:
+                    </span>
+                    <span>
+                      +{currency} {amountPaid.toLocaleString(undefined, { minimumFractionDigits: 2 })} (To Available Credit)
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-1.5 text-left">
+              <Label className="text-xs font-semibold">
+                Formal Audit Reason / Cancellation Justification *
+              </Label>
+              <Textarea
+                required
+                rows={3}
+                placeholder="e.g. Billing terms renegotiated, service cancelled prior to fulfillment, duplicate issuance..."
+                value={voidReason}
+                onChange={(e) => setVoidReason(e.target.value)}
+                className="rounded-xl text-xs resize-none"
+              />
             </div>
           </div>
 
-          <div className="space-y-1.5 text-left">
-            <Label className="text-xs font-semibold">
-              Formal Audit Reason / Cancellation Justification *
-            </Label>
-            <Textarea
-              required
-              rows={3}
-              placeholder="e.g. Billing terms renegotiated, service cancelled prior to fulfillment, duplicate issuance..."
-              value={voidReason}
-              onChange={(e) => setVoidReason(e.target.value)}
-              className="rounded-xl text-xs resize-none"
-            />
-          </div>
-
-          <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+          <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
               disabled={isSubmitting}
-              className="rounded-xl h-11 min-h-[44px] text-xs font-semibold active:scale-[0.97]"
+              className="rounded-xl h-10 min-h-[44px] text-xs font-semibold active:scale-[0.97]"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={isSubmitting || !voidReason.trim()}
-              className="rounded-xl h-11 min-h-[44px] text-xs font-bold px-6 bg-destructive text-white hover:bg-destructive/90 active:scale-[0.97]"
+              className="rounded-xl h-10 min-h-[44px] text-xs font-bold px-6 bg-destructive text-white hover:bg-destructive/90 active:scale-[0.97]"
             >
               {isSubmitting ? (
                 <>

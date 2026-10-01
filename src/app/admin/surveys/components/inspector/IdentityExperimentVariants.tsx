@@ -24,6 +24,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import {
   Plus,
   Trash2,
@@ -513,16 +514,21 @@ export function IdentityExperimentVariants({
 
       {/* AI SUGGESTION MODAL */}
       <Dialog open={aiModalOpen} onOpenChange={setAiModalOpen}>
-        <DialogContent className="max-w-2xl rounded-3xl p-6 space-y-5">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-              AI Variant Copy Suggestions
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
-              Select an optimized copy angle to populate the variant headline, description, and CTA buttons.
-            </DialogDescription>
+        <DialogContent className="max-w-2xl sm:rounded-2xl p-0 overflow-hidden border border-border/80 bg-card text-card-foreground shadow-2xl">
+          <DialogHeader demarcated>
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              <DialogTitle className="text-base font-bold text-foreground">
+                AI Variant Copy Suggestions
+              </DialogTitle>
+              <CardInfoTooltip text="Select an optimized copy angle to populate the variant headline, description, and CTA buttons." />
+              <DialogDescription className="sr-only">
+                Select an optimized copy angle to populate the variant headline, description, and CTA buttons.
+              </DialogDescription>
+            </div>
           </DialogHeader>
+
+          <div className="p-6 space-y-5">
 
           {/* Optional Prompt Guidance */}
           <div className="flex gap-2">
@@ -611,6 +617,7 @@ export function IdentityExperimentVariants({
               ))}
             </div>
           )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

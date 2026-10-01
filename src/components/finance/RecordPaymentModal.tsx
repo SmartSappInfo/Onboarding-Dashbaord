@@ -15,6 +15,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -212,19 +213,20 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl p-6">
-        <DialogHeader className="text-left space-y-1">
-          <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
-            <CreditCard className="h-4 w-4" />
-            Financial Settlement
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+        <DialogHeader demarcated className="px-6 py-3.5 sm:py-4">
+          <div className="flex items-center gap-2">
+            <CreditCard className="h-5 w-5 text-primary" />
+            <DialogTitle className="text-base sm:text-lg font-bold">Record Payment</DialogTitle>
+            <CardInfoTooltip text={`Recording remittance for ${resolvedEntityName}.`} />
           </div>
-          <DialogTitle className="text-xl font-bold tracking-tight">Record Payment</DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
-            Recording remittance for <span className="font-semibold text-foreground">{resolvedEntityName}</span>.
+          <DialogDescription className="sr-only">
+            Recording remittance for {resolvedEntityName}.
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-5 pt-2">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="p-6 space-y-5 overflow-y-auto max-h-[70vh]">
           {/* Top Payment Info Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
@@ -392,21 +394,22 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
               </div>
             )}
           </div>
+          </div>
 
-          <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+          <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
               disabled={isSubmitting}
-              className="rounded-xl h-11 min-h-[44px] text-xs font-semibold active:scale-[0.97]"
+              className="rounded-xl h-10 min-h-[44px] text-xs font-semibold active:scale-[0.97]"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={isSubmitting || numAmount <= 0}
-              className="rounded-xl h-11 min-h-[44px] text-xs font-bold px-6 bg-primary text-white hover:bg-primary/90 active:scale-[0.97]"
+              className="rounded-xl h-10 min-h-[44px] text-xs font-bold px-6 shadow-sm active:scale-[0.97]"
             >
               {isSubmitting ? (
                 <>

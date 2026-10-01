@@ -5230,6 +5230,8 @@ export interface MessageTemplate {
   // Style (OPTIONAL — null/undefined means no wrapper)
   styleId?: string | null;
   workspaceIds?: string[];
+  /** Optional reference to the survey this template was generated from */
+  sourceSurveyId?: string;
 
   // WhatsApp-only (channel === 'whatsapp'): binds this template to an approved
   // Meta template and maps positional {{1..n}} params to variable keys.

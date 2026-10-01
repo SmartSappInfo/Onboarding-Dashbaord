@@ -99,14 +99,14 @@ export function AiAutomationBuilderModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl rounded-[2.5rem] p-6 overflow-hidden border-none shadow-2xl bg-card">
+      <DialogContent className="sm:max-w-2xl sm:rounded-2xl p-0 overflow-hidden border border-border/80 shadow-2xl bg-card text-card-foreground">
         <AiAssistantModalHeader
           title="AI Automation Workflow Architect"
           description="Describe your workflow logic and the AI will construct trigger rules and action steps."
           onClose={() => onOpenChange(false)}
         />
         
-        <div className="space-y-6 mt-4 text-left">
+        <div className="p-6 space-y-5 text-left">
           {/* Instructions Input */}
           <div className="space-y-2">
             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Workflow Description</Label>
@@ -114,12 +114,12 @@ export function AiAutomationBuilderModal({
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="e.g. When a survey is submitted, wait 2 days. If the score is less than 50, send a follow-up email and add the 'Needs Attention' tag. Otherwise, send the success notification."
-              className="min-h-[180px] rounded-[2rem] bg-muted/20 border-none shadow-inner p-6 leading-relaxed text-base"
+              className="min-h-[160px] rounded-xl bg-muted/20 border border-border/80 shadow-inner p-4 leading-relaxed text-sm"
               autoFocus
             />
           </div>
 
-          <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 flex items-start gap-3">
+          <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 flex items-start gap-3">
             <Zap className="h-5 w-5 text-primary shrink-0 mt-0.5 animate-pulse" />
             <div className="space-y-0.5">
               <span className="text-xs font-semibold text-foreground">Intelligent Node Mapping</span>
@@ -130,19 +130,19 @@ export function AiAutomationBuilderModal({
           </div>
         </div>
 
-        <DialogFooter className="bg-muted/10 p-4 border-t flex justify-between items-center sm:justify-between mt-4">
+        <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex justify-between items-center sm:justify-between">
           <Button
             variant="ghost"
             onClick={() => onOpenChange(false)}
             disabled={isGenerating}
-            className="font-bold rounded-xl h-12 px-8"
+            className="font-semibold rounded-xl h-10 px-6 active:scale-[0.97]"
           >
             Discard
           </Button>
           <RainbowButton
             onClick={handleGenerate}
             disabled={isGenerating || !prompt.trim()}
-            className="h-12 px-12 font-semibold shadow-2xl text-sm"
+            className="h-10 px-8 font-semibold shadow-xl text-xs active:scale-[0.97]"
           >
             {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
             {isGenerating ? 'Structuring…' : 'Generate Workflow'}

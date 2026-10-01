@@ -38,8 +38,10 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import {
   Sheet,
   SheetContent,
@@ -641,7 +643,7 @@ export function TagSelector({
               </Button>
             </PopoverTrigger>
             <PopoverContent
-              className="w-72 p-0 rounded-2xl shadow-2xl border-none"
+              className="w-72 p-0 rounded-2xl shadow-2xl border border-border/80 bg-card text-card-foreground"
               align="start"
               role="dialog"
               aria-label="Tag selector"
@@ -654,11 +656,17 @@ export function TagSelector({
 
       {/* Create new tag dialog */}
       <Dialog open={isCreating} onOpenChange={setIsCreating}>
-        <DialogContent className="rounded-2xl max-w-sm" aria-describedby={undefined}>
-          <DialogHeader>
-            <DialogTitle className="font-black uppercase tracking-tight">Create & Apply Tag</DialogTitle>
+        <DialogContent className="sm:max-w-sm p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+          <DialogHeader demarcated className="px-6 py-3.5 sm:py-4">
+            <div className="flex items-center gap-2">
+              <DialogTitle className="font-bold text-base tracking-tight">Create & Apply Tag</DialogTitle>
+              <CardInfoTooltip text="Define a new contact tag and apply it immediately." />
+            </div>
+            <DialogDescription className="sr-only">
+              Create a new tag and apply it to this contact.
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
             <div className="space-y-1.5">
               <Label htmlFor="new-tag-name" className="text-[10px] font-black uppercase tracking-widest">
                 Name <span aria-hidden="true">*</span>
@@ -729,11 +737,11 @@ export function TagSelector({
               </div>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
             <Button
               variant="ghost"
               onClick={() => setIsCreating(false)}
-              className="rounded-xl font-bold focus-visible:ring-2 focus-visible:ring-primary"
+              className="rounded-xl font-bold min-h-[44px] active:scale-[0.97]"
               size="sm"
             >
               Cancel
@@ -741,7 +749,7 @@ export function TagSelector({
             <Button
               onClick={handleCreateAndApply}
               disabled={isSubmitting || !newTagName.trim()}
-              className="rounded-xl font-bold focus-visible:ring-2 focus-visible:ring-primary"
+              className="rounded-xl font-bold min-h-[44px] active:scale-[0.97]"
               size="sm"
               aria-busy={isSubmitting}
             >

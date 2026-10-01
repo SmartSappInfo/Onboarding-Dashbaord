@@ -747,10 +747,10 @@ export default function TenantStyleEditorPage() {
 
             {/* Deletion Prevention Warning Dialog */}
             <AlertDialog open={showDeleteBlocked} onOpenChange={setShowDeleteBlocked}>
-                <AlertDialogContent className="rounded-[2.5rem] max-w-md p-8 border-none shadow-2xl bg-card text-left">
+                <AlertDialogContent className="sm:rounded-2xl max-w-md p-6 border border-border/80 shadow-2xl bg-card text-card-foreground text-left">
                     <AlertDialogHeader className="space-y-4">
-                        <div className="mx-auto p-4 bg-amber-500/10 text-amber-500 rounded-full w-fit">
-                            <AlertCircle size={32} />
+                        <div className="mx-auto p-3.5 bg-amber-500/10 text-amber-500 rounded-full w-fit">
+                            <AlertCircle size={28} />
                         </div>
                         <div className="space-y-2 text-center">
                             <AlertDialogTitle className="font-semibold text-lg tracking-tight">Deletion Blocked</AlertDialogTitle>
@@ -782,7 +782,7 @@ export default function TenantStyleEditorPage() {
                     </div>
                     
                     <AlertDialogFooter className="mt-4">
-                        <AlertDialogCancel className="w-full rounded-xl font-bold border-none bg-muted/65 hover:bg-muted text-foreground">
+                        <AlertDialogCancel className="w-full rounded-xl font-bold border border-border/80 bg-muted/40 hover:bg-muted text-foreground active:scale-[0.97]">
                             Close
                         </AlertDialogCancel>
                     </AlertDialogFooter>

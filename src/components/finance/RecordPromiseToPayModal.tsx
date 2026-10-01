@@ -14,6 +14,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -135,96 +136,98 @@ export function RecordPromiseToPayModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md rounded-2xl p-6">
-        <DialogHeader className="text-left space-y-1">
-          <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
-            <Handshake className="h-4 w-4" />
-            Promise-to-Pay (PTP)
+      <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+        <DialogHeader demarcated className="px-6 py-3.5 sm:py-4">
+          <div className="flex items-center gap-2">
+            <Handshake className="h-5 w-5 text-primary" />
+            <DialogTitle className="text-base sm:text-lg font-bold">Record Payment Commitment</DialogTitle>
+            <CardInfoTooltip text={`Logging formal remittance agreement for ${entityName}.`} />
           </div>
-          <DialogTitle className="text-xl font-bold tracking-tight">Record Payment Commitment</DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
-            Logging formal remittance agreement for <span className="font-semibold text-foreground">{entityName}</span>.
+          <DialogDescription className="sr-only">
+            Logging formal remittance agreement for {entityName}.
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Promised Amount ({currency}) *</Label>
-            <div className="relative">
-              <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="number"
-                step="0.01"
-                min="0.01"
-                required
-                placeholder="0.00"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="pl-9 rounded-xl h-11 min-h-[44px] font-semibold"
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Promised Amount ({currency}) *</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  required
+                  placeholder="0.00"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="pl-9 rounded-xl h-11 min-h-[44px] font-semibold"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Promised Payment Date *</Label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="date"
+                  required
+                  min={new Date().toISOString().split('T')[0]}
+                  value={promisedDate}
+                  onChange={(e) => setPromisedDate(e.target.value)}
+                  className="pl-9 rounded-xl h-11 min-h-[44px]"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Expected Payment Method</Label>
+              <Select value={paymentMethod} onValueChange={(val) => setPaymentMethod(val as PaymentMethod)}>
+                <SelectTrigger className="rounded-xl h-11 min-h-[44px]">
+                  <SelectValue placeholder="Select Method" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bank_transfer">Bank Transfer / EFT</SelectItem>
+                  <SelectItem value="mobile_money">Mobile Money (MOM)</SelectItem>
+                  <SelectItem value="cheque">Company Cheque</SelectItem>
+                  <SelectItem value="cash">Cash Remittance</SelectItem>
+                  <SelectItem value="card">Credit/Debit Card</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Agreement Notes & Commitment Context</Label>
+              <Textarea
+                rows={2}
+                placeholder="e.g. Finance director agreed to disburse pending board approval..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="rounded-xl resize-none text-xs"
               />
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Promised Payment Date *</Label>
-            <div className="relative">
-              <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="date"
-                required
-                min={new Date().toISOString().split('T')[0]}
-                value={promisedDate}
-                onChange={(e) => setPromisedDate(e.target.value)}
-                className="pl-9 rounded-xl h-11 min-h-[44px]"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Expected Payment Method</Label>
-            <Select value={paymentMethod} onValueChange={(val) => setPaymentMethod(val as PaymentMethod)}>
-              <SelectTrigger className="rounded-xl h-11 min-h-[44px]">
-                <SelectValue placeholder="Select Method" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="bank_transfer">Bank Transfer / EFT</SelectItem>
-                <SelectItem value="mobile_money">Mobile Money (MOM)</SelectItem>
-                <SelectItem value="cheque">Company Cheque</SelectItem>
-                <SelectItem value="cash">Cash Remittance</SelectItem>
-                <SelectItem value="card">Credit/Debit Card</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Agreement Notes & Commitment Context</Label>
-            <Textarea
-              rows={2}
-              placeholder="e.g. Finance director agreed to disburse pending board approval..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="rounded-xl resize-none text-xs"
-            />
-          </div>
-
-          <DialogFooter className="pt-3 gap-2">
+          <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
               disabled={isSubmitting}
-              className="rounded-xl h-11 min-h-[44px] active:scale-[0.97]"
+              className="rounded-xl h-10 min-h-[44px] text-xs font-semibold active:scale-[0.97]"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="rounded-xl h-11 min-h-[44px] font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-md active:scale-[0.97]"
+              className="rounded-xl h-10 min-h-[44px] text-xs font-bold px-6 shadow-sm active:scale-[0.97]"
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
                   Recording...
                 </>
               ) : (

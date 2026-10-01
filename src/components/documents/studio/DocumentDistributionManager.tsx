@@ -32,7 +32,9 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import {
   QrCode,
   Code,
@@ -378,19 +380,24 @@ export function DocumentDistributionManager({
 
       {/* ── 3. Create Distribution Channel Modal ────────────────────────────── */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-md rounded-3xl p-6 text-left">
-          <DialogHeader className="text-left space-y-1">
-            <DialogTitle className="text-base font-black">Create Trackable Channel</DialogTitle>
-            <p className="text-xs text-muted-foreground">Generate signed links for campaigns, social, QR, or embeds.</p>
+        <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+          <DialogHeader demarcated className="px-6 py-3.5 sm:py-4 border-b border-border/80 bg-muted/20 flex flex-row items-center justify-between shrink-0 space-y-0 text-left">
+            <DialogTitle className="text-base sm:text-lg font-semibold tracking-tight text-foreground flex items-center gap-1.5">
+              Create Trackable Channel
+              <CardInfoTooltip text="Generate signed links for campaigns, social, QR, or embeds." />
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Generate signed links for campaigns, social, QR, or embeds.
+            </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 pt-2">
+          <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
             <div className="space-y-1.5">
               <Label className="text-xs font-bold">Channel Type</Label>
               <select
                 value={channelType}
                 onChange={(e) => setChannelType(e.target.value as DistributionType)}
-                className="w-full h-11 rounded-xl bg-card border px-3 text-xs font-bold min-h-[44px]"
+                className="w-full h-11 rounded-xl bg-card border border-border/80 px-3 text-xs font-bold min-h-[44px]"
               >
                 <option value="campaign">Email / Nurture Campaign</option>
                 <option value="qr">Physical Print & Signage QR Code</option>
@@ -444,7 +451,7 @@ export function DocumentDistributionManager({
             <Button
               disabled={isCreating}
               onClick={handleCreateDistribution}
-              className="w-full h-11 rounded-xl font-bold text-xs min-h-[44px] gap-2 mt-2"
+              className="w-full h-11 rounded-xl font-medium text-xs min-h-[44px] gap-2 mt-2 active:scale-[0.97]"
             >
               <Sparkles className="h-4 w-4" /> {isCreating ? 'Generating...' : 'Generate Distribution Channel'}
             </Button>
@@ -454,15 +461,20 @@ export function DocumentDistributionManager({
 
       {/* ── 4. QR Code Download Modal ───────────────────────────────────────── */}
       <Dialog open={!!activeQRUrl} onOpenChange={(open) => !open && setActiveQRUrl(null)}>
-        <DialogContent className="max-w-sm rounded-3xl p-6 text-center">
-          <DialogHeader className="text-center space-y-1">
-            <DialogTitle className="text-base font-black">Scan & Share QR Code</DialogTitle>
-            <p className="text-xs text-muted-foreground">Scan with any mobile camera to open publication.</p>
+        <DialogContent className="sm:max-w-sm p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+          <DialogHeader demarcated className="px-6 py-3.5 sm:py-4 border-b border-border/80 bg-muted/20 flex flex-row items-center justify-between shrink-0 space-y-0 text-left">
+            <DialogTitle className="text-base sm:text-lg font-semibold tracking-tight text-foreground flex items-center gap-1.5">
+              Scan & Share QR Code
+              <CardInfoTooltip text="Scan with any mobile camera to open publication." />
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Scan with any mobile camera to open publication.
+            </DialogDescription>
           </DialogHeader>
 
           {activeQRUrl && (
-            <div className="space-y-4 pt-2">
-              <div className="p-4 bg-white rounded-2xl mx-auto w-fit shadow-md border">
+            <div className="p-6 space-y-4 text-center">
+              <div className="p-4 bg-white rounded-2xl mx-auto w-fit shadow-md border border-border/80">
                 <img
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(activeQRUrl)}`}
                   alt="QR Code"
@@ -479,7 +491,7 @@ export function DocumentDistributionManager({
                     link.target = '_blank';
                     link.click();
                   }}
-                  className="w-full h-11 rounded-xl font-bold text-xs min-h-[44px] gap-2"
+                  className="w-full h-11 rounded-xl font-medium text-xs min-h-[44px] gap-2 active:scale-[0.97]"
                 >
                   <Download className="h-4 w-4" /> Download High-Res PNG
                 </Button>
@@ -491,14 +503,19 @@ export function DocumentDistributionManager({
 
       {/* ── 5. Embed Iframe Snippet Modal ───────────────────────────────────── */}
       <Dialog open={!!activeEmbedUrl} onOpenChange={(open) => !open && setActiveEmbedUrl(null)}>
-        <DialogContent className="max-w-lg rounded-3xl p-6 text-left">
-          <DialogHeader className="text-left space-y-1">
-            <DialogTitle className="text-base font-black">Website Embed Code</DialogTitle>
-            <p className="text-xs text-muted-foreground">Paste this HTML snippet into your website or CMS.</p>
+        <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+          <DialogHeader demarcated className="px-6 py-3.5 sm:py-4 border-b border-border/80 bg-muted/20 flex flex-row items-center justify-between shrink-0 space-y-0 text-left">
+            <DialogTitle className="text-base sm:text-lg font-semibold tracking-tight text-foreground flex items-center gap-1.5">
+              Website Embed Code
+              <CardInfoTooltip text="Paste this HTML snippet into your website or CMS." />
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Paste this HTML snippet into your website or CMS.
+            </DialogDescription>
           </DialogHeader>
 
           {activeEmbedUrl && (
-            <div className="space-y-4 pt-2">
+            <div className="p-6 space-y-4">
               <textarea
                 readOnly
                 rows={4}
@@ -507,7 +524,7 @@ export function DocumentDistributionManager({
                   title,
                   height: '600px',
                 })}
-                className="w-full p-3 font-mono text-xs bg-muted/40 border rounded-2xl focus:outline-none"
+                className="w-full p-3 font-mono text-xs bg-muted/40 border border-border/80 rounded-xl focus:outline-none"
               />
 
               <Button
@@ -519,7 +536,7 @@ export function DocumentDistributionManager({
                   });
                   handleCopy(snippet, 'embed_snippet');
                 }}
-                className="w-full h-11 rounded-xl font-bold text-xs min-h-[44px] gap-2"
+                className="w-full h-11 rounded-xl font-medium text-xs min-h-[44px] gap-2 active:scale-[0.97]"
               >
                 <Copy className="h-4 w-4" /> Copy Embed Snippet
               </Button>

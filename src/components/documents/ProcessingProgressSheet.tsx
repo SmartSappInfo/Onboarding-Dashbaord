@@ -36,6 +36,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { retryFailedProcessingJobAction } from '@/lib/documents/processing-actions';
 import { useToast } from '@/hooks/use-toast';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 interface ProcessingProgressSheetProps {
   open: boolean;
@@ -126,46 +127,50 @@ export function ProcessingProgressSheet({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg rounded-3xl border-border/60 bg-card p-6 sm:p-8 shadow-2xl text-left">
-        <DialogHeader className="space-y-2 text-left">
-          <div className="flex items-center justify-between">
-            <Badge 
-              variant="outline"
-              className={
-                isCompleted
-                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 font-bold'
-                  : isFailed
-                  ? 'border-rose-500/30 bg-rose-500/10 text-rose-600 font-bold'
-                  : 'border-primary/30 bg-primary/10 text-primary font-bold animate-pulse'
-              }
-            >
-              {isCompleted ? 'Ready & Published' : isFailed ? 'Processing Failed' : `Processing • ${job.progress}%`}
-            </Badge>
-            <span className="text-[11px] font-mono text-muted-foreground">Job ID: {job.id.slice(0, 12)}...</span>
+      <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+        <DialogHeader demarcated className="px-6 py-3.5 sm:py-4 border-b border-border/80 bg-muted/20 flex flex-row items-center justify-between shrink-0 space-y-0 text-left">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 bg-primary/10 text-primary rounded-lg shadow-sm">
+              <Cpu className="h-4 w-4" />
+            </div>
+            <DialogTitle className="text-base sm:text-lg font-semibold tracking-tight text-foreground flex items-center gap-1.5">
+              Document Ingestion Pipeline
+              <CardInfoTooltip text="Asynchronous multi-stage rendering, thumbnail generation, and search indexing." />
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Asynchronous multi-stage rendering, thumbnail generation, and search indexing.
+            </DialogDescription>
           </div>
-          <DialogTitle className="text-xl font-black text-foreground">
-            Document Ingestion Pipeline
-          </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
-            Asynchronous multi-stage rendering, thumbnail generation, and search indexing.
-          </DialogDescription>
+          <Badge 
+            variant="outline"
+            className={
+              isCompleted
+                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 font-bold text-xs'
+                : isFailed
+                ? 'border-rose-500/30 bg-rose-500/10 text-rose-600 font-bold text-xs'
+                : 'border-primary/30 bg-primary/10 text-primary font-bold animate-pulse text-xs'
+            }
+          >
+            {isCompleted ? 'Ready & Published' : isFailed ? 'Processing Failed' : `Processing • ${job.progress}%`}
+          </Badge>
         </DialogHeader>
 
-        {/* Progress Bar */}
-        <div className="space-y-1.5 pt-2">
-          <div className="flex justify-between text-xs font-bold">
-            <span className="text-muted-foreground">Overall Progress</span>
-            <span className="text-foreground">{job.progress}%</span>
+        <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+          {/* Progress Bar */}
+          <div className="space-y-1.5 pt-1">
+            <div className="flex justify-between text-xs font-bold">
+              <span className="text-muted-foreground">Overall Progress</span>
+              <span className="text-foreground">{job.progress}%</span>
+            </div>
+            <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted/40 p-0.5">
+              <div
+                className={`h-full rounded-full transition-all duration-300 ${
+                  isFailed ? 'bg-rose-500' : isCompleted ? 'bg-emerald-500' : 'bg-primary'
+                }`}
+                style={{ width: `${job.progress}%` }}
+              />
+            </div>
           </div>
-          <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted/40 p-0.5">
-            <div
-              className={`h-full rounded-full transition-all duration-300 ${
-                isFailed ? 'bg-rose-500' : isCompleted ? 'bg-emerald-500' : 'bg-primary'
-              }`}
-              style={{ width: `${job.progress}%` }}
-            />
-          </div>
-        </div>
 
         {/* Stages Timeline */}
         <div className="space-y-3 py-3">
@@ -224,7 +229,7 @@ export function ProcessingProgressSheet({
 
         {/* Failure Diagnostic Card */}
         {isFailed && (
-          <div className="p-3.5 rounded-2xl border border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300 space-y-1 text-left">
+          <div className="p-3.5 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300 space-y-1 text-left">
             <div className="flex items-center gap-2 font-bold text-xs">
               <AlertCircle className="h-4 w-4 text-rose-600" />
               <span>Diagnostic Error: {job.errorCode || 'UNKNOWN_ERROR'}</span>
@@ -232,13 +237,14 @@ export function ProcessingProgressSheet({
             <p className="text-[11px] opacity-90 pl-6">{job.errorMessage || 'An error occurred during stage execution.'}</p>
           </div>
         )}
+        </div>
 
-        <DialogFooter className="flex flex-col sm:flex-row items-center gap-2 pt-2">
+        <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5 shrink-0">
           {isFailed && (
             <Button
               onClick={handleRetry}
               disabled={isRetrying}
-              className="w-full sm:w-auto h-11 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs min-h-[44px]"
+              className="h-11 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-medium text-xs min-h-[44px] active:scale-[0.97]"
             >
               {isRetrying ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
               Retry Ingestion Job
@@ -248,7 +254,7 @@ export function ProcessingProgressSheet({
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="w-full sm:w-auto h-11 rounded-xl font-bold text-xs min-h-[44px]"
+            className="h-11 rounded-xl font-medium text-xs min-h-[44px] active:scale-[0.97]"
           >
             {isCompleted ? 'Done' : 'Dismiss'}
           </Button>

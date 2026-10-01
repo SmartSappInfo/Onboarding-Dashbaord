@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import {
   Calendar as CalendarIcon,
   Video,
@@ -332,36 +333,38 @@ export function OAuthCredentialsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl p-6 sm:p-8">
-        <DialogHeader className="space-y-1.5 border-b border-border pb-4 text-left">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-xl bg-primary/10 text-primary">
-              <ShieldCheck className="w-5 h-5" />
+      <DialogContent className="sm:max-w-2xl p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+        <DialogHeader demarcated className="px-6 py-3.5 sm:py-4 border-b border-border/80 bg-muted/20 flex flex-row items-center justify-between shrink-0 space-y-0 text-left">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
+              <ShieldCheck className="w-4 h-4" />
             </div>
-            <div>
-              <DialogTitle className="text-xl font-bold tracking-tight">
-                {scope === 'organization' ? 'Global Organization API Credentials' : 'Workspace API Credentials'}
-              </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                {scope === 'organization'
-                  ? 'Configure organization default OAuth 2.0 developer credentials. Workspaces without overrides automatically inherit these.'
-                  : 'Configure custom OAuth 2.0 developer credentials for this workspace. These will override organization defaults.'}
-              </DialogDescription>
-            </div>
+            <DialogTitle className="text-base sm:text-lg font-semibold tracking-tight text-foreground flex items-center gap-1.5">
+              {scope === 'organization' ? 'Global Organization API Credentials' : 'Workspace API Credentials'}
+              <CardInfoTooltip text={scope === 'organization'
+                ? 'Configure organization default OAuth 2.0 developer credentials. Workspaces without overrides automatically inherit these.'
+                : 'Configure custom OAuth 2.0 developer credentials for this workspace. These will override organization defaults.'} />
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              {scope === 'organization'
+                ? 'Configure organization default OAuth 2.0 developer credentials. Workspaces without overrides automatically inherit these.'
+                : 'Configure custom OAuth 2.0 developer credentials for this workspace. These will override organization defaults.'}
+            </DialogDescription>
           </div>
         </DialogHeader>
 
-        {isLoadingStatus ? (
-          <div className="flex items-center justify-center py-12 gap-3">
-            <Loader2 className="w-5 h-5 animate-spin text-primary" />
-            <span className="text-xs font-semibold text-muted-foreground">Loading credentials status...</span>
-          </div>
-        ) : (
-          <Tabs
-            value={activeTab}
-            onValueChange={val => setActiveTab(val as OAuthProvider)}
-            className="w-full space-y-6 pt-2"
-          >
+        <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+          {isLoadingStatus ? (
+            <div className="flex items-center justify-center py-12 gap-3">
+              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+              <span className="text-xs font-semibold text-muted-foreground">Loading credentials status...</span>
+            </div>
+          ) : (
+            <Tabs
+              value={activeTab}
+              onValueChange={val => setActiveTab(val as OAuthProvider)}
+              className="w-full space-y-6"
+            >
             <TabsList className="grid grid-cols-3 w-full h-11 p-1 bg-muted/60 rounded-2xl">
               <TabsTrigger
                 value="google_calendar"
@@ -838,6 +841,7 @@ export function OAuthCredentialsModal({
             </TabsContent>
           </Tabs>
         )}
+        </div>
       </DialogContent>
     </Dialog>
   );

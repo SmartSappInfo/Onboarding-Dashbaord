@@ -32,6 +32,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -87,28 +88,28 @@ export function UrlDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="rounded-2xl border-border bg-background text-foreground max-w-md">
+      <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
         <form
           onSubmit={(e) => {
             e.preventDefault();
             handleConfirm();
           }}
-          className="space-y-4"
+          className="flex flex-col m-0"
         >
-          <DialogHeader>
-            <div className="flex items-center gap-2 text-primary">
-              <LinkIcon className="h-5 w-5" />
-              <DialogTitle className="text-base font-bold tracking-tight">
+          <DialogHeader demarcated className="px-6 py-3.5 sm:py-4">
+            <div className="flex items-center gap-2">
+              <LinkIcon className="h-4 w-4 text-primary shrink-0" />
+              <DialogTitle className="font-bold text-base tracking-tight">
                 Attach Cloud Document Link
               </DialogTitle>
+              <CardInfoTooltip text="Provide a share link for Google Sheets, Google Drive, Dropbox, OneDrive, AWS S3, or direct document download URL." />
             </div>
-            <DialogDescription className="text-xs text-muted-foreground pt-1">
-              Provide a share link for Google Sheets, Google Drive, Dropbox, OneDrive, AWS S3,
-              or direct document download URL.
+            <DialogDescription className="sr-only">
+              Provide a share link for Google Sheets, Google Drive, Dropbox, OneDrive, AWS S3, or direct document download URL.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-1">
+          <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
             <div className="space-y-1.5">
               <Label className="text-xs font-bold text-foreground">Document URL</Label>
               <Input
@@ -149,7 +150,7 @@ export function UrlDialog({
             </div>
           </div>
 
-          <DialogFooter className="flex gap-2 sm:justify-end pt-2">
+          <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
             <Button
               type="button"
               variant="ghost"

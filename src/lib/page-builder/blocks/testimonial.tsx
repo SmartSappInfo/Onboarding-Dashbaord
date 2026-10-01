@@ -376,14 +376,14 @@ registerBlock({
         </div>
 
         <Dialog open={changeSourceOpen} onOpenChange={(open) => { setChangeSourceOpen(open); if (!open) setShowLinkInput(false); }}>
-          <DialogContent className="max-w-md p-6 bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl">
-            <DialogTitle className="text-sm font-bold uppercase tracking-wider text-slate-400">Change Video Source</DialogTitle>
+          <DialogContent className="max-w-md p-6 bg-card border border-border/80 text-card-foreground rounded-2xl shadow-2xl">
+            <DialogTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Change Video Source</DialogTitle>
             {!showLinkInput ? (
               <div className="flex flex-col gap-3 mt-4">
                 <Button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full h-12 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.98] transition-all duration-200 shadow-md shadow-emerald-500/10"
+                  className="w-full h-12 rounded-xl text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.98] transition-all duration-200 shadow-md"
                 >
                   <Upload className="w-4 h-4" /> Upload
                 </Button>
@@ -397,22 +397,22 @@ registerBlock({
                       setVideoLibraryOpen(true);
                     }, 50);
                   }}
-                  className="w-full h-12 rounded-xl text-xs font-bold bg-slate-800/85 border border-slate-700/80 text-slate-200 hover:bg-slate-750 hover:border-emerald-500/50 hover:text-white flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.98] transition-all duration-200"
+                  className="w-full h-12 rounded-xl text-xs font-bold bg-muted/40 border border-border/80 text-foreground hover:bg-muted/70 flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.98] transition-all duration-200"
                 >
-                  <FolderHeart className="w-4 h-4 text-emerald-500" /> Library
+                  <FolderHeart className="w-4 h-4 text-primary" /> Library
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => setShowLinkInput(true)}
-                  className="w-full h-12 rounded-xl text-xs font-bold bg-slate-800/85 border border-slate-700/80 text-slate-200 hover:bg-slate-750 hover:border-emerald-500/50 hover:text-white flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.98] transition-all duration-200"
+                  className="w-full h-12 rounded-xl text-xs font-bold bg-muted/40 border border-border/80 text-foreground hover:bg-muted/70 flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.98] transition-all duration-200"
                 >
-                  <LinkIcon className="w-4 h-4 text-emerald-500" /> Link
+                  <LinkIcon className="w-4 h-4 text-primary" /> Link
                 </Button>
               </div>
             ) : (
               <div className="space-y-4 mt-4 text-left">
-                <p className="text-xs text-slate-400">Paste a link to YouTube, Vimeo, Loom, or a direct video URL:</p>
+                <p className="text-xs text-muted-foreground">Paste a link to YouTube, Vimeo, Loom, or a direct video URL:</p>
                 <Input
                   autoFocus
                   ref={linkInputRef}
@@ -420,7 +420,7 @@ registerBlock({
                   placeholder="https://youtube.com/watch?v=..."
                   value={pastedLink}
                   onChange={(e) => setPastedLink(e.target.value)}
-                  className="h-10 rounded-xl bg-slate-850 border-slate-800 text-xs font-semibold text-slate-200 focus-visible:ring-emerald-500/30"
+                  className="h-10 rounded-xl bg-background border-border text-xs font-semibold text-foreground focus-visible:ring-primary/30"
                 />
                 <div className="flex justify-end gap-2">
                   <Button
@@ -430,14 +430,14 @@ registerBlock({
                       setShowLinkInput(false);
                       setPastedLink('');
                     }}
-                    className="text-xs text-slate-400 hover:text-slate-200"
+                    className="text-xs text-muted-foreground hover:text-foreground active:scale-[0.97]"
                   >
                     Back
                   </Button>
                   <Button
                     type="button"
                     onClick={handleApplyLink}
-                    className="rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white"
+                    className="rounded-xl text-xs font-bold active:scale-[0.97]"
                   >
                     Apply URL
                   </Button>

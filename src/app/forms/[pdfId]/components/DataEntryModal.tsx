@@ -10,6 +10,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -97,17 +98,16 @@ export default function DataEntryModal({ open, onOpenChange, pdfForm, activeFiel
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl h-[85vh] flex flex-col p-0 overflow-hidden">
-        <DialogHeader className="p-6 pb-4 border-b shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <LayoutList className="h-5 w-5 text-primary" />
+      <DialogContent className="sm:max-w-2xl h-[85vh] flex flex-col p-0 overflow-hidden rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+        <DialogHeader demarcated className="px-6 py-3.5 sm:py-4 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 bg-primary/10 rounded-xl text-primary">
+              <LayoutList className="h-4 w-4" />
             </div>
-            <div>
-              <DialogTitle>Fill Form Details</DialogTitle>
-              <DialogDescription>Enter the information required for this document.</DialogDescription>
-            </div>
+            <DialogTitle className="text-base sm:text-lg font-bold">Fill Form Details</DialogTitle>
+            <CardInfoTooltip text="Enter the information required for this document." />
           </div>
+          <DialogDescription className="sr-only">Enter the information required for this document.</DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="flex-1">
@@ -204,13 +204,13 @@ export default function DataEntryModal({ open, onOpenChange, pdfForm, activeFiel
           </div>
         </ScrollArea>
 
-        <DialogFooter className="p-4 border-t bg-card shrink-0">
+        <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 shrink-0 flex flex-row items-center justify-end gap-2.5">
           <Button 
             type="button" 
             onClick={() => onOpenChange(false)} 
-            className="w-full h-12 rounded-xl font-bold shadow-lg"
+            className="w-full sm:w-auto h-11 px-8 rounded-xl font-bold shadow-sm active:scale-[0.97]"
           >
-            <Check className="mr-2 h-5 w-5" />
+            <Check className="mr-2 h-4 w-4" />
             Apply to Document
           </Button>
         </DialogFooter>

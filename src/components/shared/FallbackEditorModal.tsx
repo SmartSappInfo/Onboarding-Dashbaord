@@ -159,13 +159,13 @@ export function FallbackEditorModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="w-[90%] sm:max-w-[440px] bg-slate-900/95 border-slate-800 text-slate-100 backdrop-blur-xl shadow-2xl rounded-2xl p-6 transition-all duration-300 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] animate-in fade-in zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=closed]:zoom-out-95 mx-auto">
+      <DialogContent className="w-[90%] sm:max-w-[440px] bg-card border border-border/80 text-card-foreground shadow-2xl rounded-2xl p-6 transition-all duration-300 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] animate-in fade-in zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=closed]:zoom-out-95 mx-auto">
         <DialogHeader className="space-y-1.5 text-left">
-          <DialogTitle className="text-lg font-bold tracking-tight text-white flex items-center gap-2">
-            {isUrl ? <LinkIcon className="h-5 w-5 text-emerald-400" /> : null}
+          <DialogTitle className="text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
+            {isUrl ? <LinkIcon className="h-5 w-5 text-emerald-500" /> : null}
             {isUrl ? 'Configure Link & Fallback' : 'Configure Variable Fallback'}
           </DialogTitle>
-          <DialogDescription className="text-xs text-slate-400 font-medium leading-relaxed">
+          <DialogDescription className="text-xs text-muted-foreground font-medium leading-relaxed">
             {isUrl
               ? 'Define a default URL and enable visitor tracking to personalize landing pages and decrypt recipient identity.'
               : 'Define a backup value to display if the system is unable to automatically resolve the variable info.'}
@@ -174,17 +174,17 @@ export function FallbackEditorModal({
 
         <form onSubmit={handleSave} className="space-y-4 py-2">
           <div className="space-y-1">
-            <Label htmlFor="variableName" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            <Label htmlFor="variableName" className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
               Selected Variable
             </Label>
-            <div className="px-3 py-2 bg-slate-850 rounded-xl text-xs font-semibold text-emerald-400 border border-slate-800/80 flex items-center justify-between">
+            <div className="px-3 py-2 bg-muted/30 rounded-xl text-xs font-semibold text-primary border border-border/70 flex items-center justify-between">
               <span className="font-mono">{`{{${variableKey}}}`}</span>
-              <span className="text-[10px] text-slate-400 font-sans font-normal">{friendlyName}</span>
+              <span className="text-[10px] text-muted-foreground font-sans font-normal">{friendlyName}</span>
             </div>
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="fallbackInput" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            <Label htmlFor="fallbackInput" className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
               {isUrl ? 'Default Target URL' : 'Backup Value'}
             </Label>
             <Input
@@ -193,36 +193,36 @@ export function FallbackEditorModal({
               value={value}
               onChange={(e) => setValue(e.target.value)}
               placeholder={isUrl ? 'https://smartsapp.com' : 'e.g. Valued Guest'}
-              className="h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-200 focus:border-emerald-500/50 font-mono"
+              className="h-10 rounded-xl bg-background border-border text-xs font-semibold text-foreground focus-visible:ring-1 focus-visible:ring-ring font-mono"
               autoComplete="off"
             />
           </div>
 
           {/* Visitor Identity & Link Tracking Toggle for URL Variables */}
           {isUrl && (
-            <div className="p-3 rounded-xl bg-slate-850/80 border border-slate-800 space-y-2 transition-all">
+            <div className="p-3 rounded-xl bg-muted/20 border border-border/70 space-y-2 transition-all">
               <div className="flex items-start space-x-2.5">
                 <Checkbox
                   id="modal-track-visitor"
                   checked={trackVisitor}
                   onCheckedChange={(checked) => setTrackVisitor(Boolean(checked))}
-                  className="mt-0.5 rounded-md border-slate-600 data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
+                  className="mt-0.5 rounded-md"
                 />
                 <div className="space-y-1 select-none cursor-pointer" onClick={() => setTrackVisitor(prev => !prev)}>
                   <label
                     htmlFor="modal-track-visitor"
-                    className="text-xs font-semibold text-slate-200 cursor-pointer block leading-snug"
+                    className="text-xs font-semibold text-foreground cursor-pointer block leading-snug"
                   >
                     Track Visitor Identity (Encrypt Recipient Details)
                   </label>
-                  <p className="text-[10px] text-slate-400 leading-relaxed">
-                    Appends encrypted recipient reference token (<code className="text-emerald-400 font-mono text-[9px]">?ref=...</code>) to automatically personalize and record visits.
+                  <p className="text-[10px] text-muted-foreground leading-relaxed">
+                    Appends encrypted recipient reference token (<code className="text-primary font-mono text-[9px]">?ref=...</code>) to automatically personalize and record visits.
                   </p>
                 </div>
               </div>
               {trackVisitor && (
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-950/40 border border-emerald-800/40 text-[10px] text-emerald-300 font-medium">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                   <span>Encrypted with AES-256-GCM prior to message dispatch.</span>
                 </div>
               )}
@@ -234,13 +234,13 @@ export function FallbackEditorModal({
               type="button"
               variant="outline"
               onClick={onClose}
-              className="h-9 px-4 rounded-xl border-slate-700 bg-transparent text-xs font-bold text-slate-300 hover:bg-slate-800 hover:text-white min-h-[44px] sm:min-h-0"
+              className="h-9 px-4 rounded-xl border-border text-xs font-bold text-muted-foreground hover:bg-muted/80 hover:text-foreground min-h-[44px] sm:min-h-0 active:scale-[0.97]"
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              className="h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white transition-all duration-200 active:scale-[0.97] min-h-[44px] sm:min-h-0"
+              className="h-9 px-4 rounded-xl bg-primary text-primary-foreground hover:opacity-90 text-xs font-bold transition-all duration-200 active:scale-[0.97] min-h-[44px] sm:min-h-0"
             >
               Apply Settings
             </Button>

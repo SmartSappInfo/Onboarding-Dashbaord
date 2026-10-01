@@ -21,7 +21,10 @@ vi.mock('@/context/TenantContext', () => ({
   }),
 }));
 
-const mockQuickSave = vi.fn().mockResolvedValue({ success: true, templateId: 'test_tmpl_1' });
+const mockQuickSave = vi.fn().mockImplementation(async (params?: { templateId?: string }) => ({
+  success: true,
+  templateId: params?.templateId || 'test_tmpl_1',
+}));
 vi.mock('@/lib/survey-ai-messaging-actions', () => ({
   quickSaveSurveyTemplateAction: (...args: unknown[]) => mockQuickSave(...args),
 }));
@@ -457,6 +460,110 @@ describe('AiSurveyMessagingModal', () => {
 
     fireEvent.click(regenBtn);
     expect(handleRegenerate).toHaveBeenCalled();
+  });
+
+  it('creates new templates in Firestore when Apply is clicked from in-memory draft state (no savedTemplateIds)', async () => {
+    const handleApply = vi.fn();
+    mockQuickSave.mockImplementation(async (params: { templateData: { channel?: string } }) => ({
+      success: true,
+      templateId: `new_created_${params.templateData.channel || 'tmpl'}`,
+    }));
+
+    render(
+      <AiSurveyMessagingModal
+        open={true}
+        onOpenChange={vi.fn()}
+        generatedOutput={sampleAiOutput}
+        savedTemplateIds={undefined}
+        workspaceId="ws_123"
+        organizationId="org_456"
+        userId="user_789"
+        surveyTitle="Customer Feedback"
+        target="internal_team_alert"
+        onApply={handleApply}
+      />
+    );
+
+    // Apply button must NOT be disabled even though savedTemplateIds is undefined
+    const applyButton = screen.getByRole('button', { name: /Apply to Survey/i });
+    expect(applyButton).toBeDefined();
+    expect(applyButton.hasAttribute('disabled')).toBe(false);
+
+    // Click Apply to Survey
+    fireEvent.click(applyButton);
+
+    await waitFor(() => {
+      // quickSaveSurveyTemplateAction should have been called with templateId: undefined for creation
+      expect(mockQuickSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          workspaceId: 'ws_123',
+          organizationId: 'org_456',
+          userId: 'user_789',
+          templateId: undefined,
+          templateData: expect.objectContaining({
+            channel: 'email',
+            category: 'surveys',
+            recipientType: 'internal_alert',
+          }),
+        })
+      );
+      expect(mockQuickSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          workspaceId: 'ws_123',
+          organizationId: 'org_456',
+          userId: 'user_789',
+          templateId: undefined,
+          templateData: expect.objectContaining({
+            channel: 'sms',
+            category: 'surveys',
+          }),
+        })
+      );
+      expect(mockQuickSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          workspaceId: 'ws_123',
+          organizationId: 'org_456',
+          userId: 'user_789',
+          templateId: undefined,
+          templateData: expect.objectContaining({
+            channel: 'whatsapp',
+            category: 'surveys',
+          }),
+        })
+      );
+
+      // handleApply must be called with the newly created IDs
+      expect(handleApply).toHaveBeenCalledWith({
+        emailTemplateId: 'new_created_email',
+        smsTemplateId: 'new_created_sms',
+        whatsappTemplateId: 'new_created_whatsapp',
+      });
+    });
+  });
+
+  it('leaves Firestore untouched if the user closes the modal without applying', () => {
+    const handleOpenChange = vi.fn();
+
+    render(
+      <AiSurveyMessagingModal
+        open={true}
+        onOpenChange={handleOpenChange}
+        generatedOutput={sampleAiOutput}
+        savedTemplateIds={undefined}
+        workspaceId="ws_123"
+        organizationId="org_456"
+        userId="user_789"
+        onApply={vi.fn()}
+      />
+    );
+
+    // Click Close button
+    const closeButtons = screen.getAllByRole('button', { name: /Close/i });
+    fireEvent.click(closeButtons[0]);
+
+    expect(handleOpenChange).toHaveBeenCalledWith(false);
+    // quickSaveSurveyTemplateAction should NOT have been called (zero orphan templates created)
+    expect(mockQuickSave).not.toHaveBeenCalled();
   });
 });
 

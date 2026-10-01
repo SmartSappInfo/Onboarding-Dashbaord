@@ -390,3 +390,52 @@ export function useTheme() {
   return { theme, toggleTheme };
 }
 ```
+
+---
+
+## 8. Standardized Modal & Dialog System Architecture
+
+To guarantee unified institutional design across all admin tools, portals, builders, and customer-facing interfaces, all modals, dialogs, and alert sheets must strictly adhere to the following Single Source of Truth (SSOT) architecture.
+
+### 8.1 Single Source of Truth (SSOT) Cascading
+*   **Zero Hardcoded Surface Colors:** Modals must NEVER use hardcoded background utilities (such as `bg-slate-900`, `bg-slate-950`, `bg-zinc-900`, or arbitrary navy/blue tones) or hardcoded borders (such as `border-slate-800`).
+*   **Semantic Token Binding:** All modal surfaces must bind directly to `--card`, `--card-foreground`, and `--border/80`. This guarantees that switching between Light and Dark mode, or updating theme variables on `:root` or `.dark`, propagates instantly to all modals across the application without ad-hoc overrides.
+*   **Corner Radius Standard:** Restricted strictly to `sm:rounded-2xl` (`16px`, matching `--radius: 1rem`). Excessive roundness (`rounded-3xl` or `rounded-[2rem]`) is strictly prohibited on modal overlays.
+
+```tsx
+// Canonical DialogContent Surface Geometry
+<DialogContent
+  className="sm:max-w-xl p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl"
+>
+  ...
+</DialogContent>
+```
+
+### 8.2 Demarcated Header Specification
+Modals require a clear, elegant visual demarcation between the title area and the modal body.
+*   **Header Demarcation (`<DialogHeader demarcated>`):**
+    *   **Padding & Height:** Compact, breathing height (`px-6 py-3.5 sm:py-4 min-h-[52px] sm:min-h-[56px]`).
+    *   **Dividing Border:** Fine baseline divider (`border-b border-border/80`).
+    *   **Subtle Tint:** Ambient surface highlight (`bg-muted/20`).
+    *   **Cross-Axis Alignment:** Flex-row with cross-axis centering (`flex flex-row items-center justify-between shrink-0 space-y-0 text-left`).
+*   **Zero Visible Description Clutter:**
+    *   Long description paragraphs must NEVER be rendered as visible body text directly below the modal title.
+    *   All contextual descriptions and user guidance must exclusively route through `<CardInfoTooltip text="..." />` placed directly alongside the title.
+    *   For screen-reader accessibility (WCAG AA), include `<DialogDescription className="sr-only">`.
+
+### 8.3 Single-Circle Info Tooltip Standard (`<CardInfoTooltip>`)
+*   **Single-Circle Invariant:** The info icon must render with exactly ONE circle (the Lucide `Info` SVG stroke). It must never show an outer ring, double circle, or button border.
+*   **Autofocus Protection:** When a modal opens, Radix dialogs focus interactive elements. The info tooltip button must NOT display a focus ring upon modal opening (`focus:outline-none focus-visible:ring-1 focus-visible:ring-ring`).
+*   **Dual Hover & Tap Accessibility:**
+    *   *Desktop:* Opens instantly on mouse hover (`onMouseEnter`/`onMouseLeave`) and keyboard navigation (`onFocus`/`onBlur`).
+    *   *Mobile/Touch:* Toggles cleanly on touch/tap via pointer events (`onPointerDown`).
+*   **Elevation Guarantee:** `TooltipContent` is elevated to `z-[10050]`, ensuring tooltips always render above Radix modal dialogs (`z-[100]`) and overlays without clipping.
+
+### 8.4 Tactile Flex-Centered Close Button
+*   **Cross-Axis Positioning:** Aligned on the horizontal center line of the header, vertically centered with the title (`rounded-full h-8 w-8 hover:bg-muted/80 active:scale-95`).
+*   **Base Component Integration:** In `DialogContent`, the default close button is anchored at `top-3.5 right-4` so it never collides with or straddles the dividing border. When custom header layouts are used, set `showCloseButton={false}` and place a flex-centered `<DialogClose>` within the demarcated header.
+
+### 8.5 Demarcated Footer Bar
+*   **Surface:** `px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5 shrink-0`.
+*   **Buttons:** Standardized `rounded-xl` with Emil Kowalski mechanical feedback (`active:scale-[0.97]`).
+

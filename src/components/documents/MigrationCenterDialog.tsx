@@ -29,6 +29,7 @@ import { Progress } from '@/components/ui/progress';
 import { CheckCircle2, RefreshCw, Sparkles, ShieldCheck } from 'lucide-react';
 import { migrateWorkspaceFlipbooks, MigrationSummary } from '@/lib/documents/migration-service';
 import { useToast } from '@/hooks/use-toast';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 interface MigrationCenterDialogProps {
   isOpen: boolean;
@@ -114,33 +115,32 @@ export function MigrationCenterDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open && !isRunning) onClose(); }}>
-      <DialogContent className="max-w-xl rounded-3xl p-6 sm:p-8 bg-card border-border shadow-2xl">
-        <DialogHeader className="space-y-2 text-left">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-primary/10 text-primary rounded-2xl">
-              <Sparkles className="h-6 w-6" />
+      <DialogContent className="sm:max-w-xl p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+        <DialogHeader demarcated className="px-6 py-3.5 sm:py-4 border-b border-border/80 bg-muted/20 flex flex-row items-center justify-between shrink-0 space-y-0 text-left">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 bg-primary/10 text-primary rounded-lg shadow-sm">
+              <Sparkles className="h-4 w-4" />
             </div>
-            <div>
-              <DialogTitle className="text-xl font-black tracking-tight">
-                Document Migration & Health Center
-              </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground">
-                Fetch-Enrich-Restore protocol to upgrade legacy publications to Enterprise Document entities.
-              </DialogDescription>
-            </div>
+            <DialogTitle className="text-base sm:text-lg font-semibold tracking-tight text-foreground flex items-center gap-1.5">
+              Document Migration & Health Center
+              <CardInfoTooltip text="Fetch-Enrich-Restore protocol to upgrade legacy publications to Enterprise Document entities." />
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Fetch-Enrich-Restore protocol to upgrade legacy publications to Enterprise Document entities.
+            </DialogDescription>
           </div>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
           {/* Health Stats Grid */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="p-4 rounded-2xl bg-muted/30 border border-border/50 text-left">
+            <div className="p-4 rounded-xl bg-muted/30 border border-border/80 text-left">
               <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Legacy Flipbooks</div>
               <div className="text-3xl font-black mt-1 text-foreground">{totalLegacyCount}</div>
               <div className="text-[11px] text-muted-foreground mt-0.5">Found in legacy collections</div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-primary/5 border border-primary/20 text-left">
+            <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 text-left">
               <div className="text-xs font-bold uppercase tracking-wider text-primary">Modern Documents</div>
               <div className="text-3xl font-black mt-1 text-primary">{totalDocumentCount}</div>
               <div className="text-[11px] text-muted-foreground mt-0.5">Active enterprise entities</div>
@@ -160,7 +160,7 @@ export function MigrationCenterDialog({
 
           {/* Completed Summary Report */}
           {summary && !isRunning && (
-            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-left space-y-2">
+            <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-left space-y-2">
               <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-sm">
                 <CheckCircle2 className="h-5 w-5" />
                 <span>Migration Completed Successfully</span>
@@ -172,7 +172,7 @@ export function MigrationCenterDialog({
           )}
 
           {/* Security Notice */}
-          <div className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-muted/20 border border-border/40 text-left text-xs text-muted-foreground leading-relaxed">
+          <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-muted/20 border border-border/80 text-left text-xs text-muted-foreground leading-relaxed">
             <ShieldCheck className="h-4 w-4 text-primary shrink-0 mt-0.5" />
             <span>
               <strong>Dual-Write Guarantee:</strong> Legacy flipbook URLs (`/f/[slug]`) and existing links will continue functioning uninterrupted without any breaking changes.
@@ -180,12 +180,12 @@ export function MigrationCenterDialog({
           </div>
         </div>
 
-        <DialogFooter className="flex flex-col sm:flex-row gap-2 justify-end pt-2">
+        <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5 shrink-0">
           <Button
             variant="outline"
             onClick={onClose}
             disabled={isRunning}
-            className="rounded-xl h-11 px-5 font-bold text-xs min-h-[44px]"
+            className="rounded-xl h-11 px-5 font-medium text-xs min-h-[44px] active:scale-[0.97]"
           >
             Close
           </Button>
@@ -193,7 +193,7 @@ export function MigrationCenterDialog({
           <Button
             onClick={runMigration}
             disabled={isRunning}
-            className="rounded-xl h-11 px-6 font-bold text-xs gap-2 shadow-lg active:scale-[0.97] transition-all min-h-[44px]"
+            className="rounded-xl h-11 px-6 font-medium text-xs gap-2 shadow-sm active:scale-[0.97] transition-all min-h-[44px]"
           >
             {isRunning ? (
               <>

@@ -103,7 +103,7 @@ export async function generateSurveyMessagingTemplatesAction(
     scoringEnabled,
     maxScore,
     userPromptInstructions,
-    autoSave = true,
+    autoSave = false,
   } = params;
 
   if (!workspaceId || !organizationId) {

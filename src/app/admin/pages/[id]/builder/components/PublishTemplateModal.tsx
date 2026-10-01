@@ -65,19 +65,19 @@ export default function PublishTemplateModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md rounded-[2rem] p-6 bg-slate-900 border border-slate-800 text-slate-100 shadow-2xl">
-        <DialogHeader className="space-y-1">
-          <DialogTitle className="text-xl font-bold tracking-tight text-white">
+      <DialogContent className="sm:max-w-md rounded-2xl p-6 bg-card border border-border/80 text-card-foreground shadow-2xl">
+        <DialogHeader className="space-y-1 text-left">
+          <DialogTitle className="text-xl font-bold tracking-tight text-foreground">
             Publish Section Preset
           </DialogTitle>
-          <DialogDescription className="text-xs text-slate-400">
+          <DialogDescription className="text-xs text-muted-foreground">
             Save this section configuration to your template library for reuse across pages.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           <div className="space-y-1.5">
-            <Label htmlFor="template-name" className="text-xs font-semibold text-slate-300">
+            <Label htmlFor="template-name" className="text-xs font-semibold text-muted-foreground">
               Preset Name
             </Label>
             <Input
@@ -85,7 +85,7 @@ export default function PublishTemplateModal({
               placeholder="e.g. Hero Section - Summer Promo"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="bg-slate-950 border-slate-800 focus-visible:ring-emerald-500/50 text-slate-200 text-sm h-10 rounded-xl"
+              className="bg-background border-border focus-visible:ring-1 focus-visible:ring-ring text-foreground text-sm h-10 rounded-xl"
               required
               disabled={submitting}
             />
@@ -93,7 +93,7 @@ export default function PublishTemplateModal({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="template-category" className="text-xs font-semibold text-slate-300">
+              <Label htmlFor="template-category" className="text-xs font-semibold text-muted-foreground">
                 Category
               </Label>
               <Select
@@ -103,11 +103,11 @@ export default function PublishTemplateModal({
               >
                 <SelectTrigger
                   id="template-category"
-                  className="bg-slate-950 border-slate-800 focus:ring-emerald-500/50 text-slate-300 rounded-xl h-10"
+                  className="bg-background border-border focus-visible:ring-1 focus-visible:ring-ring text-foreground rounded-xl h-10"
                 >
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
-                <SelectContent className="bg-slate-950 border-slate-800 text-slate-300">
+                <SelectContent className="bg-card border-border text-card-foreground">
                   <SelectItem value="Hero">Hero Sections</SelectItem>
                   <SelectItem value="CTA">Call to Actions</SelectItem>
                   <SelectItem value="Testimonials">Testimonials</SelectItem>
@@ -117,7 +117,7 @@ export default function PublishTemplateModal({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="template-visibility" className="text-xs font-semibold text-slate-300">
+              <Label htmlFor="template-visibility" className="text-xs font-semibold text-muted-foreground">
                 Sharing Level
               </Label>
               <Select
@@ -127,11 +127,11 @@ export default function PublishTemplateModal({
               >
                 <SelectTrigger
                   id="template-visibility"
-                  className="bg-slate-950 border-slate-800 focus:ring-emerald-500/50 text-slate-300 rounded-xl h-10"
+                  className="bg-background border-border focus-visible:ring-1 focus-visible:ring-ring text-foreground rounded-xl h-10"
                 >
                   <SelectValue placeholder="Select visibility" />
                 </SelectTrigger>
-                <SelectContent className="bg-slate-950 border-slate-800 text-slate-300">
+                <SelectContent className="bg-card border-border text-card-foreground">
                   <SelectItem value="workspace">Workspace Only</SelectItem>
                   <SelectItem value="organization">Organization-wide</SelectItem>
                 </SelectContent>
@@ -142,16 +142,16 @@ export default function PublishTemplateModal({
           <DialogFooter className="pt-4 flex items-center justify-end gap-2">
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               onClick={() => onOpenChange(false)}
-              className="text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl h-10 text-xs"
+              className="border-border text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-xl h-10 text-xs active:scale-[0.97]"
               disabled={submitting}
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl h-10 px-4 text-xs transition-all active:scale-[0.97]"
+              className="bg-primary text-primary-foreground hover:opacity-90 font-bold rounded-xl h-10 px-4 text-xs transition-all active:scale-[0.97]"
               disabled={submitting || !name.trim()}
             >
               {submitting ? 'Publishing...' : 'Publish Preset'}

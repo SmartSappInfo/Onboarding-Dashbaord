@@ -14,7 +14,8 @@
 
 import * as React from 'react';
 import { useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Keyboard } from 'lucide-react';
 
 interface UseKeyboardShortcutsProps {
@@ -184,21 +185,26 @@ export function KeyboardShortcutsDialog({ open, onOpenChange }: KeyboardShortcut
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-slate-950 border-slate-800 text-slate-100 p-6 rounded-3xl">
-        <DialogHeader>
-          <DialogTitle className="text-lg font-black flex items-center gap-2 text-white">
-            <Keyboard className="w-5 h-5 text-emerald-400" /> Keyboard Shortcuts
-          </DialogTitle>
+      <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+        <DialogHeader demarcated className="px-6 py-3.5 sm:py-4">
+          <div className="flex items-center gap-2">
+            <Keyboard className="w-5 h-5 text-primary" />
+            <DialogTitle className="text-base sm:text-lg font-bold">Keyboard Shortcuts</DialogTitle>
+            <CardInfoTooltip text="Reference of hotkeys and shortcuts available while editing on the canvas." />
+          </div>
+          <DialogDescription className="sr-only">
+            Reference list of keyboard shortcuts for canvas manipulation.
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-2 pt-3 max-h-[60vh] overflow-y-auto pr-1">
+        <div className="space-y-2 p-6 max-h-[60vh] overflow-y-auto">
           {SHORTCUTS.map((s, idx) => (
             <div
               key={idx}
-              className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-3 text-xs"
+              className="p-2.5 rounded-xl bg-muted/40 border border-border/80 flex items-center justify-between gap-3 text-xs"
             >
-              <span className="text-slate-300 font-medium">{s.label}</span>
-              <kbd className="px-2 py-1 rounded bg-slate-950 border border-slate-700 text-[11px] font-mono font-bold text-emerald-400 whitespace-nowrap">
+              <span className="text-foreground font-medium">{s.label}</span>
+              <kbd className="px-2 py-1 rounded bg-background border border-border text-[11px] font-mono font-bold text-foreground whitespace-nowrap">
                 {s.key}
               </kbd>
             </div>

@@ -207,7 +207,7 @@ export function TemplatePreviewModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
-            <DialogContent className="max-w-4xl w-[92vw] h-[85vh] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl flex flex-col bg-background [&>button]:hidden">
+            <DialogContent className="max-w-4xl w-[92vw] h-[85vh] sm:rounded-2xl p-0 overflow-hidden border border-border/80 shadow-2xl flex flex-col bg-card text-card-foreground [&>button]:hidden">
                 {/* Screen Reader Accessible Titles & Descriptions */}
                 <DialogTitle className="sr-only">
                     Previewing {template.name} ({template.channel})
@@ -488,7 +488,7 @@ export function WhatsAppPreviewModal({ template, isOpen, onClose }: WhatsAppPrev
 
     return (
         <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
-            <DialogContent className="max-w-md w-[92vw] rounded-[2rem] p-0 overflow-hidden border-none shadow-2xl bg-background">
+            <DialogContent className="max-w-md w-[92vw] sm:rounded-2xl p-0 overflow-hidden border border-border/80 shadow-2xl bg-card text-card-foreground">
                 <DialogTitle className="sr-only">Previewing {template.name} (WhatsApp)</DialogTitle>
                 <DialogDescription className="sr-only">Read-only WhatsApp template preview.</DialogDescription>
 

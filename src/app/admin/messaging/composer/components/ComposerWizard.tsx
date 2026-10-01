@@ -2331,7 +2331,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
 
             {/* Summary dialog */}
             <AlertDialog open={showSummaryDialog} onOpenChange={setShowSummaryDialog}>
-                <AlertDialogContent className="max-w-lg rounded-2xl sm:rounded-3xl border border-border bg-card text-card-foreground shadow-2xl p-6 overflow-hidden">
+                <AlertDialogContent className="max-w-lg rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl p-6 overflow-hidden">
                     <AlertDialogHeader className="space-y-1.5 text-left">
                         <div className="flex items-center justify-between">
                             <AlertDialogTitle className="flex items-center gap-2.5 text-base sm:text-lg font-bold text-foreground">

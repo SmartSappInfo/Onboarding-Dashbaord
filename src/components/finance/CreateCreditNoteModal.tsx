@@ -21,6 +21,7 @@ import {
   DialogFooter
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -128,24 +129,23 @@ export function CreateCreditNoteModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[500px] rounded-3xl p-6 border-border shadow-2xl bg-card">
-        <DialogHeader className="space-y-2 text-left">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-600 dark:text-rose-400">
-              <FileMinus className="h-5 w-5" />
+      <DialogContent className="sm:max-w-[500px] p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+        <DialogHeader demarcated className="px-6 py-3.5 sm:py-4 border-b border-border/80 bg-muted/20 flex flex-row items-center justify-between shrink-0 space-y-0 text-left">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400">
+              <FileMinus className="h-4 w-4" />
             </div>
-            <div>
-              <DialogTitle className="text-lg font-black tracking-tight text-foreground">
-                Issue Credit Note
-              </DialogTitle>
-              <DialogDescription className="text-xs font-semibold text-muted-foreground">
-                Formal credit adjustment for {account?.accountName || invoice?.entityName || 'Customer'}
-              </DialogDescription>
-            </div>
+            <DialogTitle className="text-base sm:text-lg font-semibold tracking-tight text-foreground flex items-center gap-1.5">
+              Issue Credit Note
+              <CardInfoTooltip text={`Formal credit adjustment for ${account?.accountName || invoice?.entityName || 'Customer'}`} />
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Formal credit adjustment for {account?.accountName || invoice?.entityName || 'Customer'}
+            </DialogDescription>
           </div>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
           {/* Target Info */}
           {invoice && (
             <div className="p-3.5 rounded-2xl bg-muted/40 border border-border/60 flex items-center justify-between text-xs">
@@ -228,17 +228,17 @@ export function CreateCreditNoteModal({
           </div>
         </div>
 
-        <DialogFooter className="flex flex-row items-center justify-end gap-2 pt-2">
+        <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5 shrink-0">
           <Button
             variant="outline"
-            className="h-11 min-h-[44px] rounded-xl px-5 text-xs font-bold active:scale-[0.97]"
+            className="h-11 min-h-[44px] rounded-xl px-5 text-xs font-medium active:scale-[0.97]"
             onClick={onClose}
             disabled={isSubmitting}
           >
             Cancel
           </Button>
           <Button
-            className="h-11 min-h-[44px] rounded-xl px-6 text-xs font-bold bg-rose-600 text-white hover:bg-rose-700 active:scale-[0.97]"
+            className="h-11 min-h-[44px] rounded-xl px-6 text-xs font-medium bg-rose-600 text-white hover:bg-rose-700 active:scale-[0.97]"
             onClick={handleIssue}
             disabled={isSubmitting || amount <= 0}
           >

@@ -14,6 +14,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -120,122 +121,124 @@ export function CreatePaymentPlanModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-lg rounded-2xl p-6">
-        <DialogHeader className="text-left space-y-1">
-          <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
-            <Split className="h-4 w-4" />
-            Debt Restructuring
+      <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+        <DialogHeader demarcated className="px-6 py-3.5 sm:py-4">
+          <div className="flex items-center gap-2">
+            <Split className="h-5 w-5 text-primary" />
+            <DialogTitle className="text-base sm:text-lg font-bold">Create Payment Plan</DialogTitle>
+            <CardInfoTooltip text={`Arranging installment schedule for ${entityName}.`} />
           </div>
-          <DialogTitle className="text-xl font-bold tracking-tight">Create Payment Plan</DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
-            Arranging installment schedule for <span className="font-semibold text-foreground">{entityName}</span>.
+          <DialogDescription className="sr-only">
+            Arranging installment schedule for {entityName}.
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-          <div className="grid grid-cols-2 gap-3 p-3 bg-muted/40 rounded-xl text-xs">
-            <div>
-              <span className="text-muted-foreground">Total Debt:</span>
-              <p className="font-bold text-sm text-foreground">{currency} {numDebt.toLocaleString()}</p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Remaining after Down:</span>
-              <p className="font-bold text-sm text-primary">{currency} {remaining.toLocaleString()}</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Down Payment ({currency})</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                max={numDebt}
-                placeholder="0.00"
-                value={downPayment}
-                onChange={(e) => setDownPayment(e.target.value)}
-                className="rounded-xl h-11 min-h-[44px]"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Number of Installments *</Label>
-              <Select value={installmentsCount} onValueChange={setInstallmentsCount}>
-                <SelectTrigger className="rounded-xl h-11 min-h-[44px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="2">2 Installments</SelectItem>
-                  <SelectItem value="3">3 Installments</SelectItem>
-                  <SelectItem value="4">4 Installments</SelectItem>
-                  <SelectItem value="6">6 Installments</SelectItem>
-                  <SelectItem value="12">12 Installments</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Payment Frequency *</Label>
-              <Select value={frequency} onValueChange={(val) => setFrequency(val as 'weekly' | 'biweekly' | 'monthly')}>
-                <SelectTrigger className="rounded-xl h-11 min-h-[44px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="weekly">Weekly (every 7d)</SelectItem>
-                  <SelectItem value="biweekly">Bi-weekly (every 14d)</SelectItem>
-                  <SelectItem value="monthly">Monthly (every 30d)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Start Date *</Label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="date"
-                  required
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="pl-9 rounded-xl h-11 min-h-[44px]"
-                />
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+            <div className="grid grid-cols-2 gap-3 p-3 bg-muted/40 rounded-xl text-xs border border-border/80">
+              <div>
+                <span className="text-muted-foreground">Total Debt:</span>
+                <p className="font-bold text-sm text-foreground">{currency} {numDebt.toLocaleString()}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Remaining after Down:</span>
+                <p className="font-bold text-sm text-primary">{currency} {remaining.toLocaleString()}</p>
               </div>
             </div>
-          </div>
 
-          {/* Schedule Preview */}
-          <div className="p-3 border rounded-xl bg-card space-y-1.5 text-xs">
-            <div className="flex items-center gap-1.5 font-bold text-foreground">
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-              Schedule Summary
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Down Payment ({currency})</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max={numDebt}
+                  placeholder="0.00"
+                  value={downPayment}
+                  onChange={(e) => setDownPayment(e.target.value)}
+                  className="rounded-xl h-11 min-h-[44px]"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Number of Installments *</Label>
+                <Select value={installmentsCount} onValueChange={setInstallmentsCount}>
+                  <SelectTrigger className="rounded-xl h-11 min-h-[44px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="2">2 Installments</SelectItem>
+                    <SelectItem value="3">3 Installments</SelectItem>
+                    <SelectItem value="4">4 Installments</SelectItem>
+                    <SelectItem value="6">6 Installments</SelectItem>
+                    <SelectItem value="12">12 Installments</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <p className="text-muted-foreground text-[11px]">
-              {numDown > 0 && <span>Immediate Down Payment of <strong>{currency} {numDown.toLocaleString()}</strong> + </span>}
-              <strong>{count}</strong> {frequency} installments of approximately <strong>{currency} {approxPerInstallment.toLocaleString()}</strong> each.
-            </p>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Payment Frequency *</Label>
+                <Select value={frequency} onValueChange={(val) => setFrequency(val as 'weekly' | 'biweekly' | 'monthly')}>
+                  <SelectTrigger className="rounded-xl h-11 min-h-[44px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="weekly">Weekly (every 7d)</SelectItem>
+                    <SelectItem value="biweekly">Bi-weekly (every 14d)</SelectItem>
+                    <SelectItem value="monthly">Monthly (every 30d)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Start Date *</Label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="date"
+                    required
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="pl-9 rounded-xl h-11 min-h-[44px]"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Schedule Preview */}
+            <div className="p-3 border border-border/80 rounded-xl bg-muted/30 space-y-1.5 text-xs">
+              <div className="flex items-center gap-1.5 font-bold text-foreground">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                Schedule Summary
+              </div>
+              <p className="text-muted-foreground text-[11px]">
+                {numDown > 0 && <span>Immediate Down Payment of <strong>{currency} {numDown.toLocaleString()}</strong> + </span>}
+                <strong>{count}</strong> {frequency} installments of approximately <strong>{currency} {approxPerInstallment.toLocaleString()}</strong> each.
+              </p>
+            </div>
           </div>
 
-          <DialogFooter className="pt-2 gap-2">
+          <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
               disabled={isSubmitting}
-              className="rounded-xl h-11 min-h-[44px] active:scale-[0.97]"
+              className="rounded-xl h-10 min-h-[44px] text-xs font-semibold active:scale-[0.97]"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={isSubmitting || numDebt <= 0}
-              className="rounded-xl h-11 min-h-[44px] font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-md active:scale-[0.97]"
+              className="rounded-xl h-10 min-h-[44px] text-xs font-bold px-6 shadow-sm active:scale-[0.97]"
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
                   Activating...
                 </>
               ) : (

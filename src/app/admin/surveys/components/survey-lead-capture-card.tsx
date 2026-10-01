@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
@@ -798,33 +799,34 @@ function CreateFieldDialog({ open, onOpenChange, onSubmit, isSubmitting, fieldGr
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="rounded-[2.5rem] max-w-sm border-none shadow-2xl ring-1 ring-border bg-card">
-                <DialogHeader className="pt-6 px-4 text-left">
-                    <DialogTitle className="font-black text-2xl tracking-tighter flex items-center gap-3">
-                        <div className="p-2 bg-indigo-500/10 rounded-xl"><Plus className="h-5 w-5 text-indigo-600" /></div>
-                        Create Custom Field
-                    </DialogTitle>
-                    <DialogDescription className="text-[11px] font-bold text-muted-foreground/60 leading-relaxed italic">Extend your workspace schema with a new property.</DialogDescription>
+            <DialogContent className="sm:rounded-2xl max-w-sm p-0 overflow-hidden border border-border/80 shadow-2xl bg-card text-card-foreground">
+                <DialogHeader demarcated>
+                    <div className="flex items-center gap-2">
+                        <div className="p-1.5 bg-indigo-500/10 rounded-lg"><Plus className="h-4 w-4 text-indigo-600" /></div>
+                        <DialogTitle className="font-bold text-base tracking-tight">Create Custom Field</DialogTitle>
+                        <CardInfoTooltip text="Extend your workspace schema with a new property." />
+                        <DialogDescription className="sr-only">Extend your workspace schema with a new property.</DialogDescription>
+                    </div>
                 </DialogHeader>
-                <div className="p-6 space-y-6 text-left">
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Display Label</Label>
+                <div className="p-6 space-y-4 text-left">
+                    <div className="space-y-1.5">
+                        <Label className="text-xs font-bold text-foreground">Display Label</Label>
                         <Input 
                             value={label} 
                             onChange={e => handleLabelChange(e.target.value)} 
                             placeholder="e.g. Annual Revenue" 
-                            className="h-12 rounded-2xl border-none bg-muted/20 px-5 font-bold shadow-inner"
+                            className="h-10 rounded-xl border border-border/80 bg-muted/20 px-3 text-xs font-medium"
                         />
                     </div>
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Variable Identity (DB Key)</Label>
-                        <div className="flex items-center gap-2 bg-muted/20 rounded-2xl px-5 h-12 border border-dashed border-border/60">
-                            <code className="text-[11px] font-black text-indigo-600">{variableName || 'waiting_for_label'}</code>
+                    <div className="space-y-1.5">
+                        <Label className="text-xs font-bold text-foreground">Variable Identity (DB Key)</Label>
+                        <div className="flex items-center gap-2 bg-muted/20 rounded-xl px-3 h-10 border border-dashed border-border/80">
+                            <code className="text-xs font-bold text-indigo-600 font-mono">{variableName || 'waiting_for_label'}</code>
                         </div>
                     </div>
                     
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Add to Group</Label>
+                    <div className="space-y-1.5">
+                        <Label className="text-xs font-bold text-foreground">Add to Group</Label>
                         <Select 
                             value={showNewGroupInput ? 'create_new' : selectedGroupId}
                             onValueChange={(val) => {
@@ -836,16 +838,16 @@ function CreateFieldDialog({ open, onOpenChange, onSubmit, isSubmitting, fieldGr
                                 }
                             }}
                         >
-                            <SelectTrigger className="h-12 rounded-2xl border-none bg-muted/20 px-5 font-bold shadow-inner text-left text-foreground">
+                            <SelectTrigger className="h-10 rounded-xl border border-border/80 bg-muted/20 px-3 text-xs font-medium text-left text-foreground">
                                 <SelectValue placeholder="Select group..." />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border border-border bg-card">
+                            <SelectContent className="rounded-xl border border-border/80 bg-card">
                                 {fieldGroups.map(group => (
-                                    <SelectItem key={group.id} value={group.id} className="font-bold text-xs">
+                                    <SelectItem key={group.id} value={group.id} className="text-xs">
                                         {group.name}
                                     </SelectItem>
                                 ))}
-                                <SelectItem value="create_new" className="font-black text-xs text-indigo-600 focus:text-indigo-700">
+                                <SelectItem value="create_new" className="font-bold text-xs text-indigo-600 focus:text-indigo-700">
                                     + Create New Group...
                                 </SelectItem>
                             </SelectContent>
@@ -853,22 +855,22 @@ function CreateFieldDialog({ open, onOpenChange, onSubmit, isSubmitting, fieldGr
                     </div>
 
                     {showNewGroupInput && (
-                        <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">New Group Name</Label>
+                        <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <Label className="text-xs font-bold text-foreground">New Group Name</Label>
                             <Input 
                                 value={newGroupName} 
                                 onChange={e => setNewGroupName(e.target.value)} 
                                 placeholder="e.g. Enrollment Metrics" 
-                                className="h-12 rounded-2xl border-none bg-muted/20 px-5 font-bold shadow-inner"
+                                className="h-10 rounded-xl border border-border/80 bg-muted/20 px-3 text-xs font-medium"
                             />
                         </div>
                     )}
                 </div>
-                <DialogFooter className="p-6 pt-0">
+                <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15">
                     <Button 
                         onClick={handleConfirm} 
                         disabled={isSubmitting || !label || (showNewGroupInput && !newGroupName.trim())} 
-                        className="w-full h-14 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-indigo-500/20 bg-indigo-600 hover:bg-indigo-700 text-white"
+                        className="w-full h-10 rounded-xl font-bold text-xs uppercase tracking-wider shadow-sm active:scale-[0.97]"
                     >
                         {isSubmitting ? 'Committing...' : 'Commit to Schema'}
                     </Button>

@@ -669,36 +669,36 @@ export default function SenderProfilesPage() {
 
             {/* Edit Dialog */}
             <Dialog open={!!editingProfile} onOpenChange={(o) => !o && setEditingProfile(null)}>
- <DialogContent className="sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
- <form onSubmit={handleUpdate} className="text-left">
- <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
- <div className="flex items-center gap-4">
- <div className="p-3 bg-primary text-white rounded-2xl shadow-xl">
-                                    <Pencil size={24} />
+                <DialogContent className="sm:max-w-md rounded-2xl p-0 overflow-hidden border border-border/80 bg-card text-card-foreground shadow-2xl">
+                    <form onSubmit={handleUpdate} className="text-left">
+                        <DialogHeader demarcated className="px-6 py-3.5 sm:py-4 min-h-[52px] sm:min-h-[56px]">
+                            <div className="flex items-center gap-2.5">
+                                <div className="p-2 bg-primary/10 text-primary rounded-xl shrink-0">
+                                    <Pencil size={18} />
                                 </div>
- <div className="text-left">
- <DialogTitle className="text-xl font-semibold tracking-tight">Edit Sender Profile</DialogTitle>
- <DialogDescription className="text-[10px] font-bold text-muted-foreground">Update sender details and workspace access</DialogDescription>
+                                <div className="text-left">
+                                    <DialogTitle className="text-base font-bold tracking-tight text-foreground">Edit Sender Profile</DialogTitle>
+                                    <DialogDescription className="sr-only">Update sender details and workspace access</DialogDescription>
                                 </div>
                             </div>
                         </DialogHeader>
- <div className="p-8 space-y-6">
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Friendly Label</Label>
- <Input value={editName} onChange={e => setEditName(e.target.value)} className="h-12 rounded-xl bg-muted/20 border-none font-bold shadow-inner" required />
+                        <div className="p-6 space-y-5">
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Friendly Label</Label>
+                                <Input value={editName} onChange={e => setEditName(e.target.value)} className="h-10 rounded-xl bg-background border-border text-foreground font-medium" required />
                             </div>
- <div className="space-y-2">
+                            <div className="space-y-1.5">
                                 <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Workspaces</Label>
                                 <MultiSelect options={workspaceOptions} value={editWorkspaceIds} onChange={setEditWorkspaceIds} placeholder="Assign to workspaces…" />
                             </div>
-                            <div className="space-y-2">
+                            <div className="space-y-1.5">
                                 <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
                                     {editingProfile?.channel === 'sms' ? 'Sender ID' : 'Email Address'}
                                 </Label>
                                 <Input 
                                     value={editIdentifier} 
                                     onChange={e => setEditIdentifier(e.target.value)} 
-                                    className="h-12 rounded-xl bg-muted/20 border-none font-mono font-semibold shadow-inner" 
+                                    className="h-10 rounded-xl bg-background border-border text-foreground font-mono font-semibold" 
                                     maxLength={editingProfile?.channel === 'sms' ? 11 : undefined}
                                     required 
                                 />
@@ -713,11 +713,11 @@ export default function SenderProfilesPage() {
                                 )}
                             </div>
                         </div>
- <DialogFooter className="p-6 bg-muted/30 border-t flex justify-between">
- <Button type="button" variant="ghost" onClick={() => setEditingProfile(null)} disabled={isUpdating} className="rounded-xl font-bold h-12 px-8">Cancel</Button>
- <Button type="submit" disabled={isUpdating || !editName.trim() || editWorkspaceIds.length === 0} className="rounded-xl font-semibold h-12 px-10 shadow-2xl text-xs">
- {isUpdating ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
- <span className="ml-2">Save Changes</span>
+                        <DialogFooter className="px-6 py-3.5 bg-muted/15 border-t border-border/80 flex justify-end gap-2.5">
+                            <Button type="button" variant="outline" onClick={() => setEditingProfile(null)} disabled={isUpdating} className="rounded-xl font-bold h-10 px-5 border-border active:scale-[0.97]">Cancel</Button>
+                            <Button type="submit" disabled={isUpdating || !editName.trim() || editWorkspaceIds.length === 0} className="rounded-xl font-semibold h-10 px-6 shadow-sm text-xs bg-primary text-primary-foreground hover:opacity-90 active:scale-[0.97]">
+                                {isUpdating ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                                <span className="ml-2">Save Changes</span>
                             </Button>
                         </DialogFooter>
                     </form>
@@ -726,38 +726,38 @@ export default function SenderProfilesPage() {
 
             {/* mNotify Registration Dialog */}
             <Dialog open={!!registeringProfile} onOpenChange={(o) => !o && setRegisteringProfile(null)}>
- <DialogContent className="sm:max-w-md rounded-[2rem] p-0 overflow-hidden border-none shadow-2xl">
- <DialogHeader className="p-8 pb-4">
- <div className="flex items-center gap-4">
- <div className="p-3 bg-orange-500 text-white rounded-2xl shadow-xl shadow-orange-200"><Smartphone size={24} /></div>
- <div className="text-left">
- <DialogTitle className="text-xl font-semibold tracking-tight text-orange-950 dark:text-orange-400">Register Sender ID</DialogTitle>
- <DialogDescription className="text-xs font-bold text-orange-700 opacity-70">Registering ID: {registeringProfile?.identifier}</DialogDescription>
+                <DialogContent className="sm:max-w-md rounded-2xl p-0 overflow-hidden border border-border/80 bg-card text-card-foreground shadow-2xl">
+                    <DialogHeader demarcated className="px-6 py-3.5 sm:py-4 min-h-[52px] sm:min-h-[56px]">
+                        <div className="flex items-center gap-2.5">
+                            <div className="p-2 bg-orange-500/10 text-orange-600 rounded-xl shrink-0"><Smartphone size={18} /></div>
+                            <div className="text-left">
+                                <DialogTitle className="text-base font-bold tracking-tight text-foreground">Register Sender ID</DialogTitle>
+                                <DialogDescription className="sr-only">Registering ID: {registeringProfile?.identifier}</DialogDescription>
                             </div>
                         </div>
                     </DialogHeader>
- <div className="p-8 pt-0 space-y-6 text-left">
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Purpose</Label>
+                    <div className="p-6 space-y-5 text-left">
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Purpose</Label>
                             <Textarea 
                                 value={regPurpose} 
                                 onChange={e => setRegPurpose(e.target.value)} 
                                 placeholder="Explain how this ID will be used (e.g. Transactional alerts for school parents)..." 
- className="min-h-[120px] rounded-2xl bg-muted/20 border-none shadow-inner p-4 font-medium"
+                                className="min-h-[120px] rounded-xl bg-background border-border text-foreground p-3 font-medium text-sm"
                             />
                         </div>
- <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-3">
- <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
- <p className="text-[9px] font-bold text-blue-600 dark:text-blue-400 leading-relaxed tracking-tighter">
+                        <div className="p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-2.5">
+                            <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                            <p className="text-[10px] font-medium text-blue-600 dark:text-blue-400 leading-relaxed">
                                 mNotify Sender IDs typically require 24-48 hours for verification.
                             </p>
                         </div>
                     </div>
- <DialogFooter className="p-6 bg-muted/30 border-t flex justify-between">
- <Button variant="ghost" onClick={() => setRegisteringProfile(null)} disabled={isRegProcessing} className="rounded-xl font-bold h-12 px-8">Discard</Button>
- <Button onClick={handleCompleteRegistration} disabled={isRegProcessing || !regPurpose.trim()} className="rounded-xl font-semibold h-12 px-10 shadow-2xl bg-orange-600 hover:bg-orange-700 text-white text-xs">
- {isRegProcessing ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
- <span className="ml-2">Submit Application</span>
+                    <DialogFooter className="px-6 py-3.5 bg-muted/15 border-t border-border/80 flex justify-end gap-2.5">
+                        <Button variant="outline" onClick={() => setRegisteringProfile(null)} disabled={isRegProcessing} className="rounded-xl font-bold h-10 px-5 border-border active:scale-[0.97]">Discard</Button>
+                        <Button onClick={handleCompleteRegistration} disabled={isRegProcessing || !regPurpose.trim()} className="rounded-xl font-semibold h-10 px-6 shadow-sm bg-orange-600 hover:bg-orange-700 text-white text-xs active:scale-[0.97]">
+                            {isRegProcessing ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                            <span className="ml-2">Submit Application</span>
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -765,14 +765,14 @@ export default function SenderProfilesPage() {
 
             {/* Tenant Hygiene Scanner Dialog */}
             <Dialog open={isHygieneDialogOpen} onOpenChange={setIsHygieneDialogOpen}>
-                <DialogContent className="sm:max-w-xl rounded-[2rem] p-0 overflow-hidden border-none shadow-2xl">
-                    <DialogHeader className="p-8 pb-4 bg-muted/20 border-b">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-emerald-500/10 text-emerald-600 rounded-2xl border border-emerald-500/20 shadow-sm">
-                                <ShieldCheck size={24} />
+                <DialogContent className="sm:max-w-xl rounded-2xl p-0 overflow-hidden border border-border/80 bg-card text-card-foreground shadow-2xl">
+                    <DialogHeader demarcated className="px-6 py-3.5 sm:py-4 min-h-[52px] sm:min-h-[56px]">
+                        <div className="flex items-center gap-2.5">
+                            <div className="p-2 bg-emerald-500/10 text-emerald-600 rounded-xl shrink-0">
+                                <ShieldCheck size={18} />
                             </div>
                             <div className="text-left">
-                                <DialogTitle className="text-xl font-semibold tracking-tight">Tenant Hygiene Audit</DialogTitle>
+                                <DialogTitle className="text-base font-bold tracking-tight text-foreground">Tenant Hygiene Audit</DialogTitle>
                                 <DialogDescription className="text-xs font-semibold text-muted-foreground">
                                     Scans all sender profiles for cross-tenant domain or SMS identity contamination
                                 </DialogDescription>

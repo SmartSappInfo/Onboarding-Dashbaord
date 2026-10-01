@@ -178,19 +178,19 @@ export default function ManageWorkspacesModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg rounded-[2rem] p-0 overflow-hidden border-none shadow-2xl">
+      <DialogContent className="sm:max-w-lg rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl p-0 overflow-hidden">
         {/* Header */}
-        <DialogHeader className="p-7 pb-5 bg-gradient-to-br from-primary/10 to-primary/5 border-b shrink-0 text-left">
-          <div className="flex items-start gap-4">
-            <div className="p-3 bg-primary text-primary-foreground rounded-2xl shadow-lg shrink-0">
-              <Share2 className="h-5 w-5" />
+        <DialogHeader demarcated className="px-6 py-3.5 sm:py-4 min-h-[52px] sm:min-h-[56px]">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-primary/10 text-primary rounded-xl shrink-0">
+              <Share2 className="h-4 w-4" />
             </div>
             <div className="min-w-0">
-              <DialogTitle className="text-lg font-bold tracking-tight">
+              <DialogTitle className="text-base font-bold tracking-tight text-foreground">
                 Workspace Memberships
               </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground mt-0.5 truncate">
-                <span className="font-semibold text-foreground">{entityName}</span> — manage cross-workspace presence
+              <DialogDescription className="sr-only">
+                {entityName} — manage cross-workspace presence
               </DialogDescription>
             </div>
           </div>

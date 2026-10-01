@@ -79,6 +79,7 @@ import {
     DialogDescription,
     DialogFooter,
 } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { AnimatePresence, motion } from 'framer-motion';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, rectIntersection, pointerWithin } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable';
@@ -6412,14 +6413,17 @@ export function TemplateWorkshop({
 
             {/* Create Custom Variable Dialog */}
             <Dialog open={isAddVarOpen} onOpenChange={setIsAddVarOpen}>
-                <DialogContent className="sm:max-w-[425px] rounded-2xl bg-card border shadow-xl">
-                    <DialogHeader>
-                        <DialogTitle className="text-base font-bold text-foreground">Add Custom Variable</DialogTitle>
-                        <DialogDescription className="text-xs text-muted-foreground">
-                            Create a custom variable to capture and reuse dynamic parameters.
-                        </DialogDescription>
+                <DialogContent className="sm:max-w-[425px] sm:rounded-2xl p-0 overflow-hidden border border-border/80 shadow-2xl bg-card text-card-foreground">
+                    <DialogHeader demarcated>
+                        <div className="flex items-center gap-2">
+                            <DialogTitle className="text-base font-bold text-foreground">Add Custom Variable</DialogTitle>
+                            <CardInfoTooltip text="Create a custom variable to capture and reuse dynamic parameters." />
+                            <DialogDescription className="sr-only">
+                                Create a custom variable to capture and reuse dynamic parameters.
+                            </DialogDescription>
+                        </div>
                     </DialogHeader>
-                    <form onSubmit={handleCreateVariable} className="space-y-4 text-left">
+                    <form onSubmit={handleCreateVariable} className="p-6 space-y-4 text-left">
                         <div className="space-y-2">
                             <Label className="text-xs font-semibold">Display Label</Label>
                             <Input
@@ -6453,7 +6457,7 @@ export function TemplateWorkshop({
                                 <Label className="text-xs font-semibold">Variable Type</Label>
                                 <Select
                                     value={varForm.type}
-                                    onValueChange={v => setVarForm(prev => ({ ...prev, type: v as any }))}
+                                    onValueChange={v => setVarForm(prev => ({ ...prev, type: v as AppField['type'] }))}
                                 >
                                     <SelectTrigger className="h-10 rounded-xl">
                                         <SelectValue />
@@ -6471,7 +6475,7 @@ export function TemplateWorkshop({
                                 <Label className="text-xs font-semibold">Scope</Label>
                                 <Select
                                     value={varForm.scope}
-                                    onValueChange={v => setVarForm(prev => ({ ...prev, scope: v as any }))}
+                                    onValueChange={v => setVarForm(prev => ({ ...prev, scope: v as 'common' | 'person' | 'institution' }))}
                                 >
                                     <SelectTrigger className="h-10 rounded-xl">
                                         <SelectValue />
@@ -6493,11 +6497,11 @@ export function TemplateWorkshop({
                                 className="h-10 rounded-xl"
                             />
                         </div>
-                        <DialogFooter className="pt-2">
-                            <Button type="button" variant="outline" onClick={() => setIsAddVarOpen(false)} className="rounded-xl font-semibold h-10">
+                        <DialogFooter className="px-6 py-3.5 -mx-6 -mb-6 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
+                            <Button type="button" variant="outline" onClick={() => setIsAddVarOpen(false)} className="rounded-xl font-semibold h-10 active:scale-[0.97]">
                                 Cancel
                             </Button>
-                            <Button type="submit" disabled={isCreatingVar} className="rounded-xl font-bold h-10 gap-2">
+                            <Button type="submit" disabled={isCreatingVar} className="rounded-xl font-bold h-10 gap-2 active:scale-[0.97]">
                                 {isCreatingVar && <Loader2 className="h-4 w-4 animate-spin" />} Create Variable
                             </Button>
                         </DialogFooter>
@@ -6507,13 +6511,13 @@ export function TemplateWorkshop({
 
             {/* Email Architect Undocked Modal Dialog */}
             <Dialog open={isArchitectUndocked} onOpenChange={setIsArchitectUndocked}>
-                <DialogContent className="w-[95vw] sm:max-w-3xl rounded-3xl p-6 bg-card border shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-                    <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-3 border-b">
-                        <div>
-                            <DialogTitle className="text-base font-extrabold flex items-center gap-2">
-                                <Sparkles className="h-5 w-5 text-blue-500 animate-pulse" /> Email Architect (AI Studio)
-                            </DialogTitle>
-                            <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                <DialogContent className="w-[95vw] sm:max-w-3xl sm:rounded-2xl p-0 overflow-hidden border border-border/80 shadow-2xl bg-card text-card-foreground animate-in fade-in zoom-in-95 duration-200">
+                    <DialogHeader demarcated>
+                        <div className="flex items-center gap-2">
+                            <Sparkles className="h-4 w-4 text-blue-500 animate-pulse" />
+                            <DialogTitle className="text-sm font-bold text-foreground">Email Architect (AI Studio)</DialogTitle>
+                            <CardInfoTooltip text="Describe layout details or upload inspiration to generate multi-column email blocks with AI." />
+                            <DialogDescription className="sr-only">
                                 Describe layout details or upload inspiration to generate multi-column email blocks with AI.
                             </DialogDescription>
                         </div>
@@ -6528,7 +6532,7 @@ export function TemplateWorkshop({
                             <Minimize2 className="h-4 w-4" />
                         </Button>
                     </DialogHeader>
-                    <div className="py-2 space-y-4">
+                    <div className="p-6 space-y-4">
                         <UnifiedPromptInput
                             value={architectPrompt}
                             onChange={setArchitectPrompt}

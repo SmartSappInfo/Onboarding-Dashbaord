@@ -31,6 +31,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import {
   FileText,
   ShieldCheck,
@@ -437,18 +438,23 @@ export default function MultiPartySigningPortal({
 
       {/* Decline Confirmation Dialog */}
       <Dialog open={isDeclineModalOpen} onOpenChange={setIsDeclineModalOpen}>
-        <DialogContent className="max-w-md rounded-[2rem]">
-          <DialogHeader>
-            <div className="mx-auto w-12 h-12 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center mb-2">
-              <AlertTriangle className="h-6 w-6" />
+        <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+          <DialogHeader demarcated className="px-6 py-3.5 sm:py-4 border-b border-border/80 bg-muted/20 flex flex-row items-center justify-between shrink-0 space-y-0 text-left">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 rounded-lg bg-destructive/10 text-destructive shadow-sm">
+                <AlertTriangle className="h-4 w-4" />
+              </div>
+              <DialogTitle className="text-base sm:text-lg font-semibold tracking-tight text-foreground flex items-center gap-1.5">
+                Decline Agreement?
+                <CardInfoTooltip text="Declining this document will cancel the agreement for all signatories and notify the sender immediately." />
+              </DialogTitle>
+              <DialogDescription className="sr-only">
+                Declining this document will cancel the agreement for all signatories and notify the sender immediately.
+              </DialogDescription>
             </div>
-            <DialogTitle className="text-xl font-bold text-center">Decline to Sign Agreement?</DialogTitle>
-            <DialogDescription className="text-xs text-center text-muted-foreground">
-              Declining this document will cancel the agreement for all signatories and notify the sender immediately.
-            </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3 py-2 text-left">
+          <div className="p-6 space-y-3 text-left">
             <Label className="text-xs font-semibold">Reason for Declining (Required)</Label>
             <Textarea
               value={declineReason}
@@ -458,7 +464,7 @@ export default function MultiPartySigningPortal({
             />
           </div>
 
-          <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-2">
+          <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5 shrink-0">
             <Button
               type="button"
               variant="ghost"

@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -8,6 +7,7 @@ import {
     DialogTitle,
     DialogDescription,
 } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -76,19 +76,18 @@ export default function AddElementModal({ open, onOpenChange, onSelect }: AddEle
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-3xl rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
-                <DialogHeader className="p-8 bg-muted/30 border-b shrink-0 text-left">
-                    <div className="flex flex-col items-start gap-2">
-                        <div className="p-3 bg-primary/10 text-primary rounded-2xl shadow-sm mb-2">
-                            <PlusSquare className="h-6 w-6" aria-hidden="true" />
-                        </div>
-                        <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">Add a New Element</DialogTitle>
-                        <DialogDescription className="text-xs font-bold text-muted-foreground opacity-90">
-                            Select the type of element you want to add to your survey.
-                        </DialogDescription>
+            <DialogContent className="sm:max-w-3xl p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+                <DialogHeader demarcated className="px-6 py-3.5 sm:py-4">
+                    <div className="flex items-center gap-2">
+                        <PlusSquare className="h-4 w-4 text-primary shrink-0" aria-hidden="true" />
+                        <DialogTitle className="font-bold text-base tracking-tight text-foreground">Add a New Element</DialogTitle>
+                        <CardInfoTooltip text="Select the type of element you want to add to your survey." />
                     </div>
+                    <DialogDescription className="sr-only">
+                        Select the type of element you want to add to your survey.
+                    </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-6 p-8 bg-background">
+                <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
                     <div>
  <h3 className="text-sm font-medium text-muted-foreground mb-2 px-1">Question Elements</h3>
  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">

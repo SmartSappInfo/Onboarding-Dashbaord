@@ -17,6 +17,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { CheckCircle2, AlertCircle, Zap } from 'lucide-react';
@@ -132,15 +133,18 @@ export function BulkTagOperations({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[425px] overflow-hidden gap-0 p-0 border-border/40">
-        <DialogHeader className="p-5 pb-4 border-b border-border/20 bg-muted/10">
-          <DialogTitle className="font-black uppercase tracking-tight text-lg">Bulk Tag Operations</DialogTitle>
-          <DialogDescription className="text-xs font-semibold text-muted-foreground mt-1">
+      <DialogContent className="sm:max-w-[425px] overflow-hidden gap-0 p-0 rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+        <DialogHeader demarcated className="px-6 py-3.5 sm:py-4">
+          <div className="flex items-center gap-2">
+            <DialogTitle className="font-bold text-base tracking-tight">Bulk Tag Operations</DialogTitle>
+            <CardInfoTooltip text={`Apply or remove tags across multiple ${plural.toLowerCase()}.`} />
+          </div>
+          <DialogDescription className="sr-only">
             Apply or remove tags across multiple {plural.toLowerCase()}.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="p-5">
+        <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
           {result ? (
             <div className="py-6 text-center space-y-4 animate-in fade-in zoom-in duration-200">
               {result.success ? (
@@ -265,11 +269,11 @@ export function BulkTagOperations({
           )}
         </div>
 
-        <DialogFooter className="p-5 pt-4 border-t border-border/20 bg-muted/10">
+        <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
           {result ? (
             <Button
               onClick={handleClose}
-              className="w-full rounded-xl font-bold uppercase tracking-widest text-xs h-11"
+              className="w-full rounded-xl font-bold min-h-[44px] active:scale-[0.97]"
             >
               Close
             </Button>
@@ -279,7 +283,7 @@ export function BulkTagOperations({
                 variant="outline"
                 onClick={handleClose}
                 disabled={isProcessing}
-                className="flex-1 rounded-xl font-bold uppercase tracking-widest text-xs h-11"
+                className="flex-1 rounded-xl font-bold min-h-[44px] active:scale-[0.97]"
               >
                 Cancel
               </Button>
@@ -287,7 +291,7 @@ export function BulkTagOperations({
                 onClick={handleExecute}
                 disabled={isProcessing || selectedTagIds.length === 0}
                 className={cn(
-                  "flex-1 rounded-xl font-bold uppercase tracking-widest text-xs h-11 transition-all",
+                  "flex-1 rounded-xl font-bold min-h-[44px] active:scale-[0.97] transition-all",
                   operation === 'remove' ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground" : ""
                 )}
               >

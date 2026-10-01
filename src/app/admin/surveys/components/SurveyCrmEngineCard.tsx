@@ -1778,17 +1778,19 @@ function CreateFieldDialog({ open, onOpenChange, onSubmit, isSubmitting, fieldGr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="rounded-[2rem] max-w-md">
-        <DialogHeader className="pt-4 px-2">
-          <DialogTitle className="font-bold text-xl tracking-tight text-foreground flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" /> Create New Field
-          </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
-            Define a new CRM custom field, select its category, and map it directly to this survey question.
-          </DialogDescription>
+      <DialogContent className="sm:rounded-2xl max-w-md p-0 overflow-hidden border border-border/80 shadow-2xl bg-card text-card-foreground">
+        <DialogHeader demarcated>
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <DialogTitle className="font-bold text-base tracking-tight text-foreground">Create New Field</DialogTitle>
+            <CardInfoTooltip text="Define a new CRM custom field, select its category, and map it directly to this survey question." />
+            <DialogDescription className="sr-only">
+              Define a new CRM custom field, select its category, and map it directly to this survey question.
+            </DialogDescription>
+          </div>
         </DialogHeader>
 
-        <div className="p-2 space-y-4">
+        <div className="p-6 space-y-4">
           <div className="space-y-1.5">
             <Label className="text-xs font-bold text-foreground">Field Label</Label>
             <Input
@@ -1869,7 +1871,7 @@ function CreateFieldDialog({ open, onOpenChange, onSubmit, isSubmitting, fieldGr
           </div>
         </div>
 
-        <DialogFooter className="px-2 pb-4 pt-2">
+        <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15">
           <Button
             onClick={() =>
               onSubmit({
@@ -1881,7 +1883,7 @@ function CreateFieldDialog({ open, onOpenChange, onSubmit, isSubmitting, fieldGr
               })
             }
             disabled={isSubmitting || !label || !variableName}
-            className="w-full h-11 rounded-xl font-bold text-xs uppercase tracking-wider shadow-sm active:scale-[0.97]"
+            className="w-full h-10 rounded-xl font-bold text-xs uppercase tracking-wider shadow-sm active:scale-[0.97]"
           >
             {isSubmitting ? 'Creating Field...' : 'Save & Map to Question'}
           </Button>
@@ -1906,29 +1908,32 @@ function CreateTagDialog({ open, onOpenChange, onSubmit, isSubmitting }: CreateT
   const [name, setName] = React.useState('');
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="rounded-[2.5rem] max-w-sm">
-        <DialogHeader className="pt-4 px-2">
-          <DialogTitle className="font-black text-2xl tracking-tighter text-primary">New Registry Tag</DialogTitle>
-          <DialogDescription className="text-[11px] font-bold text-muted-foreground/60 leading-relaxed italic">
-            Add an organizational label to your CRM taxonomy.
-          </DialogDescription>
+      <DialogContent className="sm:rounded-2xl max-w-sm p-0 overflow-hidden border border-border/80 shadow-2xl bg-card text-card-foreground">
+        <DialogHeader demarcated>
+          <div className="flex items-center gap-2">
+            <DialogTitle className="font-bold text-base tracking-tight text-foreground">New Registry Tag</DialogTitle>
+            <CardInfoTooltip text="Add an organizational label to your CRM taxonomy." />
+            <DialogDescription className="sr-only">
+              Add an organizational label to your CRM taxonomy.
+            </DialogDescription>
+          </div>
         </DialogHeader>
-        <div className="p-4 space-y-4">
-          <div className="space-y-2 px-1">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Tag Name</Label>
+        <div className="p-6 space-y-4">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold text-foreground">Tag Name</Label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. High Intent"
-              className="h-12 rounded-2xl border-none bg-muted/20 px-5 font-bold shadow-inner"
+              className="h-10 rounded-xl border border-border/80 bg-muted/20 px-3 text-xs font-medium"
             />
           </div>
         </div>
-        <DialogFooter className="px-4 pb-8">
+        <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15">
           <Button
             onClick={() => onSubmit({ name })}
             disabled={isSubmitting || !name}
-            className="w-full h-14 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-primary/30 active:scale-[0.97]"
+            className="w-full h-10 rounded-xl font-bold text-xs uppercase tracking-wider shadow-sm active:scale-[0.97]"
           >
             {isSubmitting ? 'Registering...' : 'Add to Registry'}
           </Button>
@@ -1949,31 +1954,33 @@ function CreateAutomationDialog({ open, onOpenChange, onSubmit, isSubmitting }: 
   const [name, setName] = React.useState('');
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="rounded-[2.5rem] max-w-sm">
-        <DialogHeader className="pt-6 px-4">
-          <DialogTitle className="font-black text-2xl tracking-tighter flex items-center gap-3">
-            <Zap className="h-6 w-6 text-amber-500 fill-amber-500" /> Quick Workflow
-          </DialogTitle>
-          <DialogDescription className="text-[11px] font-bold text-muted-foreground/60 leading-relaxed italic">
-            Draft a new behavioral chain for this survey.
-          </DialogDescription>
+      <DialogContent className="sm:rounded-2xl max-w-sm p-0 overflow-hidden border border-border/80 shadow-2xl bg-card text-card-foreground">
+        <DialogHeader demarcated>
+          <div className="flex items-center gap-2">
+            <Zap className="h-4 w-4 text-amber-500 fill-amber-500" />
+            <DialogTitle className="font-bold text-base tracking-tight text-foreground">Quick Workflow</DialogTitle>
+            <CardInfoTooltip text="Draft a new behavioral chain for this survey." />
+            <DialogDescription className="sr-only">
+              Draft a new behavioral chain for this survey.
+            </DialogDescription>
+          </div>
         </DialogHeader>
         <div className="p-6 space-y-4">
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Workflow Name</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold text-foreground">Workflow Name</Label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Lead Qualification Sync"
-              className="h-12 rounded-2xl border-none bg-muted/20 px-5 font-bold shadow-inner"
+              className="h-10 rounded-xl border border-border/80 bg-muted/20 px-3 text-xs font-medium"
             />
           </div>
         </div>
-        <DialogFooter className="p-6 pt-0">
+        <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15">
           <Button
             onClick={() => onSubmit({ name })}
             disabled={isSubmitting || !name}
-            className="w-full h-14 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-amber-500/20 bg-amber-500 hover:bg-amber-600 active:scale-[0.97]"
+            className="w-full h-10 rounded-xl font-bold text-xs uppercase tracking-wider shadow-sm active:scale-[0.97]"
           >
             {isSubmitting ? 'Drafting...' : 'Initialize Draft'}
           </Button>

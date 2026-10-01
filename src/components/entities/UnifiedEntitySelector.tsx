@@ -28,6 +28,7 @@ import {
   DialogDescription, 
   DialogFooter 
 } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { LocationCascade, type LocationValue } from '@/components/location/LocationCascade';
 import { TagFilter, type TagFilter as TagFilterState } from '@/components/tags/TagFilter';
 import { AsyncEntityAvatar } from '@/app/admin/components/AsyncEntityAvatar';
@@ -508,22 +509,21 @@ export function UnifiedEntitySelector({
 
       {/* Selection Modal Console */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="max-w-2xl w-[95vw] rounded-2xl p-0 overflow-hidden border border-border shadow-2xl bg-card text-left">
-          <DialogHeader className="p-5 pb-3 bg-muted/20 border-b shrink-0 text-left">
+        <DialogContent className="max-w-2xl w-[95vw] rounded-2xl p-0 overflow-hidden border border-border/80 shadow-2xl bg-card text-left">
+          <DialogHeader demarcated className="px-6 py-3.5 sm:py-4 shrink-0 text-left">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 text-primary rounded-xl">
-                  <Building2 className="h-5 w-5" />
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 bg-primary/10 text-primary rounded-xl">
+                  <Building2 className="h-4 w-4" />
                 </div>
-                <div>
-                  <DialogTitle className="text-lg font-bold">
-                    {defaultLabel}
-                  </DialogTitle>
-                  <DialogDescription className="text-xs text-muted-foreground">
-                    Filter, segment, and select target {plural.toLowerCase()} for billing.
-                  </DialogDescription>
-                </div>
+                <DialogTitle className="text-base sm:text-lg font-bold">
+                  {defaultLabel}
+                </DialogTitle>
+                <CardInfoTooltip text={`Filter, segment, and select target ${plural.toLowerCase()} for billing.`} />
               </div>
+              <DialogDescription className="sr-only">
+                Filter, segment, and select target {plural.toLowerCase()} for billing.
+              </DialogDescription>
               <Button
                 type="button"
                 variant="outline"
@@ -864,7 +864,7 @@ export function UnifiedEntitySelector({
           )}
 
           {/* Footer Controls */}
-          <DialogFooter className="p-4 bg-muted/20 border-t flex items-center justify-between gap-3">
+          <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex items-center justify-between gap-3">
             <div className="text-xs text-muted-foreground font-medium">
               {mode === 'multiple' ? (
                 <span>

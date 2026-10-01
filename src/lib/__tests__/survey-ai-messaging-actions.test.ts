@@ -148,6 +148,24 @@ describe('Survey AI Messaging Server Actions', () => {
         })
       );
     });
+
+    it('keeps generated templates in-memory as drafts without writing to Firestore when autoSave is false', async () => {
+      const res = await generateSurveyMessagingTemplatesAction({
+        workspaceId: 'ws_alpha',
+        organizationId: 'org_main',
+        surveyId: 'survey_123',
+        surveyTitle: 'Draft Survey Test',
+        target: 'internal_team_alert',
+        channels: ['email', 'sms', 'whatsapp'],
+        autoSave: false,
+      });
+
+      expect(res.success).toBe(true);
+      expect(res.output).toBeDefined();
+      expect(res.savedTemplateIds).toEqual({});
+      // mockAdd should NOT be called at generation time
+      expect(mockAdd).not.toHaveBeenCalled();
+    });
   });
 
   describe('quickSaveSurveyTemplateAction', () => {

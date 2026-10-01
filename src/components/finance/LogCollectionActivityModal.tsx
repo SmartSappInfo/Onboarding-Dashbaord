@@ -14,6 +14,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -124,86 +125,88 @@ export function LogCollectionActivityModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md rounded-2xl p-6">
-        <DialogHeader className="text-left space-y-1">
-          <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
-            {getActivityIcon(type)}
-            Collection Activity
+      <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+        <DialogHeader demarcated className="px-6 py-3.5 sm:py-4">
+          <div className="flex items-center gap-2">
+            <span className="shrink-0">{getActivityIcon(type)}</span>
+            <DialogTitle className="text-base sm:text-lg font-bold">Log Interaction</DialogTitle>
+            <CardInfoTooltip text={`Record collection outreach interaction to ${entityName}.`} />
           </div>
-          <DialogTitle className="text-xl font-bold tracking-tight">Log Interaction</DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
-            Record outreach to <span className="font-semibold text-foreground">{entityName}</span>.
+          <DialogDescription className="sr-only">
+            Record collection interaction to {entityName}.
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Channel / Type *</Label>
-            <Select value={type} onValueChange={(val) => setType(val as CollectionActivityType)}>
-              <SelectTrigger className="rounded-xl h-11 min-h-[44px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="call">Phone Call</SelectItem>
-                <SelectItem value="whatsapp">WhatsApp Follow-up</SelectItem>
-                <SelectItem value="email">Email Notification</SelectItem>
-                <SelectItem value="sms">SMS Alert</SelectItem>
-                <SelectItem value="meeting">In-Person / Virtual Meeting</SelectItem>
-                <SelectItem value="note">Internal Collection Note</SelectItem>
-              </SelectContent>
-            </Select>
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Channel / Type *</Label>
+              <Select value={type} onValueChange={(val) => setType(val as CollectionActivityType)}>
+                <SelectTrigger className="rounded-xl h-11 min-h-[44px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="call">Phone Call</SelectItem>
+                  <SelectItem value="whatsapp">WhatsApp Follow-up</SelectItem>
+                  <SelectItem value="email">Email Notification</SelectItem>
+                  <SelectItem value="sms">SMS Alert</SelectItem>
+                  <SelectItem value="meeting">In-Person / Virtual Meeting</SelectItem>
+                  <SelectItem value="note">Internal Collection Note</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Summary Headline *</Label>
+              <Input
+                required
+                placeholder="e.g. Discussed overdue Term 2 fees with Bursar"
+                value={summary}
+                onChange={(e) => setSummary(e.target.value)}
+                className="rounded-xl h-11 min-h-[44px] font-semibold"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Conversation Details / Notes</Label>
+              <Textarea
+                rows={3}
+                placeholder="Bursar stated payment voucher was submitted to treasury, awaiting sign-off on Friday..."
+                value={details}
+                onChange={(e) => setDetails(e.target.value)}
+                className="rounded-xl resize-none text-xs"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Agreed Outcome / Next Step</Label>
+              <Input
+                placeholder="e.g. Follow up on Monday via WhatsApp"
+                value={outcome}
+                onChange={(e) => setOutcome(e.target.value)}
+                className="rounded-xl h-11 min-h-[44px]"
+              />
+            </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Summary Headline *</Label>
-            <Input
-              required
-              placeholder="e.g. Discussed overdue Term 2 fees with Bursar"
-              value={summary}
-              onChange={(e) => setSummary(e.target.value)}
-              className="rounded-xl h-11 min-h-[44px] font-semibold"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Conversation Details / Notes</Label>
-            <Textarea
-              rows={3}
-              placeholder="Bursar stated payment voucher was submitted to treasury, awaiting sign-off on Friday..."
-              value={details}
-              onChange={(e) => setDetails(e.target.value)}
-              className="rounded-xl resize-none text-xs"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Agreed Outcome / Next Step</Label>
-            <Input
-              placeholder="e.g. Follow up on Monday via WhatsApp"
-              value={outcome}
-              onChange={(e) => setOutcome(e.target.value)}
-              className="rounded-xl h-11 min-h-[44px]"
-            />
-          </div>
-
-          <DialogFooter className="pt-2 gap-2">
+          <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
               disabled={isSubmitting}
-              className="rounded-xl h-11 min-h-[44px] active:scale-[0.97]"
+              className="rounded-xl h-10 min-h-[44px] text-xs font-semibold active:scale-[0.97]"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="rounded-xl h-11 min-h-[44px] font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-md active:scale-[0.97]"
+              className="rounded-xl h-10 min-h-[44px] text-xs font-bold px-6 shadow-sm active:scale-[0.97]"
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
                   Saving...
                 </>
               ) : (

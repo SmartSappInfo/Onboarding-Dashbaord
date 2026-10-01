@@ -138,17 +138,17 @@ export default function QuickComposeButton({ entityId, recipient, entityName, as
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-lg rounded-[2rem] p-0 overflow-hidden border-none shadow-2xl">
-          <DialogHeader className="p-6 pb-4 bg-primary/5 border-b border-primary/10 shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-primary text-white rounded-xl shadow-lg shadow-primary/20">
-                <Send className="h-5 w-5" />
+        <DialogContent className="sm:max-w-lg rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl p-0 overflow-hidden">
+          <DialogHeader demarcated className="px-6 py-3.5 sm:py-4 min-h-[52px] sm:min-h-[56px]">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-primary/10 text-primary rounded-xl shrink-0">
+                <Send className="h-4 w-4" />
               </div>
               <div>
-                <DialogTitle className="text-lg font-semibold tracking-tight">
+                <DialogTitle className="text-base font-bold tracking-tight text-foreground">
                   Quick Compose{entityName ? ` — ${entityName}` : ''}
                 </DialogTitle>
-                <DialogDescription className="text-[10px] font-bold text-muted-foreground">
+                <DialogDescription className="sr-only">
                   Send a quick message without the full composer
                 </DialogDescription>
               </div>

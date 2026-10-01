@@ -52,6 +52,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 import { resolveBrandingPreview as resolveBrandingInHtml } from '@/lib/utils/resolve-branding-preview';
 import { TemplatePreviewModal } from '../templates/components/template-preview-modal';
@@ -923,58 +924,59 @@ export default function MessageStylesPage() {
 
             {/* AI Generator Dialog */}
             <Dialog open={isAiGenerating} onOpenChange={setIsAiGenerating}>
-                <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl rounded-[2.5rem]">
-                    <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
-                        <div className="flex items-center gap-3">
-                            <div className="p-3 bg-primary/10 rounded-xl"><Sparkles size={24} className="text-primary" /></div>
-                            <div className="text-left">
-                                <DialogTitle className="text-xl font-semibold tracking-tight">AI Style Generator</DialogTitle>
-                                <DialogDescription className="text-xs font-bold opacity-60">Generate responsive brand wrappers via AI</DialogDescription>
+                <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0 overflow-hidden border border-border/80 shadow-2xl sm:rounded-2xl bg-card text-card-foreground">
+                    <DialogHeader demarcated>
+                        <div className="flex items-center gap-2.5">
+                            <div className="p-2 bg-primary/10 rounded-xl"><Sparkles size={20} className="text-primary" /></div>
+                            <div className="text-left flex items-center gap-2">
+                                <DialogTitle className="text-lg font-semibold tracking-tight">AI Style Generator</DialogTitle>
+                                <CardInfoTooltip text="Generate responsive brand wrappers via AI directives and visual styles." />
+                                <DialogDescription className="sr-only">Generate responsive brand wrappers via AI</DialogDescription>
                             </div>
                         </div>
                     </DialogHeader>
                     
                     <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
-                        <div className="w-full lg:w-1/2 p-8 border-r flex flex-col gap-8 overflow-y-auto bg-muted/10">
+                        <div className="w-full lg:w-1/2 p-6 sm:p-8 border-r border-border/80 flex flex-col gap-6 overflow-y-auto bg-muted/10">
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Identity Label</Label>
-                                <Input value={aiName} onChange={e => setAiName(e.target.value)} placeholder="e.g. Modern Campus Dark Theme" className="h-12 rounded-xl bg-card border-primary/10 shadow-sm font-bold" />
+                                <Input value={aiName} onChange={e => setAiName(e.target.value)} placeholder="e.g. Modern Campus Dark Theme" className="h-11 rounded-xl bg-card border-border/80 shadow-sm font-semibold" />
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Design Directives</Label>
-                                <Textarea value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} placeholder="e.g. Create a clean design with a deep blue header, centered white logo, and a minimal footer." className="min-h-[180px] rounded-2xl text-sm leading-relaxed bg-card border-primary/10 shadow-inner p-4" />
+                                <Textarea value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} placeholder="e.g. Create a clean design with a deep blue header, centered white logo, and a minimal footer." className="min-h-[160px] rounded-xl text-sm leading-relaxed bg-card border-border/80 shadow-inner p-4" />
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Visual Inspiration (Optional)</Label>
-                                <MediaSelect value={aiInspirationUrl} onValueChange={setAiInspirationUrl} filterType="image" className="rounded-2xl" />
+                                <MediaSelect value={aiInspirationUrl} onValueChange={setAiInspirationUrl} filterType="image" className="rounded-xl" />
                             </div>
-                            <RainbowButton onClick={handleAiGenerate} disabled={isAiProcessing} className="h-14 w-full font-semibold text-lg gap-2 shadow-2xl">
-                                {isAiProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
+                            <RainbowButton onClick={handleAiGenerate} disabled={isAiProcessing} className="h-12 w-full font-semibold text-sm gap-2 shadow-xl active:scale-[0.97]">
+                                {isAiProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                                 {isAiProcessing ? 'Generating…' : 'Generate Style'}
                             </RainbowButton>
                         </div>
 
-                        <div className="w-full lg:w-1/2 p-8 flex flex-col bg-card">
-                            <div className="flex items-center justify-between mb-6">
-                                <Label className="text-[10px] font-semibold text-primary flex items-center gap-2"><Eye className="h-3 w-3" /> Live Render</Label>
-                                {generatedHtml && <Badge className="bg-emerald-50 text-emerald-600 border-none font-semibold text-[8px] uppercase">Logic Verified</Badge>}
+                        <div className="w-full lg:w-1/2 p-6 sm:p-8 flex flex-col bg-card">
+                            <div className="flex items-center justify-between mb-4">
+                                <Label className="text-[10px] font-semibold text-primary flex items-center gap-2"><Eye className="h-3.5 w-3.5" /> Live Render</Label>
+                                {generatedHtml && <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-semibold text-[9px] uppercase">Logic Verified</Badge>}
                             </div>
-                            <div className="flex-1 rounded-[2.5rem] bg-muted/10 border-2 border-dashed border-border flex items-center justify-center relative overflow-hidden shadow-inner p-4">
+                            <div className="flex-1 rounded-2xl bg-muted/10 border-2 border-dashed border-border/80 flex items-center justify-center relative overflow-hidden shadow-inner p-4">
                                 {generatedHtml ? (
-                                    <div className="w-full h-full bg-card rounded-2xl shadow-xl overflow-hidden" dangerouslySetInnerHTML={{ __html: resolveBrandingInHtml(generatedHtml, orgData).replace('{{content}}', '<div style="background: #f1f5f9; border: 2px dashed #cbd5e1; padding: 40px; text-align: center; color: #64748b; font-weight: 900; border-radius: 12px; margin: 20px;">[ PROTOTYPE CONTENT ]</div>') }} />
+                                    <div className="w-full h-full bg-card rounded-xl shadow-lg overflow-hidden" dangerouslySetInnerHTML={{ __html: resolveBrandingInHtml(generatedHtml, orgData).replace('{{content}}', '<div style="background: #f1f5f9; border: 2px dashed #cbd5e1; padding: 40px; text-align: center; color: #64748b; font-weight: 900; border-radius: 12px; margin: 20px;">[ PROTOTYPE CONTENT ]</div>') }} />
                                 ) : (
-                                    <div className="text-center space-y-4 opacity-20">
-                                        <Palette size={64} className="mx-auto" />
-                                        <p className="text-[10px] font-semibold tracking-[0.3em]">Awaiting Simulation</p>
+                                    <div className="text-center space-y-4 opacity-30">
+                                        <Palette size={48} className="mx-auto" />
+                                        <p className="text-[10px] font-semibold tracking-[0.2em]">Awaiting Simulation</p>
                                     </div>
                                 )}
                             </div>
                         </div>
                     </div>
 
-                    <DialogFooter className="p-6 bg-muted/30 border-t shrink-0 flex justify-between items-center sm:justify-between">
-                        <Button variant="ghost" onClick={() => setIsAiGenerating(false)} className="font-bold rounded-xl h-12 px-8">Discard</Button>
-                        <Button onClick={handleSaveGenerated} disabled={!generatedHtml || isSubmitting} className="rounded-xl font-semibold px-12 shadow-2xl h-12 text-xs active:scale-95 transition-all">
+                    <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 shrink-0 flex justify-between items-center sm:justify-between">
+                        <Button variant="ghost" onClick={() => setIsAiGenerating(false)} className="font-semibold rounded-xl h-10 px-6 active:scale-[0.97]">Discard</Button>
+                        <Button onClick={handleSaveGenerated} disabled={!generatedHtml || isSubmitting} className="rounded-xl font-semibold px-8 shadow-xl h-10 text-xs active:scale-[0.97] transition-all">
                             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                             Commit AI Style
                         </Button>
@@ -997,10 +999,10 @@ export default function MessageStylesPage() {
 
             {/* Delete Blocked Dialog */}
             <AlertDialog open={!!styleInUseToDelete} onOpenChange={(o) => !o && setStyleInUseToDelete(null)}>
-                <AlertDialogContent className="rounded-[2.5rem] max-w-md p-8 border-none shadow-2xl bg-card text-left">
+                <AlertDialogContent className="sm:rounded-2xl max-w-md p-6 border border-border/80 shadow-2xl bg-card text-card-foreground text-left">
                     <AlertDialogHeader className="space-y-4">
-                        <div className="mx-auto p-4 bg-amber-500/10 text-amber-500 rounded-full w-fit">
-                            <AlertCircle size={32} />
+                        <div className="mx-auto p-3.5 bg-amber-500/10 text-amber-500 rounded-full w-fit">
+                            <AlertCircle size={28} />
                         </div>
                         <div className="space-y-2 text-center">
                             <AlertDialogTitle className="font-semibold text-lg tracking-tight">Deletion Blocked</AlertDialogTitle>
@@ -1033,7 +1035,7 @@ export default function MessageStylesPage() {
                     </div>
                     
                     <AlertDialogFooter className="mt-4">
-                        <AlertDialogCancel className="w-full rounded-xl font-bold border-none bg-muted/65 hover:bg-muted text-foreground">
+                        <AlertDialogCancel className="w-full rounded-xl font-bold border border-border/80 bg-muted/40 hover:bg-muted text-foreground active:scale-[0.97]">
                             Close
                         </AlertDialogCancel>
                     </AlertDialogFooter>

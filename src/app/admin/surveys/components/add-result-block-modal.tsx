@@ -8,6 +8,7 @@ import {
     DialogTitle,
     DialogDescription,
 } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import {
     Heading1,
@@ -55,16 +56,19 @@ export default function AddResultBlockModal({ open, onOpenChange, onSelect }: Ad
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-3xl rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
-                <DialogHeader className="p-8 bg-muted/30 border-b shrink-0 text-left">
-                    <div className="flex flex-col items-start gap-2">
-                        <div className="p-3 bg-primary/10 text-primary rounded-2xl shadow-sm mb-2">
-                            <LayoutList className="h-6 w-6" aria-hidden="true" />
+            <DialogContent className="sm:max-w-3xl sm:rounded-2xl border border-border/80 bg-card text-card-foreground p-0 overflow-hidden shadow-2xl">
+                <DialogHeader demarcated>
+                    <div className="flex items-center gap-2.5">
+                        <div className="p-2 bg-primary/10 text-primary rounded-xl">
+                            <LayoutList className="h-4 w-4" aria-hidden="true" />
                         </div>
-                        <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">Add Content to Result Page</DialogTitle>
-                        <DialogDescription className="text-xs font-bold text-muted-foreground opacity-90">
-                            Select a block type to add to this outcome.
-                        </DialogDescription>
+                        <div className="flex items-center gap-2">
+                            <DialogTitle className="text-base font-semibold tracking-tight text-foreground">Add Content to Result Page</DialogTitle>
+                            <CardInfoTooltip text="Select a block type to add to this outcome." />
+                            <DialogDescription className="sr-only">
+                                Select a block type to add to this outcome.
+                            </DialogDescription>
+                        </div>
                     </div>
                 </DialogHeader>
                 <ScrollArea className="max-h-[60vh]">

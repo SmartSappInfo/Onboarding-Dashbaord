@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn, toTitleCase } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -591,9 +592,35 @@ export default function SubmissionsPage() {
         </Tabs>
 
         <AlertDialog open={showDeleteConfirm || !!submissionToDelete} onOpenChange={(o) => { if(!o) { setShowDeleteConfirm(false); setSubmissionToDelete(null); } }}>
- <AlertDialogContent className="rounded-[2rem]">
- <AlertDialogHeader><div className="mx-auto bg-destructive/10 w-12 h-12 rounded-2xl flex items-center justify-center mb-4"><AlertCircle className="h-6 w-6 text-destructive" /></div><AlertDialogTitle className="font-semibold text-xl tracking-tight text-center">{submissionToDelete ? 'Purge Signed Document?' : `Purge ${selectedIds.length} Records?`}</AlertDialogTitle><AlertDialogDescription className="text-center text-sm font-medium">This will permanently delete the {submissionToDelete ? 'selected submission record' : 'selected records'} and the associated high-fidelity signed document. This action is immutable and cannot be undone.</AlertDialogDescription></AlertDialogHeader>
- <AlertDialogFooter className="mt-4 sm:justify-center gap-3"><AlertDialogCancel disabled={isDeletingSelected} className="rounded-xl font-bold px-8">Keep Records</AlertDialogCancel><AlertDialogAction onClick={handleDeleteConfirmed} disabled={isDeletingSelected} className="rounded-xl font-semibold px-10 shadow-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-all active:scale-95">{isDeletingSelected ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}Confirm Deletion</AlertDialogAction></AlertDialogFooter>
+            <AlertDialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden flex flex-col sm:rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+                <AlertDialogHeader demarcated className="px-6 py-3.5 sm:py-4">
+                    <div className="flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+                        <AlertDialogTitle className="font-bold text-base tracking-tight">
+                            {submissionToDelete ? 'Purge Signed Document?' : `Purge ${selectedIds.length} Records?`}
+                        </AlertDialogTitle>
+                        <CardInfoTooltip text="This will permanently delete the selected submission record(s) and associated signed document. This action cannot be undone." />
+                    </div>
+                    <AlertDialogDescription className="sr-only">
+                        This will permanently delete the {submissionToDelete ? 'selected submission record' : 'selected records'} and the associated high-fidelity signed document. This action is immutable and cannot be undone.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="p-6 text-sm text-muted-foreground font-medium">
+                    This will permanently delete the {submissionToDelete ? 'selected submission record' : 'selected records'} and the associated high-fidelity signed document. This action is immutable and cannot be undone.
+                </div>
+                <AlertDialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
+                    <AlertDialogCancel disabled={isDeletingSelected} className="rounded-xl font-bold min-h-[44px] active:scale-[0.97]">
+                        Keep Records
+                    </AlertDialogCancel>
+                    <AlertDialogAction 
+                        onClick={handleDeleteConfirmed} 
+                        disabled={isDeletingSelected} 
+                        className="rounded-xl font-bold min-h-[44px] active:scale-[0.97] bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                        {isDeletingSelected ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                        Confirm Deletion
+                    </AlertDialogAction>
+                </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
 
@@ -612,12 +639,12 @@ export default function SubmissionsPage() {
   );
 }
 
-function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string, value: string | number, sub: string, icon: any, color: string, bg: string }) {
+function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string, value: string | number, sub: string, icon: React.ComponentType<{ className?: string }>, color: string, bg: string }) {
     return (
- <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-card overflow-hidden group hover:ring-primary/20 transition-all">
- <CardContent className="p-6 flex items-center gap-5">
- <div className={cn("p-4 rounded-2xl shrink-0 transition-transform group-hover:scale-110 shadow-inner", bg, color)}><Icon className="h-7 w-7" /></div>
- <div><p className="text-[9px] font-semibold text-muted-foreground leading-none mb-1.5">{label}</p><p className="text-3xl font-semibold tabular-nums tracking-tighter">{value}</p><p className="text-[10px] font-bold text-muted-foreground/60 tracking-tighter mt-1">{sub}</p></div>
+        <Card className="sm:rounded-2xl border border-border/80 shadow-sm bg-card overflow-hidden group hover:ring-primary/20 transition-all">
+            <CardContent className="p-6 flex items-center gap-5">
+                <div className={cn("p-4 rounded-xl shrink-0 transition-transform group-hover:scale-110 shadow-inner", bg, color)}><Icon className="h-7 w-7" /></div>
+                <div><p className="text-[9px] font-semibold text-muted-foreground leading-none mb-1.5">{label}</p><p className="text-3xl font-semibold tabular-nums tracking-tighter">{value}</p><p className="text-[10px] font-bold text-muted-foreground/60 tracking-tighter mt-1">{sub}</p></div>
             </CardContent>
         </Card>
     );
@@ -638,10 +665,54 @@ function ShareResultsDialog({ pdf, open, onOpenChange }: { pdf: PDFForm; open: b
     const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/forms/results/${pdf.slug || pdf.id}` : '';
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
- <DialogContent className="sm:max-w-md rounded-2xl overflow-hidden p-0 border-none shadow-2xl">
- <DialogHeader className="p-8 bg-muted/30 border-b shrink-0"><DialogTitle className="text-2xl font-semibold tracking-tight">Share Records Portal</DialogTitle><DialogDescription className="text-xs font-bold text-muted-foreground">Allow stakeholders to view and audit submissions.</DialogDescription></DialogHeader>
- <div className="space-y-8 p-8"><div className={cn("flex items-center justify-between rounded-[1.5rem] border-2 transition-all p-5 shadow-sm", isShared ? "border-primary/20 bg-primary/5" : "border-border/50 bg-muted/30")}><div className="flex items-center gap-4"><div className={cn("p-3 rounded-xl shadow-inner", isShared ? "bg-primary text-white" : "bg-muted text-muted-foreground")}><Share2 className="h-5 w-5" /></div><div className="space-y-0.5"><Label className="text-sm font-semibold tracking-tight leading-none">Public Access</Label><p className="text-[10px] text-muted-foreground font-medium tracking-tighter">Enable record viewing via link</p></div></div><Switch checked={isShared} onCheckedChange={setIsShared} className="scale-110" /></div><AnimatePresence>{isShared && (<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="space-y-6 animate-in fade-in slide-in-from-top-2"><div className="space-y-2"><Label className="text-[10px] font-semibold text-muted-foreground flex items-center gap-2 ml-1"><Lock className="h-3 w-3 text-primary" /> Entry Authentication</Label><Input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Required for access..." className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-bold" /></div><div className="space-y-2"><Label className="text-[10px] font-semibold text-muted-foreground ml-1">Portal URL</Label><div className="flex items-center gap-2"><Input value={shareUrl} readOnly className="text-[10px] bg-muted/30 h-12 font-mono rounded-xl border-none shadow-inner px-4 flex-1" /><Button size="icon" variant="outline" className="h-12 w-12 shrink-0 rounded-xl shadow-lg border-primary/20 hover:bg-primary/5 text-primary" onClick={() => { navigator.clipboard.writeText(shareUrl); toast({ title: 'Link Copied' }); }}><Copy className="h-5 w-5" /></Button></div></div></motion.div>)}</AnimatePresence></div>
- <DialogFooter className="p-6 border-t bg-muted/30 flex justify-between sm:justify-between items-center"><Button variant="ghost" onClick={() => onOpenChange(false)} className="font-bold rounded-xl px-8 h-12">Cancel</Button><Button onClick={handleSave} disabled={isSaving} className="font-semibold rounded-xl px-12 shadow-2xl h-12 text-sm">{isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Apply Logic</Button></DialogFooter>
+            <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden flex flex-col sm:rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+                <DialogHeader demarcated className="px-6 py-3.5 sm:py-4">
+                    <div className="flex items-center gap-2">
+                        <Share2 className="h-4 w-4 text-primary shrink-0" />
+                        <DialogTitle className="font-bold text-base tracking-tight">Share Records Portal</DialogTitle>
+                        <CardInfoTooltip text="Allow external stakeholders to view and audit submissions." />
+                    </div>
+                    <DialogDescription className="sr-only">Allow stakeholders to view and audit submissions.</DialogDescription>
+                </DialogHeader>
+                <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+                    <div className={cn("flex items-center justify-between rounded-xl border transition-all p-4 shadow-sm", isShared ? "border-primary/20 bg-primary/5" : "border-border/50 bg-muted/30")}>
+                        <div className="flex items-center gap-3">
+                            <div className={cn("p-2.5 rounded-lg shadow-inner", isShared ? "bg-primary text-white" : "bg-muted text-muted-foreground")}><Share2 className="h-4 w-4" /></div>
+                            <div className="space-y-0.5">
+                                <Label className="text-xs font-semibold tracking-tight leading-none">Public Access</Label>
+                                <p className="text-[10px] text-muted-foreground font-medium">Enable record viewing via link</p>
+                            </div>
+                        </div>
+                        <Switch checked={isShared} onCheckedChange={setIsShared} />
+                    </div>
+                    <AnimatePresence>
+                        {isShared && (
+                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="space-y-4">
+                                <div className="space-y-1.5">
+                                    <Label className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                                        <Lock className="h-3 w-3 text-primary" /> Entry Authentication
+                                    </Label>
+                                    <Input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Required for access..." className="h-10 rounded-xl bg-muted/20 font-medium text-xs" />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-[10px] font-semibold text-muted-foreground">Portal URL</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Input value={shareUrl} readOnly className="text-xs bg-muted/30 h-10 font-mono rounded-xl px-3 flex-1" />
+                                        <Button size="icon" variant="outline" className="h-10 w-10 shrink-0 rounded-xl border-border/80 hover:bg-muted text-primary" onClick={() => { navigator.clipboard.writeText(shareUrl); toast({ title: 'Link Copied' }); }}>
+                                            <Copy className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+                <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
+                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="font-bold rounded-xl min-h-[44px] active:scale-[0.97]">Cancel</Button>
+                    <Button onClick={handleSave} disabled={isSaving} className="font-semibold rounded-xl min-h-[44px] active:scale-[0.97] bg-primary text-primary-foreground hover:bg-primary/90 text-sm">
+                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Apply Logic
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );

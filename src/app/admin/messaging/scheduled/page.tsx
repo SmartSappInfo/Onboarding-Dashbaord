@@ -480,12 +480,12 @@ export default function ScheduledMessagesPage() {
 
                 {/* Edit Message Content / Reschedule Dialog */}
                 <Dialog open={!!editingMessage} onOpenChange={(o) => !o && setEditingMessage(null)}>
-                    <DialogContent className="sm:max-w-md rounded-[2.5rem]">
-                        <DialogHeader>
-                            <DialogTitle className="text-xl font-semibold">Edit Scheduled Message</DialogTitle>
-                            <DialogDescription className="text-xs font-bold text-muted-foreground">Modify content parameters and dispatch timestamp.</DialogDescription>
+                    <DialogContent className="sm:max-w-md rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl p-0 overflow-hidden">
+                        <DialogHeader demarcated className="px-6 py-3.5 sm:py-4 min-h-[52px] sm:min-h-[56px]">
+                            <DialogTitle className="text-base font-bold text-foreground">Edit Scheduled Message</DialogTitle>
+                            <DialogDescription className="sr-only">Modify content parameters and dispatch timestamp.</DialogDescription>
                         </DialogHeader>
-                        <div className="space-y-4 py-4">
+                        <div className="space-y-4 p-6">
                             {/* Subject (Only relevant for email or push) */}
                             {(editingMessage?.channel === 'email' || editingMessage?.channel === 'push') && (
                                 <div className="space-y-1">
@@ -493,7 +493,7 @@ export default function ScheduledMessagesPage() {
                                     <Input 
                                         value={editSubject}
                                         onChange={e => setEditSubject(e.target.value)}
-                                        className="h-10 rounded-xl bg-muted/20 border-none shadow-inner p-3 text-xs"
+                                        className="h-10 rounded-xl bg-background border-border text-foreground text-xs"
                                         autoComplete="off"
                                     />
                                 </div>
@@ -504,8 +504,8 @@ export default function ScheduledMessagesPage() {
                                 <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Message Body</Label>
                                 <Textarea 
                                     value={editBody} 
-                                    onChange={e => setEditBody(e.target.value)}
-                                    className="min-h-[120px] rounded-2xl bg-muted/20 border-none shadow-inner p-4 text-xs leading-relaxed"
+                                    onChange={e => setEditBody(e.target.value)} 
+                                    className="min-h-[120px] rounded-xl bg-background border-border text-foreground p-3 text-xs leading-relaxed"
                                     autoComplete="off"
                                 />
                             </div>
@@ -516,9 +516,9 @@ export default function ScheduledMessagesPage() {
                                 <DateTimePicker value={editDate} onChange={setEditDate} />
                             </div>
                         </div>
-                        <DialogFooter className="bg-muted/30 p-4 -mx-6 -mb-6 mt-2 rounded-b-[2.5rem]">
-                            <Button variant="ghost" onClick={() => setEditingMessage(null)} disabled={isUpdating} className="font-bold">Cancel</Button>
-                            <Button onClick={handleUpdate} disabled={isUpdating || !editBody.trim() || !editDate} className="rounded-xl font-bold gap-2 px-8 shadow-lg">
+                        <DialogFooter className="bg-muted/15 border-t border-border/80 px-6 py-3.5 flex justify-end gap-2.5">
+                            <Button variant="outline" onClick={() => setEditingMessage(null)} disabled={isUpdating} className="font-bold rounded-xl border-border active:scale-[0.97]">Cancel</Button>
+                            <Button onClick={handleUpdate} disabled={isUpdating || !editBody.trim() || !editDate} className="rounded-xl font-bold gap-2 px-6 shadow-sm bg-primary text-primary-foreground hover:opacity-90 active:scale-[0.97]">
                                 {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                                 Save Changes
                             </Button>
@@ -528,16 +528,16 @@ export default function ScheduledMessagesPage() {
 
                 {/* Cancel Message Action AlertDialog */}
                 <AlertDialog open={!!messageToDelete} onOpenChange={(o) => !o && setMessageToDelete(null)}>
-                    <AlertDialogContent className="rounded-[2rem]">
+                    <AlertDialogContent className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl p-6">
                         <AlertDialogHeader>
-                            <AlertDialogTitle className="font-semibold text-xl tracking-tight">Cancel Message?</AlertDialogTitle>
-                            <AlertDialogDescription className="text-sm font-medium">
+                            <AlertDialogTitle className="font-semibold text-lg tracking-tight">Cancel Message?</AlertDialogTitle>
+                            <AlertDialogDescription className="text-sm font-medium text-muted-foreground">
                                 This will permanently remove the scheduled message for <span className="font-bold text-foreground">{messageToDelete?.recipientContact}</span> from the queue.
                             </AlertDialogDescription>
                         </AlertDialogHeader>
-                        <AlertDialogFooter className="mt-4">
-                            <AlertDialogCancel className="rounded-xl font-bold">Keep Message</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleDelete} className="rounded-xl font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-xl">
+                        <AlertDialogFooter className="mt-4 flex gap-2">
+                            <AlertDialogCancel className="rounded-xl font-bold border-border active:scale-[0.97]">Keep Message</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDelete} className="rounded-xl font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm active:scale-[0.97]">
                                 Cancel Message
                             </AlertDialogAction>
                         </AlertDialogFooter>
@@ -546,16 +546,16 @@ export default function ScheduledMessagesPage() {
 
                 {/* Send Message Now AlertDialog */}
                 <AlertDialog open={!!messageToSendNow} onOpenChange={(o) => !o && setMessageToSendNow(null)}>
-                    <AlertDialogContent className="rounded-[2rem]">
+                    <AlertDialogContent className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl p-6">
                         <AlertDialogHeader>
-                            <AlertDialogTitle className="font-semibold text-xl tracking-tight">Dispatch Message Now?</AlertDialogTitle>
-                            <AlertDialogDescription className="text-sm font-medium">
+                            <AlertDialogTitle className="font-semibold text-lg tracking-tight">Dispatch Message Now?</AlertDialogTitle>
+                            <AlertDialogDescription className="text-sm font-medium text-muted-foreground">
                                 Are you sure you want to override the schedule and immediately send the message to <span className="font-bold text-foreground">{messageToSendNow?.recipientContact}</span>?
                             </AlertDialogDescription>
                         </AlertDialogHeader>
-                        <AlertDialogFooter className="mt-4">
-                            <AlertDialogCancel className="rounded-xl font-bold">Keep Scheduled</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleSendNow} className="rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-xl">
+                        <AlertDialogFooter className="mt-4 flex gap-2">
+                            <AlertDialogCancel className="rounded-xl font-bold border-border active:scale-[0.97]">Keep Scheduled</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleSendNow} className="rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm active:scale-[0.97]">
                                 Send Message Now
                             </AlertDialogAction>
                         </AlertDialogFooter>

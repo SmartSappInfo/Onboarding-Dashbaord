@@ -17,7 +17,8 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { 
   Sparkles, Trash2, ArrowLeft, Wand2, RefreshCw, Save, 
   Layers, Lock, Unlock, Eye, EyeOff, Copy, ZoomIn, ZoomOut, Move,
@@ -2243,31 +2244,37 @@ export default function ThumbnailDesigner({
       )}
       {/* Direct Publishing & Scheduling Dialog */}
       <Dialog open={isPublishDialogOpen} onOpenChange={setIsPublishDialogOpen}>
-        <DialogContent className="bg-slate-900 border border-slate-800 text-slate-100 max-w-md rounded-2xl p-6">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-black uppercase tracking-wider text-slate-200">
-              Direct Publishing Portal
-            </DialogTitle>
+        <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+          <DialogHeader demarcated className="px-6 py-3.5 sm:py-4">
+            <div className="flex items-center gap-2">
+              <DialogTitle className="text-base sm:text-lg font-bold">
+                Direct Publishing Portal
+              </DialogTitle>
+              <CardInfoTooltip text="Publish thumbnail directly to connected media platforms or schedule for a specific date and time." />
+            </div>
+            <DialogDescription className="sr-only">
+              Publish or schedule thumbnail release on selected target platform.
+            </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 pt-2 text-left">
+          <div className="space-y-4 p-6 text-left">
             {/* 1. Destination Channel */}
             <div className="space-y-2">
-              <Label className="text-[10px] font-bold text-slate-400 uppercase">Target Platform</Label>
+              <Label className="text-[10px] font-bold text-muted-foreground uppercase">Target Platform</Label>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { id: 'youtube', label: 'YouTube' },
-                  { id: 'facebook', label: 'Facebook' },
-                  { id: 'linkedin', label: 'LinkedIn' }
+                  { id: 'youtube' as const, label: 'YouTube' },
+                  { id: 'facebook' as const, label: 'Facebook' },
+                  { id: 'linkedin' as const, label: 'LinkedIn' }
                 ].map(ch => (
                   <button
                     key={ch.id}
-                    onClick={() => setSelectedPublishChannel(ch.id as any)}
+                    onClick={() => setSelectedPublishChannel(ch.id)}
                     className={cn(
                       "py-2 text-xs font-bold rounded-xl border transition-all active:scale-[0.97]",
                       selectedPublishChannel === ch.id
-                        ? "bg-violet-600/10 border-violet-500 text-violet-400 font-extrabold"
-                        : "bg-slate-950 border-slate-855 text-slate-400 hover:border-slate-700"
+                        ? "bg-primary/10 border-primary text-primary font-extrabold"
+                        : "bg-muted/40 border-border/80 text-muted-foreground hover:bg-muted/60"
                     )}
                   >
                     {ch.label}
@@ -2278,12 +2285,12 @@ export default function ThumbnailDesigner({
 
             {/* 2. Target Video Binding */}
             <div className="space-y-2">
-              <Label className="text-[10px] font-bold text-slate-400 uppercase">Select Target Video / Post</Label>
+              <Label className="text-[10px] font-bold text-muted-foreground uppercase">Select Target Video / Post</Label>
               <Select value={targetVideoId} onValueChange={setTargetVideoId}>
-                <SelectTrigger className="bg-slate-950 border-slate-855 text-xs rounded-xl h-10 text-slate-200">
+                <SelectTrigger className="bg-background border-border text-xs rounded-xl h-10 text-foreground">
                   <SelectValue placeholder="Choose draft to update..." />
                 </SelectTrigger>
-                <SelectContent className="bg-slate-900 border-slate-850 text-slate-100">
+                <SelectContent className="bg-popover border-border text-popover-foreground">
                   <SelectItem value="v-1" className="text-xs">
                     I Built a SaaS to $10K MRR in 30 Days (Draft)
                   </SelectItem>
@@ -2296,20 +2303,20 @@ export default function ThumbnailDesigner({
 
             {/* 3. Publishing Mode */}
             <div className="space-y-2">
-              <Label className="text-[10px] font-bold text-slate-400 uppercase">Publish Mode</Label>
+              <Label className="text-[10px] font-bold text-muted-foreground uppercase">Publish Mode</Label>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { id: 'immediate', label: 'Publish Now' },
-                  { id: 'schedule', label: 'Schedule Post' }
+                  { id: 'immediate' as const, label: 'Publish Now' },
+                  { id: 'schedule' as const, label: 'Schedule Post' }
                 ].map(mode => (
                   <button
                     key={mode.id}
-                    onClick={() => setPublishMode(mode.id as any)}
+                    onClick={() => setPublishMode(mode.id)}
                     className={cn(
                       "py-2 text-xs font-bold rounded-xl border transition-all active:scale-[0.97]",
                       publishMode === mode.id
-                        ? "bg-violet-600/10 border-violet-500 text-violet-400 font-extrabold"
-                        : "bg-slate-950 border-slate-855 text-slate-400 hover:border-slate-700"
+                        ? "bg-primary/10 border-primary text-primary font-extrabold"
+                        : "bg-muted/40 border-border/80 text-muted-foreground hover:bg-muted/60"
                     )}
                   >
                     {mode.label}
@@ -2320,62 +2327,62 @@ export default function ThumbnailDesigner({
 
             {/* 4. Scheduling Inputs */}
             {publishMode === 'schedule' && (
-              <div className="grid grid-cols-2 gap-2 bg-slate-950/50 p-3 rounded-xl border border-slate-855">
+              <div className="grid grid-cols-2 gap-2 bg-muted/40 p-3 rounded-xl border border-border/80">
                 <div className="space-y-1">
-                  <Label className="text-[8px] font-bold text-slate-500 uppercase">Release Date</Label>
+                  <Label className="text-[8px] font-bold text-muted-foreground uppercase">Release Date</Label>
                   <input
                     type="date"
                     value={scheduleDate}
                     onChange={(e) => setScheduleDate(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 text-xs rounded-lg p-2 text-slate-200 outline-none"
+                    className="w-full bg-background border border-border text-xs rounded-lg p-2 text-foreground outline-none"
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[8px] font-bold text-slate-500 uppercase">Release Time</Label>
+                  <Label className="text-[8px] font-bold text-muted-foreground uppercase">Release Time</Label>
                   <input
                     type="time"
                     value={scheduleTime}
                     onChange={(e) => setScheduleTime(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 text-xs rounded-lg p-2 text-slate-200 outline-none"
+                    className="w-full bg-background border border-border text-xs rounded-lg p-2 text-foreground outline-none"
                   />
                 </div>
               </div>
             )}
 
             {/* 5. Health Check Warning */}
-            <div className="bg-slate-950 p-3 border border-slate-850 rounded-xl flex items-center justify-between">
+            <div className="bg-muted/40 p-3 border border-border/80 rounded-xl flex items-center justify-between">
               <div className="flex flex-col">
-                <span className="text-[9px] font-black text-slate-400 uppercase">CTR Quality Score</span>
-                <span className="text-[8px] text-slate-500 font-semibold">Recommended benchmark: &gt;75%</span>
+                <span className="text-[9px] font-black text-muted-foreground uppercase">CTR Quality Score</span>
+                <span className="text-[8px] text-muted-foreground/80 font-semibold">Recommended benchmark: &gt;75%</span>
               </div>
               <span className={cn(
                 "text-[10px] font-black px-2 py-0.5 rounded-full shrink-0",
-                ctrScore >= 75 ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400"
+                ctrScore >= 75 ? "bg-emerald-500/10 text-emerald-500" : "bg-amber-500/10 text-amber-500"
               )}>
                 {ctrScore}/100 {ctrScore >= 75 ? 'PASSED' : 'LOW CTR'}
               </span>
             </div>
+          </div>
 
-            {/* Action buttons */}
-            <div className="flex gap-2 pt-2">
-              <Button
-                onClick={() => setIsPublishDialogOpen(false)}
-                variant="ghost"
-                className="flex-1 bg-slate-800 hover:bg-slate-700 active:scale-[0.97] rounded-xl text-xs font-bold text-slate-300"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleConfirmPublish}
-                disabled={isPublishingDesign || !targetVideoId}
-                className="flex-1 bg-violet-600 hover:bg-violet-500 active:scale-[0.97] rounded-xl text-xs font-bold"
-              >
-                {isPublishingDesign ? (
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1.5" />
-                ) : null}
-                {publishMode === 'immediate' ? 'Publish Now' : 'Schedule'}
-              </Button>
-            </div>
+          {/* Demarcated Footer */}
+          <div className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
+            <Button
+              onClick={() => setIsPublishDialogOpen(false)}
+              variant="outline"
+              className="h-10 rounded-xl text-xs font-bold active:scale-[0.97]"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmPublish}
+              disabled={isPublishingDesign || !targetVideoId}
+              className="h-10 px-5 active:scale-[0.97] rounded-xl text-xs font-bold"
+            >
+              {isPublishingDesign ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1.5" />
+              ) : null}
+              {publishMode === 'immediate' ? 'Publish Now' : 'Schedule'}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

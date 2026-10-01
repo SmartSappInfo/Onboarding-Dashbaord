@@ -20,7 +20,8 @@ import type {
   PublishingChannel,
 } from '@/lib/creative/creative-types';
 import { createCreativeExperimentAction } from '@/app/actions/creative-experiment-actions';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -85,42 +86,51 @@ export function ExperimentBuilderModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg bg-slate-950 border-slate-800 text-slate-100 p-6 rounded-3xl">
-        <DialogHeader>
-          <DialogTitle className="text-lg font-black flex items-center gap-2 text-white">
-            <FlaskConical className="w-5 h-5 text-emerald-400" /> Launch A/B Creative Experiment
-          </DialogTitle>
+      <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+        <DialogHeader demarcated className="px-6 py-3.5 sm:py-4 border-b border-border/80 bg-muted/20 flex flex-row items-center justify-between shrink-0 space-y-0 text-left">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <FlaskConical className="w-4 h-4" />
+            </div>
+            <DialogTitle className="text-base sm:text-lg font-semibold tracking-tight text-foreground flex items-center gap-1.5">
+              Launch A/B Experiment
+              <CardInfoTooltip text="Provides hypothesis configuration, target channel selection, and automated deep-clone creation of Variant B from current canvas." />
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Provides hypothesis configuration, target channel selection, and automated deep-clone creation of Variant B from current canvas.
+            </DialogDescription>
+          </div>
         </DialogHeader>
 
-        <div className="space-y-4 pt-2">
+        <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
           <div className="space-y-1.5">
-            <Label className="text-xs font-bold text-slate-300">Experiment Name</Label>
+            <Label className="text-xs font-bold text-foreground">Experiment Name</Label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Masterclass: Problem vs. Curiosity Angle"
-              className="h-10 bg-slate-900 border-slate-800 text-xs font-semibold text-white rounded-xl"
+              className="h-10 bg-background border-border/80 text-xs font-medium text-foreground rounded-xl"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-bold text-slate-300">Test Hypothesis</Label>
+            <Label className="text-xs font-bold text-foreground">Test Hypothesis</Label>
             <Input
               value={hypothesis}
               onChange={(e) => setHypothesis(e.target.value)}
               placeholder="What do you expect to improve?"
-              className="h-10 bg-slate-900 border-slate-800 text-xs font-semibold text-white rounded-xl"
+              className="h-10 bg-background border-border/80 text-xs font-medium text-foreground rounded-xl"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-slate-300">Target Channel</Label>
+              <Label className="text-xs font-bold text-foreground">Target Channel</Label>
               <Select value={channel} onValueChange={(val: PublishingChannel) => setChannel(val)}>
-                <SelectTrigger className="h-10 bg-slate-900 border-slate-800 text-xs font-bold text-white rounded-xl">
+                <SelectTrigger className="h-10 bg-background border-border/80 text-xs font-medium text-foreground rounded-xl">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                <SelectContent className="bg-popover border-border/80 text-foreground">
                   <SelectItem value="youtube">YouTube (Video Cover)</SelectItem>
                   <SelectItem value="facebook">Facebook (Ad / Post)</SelectItem>
                   <SelectItem value="instagram">Instagram (Feed / Story)</SelectItem>
@@ -131,53 +141,53 @@ export function ExperimentBuilderModal({
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-slate-300">Variant B Label</Label>
+              <Label className="text-xs font-bold text-foreground">Variant B Label</Label>
               <Input
                 value={testVariantName}
                 onChange={(e) => setTestVariantName(e.target.value)}
                 placeholder="e.g. Red Accent + Question Hook"
-                className="h-10 bg-slate-900 border-slate-800 text-xs font-semibold text-white rounded-xl"
+                className="h-10 bg-background border-border/80 text-xs font-medium text-foreground rounded-xl"
               />
             </div>
           </div>
 
           {/* Traffic Allocation Indicator */}
-          <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2 text-slate-300">
-              <Split className="w-4 h-4 text-blue-400" />
+          <div className="p-3.5 rounded-xl bg-muted/40 border border-border/80 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2 text-muted-foreground font-medium">
+              <Split className="w-4 h-4 text-primary" />
               <span>Traffic Distribution</span>
             </div>
-            <div className="font-mono text-emerald-400 font-bold">
+            <div className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">
               50% Control / 50% Variant B
             </div>
           </div>
-
-          {/* Actions */}
-          <div className="pt-2 flex justify-end gap-2 border-t border-slate-850">
-            <Button
-              onClick={() => onOpenChange(false)}
-              variant="outline"
-              className="h-10 text-xs font-bold border-slate-800 bg-slate-900 rounded-xl"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleLaunchExperiment}
-              disabled={isPending || !name.trim() || !testVariantName.trim()}
-              className="h-10 px-5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-xs rounded-xl shadow-lg active:scale-[0.97]"
-            >
-              {isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Launching...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-3.5 h-3.5 mr-1.5" /> Launch Experiment
-                </>
-              )}
-            </Button>
-          </div>
         </div>
+
+        {/* Actions Footer */}
+        <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5 shrink-0">
+          <Button
+            onClick={() => onOpenChange(false)}
+            variant="outline"
+            className="h-10 text-xs font-medium rounded-xl active:scale-[0.97]"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleLaunchExperiment}
+            disabled={isPending || !name.trim() || !testVariantName.trim()}
+            className="h-10 px-5 font-medium text-xs rounded-xl shadow-sm active:scale-[0.97]"
+          >
+            {isPending ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Launching...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-3.5 h-3.5 mr-1.5" /> Launch Experiment
+              </>
+            )}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

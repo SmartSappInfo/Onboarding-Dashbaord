@@ -6,7 +6,7 @@ import type { TemplateCategory } from '@/lib/types';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Users, Mail, Smartphone, MessageCircle, PlusCircle, Pencil, Filter, Sparkles } from 'lucide-react';
+import { Users, Mail, Smartphone, MessageCircle, PlusCircle, Pencil, Filter, Sparkles, Eye } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { TagInput } from '@/components/ui/tag-input';
@@ -101,12 +101,12 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                 scoringEnabled,
                 maxScore,
                 userPromptInstructions,
-                autoSave: true,
+                autoSave: false,
             });
 
             if (res.success && res.output) {
                 setAiOutput(res.output);
-                setSavedTemplateIds(res.savedTemplateIds);
+                setSavedTemplateIds(res.savedTemplateIds || {});
             } else {
                 toast({
                     variant: 'destructive',
@@ -139,13 +139,23 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
         setValue(`${prefix}EmailTemplateId`, ids.emailTemplateId || '', { shouldDirty: true });
         setValue(`${prefix}SmsTemplateId`, ids.smsTemplateId || '', { shouldDirty: true });
         setValue(`${prefix}WhatsappTemplateId`, ids.whatsappTemplateId || '', { shouldDirty: true });
+        setSavedTemplateIds(ids);
 
         const nextChannels: ('email' | 'sms' | 'whatsapp')[] = [];
         if (ids.emailTemplateId) nextChannels.push('email');
         if (ids.smsTemplateId) nextChannels.push('sms');
         if (ids.whatsappTemplateId) nextChannels.push('whatsapp');
         if (nextChannels.length > 0) {
-            setActiveChannels(nextChannels);
+            setValue(`${prefix}Channels`, nextChannels, { shouldDirty: true });
+            if (nextChannels.includes('email') && nextChannels.includes('sms') && nextChannels.includes('whatsapp')) {
+                setValue(`${prefix}Channel`, 'all', { shouldDirty: true });
+            } else if (nextChannels.includes('email') && nextChannels.includes('sms')) {
+                setValue(`${prefix}Channel`, 'both', { shouldDirty: true });
+            } else if (nextChannels.length === 1) {
+                setValue(`${prefix}Channel`, nextChannels[0], { shouldDirty: true });
+            } else {
+                setValue(`${prefix}Channel`, nextChannels.includes('whatsapp') ? 'all' : 'both', { shouldDirty: true });
+            }
         }
     };
 
@@ -255,18 +265,32 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                                             </div>
                                         </div>
 
-                                        {/* AI Generate Button */}
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => handleGenerateAi()}
-                                            disabled={isGeneratingAi}
-                                            className="min-h-[44px] sm:min-h-[36px] h-auto sm:h-9 px-3.5 text-xs font-semibold gap-1.5 text-primary border-primary/30 hover:bg-primary/5 rounded-xl active:scale-[0.97] transition-all shadow-xs shrink-0 self-start sm:self-auto"
-                                        >
-                                            <Sparkles className="h-3.5 w-3.5 animate-pulse text-primary shrink-0" />
-                                            <span>AI Generate Stakeholder Alerts</span>
-                                        </Button>
+                                        {/* AI Generate & Review Draft Buttons */}
+                                        <div className="flex items-center gap-2">
+                                            {aiOutput && (
+                                                <Button
+                                                    type="button"
+                                                    variant="secondary"
+                                                    size="sm"
+                                                    onClick={() => setIsAiModalOpen(true)}
+                                                    className="min-h-[44px] sm:min-h-[36px] h-auto sm:h-9 px-3.5 text-xs font-semibold gap-1.5 text-foreground border border-border/80 hover:bg-muted/80 rounded-xl active:scale-[0.97] transition-all shadow-xs shrink-0 self-start sm:self-auto"
+                                                >
+                                                    <Eye className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                                    <span>Review AI Draft</span>
+                                                </Button>
+                                            )}
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => handleGenerateAi()}
+                                                disabled={isGeneratingAi}
+                                                className="min-h-[44px] sm:min-h-[36px] h-auto sm:h-9 px-3.5 text-xs font-semibold gap-1.5 text-primary border-primary/30 hover:bg-primary/5 rounded-xl active:scale-[0.97] transition-all shadow-xs shrink-0 self-start sm:self-auto"
+                                            >
+                                                <Sparkles className="h-3.5 w-3.5 animate-pulse text-primary shrink-0" />
+                                                <span>AI Generate Stakeholder Alerts</span>
+                                            </Button>
+                                        </div>
                                     </div>
 
                                     {/* Active Channel Template Selectors */}
@@ -434,6 +458,8 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                 onOpenChange={setIsAiModalOpen}
                 title="AI Generated Stakeholder Alerts"
                 targetDescription="Auto-generated alert templates for campus-level leadership and designated external emails."
+                surveyTitle={watch('title') || watch('internalName') || 'Survey'}
+                target="external_stakeholder_alert"
                 generatedOutput={aiOutput}
                 savedTemplateIds={savedTemplateIds}
                 isLoading={isGeneratingAi}

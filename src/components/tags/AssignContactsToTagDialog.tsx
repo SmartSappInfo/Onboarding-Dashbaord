@@ -18,6 +18,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Label } from '@/components/ui/label';
 import { Search, X, CheckCircle2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -132,15 +133,19 @@ export function AssignContactsToTagDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="rounded-2xl max-w-lg" aria-describedby={undefined}>
-        <DialogHeader>
-          <DialogTitle className="font-black uppercase tracking-tight">Assign Tag</DialogTitle>
-          <DialogDescription>
-            Applying <span className="font-bold" style={{ color: tag.color }}>{tag.name}</span> to contacts.
+      <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+        <DialogHeader demarcated className="px-6 py-3.5 sm:py-4">
+          <div className="flex items-center gap-2">
+            <DialogTitle className="font-bold text-base tracking-tight">Assign Tag</DialogTitle>
+            <CardInfoTooltip text={`Applying "${tag.name}" to contacts.`} />
+          </div>
+          <DialogDescription className="sr-only">
+            Applying {tag.name} to contacts.
           </DialogDescription>
         </DialogHeader>
 
-        {result ? (
+        <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+          {result ? (
           <div className="py-8 text-center space-y-4">
             {result.success ? (
               <>
@@ -268,13 +273,14 @@ export function AssignContactsToTagDialog({
             )}
           </div>
         )}
+        </div>
 
-        <DialogFooter>
+        <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
           <Button
             variant="ghost"
             onClick={handleClose}
             disabled={isProcessing}
-            className="rounded-xl font-bold"
+            className="rounded-xl font-bold min-h-[44px] active:scale-[0.97]"
           >
             {result ? 'Close' : 'Cancel'}
           </Button>
@@ -282,7 +288,7 @@ export function AssignContactsToTagDialog({
             <Button
               onClick={handleExecute}
               disabled={isProcessing || selectedContactIds.length === 0}
-              className="rounded-xl font-bold"
+              className="rounded-xl font-bold min-h-[44px] active:scale-[0.97]"
             >
               {isProcessing ? 'Processing…' : `Assign to ${selectedContactIds.length} Contacts`}
             </Button>

@@ -66,6 +66,7 @@ import type { PublicSurveyResponseInput } from '@/lib/survey-actions';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { sendMessage } from '@/lib/messaging-engine';
 import { triggerInternalNotification } from '@/lib/notification-engine';
@@ -3047,69 +3048,76 @@ export default function SurveyForm({
             </div>
 
             <Dialog open={showMissingFieldsModal} onOpenChange={setShowMissingFieldsModal}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <div className="mx-auto bg-destructive/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
-                            <AlertCircle className="h-6 w-6 text-destructive" />
+                <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+                    <DialogHeader demarcated className="px-6 py-3.5 sm:py-4">
+                        <div className="flex items-center gap-2">
+                            <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+                            <DialogTitle className="font-bold text-base tracking-tight">Required Questions Missing</DialogTitle>
+                            <CardInfoTooltip text="Please answer the required questions highlighted before submitting." />
                         </div>
-                        <DialogTitle className="text-center text-xl font-bold">Required Questions Missing</DialogTitle>
-                        <DialogDescription className="text-center pt-2 text-sm font-medium">
-                            Please answer the following questions before submitting:
+                        <DialogDescription className="sr-only">
+                            Please answer the following questions before submitting.
                         </DialogDescription>
                     </DialogHeader>
-                    <ScrollArea className="max-h-[30vh] bg-slate-50 dark:bg-slate-950/50 border border-slate-100 dark:border-slate-800 rounded-2xl my-4">
-                        <ul className="p-4 space-y-3">
-                            {missingFields.map((field, idx) => (
-                                <li key={idx} className="flex items-center gap-3 text-sm font-semibold text-slate-800 dark:text-slate-200">
-                                    <div className="h-2 w-2 rounded-full bg-destructive shrink-0" />
-                                    <span>{field.label}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    </ScrollArea>
-                    <DialogFooter>
-                        <Button onClick={handleOkMissingFields} className="w-full font-bold h-12 rounded-xl text-base">Go Fix These</Button>
+                    <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+                        <p className="text-xs text-muted-foreground font-medium">
+                            Please answer the following questions before submitting:
+                        </p>
+                        <ScrollArea className="max-h-[30vh] bg-muted/30 border border-border/60 rounded-xl">
+                            <ul className="p-4 space-y-3">
+                                {missingFields.map((field, idx) => (
+                                    <li key={idx} className="flex items-center gap-3 text-sm font-semibold text-foreground">
+                                        <div className="h-2 w-2 rounded-full bg-destructive shrink-0" />
+                                        <span>{field.label}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </ScrollArea>
+                    </div>
+                    <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
+                        <Button onClick={handleOkMissingFields} className="w-full font-bold min-h-[44px] rounded-xl text-sm active:scale-[0.97]">
+                            Go Fix These
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
             <Dialog open={isStatusModalOpen} onOpenChange={(open) => { if (!open && !isSubmitting) handleAcknowledgeSuccess(); }}>
-                <DialogContent className="sm:max-w-md rounded-[2.5rem] overflow-hidden p-0 border-none shadow-2xl">
-                    <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
-                                <Zap className="h-6 w-6" />
+                <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+                    <DialogHeader demarcated className="px-6 py-3.5 sm:py-4">
+                        <div className="flex items-center gap-2.5">
+                            <div className="p-2 bg-primary/10 text-primary rounded-xl shrink-0">
+                                <Zap className="h-4 w-4" />
                             </div>
-                            <div>
-                                <DialogTitle className="text-xl font-black uppercase tracking-tight">Submission Processing</DialogTitle>
-                                <DialogDescription className="text-xs font-bold uppercase tracking-widest">Executing post-submission protocols...</DialogDescription>
-                            </div>
+                            <DialogTitle className="font-bold text-base tracking-tight">Submission Processing</DialogTitle>
+                            <CardInfoTooltip text="Executing post-submission automated workflows and synchronizations." />
+                            <DialogDescription className="sr-only">Executing post-submission protocols.</DialogDescription>
                         </div>
                     </DialogHeader>
-                    <div className="p-8 space-y-6">
+                    <div className="p-6 space-y-5 max-h-[65vh] overflow-y-auto">
                         {automationStatuses.map((task) => (
                             <div key={task.id} className="flex items-center justify-between group">
-                                <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-3">
                                     <div className={cn(
                                         "p-2 rounded-xl transition-all",
                                         task.status === 'success' ? "bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" :
                                         task.status === 'failed' ? "bg-rose-100 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400" : 
-                                        task.status === 'skipped' ? "bg-byte-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400" :
+                                        task.status === 'skipped' ? "bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400" :
                                         "bg-muted text-muted-foreground opacity-40"
                                     )}>
                                         <task.icon className="h-4 w-4" />
                                     </div>
                                     <div>
-                                        <p className="text-sm font-black text-foreground uppercase tracking-tight text-left">{task.label}</p>
+                                        <p className="text-xs font-bold text-foreground tracking-tight text-left">{task.label}</p>
                                         {task.error && <p className="text-[9px] font-bold text-rose-600 uppercase mt-0.5">{task.error}</p>}
                                         {task.status === 'skipped' && <p className="text-[9px] font-bold text-amber-600 uppercase mt-0.5">Not applicable</p>}
                                     </div>
                                 </div>
                                 <div className="shrink-0">
                                     {task.status === 'pending' ? (
-                                        <Loader2 className="h-5 w-5 animate-spin text-primary opacity-40" />
+                                        <Loader2 className="h-4 w-4 animate-spin text-primary opacity-40" />
                                     ) : task.status === 'success' ? (
-                                        <CheckCircle2 className="h-5 w-5 text-emerald-500 animate-in zoom-in duration-300" />
+                                        <CheckCircle2 className="h-4 w-4 text-emerald-500 animate-in zoom-in duration-300" />
                                     ) : task.status === 'skipped' ? (
                                         <div className="p-1 rounded-full border border-amber-200 dark:border-amber-700">
                                             <Info className="h-3 w-3 text-amber-500" />
@@ -3130,16 +3138,16 @@ export default function SurveyForm({
                             </div>
                         ))}
                     </div>
-                    <DialogFooter className="p-6 bg-muted/30 border-t">
+                    <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
                         <Button 
                             onClick={handleAcknowledgeSuccess} 
                             disabled={isSubmitting}
-                            className="w-full h-14 rounded-2xl font-black text-lg uppercase tracking-[0.1em] shadow-xl active:scale-95 transition-all"
+                            className="w-full min-h-[44px] rounded-xl font-bold text-sm tracking-wide shadow-md active:scale-[0.97] transition-all bg-primary text-primary-foreground hover:bg-primary/90"
                         >
                             {isSubmitting ? (
-                                <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Working...</>
+                                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing…</>
                             ) : (
-                                <><Check className="mr-2 h-5 w-5" /> Continue</>
+                                <><Check className="mr-2 h-4 w-4" /> Continue</>
                             )}
                         </Button>
                     </DialogFooter>

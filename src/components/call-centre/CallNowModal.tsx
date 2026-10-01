@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -328,14 +329,14 @@ export function CallNowModal({ isOpen, onClose, params }: CallNowModalProps) {
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent
         className={cn(
-          'p-0 overflow-hidden flex flex-col border border-border/80 shadow-2xl gap-0 transition-all duration-300 font-figtree',
+          'p-0 overflow-hidden flex flex-col border border-border/80 shadow-2xl gap-0 transition-all duration-300 font-figtree sm:rounded-2xl',
           step === 'select'
-            ? 'w-full max-w-5xl h-[92dvh] sm:h-[85vh] sm:rounded-3xl'
-            : 'w-full max-w-[98vw] h-[98dvh] sm:h-[96vh] sm:rounded-2xl'
+            ? 'w-full max-w-5xl h-[92dvh] sm:h-[85vh]'
+            : 'w-full max-w-[98vw] h-[98dvh] sm:h-[96vh]'
         )}
       >
         {/* Header - Single authoritative close button is automatically provided by DialogContent at top-4 right-4 */}
-        <DialogHeader className="px-4 sm:px-6 py-3.5 pr-14 border-b bg-background/95 backdrop-blur-sm z-10 shrink-0 flex flex-row items-center justify-between min-h-[64px]">
+        <DialogHeader demarcated className="px-4 sm:px-6 py-3.5 pr-14 border-b bg-muted/20 z-10 shrink-0 flex flex-row items-center justify-between min-h-[56px]">
           <div className="flex items-center gap-3 min-w-0 flex-1">
             {step === 'calling' && (
               <Button
@@ -352,12 +353,11 @@ export function CallNowModal({ isOpen, onClose, params }: CallNowModalProps) {
 
             <div className="min-w-0 flex-1">
               {step === 'select' ? (
-                <div>
-                  <DialogTitle className="flex items-center gap-2 text-base font-bold">
-                    <Phone className="h-5 w-5 text-indigo-500 shrink-0" />
-                    <span>Choose Call Script</span>
-                  </DialogTitle>
-                  <DialogDescription className="text-xs text-muted-foreground mt-0.5 truncate">
+                <div className="flex items-center gap-2">
+                  <Phone className="h-5 w-5 text-primary shrink-0" />
+                  <DialogTitle className="text-base font-bold">Choose Call Script</DialogTitle>
+                  <CardInfoTooltip text={`Pick a script to launch the outbound prompter with ${params.contactName || 'contact'}.`} />
+                  <DialogDescription className="sr-only">
                     Pick a script to launch the outbound prompter with {params.contactName || 'contact'}.
                   </DialogDescription>
                 </div>

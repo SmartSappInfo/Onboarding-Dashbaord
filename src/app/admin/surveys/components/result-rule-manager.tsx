@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Trash2, Plus, GripVertical, Mail, Smartphone, Pencil, PlusCircle, ArrowUp, Tag, Zap, GitMerge, Sparkles, MessageCircle } from 'lucide-react';
+import { Trash2, Plus, GripVertical, Mail, Smartphone, Pencil, PlusCircle, ArrowUp, Tag, Zap, GitMerge, Sparkles, MessageCircle, Eye } from 'lucide-react';
 import type { SurveyResultPage, SurveyElement, SurveyQuestion } from '@/lib/types';
 import { PipelineStageSelector } from './PipelineStageSelector';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
@@ -98,12 +98,12 @@ function SortableRuleItem({
                 scoringEnabled,
                 maxScore: surveyMaxScore,
                 userPromptInstructions,
-                autoSave: true,
+                autoSave: false,
             });
 
             if (res.success && res.output) {
                 setAiOutput(res.output);
-                setSavedTemplateIds(res.savedTemplateIds);
+                setSavedTemplateIds(res.savedTemplateIds || {});
             } else {
                 toast({
                     variant: 'destructive',
@@ -137,6 +137,7 @@ function SortableRuleItem({
         setValue(`resultRules.${index}.emailTemplateId`, ids.emailTemplateId || '', { shouldDirty: true });
         setValue(`resultRules.${index}.smsTemplateId`, ids.smsTemplateId || '', { shouldDirty: true });
         setValue(`resultRules.${index}.whatsappTemplateId`, ids.whatsappTemplateId || '', { shouldDirty: true });
+        setSavedTemplateIds(ids);
     };
 
     const style = {
@@ -387,17 +388,31 @@ function SortableRuleItem({
                                     </Label>
                                     <p className="text-[10px] text-muted-foreground font-semibold">Tailored messages sent to respondents qualifying for this specific outcome tier</p>
                                 </div>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleGenerateAiForRule()}
-                                    disabled={isGeneratingAi}
-                                    className="min-h-[44px] sm:min-h-[32px] h-auto sm:h-8 px-3 text-[11px] font-bold gap-1.5 text-primary border-primary/30 hover:bg-primary/5 rounded-xl active:scale-[0.97] transition-all shadow-sm"
-                                >
-                                    <Sparkles className="h-3.5 w-3.5 animate-pulse text-primary" />
-                                    AI Generate Outcome Copy
-                                </Button>
+                                <div className="flex items-center gap-2">
+                                    {aiOutput && (
+                                        <Button
+                                            type="button"
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => setIsAiModalOpen(true)}
+                                            className="min-h-[44px] sm:min-h-[32px] h-auto sm:h-8 px-3 text-[11px] font-bold gap-1.5 text-foreground border border-border/80 hover:bg-muted/80 rounded-xl active:scale-[0.97] transition-all shadow-sm"
+                                        >
+                                            <Eye className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                            <span>Review AI Draft</span>
+                                        </Button>
+                                    )}
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleGenerateAiForRule()}
+                                        disabled={isGeneratingAi}
+                                        className="min-h-[44px] sm:min-h-[32px] h-auto sm:h-8 px-3 text-[11px] font-bold gap-1.5 text-primary border-primary/30 hover:bg-primary/5 rounded-xl active:scale-[0.97] transition-all shadow-sm"
+                                    >
+                                        <Sparkles className="h-3.5 w-3.5 animate-pulse text-primary shrink-0" />
+                                        AI Generate Outcome Copy
+                                    </Button>
+                                </div>
                             </div>
 
                             {/* Email Automation */}
@@ -635,6 +650,8 @@ function SortableRuleItem({
                 onOpenChange={setIsAiModalOpen}
                 title={`AI Generated Outcome Copy: ${watch(`resultRules.${index}.label`) || 'Outcome'}`}
                 targetDescription="Auto-generated respondent messages tailored to this outcome score tier and result page."
+                surveyTitle={watch('title') || 'Survey'}
+                target="respondent_outcome"
                 generatedOutput={aiOutput}
                 savedTemplateIds={savedTemplateIds}
                 isLoading={isGeneratingAi}

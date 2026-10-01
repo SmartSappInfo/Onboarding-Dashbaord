@@ -850,7 +850,7 @@ export default function MessageTemplatesPage() {
             </AnimatePresence>
 
             <Dialog open={isAiModalOpen} onOpenChange={setIsAiModalOpen}>
-                <DialogContent className="sm:max-w-2xl rounded-[2.5rem] p-6 overflow-hidden border-none shadow-2xl bg-card">
+                <DialogContent className="sm:max-w-2xl sm:rounded-2xl p-0 overflow-hidden border border-border/80 shadow-2xl bg-card text-card-foreground">
                     <AiAssistantModalHeader 
                         title="AI Template Generator" 
                         description="Describe your message and the AI will draft a complete template with dynamic tags." 
@@ -884,7 +884,7 @@ export default function MessageTemplatesPage() {
                                 value={aiPrompt}
                                 onChange={e => setAiPrompt(e.target.value)}
                                 placeholder="e.g. Create a formal email inviting parents to a meeting. Mention that we'll discuss the new security module."
- className="min-h-[180px] rounded-[2rem] bg-muted/20 border-none shadow-inner p-6 leading-relaxed text-lg"
+                                className="min-h-[160px] rounded-xl bg-muted/20 border border-border/80 shadow-inner p-4 leading-relaxed text-sm"
                                 autoFocus
                             />
                         </div>
@@ -903,14 +903,14 @@ export default function MessageTemplatesPage() {
                             </div>
                         </div>
                     </div>
- <DialogFooter className="bg-muted/30 p-6 border-t flex justify-between items-center sm:justify-between">
- <Button variant="ghost" onClick={() => setIsAiModalOpen(false)} disabled={isAiProcessing} className="font-bold rounded-xl h-12 px-8">Discard</Button>
+                    <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex justify-between items-center sm:justify-between">
+                        <Button variant="ghost" onClick={() => setIsAiModalOpen(false)} disabled={isAiProcessing} className="font-semibold rounded-xl h-10 px-6 active:scale-[0.97]">Discard</Button>
                         <RainbowButton 
                             onClick={handleAiArchitect} 
                             disabled={isAiProcessing || !aiPrompt.trim()}
- className="h-12 px-12 font-semibold shadow-2xl text-sm"
+                            className="h-10 px-8 font-semibold shadow-xl text-xs active:scale-[0.97]"
                         >
- {isAiProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                            {isAiProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
                             {isAiProcessing ? 'Generating…' : 'Generate Template'}
                         </RainbowButton>
                     </DialogFooter>

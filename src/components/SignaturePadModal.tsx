@@ -5,6 +5,7 @@ import SignatureCanvas from 'react-signature-canvas';
 import Webcam from 'react-webcam';
 import Cropper, { type Area } from 'react-easy-crop';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -257,15 +258,23 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
-            <DialogContent className="sm:max-w-xl max-h-[95vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[2.5rem] bg-card text-left">
-                <DialogHeader className="p-6 pb-2 shrink-0">
-                    <DialogTitle className="text-xl font-black uppercase tracking-tight text-center">
-                        Apply Your Signature
-                    </DialogTitle>
-                    <DialogDescription className={cn(
-                        "text-center text-[9px] font-bold uppercase tracking-widest",
-                        step === 'input' ? "text-destructive" : "text-muted-foreground"
-                    )}>
+            <DialogContent className="sm:max-w-xl max-h-[95vh] overflow-hidden flex flex-col p-0 border border-border/80 shadow-2xl sm:rounded-2xl bg-card text-card-foreground text-left">
+                <DialogHeader demarcated className="px-6 py-3.5 sm:py-4">
+                    <div className="flex items-center justify-between w-full pr-8">
+                        <div className="flex items-center gap-2">
+                            <DialogTitle className="text-base sm:text-lg font-bold">
+                                Apply Your Signature
+                            </DialogTitle>
+                            <CardInfoTooltip text={step === 'input' ? 'Choose only one format to sign: scan, draw, type, or upload.' : step === 'refine' ? 'Refine and adjust the frame for your signature.' : 'Verify and confirm your final signature result.'} />
+                        </div>
+                        <Badge variant="outline" className={cn(
+                            "text-[10px] font-bold uppercase tracking-wider py-0.5 px-2",
+                            step === 'input' ? "border-destructive/30 text-destructive bg-destructive/10" : "border-border text-muted-foreground"
+                        )}>
+                            {step === 'input' ? 'Format' : step === 'refine' ? 'Refine' : 'Verify'}
+                        </Badge>
+                    </div>
+                    <DialogDescription className="sr-only">
                         {step === 'input' ? 'Choose only one format to sign' : step === 'refine' ? 'Refine & Frame' : 'Verify Result'}
                     </DialogDescription>
                 </DialogHeader>
@@ -407,7 +416,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                     </div>
                                 </div>
 
-                                <div className="space-y-6 bg-muted/20 p-5 rounded-[2rem] border shadow-inner">
+                                <div className="space-y-6 bg-muted/20 p-5 rounded-2xl border border-border/80 shadow-inner">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                         <div className="space-y-3">
                                             <div className="flex justify-between items-center px-1">
@@ -481,7 +490,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                     </AnimatePresence>
                 </div>
 
-                <DialogFooter className="p-6 bg-muted/30 border-t shrink-0 flex flex-col sm:flex-row gap-3">
+                <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 shrink-0 flex flex-col sm:flex-row items-center gap-2.5">
                     {step === 'input' ? (
                         <>
                             {showClearButton && <Button variant="ghost" size="sm" onClick={handleClear} className="font-bold text-[10px] uppercase min-h-[44px] h-11 px-4 active:scale-[0.97]"><Eraser className="h-3.5 w-3.5 mr-1.5" /> Clear</Button>}
