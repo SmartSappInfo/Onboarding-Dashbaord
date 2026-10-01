@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
 import AiSurveyMessagingModal from './ai-survey-messaging-modal';
 import { generateSurveyMessagingTemplatesAction } from '@/lib/survey-ai-messaging-actions';
+import { resolveTerminologyFromWorkspace } from '@/lib/terminology';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import type { GenerateSurveyMessagingOutput } from '@/ai/schemas/survey-messaging-schemas';
 import type { SurveyQuestion, SurveyElement } from '@/lib/types';
@@ -26,9 +27,14 @@ import type { SurveyQuestion, SurveyElement } from '@/lib/types';
 export default function ExternalNotificationConfig({ prefix = "externalAlert", category = "surveys" }: { prefix?: string, category?: TemplateCategory }) {
     const { control, watch, setValue } = useFormContext();
     const { activeWorkspaceId } = useWorkspace();
-    const { activeOrganizationId } = useTenant();
+    const { activeOrganizationId, currentWorkspace } = useTenant();
     const { user } = useUser();
     const { toast } = useToast();
+
+    const terminology = React.useMemo(() => {
+        const res = resolveTerminologyFromWorkspace(currentWorkspace);
+        return { singular: res.singular, plural: res.plural };
+    }, [currentWorkspace]);
 
     const enabled = watch(`${prefix}sEnabled`);
     const rawChannel = watch(`${prefix}Channel`);
@@ -101,6 +107,7 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                 scoringEnabled,
                 maxScore,
                 userPromptInstructions,
+                terminology,
                 autoSave: false,
             });
 
@@ -457,7 +464,7 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                 open={isAiModalOpen}
                 onOpenChange={setIsAiModalOpen}
                 title="AI Generated Stakeholder Alerts"
-                targetDescription="Auto-generated alert templates for campus-level leadership and designated external emails."
+                targetDescription={`Auto-generated alert templates for ${terminology.singular.toLowerCase()}-level leadership and designated external emails.`}
                 surveyTitle={watch('title') || watch('internalName') || 'Survey'}
                 target="external_stakeholder_alert"
                 generatedOutput={aiOutput}
@@ -466,6 +473,7 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                 workspaceId={activeWorkspaceId || undefined}
                 organizationId={activeOrganizationId || undefined}
                 userId={user?.uid}
+                terminology={terminology}
                 onApply={handleApplyAiTemplates}
                 onRegenerate={handleGenerateAi}
                 onUpdateOutput={setAiOutput}

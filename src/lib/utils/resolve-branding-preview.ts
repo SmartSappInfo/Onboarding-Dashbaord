@@ -80,7 +80,21 @@ export function resolveBrandingPreview(
     }
   );
 
-  let processed = html
+  let processed = html;
+
+  // Resolve conditional handlebars blocks such as {{#if org_logo_url}}...{{else}}...{{/if}}
+  if (logo) {
+    processed = processed.replace(
+      /\{\{#if\s+org_logo_url\}\}([\s\S]*?)(?:\{\{else\}\}[\s\S]*?)?\{\{\/if\}\}/gi,
+      '$1'
+    );
+  } else {
+    processed = processed
+      .replace(/\{\{#if\s+org_logo_url\}\}[\s\S]*?\{\{else\}\}([\s\S]*?)\{\{\/if\}\}/gi, '$1')
+      .replace(/\{\{#if\s+org_logo_url\}\}[\s\S]*?\{\{\/if\}\}/gi, '');
+  }
+
+  processed = processed
     .replaceAll('{{org_name}}', orgName)
     .replaceAll('{{org_logo_url}}', logo)
     .replaceAll('{{org_email}}', emailAddr)

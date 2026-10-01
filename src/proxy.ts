@@ -76,9 +76,35 @@ export function proxy(request: NextRequest) {
       }
     }
 
-    // Anything that is not the control plane belongs to the client app. Redirect rather
-    // than 404 so a stray bookmark or shared link still lands somewhere useful.
-    if (!isBackofficePath) {
+    // Root of the backoffice surface takes operators directly to the control plane.
+    if (pathname === '/') {
+      const url = request.nextUrl.clone();
+      url.pathname = '/backoffice';
+      return NextResponse.redirect(url);
+    }
+
+    // Authentication and credential routes that must be served locally on the backoffice
+    // host so operators can mint host-scoped __session cookies and sign in.
+    const isBackofficeAuthPath =
+      pathname === '/login' ||
+      pathname.startsWith('/login/') ||
+      pathname === '/forgot-password' ||
+      pathname.startsWith('/forgot-password/') ||
+      pathname === '/force-password-reset' ||
+      pathname.startsWith('/force-password-reset/');
+
+    // If an operator visits /login without an explicit redirect destination, ensure post-login
+    // return lands on the control plane.
+    if (pathname === '/login' && !request.nextUrl.searchParams.has('redirect')) {
+      const url = request.nextUrl.clone();
+      url.searchParams.set('redirect', '/backoffice');
+      return NextResponse.redirect(url);
+    }
+
+    // Anything that is not the control plane or its authentication flow belongs to the
+    // client app. Redirect rather than 404 so a stray bookmark or shared link still lands
+    // somewhere useful on the tenant surface.
+    if (!isBackofficePath && !isBackofficeAuthPath) {
       const publicOrigin = process.env.PUBLIC_APP_ORIGIN;
       if (publicOrigin) {
         return NextResponse.redirect(`${publicOrigin}${pathname}${search}`);

@@ -21,6 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import { MessagingTemplateSelector } from './MessagingTemplateSelector';
 import AiSurveyMessagingModal from '@/app/admin/surveys/components/ai-survey-messaging-modal';
 import { generateSurveyMessagingTemplatesAction } from '@/lib/survey-ai-messaging-actions';
+import { resolveTerminologyFromWorkspace } from '@/lib/terminology';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import type { GenerateSurveyMessagingOutput } from '@/ai/schemas/survey-messaging-schemas';
 import type { SurveyQuestion, SurveyElement } from '@/lib/types';
@@ -32,7 +33,12 @@ import type { SurveyQuestion, SurveyElement } from '@/lib/types';
 export default function InternalNotificationConfig({ prefix = "adminAlert", category = "surveys" }: { prefix?: string, category?: TemplateCategory }) {
     const { control, watch, setValue } = useFormContext();
     const firestore = useFirestore();
-    const { activeOrganizationId } = useTenant();
+    const { activeOrganizationId, currentWorkspace } = useTenant();
+
+    const terminology = React.useMemo(() => {
+        const res = resolveTerminologyFromWorkspace(currentWorkspace);
+        return { singular: res.singular, plural: res.plural };
+    }, [currentWorkspace]);
 
     const enabled = watch(`${prefix}sEnabled`);
     const rawChannel = watch(`${prefix}Channel`);
@@ -108,6 +114,7 @@ export default function InternalNotificationConfig({ prefix = "adminAlert", cate
                 scoringEnabled,
                 maxScore,
                 userPromptInstructions,
+                terminology,
                 autoSave: false,
             });
 
@@ -507,6 +514,7 @@ export default function InternalNotificationConfig({ prefix = "adminAlert", cate
                 workspaceId={activeWorkspaceId || undefined}
                 organizationId={activeOrganizationId || undefined}
                 userId={user?.uid}
+                terminology={terminology}
                 onApply={handleApplyAiTemplates}
                 onRegenerate={handleGenerateAi}
                 onUpdateOutput={setAiOutput}

@@ -25,6 +25,7 @@ import { useToast } from '@/hooks/use-toast';
 import { TagSelector } from '@/components/tags';
 import AiSurveyMessagingModal from './ai-survey-messaging-modal';
 import { generateSurveyMessagingTemplatesAction } from '@/lib/survey-ai-messaging-actions';
+import { resolveTerminologyFromWorkspace } from '@/lib/terminology';
 import type { GenerateSurveyMessagingOutput } from '@/ai/schemas/survey-messaging-schemas';
 
 function SortableRuleItem({ 
@@ -46,9 +47,14 @@ function SortableRuleItem({
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
 
     const { activeWorkspaceId } = useWorkspace();
-    const { activeOrganizationId } = useTenant();
+    const { activeOrganizationId, currentWorkspace } = useTenant();
     const { user } = useUser();
     const { toast } = useToast();
+
+    const terminology = React.useMemo(() => {
+        const res = resolveTerminologyFromWorkspace(currentWorkspace);
+        return { singular: res.singular, plural: res.plural };
+    }, [currentWorkspace]);
 
     const [activeTemplateConfig, setActiveTemplateConfig] = React.useState<{ channel: 'email' | 'sms' | 'whatsapp'; templateId?: string } | null>(null);
     const [isAiModalOpen, setIsAiModalOpen] = React.useState(false);
@@ -98,6 +104,7 @@ function SortableRuleItem({
                 scoringEnabled,
                 maxScore: surveyMaxScore,
                 userPromptInstructions,
+                terminology,
                 autoSave: false,
             });
 
@@ -658,6 +665,7 @@ function SortableRuleItem({
                 workspaceId={activeWorkspaceId || undefined}
                 organizationId={activeOrganizationId || undefined}
                 userId={user?.uid}
+                terminology={terminology}
                 onApply={handleApplyAiTemplates}
                 onRegenerate={handleGenerateAiForRule}
                 onUpdateOutput={setAiOutput}

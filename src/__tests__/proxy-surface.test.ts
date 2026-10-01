@@ -64,6 +64,49 @@ describe('backoffice surface', () => {
     expect(res.status).not.toBe(404);
   });
 
+  it('redirects the root path / to /backoffice on this host', async () => {
+    process.env.APP_SURFACE = 'backoffice';
+    process.env.PUBLIC_APP_ORIGIN = 'https://go.smartsapp.com';
+    const { proxy } = await import('@/proxy');
+    const res = proxy(req('/', 'goadmin.smartsapp.com'));
+    expect(res.status).toBe(307);
+    const location = res.headers.get('location');
+    expect(location).toBeTruthy();
+    expect(new URL(location!).origin).toBe('https://goadmin.smartsapp.com');
+    expect(new URL(location!).pathname).toBe('/backoffice');
+  });
+
+  it('redirects bare /login to /login?redirect=/backoffice on this host', async () => {
+    process.env.APP_SURFACE = 'backoffice';
+    process.env.PUBLIC_APP_ORIGIN = 'https://go.smartsapp.com';
+    const { proxy } = await import('@/proxy');
+    const res = proxy(req('/login', 'goadmin.smartsapp.com'));
+    expect(res.status).toBe(307);
+    const location = res.headers.get('location');
+    expect(location).toBeTruthy();
+    expect(new URL(location!).origin).toBe('https://goadmin.smartsapp.com');
+    expect(new URL(location!).pathname).toBe('/login');
+    expect(new URL(location!).searchParams.get('redirect')).toBe('/backoffice');
+  });
+
+  it('serves /login?redirect=/backoffice directly on this host rather than bouncing to client origin', async () => {
+    process.env.APP_SURFACE = 'backoffice';
+    process.env.PUBLIC_APP_ORIGIN = 'https://go.smartsapp.com';
+    const { proxy } = await import('@/proxy');
+    const res = proxy(req('/login?redirect=%2Fbackoffice', 'goadmin.smartsapp.com'));
+    expect(res.status).not.toBe(307);
+    expect(res.headers.get('location')).toBeNull();
+  });
+
+  it('serves auth helper routes on this host without bouncing to client origin', async () => {
+    process.env.APP_SURFACE = 'backoffice';
+    process.env.PUBLIC_APP_ORIGIN = 'https://go.smartsapp.com';
+    const { proxy } = await import('@/proxy');
+    const resForgot = proxy(req('/forgot-password', 'goadmin.smartsapp.com'));
+    expect(resForgot.status).not.toBe(307);
+    expect(resForgot.headers.get('location')).toBeNull();
+  });
+
   it('sends stray non-backoffice traffic to the client app, preserving the path', async () => {
     process.env.APP_SURFACE = 'backoffice';
     process.env.PUBLIC_APP_ORIGIN = 'https://go.smartsapp.com';

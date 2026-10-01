@@ -25,6 +25,8 @@ import type {
 } from '@/ai/schemas/survey-messaging-schemas';
 import type { MessageTemplate } from '@/lib/types';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { sanitizeSurveyMessagingOutput } from '@/lib/surveys/survey-messaging-sanitizer';
+import { resolveTerminologyFromWorkspace } from '@/lib/terminology';
 // SECURITY (audit F9): report detail server-side; return an opaque message + ref.
 import { toClientErrorMessage } from '@/lib/errors/report-error';
 
@@ -50,6 +52,10 @@ export interface GenerateAndSaveSurveyTemplatesParams {
   maxScore?: number;
   userPromptInstructions?: string;
   autoSave?: boolean;
+  terminology?: {
+    singular?: string;
+    plural?: string;
+  };
 }
 
 export interface GenerateAndSaveSurveyTemplatesResult {
@@ -104,6 +110,7 @@ export async function generateSurveyMessagingTemplatesAction(
     maxScore,
     userPromptInstructions,
     autoSave = false,
+    terminology,
   } = params;
 
   if (!workspaceId || !organizationId) {
@@ -118,7 +125,22 @@ export async function generateSurveyMessagingTemplatesAction(
   }
 
   try {
-    // 1. Fetch active workspace variable definitions for exact tag prompt injection
+    // 1. Resolve workspace terminology if not provided
+    let effectiveTerminology = terminology;
+    if (!effectiveTerminology && adminDb && workspaceId) {
+      try {
+        const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
+        if (wsSnap.exists) {
+          const wsData = wsSnap.data();
+          const resolved = resolveTerminologyFromWorkspace(wsData);
+          effectiveTerminology = { singular: resolved.singular, plural: resolved.plural };
+        }
+      } catch (err) {
+        console.warn('[generateSurveyMessagingTemplatesAction] Failed to load workspace terminology:', err);
+      }
+    }
+
+    // 2. Fetch active workspace variable definitions for exact tag prompt injection
     const activeVariables = await getVariablesAction({
       workspaceId,
       organizationId,
@@ -130,7 +152,7 @@ export async function generateSurveyMessagingTemplatesAction(
       availableVarKeys.unshift('entity_name');
     }
 
-    // 2. Invoke Genkit AI flow
+    // 3. Invoke Genkit AI flow
     // ARCHITECTURAL POINTER (Rule 10):
     // workspaceId must be explicitly passed into the flow so getModel({ workspaceId, organizationId })
     // can resolve tenant workspace-level AI preferences (WorkspaceAiService) and tenant keys in Firestore.
@@ -145,49 +167,19 @@ export async function generateSurveyMessagingTemplatesAction(
       scoringEnabled,
       maxScore,
       organizationId,
+      terminology: effectiveTerminology,
       availableVariables: availableVarKeys,
       userPromptInstructions,
     };
 
     const rawOutput: GenerateSurveyMessagingOutput = await generateSurveyMessagingFlow(aiInput);
 
-    // Deep sanitize any legacy/deprecated variable tokens from the generated output
-    const sanitizeText = (txt?: string): string => {
-      if (!txt) return txt || '';
-      return txt
-        .replace(/\{\{\s*school_name\s*\}\}/g, '{{entity_name}}')
-        .replace(/\{\{\s*school_logo\s*\}\}/g, '{{org_logo_url}}')
-        .replace(/\{\{\s*school_email\s*\}\}/g, '{{org_email}}')
-        .replace(/\{\{\s*school_phone\s*\}\}/g, '{{org_phone}}')
-        .replace(/\{\{\s*school_address\s*\}\}/g, '{{org_address}}');
-    };
-
-    const generatedOutput: GenerateSurveyMessagingOutput = {
-      ...rawOutput,
-      email: rawOutput.email ? {
-        ...rawOutput.email,
-        subject: sanitizeText(rawOutput.email.subject),
-        body: sanitizeText(rawOutput.email.body),
-        blocks: (rawOutput.email.blocks || []).map((blk) => ({
-          ...blk,
-          title: blk.title ? sanitizeText(blk.title) : blk.title,
-          content: blk.content ? sanitizeText(blk.content) : blk.content,
-          url: blk.url ? sanitizeText(blk.url) : blk.url,
-          link: blk.link ? sanitizeText(blk.link) : blk.link,
-          items: blk.items ? blk.items.map((i) => sanitizeText(i)) : blk.items,
-        })),
-      } : undefined,
-      sms: rawOutput.sms ? {
-        ...rawOutput.sms,
-        body: sanitizeText(rawOutput.sms.body),
-      } : undefined,
-      whatsapp: rawOutput.whatsapp ? {
-        ...rawOutput.whatsapp,
-        header: rawOutput.whatsapp.header ? sanitizeText(rawOutput.whatsapp.header) : undefined,
-        body: sanitizeText(rawOutput.whatsapp.body),
-        footer: rawOutput.whatsapp.footer ? sanitizeText(rawOutput.whatsapp.footer) : undefined,
-      } : undefined,
-    };
+    // Deep sanitize output: strips raw HTML tags (<br>, <strong>, etc.), applies terminology
+    // ("Entity" -> terminology singular/plural), and migrates legacy variable tokens.
+    const generatedOutput: GenerateSurveyMessagingOutput = sanitizeSurveyMessagingOutput(
+      rawOutput,
+      effectiveTerminology
+    );
 
     const savedTemplateIds: {
       emailTemplateId?: string;
@@ -195,7 +187,7 @@ export async function generateSurveyMessagingTemplatesAction(
       whatsappTemplateId?: string;
     } = {};
 
-    // 3. Persist to Firestore if autoSave is true
+    // 4. Persist to Firestore if autoSave is true
     if (autoSave && adminDb) {
       const now = new Date().toISOString();
       const purposeTag = target === 'respondent_outcome'
@@ -205,6 +197,22 @@ export async function generateSurveyMessagingTemplatesAction(
       const recipientType = target === 'internal_team_alert'
         ? 'internal_alert'
         : (target === 'external_stakeholder_alert' ? 'external_alert' : 'respondent');
+
+      // Resolve organization default style ID for email wrapper
+      let defaultStyleId: string | null = null;
+      try {
+        const stylesSnap = await adminDb
+          .collection('message_styles')
+          .where('organizationId', '==', organizationId)
+          .where('isDefault', '==', true)
+          .limit(1)
+          .get();
+        if (!stylesSnap.empty) {
+          defaultStyleId = stylesSnap.docs[0].id;
+        }
+      } catch (err) {
+        console.warn('[generateSurveyMessagingTemplatesAction] Failed to load default message style:', err);
+      }
 
       // Email Template Persistence
       if (generatedOutput.email && channels.includes('email')) {
@@ -219,6 +227,7 @@ export async function generateSurveyMessagingTemplatesAction(
           contentMode: 'rich_builder',
           channel: 'email',
           category: 'surveys',
+          styleId: defaultStyleId,
           target: target === 'internal_team_alert' ? 'internal_team' : 'external_client',
           recipientType,
           scope: 'organization',

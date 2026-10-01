@@ -28,3 +28,21 @@ export function parseMarkdownLinksToHtml(text: string): string {
     return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="color: #3B5FFF; text-decoration: underline; font-weight: 600;">${linkText}</a>`;
   });
 }
+
+/**
+ * Safely parses Markdown-style links, bold (**text**), and italic (*text*) into email-safe HTML.
+ * Designed to compile clean user/AI authored markdown into HTML without raw HTML tag leakage.
+ *
+ * @param text The escaped text payload
+ * @returns HTML string with formatted strong, em, and a tags
+ */
+export function parseMarkdownFormattingToHtml(text: string): string {
+  if (!text) return '';
+  // 1. Parse markdown links [Text](URL)
+  let result = parseMarkdownLinksToHtml(text);
+  // 2. Parse bold **text**
+  result = result.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  // 3. Parse italic *text*
+  result = result.replace(/(^|[^*])\*([^*]+)\*([^*]|$)/g, '$1<em>$2</em>$3');
+  return result;
+}

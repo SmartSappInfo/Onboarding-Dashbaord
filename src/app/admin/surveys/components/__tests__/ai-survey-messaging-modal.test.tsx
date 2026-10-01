@@ -11,12 +11,33 @@ vi.mock('@/hooks/use-toast', () => ({
   }),
 }));
 
+const emptyStylesArray: unknown[] = [];
+const mockCollectionResult = { data: emptyStylesArray, isLoading: false };
+vi.mock('@/firebase', () => ({
+  useFirestore: () => ({}),
+  useUser: () => ({ user: { uid: 'user_789' } }),
+  useMemoFirebase: (fn: () => unknown) => fn(),
+  useCollection: () => mockCollectionResult,
+}));
+
+vi.mock('firebase/firestore', () => ({
+  collection: vi.fn(),
+  query: vi.fn(),
+  where: vi.fn(),
+  or: vi.fn(),
+}));
+
 vi.mock('@/context/TenantContext', () => ({
   useTenant: () => ({
     activeOrganization: {
+      id: 'org_456',
       name: 'SmartSapp Academy',
       logoUrl: 'https://example.com/logo.png',
       email: 'alerts@smartsapp.com',
+    },
+    currentWorkspace: {
+      id: 'ws_123',
+      name: 'Test Campus',
     },
   }),
 }));
@@ -565,5 +586,108 @@ describe('AiSurveyMessagingModal', () => {
     // quickSaveSurveyTemplateAction should NOT have been called (zero orphan templates created)
     expect(mockQuickSave).not.toHaveBeenCalled();
   });
+
+  it('sanitizes raw HTML tags from output and converts them to clean markdown and newlines', () => {
+    const rawHtmlOutput: GenerateSurveyMessagingOutput = {
+      ...sampleAiOutput,
+      email: {
+        ...sampleAiOutput.email!,
+        blocks: [
+          {
+            id: 'blk_html_test',
+            type: 'text',
+            content: '<strong>Respondent:</strong> {{contact_name}}<br><strong>Entity:</strong> {{entity_name}}',
+          },
+        ],
+      },
+      sms: {
+        name: 'SMS alert',
+        body: '<b>Alert:</b> New submission<br>Score: 95%',
+        explanation: '',
+      },
+    };
+
+    render(
+      <AiSurveyMessagingModal
+        open={true}
+        onOpenChange={vi.fn()}
+        generatedOutput={rawHtmlOutput}
+        terminology={{ singular: 'Campus', plural: 'Campuses' }}
+        onApply={vi.fn()}
+      />
+    );
+
+    // Switch to edit mode
+    const editToggle = screen.getByRole('button', { name: /Edit Content/i });
+    fireEvent.click(editToggle);
+
+    // Verify textarea does not contain <strong> or <br> tags
+    const textareas = screen.getAllByRole('textbox');
+    const hasRawHtml = textareas.some((t) => {
+      const val = (t as HTMLTextAreaElement | HTMLInputElement).value;
+      return val.includes('<strong>') || val.includes('<br>') || val.includes('<b>');
+    });
+    expect(hasRawHtml).toBe(false);
+  });
+
+  it('replaces visible occurrences of Entity with workspace terminology while keeping {{entity_name}} intact', () => {
+    const entityOutput: GenerateSurveyMessagingOutput = {
+      ...sampleAiOutput,
+      email: {
+        ...sampleAiOutput.email!,
+        subject: 'Entity Update for {{entity_name}}',
+        blocks: [
+          {
+            id: 'blk_1',
+            type: 'text',
+            content: 'Entity details: {{entity_name}} has submitted feedback.',
+          },
+        ],
+      },
+    };
+
+    render(
+      <AiSurveyMessagingModal
+        open={true}
+        onOpenChange={vi.fn()}
+        generatedOutput={entityOutput}
+        terminology={{ singular: 'Campus', plural: 'Campuses' }}
+        onApply={vi.fn()}
+      />
+    );
+
+    // Switch to edit mode
+    const editToggle = screen.getByRole('button', { name: /Edit Content/i });
+    fireEvent.click(editToggle);
+
+    // Subject input should have "Campus Update for {{entity_name}}"
+    const subjectInput = screen.getByLabelText(/Email Subject Line/i) as HTMLInputElement;
+    expect(subjectInput.value).toContain('Campus Update');
+    expect(subjectInput.value).toContain('{{entity_name}}');
+    expect(subjectInput.value).not.toContain('Entity Update');
+  });
+
+  it('renders email preview with organization message style wrapper and displays style badge', () => {
+    render(
+      <AiSurveyMessagingModal
+        open={true}
+        onOpenChange={vi.fn()}
+        generatedOutput={sampleAiOutput}
+        organizationId="org_456"
+        workspaceId="ws_123"
+        onApply={vi.fn()}
+      />
+    );
+
+    // Should display the style badge in the header
+    const styleBadges = screen.getAllByText(/Default Style/i);
+    expect(styleBadges.length).toBeGreaterThan(0);
+
+    // The iframe srcDoc should contain the rendered email HTML
+    const iframe = document.querySelector('iframe');
+    expect(iframe).toBeDefined();
+    expect(iframe?.getAttribute('srcDoc')).toContain('SmartSapp Academy');
+  });
 });
+
 

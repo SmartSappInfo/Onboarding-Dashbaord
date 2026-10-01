@@ -1,5 +1,5 @@
 import type { MessageBlock, MessageBlockRule, MessageStyle } from './types';
-import { parseMarkdownLinksToHtml } from './utils/markdown-link-parser';
+import { parseMarkdownLinksToHtml, parseMarkdownFormattingToHtml } from './utils/markdown-link-parser';
 import { getBaseUrl } from './utils/url-helpers';
 import { resolveTextWithMap } from './utils/variable-replacer';
 import { escapeHtml } from './template-utils';
@@ -186,11 +186,11 @@ export function plainTextToHtml(text: unknown, isDark?: boolean): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 
-  // Convert markdown links [Link Text](URL) to styled <a> tags after escaping
-  const withLinks = parseMarkdownLinksToHtml(escaped);
+  // Convert markdown links [Link Text](URL), bold **text**, and italic *text* after escaping
+  const withFormatting = parseMarkdownFormattingToHtml(escaped);
 
   // Convert newlines to <br> tags
-  const withBreaks = withLinks.replace(/\n/g, '<br>\n');
+  const withBreaks = withFormatting.replace(/\n/g, '<br>\n');
 
   return `<!doctype html>
 <html>
@@ -437,7 +437,8 @@ export function renderBlocksToHtml(
 
         // Subtext Description
         if (block.content && !isSimpleWide) {
-          const contentVal = resolveVariables(block.content, variables);
+          const rawContentVal = resolveVariables(block.content, variables);
+          const contentVal = parseMarkdownFormattingToHtml(rawContentVal).replace(/\n/g, '<br>\n');
           
           if (isNestedCard) {
             headerContent += `
@@ -506,7 +507,7 @@ export function renderBlocksToHtml(
       
       case 'text': {
         const content = resolveVariables(block.content || '', variables);
-        const parsedContent = parseMarkdownLinksToHtml(content).replace(/\n/g, '<br>\n');
+        const parsedContent = parseMarkdownFormattingToHtml(content).replace(/\n/g, '<br>\n');
         const textFontSize = fontSizeVal || '16px';
         const textStyle = `margin: 0; font-size: ${textFontSize}; ${fontWeight || 'font-weight: 500;'} ${lineHeight || 'line-height: 1.6;'} ${fontColor} ${fontFamily}`;
         blockHtml = `<div style="${wrapperStyle}"><div style="${textStyle}">${parsedContent}</div></div>`;
@@ -734,7 +735,7 @@ export function renderBlocksToHtml(
 
       case 'quote': {
         const content = resolveVariables(block.content || '', variables);
-        const parsedContent = parseMarkdownLinksToHtml(content).replace(/\n/g, '<br>\n');
+        const parsedContent = parseMarkdownFormattingToHtml(content).replace(/\n/g, '<br>\n');
         blockHtml = `
           <div style="margin: 24px 0; padding: 24px; border-left: 4px solid ${options?.style?.primaryColor || '#3B5FFF'}; background-color: ${subBg}; font-family: ${s.fontFamily || "'" + fontFam + "', sans-serif"}; font-style: italic; color: ${s.color || (isDark ? '#9ca3af' : '#475569')}; font-size: ${fontSizeVal || '18px'}; line-height: 1.6; border-radius: 0 16px 16px 0; ${alignStyle}">
             ${parsedContent}
@@ -754,7 +755,7 @@ export function renderBlocksToHtml(
           } else if (block.listStyle === 'arrow') {
             prefix = '<span style="color: #3b82f6; margin-right: 8px; font-weight: bold;">→</span>';
           }
-          return `<li style="margin-bottom: 10px; list-style-type: ${listStyleType};">${prefix}${resolveVariables(item, variables)}</li>`;
+          return `<li style="margin-bottom: 10px; list-style-type: ${listStyleType};">${prefix}${parseMarkdownFormattingToHtml(resolveVariables(item, variables))}</li>`;
         }).join('');
         
         const listFontSize = fontSizeVal || '16px';
@@ -1534,9 +1535,10 @@ export function renderBlocksToHtml(
 
   const contentHtml = blocks.map(b => renderBlock(b, false)).join('\n');
 
+  const styleWrapperToUse = options?.wrapper || options?.style?.htmlWrapperExternal || options?.style?.htmlWrapper;
   let wrapperHtml = contentHtml;
-  if (options?.wrapper && options.wrapper.includes('{{content}}')) {
-    const resolvedWrapper = resolveVariables(options.wrapper, variables).replace('{{content}}', contentHtml);
+  if (styleWrapperToUse && styleWrapperToUse.includes('{{content}}')) {
+    const resolvedWrapper = resolveVariables(styleWrapperToUse, variables).replace('{{content}}', contentHtml);
     if (
       resolvedWrapper.toLowerCase().includes('<html') ||
       resolvedWrapper.toLowerCase().includes('<!doctype') ||

@@ -63,12 +63,19 @@ import {
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/context/TenantContext';
+import { useFirestore, useMemoFirebase, useCollection } from '@/firebase';
+import { collection, query, where, or } from 'firebase/firestore';
+import { getDefaultStyle, DEFAULT_ORG_STYLE_WRAPPER } from '@/lib/services/style-resolver';
+import { resolveBrandingPreview } from '@/lib/utils/resolve-branding-preview';
+import { resolveTerminologyFromWorkspace } from '@/lib/terminology';
+import { parseMarkdownFormattingToHtml } from '@/lib/utils/markdown-link-parser';
+import { sanitizeSurveyMessagingOutput } from '@/lib/surveys/survey-messaging-sanitizer';
 import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
 import { renderBlocksToHtml, resolveVariables, plainTextToHtml } from '@/lib/messaging-utils';
 import { quickSaveSurveyTemplateAction } from '@/lib/survey-ai-messaging-actions';
 import PromptBar from '@/components/PromptBar';
 import type { GenerateSurveyMessagingOutput, EmailBlock } from '@/ai/schemas/survey-messaging-schemas';
-import type { MessageBlock, RecipientType, TemplateTarget } from '@/lib/types';
+import type { MessageBlock, MessageStyle, RecipientType, TemplateTarget } from '@/lib/types';
 
 export interface AiSurveyMessagingModalProps {
   open: boolean;
@@ -89,6 +96,10 @@ export interface AiSurveyMessagingModalProps {
   workspaceId?: string;
   organizationId?: string;
   userId?: string;
+  terminology?: {
+    singular?: string;
+    plural?: string;
+  };
   onApply: (selectedIds: {
     emailTemplateId?: string;
     smsTemplateId?: string;
@@ -99,14 +110,14 @@ export interface AiSurveyMessagingModalProps {
 }
 
 /**
- * Sanitizes template output by replacing any deprecated tokens like school_name / school_logo
- * with canonical entity_name / org_logo_url (Single Source of Truth).
+ * Sanitizes template output by removing raw HTML tags, substituting workspace terminology
+ * for "Entity" in visible copy, and replacing deprecated variable tokens.
  */
-function sanitizeTemplateVariables(output: GenerateSurveyMessagingOutput): GenerateSurveyMessagingOutput {
-  const serialized = JSON.stringify(output)
-    .replace(/\{\{\s*school_name\s*\}\}/g, '{{entity_name}}')
-    .replace(/\{\{\s*school_logo\s*\}\}/g, '{{org_logo_url}}');
-  return JSON.parse(serialized) as GenerateSurveyMessagingOutput;
+function sanitizeTemplateVariables(
+  output: GenerateSurveyMessagingOutput,
+  terminology?: { singular?: string; plural?: string }
+): GenerateSurveyMessagingOutput {
+  return sanitizeSurveyMessagingOutput(output, terminology);
 }
 
 const DEFAULT_MOCK_VARIABLES: Record<string, string> = {
@@ -161,12 +172,45 @@ export default function AiSurveyMessagingModal({
   workspaceId,
   organizationId,
   userId,
+  terminology,
   onApply,
   onRegenerate,
   onUpdateOutput,
 }: AiSurveyMessagingModalProps) {
   const { toast } = useToast();
-  const { activeOrganization } = useTenant();
+  const { activeOrganization, currentWorkspace } = useTenant();
+  const firestore = useFirestore();
+
+  // Resolve effective workspace terminology for entity substitution
+  const effectiveSingular = terminology?.singular || resolveTerminologyFromWorkspace(currentWorkspace).singular;
+  const effectivePlural = terminology?.plural || resolveTerminologyFromWorkspace(currentWorkspace).plural;
+
+  const effectiveTerminology = React.useMemo(() => ({
+    singular: effectiveSingular,
+    plural: effectivePlural,
+  }), [effectiveSingular, effectivePlural]);
+
+  // Resolve active organization's message styles
+  const effectiveOrgId = organizationId || activeOrganization?.id;
+  const effectiveWsId = workspaceId || currentWorkspace?.id;
+
+  const stylesQuery = useMemoFirebase(() => {
+    if (!firestore || !effectiveOrgId) return null;
+    return query(
+      collection(firestore, 'message_styles'),
+      or(
+        where('scope', '==', 'global'),
+        where('organizationId', '==', effectiveOrgId),
+        ...(effectiveWsId ? [where('workspaceIds', 'array-contains', effectiveWsId)] : [])
+      )
+    );
+  }, [firestore, effectiveOrgId, effectiveWsId]);
+
+  const { data: messageStyles } = useCollection<MessageStyle>(stylesQuery);
+
+  const activeStyle = React.useMemo(() => {
+    return getDefaultStyle(messageStyles, effectiveOrgId, effectiveWsId) || null;
+  }, [messageStyles, effectiveOrgId, effectiveWsId]);
 
   const [activeTab, setActiveTab] = React.useState<'email' | 'sms' | 'whatsapp'>(defaultChannel || 'email');
   const [viewMode, setViewMode] = React.useState<'preview' | 'edit'>('preview');
@@ -216,7 +260,7 @@ export default function AiSurveyMessagingModal({
   // Reset editableOutput whenever new generatedOutput arrives, sanitizing any deprecated tokens
   React.useEffect(() => {
     if (generatedOutput) {
-      setEditableOutput(sanitizeTemplateVariables(generatedOutput));
+      setEditableOutput(sanitizeTemplateVariables(generatedOutput, { singular: effectiveSingular, plural: effectivePlural }));
       // Initialize channel enabled states based on availability and pre-existing saved IDs
       const hasSavedIds = !!(
         savedTemplateIds?.emailTemplateId ||
@@ -231,7 +275,7 @@ export default function AiSurveyMessagingModal({
     } else {
       setEditableOutput(null);
     }
-  }, [generatedOutput, savedTemplateIds]);
+  }, [generatedOutput, savedTemplateIds, effectiveSingular, effectivePlural]);
 
   // Set default active tab based on what was generated
   React.useEffect(() => {
@@ -273,7 +317,7 @@ export default function AiSurveyMessagingModal({
 
   const handleResetToAiOriginal = () => {
     if (!generatedOutput) return;
-    setEditableOutput(sanitizeTemplateVariables(generatedOutput));
+    setEditableOutput(sanitizeTemplateVariables(generatedOutput, effectiveTerminology));
     toast({
       title: 'Restored Original AI Copy',
       description: 'All manual edits have been reverted to the initial generation.',
@@ -335,20 +379,61 @@ export default function AiSurveyMessagingModal({
     return mocks;
   }, [activeOrganization, editableOutput]);
 
+  // Resolve style and branding wrapper for current organization
+  const styleWrapperHtml = React.useMemo(() => {
+    const rawWrapper = activeStyle
+      ? (target === 'internal_team_alert'
+          ? activeStyle.htmlWrapperInternal || activeStyle.htmlWrapper || DEFAULT_ORG_STYLE_WRAPPER
+          : activeStyle.htmlWrapperExternal || activeStyle.htmlWrapper || DEFAULT_ORG_STYLE_WRAPPER)
+      : DEFAULT_ORG_STYLE_WRAPPER;
+
+    const brandingData = {
+      name: String(mergedMocks.org_name || activeOrganization?.name || 'Your Organization'),
+      logoUrl: String(mergedMocks.org_logo_url || activeOrganization?.logoUrl || ''),
+      email: String(mergedMocks.org_email || activeOrganization?.email || ''),
+      phone: String(mergedMocks.org_phone || activeOrganization?.phone || ''),
+      address: String(mergedMocks.org_address || activeOrganization?.address || ''),
+      website: String(mergedMocks.org_website || activeOrganization?.website || ''),
+      footerHtml: activeStyle?.footerHtml,
+      footerEnabled: activeStyle?.footerEnabled !== false,
+    };
+
+    const styleOverrides = {
+      primaryColor: activeStyle?.primaryColor || '#3B5FFF',
+      secondaryColor: activeStyle?.secondaryColor || '#4F46E5',
+      fontFamily: activeStyle?.fontFamily || 'Figtree',
+      backgroundColor: activeStyle?.backgroundColor || '#F8FAFC',
+      textColor: activeStyle?.textColor || '#0F172A',
+      cardBackgroundColor: activeStyle?.cardBackgroundColor || '#FFFFFF',
+      borderRadius: activeStyle?.borderRadius || '16px',
+      footerHtml: activeStyle?.footerHtml,
+      footerEnabled: activeStyle?.footerEnabled !== false,
+    };
+
+    return resolveBrandingPreview(rawWrapper, brandingData, styleOverrides);
+  }, [activeStyle, target, mergedMocks, activeOrganization]);
+
   // Compile HTML for email preview
   const compiledEmailHtml = React.useMemo(() => {
     if (!editableOutput?.email) return '';
     const blocks = (editableOutput.email.blocks || []) as unknown as MessageBlock[];
     if (blocks.length > 0) {
       return renderBlocksToHtml(blocks, mergedMocks, {
+        wrapper: styleWrapperHtml,
+        style: activeStyle || undefined,
         width: emailDevice === 'mobile' ? '360px' : '600px',
       });
     }
     if (editableOutput.email.body) {
-      return plainTextToHtml(resolveVariables(editableOutput.email.body, mergedMocks));
+      const plainContent = resolveVariables(editableOutput.email.body, mergedMocks);
+      const withFormatting = parseMarkdownFormattingToHtml(plainContent).replace(/\n/g, '<br>\n');
+      if (styleWrapperHtml && styleWrapperHtml.includes('{{content}}')) {
+        return resolveVariables(styleWrapperHtml, mergedMocks).replace('{{content}}', withFormatting);
+      }
+      return plainTextToHtml(plainContent);
     }
     return '';
-  }, [editableOutput?.email, mergedMocks, emailDevice]);
+  }, [editableOutput?.email, mergedMocks, emailDevice, styleWrapperHtml, activeStyle]);
 
   // Resolved Email Subject
   const resolvedEmailSubject = React.useMemo(() => {
@@ -423,6 +508,7 @@ export default function AiSurveyMessagingModal({
                   subject: editableOutput.email!.subject,
                   body: editableOutput.email!.body,
                   blocks: (editableOutput.email!.blocks || []) as unknown as MessageBlock[],
+                  styleId: activeStyle?.id || 'default',
                   contentMode: 'rich_builder',
                   channel: 'email',
                   category: 'surveys',
@@ -1133,8 +1219,17 @@ export default function AiSurveyMessagingModal({
                                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-400/80" />
                               </div>
 
-                              <div className="hidden sm:flex items-center text-[11px] text-muted-foreground bg-background px-3 py-0.5 rounded-md border border-border/60 max-w-xs truncate shadow-xs">
-                                <span className="truncate">https://mail.smartsapp.com/inbox/preview</span>
+                              <div className="hidden sm:flex items-center gap-2">
+                                <div className="text-[11px] text-muted-foreground bg-background px-3 py-0.5 rounded-md border border-border/60 max-w-xs truncate shadow-xs">
+                                  <span className="truncate">https://mail.smartsapp.com/inbox/preview</span>
+                                </div>
+                                <Badge
+                                  variant="outline"
+                                  className="text-[9px] font-semibold text-muted-foreground bg-muted/40 border-border/70 py-0 h-4 hidden md:inline-flex items-center gap-1"
+                                >
+                                  <Sparkles className="w-2.5 h-2.5 text-primary" />
+                                  {activeStyle?.name || `${activeOrganization?.name || 'Organization'} Default Style`}
+                                </Badge>
                               </div>
 
                               {/* Device View Mode Switcher */}
@@ -1233,6 +1328,13 @@ export default function AiSurveyMessagingModal({
                                 <span className="text-[10px] font-mono text-muted-foreground ml-2 hidden sm:inline">
                                   WYSIWYG Visual Canvas ({editableOutput.email.blocks?.length || 0} blocks)
                                 </span>
+                                <Badge
+                                  variant="outline"
+                                  className="text-[9px] font-semibold text-muted-foreground bg-muted/40 border-border/70 py-0 h-4 hidden md:inline-flex items-center gap-1 ml-1"
+                                >
+                                  <Sparkles className="w-2.5 h-2.5 text-primary" />
+                                  {activeStyle?.name || `${activeOrganization?.name || 'Organization'} Default Style`}
+                                </Badge>
                               </div>
 
                               {/* Device Switcher */}

@@ -38,7 +38,9 @@ function buildSurveyMessagingPrompt(input: SurveyMessagingContextInput): string 
     userPromptInstructions,
   } = input;
 
-  const entityTerm = terminology?.singular || 'School/Entity';
+  const termSingular = terminology?.singular?.trim() || 'Campus';
+  const termPlural = terminology?.plural?.trim() || `${termSingular}s`;
+  const isCustomTerm = termSingular.toLowerCase() !== 'entity';
   const requestedChannels = channels && channels.length > 0 ? channels.join(', ') : 'email, sms, whatsapp';
 
   let targetInstructions = '';
@@ -62,8 +64,8 @@ function buildSurveyMessagingPrompt(input: SurveyMessagingContextInput): string 
 `;
   } else if (target === 'external_stakeholder_alert') {
     targetInstructions = `
-### TARGET AUDIENCE: EXTERNAL STAKEHOLDER / CAMPUS LEADERSHIP (Digest & Status Alert)
-- **Goal**: Provide campus leadership or designated external contacts with an executive summary of survey submission.
+### TARGET AUDIENCE: EXTERNAL STAKEHOLDER / ${termSingular.toUpperCase()} LEADERSHIP (Digest & Status Alert)
+- **Goal**: Provide ${termSingular.toLowerCase()} leadership or designated external contacts with an executive summary of survey submission.
 - **Tone**: Formal, respectful, executive, and structured.
 - **Content**: Outline key status, compliance / assessment standing, and next milestone.
 - **Recommended Variables**: {{entity_name}}, {{contact_name}}, {{survey_score}}, {{outcome_label}}, {{submission_date}}.
@@ -102,7 +104,7 @@ Generate high-converting, context-aware message templates for the following chan
 - **Survey Title**: "${surveyTitle}"
 - **Survey Description**: "${surveyDescription || 'No description provided'}"
 - **Scoring Enabled**: ${scoringEnabled ? `Yes (Max score: ${maxScore ?? 100})` : 'No'}
-- **Entity Terminology**: ${entityTerm}
+- **Workspace Terminology**: ${termSingular} (Plural: ${termPlural})
 ${questionsContext}
 ${targetInstructions}
 
@@ -133,10 +135,25 @@ ${targetInstructions}
 4. **VARIABLE SYNTAX & DEPRECATION RULES**:
    - For Email and SMS: Use exact syntax {{variable_name}}.
    - CRITICAL REQUIREMENT: "school_name" and "school_logo" are DEPRECATED and STRICTLY FORBIDDEN.
-   - Always use {{entity_name}} to refer to the school, company, campus, or client institution.
+   - Always use {{entity_name}} to refer to the institution, campus, school, or client company.
    - Always use {{org_logo_url}} for the organization brand logo.
    - Available Variables:
 ${varList}
+
+5. **STRICT NO-HTML-TAGS RULE (ZERO RAW HTML LEAKAGE)**:
+   - You MUST NEVER output raw HTML tags (e.g. <strong>, <b>, <br>, <p>, <span>, <div>, <ul>, <li>, <h1>, etc.) inside block titles, block content, email body, SMS body, or WhatsApp body.
+   - For line breaks: use standard newlines (\\n).
+   - For bold or emphasized text: use Markdown bold syntax (**bold text** or *italic text*).
+   - For bullet highlights: use dedicated 'list' blocks or clean bullets (• Item).
+   - All email content is compiled into responsive HTML automatically by the template renderer. Writing raw HTML tags inside text fields is strictly forbidden.
+
+6. **STRICT TERMINOLOGY RULE (NO "Entity" IN VISIBLE COPY)**:
+   ${isCustomTerm ? `- This organization uses "${termSingular}" (plural: "${termPlural}") as its official terminology instead of "Entity".
+   - CRITICAL REQUIREMENT: You MUST NEVER use the word "Entity" or "entity" in any headings, visible copy, labels, bullet points, or descriptions!
+   - Examples of REQUIRED syntax:
+     - Write "**${termSingular}:** {{entity_name}}" (or "${termSingular}: {{entity_name}}") — NEVER "Entity: {{entity_name}}".
+     - Write "Review the ${termSingular.toLowerCase()} in your console" — NEVER "Review the entity in your console".
+   - The ONLY place the word "entity" is allowed to appear is inside the literal variable token {{entity_name}} or {{entity_console_link}}!` : '- Terminology is Entity.'}
 
 ${userPromptInstructions ? `### ADDITIONAL USER CORRECTIONS & INSTRUCTIONS:\n${userPromptInstructions}\n` : ''}
 `;
