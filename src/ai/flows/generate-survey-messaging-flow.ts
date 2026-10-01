@@ -140,12 +140,26 @@ export const generateSurveyMessagingFlow = ai.defineFlow(
     outputSchema: GenerateSurveyMessagingOutputSchema,
   },
   async (input) => {
-    const { organizationId, provider = 'anthropic', modelId = 'claude-3-5-sonnet' } = input;
-
-    const resolvedModel = await getModel({
+    const {
+      workspaceId,
       organizationId,
       provider,
       modelId,
+    } = input;
+
+    // ARCHITECTURAL POINTER (Rule 10 & Multi-Tenancy):
+    // Dynamically resolve provider & model with strict tenant isolation:
+    // 1. Workspace preferred provider & model (WorkspaceAiService)
+    // 2. Organization custom API keys (Firestore organizations doc, e.g. Gemini key)
+    // 3. Backoffice System Defaults (system_settings/ai_config)
+    // 4. Platform flagship balanced model (Google Gemini 3 Flash)
+    // Avoid hardcoding 'anthropic', which causes failures for tenants without Anthropic API keys.
+    const resolvedModel = await getModel({
+      workspaceId,
+      organizationId,
+      provider: (provider === 'googleai' || provider === 'anthropic' || provider === 'openrouter') ? provider : undefined,
+      modelId,
+      tier: 'default',
     });
 
     const generatorAi = resolvedModel.customAi || ai;

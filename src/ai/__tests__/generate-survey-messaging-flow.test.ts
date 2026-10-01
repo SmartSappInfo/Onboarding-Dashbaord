@@ -149,5 +149,26 @@ describe('AI Survey Messaging Schemas & Flow', () => {
       expect(result.sms?.body).toContain('{{survey_score}}');
       expect(result.whatsapp?.bodyParams).toHaveLength(3);
     });
+
+    it('delegates to getModel with workspaceId, organizationId, and tier default', async () => {
+      const { getModel } = await import('@/ai/genkit');
+      const input: SurveyMessagingContextInput = {
+        workspaceId: 'ws_math_academy',
+        organizationId: 'org_smartsapp',
+        surveyTitle: 'Admissions Diagnostic',
+        target: 'internal_team_alert',
+        channels: ['email', 'sms'],
+      };
+
+      await generateSurveyMessagingFlow(input);
+
+      expect(getModel).toHaveBeenCalledWith(
+        expect.objectContaining({
+          workspaceId: 'ws_math_academy',
+          organizationId: 'org_smartsapp',
+          tier: 'default',
+        })
+      );
+    });
   });
 });
