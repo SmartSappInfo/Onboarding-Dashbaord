@@ -46,12 +46,13 @@ export interface DialogContentProps
   extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
   overlayClassName?: string;
   showCloseButton?: boolean;
+  closeButtonClassName?: string;
 }
 
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   DialogContentProps
->(({ className, children, overlayClassName, showCloseButton = true, ...props }, ref) => {
+>(({ className, children, overlayClassName, showCloseButton = true, closeButtonClassName, ...props }, ref) => {
   const context = React.useContext(DialogDescriptionContext)
   
   return (
@@ -68,7 +69,12 @@ const DialogContent = React.forwardRef<
       >
         {children}
         {showCloseButton && (
-          <DialogPrimitive.Close className="absolute right-4 top-4 z-50 rounded-full h-8 w-8 inline-flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none active:scale-95">
+          <DialogPrimitive.Close
+            className={cn(
+              "absolute right-4 top-3.5 z-50 rounded-full h-8 w-8 inline-flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none active:scale-95 cursor-pointer",
+              closeButtonClassName
+            )}
+          >
             <X className="h-4 w-4" />
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>
@@ -79,17 +85,23 @@ const DialogContent = React.forwardRef<
 })
 DialogContent.displayName = DialogPrimitive.Content.displayName
 
-const DialogHeader = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn(
-      "flex flex-col space-y-1.5 text-center sm:text-left",
-      className
-    )}
-    {...props}
-  />
+export interface DialogHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
+  demarcated?: boolean;
+}
+
+const DialogHeader = React.forwardRef<HTMLDivElement, DialogHeaderProps>(
+  ({ className, demarcated, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn(
+        "flex flex-col space-y-1.5 text-center sm:text-left",
+        demarcated &&
+          "px-6 py-3.5 sm:py-4 min-h-[52px] sm:min-h-[56px] border-b border-border/80 bg-muted/20 flex flex-row items-center justify-between shrink-0 space-y-0 text-left",
+        className
+      )}
+      {...props}
+    />
+  )
 )
 DialogHeader.displayName = "DialogHeader"
 
