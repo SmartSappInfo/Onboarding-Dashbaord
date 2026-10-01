@@ -26,7 +26,7 @@ import { emitDealDomainEvent } from '@/lib/deals/deal-event-bus';
 import { validateStageTransition, resolveStageTerminalStatus } from '@/lib/deals/deal-stage-validation';
 
 /** Trusted server subsystems that may act on deals without a signed-in user. */
-export type CrmService = 'automations' | 'call-centre' | 'forms' | 'surveys' | 'deal-bulk-job';
+export type CrmService = 'automations' | 'call-centre' | 'forms' | 'surveys' | 'deal-bulk-job' | 'imports' | 'api' | 'signup';
 
 export type CrmActor =
   | { kind: 'user'; uid: string }

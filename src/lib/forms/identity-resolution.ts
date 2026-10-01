@@ -24,7 +24,7 @@ import { COLLECTIONS } from '@/lib/collection-constants';
 import type { Form, EntityType, AppField } from '@/lib/types';
 import { logActivity } from '@/lib/activity-logger';
 import { applyTagsAction } from '@/lib/tag-actions';
-import { createEntityAction, updateEntityAction } from '@/lib/entity-actions';
+import { EntityInputSchema, createEntityCore, updateEntityCore } from '@/lib/crm/entity-core';
 import { normalizeEmail, normalizePhone } from './form-utils';
 
 export interface IdentityResolutionResult {
@@ -203,13 +203,14 @@ export async function resolveAndEnrichCrmEntity({
         delete updatePayload.familyData;
       }
 
-      await updateEntityAction(
-        resolvedEntityId,
-        updatePayload as Parameters<typeof updateEntityAction>[1],
-        `system-form-${form.id}`,
-        workspaceId,
-        organizationId
-      );
+      // Form submissions run as the 'forms' service pinned to the stored form's workspace (N1).
+      const parsedUpdate = EntityInputSchema.safeParse(updatePayload);
+      if (parsedUpdate.success) {
+        await updateEntityCore(
+          { kind: 'service', service: 'forms', workspaceId },
+          { entityId: resolvedEntityId, data: parsedUpdate.data, workspaceId, organizationId }
+        );
+      }
     } else if (entityHandling !== 'update_matching') {
       // ── Create New Entity Lead ──
       const contacts: Array<{
@@ -247,14 +248,13 @@ export async function resolveAndEnrichCrmEntity({
 
       const targetEntityType: EntityType = (form.contactScope as EntityType) || 'person';
 
-      const createRes = await createEntityAction(
-        entityPayload as Parameters<typeof createEntityAction>[0],
-        `system-form-${form.id}`,
-        workspaceId,
-        targetEntityType,
-        organizationId,
-        true // forceCreate to avoid duplicate blocking
-      );
+      const parsedCreate = EntityInputSchema.safeParse(entityPayload);
+      const createRes = parsedCreate.success
+        ? await createEntityCore(
+            { kind: 'service', service: 'forms', workspaceId },
+            { data: parsedCreate.data, workspaceId, entityType: targetEntityType, organizationId, forceCreate: true } // forceCreate avoids duplicate blocking
+          )
+        : { success: false as const, error: 'Invalid entity details.' };
 
       if (createRes.success && createRes.id) {
         resolvedEntityId = createRes.id;

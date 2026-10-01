@@ -2,8 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ExecutionContext } from '../automations/execution-types';
 
 const mockUpdateEntityAction = vi.fn().mockResolvedValue({ success: true });
-vi.mock('../entity-actions', () => ({
-  updateEntityAction: (...args: unknown[]) => mockUpdateEntityAction(...args),
+// Callers use the entity core with an explicit actor now (agents_mcp N1). This adapter keeps the
+// old positional assertions: the third argument is the actor's label (a service name or a uid).
+const coreActorLabel = (actor: { kind: string; service?: string; uid?: string }) =>
+  actor.kind === 'service' ? `system-${actor.service}` : String(actor.uid);
+vi.mock('../crm/entity-core', () => ({
+  updateEntityCore: (actor: { kind: string; service?: string; uid?: string }, p: { entityId: string; data: unknown; workspaceId: string; organizationId?: string }) =>
+    mockUpdateEntityAction(p.entityId, p.data, coreActorLabel(actor), p.workspaceId, p.organizationId),
 }));
 
 const mockDocGet = vi.fn();

@@ -24,8 +24,10 @@ vi.mock('../firebase-admin', () => ({
 }));
 
 const mockUpdateEntityAction = vi.fn();
-vi.mock('../entity-actions', () => ({
-  updateEntityAction: mockUpdateEntityAction,
+vi.mock('../crm/entity-core', () => ({
+  // Callers use the entity core now (N1); keep the old positional shape for the assertions.
+  updateEntityCore: (_actor: unknown, p: { entityId: string; data: unknown; workspaceId: string; organizationId?: string }) =>
+    mockUpdateEntityAction(p.entityId, p.data, 'actor', p.workspaceId, p.organizationId),
 }));
 
 vi.mock('../phone-utils', () => ({

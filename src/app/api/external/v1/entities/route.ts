@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import crypto from 'crypto';
-import { createEntityAction } from '@/lib/entity-actions';
+import { EntityInputSchema, createEntityCore } from '@/lib/crm/entity-core';
 import { linkEntityToWorkspaceAction } from '@/lib/workspace-entity-actions';
 import type { EntityType } from '@/lib/types';
 // SECURITY (audit F9): report the detail server-side, return an opaque message.
@@ -66,23 +66,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'entityType must be one of: institution, family, person' }, { status: 400 });
     }
 
-    // 3. Create Entity using createEntityAction
-    // Note: createEntityAction uses 'system-' prefix for permission bypass
-    const entityResult = await createEntityAction(
-      {
-        name,
-        contacts: contacts || [],
-        globalTags: globalTags || [],
-        institutionData: entityType === 'institution' ? institutionData : undefined,
-        familyData: entityType === 'family' ? familyData : undefined,
-        personData: entityType === 'person' ? personData : undefined,
-        userName: `API (${keyData.name})`,
-        userEmail: 'api@smartsapp.com'
-      },
-      'system-api',
-      workspaceId,
-      entityType as EntityType,
-      organizationId
+    // 3. Create the entity through the entity core as the 'api' service, pinned to the API key's
+    //    workspace (N1). The request body is validated at this boundary.
+    const parsedEntity = EntityInputSchema.safeParse({
+      name,
+      contacts: contacts || [],
+      globalTags: globalTags || [],
+      institutionData: entityType === 'institution' ? institutionData : undefined,
+      familyData: entityType === 'family' ? familyData : undefined,
+      personData: entityType === 'person' ? personData : undefined,
+      userName: `API (${keyData.name})`,
+      userEmail: 'api@smartsapp.com'
+    });
+    if (!parsedEntity.success) {
+      return NextResponse.json({ error: 'Invalid entity details' }, { status: 400 });
+    }
+    const entityResult = await createEntityCore(
+      { kind: 'service', service: 'api', workspaceId },
+      { data: parsedEntity.data, workspaceId, entityType: entityType as EntityType, organizationId }
     );
 
     if (!entityResult.success || !entityResult.id) {

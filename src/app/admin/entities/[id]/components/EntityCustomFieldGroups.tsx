@@ -45,14 +45,12 @@ interface MappedFieldGroup extends FieldGroup {
 interface EntityCustomFieldGroupsProps {
   entityId: string;
   entityData: Entity;
-  organizationId: string;
   workspaceId: string;
 }
 
 export default function EntityCustomFieldGroups({
   entityId,
   entityData,
-  organizationId,
   workspaceId,
 }: EntityCustomFieldGroupsProps) {
   const firestore = useFirestore();
@@ -142,7 +140,6 @@ export default function EntityCustomFieldGroups({
             group={group}
             entityId={entityId}
             entityData={entityData}
-            organizationId={organizationId}
             workspaceId={workspaceId}
             canEdit={canEdit}
           />
@@ -156,7 +153,6 @@ interface CustomFieldGroupCardProps {
   group: MappedFieldGroup;
   entityId: string;
   entityData: Entity;
-  organizationId: string;
   workspaceId: string;
   canEdit: boolean;
 }
@@ -165,7 +161,6 @@ function CustomFieldGroupCard({
   group,
   entityId,
   entityData,
-  organizationId,
   workspaceId,
   canEdit,
 }: CustomFieldGroupCardProps) {
@@ -211,13 +206,11 @@ function CustomFieldGroupCard({
         customDataPayload[field.variableName] = values[field.variableName];
       });
 
-      const result = await updateEntityAction(
+      const result = await updateEntityAction({
         entityId,
-        { customData: customDataPayload },
-        currentUser.uid,
+        data: { customData: customDataPayload },
         workspaceId,
-        organizationId
-      );
+      });
 
       if (result.success) {
         toast({

@@ -62,13 +62,15 @@ vi.mock('../firebase-admin', () => {
           };
         } else if (collectionName === 'workspace_entities') {
           return {
-            where: vi.fn(() => {
-              const filters: Array<{ field: string; value: any }> = [];
+            where: vi.fn((firstField: string, _firstOp: string, firstValue: any) => {
+              // The first where() filters too (the entity core's workspace-link check relies on it).
+              const filters: Array<{ field: string; value: any }> = [{ field: firstField, value: firstValue }];
               const chainable = {
                 where: vi.fn((field: string, op: string, value: any) => {
                   filters.push({ field, value });
                   return chainable;
                 }),
+                limit: vi.fn(() => chainable),
                 get: vi.fn().mockImplementation(async () => {
                   let results = Array.from(workspaceEntities.values());
                   
@@ -113,6 +115,13 @@ vi.mock('../firebase-admin', () => {
           };
         } else if (collectionName === 'workspaces') {
           return {
+            // The entity core reads the workspace's organization.
+            doc: vi.fn((id: string) => ({
+              get: vi.fn().mockImplementation(async () => {
+                const data = workspaces.get(id);
+                return { exists: !!data, id, data: () => data };
+              }),
+            })),
             add: vi.fn().mockImplementation(async (data: any) => {
               const id = `workspace_${Date.now()}_${Math.random()}`;
               workspaces.set(id, { ...data, id });
@@ -157,10 +166,10 @@ vi.mock('../firebase-admin', () => {
 
 // Import after mocks
 import { adminDb } from '../firebase-admin';
-import { updateEntityAction } from '../entity-actions';
+// Domain-logic tests: call the entity core directly as a service pinned to the workspace (N1).
+import { updateEntityCore } from '../crm/entity-core';
 
 const testOrgId = 'test-org-denorm-consistency';
-const testUserId = 'system-test-user-denorm';
 
 // Test storage access
 const __testStorage = {
@@ -273,12 +282,9 @@ describe('Property 5: Denormalization Consistency Invariant', () => {
 
     // 4. Update entity name
     const newName = 'Updated School Name';
-    const updateResult = await updateEntityAction(
-      entityRef.id,
-      { name: newName },
-      testUserId,
-      workspaceRef.id,
-      'smartsapp-hq'
+    const updateResult = await updateEntityCore(
+      { kind: 'service', service: 'imports', workspaceId: workspaceRef.id },
+      { entityId: entityRef.id, data: { name: newName }, workspaceId: workspaceRef.id, organizationId: 'smartsapp-hq' }
     );
 
     expect(updateResult.success).toBe(true);
@@ -373,12 +379,9 @@ describe('Property 5: Denormalization Consistency Invariant', () => {
       },
     ];
 
-    const updateResult = await updateEntityAction(
-      entityRef.id,
-      { contacts: newContacts },
-      testUserId,
-      workspaceRef.id,
-      'smartsapp-hq'
+    const updateResult = await updateEntityCore(
+      { kind: 'service', service: 'imports', workspaceId: workspaceRef.id },
+      { entityId: entityRef.id, data: { contacts: newContacts }, workspaceId: workspaceRef.id, organizationId: 'smartsapp-hq' }
     );
 
     expect(updateResult.success).toBe(true);
@@ -501,13 +504,10 @@ describe('Property 5: Denormalization Consistency Invariant', () => {
       },
     ];
 
-    const updateResult = await updateEntityAction(
-      entityRef.id,
-      { name: newName,
-      contacts: newContacts },
-      testUserId,
-      workspaceRefs[0].id,
-      'smartsapp-hq'
+    const updateResult = await updateEntityCore(
+      { kind: 'service', service: 'imports', workspaceId: workspaceRefs[0].id },
+      { entityId: entityRef.id, data: { name: newName,
+      contacts: newContacts }, workspaceId: workspaceRefs[0].id, organizationId: 'smartsapp-hq' }
     );
 
     expect(updateResult.success).toBe(true);
@@ -588,12 +588,9 @@ describe('Property 5: Denormalization Consistency Invariant', () => {
 
     // 4. Update entity name
     const newName = 'Updated School Without Contacts';
-    const updateResult = await updateEntityAction(
-      entityRef.id,
-      { name: newName },
-      testUserId,
-      workspaceRef.id,
-      'smartsapp-hq'
+    const updateResult = await updateEntityCore(
+      { kind: 'service', service: 'imports', workspaceId: workspaceRef.id },
+      { entityId: entityRef.id, data: { name: newName }, workspaceId: workspaceRef.id, organizationId: 'smartsapp-hq' }
     );
 
     expect(updateResult.success).toBe(true);

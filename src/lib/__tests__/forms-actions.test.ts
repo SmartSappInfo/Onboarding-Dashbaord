@@ -55,11 +55,14 @@ const mockUpdateEntityAction = vi.fn(async (entityId: string, data: any, _userId
   return { success: true };
 });
 
-vi.mock('../entity-actions', () => ({
-  createEntityAction: (data: any, userId: string, workspaceId: string, entityType: any, orgId?: string, _forceCreate?: boolean) =>
-    mockCreateEntityAction(data, userId, workspaceId, entityType, orgId || 'default'),
-  updateEntityAction: (entityId: string, data: any, userId: string, workspaceId: string, orgId: string) =>
-    mockUpdateEntityAction(entityId, data, userId, workspaceId, orgId),
+// Form submissions write entities through the entity core as the 'forms' service (N1). The
+// mocks keep the store-based assertions; the real boundary schema is kept.
+vi.mock('../crm/entity-core', async () => ({
+  EntityInputSchema: (await vi.importActual<typeof import('../crm/entity-core')>('../crm/entity-core')).EntityInputSchema,
+  createEntityCore: (actor: any, p: any) =>
+    mockCreateEntityAction(p.data, `system-${actor.service}`, p.workspaceId, p.entityType, p.organizationId || 'default'),
+  updateEntityCore: (actor: any, p: any) =>
+    mockUpdateEntityAction(p.entityId, p.data, `system-${actor.service}`, p.workspaceId, p.organizationId),
 }));
 
 import {

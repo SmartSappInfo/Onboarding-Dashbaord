@@ -23,7 +23,8 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { createEntityAction } from '../entity-actions';
+// Domain-logic tests: call the entity core directly as a service pinned to the workspace (N1).
+import { createEntityCore } from '../crm/entity-core';
 import { linkEntityToWorkspaceAction } from '../workspace-entity-actions';
 import { adminDb } from '../firebase-admin';
 import type { Workspace } from '../types';
@@ -196,8 +197,9 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
       (adminDb.collection as any) = mockCollection;
 
       // Step 1: Create institution entity
-      const createResult = await createEntityAction(
-        {
+      const createResult = await createEntityCore(
+        { kind: 'service', service: 'imports', workspaceId: 'workspace_institution_1' },
+        { data: {
           name: 'Test Institution',
           contacts: [
             {
@@ -223,11 +225,7 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
             industry: 'SaaS',
             capacity: 500,
           }
-        },
-        'user_1',
-        'workspace_institution_1',
-        'institution',
-        'org_1'
+        }, workspaceId: 'workspace_institution_1', entityType: 'institution', organizationId: 'org_1' }
       );
 
       expect(createResult.success).toBe(true);
@@ -434,8 +432,9 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
       (adminDb.collection as any) = mockCollection;
 
       // Step 1: Create family entity
-      const createResult = await createEntityAction(
-      {name: 'Smith Family',
+      const createResult = await createEntityCore(
+      { kind: 'service', service: 'imports', workspaceId: 'workspace_family_1' },
+      { data: {name: 'Smith Family',
         contacts: [
           {
             name: 'Jane Smith',
@@ -484,11 +483,7 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
             notes: 'Siblings enrolled',
           },
         }
-      },
-      'user_1',
-      'workspace_family_1',
-      'family',
-      'org_1'
+      }, workspaceId: 'workspace_family_1', entityType: 'family', organizationId: 'org_1' }
     );
 
       expect(createResult.success).toBe(true);
@@ -648,8 +643,9 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
       (adminDb.collection as any) = mockCollection;
 
       // Step 1: Create person entity
-      const createResult = await createEntityAction(
-      {name: 'Sarah Johnson', // Will be overridden by firstName + lastName
+      const createResult = await createEntityCore(
+      { kind: 'service', service: 'imports', workspaceId: 'workspace_person_1' },
+      { data: {name: 'Sarah Johnson', // Will be overridden by firstName + lastName
         personData: {
           firstName: 'Sarah',
           lastName: 'Johnson',
@@ -657,11 +653,7 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
           jobTitle: 'CTO',
           leadSource: 'Website',
         }
-      },
-      'user_1',
-      'workspace_person_1',
-      'person',
-      'org_1'
+      }, workspaceId: 'workspace_person_1', entityType: 'person', organizationId: 'org_1' }
     );
 
       expect(createResult.success).toBe(true);

@@ -13,7 +13,7 @@ import { resolveContact } from './contact-adapter';
 import type { Survey, SurveyResponse, Webhook, EntityType, ContactIdentifierPolicy, IndustryVertical, SurveyQuestion, EntityContact, SurveyResultRule, OnlinePresence, ExistingEntityCorePolicy } from './types';
 import { mergeRespondentContact } from './surveys/respondent-contact-merge';
 import { validateContactIdentifier } from './contact-policy';
-import { createEntityAction, updateEntityAction } from './entity-actions';
+import { EntityInputSchema, createEntityCore, updateEntityCore } from './crm/entity-core';
 import { checkDealPlacement, createDealCore, resolveWorkspaceEntityRecord } from './crm/deal-core';
 import { stripHtml } from './utils';
 import { canUser } from './workspace-permissions';
@@ -866,22 +866,10 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
               existingEntityName: existingMatch.entityName || null,
             });
 
-            await updateEntityAction(
-              finalEntityId,
-              safePayload,
-              'system-survey',
-              workspaceId,
-              organizationId
-            );
+            await updateSurveyEntity(finalEntityId, safePayload, workspaceId, organizationId);
           } else {
             // No match → Create new entity
-            const createRes = await createEntityAction(
-              entityPayload,
-              'system-survey',
-              workspaceId,
-              contactScope,
-              organizationId
-            );
+            const createRes = await createSurveyEntity(entityPayload, workspaceId, contactScope, organizationId);
             if (createRes.success) {
               finalEntityId = createRes.id || null;
             } else if (createRes.isDuplicate && createRes.duplicates && createRes.duplicates.length > 0) {
@@ -898,13 +886,7 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
                 existingEntityName: duplicate.name || null,
               });
 
-              await updateEntityAction(
-                targetEntityId,
-                safePayload,
-                'system-survey',
-                workspaceId,
-                organizationId
-              );
+              await updateSurveyEntity(targetEntityId, safePayload, workspaceId, organizationId);
             } else {
               console.error(`[survey-actions] Entity creation failed: ${createRes.error}`);
             }
@@ -1452,21 +1434,9 @@ export async function submitPublicSurveyLead(
         existingEntityName: existingMatch.entityName || targetData?.name || null,
       });
 
-      await updateEntityAction(
-        finalEntityId!,
-        safePayload,
-        'system-survey',
-        workspaceId,
-        organizationId
-      );
+      await updateSurveyEntity(finalEntityId!, safePayload, workspaceId, organizationId);
     } else {
-      const createRes = await createEntityAction(
-        entityPayload,
-        'system-survey',
-        workspaceId,
-        contactScope,
-        organizationId
-      );
+      const createRes = await createSurveyEntity(entityPayload, workspaceId, contactScope, organizationId);
       if (createRes.success) {
         finalEntityId = createRes.id!;
       } else if (createRes.isDuplicate && createRes.duplicates && createRes.duplicates.length > 0) {
@@ -1501,13 +1471,7 @@ export async function submitPublicSurveyLead(
           existingEntityName: existingData?.name || duplicate.name || null,
         });
         
-        await updateEntityAction(
-          targetEntityId,
-          safePayload,
-          'system-survey',
-          workspaceId,
-          organizationId
-        );
+        await updateSurveyEntity(targetEntityId, safePayload, workspaceId, organizationId);
         finalEntityId = targetEntityId;
       } else {
         return { success: false, error: createRes.error || 'Failed to create lead.' };
@@ -2533,6 +2497,25 @@ export async function logSurveyStartedAction(params: {
     console.error('[logSurveyStartedAction] Error:', errorMsg);
     return { success: false, error: errorMsg };
   }
+}
+
+/*
+ * Survey submissions create and update entities as the 'surveys' service, pinned to the STORED
+ * survey's workspace (agents_mcp N1). The payload is validated at this boundary; an invalid one
+ * throws, and the submission flow's own error handling reports it.
+ */
+async function createSurveyEntity(data: unknown, workspaceId: string, entityType: EntityType, organizationId: string) {
+  return createEntityCore(
+    { kind: 'service', service: 'surveys', workspaceId },
+    { data: EntityInputSchema.parse(data), workspaceId, entityType, organizationId }
+  );
+}
+
+async function updateSurveyEntity(entityId: string, data: unknown, workspaceId: string, organizationId: string) {
+  return updateEntityCore(
+    { kind: 'service', service: 'surveys', workspaceId },
+    { entityId, data: EntityInputSchema.parse(data), workspaceId, organizationId }
+  );
 }
 
 export interface PipelineRouteParams {

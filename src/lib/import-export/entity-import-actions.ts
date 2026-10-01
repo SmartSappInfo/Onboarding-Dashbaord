@@ -14,7 +14,9 @@
 import { adminDb } from '../firebase-admin';
 import { logActivity } from '../activity-logger';
 import { validateScopeMatch } from '../scope-guard';
-import { createEntityAction } from '../entity-actions';
+import { createEntityCore, EntityInputSchema } from '../crm/entity-core';
+import { workspaceOrganizationId } from '../crm/deal-core';
+import { canUser } from '../workspace-permissions';
 import { validateContactIdentifier } from '../contact-policy';
 import type { EntityType, Workspace, ContactIdentifierPolicy } from '../types';
 import type {
@@ -24,7 +26,7 @@ import type {
 } from '@/app/admin/contacts/import/types';
 import { normalizePhoneNumber } from '../phone-utils';
 import { resolveOrganizationCountryCode } from '../organization-country';
-import { requireAuth } from '@/lib/auth/require-auth';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 import { getErrorMessage, getErrorStack } from '@/lib/errors/report-error';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -289,7 +291,8 @@ export async function executeImportBatch(
   entityType: EntityType,
   workspaceId?: string,
   organizationId?: string,
-  userId?: string,
+  /** Ignored (kept so positional callers don't shift): identity comes from the session (N1). */
+  _ignoredUserId?: string,
   pipelineId?: string,
   stageId?: string,
   configuration?: {
@@ -299,12 +302,23 @@ export async function executeImportBatch(
     forceImportDuplicates?: boolean;
   }
 ): Promise<ExecutionSummary & { createdIds?: string[] }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
-
-  const uid = userId || 'system-import';
+  // SECURITY (audit F2 / N1): identity from the session. The caller used to pass any `userId`,
+  // and the 'system-import' default skipped every permission check. Now the session user needs
+  // operations/campuses:create in the workspace (checked once), and rows are created by the
+  // 'imports' service pinned to that workspace, attributed to the user.
   const wsId = workspaceId || '';
-  const orgId = organizationId || 'smartsapp-hq';
+  const { uid } = await requireWorkspace(wsId);
+  const importPermission = await canUser(uid, 'operations', 'campuses', 'create', wsId);
+  if (!importPermission.granted) {
+    const reason = importPermission.reason || 'Permission denied.';
+    return {
+      successCount: 0,
+      errorCount: rows.length,
+      skippedCount: 0,
+      failedRows: rows.map((originalData, i) => ({ rowNumber: i + 1, reason, originalData })),
+    };
+  }
+  const orgId = (await workspaceOrganizationId(wsId)) || organizationId || '';
 
   let defaultCountryCode: string | undefined = undefined;
   try {
@@ -405,14 +419,13 @@ export async function executeImportBatch(
       }
 
       // Delegate to canonical createEntityAction (Requirement 14 – backward compat)
-      const result = await createEntityAction(
-        payload,
-        uid,
-        wsId,
-        entityType,
-        orgId,
-        configuration?.forceImportDuplicates
-      );
+      const parsedPayload = EntityInputSchema.safeParse(payload);
+      const result = parsedPayload.success
+        ? await createEntityCore(
+            { kind: 'service', service: 'imports', workspaceId: wsId, onBehalfOf: uid },
+            { data: parsedPayload.data, workspaceId: wsId, entityType, organizationId: orgId, forceCreate: configuration?.forceImportDuplicates }
+          )
+        : { success: false, error: 'Invalid entity details.' };
 
       if (result.success && result.id) {
         successCount++;
@@ -431,7 +444,7 @@ export async function executeImportBatch(
         errorCount++;
         failedRows.push({
           rowNumber: i + 1,
-          reason: `Duplicate found: ${result.duplicates.map((d: any) => `${d.name} (${d.reason})`).join('; ')}`,
+          reason: `Duplicate found: ${(result.duplicates ?? []).map((d) => `${d.name} (${d.reason})`).join('; ')}`,
           originalData: rows[i],
           isDuplicate: true,
           duplicateInfo: result.duplicates,

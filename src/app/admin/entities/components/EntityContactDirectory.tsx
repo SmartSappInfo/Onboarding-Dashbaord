@@ -129,13 +129,11 @@ export default function EntityContactDirectory({
             // Enforce constraints (single primary, single signatory)
             const finalContacts = enforceContactConstraints(updatedContacts);
             
-            const result = await updateEntityAction(
+            const result = await updateEntityAction({
                 entityId,
-                { entityContacts: finalContacts },
-                user?.uid || 'anonymous',
-                workspaceId || '',
-                organizationId || entityData.organizationId || 'default'
-            );
+                data: { entityContacts: finalContacts },
+                workspaceId: workspaceId || '',
+            });
             if (!result.success) {
                 throw new Error(result.error || 'Failed to save contact');
             }
@@ -181,13 +179,11 @@ export default function EntityContactDirectory({
             const updatedContacts = contacts.filter(c => c.id !== contactToDelete);
             const finalContacts = enforceContactConstraints(updatedContacts);
             
-            const result = await updateEntityAction(
+            const result = await updateEntityAction({
                 entityId,
-                { entityContacts: finalContacts },
-                user?.uid || 'anonymous',
-                workspaceId || '',
-                organizationId || entityData.organizationId || 'default'
-            );
+                data: { entityContacts: finalContacts },
+                workspaceId: workspaceId || '',
+            });
             if (!result.success) {
                 throw new Error(result.error || 'Failed to delete contact');
             }

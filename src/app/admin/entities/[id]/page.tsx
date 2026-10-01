@@ -702,7 +702,6 @@ export default function EntityDetailPage() {
                                         <EntityCustomFieldGroups
                                             entityId={entityId}
                                             entityData={entityData}
-                                            organizationId={entityData.organizationId}
                                             workspaceId={activeWorkspaceId}
                                         />
                                     </>

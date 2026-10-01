@@ -573,14 +573,12 @@ export default function NewEntityPage() {
     }
 
     try {
-      const result = await createEntityAction(
-          entityPayload, 
-          user.uid, 
-          activeWorkspaceId, 
-          contactScope as any, 
-          activeOrganizationId || 'smartsapp-hq',
-          forceCreate
-      );
+      const result = await createEntityAction({
+          data: entityPayload,
+          workspaceId: activeWorkspaceId,
+          entityType: contactScope as any,
+          forceCreate,
+      });
       
       if (result.success) {
         // Create Deal Opportunity if enabled (Phase 1 / Risk 7 implementation)
@@ -612,7 +610,7 @@ export default function NewEntityPage() {
         toast({ title: 'Record Initialized', description: `${data.name} created successfully.` });
         router.push('/admin/entities');
       } else if (result.isDuplicate) {
-        setDuplicateWarning(result.duplicates);
+        setDuplicateWarning(result.duplicates ?? []);
         setPendingFormData(data);
       } else {
         throw new Error(result.error || `Failed to create ${singular.toLowerCase()}`);

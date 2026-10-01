@@ -4,9 +4,15 @@ import type { ExecutionContext } from '../automations/execution-types';
 const mockCreateEntityAction = vi.fn();
 const mockUpdateEntityAction = vi.fn().mockResolvedValue({ success: true });
 
-vi.mock('../entity-actions', () => ({
-  createEntityAction: (...args: unknown[]) => mockCreateEntityAction(...args),
-  updateEntityAction: (...args: unknown[]) => mockUpdateEntityAction(...args),
+// Callers use the entity core with an explicit actor now (agents_mcp N1). This adapter keeps the
+// old positional assertions: the third argument is the actor's label (a service name or a uid).
+const coreActorLabel = (actor: { kind: string; service?: string; uid?: string }) =>
+  actor.kind === 'service' ? `system-${actor.service}` : String(actor.uid);
+vi.mock('../crm/entity-core', () => ({
+  createEntityCore: (actor: { kind: string; service?: string; uid?: string }, p: { data: unknown; workspaceId: string; entityType: string; organizationId?: string; forceCreate?: boolean }) =>
+    mockCreateEntityAction(p.data, coreActorLabel(actor), p.workspaceId, p.entityType, p.organizationId, p.forceCreate),
+  updateEntityCore: (actor: { kind: string; service?: string; uid?: string }, p: { entityId: string; data: unknown; workspaceId: string; organizationId?: string }) =>
+    mockUpdateEntityAction(p.entityId, p.data, coreActorLabel(actor), p.workspaceId, p.organizationId),
 }));
 
 const mockDocGet = vi.fn();

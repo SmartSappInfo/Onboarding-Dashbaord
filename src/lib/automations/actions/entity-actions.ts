@@ -282,9 +282,10 @@ export async function handleCreateEntity(
     ? (config.tagIds as string[])
     : [];
 
-  const { createEntityAction } = await import('../../entity-actions');
-  const createRes = await createEntityAction(
-    {
+  const { createEntityCore } = await import('../../crm/entity-core');
+  const createRes = await createEntityCore(
+    { kind: 'service', service: 'automations', workspaceId: context.workspaceId },
+    { data: {
       name: resolvedName,
       contacts: [
         {
@@ -299,12 +300,7 @@ export async function handleCreateEntity(
       globalTags: [],
       workspaceTags: tagIds,
       ...nativePayload
-    },
-    `system-automation-create:${context.automationId}`,
-    context.workspaceId,
-    entityType,
-    organizationId,
-    true // forceCreate: true to bypass interactive duplicate prevention check inside server actions (since it's automated)
+    }, workspaceId: context.workspaceId, entityType: entityType, organizationId, forceCreate: true }
   );
 
   if (!createRes.success || !createRes.id) {
@@ -519,15 +515,12 @@ export async function handleCreateContactForEntity(
   }
 
   // 5. Update the entity via updateEntityAction
-  const { updateEntityAction } = await import('../../entity-actions');
-  const updateRes = await updateEntityAction(
-    entityId,
-    {
+  const { updateEntityCore } = await import('../../crm/entity-core');
+  const updateRes = await updateEntityCore(
+    { kind: 'service', service: 'automations', workspaceId: context.workspaceId },
+    { entityId: entityId, data: {
       entityContacts: updatedContactsList,
-    },
-    `system-automation-contact:${context.automationId}`,
-    context.workspaceId,
-    organizationId
+    }, workspaceId: context.workspaceId, organizationId }
   );
 
   if (!updateRes.success) {
@@ -828,13 +821,10 @@ export async function handleUpdateContact(
         newContact.phone = parsedP.e164 || (config.contactPhone as string).trim();
       }
 
-      const { updateEntityAction } = await import('../../entity-actions');
-      await updateEntityAction(
-        targetEntity.id,
-        { entityContacts: [newContact] },
-        `system-automation-contact:${context.automationId}`,
-        context.workspaceId,
-        organizationId
+      const { updateEntityCore } = await import('../../crm/entity-core');
+      await updateEntityCore(
+        { kind: 'service', service: 'automations', workspaceId: context.workspaceId },
+        { entityId: targetEntity.id, data: { entityContacts: [newContact] }, workspaceId: context.workspaceId, organizationId }
       );
       return;
     }
@@ -895,15 +885,12 @@ export async function handleUpdateContact(
 
   const finalContacts = enforceContactConstraints(updatedContacts);
 
-  const { updateEntityAction } = await import('../../entity-actions');
-  const updateRes = await updateEntityAction(
-    singleEntityId,
-    {
+  const { updateEntityCore } = await import('../../crm/entity-core');
+  const updateRes = await updateEntityCore(
+    { kind: 'service', service: 'automations', workspaceId: context.workspaceId },
+    { entityId: singleEntityId, data: {
       entityContacts: finalContacts,
-    },
-    `system-automation-contact:${context.automationId}`,
-    context.workspaceId,
-    organizationId
+    }, workspaceId: context.workspaceId, organizationId }
   );
 
   if (!updateRes.success) {
@@ -1278,9 +1265,10 @@ export async function handleFindContact(
     const tagIds = Array.isArray(config.tagIds) ? (config.tagIds as string[]) : [];
     const assignedTo = config.assignedTo && config.assignedTo !== 'auto' ? String(config.assignedTo) : undefined;
 
-    const { createEntityAction } = await import('../../entity-actions');
-    const createRes = await createEntityAction(
-      {
+    const { createEntityCore } = await import('../../crm/entity-core');
+    const createRes = await createEntityCore(
+      { kind: 'service', service: 'automations', workspaceId: context.workspaceId },
+      { data: {
         name: targetEntityName,
         contacts: [
           {
@@ -1296,12 +1284,7 @@ export async function handleFindContact(
         globalTags: [],
         workspaceTags: tagIds,
         assignedTo: assignedTo || null,
-      },
-      `system-automation-find-create:${context.automationId}`,
-      context.workspaceId,
-      targetEntityType,
-      organizationId,
-      true // forceCreate: true to bypass duplicate check since this is an automated create
+      }, workspaceId: context.workspaceId, entityType: targetEntityType, organizationId, forceCreate: true }
     );
 
     if (!createRes.success || !createRes.id) {

@@ -218,7 +218,6 @@
     "src/lib/documents/interactive-layer-actions.ts#executeLayerActionServerAction",
     "src/lib/documents/interactive-layer-actions.ts#sanitizeLayerUrl",
     "src/lib/documents/processing-actions.ts#queueDocumentProcessingAction",
-    "src/lib/entity-actions.ts#updateEntityAction",
     "src/lib/fields-actions.ts#createFieldAction",
     "src/lib/fields-actions.ts#createFieldGroupAction",
     "src/lib/fields-actions.ts#getFieldsForWorkspace",

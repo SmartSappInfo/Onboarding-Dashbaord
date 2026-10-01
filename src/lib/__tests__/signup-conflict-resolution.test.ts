@@ -56,8 +56,10 @@ vi.mock('../entity-duplicate-detection', () => ({
   ]),
 }));
 
-vi.mock('../entity-actions', () => ({
-  updateEntityAction: vi.fn().mockResolvedValue({ success: true, id: 'entity_existing_123' }),
+// Signup merges write through the entity core as the 'signup' service (N1).
+vi.mock('../crm/entity-core', async () => ({
+  EntityInputSchema: (await vi.importActual<typeof import('../crm/entity-core')>('../crm/entity-core')).EntityInputSchema,
+  updateEntityCore: vi.fn().mockResolvedValue({ success: true, id: 'entity_existing_123' }),
 }));
 
 vi.mock('../activity-logger', () => ({

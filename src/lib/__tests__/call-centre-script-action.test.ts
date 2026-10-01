@@ -4,7 +4,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { executeScriptActionAction } from '../call-centre-actions';
 import { createTaskCore } from '../tasks/task-core';
 import { applyTagsAction, removeTagsAction } from '../tag-actions';
-import { updateEntityAction } from '../entity-actions';
+import { updateEntityCore } from '../crm/entity-core';
 import { canUser } from '../workspace-permissions';
 
 import { CallCentreService } from '../services/call-centre-service';
@@ -146,8 +146,9 @@ vi.mock('../tag-actions', () => ({
   applyTagsAction: vi.fn().mockResolvedValue({ success: true }),
   removeTagsAction: vi.fn().mockResolvedValue({ success: true }),
 }));
-vi.mock('../entity-actions', () => ({
-  updateEntityAction: vi.fn().mockResolvedValue({ success: true }),
+// The call centre writes entities through the entity core as its service actor (N1).
+vi.mock('../crm/entity-core', () => ({
+  updateEntityCore: vi.fn().mockResolvedValue({ success: true }),
 }));
 vi.mock('../mnotify-service', () => ({ sendSms: vi.fn().mockResolvedValue({}) }));
 vi.mock('../resend-service', () => ({ sendEmail: vi.fn().mockResolvedValue({}) }));
@@ -259,10 +260,9 @@ describe('executeScriptActionAction', () => {
       'user_1'
     );
     expect(res.success).toBe(true);
-    expect(updateEntityAction).toHaveBeenCalledWith(
-      'ent_1',
-      expect.objectContaining({ pipelineId: 'pl_1', stageId: 'st_1' }),
-      expect.any(String), 'ws_1', 'org_1'
+    expect(updateEntityCore).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'service', service: 'call-centre', workspaceId: 'ws_1' }),
+      expect.objectContaining({ entityId: 'ent_1', data: expect.objectContaining({ pipelineId: 'pl_1', stageId: 'st_1' }), workspaceId: 'ws_1', organizationId: 'org_1' })
     );
   });
 
@@ -272,7 +272,7 @@ describe('executeScriptActionAction', () => {
       'user_1'
     );
     expect(res.success).toBe(false);
-    expect(updateEntityAction).not.toHaveBeenCalled();
+    expect(updateEntityCore).not.toHaveBeenCalled();
   });
 
   it('WEBHOOK applies parsed JSON headers from the headers string', async () => {
@@ -293,12 +293,9 @@ describe('executeScriptActionAction', () => {
       ...ctx
     }, 'user_1');
     expect(res.success).toBe(true);
-    expect(updateEntityAction).toHaveBeenCalledWith(
-      'ent_1',
-      expect.objectContaining({ stageId: 'stage_123', currentStageName: 'Test Stage', pipelineId: 'pl_123' }),
-      expect.any(String),
-      'ws_1',
-      'org_1'
+    expect(updateEntityCore).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'service', service: 'call-centre', workspaceId: 'ws_1' }),
+      expect.objectContaining({ entityId: 'ent_1', data: expect.objectContaining({ stageId: 'stage_123', currentStageName: 'Test Stage', pipelineId: 'pl_123' }), workspaceId: 'ws_1', organizationId: 'org_1' })
     );
   });
 
@@ -377,20 +374,22 @@ describe('executeScriptActionAction', () => {
     }, 'user_1');
     
     expect(res.success).toBe(true);
-    expect(updateEntityAction).toHaveBeenCalledWith(
-      'ent_1',
+    expect(updateEntityCore).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'service', service: 'call-centre', workspaceId: 'ws_1' }),
       expect.objectContaining({
-        entityContacts: [
-          expect.objectContaining({
-            name: 'New Contact',
-            phone: '+233241112222',
-            isPrimary: true
-          })
-        ]
-      }),
-      expect.any(String),
-      'ws_1',
-      'org_1'
+        entityId: 'ent_1',
+        data: expect.objectContaining({
+          entityContacts: [
+            expect.objectContaining({
+              name: 'New Contact',
+              phone: '+233241112222',
+              isPrimary: true
+            })
+          ]
+        }),
+        workspaceId: 'ws_1',
+        organizationId: 'org_1',
+      })
     );
   });
 
@@ -402,21 +401,23 @@ describe('executeScriptActionAction', () => {
     }, 'user_1');
 
     expect(res.success).toBe(true);
-    expect(updateEntityAction).toHaveBeenCalledWith(
-      'ent_1',
+    expect(updateEntityCore).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'service', service: 'call-centre', workspaceId: 'ws_1' }),
       expect.objectContaining({
-        entityContacts: [
-          expect.objectContaining({
-            id: 'c_primary',
-            name: 'Updated Name',
-            email: 'updated@example.com',
-            phone: '+1234567890'
-          })
-        ]
-      }),
-      expect.any(String),
-      'ws_1',
-      'org_1'
+        entityId: 'ent_1',
+        data: expect.objectContaining({
+          entityContacts: [
+            expect.objectContaining({
+              id: 'c_primary',
+              name: 'Updated Name',
+              email: 'updated@example.com',
+              phone: '+1234567890'
+            })
+          ]
+        }),
+        workspaceId: 'ws_1',
+        organizationId: 'org_1',
+      })
     );
   });
 

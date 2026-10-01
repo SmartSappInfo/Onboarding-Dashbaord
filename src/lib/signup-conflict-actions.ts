@@ -18,7 +18,8 @@
 
 import { adminDb } from './firebase-admin';
 import { findDuplicateEntities } from './entity-duplicate-detection';
-import { updateEntityAction } from './entity-actions';
+import { EntityInputSchema, updateEntityCore } from './crm/entity-core';
+import { SIGNUP_WORKSPACE_ID, pinSignupTarget } from './signup-target';
 import { logActivity } from './activity-logger';
 import { extractPrimaryContactFields, enforceContactConstraints } from './entity-contact-helpers';
 import type { EntityContact } from './types';
@@ -54,10 +55,11 @@ export interface SignupDuplicateCheckResult {
  * Checks for matching School Name, Primary Email, or Primary Phone in the target workspace.
  */
 export async function checkSignupDuplicatesAction(
-  input: SignupInput
+  rawInput: SignupInput
 ): Promise<SignupDuplicateCheckResult> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
+  // SECURITY (audit F2 / N1): session required; only the signup workspace is searched.
+  const { uid } = await requireAuth();
+  const input = await pinSignupTarget(rawInput, uid);
 
   try {
     const { primaryEmail, primaryPhone } = extractPrimaryContactFields({
@@ -152,10 +154,11 @@ export async function checkSignupDuplicatesAction(
  */
 export async function mergeSignupIntoEntityAction(
   targetEntityId: string,
-  input: SignupInput
+  rawInput: SignupInput
 ): Promise<{ success: boolean; entityId?: string; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
+  // SECURITY (audit F2 / N1): session required; merges only into an entity of the signup workspace.
+  const { uid } = await requireAuth();
+  const input = await pinSignupTarget(rawInput, uid);
 
   try {
     const timestamp = new Date().toISOString();
@@ -251,12 +254,9 @@ export async function mergeSignupIntoEntityAction(
     };
 
     // 4. Update existing entity record via updateEntityAction
-    const updateResult = await updateEntityAction(
-      targetEntityId,
-      updateData,
-      input.userId || 'system-signup-merge',
-      input.workspaceId,
-      input.organizationId
+    const updateResult = await updateEntityCore(
+      { kind: 'service', service: 'signup', workspaceId: SIGNUP_WORKSPACE_ID, onBehalfOf: uid },
+      { entityId: targetEntityId, data: EntityInputSchema.parse(updateData), workspaceId: SIGNUP_WORKSPACE_ID, organizationId: input.organizationId }
     );
 
     if (!updateResult.success) {

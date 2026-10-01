@@ -432,13 +432,11 @@ function EditEntityForm({ entityId }: EditFormProps) {
     };
 
     try {
-        const result = await updateEntityAction(
-            entityId, 
-            updatePayload, 
-            user.uid, 
-            activeWorkspaceId, 
-            activeOrganizationId || 'smartsapp-hq'
-        );
+        const result = await updateEntityAction({
+            entityId,
+            data: updatePayload,
+            workspaceId: activeWorkspaceId,
+        });
 
         if (result.success) {
             toast({ title: 'Profile Updated', description: `Changes to ${data.name} saved successfully.` });

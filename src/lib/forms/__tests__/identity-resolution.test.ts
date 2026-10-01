@@ -52,10 +52,15 @@ vi.mock('@/lib/tag-actions', () => ({
   applyTagsAction: vi.fn().mockResolvedValue({ success: true }),
 }));
 
-vi.mock('@/lib/entity-actions', () => ({
-  createEntityAction: vi.fn().mockResolvedValue({ success: true, id: 'entity_new_123' }),
-  updateEntityAction: vi.fn().mockResolvedValue({ success: true }),
-}));
+// Form submissions write entities through the entity core as the 'forms' service (N1).
+vi.mock('@/lib/crm/entity-core', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/crm/entity-core')>('@/lib/crm/entity-core');
+  return {
+    ...actual,
+    createEntityCore: vi.fn().mockResolvedValue({ success: true, id: 'entity_new_123' }),
+    updateEntityCore: vi.fn().mockResolvedValue({ success: true }),
+  };
+});
 
 describe('SmartSapp Forms 2.0: Identity Resolution & Progressive Profiling', () => {
   const mockForm: Form = {

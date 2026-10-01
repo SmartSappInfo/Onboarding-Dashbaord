@@ -24,8 +24,13 @@ vi.mock('../firebase-admin', () => ({
 }));
 
 const mockUpdateEntityAction = vi.fn();
-vi.mock('../entity-actions', () => ({
-  updateEntityAction: (...args: any[]) => mockUpdateEntityAction(...args),
+// Callers use the entity core with an explicit actor now (agents_mcp N1). This adapter keeps the
+// old positional assertions: the third argument is the actor's label (a service name or a uid).
+const coreActorLabel = (actor: { kind: string; service?: string; uid?: string }) =>
+  actor.kind === 'service' ? `system-${actor.service}` : String(actor.uid);
+vi.mock('../crm/entity-core', () => ({
+  updateEntityCore: (actor: { kind: string; service?: string; uid?: string }, p: { entityId: string; data: unknown; workspaceId: string; organizationId?: string }) =>
+    mockUpdateEntityAction(p.entityId, p.data, coreActorLabel(actor), p.workspaceId, p.organizationId),
 }));
 
 vi.mock('../phone-utils', () => ({

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createEntityAction } from '@/lib/entity-actions';
+import { EntityInputSchema, createEntityCore } from '@/lib/crm/entity-core';
 import { linkEntityToWorkspaceAction } from '@/lib/workspace-entity-actions';
 import { authenticateApiRequest } from '@/lib/auth/api-auth-guard';
 import type { EntityType, EntityContact, EntityCustomData, AssignedUser } from '@/lib/types';
@@ -87,21 +87,23 @@ export async function POST(request: NextRequest) {
     const callerEmail = user.email || 'system@smartsapp.com';
 
     // Step 1: Create entity record (Requirement 24.5)
-    const entityResult = await createEntityAction(
-      {
-        name,
-        contacts: contacts || [],
-        globalTags: globalTags || [],
-        institutionData: entityType === 'institution' ? institutionData : undefined,
-        familyData: entityType === 'family' ? familyData : undefined,
-        personData: entityType === 'person' ? personData : undefined,
-        userName: callerName,
-        userEmail: callerEmail,
-      },
-      callerId,
-      workspaceId,
-      entityType as EntityType,
-      organizationId
+    // Route handler (token-authenticated caller): the entity core runs as that user (N1).
+    const parsedEntity = EntityInputSchema.safeParse({
+      name,
+      contacts: contacts || [],
+      globalTags: globalTags || [],
+      institutionData: entityType === 'institution' ? institutionData : undefined,
+      familyData: entityType === 'family' ? familyData : undefined,
+      personData: entityType === 'person' ? personData : undefined,
+      userName: callerName,
+      userEmail: callerEmail,
+    });
+    if (!parsedEntity.success) {
+      return NextResponse.json({ error: 'Invalid entity details' }, { status: 400 });
+    }
+    const entityResult = await createEntityCore(
+      { kind: 'user', uid: callerId },
+      { data: parsedEntity.data, workspaceId, entityType: entityType as EntityType, organizationId }
     );
 
     if (!entityResult.success || !entityResult.id) {

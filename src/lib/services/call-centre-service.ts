@@ -13,7 +13,7 @@ import type {
   MeetingFacilitator
 } from '../types';
 import { previewCampaignAudience } from '../messaging-actions';
-import { updateEntityAction } from '../entity-actions';
+import { updateEntityCore } from '../crm/entity-core';
 import { PortalInvitationService } from './portal-invitation-service';
 import { applyTagsAction, removeTagsAction } from '../tag-actions';
 import { MEETING_TYPES } from '../types';
@@ -1274,9 +1274,9 @@ export class CallCentreService {
   ): Promise<{ success: boolean; unsupported?: boolean; error?: string; meetingId?: string }> {
     const { entityId, userId, workspaceId, organizationId, contactId } = ctx;
     const systemActor = `system-call-centre:${userId}`;
-    // Deal changes from call outcomes run as the call centre service, pinned to the call's workspace
+    // Deal and entity changes from call outcomes run as the call centre service, pinned to the call's workspace
     // and attributed to the agent. The call centre action layer has already authorized the agent.
-    const dealActor: CrmActor = { kind: 'service', service: 'call-centre', workspaceId, onBehalfOf: userId };
+    const crmActor: CrmActor = { kind: 'service', service: 'call-centre', workspaceId, onBehalfOf: userId };
 
     try {
       switch (type) {
@@ -1302,11 +1302,11 @@ export class CallCentreService {
 
           if (!dealsSnap.empty) {
             const dealId = dealsSnap.docs[0].id;
-            await updateDealStageCore(dealActor, dealId, params.stageId);
+            await updateDealStageCore(crmActor, dealId, params.stageId);
           } else {
             const entitySnap = await adminDb.collection('entities').doc(entityId).get();
             const entityName = entitySnap.exists ? entitySnap.data()?.name || 'Contact' : 'Contact';
-            await createDealCore(dealActor, {
+            await createDealCore(crmActor, {
               entityId,
               workspaceId,
               organizationId,
@@ -1320,12 +1320,9 @@ export class CallCentreService {
           const patch: { stageId: string; currentStageName: string; pipelineId?: string } =
             { stageId: params.stageId, currentStageName };
           patch.pipelineId = pipelineId;
-          await updateEntityAction(
-            entityId,
-            patch,
-            systemActor,
-            workspaceId,
-            organizationId
+          await updateEntityCore(
+            crmActor,
+            { entityId, data: patch, workspaceId, organizationId }
           );
           return { success: true };
         }
@@ -1349,11 +1346,11 @@ export class CallCentreService {
 
           if (!dealsSnap.empty) {
             const dealId = dealsSnap.docs[0].id;
-            await updateDealStageCore(dealActor, dealId, params.stageId);
+            await updateDealStageCore(crmActor, dealId, params.stageId);
           } else {
             const entitySnap = await adminDb.collection('entities').doc(entityId).get();
             const entityName = entitySnap.exists ? entitySnap.data()?.name || 'Contact' : 'Contact';
-            await createDealCore(dealActor, {
+            await createDealCore(crmActor, {
               entityId,
               workspaceId,
               organizationId,
@@ -1364,12 +1361,9 @@ export class CallCentreService {
             });
           }
 
-          await updateEntityAction(
-            entityId,
-            { pipelineId: params.pipelineId, stageId: params.stageId, currentStageName },
-            systemActor,
-            workspaceId,
-            organizationId
+          await updateEntityCore(
+            crmActor,
+            { entityId, data: { pipelineId: params.pipelineId, stageId: params.stageId, currentStageName }, workspaceId, organizationId }
           );
           return { success: true };
         }
@@ -2069,12 +2063,9 @@ export class CallCentreService {
             contacts[contactIdx] = targetContact;
           }
 
-          const res = await updateEntityAction(
-            entityId,
-            { entityContacts: contacts },
-            systemActor,
-            workspaceId,
-            organizationId
+          const res = await updateEntityCore(
+            crmActor,
+            { entityId, data: { entityContacts: contacts }, workspaceId, organizationId }
           );
 
           if (!res.success) {

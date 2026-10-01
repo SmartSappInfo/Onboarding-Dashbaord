@@ -29,9 +29,14 @@ vi.mock('../activity-logger', () => ({
   logActivity: (args: Record<string, unknown>) => mockLogActivity(args),
 }));
 
-vi.mock('../entity-actions', () => ({
-  createEntityAction: (...args: unknown[]) => mockCreateEntityAction(...args),
-  updateEntityAction: vi.fn().mockResolvedValue({ success: true }),
+// Callers use the entity core with an explicit actor now (agents_mcp N1). This adapter keeps the
+// old positional assertions: the third argument is the actor's label (a service name or a uid).
+const coreActorLabel = (actor: { kind: string; service?: string; uid?: string }) =>
+  actor.kind === 'service' ? `system-${actor.service}` : String(actor.uid);
+vi.mock('../crm/entity-core', () => ({
+  createEntityCore: (actor: { kind: string; service?: string; uid?: string }, p: { data: unknown; workspaceId: string; entityType: string; organizationId?: string; forceCreate?: boolean }) =>
+    mockCreateEntityAction(p.data, coreActorLabel(actor), p.workspaceId, p.entityType, p.organizationId, p.forceCreate),
+  updateEntityCore: vi.fn().mockResolvedValue({ success: true }),
 }));
 
 vi.mock('../firebase-admin', () => ({
@@ -157,7 +162,7 @@ describe('handleCreateEntity (CREATE_ENTITY)', () => {
     expect(result).toEqual({ id: 'entity-new-1' });
     expect(mockCreateEntityAction).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'Acme Inc', contacts: expect.any(Array) }),
-      expect.stringContaining('system-automation-create'),
+      'system-automations', // the automation service actor, pinned to ws-1
       'ws-1',
       'institution',
       'org-1',

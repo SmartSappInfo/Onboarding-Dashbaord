@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { updateEntityAction } from '@/lib/entity-actions';
+import { EntityInputSchema, updateEntityCore } from '@/lib/crm/entity-core';
 import { updateWorkspaceEntityAction } from '@/lib/workspace-entity-actions';
 import { authenticateApiRequest } from '@/lib/auth/api-auth-guard';
 import type { Entity, WorkspaceEntity, EntityContact, EntityCustomData, AssignedUser } from '@/lib/types';
@@ -198,12 +198,14 @@ export async function PATCH(
       personData;
 
     if (hasIdentityUpdates) {
-      const entityResult = await updateEntityAction(
-        entityId,
-        { name, contacts, financeData, industryData, logoUrl, location, interests, familyData, personData },
-        callerId,
-        workspaceId,
-        callerOrgId
+      // Route handler (token-authenticated caller): the entity core runs as that user (N1).
+      const parsedUpdate = EntityInputSchema.safeParse({ name, contacts, financeData, industryData, logoUrl, location, interests, familyData, personData });
+      if (!parsedUpdate.success) {
+        return NextResponse.json({ error: 'Invalid entity details' }, { status: 400 });
+      }
+      const entityResult = await updateEntityCore(
+        { kind: 'user', uid: callerId },
+        { entityId, data: parsedUpdate.data, workspaceId, organizationId: callerOrgId }
       );
 
       if (!entityResult.success) {

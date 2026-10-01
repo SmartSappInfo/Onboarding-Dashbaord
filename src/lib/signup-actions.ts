@@ -1,7 +1,8 @@
 'use server';
 
 import { logActivity } from './activity-logger';
-import { createEntityAction } from './entity-actions';
+import { EntityInputSchema, createEntityCore } from './crm/entity-core';
+import { SIGNUP_WORKSPACE_ID, pinSignupTarget } from './signup-target';
 import type { InstitutionData, EntityContact } from './types';
 import { requireAuth } from '@/lib/auth/require-auth';
 import { getErrorMessage } from '@/lib/errors/report-error';
@@ -61,9 +62,10 @@ export interface SignupInput {
  * - 10.4: Assign unique entityId using format entity_<random_id>
  * - 10.5: Log activity with entityId reference
  */
-export async function handleSignupAction(input: SignupInput) {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
+export async function handleSignupAction(rawInput: SignupInput) {
+  // SECURITY (audit F2 / N1): identity from the session; the target workspace is fixed server-side.
+  const { uid } = await requireAuth();
+  const input = await pinSignupTarget(rawInput, uid);
 
   try {
     const _timestamp = new Date().toISOString();
@@ -85,17 +87,15 @@ export async function handleSignupAction(input: SignupInput) {
     // FER-01: Pass canonical entityContacts
     const contactData = { entityContacts: input.entityContacts || [] };
 
-    const createResult = await createEntityAction(
+    const createResult = await createEntityCore(
+      { kind: 'service', service: 'signup', workspaceId: SIGNUP_WORKSPACE_ID, onBehalfOf: uid },
       {
-        name: input.name,
-        ...contactData,
-        institutionData,
-      },
-      input.userId || 'system',
-      input.workspaceId,
-      'institution',
-      input.organizationId,
-      true // forceCreate = true for public new school signup flow
+        data: EntityInputSchema.parse({ name: input.name, ...contactData, institutionData }),
+        workspaceId: SIGNUP_WORKSPACE_ID,
+        entityType: 'institution',
+        organizationId: input.organizationId,
+        forceCreate: true, // public new school signup flow
+      }
     );
     
     if (!createResult.success) {

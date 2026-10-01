@@ -227,16 +227,14 @@ describe('Tag Automation Actions Integration', () => {
     it('should trigger automation when tag is updated via updateEntityAction', async () => {
         mockContactTags = [];
 
-        await updateEntityAction(
-            mockEntityId,
-            {
+        await updateEntityAction({
+            entityId: mockEntityId,
+            data: {
                 name: 'Test institution',
                 workspaceTags: ['tag_hot']
             },
-            mockUserId,
-            mockWorkspaceId,
-            mockOrgId
-        );
+            workspaceId: mockWorkspaceId,
+        });
 
         await Promise.all(afterPromises);
 
