@@ -66,6 +66,16 @@ export default function JoinMeetingForm({
   const [isClient, setIsClient] = useState(false);
   const firestore = useFirestore();
   const { toast } = useToast();
+
+  // Resolve CTA button label:
+  // When the meeting has started and registration is not required:
+  // The button should never lead to register ("Register", "Register Now"). It must read "Join Meeting Now".
+  const ctaButtonText = (() => {
+    if (heroCtaLabel && !heroCtaLabel.trim().toLowerCase().includes('register')) {
+      return heroCtaLabel.trim();
+    }
+    return 'Join Meeting Now';
+  })();
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -241,7 +251,7 @@ export default function JoinMeetingForm({
                         ) : (
                             <>
                                 <Zap className="h-6 w-6" />
-                                {heroCtaLabel || 'Enter Meeting Room'}
+                                {ctaButtonText}
                             </>
                         )}
                     </Button>
@@ -333,7 +343,7 @@ export default function JoinMeetingForm({
                         ) : (
                             <>
                                 <Zap className="h-6 w-6" />
-                                {heroCtaLabel || 'Enter Meeting Room'}
+                                {ctaButtonText}
                             </>
                         )}
                     </Button>

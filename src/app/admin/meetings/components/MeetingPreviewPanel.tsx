@@ -144,7 +144,11 @@ export default function MeetingPreviewPanel({ data, className }: MeetingPreviewP
 
                             <div className="space-y-1.5">
                                 <Button className="w-full h-10 rounded-xl font-bold shadow-lg shadow-primary/20">
-                                    {data.heroCtaLabel || (data.registrationEnabled ? 'Register Now' : data.collectAttendeeDetails ? 'Enter Room (Details Required)' : '⚡ Enter Meeting Room')}
+                                    {data.registrationEnabled 
+                                        ? (data.heroCtaLabel || 'Register Now') 
+                                        : (data.heroCtaLabel && !data.heroCtaLabel.toLowerCase().includes('register')
+                                            ? data.heroCtaLabel 
+                                            : (data.collectAttendeeDetails ? 'Join Meeting (Details Required)' : '⚡ Join Meeting Now'))}
                                 </Button>
                                 {!data.registrationEnabled && (
                                     <p className="text-[8px] text-center text-slate-400 font-semibold">

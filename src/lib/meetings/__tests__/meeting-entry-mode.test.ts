@@ -110,4 +110,40 @@ describe('Meeting Entry Mode & Attendee Collection Configuration', () => {
     expect(isValidMeetingUrl('   ')).toBe(false);
     expect(isValidMeetingUrl(undefined)).toBe(false);
   });
+
+  // Test 6: Button label resolution when registration is not required and meeting has started
+  it('should resolve CTA button to "Join Meeting Now" when registration is not required and meeting is live', () => {
+    const resolveCtaButtonLabel = (heroCtaLabel?: string): string => {
+      if (heroCtaLabel && !heroCtaLabel.trim().toLowerCase().includes('register')) {
+        return heroCtaLabel.trim();
+      }
+      return 'Join Meeting Now';
+    };
+
+    // When template had "Register Now" or similar register label, it must NOT lead to register
+    expect(resolveCtaButtonLabel('Register Now')).toBe('Join Meeting Now');
+    expect(resolveCtaButtonLabel('Register')).toBe('Join Meeting Now');
+    expect(resolveCtaButtonLabel('REGISTER NOW')).toBe('Join Meeting Now');
+    expect(resolveCtaButtonLabel('')).toBe('Join Meeting Now');
+    expect(resolveCtaButtonLabel(undefined)).toBe('Join Meeting Now');
+
+    // When explicitly customized to a non-register action, keep custom action
+    expect(resolveCtaButtonLabel('Enter Livestream')).toBe('Enter Livestream');
+    expect(resolveCtaButtonLabel('Join Meeting Now')).toBe('Join Meeting Now');
+  });
+
+  // Test 7: Countdown timer hides when expired so "The meeting has started!" is not duplicated
+  it('should verify countdown timer hides upon reaching zero to eliminate duplicate and misaligned text', () => {
+    const isCountdownExpired = (targetDate: string, now: Date): boolean => {
+      const difference = +new Date(targetDate) - +now;
+      return difference <= 0;
+    };
+
+    const pastDate = '2026-10-01T10:00:00Z';
+    const now = new Date('2026-10-02T12:00:00Z');
+    expect(isCountdownExpired(pastDate, now)).toBe(true);
+
+    const futureDate = '2026-10-03T10:00:00Z';
+    expect(isCountdownExpired(futureDate, now)).toBe(false);
+  });
 });

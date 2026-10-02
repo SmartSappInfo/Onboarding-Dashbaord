@@ -37,7 +37,13 @@ export default function KickoffMeetingHero({ entity, meeting, tokenResult, nextS
 
   const registrant = tokenResult?.registrant || null;
   const isConfirmed = registrant && (registrant.status === 'approved' || registrant.status === 'attended' || registrant.status === 'registered');
-  const showHeroCountdown = meetingState === 'UPCOMING' && !isConfirmed;
+  const isMeetingLive = (() => {
+    if (!meeting.meetingTime) return false;
+    const mt = new Date(meeting.meetingTime);
+    if (isNaN(mt.getTime())) return false;
+    return new Date().getTime() >= mt.getTime() - 5 * 60 * 1000;
+  })();
+  const showHeroCountdown = meetingState === 'UPCOMING' && !isConfirmed && !isMeetingLive;
 
   useEffect(() => {
     const checkMeetingState = () => {
