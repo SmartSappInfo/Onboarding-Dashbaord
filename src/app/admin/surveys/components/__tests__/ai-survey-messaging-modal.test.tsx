@@ -688,6 +688,53 @@ describe('AiSurveyMessagingModal', () => {
     expect(iframe).toBeDefined();
     expect(iframe?.getAttribute('srcDoc')).toContain('SmartSapp Academy');
   });
+
+  it('intercepts modal close when hasEdits is true and shows discard confirmation alert dialog', async () => {
+    const handleOpenChange = vi.fn();
+
+    render(
+      <AiSurveyMessagingModal
+        open={true}
+        onOpenChange={handleOpenChange}
+        generatedOutput={sampleAiOutput}
+        onApply={vi.fn()}
+      />
+    );
+
+    // Make an edit to set hasEdits to true
+    fireEvent.click(screen.getByRole('button', { name: /Edit Content/i }));
+    const subjectInput = screen.getByLabelText(/Email Subject Line/i);
+    fireEvent.change(subjectInput, { target: { value: 'Subject with unsaved changes' } });
+
+    // Attempt to close modal
+    const closeButton = screen.getAllByRole('button', { name: /Close/i })[0];
+    fireEvent.click(closeButton);
+
+    // onOpenChange should NOT have been called yet
+    expect(handleOpenChange).not.toHaveBeenCalled();
+
+    // Alert dialog should be visible with title and description
+    expect(screen.getByText('Discard unsaved changes?')).toBeDefined();
+    expect(
+      screen.getByText(
+        'You have customized message templates. If you exit without applying, your edits will be discarded.'
+      )
+    ).toBeDefined();
+
+    // Clicking "Keep Editing" cancels the alert and does not close modal
+    const keepEditingButton = screen.getByRole('button', { name: /Keep Editing/i });
+    fireEvent.click(keepEditingButton);
+    expect(handleOpenChange).not.toHaveBeenCalled();
+
+    // Attempt to close modal again
+    fireEvent.click(closeButton);
+    expect(screen.getByText('Discard unsaved changes?')).toBeDefined();
+
+    // Clicking "Discard Changes" dismisses and invokes onOpenChange(false)
+    const discardButton = screen.getByRole('button', { name: /Discard Changes/i });
+    fireEvent.click(discardButton);
+    expect(handleOpenChange).toHaveBeenCalledWith(false);
+  });
 });
 
 

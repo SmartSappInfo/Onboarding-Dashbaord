@@ -30,6 +30,16 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from '@/components/ui/alert-dialog';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -224,6 +234,7 @@ export default function AiSurveyMessagingModal({
   const [isSaving, setIsSaving] = React.useState(false);
   const [showPlainTextFallback, setShowPlainTextFallback] = React.useState(false);
   const [selectedBlockId, setSelectedBlockId] = React.useState<string | null>(null);
+  const [showDiscardConfirm, setShowDiscardConfirm] = React.useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -326,6 +337,14 @@ export default function AiSurveyMessagingModal({
     if (!generatedOutput || !editableOutput) return false;
     return JSON.stringify(generatedOutput) !== JSON.stringify(editableOutput);
   }, [generatedOutput, editableOutput]);
+
+  const handleOpenChangeRequest = (nextOpen: boolean) => {
+    if (!nextOpen && hasEdits) {
+      setShowDiscardConfirm(true);
+      return;
+    }
+    onOpenChange(nextOpen);
+  };
 
   const handleResetToAiOriginal = () => {
     if (!generatedOutput) return;
@@ -984,7 +1003,7 @@ export default function AiSurveyMessagingModal({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={handleOpenChangeRequest}>
         <DialogContent className="max-w-4xl w-[94vw] max-h-[92vh] flex flex-col p-0 overflow-hidden sm:rounded-2xl border border-border/80 shadow-2xl bg-card text-card-foreground font-figtree">
           {/* Header */}
           <DialogHeader className="px-6 py-3.5 sm:py-4 min-h-[52px] sm:min-h-[56px] border-b border-border/80 bg-muted/20 flex flex-row items-center justify-between gap-3 shrink-0">
@@ -1938,7 +1957,7 @@ export default function AiSurveyMessagingModal({
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <Button
                 variant="ghost"
-                onClick={() => onOpenChange(false)}
+                onClick={() => handleOpenChangeRequest(false)}
                 className="rounded-xl h-11 min-h-[44px] text-xs font-bold active:scale-[0.97]"
               >
                 Close
@@ -1990,6 +2009,36 @@ export default function AiSurveyMessagingModal({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Unsaved Edits Discard Confirmation Alert */}
+      <AlertDialog open={showDiscardConfirm} onOpenChange={setShowDiscardConfirm}>
+        <AlertDialogContent className="max-w-md p-0 overflow-hidden sm:rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl font-figtree">
+          <AlertDialogHeader demarcated className="px-6 py-3.5 sm:py-4 min-h-[52px] sm:min-h-[56px] border-b border-border/80 bg-muted/20 flex flex-row items-center gap-2.5">
+            <AlertDialogTitle className="text-base font-bold tracking-tight">
+              Discard unsaved changes?
+            </AlertDialogTitle>
+          </AlertDialogHeader>
+          <div className="p-6">
+            <AlertDialogDescription className="text-sm text-muted-foreground">
+              You have customized message templates. If you exit without applying, your edits will be discarded.
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
+            <AlertDialogCancel className="rounded-xl h-10 px-4 text-xs font-semibold active:scale-[0.97]">
+              Keep Editing
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setShowDiscardConfirm(false);
+                onOpenChange(false);
+              }}
+              className="rounded-xl h-10 px-4 text-xs font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90 active:scale-[0.97]"
+            >
+              Discard Changes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Workshop Sheet for Advanced Drag-and-Drop / Style Editing */}
       {editingTemplateId && (
