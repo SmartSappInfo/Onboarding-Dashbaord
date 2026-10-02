@@ -131,21 +131,45 @@ const CHI_SQUARE_CRITICAL_05: Record<number, number> = {
   8: 15.507,
   9: 16.919,
   10: 18.307,
+  11: 19.675,
   12: 21.026,
+  13: 22.362,
+  14: 23.685,
   15: 24.996,
+  16: 26.296,
+  17: 27.587,
+  18: 28.869,
+  19: 30.144,
   20: 31.410,
+  21: 32.671,
+  22: 33.924,
+  23: 35.172,
   24: 36.415,
+  25: 37.652,
+  26: 38.885,
+  27: 40.113,
+  28: 41.337,
+  29: 42.557,
   30: 43.773,
 };
 
+// Standard normal upper quantiles (Z_alpha) for critical threshold estimation
+const Z_ALPHA: Record<number, number> = {
+  0.01: 2.3263478740408408,
+  0.05: 1.6448536269514722,
+  0.10: 1.2815515655446004,
+};
+
 /**
- * Calculates or approximates the critical value for Chi-Square distribution (p = 0.05 default).
+ * Calculates or approximates the critical value for Chi-Square distribution.
  * 
  * ARCHITECTURAL GUIDANCE & CAUTION FOR MAINTAINERS:
  * - Uses exact tabulated critical values for small degrees of freedom (df <= 30) when alpha = 0.05.
- * - For df > 30 (or unmapped degrees of freedom), applies the high-precision Wilson-Hilferty transformation:
+ * - For df > 30 (or unmapped degrees of freedom / alternative alpha levels), applies the high-precision
+ *   Wilson-Hilferty transformation:
  *     χ²_crit ≈ v * (1 - 2/(9v) + Z * sqrt(2/(9v)))^3
- *   where Z = 1.6448536269514722 for one-tailed alpha = 0.05.
+ *   where Z is the upper quantile corresponding to alpha (e.g., Z_0.05 = 1.6448536269514722).
+ * - Supported alpha levels: 0.01, 0.05, 0.10. Unmapped alphas cleanly default to alpha = 0.05.
  * - Protects against zero or negative degrees of freedom by returning 0.
  * 
  * @param degreesOfFreedom - Degrees of freedom (df = (rows - 1) * (cols - 1))
@@ -161,8 +185,8 @@ export function calculateChiSquareCriticalValue(degreesOfFreedom: number, alpha:
     return CHI_SQUARE_CRITICAL_05[degreesOfFreedom];
   }
 
-  // Wilson-Hilferty approximation for df > 30 (or unmapped df)
-  const Z = 1.6448536269514722;
+  // Wilson-Hilferty approximation for df > 30, unmapped df, or alternative alpha levels
+  const Z = Z_ALPHA[alpha] ?? Z_ALPHA[0.05];
   const v = degreesOfFreedom;
   const factor = 2 / (9 * v);
   const term = 1 - factor + Z * Math.sqrt(factor);

@@ -202,6 +202,27 @@ describe('Survey Mathematical Analytics Engine', () => {
       expect(calculateChiSquareCriticalValue(1, 0.05)).toBe(3.841);
       expect(calculateChiSquareCriticalValue(10, 0.05)).toBe(18.307);
     });
+
+    it('handles degrees of freedom edge cases, lookup table values, and non-default alpha levels', () => {
+      // Non-positive degrees of freedom return 0
+      expect(calculateChiSquareCriticalValue(0)).toBe(0);
+      expect(calculateChiSquareCriticalValue(-5)).toBe(0);
+
+      // Intermediate lookup value verification (df = 14)
+      expect(calculateChiSquareCriticalValue(14, 0.05)).toBe(23.685);
+
+      // Configurable alpha quantiles for df = 40
+      const df40Alpha01 = calculateChiSquareCriticalValue(40, 0.01);
+      expect(df40Alpha01).toBeGreaterThanOrEqual(63.5);
+      expect(df40Alpha01).toBeLessThanOrEqual(64.0);
+
+      const df40Alpha10 = calculateChiSquareCriticalValue(40, 0.10);
+      expect(df40Alpha10).toBeGreaterThanOrEqual(51.6);
+      expect(df40Alpha10).toBeLessThanOrEqual(52.0);
+
+      // Fallback for unmapped alpha cleanly defaults to alpha = 0.05
+      expect(calculateChiSquareCriticalValue(40, 0.99)).toBe(calculateChiSquareCriticalValue(40, 0.05));
+    });
   });
 
   describe('Response Quality Heuristics', () => {
