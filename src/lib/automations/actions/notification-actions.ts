@@ -83,24 +83,6 @@ export async function handleSendNotification(
 
   if (targets.length === 0) return;
 
-  // ── Fetch the user-selected template (subject + body) ─────────────────────
-  const templateSnap = await adminDb.collection('message_templates').doc(templateId).get();
-  if (!templateSnap.exists) {
-    console.error(
-      `[notification-actions] Template ${templateId} not found — skipping notification.`,
-    );
-    return;
-  }
-  const templateData = templateSnap.data()!;
-  const resolvedSubject = compileTemplate(
-    (templateData.subject as string | undefined) || 'Notification',
-    context.payload,
-  );
-  const resolvedBody = compileTemplate(
-    (templateData.body as string | undefined) || '',
-    context.payload,
-  );
-
   // ── Fetch workspace context ────────────────────────────────────────────────
   const workspaceSnap = await adminDb.collection('workspaces').doc(context.workspaceId).get();
   if (!workspaceSnap.exists) {
@@ -113,12 +95,26 @@ export async function handleSendNotification(
   const phones:        string[] = [];
   const targetUserIds: string[] = [];
 
-  // 1. Workspace Assignee
+  // 1. Workspace / Deal Assignee
   // resolveAssigneeUserId normalizes assignedTo regardless of storage shape
   // (plain string userId or { userId: string } object — both are stored in the wild)
-  if (targets.includes('assignee') && context.entityId) {
-    const contact = await resolveContact(context.entityId, context.workspaceId);
-    const assigneeUserId = resolveAssigneeUserId(contact?.assignedTo);
+  if (targets.includes('assignee')) {
+    let assigneeUserId: string | undefined;
+
+    // Check payload assignedTo first (deals or event metadata)
+    if (context.payload?.assignedTo) {
+      assigneeUserId = resolveAssigneeUserId(context.payload.assignedTo as string | { userId?: string | null });
+    }
+    if (!assigneeUserId && context.payload?.ownerId) {
+      assigneeUserId = String(context.payload.ownerId);
+    }
+    if (!assigneeUserId && context.payload?.userId) {
+      assigneeUserId = String(context.payload.userId);
+    }
+    if (!assigneeUserId && context.entityId) {
+      const contact = await resolveContact(context.entityId, context.workspaceId);
+      assigneeUserId = resolveAssigneeUserId(contact?.assignedTo);
+    }
     if (assigneeUserId) {
       targetUserIds.push(assigneeUserId);
       const userSnap = await adminDb.collection('users').doc(assigneeUserId).get();
@@ -145,14 +141,39 @@ export async function handleSendNotification(
 
   // 3. Custom Destination (multi-delimiter + variable-aware)
   if (targets.includes('custom') && customRec) {
-    const isSmsAction = actionType === 'SEND_NOTIFICATION_SMS';
-    const parsedCustom = parseManualRecipients(customRec, context.payload, isSmsAction);
-    if (isSmsAction) {
+    const isPhoneAction = actionType === 'SEND_NOTIFICATION_SMS' || actionType === 'SEND_NOTIFICATION_WHATSAPP';
+    const parsedCustom = parseManualRecipients(customRec, context.payload, isPhoneAction);
+    if (isPhoneAction) {
       phones.push(...parsedCustom);
     } else {
       emails.push(...parsedCustom);
     }
   }
+
+  // ── Fetch the user-selected template (subject + body) ─────────────────────
+  const templateSnap = await adminDb.collection('message_templates').doc(templateId).get();
+  if (!templateSnap.exists) {
+    console.error(
+      `[notification-actions] Template ${templateId} not found — skipping notification.`,
+    );
+    return;
+  }
+  const templateData = templateSnap.data()!;
+  const rawSubject = (templateData.subject as string | undefined) || 'Notification';
+  const rawBody = (templateData.body as string | undefined) || '';
+
+  // ── Resolve variables via FieldsVariablesService Single Source of Truth ────
+  const { FieldsVariablesService } = await import('../../services/fields-variables-service-impl');
+  const resolutionContext = {
+    workspaceId: context.workspaceId,
+    entityId: context.entityId || (context.payload?.entityId as string) || undefined,
+    dealId: (context.payload?.dealId as string) || (context.payload?.deal_id as string) || undefined,
+    userId: targetUserIds[0] || undefined,
+    extraVars: { ...context.payload },
+  };
+
+  const resolvedSubject = await FieldsVariablesService.resolveTemplateVariables(rawSubject, resolutionContext);
+  const resolvedBody = await FieldsVariablesService.resolveTemplateVariables(rawBody, resolutionContext);
 
   const uniqueEmails    = Array.from(new Set(emails));
   const uniquePhones    = Array.from(new Set(phones));
@@ -209,6 +230,24 @@ export async function handleSendNotification(
       if (!result.success) {
         console.error(`[notification-actions] SMS notification to ${phone} failed: ${result.error}`);
         logNotificationFailure({ recipient: phone, channel: 'sms', error: result.error });
+      }
+    }
+  }
+
+  if (actionType === 'SEND_NOTIFICATION_WHATSAPP') {
+    for (const phone of uniquePhones) {
+      const result = await sendMessage({
+        templateId,
+        senderProfileId: 'default',
+        organizationId: orgId,
+        recipient: phone,
+        variables: { ...context.payload, body: resolvedBody },
+        entityId: context.entityId,
+        workspaceId: context.workspaceId,
+      });
+      if (!result.success) {
+        console.error(`[notification-actions] WhatsApp notification to ${phone} failed: ${result.error}`);
+        logNotificationFailure({ recipient: phone, channel: 'whatsapp', error: result.error });
       }
     }
   }

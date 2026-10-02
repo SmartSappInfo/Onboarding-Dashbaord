@@ -282,7 +282,8 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         preloadedEntity: resolvedContact as unknown as Partial<Entity> | undefined,
         extraVars: { ...finalVariables } as Record<string, unknown>,
         surveyId: (finalVariables._surveyId || finalVariables.surveyId || (template as any).surveyId) as string | undefined,
-        responseId: (finalVariables._responseId || finalVariables.responseId || finalVariables.submissionId) as string | undefined
+        responseId: (finalVariables._responseId || finalVariables.responseId || finalVariables.submissionId) as string | undefined,
+        dealId: (finalVariables._dealId || finalVariables.dealId || finalVariables.deal_id) as string | undefined
     };
     
     try {

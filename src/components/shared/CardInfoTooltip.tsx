@@ -60,6 +60,7 @@ export function CardInfoTooltip({
               'inline-flex items-center justify-center p-0.5 rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-muted/80 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-ring active:scale-95 shrink-0 cursor-help',
               className
             )}
+            data-testid="card-info-tooltip"
             aria-label="More information"
           >
             <Info className="h-3.5 w-3.5" />

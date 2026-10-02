@@ -483,11 +483,43 @@ export async function shareOrgSetupInviteAction(
 
     if (wantEmail) {
       try {
+        let emailSubject = `You're invited to set up ${orgName} on SmartSapp`;
+        let emailHtml = buildInviteEmailHtml(orgName, link, token);
+
+        try {
+          const { resolveAndRender } = await import('../template-resolver');
+          const rendered = await resolveAndRender(
+            'users',
+            'user_invitation',
+            organizationId,
+            {
+              extraVars: {
+                org_name: orgName,
+                organization_name: orgName,
+                user_email: email!.trim(),
+                email: email!.trim(),
+                login_link: link,
+                action_url: link,
+                temp_password: token,
+              },
+            },
+            'email'
+          );
+          if (rendered.subject) emailSubject = rendered.subject;
+          if (rendered.body) {
+            emailHtml = rendered.body.includes('<p>') || rendered.body.includes('<div>')
+              ? rendered.body
+              : buildInviteEmailHtml(orgName, link, token);
+          }
+        } catch (tmplErr) {
+          console.warn('[BACKOFFICE_ORG] Could not resolve invite template, using default:', tmplErr);
+        }
+
         const { sendEmail } = await import('../resend-service');
         await sendEmail({
           to: email!.trim(),
-          subject: `You're invited to set up ${orgName} on SmartSapp`,
-          html: buildInviteEmailHtml(orgName, link, token),
+          subject: emailSubject,
+          html: emailHtml,
         });
         sentTo.email = true;
       } catch (e) {
@@ -498,10 +530,33 @@ export async function shareOrgSetupInviteAction(
 
     if (wantSms) {
       try {
+        let smsText = `You're invited to set up ${orgName} on SmartSapp. Complete setup: ${link} (code: ${token})`;
+        try {
+          const { resolveAndRender } = await import('../template-resolver');
+          const rendered = await resolveAndRender(
+            'users',
+            'user_invitation',
+            organizationId,
+            {
+              extraVars: {
+                org_name: orgName,
+                organization_name: orgName,
+                login_link: link,
+                action_url: link,
+                temp_password: token,
+              },
+            },
+            'sms'
+          );
+          if (rendered.body) smsText = rendered.body;
+        } catch (tmplErr) {
+          console.warn('[BACKOFFICE_ORG] Could not resolve SMS invite template, using default:', tmplErr);
+        }
+
         const { sendSms } = await import('../mnotify-service');
         await sendSms({
           recipient: phone!.trim(),
-          message: `You're invited to set up ${orgName} on SmartSapp. Complete setup: ${link} (code: ${token})`,
+          message: smsText,
           sender: (orgName.substring(0, 11)) || 'SmartSapp',
         });
         sentTo.sms = true;

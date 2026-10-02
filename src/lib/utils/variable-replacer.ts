@@ -57,6 +57,21 @@ export function resolveTextWithMap(
     if (cleanKey === 'contact_role' || cleanKey === 'recipient_role') {
       possibleKeys.push('contact_role', 'recipient_role', 'contactRole');
     }
+    if (cleanKey === 'assigned_to' || cleanKey === 'assignee_name' || cleanKey === 'assignedTo' || cleanKey === 'assignee') {
+      possibleKeys.push('assigned_to', 'assignee_name', 'assignedTo', 'assignee', 'user_name', 'name');
+    }
+    if (cleanKey === 'assigner_name' || cleanKey === 'assigned_by' || cleanKey === 'assigner' || cleanKey === 'assignerName') {
+      possibleKeys.push('assigner_name', 'assignerName', 'assigned_by', 'assignedBy', 'actor_name', 'actorName');
+    }
+    if (cleanKey === 'deal_name' || cleanKey === 'deal_title' || cleanKey === 'dealName') {
+      possibleKeys.push('deal_name', 'deal_title', 'dealName', 'entity_name', 'entityName', 'school_name', 'schoolName');
+    }
+    if (cleanKey === 'deal_link' || cleanKey === 'deal_url' || cleanKey === 'dealLink' || cleanKey === 'dealUrl') {
+      possibleKeys.push('deal_link', 'deal_url', 'dealLink', 'action_url', 'entity_link');
+    }
+    if (cleanKey === 'deal_stage' || cleanKey === 'deal_stage_name' || cleanKey === 'stage_name') {
+      possibleKeys.push('deal_stage', 'deal_stage_name', 'stage_name', 'stage');
+    }
 
     // 1. Try to resolve variable value from Map
     let foundVal: unknown = undefined;

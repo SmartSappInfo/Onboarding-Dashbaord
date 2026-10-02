@@ -700,26 +700,61 @@ export async function invitePersonAction(params: {
     let emailSent = false;
     let smsSent = false;
 
-    const emailTemplate = await resolveAndRender('users', 'user_invitation', params.organizationId, {
-      extraVars: {
-        fullName,
-        email,
-        temporaryPassword: tempPassword,
-        loginLink,
-        orgName,
+    const emailTemplate = await resolveAndRender(
+      'users',
+      'user_invitation',
+      params.organizationId,
+      {
+        extraVars: {
+          user_name: fullName,
+          contact_name: fullName,
+          name: fullName,
+          fullName,
+          user_email: email,
+          email,
+          temp_password: tempPassword,
+          temporaryPassword: tempPassword,
+          login_link: loginLink,
+          loginLink,
+          org_name: orgName,
+          orgName,
+          organization_name: orgName,
+        },
       },
-    });
+      'email'
+    );
 
-    const smsTemplate = await resolveAndRender('users', 'user_invitation_sms', params.organizationId, {
-      extraVars: {
-        fullName,
-        temporaryPassword: tempPassword,
-        loginLink,
-        orgName,
+    const smsTemplate = await resolveAndRender(
+      'users',
+      'user_invitation',
+      params.organizationId,
+      {
+        extraVars: {
+          user_name: fullName,
+          contact_name: fullName,
+          name: fullName,
+          fullName,
+          user_email: email,
+          email,
+          temp_password: tempPassword,
+          temporaryPassword: tempPassword,
+          login_link: loginLink,
+          loginLink,
+          org_name: orgName,
+          orgName,
+          organization_name: orgName,
+        },
       },
-    });
+      'sms'
+    );
 
-    const emailHtml = emailTemplate?.body || `
+    const emailHtml = emailTemplate?.body
+      ? (emailTemplate.body.includes('<p>') || emailTemplate.body.includes('<div>')
+          ? emailTemplate.body
+          : `<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 8px;">
+              <p>${emailTemplate.body.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br/>')}</p>
+            </div>`)
+      : `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 8px;">
         <h2 style="color: #111827;">Welcome to ${orgName}</h2>
         <p style="color: #374151;">Hello ${fullName},</p>

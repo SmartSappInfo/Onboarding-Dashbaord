@@ -581,6 +581,7 @@ export async function finalizeAgreementAction(
         if (pdfData.adminAlertsEnabled) {
             const contractData = contractRef.get ? (await contractRef.get()).data() : undefined;
             await triggerInternalNotification({
+                triggerKey: 'contract_signed',
                 entityId,
                 notifyManager: pdfData.adminAlertNotifyManager,
                 specificUserIds: pdfData.adminAlertSpecificUserIds,
@@ -592,7 +593,8 @@ export async function finalizeAgreementAction(
                     event_type: 'Agreement Executed',
                     entity_name: contractData?.entityName || 'Institution',
                     submission_id: submissionId,
-                    workspaceId
+                    workspaceId,
+                    organizationId: pdfData.organizationId || 'default',
                 },
                 channel: pdfData.adminAlertChannel
             });

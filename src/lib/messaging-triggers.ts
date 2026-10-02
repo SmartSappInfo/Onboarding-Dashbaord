@@ -330,11 +330,20 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
   {
     id: 'assignment_notification',
     name: 'Assignment Notification',
-    description: 'Sent when an entity is assigned to a team member.',
+    description: 'Sent when an entity or deal is assigned to a team member.',
     category: 'general',
     target: 'internal_team',
     recipientType: 'entity',
-    supportedChannels: ['email'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
+  },
+  {
+    id: 'deal_assigned',
+    name: 'Deal Assigned',
+    description: 'Sent when a deal opportunity is assigned to a team member.',
+    category: 'general',
+    target: 'internal_team',
+    recipientType: 'assignee',
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
   {
     id: 'status_update',
@@ -344,6 +353,24 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     target: 'external_client',
     recipientType: 'entity',
     supportedChannels: ['email', 'sms', 'whatsapp'],
+  },
+  {
+    id: 'receipt_acknowledgement',
+    name: 'Receipt Acknowledgement',
+    description: 'Sent to a client acknowledging their payment receipt request.',
+    category: 'general',
+    target: 'external_client',
+    recipientType: 'entity',
+    supportedChannels: ['email', 'sms', 'whatsapp'],
+  },
+  {
+    id: 'receipt_request_team',
+    name: 'Receipt Request (Team)',
+    description: 'Alerts finance and operations team when a client submits a payment receipt request.',
+    category: 'general',
+    target: 'internal_team',
+    recipientType: 'internal_alert',
+    supportedChannels: ['email', 'sms'],
   },
 
   // ── Tasks ─────────────────────────────────────────────────────────────────
@@ -401,7 +428,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'automations',
     target: 'internal_team',
     recipientType: 'internal_alert',
-    supportedChannels: ['in_app'],
+    supportedChannels: ['email', 'sms', 'in_app'],
   },
 
   // ── QR Codes ──────────────────────────────────────────────────────────────
@@ -423,7 +450,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'users',
     target: 'internal_team',
     recipientType: 'internal_alert',
-    supportedChannels: ['email', 'sms'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
   {
     id: 'user_password_reset',
@@ -432,7 +459,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'users',
     target: 'internal_team',
     recipientType: 'internal_alert',
-    supportedChannels: ['email', 'sms'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
   {
     id: 'user_access_cancellation',

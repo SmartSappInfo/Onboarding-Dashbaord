@@ -80,6 +80,7 @@ const MATCH_RULES: MatchRule[] = [
   { triggerId: 'welcome_message',         category: 'general', nameKeywords: ['welcome'] },
   { triggerId: 'stage_change',            category: 'general', nameKeywords: ['stage change', 'stage_change', 'moved to'] },
   { triggerId: 'assignment_notification', category: 'general', nameKeywords: ['assignment', 'assigned to'] },
+  { triggerId: 'deal_assigned',           category: 'general', nameKeywords: ['deal assigned', 'deal_assigned', 'assigned deal'] },
   { triggerId: 'status_update',           category: 'general', nameKeywords: ['status update', 'status_update', 'status changed'] },
 
   // ── Tasks ───────────────────────────────────────────────────────────────

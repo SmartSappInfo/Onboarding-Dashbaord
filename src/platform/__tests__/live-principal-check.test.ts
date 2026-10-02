@@ -34,4 +34,60 @@ describe('live principal check', () => {
   it('lets a system admin through the approval and organization checks', async () => {
     expect(await setup({ permissions: ['system_admin'] }).check(principal, target)).toEqual({ ok: true });
   });
+
+  describe('delegation grant validation (Phase 3 Milestone 2 / Rule 8 & Rule 18)', () => {
+    it('passes when agent has an active, valid delegation grant', async () => {
+      const { createMemoryDelegationStore } = await import('../policy/delegation-store');
+      const store = createMemoryDelegationStore();
+      await store.saveGrant({
+        id: 'del-active',
+        organizationId: 'org-1',
+        workspaceId: 'ws-1',
+        authorizingUserId: 'user-1',
+        delegationChain: ['user-1'],
+        depth: 1,
+        agentPersonaId: 'supervisor',
+        delegatedScopes: ['crm:read'],
+        status: 'active',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      });
+
+      const db = new FakeFirestore();
+      db.write('users/user-1', { isAuthorized: true, organizationId: 'org-1' });
+      const check = createLivePrincipalCheck(db.asFirestore(), grants(true), store);
+
+      const agentWithDel: AgentPrincipal = { ...principal, delegationId: 'del-active' };
+      expect(await check.check(agentWithDel, target)).toEqual({ ok: true });
+    });
+
+    it('refuses an agent whose delegation grant was revoked or expired', async () => {
+      const { createMemoryDelegationStore } = await import('../policy/delegation-store');
+      const store = createMemoryDelegationStore();
+      await store.saveGrant({
+        id: 'del-revoked',
+        organizationId: 'org-1',
+        workspaceId: 'ws-1',
+        authorizingUserId: 'user-1',
+        delegationChain: ['user-1'],
+        depth: 1,
+        agentPersonaId: 'supervisor',
+        delegatedScopes: ['crm:read'],
+        status: 'revoked',
+        revocationReason: 'Compromised credentials',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      });
+
+      const db = new FakeFirestore();
+      db.write('users/user-1', { isAuthorized: true, organizationId: 'org-1' });
+      const check = createLivePrincipalCheck(db.asFirestore(), grants(true), store);
+
+      const agentWithRevoked: AgentPrincipal = { ...principal, delegationId: 'del-revoked' };
+      const res = await check.check(agentWithRevoked, target);
+      expect(res).toMatchObject({ ok: false, reason: expect.stringMatching(/revoked/) });
+    });
+  });
 });

@@ -1798,40 +1798,66 @@ async function sendCompletionNotifications(
   // Fetch user for email/phone
   const userSnap = await adminDb.collection('users').doc(importLog.userId).get();
   if (!userSnap.exists) return;
-  const userData = userSnap.data() as any;
+  const userData = (userSnap.data() || {}) as Record<string, unknown>;
 
-  // Fetch template (with hardcoded fallback)
-  const templateSnap = await adminDb.collection('system_settings').doc('templates').get();
-  const templates = templateSnap.exists ? templateSnap.data() : null;
-  const tmpl = templates?.bulkUploadCompleted;
-
-  // Build variable map
   const baseUrl = getBaseUrl();
-  const vars: Record<string, string> = {
-    filename: importLog.filename || 'Unknown',
-    successCount: String(importLog.successCount ?? 0),
-    failedCount: String(importLog.failedCount ?? 0),
-    duplicateCount: String(importLog.duplicateCount ?? 0),
-    totalCount: String(importLog.totalCount ?? 0),
-    importLogLink: `${baseUrl}/admin/entities/imports?logId=${importLogId}`,
-    userName: userData.name || userData.displayName || 'User',
-    orgName: 'SmartSapp', // Could fetch from org doc if needed
+  const userName = String(userData.name || userData.displayName || 'User');
+  const userEmail = typeof userData.email === 'string' ? userData.email : undefined;
+  const userPhone = typeof userData.phone === 'string' ? userData.phone : undefined;
+  const filename = importLog.filename || 'Unknown';
+  const successCount = String(importLog.successCount ?? 0);
+  const failedCount = String(importLog.failedCount ?? 0);
+  const duplicateCount = String(importLog.duplicateCount ?? 0);
+  const totalCount = String(importLog.totalCount ?? 0);
+  const importLogLink = `${baseUrl}/admin/entities/imports?logId=${importLogId}`;
+
+  const extraVars: Record<string, string> = {
+    filename,
+    workflow_name: `Bulk Upload: ${filename}`,
+    success_count: successCount,
+    successCount,
+    failed_count: failedCount,
+    failedCount,
+    duplicate_count: duplicateCount,
+    duplicateCount,
+    total_count: totalCount,
+    totalCount,
+    import_log_link: importLogLink,
+    importLogLink,
+    user_name: userName,
+    userName,
+    name: userName,
+    contact_name: userName,
+    org_name: 'SmartSapp',
+    organization_name: 'SmartSapp',
   };
 
-  // Simple variable resolver
-  const resolve = (template: string) =>
-    template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? '');
+  const { resolveAndRender } = await import('./template-resolver');
 
   // 1. In-App Notification (Toast/Bell)
   if (notifConfig.sendInAppNotification) {
+    let inAppBody = `${successCount} created, ${duplicateCount} duplicates, ${failedCount} failed.`;
+    try {
+      const rendered = await resolveAndRender(
+        'automations',
+        'automation_completed',
+        importLog.organizationId,
+        { extraVars },
+        'in_app'
+      );
+      if (rendered.body) inAppBody = rendered.body;
+    } catch (tmplErr) {
+      console.warn('[BULK-NOTIF] Could not resolve in_app template:', tmplErr);
+    }
+
     await adminDb.collection('in_app_notifications').add({
       userId: importLog.userId,
       organizationId: importLog.organizationId,
       workspaceId: importLog.workspaceId,
-      title: `Import Complete: ${vars.filename}`,
-      body: `${vars.successCount} created, ${vars.duplicateCount} duplicates, ${vars.failedCount} failed.`,
+      title: `Import Complete: ${filename}`,
+      body: inAppBody,
       category: 'general',
-      actionUrl: vars.importLogLink,
+      actionUrl: importLogLink,
       isRead: false,
       createdAt: new Date().toISOString(),
     });
@@ -1854,6 +1880,10 @@ async function sendCompletionNotifications(
           if (orgSnap.exists) {
             const org = orgSnap.data();
             orgData = org ? { name: org.name, defaultSenderProfileIds: org.defaultSenderProfileIds } : null;
+            if (org?.name) {
+              extraVars.org_name = org.name;
+              extraVars.organization_name = org.name;
+            }
             if (org?.smsKeyMode === 'custom' && org?.mnotifyApiKey) {
               mnotifyKey = org.mnotifyApiKey as string;
             }
@@ -1871,23 +1901,58 @@ async function sendCompletionNotifications(
   }
 
   // 2. Email
-  if (notifConfig.sendEmailNotification && userData.email) {
+  if (notifConfig.sendEmailNotification && userEmail) {
     try {
+      let subject = `Bulk Upload Complete: ${filename}`;
+      let html = `<p>Your bulk upload of <b>${filename}</b> has finished. ${successCount} records created.</p>`;
+
+      try {
+        const rendered = await resolveAndRender(
+          'automations',
+          'automation_completed',
+          importLog.organizationId,
+          { extraVars },
+          'email'
+        );
+        if (rendered.subject) subject = rendered.subject;
+        if (rendered.body) {
+          html = rendered.body.includes('<p>') || rendered.body.includes('<div>')
+            ? rendered.body
+            : `<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; line-height: 1.6; color: #1e293b;">
+                <p>${rendered.body.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br/>')}</p>
+              </div>`;
+        }
+      } catch (tmplErr) {
+        console.warn('[BULK-NOTIF] Could not resolve email template:', tmplErr);
+      }
+
       const { sendEmail } = await import('./resend-service');
-      const subject = resolve(tmpl?.subject || 'Bulk Upload Complete: {{filename}}');
-      const html = resolve(tmpl?.emailHtml || `<p>Your bulk upload of <b>{{filename}}</b> has finished. {{successCount}} records created.</p>`);
-      await sendEmail({ to: userData.email, subject, html, apiKey: resendKey, domain: resendDomain });
+      await sendEmail({ to: userEmail, subject, html, apiKey: resendKey, domain: resendDomain });
     } catch (err: unknown) {
       console.error('[BULK-NOTIF] Email failed:', (err as Error).message);
     }
   }
 
   // 3. SMS
-  if (notifConfig.sendSmsNotification && userData.phone) {
+  if (notifConfig.sendSmsNotification && userPhone) {
     try {
+      let body = `Bulk upload "${filename}" done. ${successCount} created, ${failedCount} failed.`;
+
+      try {
+        const rendered = await resolveAndRender(
+          'automations',
+          'automation_completed',
+          importLog.organizationId,
+          { extraVars },
+          'sms'
+        );
+        if (rendered.body) body = rendered.body;
+      } catch (tmplErr) {
+        console.warn('[BULK-NOTIF] Could not resolve SMS template:', tmplErr);
+      }
+
       const { sendSms } = await import('./mnotify-service');
-      const body = resolve(tmpl?.smsBody || 'Bulk upload "{{filename}}" done. {{successCount}} created, {{failedCount}} failed.');
-      await sendSms({ recipient: userData.phone, message: body, sender: senderId, apiKey: mnotifyKey });
+      await sendSms({ recipient: userPhone, message: body, sender: senderId, apiKey: mnotifyKey });
     } catch (err: unknown) {
       console.error('[BULK-NOTIF] SMS failed:', (err as Error).message);
     }

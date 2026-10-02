@@ -17,6 +17,7 @@ interface InternalNotificationOptions {
   whatsappTemplateId?: string;
   inAppTemplateId?: string;
   pushTemplateId?: string;
+  dealId?: string;
   variables: Record<string, unknown>;
   // 'both' = email+sms (legacy); 'all' includes whatsapp; 'whatsapp' = whatsapp only.
   channel?: 'email' | 'sms' | 'whatsapp' | 'both' | 'all';
@@ -164,7 +165,14 @@ export async function triggerInternalNotification(options: InternalNotificationO
     const dispatchPromises = [];
 
     for (const contact of resolvedContacts) {
-      const personalVars = { ...variables, admin_name: contact.name, user_name: contact.name };
+      const personalVars = {
+        ...variables,
+        admin_name: contact.name,
+        user_name: contact.name,
+        assigned_to: contact.name,
+        assignee_name: contact.name,
+        ...(options.dealId ? { dealId: options.dealId, _dealId: options.dealId } : {})
+      };
       const prefs = contact.preferences || { email: true, sms: true, inApp: true, push: true };
 
       // Check category-specific opt-outs if defined

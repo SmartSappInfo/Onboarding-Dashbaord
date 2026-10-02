@@ -603,10 +603,52 @@ export async function createBookingFromHoldAction(input: {
         attendeeEmail: booker.email,
       });
 
+      const startDate = new Date(finalBooking!.startAt);
+      const meetingDateStr = startDate.toLocaleDateString();
+      const meetingTimeStr = startDate.toLocaleTimeString();
+
+      let emailSubject = `Confirmed: ${eventType!.name}`;
+      let emailHtml = `<p>Hello ${booker.firstName},</p><p>Your booking for <strong>${eventType!.name}</strong> has been confirmed.</p><p><strong>Time:</strong> ${startDate.toLocaleString()}</p><p><strong>Join Link:</strong> <a href="${finalBooking!.joinUrl}">${finalBooking!.joinUrl}</a></p>`;
+
+      try {
+        const { resolveAndRender } = await import('@/lib/template-resolver');
+        const rendered = await resolveAndRender(
+          'meetings',
+          'meeting_registration_ack',
+          finalBooking!.organizationId,
+          {
+            extraVars: {
+              contact_name: `${booker.firstName} ${booker.lastName}`.trim(),
+              first_name: booker.firstName,
+              last_name: booker.lastName,
+              meeting_title: eventType!.name,
+              meeting_date: meetingDateStr,
+              meeting_time: meetingTimeStr,
+              meeting_timezone: visitorTimezone || 'UTC',
+              meeting_type: eventType!.locationType || 'Online',
+              registrant_join_link: finalBooking!.joinUrl || '',
+              meeting_link: finalBooking!.joinUrl || '',
+              link: finalBooking!.joinUrl || '',
+            },
+          },
+          'email'
+        );
+        if (rendered.subject) emailSubject = rendered.subject;
+        if (rendered.body) {
+          emailHtml = rendered.body.includes('<p>') || rendered.body.includes('<div>')
+            ? rendered.body
+            : `<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; line-height: 1.6; color: #1e293b;">
+                <p>${rendered.body.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br/>')}</p>
+              </div>`;
+        }
+      } catch (err) {
+        console.warn('[createBookingFromHoldAction] Template resolution warning, falling back to default:', err);
+      }
+
       sendEmail({
         to: booker.email,
-        subject: `Confirmed: ${eventType!.name}`,
-        html: `<p>Hello ${booker.firstName},</p><p>Your booking for <strong>${eventType!.name}</strong> has been confirmed.</p><p><strong>Time:</strong> ${new Date(finalBooking!.startAt).toLocaleString()}</p><p><strong>Join Link:</strong> <a href="${finalBooking!.joinUrl}">${finalBooking!.joinUrl}</a></p>`,
+        subject: emailSubject,
+        html: emailHtml,
         attachments: [
           {
             filename: 'invite.ics',

@@ -1,4 +1,4 @@
-import type { Entity, Workspace } from '../types';
+import type { Entity, Workspace, Deal } from '../types';
 
 export interface UnifiedVariable {
   key: string;            // E.g. "entity_name", "contact_name", "meeting_title", "form_fields.my_field"
@@ -9,7 +9,7 @@ export interface UnifiedVariable {
   source: 'static' | 'custom_field' | 'contact_role' | 'feature_system' | 'dynamic_form';
   path?: string;          // Path to resolve on target documents (e.g. "entityContacts[isPrimary].email")
   isDeprecated?: boolean;
-  featureContext?: 'common' | 'meeting' | 'form' | 'survey' | 'agreement' | 'campaign' | 'task' | 'automation' | 'reminder' | 'qr_code' | 'user' | 'finance' | 'general' | string;
+  featureContext?: 'common' | 'meeting' | 'form' | 'survey' | 'agreement' | 'campaign' | 'task' | 'automation' | 'reminder' | 'qr_code' | 'user' | 'finance' | 'general' | 'deal' | string;
   exampleValue?: string;  // For sandbox previews
   fallbackValue?: string; // Predefined fallback value
   groupId?: string;       // Reference to FieldGroup.id
@@ -23,7 +23,7 @@ export interface UnifiedVariable {
 export interface GetVariablesParams {
   workspaceId: string;
   organizationId?: string;
-  featureContext?: 'all' | 'common' | 'meeting' | 'form' | 'survey' | 'agreement' | 'campaign' | 'task' | 'automation' | 'reminder' | 'qr_code' | 'user' | 'finance' | 'general' | string;
+  featureContext?: 'all' | 'common' | 'meeting' | 'form' | 'survey' | 'agreement' | 'campaign' | 'task' | 'automation' | 'reminder' | 'qr_code' | 'user' | 'finance' | 'general' | 'deal' | string;
   sourceId?: string; // formId or surveyId
   terminology?: { singular: string; plural: string }; // Client-side terminology overrides
 }
@@ -39,7 +39,9 @@ export interface DataResolutionContext {
   submissionId?: string;
   responseId?: string;
   userId?: string;
+  dealId?: string; // Target deal opportunity
   extraVars?: Record<string, unknown>; // Caller-supplied overrides
   preloadedEntity?: Partial<Entity>; // Pre-loaded Entity to avoid Firestore round-trip
   preloadedWorkspace?: Partial<Workspace>; // Pre-loaded Workspace to avoid Firestore round-trip
+  preloadedDeal?: Partial<Deal>; // Pre-loaded Deal to avoid Firestore round-trip
 }

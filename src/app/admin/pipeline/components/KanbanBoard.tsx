@@ -511,10 +511,19 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
 
         if (isWonStage) {
           triggerInternalNotification({
+            triggerKey: 'stage_change',
+            dealId: deal.id,
             entityId: deal.entityId,
             notifyManager: true,
             channel: 'both',
-            variables: { school_name: deal.name, new_stage: newStage.name, event_type: 'Deal Won' }
+            variables: {
+              workspaceId: activeWorkspaceId,
+              school_name: deal.name,
+              entity_name: deal.name,
+              deal_name: deal.name,
+              new_stage: newStage.name,
+              event_type: 'Deal Won',
+            },
           }).catch(console.error);
         }
       } catch (error: unknown) {

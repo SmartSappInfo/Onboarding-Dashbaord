@@ -137,10 +137,8 @@ export async function addMeetingParticipantAction(
         attendeeEmail: participant.email,
       });
 
-      await sendEmail({
-        to: participant.email,
-        subject: `Invitation: ${meetingData.title || meetingData.entityName || 'Meeting'}`,
-        html: `
+      let emailSubject = `Invitation: ${meetingData.title || meetingData.entityName || 'Meeting'}`;
+      let emailHtml = `
           <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
             <h2>You're invited to ${meetingData.title || meetingData.entityName || 'a meeting'}</h2>
             <p>Hi ${participant.name},</p>
@@ -155,7 +153,47 @@ export async function addMeetingParticipantAction(
               A calendar invitation is attached for your convenience.
             </p>
           </div>
-        `,
+        `;
+
+      try {
+        const { resolveAndRender } = await import('@/lib/template-resolver');
+        const rendered = await resolveAndRender(
+          'meetings',
+          'meeting_invitation_initial',
+          meetingData.organizationId || 'default',
+          {
+            extraVars: {
+              contact_name: participant.name,
+              meeting_title: meetingData.title || meetingData.entityName || 'Meeting',
+              meeting_date: startTime.toLocaleDateString(),
+              meeting_time: startTime.toLocaleTimeString(),
+              meeting_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+              meeting_type: typeof meetingData.type === 'string' ? meetingData.type : meetingData.type?.name || 'Online',
+              meeting_registrant_one_click_link: joinUrl,
+              join_link: joinUrl,
+              registrant_join_link: joinUrl,
+              link: joinUrl,
+              role,
+            },
+          },
+          'email'
+        );
+        if (rendered.subject) emailSubject = rendered.subject;
+        if (rendered.body) {
+          emailHtml = rendered.body.includes('<p>') || rendered.body.includes('<div>')
+            ? rendered.body
+            : `<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; line-height: 1.6; color: #1e293b;">
+                <p>${rendered.body.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br/>')}</p>
+              </div>`;
+        }
+      } catch (err) {
+        console.warn('[addMeetingParticipantAction] Template resolution warning, falling back to default:', err);
+      }
+
+      await sendEmail({
+        to: participant.email,
+        subject: emailSubject,
+        html: emailHtml,
         attachments: [
           {
             filename: 'invite.ics',

@@ -11,6 +11,7 @@ import type { Firestore } from 'firebase-admin/firestore';
 import { z } from 'zod/v4';
 import type { AgentPrincipal } from '../capabilities/contracts/capability-definition';
 import { checkWorkspaceAccess } from '@/lib/workspace-permissions';
+import { type DelegationStore, globalDelegationStore } from '../policy/delegation-store';
 
 export type LivePrincipalResult = { ok: true } | { ok: false; reason: string };
 
@@ -27,8 +28,11 @@ const LiveUserSchema = z.object({
 
 export function createLivePrincipalCheck(
   db: Firestore,
-  workspaceAccess: typeof checkWorkspaceAccess = checkWorkspaceAccess
+  workspaceAccess: typeof checkWorkspaceAccess = checkWorkspaceAccess,
+  delegations?: DelegationStore
 ): LivePrincipalCheck {
+  const delegationStore = delegations ?? globalDelegationStore;
+
   return {
     async check(principal, target) {
       if (!principal.userId) return { ok: false, reason: 'Principal has no user.' };
@@ -44,7 +48,35 @@ export function createLivePrincipalCheck(
         }
       }
       const access = await workspaceAccess(principal.userId, target.workspaceId);
-      return access.granted ? { ok: true } : { ok: false, reason: access.reason ?? 'The user lost access to the workspace.' };
+      if (!access.granted) {
+        return { ok: false, reason: access.reason ?? 'The user lost access to the workspace.' };
+      }
+
+      // Live Delegation Grant Verification (Phase 3 Milestone 2 / Rule 8 & Rule 18)
+      if (principal.delegationId) {
+        const grant = await delegationStore.getGrant(principal.delegationId);
+        if (!grant) {
+          return { ok: false, reason: `The delegation grant '${principal.delegationId}' no longer exists.` };
+        }
+        if (grant.status === 'revoked') {
+          return {
+            ok: false,
+            reason: `The delegation grant '${principal.delegationId}' has been revoked: ${grant.revocationReason ?? 'Revoked by operator'}`,
+          };
+        }
+        if (grant.organizationId !== target.organizationId || grant.workspaceId !== target.workspaceId) {
+          return {
+            ok: false,
+            reason: `The delegation grant '${principal.delegationId}' is scoped to another workspace.`,
+          };
+        }
+        const now = Date.now();
+        if (grant.status === 'expired' || Date.parse(grant.expiresAt) <= now) {
+          return { ok: false, reason: `The delegation grant '${principal.delegationId}' has expired.` };
+        }
+      }
+
+      return { ok: true };
     },
   };
 }

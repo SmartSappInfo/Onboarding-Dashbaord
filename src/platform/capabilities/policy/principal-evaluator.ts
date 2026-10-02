@@ -17,8 +17,9 @@
  *    tenant, invocation and exact payload hash. Principals cannot self-assert approvals.
  */
 
-import { isAutomatedPrincipal, type AgentPrincipal, type CapabilityDefinition, type VerifiedApproval } from '../contracts/capability-definition';
+import { isAutomatedPrincipal, type AgentPrincipal, type CapabilityDefinition, type CapabilityDomain, type VerifiedApproval } from '../contracts/capability-definition';
 import { isNonDelegableAction, requiresAgentApproval } from '../contracts/risk-levels';
+import { globalAgentPersonaRegistry } from '../../identity/agent-registry';
 
 export type PolicyViolationCode =
   | 'TENANT_SCOPE_MISSING'
@@ -28,7 +29,8 @@ export type PolicyViolationCode =
   | 'NON_DELEGABLE'
   | 'INSUFFICIENT_SCOPE'
   | 'APPROVAL_REQUIRED'
-  | 'APPROVAL_INVALID';
+  | 'APPROVAL_INVALID'
+  | 'PERSONA_DISALLOWED';
 
 export interface PolicyEvaluationResult {
   allowed: boolean;
@@ -41,7 +43,7 @@ export interface PolicyEvaluationResult {
 export type CapabilityPolicyTarget = Pick<
   CapabilityDefinition<never, unknown>,
   'id' | 'version' | 'permissions' | 'workspaceScoped' | 'tenantScoped' | 'risk'
->;
+> & { domain?: CapabilityDomain };
 
 /** The tenant the operation acts on. Both ids are required; pass the run's/caller's own scope. */
 export interface TargetScope {
@@ -117,6 +119,28 @@ export function evaluatePrincipalAuthority(
     const wildcard = !isAutomatedAgent && principal.grantedScopes.includes('*');
     if (!explicit && !wildcard) {
       deny('INSUFFICIENT_SCOPE', `Insufficient Scope: Missing required permission scope '${permission}'`);
+    }
+  }
+
+  // 4b. Agent Persona boundary check (Rule 16 / Phase 3 Milestone 1 & 2)
+  if (isAutomatedAgent && principal.agentId && capability.domain) {
+    if (globalAgentPersonaRegistry.hasPersona(principal.agentId)) {
+      // If a verified human approval exists, the autonomous risk ceiling is bypassed (Rule 22)
+      // because execution is explicitly authorized by a human operator, while domain boundaries remain strictly enforced.
+      const riskToCheck = options.verifiedApproval
+        ? { level: 'L0_READ' as const }
+        : capability.risk;
+
+      const personaValidation = globalAgentPersonaRegistry.validatePersonaCapability(
+        principal.agentId,
+        {
+          domain: capability.domain,
+          risk: riskToCheck,
+        }
+      );
+      if (!personaValidation.allowed) {
+        deny('PERSONA_DISALLOWED', `Persona Violation: ${personaValidation.reason}`);
+      }
     }
   }
 

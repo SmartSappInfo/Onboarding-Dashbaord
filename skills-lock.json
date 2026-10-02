@@ -65,6 +65,12 @@
       "skillPath": "skills/crm-builder/SKILL.md",
       "computedHash": "29d3504a5642c0fe8bd120fc39db0cd919011b313ee75e50b765b62a14d22c03"
     },
+    "cybersecurity-analyst": {
+      "source": "rysweet/amplihack",
+      "sourceType": "github",
+      "skillPath": "skills/cybersecurity-analyst/SKILL.md",
+      "computedHash": "4f804565a002629ad80e311b460d710783af11bfddda5ddecee18c4b8f54cc0e"
+    },
     "designing-surveys": {
       "source": "refoundai/lenny-skills",
       "sourceType": "github",

@@ -790,6 +790,20 @@ export async function updateDealOwnerCore(
       updatedAt: timestamp
     });
 
+    const actorUserId = actorAttributionUid(actor);
+    let assignerName = 'Team Lead';
+    if (actorUserId) {
+      try {
+        const actorSnap = await adminDb.collection('users').doc(actorUserId).get();
+        if (actorSnap.exists) {
+          const u = actorSnap.data();
+          assignerName = u?.name || u?.fullName || u?.displayName || 'Team Lead';
+        }
+      } catch (err) {
+        console.warn('[deal-core] Failed to lookup actor user details:', err);
+      }
+    }
+
     emitDealDomainEvent('deal.owner.changed', {
       dealId,
       dealName: deal.name,
@@ -801,17 +815,31 @@ export async function updateDealOwnerCore(
       status: deal.status,
       value: deal.value || 0,
       assignedTo,
+      actorUserId: actorUserId || undefined,
+      metadata: {
+        assigner_name: assignerName,
+        assignerName,
+        assigned_by: assignerName,
+        assigned_to: userName || 'Colleague',
+        assignee_name: userName || 'Colleague',
+        deal_name: deal.name,
+        deal_title: deal.name,
+        entity_name: deal.name,
+        deal_value: deal.value || 0,
+        deal_link: `/admin/deals/${dealId}`,
+        deal_url: `/admin/deals/${dealId}`,
+      },
     });
 
     await logActivity({
       organizationId: deal.organizationId,
       entityId: deal.entityId,
-      userId: actorAttributionUid(actor),
+      userId: actorUserId,
       workspaceId: deal.workspaceId,
       type: 'deal_owner_changed',
       source: actor.kind === 'user' ? 'user' : 'system',
       description: `reassigned deal "${deal.name}" to ${userName || 'Unassigned'}`,
-      metadata: { dealId, ownerId: userId, ownerName: userName }
+      metadata: { dealId, ownerId: userId, ownerName: userName, assignerName }
     });
 
     return { success: true };

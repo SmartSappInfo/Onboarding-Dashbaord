@@ -1927,7 +1927,8 @@ export class CallCentreService {
             }
           }
 
-          const htmlBody = `
+          let emailSubject = `Invitation to join ${portalData?.name || 'our Portal'}`;
+          let htmlBody = `
             <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
               <h2 style="color: #2563eb;">You've been invited!</h2>
               <p>Hi ${activeContact?.firstName || 'there'},</p>
@@ -1938,9 +1939,48 @@ export class CallCentreService {
             </div>
           `;
 
+          try {
+            const { resolveAndRender } = await import('@/lib/template-resolver');
+            const contactName = activeContact?.firstName
+              ? `${activeContact.firstName} ${activeContact.lastName || ''}`.trim()
+              : 'there';
+            const rendered = await resolveAndRender(
+              'general',
+              'welcome_message',
+              organizationId,
+              {
+                extraVars: {
+                  contact_name: contactName,
+                  first_name: activeContact?.firstName || 'there',
+                  portal_name: portalData?.name || 'Membership Portal',
+                  workspace_name: portalData?.name || 'Membership Portal',
+                  login_link: joinUrl,
+                  action_url: joinUrl,
+                  invitation_link: joinUrl,
+                },
+              },
+              'email'
+            );
+            if (rendered.subject) emailSubject = rendered.subject;
+            if (rendered.body) {
+              htmlBody = rendered.body.includes('<p>') || rendered.body.includes('<div>')
+                ? rendered.body
+                : `<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1e293b; line-height: 1.6;">
+                    <p>${rendered.body.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br/>')}</p>
+                    <p style="margin-top: 24px;">
+                      <a href="${joinUrl}" style="display: inline-block; padding: 12px 24px; background: #2563eb; color: #fff; text-decoration: none; border-radius: 8px; font-weight: bold;">
+                        Accept Invitation
+                      </a>
+                    </p>
+                  </div>`;
+            }
+          } catch (tmplErr) {
+            console.warn('[CallCentreService] Could not resolve portal invitation template, using fallback:', tmplErr);
+          }
+
           await sendEmail({
             to: email,
-            subject: `Invitation to join ${portalData?.name || 'our Portal'}`,
+            subject: emailSubject,
             html: htmlBody,
             apiKey: resendKey,
             domain: resendDomain
@@ -1950,7 +1990,7 @@ export class CallCentreService {
             organizationId,
             workspaceId,
             entityId,
-            entityType: 'person' as any,
+            entityType: 'person',
             userId,
             type: 'system',
             source: 'system',

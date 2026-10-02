@@ -196,3 +196,4 @@ export function createEventBus(): EventBus {
  * Global singleton EventBus instance used across the application.
  */
 export const defaultEventBus: EventBus = createEventBus();
+export const globalEventBus: EventBus = defaultEventBus;

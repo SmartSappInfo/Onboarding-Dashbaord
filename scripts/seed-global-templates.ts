@@ -816,6 +816,83 @@ Please log in to review the details and take the next steps.
   },
 
   {
+    name: 'Assignment Notification (SMS)',
+    category: 'general',
+    templateType: 'assignment_notification',
+    channel: 'sms',
+    body: 'Hi {{assigned_to}}, {{entity_name}} has been assigned to you by {{assigner_name}}. Review: {{deal_link}}',
+    variableContext: 'entity',
+    declaredVariables: ['assigned_to', 'entity_name', 'assigner_name', 'deal_link'],
+  },
+
+  {
+    name: 'Assignment Notification (WhatsApp)',
+    category: 'general',
+    templateType: 'assignment_notification',
+    channel: 'whatsapp',
+    body: `Hi {{assigned_to}},
+
+*{{entity_name}}* has been assigned to you by {{assigner_name}}.
+
+Please log in to review the details and take the next steps: {{deal_link}}
+
+_{{org_name}}_`,
+    variableContext: 'entity',
+    declaredVariables: ['assigned_to', 'entity_name', 'assigner_name', 'deal_link', 'org_name'],
+  },
+
+  {
+    name: 'Deal Assignment (Email)',
+    category: 'general',
+    templateType: 'deal_assigned',
+    channel: 'email',
+    subject: 'Deal {{deal_name}} has been assigned to you',
+    body: `Hi {{assigned_to}},
+
+You have been assigned to deal {{deal_name}} by {{assigner_name}}.
+
+Deal Value: {{deal_value}}
+Pipeline: {{deal_pipeline}}
+Stage: {{deal_stage}}
+
+Review deal details here: {{deal_link}}
+
+Best regards,
+{{org_name}}`,
+    variableContext: 'deal',
+    declaredVariables: ['assigned_to', 'deal_name', 'deal_value', 'deal_pipeline', 'deal_stage', 'assigner_name', 'deal_link', 'org_name'],
+  },
+
+  {
+    name: 'Deal Assignment (SMS)',
+    category: 'general',
+    templateType: 'deal_assigned',
+    channel: 'sms',
+    body: 'Hi {{assigned_to}}, you have been assigned to deal {{deal_name}} ({{deal_value}}) by {{assigner_name}}. View: {{deal_link}}',
+    variableContext: 'deal',
+    declaredVariables: ['assigned_to', 'deal_name', 'deal_value', 'assigner_name', 'deal_link'],
+  },
+
+  {
+    name: 'Deal Assignment (WhatsApp)',
+    category: 'general',
+    templateType: 'deal_assigned',
+    channel: 'whatsapp',
+    body: `Hi {{assigned_to}},
+
+You have been assigned to deal *{{deal_name}}* ({{deal_value}}) by {{assigner_name}}.
+
+*Pipeline:* {{deal_pipeline}}
+*Stage:* {{deal_stage}}
+
+Review details: {{deal_link}}
+
+_{{org_name}}_`,
+    variableContext: 'deal',
+    declaredVariables: ['assigned_to', 'deal_name', 'deal_value', 'deal_pipeline', 'deal_stage', 'assigner_name', 'deal_link', 'org_name'],
+  },
+
+  {
     name: 'Status Update (Email)',
     category: 'general',
     templateType: 'status_update',
@@ -841,6 +918,39 @@ New status: {{new_status}}
     body: '{{entity_name}} status changed from {{old_status}} to {{new_status}}.',
     variableContext: 'entity',
     declaredVariables: ['entity_name', 'old_status', 'new_status'],
+  },
+
+  {
+    name: 'Receipt Acknowledgement (Email)', category: 'general', templateType: 'receipt_acknowledgement', channel: 'email',
+    recipientType: 'entity',
+    subject: "We've received your receipt request — {{org_name}} Accounts",
+    body: `Hi {{contact_name}},\n\nThank you for submitting your receipt request for {{entity_name}}. We have successfully received your payment notification of GHS {{amount}}.\n\nOur Accounts Department is currently verifying the transaction and will issue your official electronic receipt shortly.\n\nIn the meantime, your account remains active and secure. If you have any urgent questions, feel free to reply to this message.\n\nWarmly,\n{{org_name}} Accounts Team`,
+    variableContext: 'common', declaredVariables: ['contact_name', 'entity_name', 'amount', 'document_url', 'org_name'],
+  },
+  {
+    name: 'Receipt Acknowledgement (SMS)', category: 'general', templateType: 'receipt_acknowledgement', channel: 'sms',
+    recipientType: 'entity',
+    body: `Hi {{contact_name}}, we've received your receipt request for {{entity_name}}. Our accounts team is processing your GHS {{amount}} payment now. You'll receive your official receipt shortly. Thank you! — {{org_name}}`,
+    variableContext: 'common', declaredVariables: ['contact_name', 'entity_name', 'amount', 'org_name'],
+  },
+  {
+    name: 'Receipt Acknowledgement (WhatsApp)', category: 'general', templateType: 'receipt_acknowledgement', channel: 'whatsapp',
+    recipientType: 'entity',
+    body: `Hi *{{contact_name}}*, we've received your receipt request for *{{entity_name}}*. Our accounts team is processing your payment of *GHS {{amount}}* now. You will receive your official receipt shortly. Thank you! — *{{org_name}}*`,
+    variableContext: 'common', declaredVariables: ['contact_name', 'entity_name', 'amount', 'org_name'],
+  },
+  {
+    name: 'Receipt Request Alert (Email)', category: 'general', templateType: 'receipt_request_team', channel: 'email',
+    recipientType: 'internal_alert',
+    subject: 'New Payment Receipt Request: {{entity_name}}',
+    body: `Hi Finance Team,\n\nA new payment notification has been submitted:\n\n• Entity / School: {{entity_name}}\n• Contact Person: {{contact_name}}\n• Amount Paid: GHS {{amount}}\n• Phone: {{contact_phone}}\n• Email: {{contact_email}}\n\n🔗 Update Billing: [Subscription Bills]({{billing_link}})\n\n{{org_name}}`,
+    variableContext: 'common', declaredVariables: ['entity_name', 'contact_name', 'amount', 'contact_phone', 'contact_email', 'document_url', 'billing_link', 'org_name'],
+  },
+  {
+    name: 'Receipt Request Alert (SMS)', category: 'general', templateType: 'receipt_request_team', channel: 'sms',
+    recipientType: 'internal_alert',
+    body: `💡 New Payment - Receipt Requested\nPayee: {{contact_name}}\nSchool: {{entity_name}}\nAmount: GHS {{amount}}\nEmail: {{contact_email}}\nPhone: {{contact_phone}}\nUpdate Billing: {{billing_link}}`,
+    variableContext: 'common', declaredVariables: ['entity_name', 'contact_name', 'amount', 'contact_phone', 'contact_email', 'billing_link'],
   },
   
   // ── Tasks ─────────────────────────────────────────────────────────────────
@@ -897,7 +1007,18 @@ New status: {{new_status}}
   {
     name: 'Automation Completed (In-App)', category: 'automations', templateType: 'automation_completed', channel: 'in_app', recipientType: 'internal_alert',
     body: `Workflow "{{workflow_name}}" has successfully completed.`,
-    variableContext: 'common', declaredVariables: ['workflow_name'],
+    variableContext: 'common', declaredVariables: ['workflow_name', 'filename', 'success_count', 'failed_count', 'duplicate_count', 'total_count', 'import_log_link', 'user_name', 'org_name'],
+  },
+  {
+    name: 'Automation Completed (Email)', category: 'automations', templateType: 'automation_completed', channel: 'email', recipientType: 'internal_alert',
+    subject: 'Bulk Upload Complete: {{filename}}',
+    body: `Hello {{user_name}},\n\nYour bulk upload of {{filename}} has finished.\n\n• Created: {{success_count}}\n• Duplicates: {{duplicate_count}}\n• Failed: {{failed_count}}\n• Total: {{total_count}}\n\n🔗 View Import Log: [View Details]({{import_log_link}})\n\n{{org_name}}`,
+    variableContext: 'common', declaredVariables: ['filename', 'success_count', 'failed_count', 'duplicate_count', 'total_count', 'import_log_link', 'user_name', 'org_name'],
+  },
+  {
+    name: 'Automation Completed (SMS)', category: 'automations', templateType: 'automation_completed', channel: 'sms', recipientType: 'internal_alert',
+    body: `Bulk upload "{{filename}}" done. {{success_count}} created, {{failed_count}} failed. Details: {{import_log_link}} — {{org_name}}`,
+    variableContext: 'common', declaredVariables: ['filename', 'success_count', 'failed_count', 'import_log_link', 'org_name'],
   },
 
   // ── QR Codes ──────────────────────────────────────────────────────────────

@@ -7,7 +7,7 @@ import type {
 } from '../types/variables';
 import { STATIC_VARIABLES } from '../template-variable-registry-data';
 import { getEffectiveContactTypes } from '../contact-type-actions';
-import type { EntityContact, Entity } from '../types';
+import type { EntityContact, Entity, Deal } from '../types';
 import { getBaseUrl } from '../utils/url-helpers';
 import { resolveTextWithMap } from '../utils/variable-replacer';
 
@@ -44,6 +44,14 @@ const getAgreementDocCached = cache(async (id: string) => {
 
 const getUserDocCached = cache(async (id: string) => {
   return adminDb.collection('users').doc(id).get();
+});
+
+const getDealDocCached = cache(async (id: string) => {
+  return adminDb.collection('deals').doc(id).get();
+});
+
+const getPipelineDocCached = cache(async (id: string) => {
+  return adminDb.collection('pipelines').doc(id).get();
 });
 
 export class FieldsVariablesService {
@@ -492,6 +500,10 @@ export class FieldsVariablesService {
     valuesMap.set('current_year', String(now.getFullYear()));
 
     // Start parallel independent Firestore reads with isolated error handling
+    const targetDealId = context.dealId
+      || (typeof context.extraVars?.dealId === 'string' ? context.extraVars.dealId : undefined)
+      || (typeof context.extraVars?.deal_id === 'string' ? context.extraVars.deal_id : undefined);
+
     const [
       wsSnap,
       entitySnap,
@@ -499,7 +511,8 @@ export class FieldsVariablesService {
       formSnap,
       surveySnap,
       agreementSnap,
-      userSnap
+      userSnap,
+      dealSnap
     ] = await Promise.all([
       // 1. Workspace
       (!context.preloadedWorkspace && context.workspaceId && context.workspaceId !== 'onboarding')
@@ -547,6 +560,13 @@ export class FieldsVariablesService {
       context.userId
         ? getUserDocCached(context.userId).catch(err => {
             console.warn('[FieldsVariablesService] Parallel fetch users failed:', err);
+            return null;
+          })
+        : Promise.resolve(null),
+      // 8. Deal
+      (!context.preloadedDeal && targetDealId)
+        ? getDealDocCached(targetDealId).catch(err => {
+            console.warn('[FieldsVariablesService] Parallel fetch deals failed:', err);
             return null;
           })
         : Promise.resolve(null)
@@ -1259,7 +1279,81 @@ export class FieldsVariablesService {
       }
     }
 
-    // 8.6. Inject pre-defined fallbacks from registry
+    // 8.7. Fetch Deal details
+    let dealData = context.preloadedDeal;
+    if (!dealData && dealSnap?.exists) {
+      dealData = dealSnap.data() as Partial<Deal>;
+    }
+
+    if (dealData) {
+      const baseUrl = getBaseUrl();
+      const dealIdVal = dealData.id || targetDealId || '';
+      if (dealIdVal) {
+        valuesMap.set('deal_id', dealIdVal);
+        valuesMap.set('deal_link', `${baseUrl}/admin/deals/${dealIdVal}`);
+        valuesMap.set('deal_url', `${baseUrl}/admin/deals/${dealIdVal}`);
+      }
+      if (dealData.name) {
+        valuesMap.set('deal_name', dealData.name);
+        valuesMap.set('deal_title', dealData.name);
+        if (!valuesMap.has('entity_name') || !valuesMap.get('entity_name')) {
+          valuesMap.set('entity_name', dealData.name);
+        }
+        if (!valuesMap.has('school_name') || !valuesMap.get('school_name')) {
+          valuesMap.set('school_name', dealData.name);
+        }
+      }
+      if (dealData.value !== undefined) {
+        valuesMap.set('deal_value', dealData.value);
+      }
+      if (dealData.status) {
+        valuesMap.set('deal_status', dealData.status);
+      }
+      if (dealData.stageName) {
+        valuesMap.set('deal_stage', dealData.stageName);
+        valuesMap.set('deal_stage_name', dealData.stageName);
+      } else if (dealData.stageId) {
+        valuesMap.set('deal_stage', dealData.stageId);
+        valuesMap.set('deal_stage_name', dealData.stageId);
+      }
+      if (dealData.pipelineId) {
+        valuesMap.set('deal_pipeline_id', dealData.pipelineId);
+        try {
+          const pipeSnap = await getPipelineDocCached(dealData.pipelineId);
+          if (pipeSnap?.exists) {
+            const pipe = pipeSnap.data();
+            if (pipe?.name) {
+              valuesMap.set('deal_pipeline', pipe.name);
+              valuesMap.set('deal_pipeline_name', pipe.name);
+            }
+          }
+        } catch { /* ignore */ }
+      }
+      if (dealData.expectedCloseDate) {
+        valuesMap.set('deal_expected_close_date', dealData.expectedCloseDate);
+        valuesMap.set('expected_close_date', dealData.expectedCloseDate);
+      }
+      if (dealData.assignedTo) {
+        if (dealData.assignedTo.name) {
+          valuesMap.set('assigned_to', dealData.assignedTo.name);
+          valuesMap.set('assignee_name', dealData.assignedTo.name);
+        } else if (dealData.assignedTo.userId) {
+          try {
+            const uSnap = await getUserDocCached(dealData.assignedTo.userId);
+            if (uSnap?.exists) {
+              const u = uSnap.data();
+              const name = u?.name || u?.fullName || u?.displayName || '';
+              if (name) {
+                valuesMap.set('assigned_to', name);
+                valuesMap.set('assignee_name', name);
+              }
+            }
+          } catch { /* ignore */ }
+        }
+      }
+    }
+
+    // 8.8. Inject pre-defined fallbacks from registry
     try {
       if (context.workspaceId) {
         const registeredVars = await this.getVariables({
@@ -1278,9 +1372,52 @@ export class FieldsVariablesService {
 
     // 9. Merge caller overrides / extra variables
     if (context.extraVars) {
-      Object.entries(context.extraVars).forEach(([k, v]) => {
-        valuesMap.set(k, v !== null && v !== undefined ? String(v) : '');
-      });
+      for (const [k, v] of Object.entries(context.extraVars)) {
+        if (v === null || v === undefined) {
+          valuesMap.set(k, '');
+          continue;
+        }
+        if (typeof v === 'object' && !Array.isArray(v)) {
+          // Check for assignedTo object: { name, userId, email }
+          if (k === 'assignedTo' || k === 'assigned_to') {
+            const assignObj = v as { name?: string | null; userId?: string | null; email?: string | null };
+            if (assignObj.name) {
+              valuesMap.set('assigned_to', assignObj.name);
+              valuesMap.set('assignee_name', assignObj.name);
+            }
+          }
+          // Flatten simple sub-properties and unwrap metadata
+          Object.entries(v as Record<string, unknown>).forEach(([subK, subV]) => {
+            if (typeof subV === 'string' || typeof subV === 'number' || typeof subV === 'boolean') {
+              valuesMap.set(`${k}.${subK}`, String(subV));
+              if (k === 'metadata' && !valuesMap.has(subK)) {
+                valuesMap.set(subK, String(subV));
+              }
+            }
+          });
+        } else {
+          valuesMap.set(k, String(v));
+        }
+      }
+
+      // Check assigner name from actorUserId or assignerId if not set
+      if (!valuesMap.has('assigner_name') || !valuesMap.get('assigner_name')) {
+        const actorId = (context.extraVars.actorUserId || context.extraVars.assignerId || context.extraVars.assignedByUserId) as string | undefined;
+        if (actorId) {
+          try {
+            const actorSnap = await getUserDocCached(actorId);
+            if (actorSnap?.exists) {
+              const u = actorSnap.data();
+              const name = u?.name || u?.fullName || u?.displayName || '';
+              if (name) {
+                valuesMap.set('assigner_name', name);
+                valuesMap.set('assigned_by', name);
+                valuesMap.set('assignerName', name);
+              }
+            }
+          } catch { /* ignore */ }
+        }
+      }
     }
 
     // 10. Shorthand & Legacy Aliases Resolution (SSOT Protocol - Symmetrical Bidirectional)
@@ -1320,6 +1457,74 @@ export class FieldsVariablesService {
       valuesMap.set('agreement_status', valuesMap.get('contract_status') ?? '');
     } else if (!valuesMap.has('contract_status') && valuesMap.has('agreement_status')) {
       valuesMap.set('contract_status', valuesMap.get('agreement_status') ?? '');
+    }
+
+    // Deal aliases (bidirectional)
+    if (!valuesMap.has('deal_title') && valuesMap.has('deal_name')) {
+      valuesMap.set('deal_title', valuesMap.get('deal_name') ?? '');
+    } else if (!valuesMap.has('deal_name') && valuesMap.has('deal_title')) {
+      valuesMap.set('deal_name', valuesMap.get('deal_title') ?? '');
+    }
+
+    if (!valuesMap.has('deal_link') && valuesMap.has('deal_url')) {
+      valuesMap.set('deal_link', valuesMap.get('deal_url') ?? '');
+    } else if (!valuesMap.has('deal_url') && valuesMap.has('deal_link')) {
+      valuesMap.set('deal_url', valuesMap.get('deal_link') ?? '');
+    }
+
+    if (!valuesMap.has('deal_stage') && valuesMap.has('deal_stage_name')) {
+      valuesMap.set('deal_stage', valuesMap.get('deal_stage_name') ?? '');
+    } else if (!valuesMap.has('deal_stage_name') && valuesMap.has('deal_stage')) {
+      valuesMap.set('deal_stage_name', valuesMap.get('deal_stage') ?? '');
+    }
+
+    if (!valuesMap.has('deal_pipeline') && valuesMap.has('deal_pipeline_name')) {
+      valuesMap.set('deal_pipeline', valuesMap.get('deal_pipeline_name') ?? '');
+    } else if (!valuesMap.has('deal_pipeline_name') && valuesMap.has('deal_pipeline')) {
+      valuesMap.set('deal_pipeline_name', valuesMap.get('deal_pipeline') ?? '');
+    }
+
+    if (!valuesMap.has('expected_close_date') && valuesMap.has('deal_expected_close_date')) {
+      valuesMap.set('expected_close_date', valuesMap.get('deal_expected_close_date') ?? '');
+    } else if (!valuesMap.has('deal_expected_close_date') && valuesMap.has('expected_close_date')) {
+      valuesMap.set('deal_expected_close_date', valuesMap.get('expected_close_date') ?? '');
+    }
+
+    // Assignment aliases (bidirectional)
+    if (!valuesMap.has('assignee_name') && valuesMap.has('assigned_to')) {
+      valuesMap.set('assignee_name', valuesMap.get('assigned_to') ?? '');
+    } else if (!valuesMap.has('assigned_to') && valuesMap.has('assignee_name')) {
+      valuesMap.set('assigned_to', valuesMap.get('assignee_name') ?? '');
+    }
+
+    if (!valuesMap.has('assigner_name') && valuesMap.has('assigned_by')) {
+      valuesMap.set('assigner_name', valuesMap.get('assigned_by') ?? '');
+    } else if (!valuesMap.has('assigned_by') && valuesMap.has('assigner_name')) {
+      valuesMap.set('assigned_by', valuesMap.get('assigner_name') ?? '');
+    }
+
+    if (!valuesMap.has('assigner_name') && valuesMap.has('assignerName')) {
+      valuesMap.set('assigner_name', valuesMap.get('assignerName') ?? '');
+    }
+
+    // Deal name <-> entity_name alias if one is missing and other is present
+    if (!valuesMap.has('entity_name') && valuesMap.has('deal_name')) {
+      valuesMap.set('entity_name', valuesMap.get('deal_name') ?? '');
+    } else if (!valuesMap.has('deal_name') && valuesMap.has('entity_name')) {
+      valuesMap.set('deal_name', valuesMap.get('entity_name') ?? '');
+    }
+
+    // Default fallbacks for assigned_to and assigner_name so unescaped tokens NEVER leak
+    if (!valuesMap.has('assigned_to') || !valuesMap.get('assigned_to')) {
+      const fallbackAssignee = valuesMap.get('user_name') || valuesMap.get('admin_name') || valuesMap.get('__fallback__assigned_to') || 'Colleague';
+      valuesMap.set('assigned_to', fallbackAssignee);
+      valuesMap.set('assignee_name', fallbackAssignee);
+    }
+
+    if (!valuesMap.has('assigner_name') || !valuesMap.get('assigner_name')) {
+      const fallbackAssigner = valuesMap.get('__fallback__assigner_name') || 'Your Team Lead';
+      valuesMap.set('assigner_name', fallbackAssigner);
+      valuesMap.set('assigned_by', fallbackAssigner);
     }
 
     if (!valuesMap.has('sender_name')) {

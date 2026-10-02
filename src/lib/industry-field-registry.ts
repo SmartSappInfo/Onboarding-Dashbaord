@@ -87,6 +87,9 @@ export function resolveStaticVariableGroup(varName: string, varContext?: string)
   }
 
   const k = varName.toLowerCase();
+  if (normCtx === 'deal' || normCtx === 'deals' || k.startsWith('deal_')) {
+    return { groupId: 'deals_pipeline', groupName: 'Deals & Pipeline', groupSlug: 'deals_pipeline', groupOrder: 6, groupIcon: 'Target' };
+  }
   if (k.startsWith('contact_') || k.startsWith('signatory_') || k === 'first_name') {
     return { groupId: 'entity_contacts', groupName: 'Contacts', groupSlug: 'entity_contacts', groupOrder: 5, groupIcon: 'Users' };
   }
@@ -105,7 +108,7 @@ export function resolveStaticVariableGroup(varName: string, varContext?: string)
   if (k.includes('stage') || k.includes('status')) {
     return { groupId: 'entity_lifecycle', groupName: 'Entity Lifecycle', groupSlug: 'entity_lifecycle', groupOrder: 54, groupIcon: 'Activity' };
   }
-  if (k.includes('assigned_to') || k.includes('assigner_name')) {
+  if (k.includes('assigned_to') || k.includes('assigner_name') || k.includes('assignee')) {
     return { groupId: 'account_ownership', groupName: 'Account Ownership', groupSlug: 'account_ownership', groupOrder: 4, groupIcon: 'Briefcase' };
   }
   if (k.includes('date') || k.includes('time') || k.includes('year') || k.includes('token') || k.includes('tag_') || k.endsWith('_tag') || k === 'tag' || k.includes('tags')) {

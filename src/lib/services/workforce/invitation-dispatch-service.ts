@@ -17,6 +17,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { sendEmail } from '@/lib/resend-service';
 import { sendSms } from '@/lib/mnotify-service';
+import { resolveAndRender } from '@/lib/template-resolver';
 import type { InvitationChannelState } from '@/lib/types';
 
 export type DispatchChannel = 'email' | 'sms' | 'whatsapp';
@@ -141,6 +142,60 @@ export class InvitationDispatchService {
   }
 
   /**
+   * Formats a templated message body into responsive branded email HTML.
+   * If the body already contains full HTML document structure, returns it as-is.
+   */
+  private static formatTemplateHtml(body: string, orgName: string, actionUrl?: string): string {
+    if (body.includes('<html') || body.includes('<!DOCTYPE')) {
+      return body;
+    }
+
+    const formattedBody = body
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color: #2563eb; font-weight: 600; text-decoration: underline;">$1</a>')
+      .replace(/\n\n/g, '</p><p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #1e293b;">')
+      .replace(/\n/g, '<br/>');
+
+    const shouldRenderButton = Boolean(actionUrl && !body.includes(actionUrl));
+
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>${orgName}</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 0; color: #1e293b; }
+            .container { max-width: 580px; margin: 40px auto; background-color: #ffffff; border-radius: 20px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+            .header { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 36px 32px; text-align: center; color: #ffffff; }
+            .header h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+            .content { padding: 36px 32px; font-size: 15px; line-height: 1.6; }
+            .cta-button { display: inline-block; background-color: #2563eb; color: #ffffff !important; text-decoration: none; padding: 14px 28px; border-radius: 12px; font-weight: 700; font-size: 14px; margin: 24px 0; text-align: center; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25); }
+            .footer { padding: 24px 32px; background-color: #f1f5f9; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>${orgName}</h1>
+            </div>
+            <div class="content">
+              <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #1e293b;">${formattedBody}</p>
+              ${shouldRenderButton ? `
+              <div style="text-align: center;">
+                <a href="${actionUrl}" class="cta-button">Activate Account</a>
+              </div>` : ''}
+            </div>
+            <div class="footer">
+              &copy; ${new Date().getFullYear()} ${orgName}. All rights reserved.
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+  }
+
+  /**
    * Resolves the primary organization name if not supplied.
    */
   private static async resolveOrgName(orgId: string, fallback?: string): Promise<string> {
@@ -192,7 +247,8 @@ export class InvitationDispatchService {
     // 1. Dispatch Email
     if (channelsToDispatch.includes('email')) {
       try {
-        const emailHtml = this.generateInvitationEmailHtml({
+        let emailSubject = `You've been invited to join ${orgName}`;
+        let emailHtml = this.generateInvitationEmailHtml({
           orgName,
           personName,
           acceptUrl,
@@ -200,9 +256,40 @@ export class InvitationDispatchService {
           roleNames,
         });
 
+        try {
+          const rendered = await resolveAndRender(
+            'users',
+            'user_invitation',
+            organizationId,
+            {
+              extraVars: {
+                user_name: personName || 'there',
+                contact_name: personName || 'there',
+                name: personName || 'there',
+                org_name: orgName,
+                organization_name: orgName,
+                workspace_name: workspaceName || '',
+                role_names: roleNames && roleNames.length > 0 ? roleNames.join(', ') : 'Team Member',
+                login_link: acceptUrl,
+                activation_link: acceptUrl,
+                action_url: acceptUrl,
+                accept_url: acceptUrl,
+                raw_token: rawToken,
+              },
+            },
+            'email'
+          );
+          if (rendered.subject) emailSubject = rendered.subject;
+          if (rendered.body) {
+            emailHtml = this.formatTemplateHtml(rendered.body, orgName, acceptUrl);
+          }
+        } catch (tmplErr) {
+          console.warn('[InvitationDispatchService] Could not resolve email template, using default:', tmplErr);
+        }
+
         await sendEmail({
           to: email,
-          subject: `You've been invited to join ${orgName}`,
+          subject: emailSubject,
           html: emailHtml,
         });
 
@@ -240,7 +327,34 @@ export class InvitationDispatchService {
         firestoreUpdates['channels.sms.error'] = msg;
       } else {
         try {
-          const smsText = `Hello ${personName || 'there'}, you have been invited to join ${orgName}. Activate your account here: ${acceptUrl}`;
+          let smsText = `Hello ${personName || 'there'}, you have been invited to join ${orgName}. Activate your account here: ${acceptUrl}`;
+          try {
+            const rendered = await resolveAndRender(
+              'users',
+              'user_invitation',
+              organizationId,
+              {
+                extraVars: {
+                  user_name: personName || 'there',
+                  contact_name: personName || 'there',
+                  name: personName || 'there',
+                  org_name: orgName,
+                  organization_name: orgName,
+                  workspace_name: workspaceName || '',
+                  login_link: acceptUrl,
+                  activation_link: acceptUrl,
+                  action_url: acceptUrl,
+                  accept_url: acceptUrl,
+                  temp_password: rawToken,
+                },
+              },
+              'sms'
+            );
+            if (rendered.body) smsText = rendered.body;
+          } catch (tmplErr) {
+            console.warn('[InvitationDispatchService] Could not resolve SMS template, using default:', tmplErr);
+          }
+
           await sendSms({
             recipient: cleanPhone,
             message: smsText,
@@ -283,7 +397,33 @@ export class InvitationDispatchService {
       } else {
         try {
           const { sendWhatsApp } = await import('@/lib/whatsapp/whatsapp-send');
-          const waBody = `Hello ${personName || 'there'}, you have been invited to join *${orgName}*. Complete your activation here: ${acceptUrl}`;
+          let waBody = `Hello ${personName || 'there'}, you have been invited to join *${orgName}*. Complete your activation here: ${acceptUrl}`;
+          try {
+            const rendered = await resolveAndRender(
+              'users',
+              'user_invitation',
+              organizationId,
+              {
+                extraVars: {
+                  user_name: personName || 'there',
+                  contact_name: personName || 'there',
+                  name: personName || 'there',
+                  org_name: orgName,
+                  organization_name: orgName,
+                  workspace_name: workspaceName || '',
+                  login_link: acceptUrl,
+                  activation_link: acceptUrl,
+                  action_url: acceptUrl,
+                  accept_url: acceptUrl,
+                  temp_password: rawToken,
+                },
+              },
+              'whatsapp'
+            );
+            if (rendered.body) waBody = rendered.body;
+          } catch (tmplErr) {
+            console.warn('[InvitationDispatchService] Could not resolve WhatsApp template, using default:', tmplErr);
+          }
 
           await sendWhatsApp({
             organizationId,
@@ -372,7 +512,8 @@ export class InvitationDispatchService {
     // 1. Email
     if (channels.includes('email')) {
       try {
-        const emailHtml = `
+        let emailSubject = `Your Account Credentials for ${orgName}`;
+        let emailHtml = `
           <div style="font-family: sans-serif; max-width: 580px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px;">
             <h2 style="color: #1e293b; margin-top: 0;">Welcome to ${orgName}</h2>
             <p>Hello ${fullName},</p>
@@ -386,9 +527,40 @@ export class InvitationDispatchService {
           </div>
         `;
 
+        try {
+          const rendered = await resolveAndRender(
+            'users',
+            'user_invitation',
+            organizationId,
+            {
+              extraVars: {
+                user_name: fullName,
+                contact_name: fullName,
+                name: fullName,
+                user_email: email,
+                temp_password: tempPassword,
+                temporary_password: tempPassword,
+                login_link: actionUrl,
+                activation_link: actionUrl,
+                action_url: actionUrl,
+                accept_url: actionUrl,
+                org_name: orgName,
+                organization_name: orgName,
+              },
+            },
+            'email'
+          );
+          if (rendered.subject) emailSubject = rendered.subject;
+          if (rendered.body) {
+            emailHtml = this.formatTemplateHtml(rendered.body, orgName, actionUrl);
+          }
+        } catch (tmplErr) {
+          console.warn('[InvitationDispatchService] Could not resolve credentials email template, using default:', tmplErr);
+        }
+
         await sendEmail({
           to: email,
-          subject: `Your Account Credentials for ${orgName}`,
+          subject: emailSubject,
           html: emailHtml,
         });
 
@@ -415,7 +587,35 @@ export class InvitationDispatchService {
         errors.push(`SMS: ${msg}`);
       } else {
         try {
-          const smsText = `Hello ${fullName}, your account for ${orgName} is ready. Temp password: ${tempPassword}. Activate account: ${actionUrl}`;
+          let smsText = `Hello ${fullName}, your account for ${orgName} is ready. Temp password: ${tempPassword}. Activate account: ${actionUrl}`;
+          try {
+            const rendered = await resolveAndRender(
+              'users',
+              'user_invitation',
+              organizationId,
+              {
+                extraVars: {
+                  user_name: fullName,
+                  contact_name: fullName,
+                  name: fullName,
+                  user_email: email,
+                  temp_password: tempPassword,
+                  temporary_password: tempPassword,
+                  login_link: actionUrl,
+                  activation_link: actionUrl,
+                  action_url: actionUrl,
+                  accept_url: actionUrl,
+                  org_name: orgName,
+                  organization_name: orgName,
+                },
+              },
+              'sms'
+            );
+            if (rendered.body) smsText = rendered.body;
+          } catch (tmplErr) {
+            console.warn('[InvitationDispatchService] Could not resolve credentials SMS template, using default:', tmplErr);
+          }
+
           await sendSms({
             recipient: cleanPhone,
             message: smsText,
@@ -447,7 +647,35 @@ export class InvitationDispatchService {
       } else {
         try {
           const { sendWhatsApp } = await import('@/lib/whatsapp/whatsapp-send');
-          const waText = `Hello *${fullName}*, your account for *${orgName}* is ready.\n\n*Temporary Password:* ${tempPassword}\n*Activate Account:* ${actionUrl}`;
+          let waText = `Hello *${fullName}*, your account for *${orgName}* is ready.\n\n*Temporary Password:* ${tempPassword}\n*Activate Account:* ${actionUrl}`;
+          try {
+            const rendered = await resolveAndRender(
+              'users',
+              'user_invitation',
+              organizationId,
+              {
+                extraVars: {
+                  user_name: fullName,
+                  contact_name: fullName,
+                  name: fullName,
+                  user_email: email,
+                  temp_password: tempPassword,
+                  temporary_password: tempPassword,
+                  login_link: actionUrl,
+                  activation_link: actionUrl,
+                  action_url: actionUrl,
+                  accept_url: actionUrl,
+                  org_name: orgName,
+                  organization_name: orgName,
+                },
+              },
+              'whatsapp'
+            );
+            if (rendered.body) waText = rendered.body;
+          } catch (tmplErr) {
+            console.warn('[InvitationDispatchService] Could not resolve credentials WhatsApp template, using default:', tmplErr);
+          }
+
           await sendWhatsApp({
             organizationId,
             recipient: cleanPhone,
@@ -515,7 +743,8 @@ export class InvitationDispatchService {
     // 1. Email Channel
     if (channels.includes('email')) {
       try {
-        const emailHtml = `
+        let emailSubject = `Password Reset Instructions for ${orgName}`;
+        let emailHtml = `
           <!DOCTYPE html>
           <html>
             <head>
@@ -561,9 +790,39 @@ export class InvitationDispatchService {
           </html>
         `;
 
+        try {
+          const rendered = await resolveAndRender(
+            'users',
+            'user_password_reset',
+            organizationId,
+            {
+              extraVars: {
+                user_name: fullName || 'User',
+                contact_name: fullName || 'User',
+                name: fullName || 'User',
+                user_email: email,
+                temp_password: tempPassword,
+                temporary_password: tempPassword,
+                login_link: loginUrl,
+                reset_link: loginUrl,
+                action_url: loginUrl,
+                org_name: orgName,
+                organization_name: orgName,
+              },
+            },
+            'email'
+          );
+          if (rendered.subject) emailSubject = rendered.subject;
+          if (rendered.body) {
+            emailHtml = this.formatTemplateHtml(rendered.body, orgName, loginUrl);
+          }
+        } catch (tmplErr) {
+          console.warn('[InvitationDispatchService] Could not resolve password reset email template, using default:', tmplErr);
+        }
+
         await sendEmail({
           to: email,
-          subject: `Password Reset Instructions for ${orgName}`,
+          subject: emailSubject,
           html: emailHtml,
         });
 
@@ -590,7 +849,34 @@ export class InvitationDispatchService {
         errors.push(`SMS: ${msg}`);
       } else {
         try {
-          const smsText = `Hello ${fullName || 'User'}, your password has been reset for ${orgName}. Temp password: ${tempPassword}. Log in here: ${loginUrl}`;
+          let smsText = `Hello ${fullName || 'User'}, your password has been reset for ${orgName}. Temp password: ${tempPassword}. Log in here: ${loginUrl}`;
+          try {
+            const rendered = await resolveAndRender(
+              'users',
+              'user_password_reset',
+              organizationId,
+              {
+                extraVars: {
+                  user_name: fullName || 'User',
+                  contact_name: fullName || 'User',
+                  name: fullName || 'User',
+                  user_email: email,
+                  temp_password: tempPassword,
+                  temporary_password: tempPassword,
+                  login_link: loginUrl,
+                  reset_link: loginUrl,
+                  action_url: loginUrl,
+                  org_name: orgName,
+                  organization_name: orgName,
+                },
+              },
+              'sms'
+            );
+            if (rendered.body) smsText = rendered.body;
+          } catch (tmplErr) {
+            console.warn('[InvitationDispatchService] Could not resolve password reset SMS template, using default:', tmplErr);
+          }
+
           await sendSms({
             recipient: cleanPhone,
             message: smsText,
@@ -622,7 +908,34 @@ export class InvitationDispatchService {
       } else {
         try {
           const { sendWhatsApp } = await import('@/lib/whatsapp/whatsapp-send');
-          const waText = `Hello *${fullName || 'User'}*, your password has been reset for *${orgName}* by an administrator.\n\n*Temporary Password:* ${tempPassword}\n*Log in:* ${loginUrl}\n\nPlease change your password upon login.`;
+          let waText = `Hello *${fullName || 'User'}*, your password has been reset for *${orgName}* by an administrator.\n\n*Temporary Password:* ${tempPassword}\n*Log in:* ${loginUrl}\n\nPlease change your password upon login.`;
+          try {
+            const rendered = await resolveAndRender(
+              'users',
+              'user_password_reset',
+              organizationId,
+              {
+                extraVars: {
+                  user_name: fullName || 'User',
+                  contact_name: fullName || 'User',
+                  name: fullName || 'User',
+                  user_email: email,
+                  temp_password: tempPassword,
+                  temporary_password: tempPassword,
+                  login_link: loginUrl,
+                  reset_link: loginUrl,
+                  action_url: loginUrl,
+                  org_name: orgName,
+                  organization_name: orgName,
+                },
+              },
+              'whatsapp'
+            );
+            if (rendered.body) waText = rendered.body;
+          } catch (tmplErr) {
+            console.warn('[InvitationDispatchService] Could not resolve password reset WhatsApp template, using default:', tmplErr);
+          }
+
           await sendWhatsApp({
             organizationId,
             recipient: cleanPhone,

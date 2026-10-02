@@ -11,10 +11,12 @@
  * A registrar calls `registerCapability` for each of its definitions and must be idempotent.
  */
 
+import { registerMemoryCapabilities } from '../domains/memory/memory-capabilities';
+
 type Registrar = () => void;
 
-/** Phase 1 domain registrars. Empty in Phase 0: no capability is executable yet. */
-const DOMAIN_REGISTRARS: readonly Registrar[] = [];
+/** Platform domain registrars. */
+const DOMAIN_REGISTRARS: readonly Registrar[] = [registerMemoryCapabilities];
 
 const globalRef = globalThis as { __smartsappCapabilitiesRegistered?: boolean };
 
