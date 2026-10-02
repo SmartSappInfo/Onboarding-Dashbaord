@@ -148,6 +148,14 @@ export function createInMemoryApprovalStore(): ApprovalStore {
       return results;
     },
 
+    async verify(request: ApprovalRequest): Promise<ApprovalVerification> {
+      const record = records.get(request.approvalId);
+      if (!record) {
+        return { ok: false, code: 'APPROVAL_NOT_FOUND', message: 'Approval record does not exist.' };
+      }
+      return checkApprovalRecord(record, request).result;
+    },
+
     async verifyAndBind(request: ApprovalRequest): Promise<ApprovalVerification> {
       const record = records.get(request.approvalId);
       if (!record) {
@@ -268,6 +276,19 @@ export class FirestoreApprovalStore implements ApprovalStore {
     } catch {
       return [];
     }
+  }
+
+  public async verify(request: ApprovalRequest): Promise<ApprovalVerification> {
+    const { adminDb } = await import('@/lib/firebase-admin');
+    const snap = await adminDb.collection(CAPABILITY_APPROVALS_COLLECTION).doc(request.approvalId).get();
+    if (!snap.exists) {
+      return { ok: false, code: 'APPROVAL_NOT_FOUND', message: 'Approval record does not exist.' };
+    }
+    const parsed = CapabilityApprovalRecordSchema.safeParse(snap.data());
+    if (!parsed.success) {
+      return { ok: false, code: 'APPROVAL_CORRUPT', message: 'Approval record failed schema validation.' };
+    }
+    return checkApprovalRecord(parsed.data, request).result;
   }
 
   public async verifyAndBind(request: ApprovalRequest): Promise<ApprovalVerification> {

@@ -80,6 +80,12 @@ export interface ApprovalRequest {
 }
 
 export interface ApprovalVerifier {
+  /**
+   * Read-only check (agents_mcp PR-2): lets the worker evaluate authority BEFORE consuming the
+   * approval, so a refused step never burns a human's approval.
+   */
+  verify(request: ApprovalRequest): Promise<ApprovalVerification>;
+  /** Transactional re-check and bind; call only once the step is otherwise allowed to run. */
   verifyAndBind(request: ApprovalRequest): Promise<ApprovalVerification>;
 }
 
@@ -141,6 +147,17 @@ export function checkApprovalRecord(
 
 export function createFirestoreApprovalVerifier(db: Firestore): ApprovalVerifier {
   return {
+    async verify(request) {
+      const snap = await db.collection(CAPABILITY_APPROVALS_COLLECTION).doc(request.approvalId).get();
+      if (!snap.exists) {
+        return { ok: false, code: 'APPROVAL_NOT_FOUND', message: 'Approval record does not exist.' };
+      }
+      const parsed = CapabilityApprovalRecordSchema.safeParse(snap.data());
+      if (!parsed.success) {
+        return { ok: false, code: 'APPROVAL_CORRUPT', message: 'Approval record failed schema validation.' };
+      }
+      return checkApprovalRecord(parsed.data, request).result;
+    },
     async verifyAndBind(request) {
       const ref = db.collection(CAPABILITY_APPROVALS_COLLECTION).doc(request.approvalId);
       return db.runTransaction(async (tx): Promise<ApprovalVerification> => {

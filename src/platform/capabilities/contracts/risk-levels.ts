@@ -45,8 +45,40 @@ export interface RiskMetadata {
   nonDelegable: boolean;
 }
 
-/** Non-delegable permissions that an agent or sub-agent can never automatically inherit */
+/**
+ * Permissions an agent or sub-agent can never exercise on a user's behalf (Rule 17).
+ *
+ * SECURITY (agents_mcp PR-2): these are D6 permission references (`permission-refs.ts`). The old
+ * list used ids like `admin.grant_permission` that match no permission in the app, so it never
+ * blocked anything. A test asserts every entry resolves in the vocabulary.
+ */
 export const NON_DELEGABLE_ACTIONS = [
+  // Platform-level authority
+  'app:system_admin',
+  'app:system_user_switch',
+  // Destroying signed agreements
+  'app:contracts_delete',
+  'rbac:finance.agreements.delete',
+  // Granting or removing access
+  'rbac:workforce.roles.edit',
+  'rbac:workforce.users.create',
+  'rbac:workforce.users.edit',
+  'rbac:workforce.users.delete',
+  'rbac:management.users.create',
+  'rbac:management.users.edit',
+  'rbac:management.users.delete',
+  // Credentials, data egress, tenant and audit settings
+  'rbac:management.developerApi.edit',
+  'rbac:management.webhooks.create',
+  'rbac:management.webhooks.edit',
+  'rbac:management.systemSettings.edit',
+  // Billing ownership
+  'rbac:finance.billingSetup.edit',
+] as const;
+
+export type NonDelegableAction = (typeof NON_DELEGABLE_ACTIONS)[number];
+
+const LEGACY_NON_DELEGABLE_ACTIONS = [
   'admin.grant_permission',
   'admin.rotate_credentials',
   'admin.change_tenant_isolation',
@@ -54,23 +86,13 @@ export const NON_DELEGABLE_ACTIONS = [
   'billing.change_owner',
   'organization.delete',
   'workspace.delete',
-  // Canonical coordinates (PR-2 / D6 alignment)
-  'app:system_admin',
-  'app:contracts_delete',
-  'rbac:management.users.edit',
-  'rbac:management.users.delete',
-  'rbac:finance.agreements.delete',
 ] as const;
 
-export type NonDelegableAction = (typeof NON_DELEGABLE_ACTIONS)[number];
-
 export function isNonDelegableAction(actionId: string): boolean {
-  const normalized = actionId.trim().toLowerCase();
-  return (NON_DELEGABLE_ACTIONS as readonly string[]).some(
-    (nonDelegable) =>
-      normalized === nonDelegable ||
-      normalized.startsWith(`${nonDelegable}:`) ||
-      normalized.startsWith(`${nonDelegable}.`)
+  const normalized = actionId.trim();
+  return (
+    (NON_DELEGABLE_ACTIONS as readonly string[]).includes(normalized) ||
+    (LEGACY_NON_DELEGABLE_ACTIONS as readonly string[]).includes(normalized)
   );
 }
 

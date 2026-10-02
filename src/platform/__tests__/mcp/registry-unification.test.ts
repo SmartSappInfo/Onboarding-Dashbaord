@@ -124,7 +124,7 @@ describe('Canonical Registry Unification (PR-5 / Decision D1 / Rule 69 SSOT)', (
         operation: 'execute',
         inputSchema: z4.object({ memberId: z4.string() }),
         outputSchema: z4.object({ greeting: z4.string() }),
-        permissions: ['app:portal_view'],
+        permissions: ['app:portals_view'],
         workspaceScoped: true,
         tenantScoped: true,
         risk: {

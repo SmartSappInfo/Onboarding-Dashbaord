@@ -165,7 +165,13 @@ export interface CapabilityDefinition<TInput = unknown, TOutput = unknown> {
   inputSchema: z.ZodType<TInput> | SchemaParser<TInput>;
   outputSchema: z.ZodType<TOutput> | SchemaParser<TOutput>;
 
+  /**
+   * D6 permission references (`app:<id>` / `rbac:<section>.<feature>.<action>`, see
+   * `permission-refs.ts`). Must be non-empty unless the capability is declared `public`.
+   */
   permissions: string[];
+  /** Explicitly public capabilities (no permission) must say why; the registry enforces it. */
+  public?: { reason: string };
   workspaceScoped: boolean;
   tenantScoped: boolean;
 

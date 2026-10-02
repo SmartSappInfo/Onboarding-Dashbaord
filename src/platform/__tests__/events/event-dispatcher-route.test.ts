@@ -21,7 +21,7 @@ describe('Event Dispatcher Route Handler: Security & Auth Gate (Rules 13, 51)', 
   });
 
   it('rejects requests missing valid Cloud Tasks handshake signature with 401 Unauthorized (Rule 34)', async () => {
-    vi.spyOn(cloudTasksAuth, 'isAuthorizedCloudTaskRequest').mockReturnValue(false);
+    vi.spyOn(cloudTasksAuth, 'isAuthorizedCloudTaskRequest').mockResolvedValue(false);
 
     const req = new NextRequest('http://localhost:3000/api/tasks/event-dispatcher', {
       method: 'POST',
@@ -39,7 +39,7 @@ describe('Event Dispatcher Route Handler: Security & Auth Gate (Rules 13, 51)', 
   });
 
   it('rejects requests failing Cloud Tasks OIDC verification with 401 Unauthorized (Rule 13)', async () => {
-    vi.spyOn(cloudTasksAuth, 'isAuthorizedCloudTaskRequest').mockReturnValue(true);
+    vi.spyOn(cloudTasksAuth, 'isAuthorizedCloudTaskRequest').mockResolvedValue(true);
     vi.spyOn(cloudTasksOidc, 'verifyCloudTasksOidcToken').mockResolvedValue({
       authorized: false,
       reason: 'Expired OIDC token',
@@ -62,7 +62,7 @@ describe('Event Dispatcher Route Handler: Security & Auth Gate (Rules 13, 51)', 
   });
 
   it('authenticates valid Cloud Tasks requests and returns EventDispatchResult (Rule 51)', async () => {
-    vi.spyOn(cloudTasksAuth, 'isAuthorizedCloudTaskRequest').mockReturnValue(true);
+    vi.spyOn(cloudTasksAuth, 'isAuthorizedCloudTaskRequest').mockResolvedValue(true);
     vi.spyOn(cloudTasksOidc, 'verifyCloudTasksOidcToken').mockResolvedValue({
       authorized: true,
       email: 'cloud-tasks@smartsapp.iam.gserviceaccount.com',
@@ -102,7 +102,7 @@ describe('Event Dispatcher Route Handler: Security & Auth Gate (Rules 13, 51)', 
   });
 
   it('rejects malformed dispatch options with 400 Bad Request (Rule 4)', async () => {
-    vi.spyOn(cloudTasksAuth, 'isAuthorizedCloudTaskRequest').mockReturnValue(true);
+    vi.spyOn(cloudTasksAuth, 'isAuthorizedCloudTaskRequest').mockResolvedValue(true);
     vi.spyOn(cloudTasksOidc, 'verifyCloudTasksOidcToken').mockResolvedValue({
       authorized: true,
     });

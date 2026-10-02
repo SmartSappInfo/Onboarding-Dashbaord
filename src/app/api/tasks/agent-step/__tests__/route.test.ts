@@ -39,7 +39,7 @@ describe('/api/tasks/agent-step route authentication & dispatch', () => {
   });
 
   it('rejects requests with 401 when Cloud Tasks handshake secret is invalid', async () => {
-    vi.spyOn(cloudTasksAuth, 'isAuthorizedCloudTaskRequest').mockReturnValue(false);
+    vi.spyOn(cloudTasksAuth, 'isAuthorizedCloudTaskRequest').mockResolvedValue(false);
     vi.spyOn(cloudTasksOidc, 'verifyCloudTasksOidcToken').mockResolvedValue({ authorized: true });
 
     const req = new NextRequest('http://localhost:3000/api/tasks/agent-step', {
@@ -54,7 +54,7 @@ describe('/api/tasks/agent-step route authentication & dispatch', () => {
   });
 
   it('rejects requests with 401 when Cloud Tasks OIDC token verification fails', async () => {
-    vi.spyOn(cloudTasksAuth, 'isAuthorizedCloudTaskRequest').mockReturnValue(true);
+    vi.spyOn(cloudTasksAuth, 'isAuthorizedCloudTaskRequest').mockResolvedValue(true);
     vi.spyOn(cloudTasksOidc, 'verifyCloudTasksOidcToken').mockResolvedValue({
       authorized: false,
       reason: 'Invalid token signature',
@@ -72,7 +72,7 @@ describe('/api/tasks/agent-step route authentication & dispatch', () => {
   });
 
   it('returns 400 INVALID_JSON when body cannot be parsed as JSON', async () => {
-    vi.spyOn(cloudTasksAuth, 'isAuthorizedCloudTaskRequest').mockReturnValue(true);
+    vi.spyOn(cloudTasksAuth, 'isAuthorizedCloudTaskRequest').mockResolvedValue(true);
     vi.spyOn(cloudTasksOidc, 'verifyCloudTasksOidcToken').mockResolvedValue({ authorized: true });
 
     const req = new NextRequest('http://localhost:3000/api/tasks/agent-step', {
@@ -87,7 +87,7 @@ describe('/api/tasks/agent-step route authentication & dispatch', () => {
   });
 
   it('delegates to processAgentStep and returns outcome when authenticated', async () => {
-    vi.spyOn(cloudTasksAuth, 'isAuthorizedCloudTaskRequest').mockReturnValue(true);
+    vi.spyOn(cloudTasksAuth, 'isAuthorizedCloudTaskRequest').mockResolvedValue(true);
     vi.spyOn(cloudTasksOidc, 'verifyCloudTasksOidcToken').mockResolvedValue({ authorized: true });
     vi.spyOn(agentStepExecutor, 'processAgentStep').mockResolvedValue({
       httpStatus: 200,

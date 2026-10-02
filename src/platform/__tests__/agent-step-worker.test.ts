@@ -37,7 +37,7 @@ const principal: AgentPrincipal & { actorType: 'agent' } = {
   organizationId: 'org-1',
   workspaceId: 'ws-1',
   agentId: 'crm-agent',
-  grantedScopes: ['tasks.create'],
+  grantedScopes: ['rbac:operations.tasks.create'],
   effectiveRole: 'agent',
 };
 
@@ -58,7 +58,7 @@ function buildCapability(
     // `.trim()` proves the handler receives PARSED data, not raw stored input.
     inputSchema: z.object({ title: z.string().trim().min(1), workspaceId: z.string().optional() }),
     outputSchema: z.object({ taskId: z.string() }),
-    permissions: ['tasks.create'],
+    permissions: ['rbac:operations.tasks.create'],
     workspaceScoped: true,
     tenantScoped: true,
     risk: {
@@ -77,7 +77,8 @@ function buildCapability(
       supportsCompensation: false,
       maxPayloadSizeBytes: 64 * 1024,
     },
-    policies: { requiresIdempotencyKey: true, requiresExpectedVersion: false, auditRequired: true },
+    // Agent steps refuse audit-required capabilities until the execution audit exists (PR-6).
+    policies: { requiresIdempotencyKey: true, requiresExpectedVersion: false, auditRequired: false },
     handler,
     ...overrides,
   };
@@ -125,12 +126,19 @@ const payload = { runId: RUN_ID, stepNumber: 0, idempotencyKey: KEY };
 
 describe('agent-step worker', () => {
   let db: FakeFirestore;
+  // The live principal check (PR-2): allowed unless a case revokes it.
+  let liveResult: { ok: true } | { ok: false; reason: string } = { ok: true };
   const run = (raw: unknown = payload) =>
-    processAgentStep(raw, { store: createFirestoreAgentStepStore(db.asFirestore()), resolveCapability: getCapability });
+    processAgentStep(raw, {
+      store: createFirestoreAgentStepStore(db.asFirestore()),
+      resolveCapability: getCapability,
+      principals: { check: async () => liveResult },
+    });
 
   beforeEach(() => {
     db = new FakeFirestore();
     resetCapabilityRegistryForTests();
+    liveResult = { ok: true };
   });
 
   it('executes the capability with parsed input and only then marks the step completed', async () => {

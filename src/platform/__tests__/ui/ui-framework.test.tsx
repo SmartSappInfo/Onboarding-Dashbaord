@@ -153,7 +153,7 @@ describe('PR-9: Capability UI Invocation Framework & Error Surfaces', () => {
         description: 'Capability that fails with dangerous actionConfig',
         inputSchema: z.object({ testType: z.string(), workspaceId: z.string().optional() }),
         outputSchema: z.object({ ok: z.boolean() }),
-        permissions: ['test.execute'],
+        permissions: ['rbac:operations.tasks.create'],
         workspaceScoped: true,
         tenantScoped: true,
         risk: {
@@ -303,7 +303,7 @@ describe('PR-9: Capability UI Invocation Framework & Error Surfaces', () => {
         description: 'Test retry idempotency discipline',
         inputSchema: z.object({ failOnce: z.boolean(), workspaceId: z.string().optional() }),
         outputSchema: z.object({ done: z.boolean() }),
-        permissions: ['test.execute'],
+        permissions: ['rbac:operations.tasks.create'],
         workspaceScoped: true,
         tenantScoped: true,
         risk: {

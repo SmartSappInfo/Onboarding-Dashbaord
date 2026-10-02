@@ -355,8 +355,10 @@ describe('Canonical Execution Gateway Pipeline (Steps 1–16)', () => {
           nonDelegable: false,
         },
       });
+      const verifySpy = vi.fn();
       const verifyAndBindSpy = vi.fn();
       const mockApprovals: ApprovalVerifier = {
+        verify: verifySpy,
         verifyAndBind: verifyAndBindSpy,
       };
 

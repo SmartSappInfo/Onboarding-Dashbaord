@@ -18,7 +18,7 @@ function getFailedStepNodeId(run: AutomationRun): string | null {
 export async function POST(request: NextRequest) {
   try {
     // 1. Security Check: Validate Secret Header Handshake
-    if (!isAuthorizedCloudTaskRequest(request.headers)) {
+    if (!(await isAuthorizedCloudTaskRequest(request.headers))) {
       console.warn('[BULK-RETRY-WORKER] Unauthorized request attempt.');
       return NextResponse.json({ error: 'Unauthorized handshake signature' }, { status: 401 });
     }

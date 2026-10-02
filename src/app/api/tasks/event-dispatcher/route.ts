@@ -20,7 +20,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   // 1. Authenticate Cloud Tasks queue signature (fail-closed, Rule 34)
-  if (!isAuthorizedCloudTaskRequest(request.headers)) {
+  if (!(await isAuthorizedCloudTaskRequest(request.headers))) {
     console.warn('[EVENT-DISPATCHER] Unauthorized Cloud Tasks handshake signature.');
     return NextResponse.json(
       { error: 'Unauthorized handshake signature' },

@@ -22,12 +22,13 @@ import { getCapability } from '@/platform/capabilities/registry/capability-regis
 import { ensureCapabilitiesRegistered } from '@/platform/capabilities/registry/register-capabilities';
 import { processAgentStep } from '@/platform/tasks/agent-step-executor';
 import { createFirestoreAgentStepStore } from '@/platform/tasks/firestore-agent-step-store';
+import { createLivePrincipalCheck } from '@/platform/tasks/live-principal-check';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
-  // 1. Authenticate Cloud Tasks handshake secret (fail-closed, Rule 34)
-  if (!isAuthorizedCloudTaskRequest(request.headers)) {
+  // 1. Authenticate Cloud Tasks handshake (fail-closed)
+  if (!(await isAuthorizedCloudTaskRequest(request.headers))) {
     console.warn('[AGENT-STEP-WORKER] Unauthorized Cloud Tasks handshake signature.');
     return NextResponse.json({ error: 'Unauthorized handshake signature' }, { status: 401 });
   }
@@ -55,6 +56,7 @@ export async function POST(request: NextRequest) {
       store: createFirestoreAgentStepStore(adminDb),
       resolveCapability: getCapability,
       approvals: createFirestoreApprovalVerifier(adminDb),
+      principals: createLivePrincipalCheck(adminDb),
     });
 
     console.info(

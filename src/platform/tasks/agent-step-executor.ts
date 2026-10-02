@@ -16,6 +16,12 @@
  *   evaluation or execution code in the task worker. All validation, scoping, authorization,
  *   approval verification, bounded execution, and output validation route through `executeCapability`.
  * - Authority is re-evaluated at execution time, not only at enqueue time (TOCTOU, Rule 18).
+ * - Live principal standing is re-checked live before execution (`deps.principals`, PR-2).
+ * - Never mark a step `completed` unless the capability handler returned success AND its output
+ *   passed the output schema. A no-op "completed" silently drops agent work.
+ * - Order matters (PR-2): authority and live principal are checked before approval binding so
+ *   a refused step never burns human approvals.
+ * - Capabilities with `policies.auditRequired` are refused until the execution audit exists.
  * - A timed-out handler may still be running, so the lease is NOT released on timeout; the next
  *   delivery gets 409 until the lease expires. The handler receives the idempotency key so a
  *   re-run after lease expiry cannot duplicate side effects (Rule 19).
@@ -29,6 +35,7 @@ import type { DomainEvent } from '../capabilities/events/domain-event';
 import type { ApprovalVerifier } from '../capabilities/policy/approval-verifier';
 import { executeCapability } from '../capabilities/execution/execute-capability';
 import { createTaskWorkerInvocation } from '../capabilities/execution/invocation';
+import type { LivePrincipalCheck } from './live-principal-check';
 import {
   AgentStepTaskPayloadSchema,
   LEASE_BUFFER_MS,
@@ -67,7 +74,9 @@ export interface AgentStepExecutorDeps {
   resolveCapability: (capabilityId: string) => AnyCapabilityDefinition | undefined;
   /** Required to run approval-requiring agent steps; without it they fail closed. */
   approvals?: ApprovalVerifier;
-  /** Optional hook to verify live actor standing against auth/database before execution (Rule 18). */
+  /** Live re-check of the user behind the run's stored principal (PR-2). */
+  principals?: LivePrincipalCheck;
+  /** Optional hook to verify live actor standing against auth/database before execution (Rule 18 / PR-4). */
   verifyActorStanding?: (principal: AgentPrincipal) => Promise<{ active: boolean; reason?: string }>;
   nowMs?: () => number;
 }
@@ -140,7 +149,47 @@ export async function processAgentStep(rawPayload: unknown, deps: AgentStepExecu
     return { httpStatus: 200, body: { ...ids, status: 'rejected', code: 'STORE_CONTRACT_VIOLATION' } };
   }
 
-  // 3. Delegate execution directly to Canonical Execution Gateway (PR-4 / Rule 69)
+  // 3. Pre-execution checks: capability resolution & audit requirement check (PR-2 / PR-6)
+  const capability = deps.resolveCapability(step.capabilityId);
+  if (capability?.policies?.auditRequired) {
+    await deps.store.markFailed(payload, {
+      error: {
+        code: 'AUDIT_UNAVAILABLE',
+        message: `Capability '${capability.id}' requires an execution audit, which agent steps do not record yet.`,
+        retryable: false,
+      },
+      nowIso: new Date(nowMs()).toISOString(),
+    });
+    return {
+      httpStatus: 200,
+      body: {
+        ...ids,
+        status: 'failed',
+        code: 'AUDIT_UNAVAILABLE',
+        message: `Capability '${capability.id}' requires an execution audit, which agent steps do not record yet.`,
+      },
+    };
+  }
+
+  // 4. Live principal re-check (PR-2)
+  if (deps.principals) {
+    const live = await deps.principals.check(run.principal, {
+      organizationId: run.organizationId,
+      workspaceId: run.workspaceId,
+    });
+    if (!live.ok) {
+      await deps.store.markFailed(payload, {
+        error: { code: 'PRINCIPAL_REVOKED', message: live.reason, retryable: false },
+        nowIso: new Date(nowMs()).toISOString(),
+      });
+      return {
+        httpStatus: 200,
+        body: { ...ids, status: 'failed', code: 'PRINCIPAL_REVOKED', message: live.reason },
+      };
+    }
+  }
+
+  // 5. Delegate execution directly to Canonical Execution Gateway (PR-4 / Rule 69)
   const invocation = createTaskWorkerInvocation({
     capabilityId: step.capabilityId,
     version: step.capabilityVersion,
