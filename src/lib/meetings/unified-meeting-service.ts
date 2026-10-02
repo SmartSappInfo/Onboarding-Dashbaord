@@ -157,6 +157,8 @@ export function deduplicateUnifiedMeetings(items: UnifiedMeetingItem[]): Unified
         // Merge canonical item: prefer booking contact details + meeting link
         result.push({
           ...linkedBooking,
+          id: item.id || linkedBooking.id,
+          status: item.status === 'live' ? 'live' : (linkedBooking.status || item.status),
           joinUrl: item.joinUrl || linkedBooking.joinUrl,
           rawMeetingId: item.id,
           rawBookingId: linkedBooking.id,

@@ -108,10 +108,15 @@ export async function getWorkspaceCalendarEventsAction(
     // Process meetings
     for (const [meetingId, { data }] of meetingDocsMap.entries()) {
       if (data.status === 'cancelled') continue;
-      if (hostUserIds && hostUserIds.length > 0 && data.hostUserId && !hostUserIds.includes(data.hostUserId)) continue;
 
       const linkedBookingId = linkedMeetingToBooking.get(meetingId) || (data.meetingSlug ? linkedMeetingToBooking.get(data.meetingSlug) : undefined);
       const linkedBooking = linkedBookingId ? bookingDocsMap.get(linkedBookingId) : undefined;
+      const bData = linkedBooking?.data;
+
+      const effectiveHostUserId = bData?.hostUserId || data.hostUserId;
+      if (hostUserIds && hostUserIds.length > 0 && effectiveHostUserId && !hostUserIds.includes(effectiveHostUserId)) {
+        continue;
+      }
 
       const durationMins = Number(data.durationMinutes || data.duration) || 30;
       const startMs = new Date(data.meetingTime).getTime();
