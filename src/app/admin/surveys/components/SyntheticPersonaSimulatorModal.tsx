@@ -36,7 +36,6 @@ import {
   RotateCcw,
   Sparkles,
   Clock,
-  AlertTriangle,
   CheckCircle2,
   TrendingUp,
   Copy,
@@ -81,18 +80,15 @@ export function SyntheticPersonaSimulatorModal({
   const [isSimulating, setIsSimulating] = React.useState<boolean>(false);
   const [simulationResult, setSimulationResult] = React.useState<AudienceCohortSimulationResult | null>(null);
   const [selectedPersonaFilter, setSelectedPersonaFilter] = React.useState<SyntheticPersonaType | 'all'>('all');
-
-  // Automatically run initial simulation when opened if not yet populated
-  React.useEffect(() => {
-    if (open && !simulationResult) {
-      handleRunSimulation();
-    }
-  }, [open]);
+  const timerRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const handleRunSimulation = React.useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
     setIsSimulating(true);
     // Smooth micro-delay to render animated radar state
-    setTimeout(() => {
+    timerRef.current = setTimeout(() => {
       try {
         const result = simulateAudienceCohort(survey, cohortSize);
         setSimulationResult(result);
@@ -107,6 +103,22 @@ export function SyntheticPersonaSimulatorModal({
       }
     }, 450);
   }, [survey, cohortSize, toast]);
+
+  // Clean up timers on unmount
+  React.useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
+
+  // Automatically refresh simulation whenever modal is opened or survey elements change
+  React.useEffect(() => {
+    if (open) {
+      handleRunSimulation();
+    }
+  }, [open, survey, handleRunSimulation]);
 
   const handleExportSummary = React.useCallback(() => {
     if (!simulationResult) return;
@@ -134,11 +146,21 @@ export function SyntheticPersonaSimulatorModal({
         : ['No critical risks detected. Safe to publish!']),
     ].join('\n');
 
-    navigator.clipboard.writeText(summaryText);
-    toast({
-      title: 'Simulation Report Copied',
-      description: 'Audit summary and actionable advice copied to clipboard.',
-    });
+    navigator.clipboard
+      .writeText(summaryText)
+      .then(() => {
+        toast({
+          title: 'Simulation Report Copied',
+          description: 'Audit summary and actionable advice copied to clipboard.',
+        });
+      })
+      .catch(() => {
+        toast({
+          title: 'Clipboard Unavailable',
+          description: 'Could not copy summary to clipboard automatically.',
+          variant: 'destructive',
+        });
+      });
   }, [simulationResult, survey.title, toast]);
 
   const personaList: SyntheticPersonaType[] = ['speeder', 'thorough', 'fatigued', 'skeptic', 'promoter'];
@@ -205,7 +227,7 @@ export function SyntheticPersonaSimulatorModal({
                     onClick={handleRunSimulation}
                     disabled={isSimulating}
                     size="sm"
-                    className="h-8 gap-1.5 rounded-lg text-xs font-semibold active:scale-[0.97]"
+                    className="min-h-[44px] sm:min-h-0 sm:h-8 px-3 gap-1.5 rounded-lg text-xs font-semibold active:scale-[0.97]"
                   >
                     {isSimulating ? (
                       <>
@@ -400,6 +422,34 @@ export function SyntheticPersonaSimulatorModal({
                     )}
                   </div>
 
+                  {selectedPersonaFilter !== 'all' && (
+                    <div className="p-3.5 rounded-xl border border-primary/30 bg-primary/5 flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0 mt-0.5">
+                        <Bot className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                          <span className="text-xs font-bold text-foreground">
+                            {SYNTHETIC_PERSONAS[selectedPersonaFilter].name} Diagnostic Focus
+                          </span>
+                          <span className="text-[11px] font-mono text-muted-foreground">
+                            Cohort Completion: {simulationResult.personaBreakdown[selectedPersonaFilter]?.completionRate}% ({simulationResult.personaBreakdown[selectedPersonaFilter]?.completed}/{simulationResult.personaBreakdown[selectedPersonaFilter]?.count})
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {SYNTHETIC_PERSONAS[selectedPersonaFilter].description}
+                        </p>
+                        <div className="flex items-center gap-2 pt-1 text-[11px] text-muted-foreground flex-wrap">
+                          <span>Traits: <strong className="text-foreground">{SYNTHETIC_PERSONAS[selectedPersonaFilter].behaviorTraits.join(', ')}</strong></span>
+                          <span>•</span>
+                          <span>Pacing Multiplier: <strong className="text-foreground">{SYNTHETIC_PERSONAS[selectedPersonaFilter].speedMultiplier}x</strong></span>
+                          <span>•</span>
+                          <span>Abandonment Propensity: <strong className="text-foreground">{Math.round(SYNTHETIC_PERSONAS[selectedPersonaFilter].dropOffPropensity * 100)}%</strong></span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {simulationResult.questionFrictionAnalysis.length === 0 ? (
                     <div className="p-8 text-center border border-dashed border-border/80 rounded-xl text-xs text-muted-foreground">
                       No question blocks available to analyze. Add questions to the canvas to view pre-flight telemetry.
@@ -486,7 +536,7 @@ export function SyntheticPersonaSimulatorModal({
                                     variant="outline"
                                     size="sm"
                                     onClick={() => onNavigateToQuestion(metric.questionId)}
-                                    className="h-7 text-xs px-2 gap-1 rounded-lg active:scale-[0.97]"
+                                    className="min-h-[44px] sm:min-h-0 sm:h-7 text-xs px-3 sm:px-2 gap-1 rounded-lg active:scale-[0.97]"
                                   >
                                     <span>Edit</span>
                                     <ChevronRight className="h-3 w-3" />
