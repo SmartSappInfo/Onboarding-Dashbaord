@@ -433,7 +433,7 @@ export function SyntheticPersonaSimulatorModal({
                             {SYNTHETIC_PERSONAS[selectedPersonaFilter].name} Diagnostic Focus
                           </span>
                           <span className="text-[11px] font-mono text-muted-foreground">
-                            Cohort Completion: {simulationResult.personaBreakdown[selectedPersonaFilter]?.completionRate}% ({simulationResult.personaBreakdown[selectedPersonaFilter]?.completed}/{simulationResult.personaBreakdown[selectedPersonaFilter]?.count})
+                            Cohort Completion: {simulationResult.personaBreakdown[selectedPersonaFilter]?.completionRate}% ({simulationResult.personaBreakdown[selectedPersonaFilter]?.completed}/{simulationResult.personaBreakdown[selectedPersonaFilter]?.simulated})
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground">
