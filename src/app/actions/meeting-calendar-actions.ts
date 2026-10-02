@@ -40,67 +40,191 @@ export async function getWorkspaceCalendarEventsAction(
   try {
     const events: CalendarGridEvent[] = [];
 
-    // 1. Fetch confirmed/scheduled meetings
-    let query = adminDb
-      .collection('meetings')
-      .where('workspaceId', '==', workspaceId)
-      .where('meetingTime', '>=', startIso)
-      .where('meetingTime', '<=', endIso);
+    // 1. Fetch confirmed/scheduled meetings (supporting both workspaceIds array and legacy scalar workspaceId)
+    const meetingDocsMap = new Map<string, { id: string; data: FirebaseFirestore.DocumentData }>();
 
-    const snap = await query.get();
+    try {
+      const arraySnap = await adminDb
+        .collection('meetings')
+        .where('workspaceIds', 'array-contains', workspaceId)
+        .where('meetingTime', '>=', startIso)
+        .where('meetingTime', '<=', endIso)
+        .get();
 
-    for (const doc of snap.docs) {
-      const data = doc.data();
+      for (const doc of arraySnap.docs) {
+        meetingDocsMap.set(doc.id, { id: doc.id, data: doc.data() });
+      }
+    } catch (arrayErr) {
+      console.warn('[getWorkspaceCalendarEventsAction] workspaceIds array query notice:', arrayErr);
+    }
+
+    try {
+      const scalarSnap = await adminDb
+        .collection('meetings')
+        .where('workspaceId', '==', workspaceId)
+        .where('meetingTime', '>=', startIso)
+        .where('meetingTime', '<=', endIso)
+        .get();
+
+      for (const doc of scalarSnap.docs) {
+        if (!meetingDocsMap.has(doc.id)) {
+          meetingDocsMap.set(doc.id, { id: doc.id, data: doc.data() });
+        }
+      }
+    } catch (scalarErr) {
+      console.warn('[getWorkspaceCalendarEventsAction] scalar workspaceId query notice:', scalarErr);
+    }
+
+    // 2. Fetch confirmed client bookings
+    const bookingDocsMap = new Map<string, { id: string; data: FirebaseFirestore.DocumentData }>();
+    try {
+      const bookingsSnap = await adminDb
+        .collection('bookings')
+        .where('workspaceId', '==', workspaceId)
+        .where('startAt', '>=', startIso)
+        .where('startAt', '<=', endIso)
+        .get();
+
+      for (const doc of bookingsSnap.docs) {
+        bookingDocsMap.set(doc.id, { id: doc.id, data: doc.data() });
+      }
+    } catch (bkgErr) {
+      console.warn('[getWorkspaceCalendarEventsAction] bookings query notice:', bkgErr);
+    }
+
+    // 3. Deduplicate linked bookings and meetings
+    // Map of meetingId -> bookingId and bookingSlug -> bookingId
+    const linkedMeetingToBooking = new Map<string, string>();
+    for (const [bookingId, { data: b }] of bookingDocsMap.entries()) {
+      if (b.meetingId) {
+        linkedMeetingToBooking.set(b.meetingId, bookingId);
+      }
+      linkedMeetingToBooking.set(`booking-${bookingId}`, bookingId);
+    }
+
+    const handledMeetingIds = new Set<string>();
+    const handledBookingIds = new Set<string>();
+
+    // Process meetings
+    for (const [meetingId, { data }] of meetingDocsMap.entries()) {
       if (data.status === 'cancelled') continue;
-      if (hostUserIds && hostUserIds.length > 0 && !hostUserIds.includes(data.hostUserId)) continue;
+      if (hostUserIds && hostUserIds.length > 0 && data.hostUserId && !hostUserIds.includes(data.hostUserId)) continue;
 
-      const durationMins = Number(data.duration) || 30;
+      const linkedBookingId = linkedMeetingToBooking.get(meetingId) || (data.meetingSlug ? linkedMeetingToBooking.get(data.meetingSlug) : undefined);
+      const linkedBooking = linkedBookingId ? bookingDocsMap.get(linkedBookingId) : undefined;
+
+      const durationMins = Number(data.durationMinutes || data.duration) || 30;
       const startMs = new Date(data.meetingTime).getTime();
       const endMs = data.endTime ? new Date(data.endTime).getTime() : startMs + durationMins * 60000;
 
-      events.push({
-        id: doc.id,
-        sourceId: doc.id,
-        sourceType: 'meeting',
-        title: data.title || 'Scheduled Meeting',
-        startAt: data.meetingTime,
-        endAt: new Date(endMs).toISOString(),
-        hostUserId: data.hostUserId || 'unassigned',
-        hostName: data.hostName || 'Host',
-        color: data.color || '#3b82f6',
-        locationType: data.locationType || 'google_meet',
-        status: data.status || 'scheduled',
-        joinUrl: data.joinUrl,
-        participantCount: data.attendeeCount || 1,
-        contactName: data.contactName,
-        contactEmail: data.contactEmail,
-      });
-    }
+      if (linkedBooking) {
+        handledBookingIds.add(linkedBooking.id);
+        const bData = linkedBooking.data;
+        const bookerFullName = [bData.booker?.firstName, bData.booker?.lastName].filter(Boolean).join(' ').trim();
+        const displayTitle = bookerFullName
+          ? `${bData.eventTypeName || 'Consultation'} with ${bookerFullName}`
+          : data.title || 'Scheduled Meeting';
 
-    // 2. Fetch active booking holds
-    const nowIso = new Date().toISOString();
-    const holdsSnap = await adminDb
-      .collection('booking_holds')
-      .where('workspaceId', '==', workspaceId)
-      .where('status', '==', 'active')
-      .where('expiresAt', '>', nowIso)
-      .get();
-
-    for (const doc of holdsSnap.docs) {
-      const h = doc.data();
-      if (h.startAt >= startIso && h.startAt <= endIso) {
         events.push({
-          id: `hold_${doc.id}`,
-          sourceId: doc.id,
-          sourceType: 'booking_hold',
-          title: '⏳ Pending Reservation Hold',
-          startAt: h.startAt,
-          endAt: h.endAt,
-          hostUserId: h.hostUserId || 'unassigned',
-          color: '#f59e0b',
-          status: 'held',
+          id: meetingId,
+          sourceId: linkedBooking.id,
+          sourceType: 'meeting',
+          title: displayTitle,
+          startAt: data.meetingTime,
+          endAt: new Date(endMs).toISOString(),
+          hostUserId: bData.hostUserId || data.hostUserId || 'unassigned',
+          hostName: data.hostName || 'Host',
+          color: '#8b5cf6',
+          locationType: bData.locationType || data.locationType || 'google_meet',
+          status: bData.status || data.status || 'confirmed',
+          joinUrl: data.meetingLink || data.joinUrl || bData.joinUrl,
+          participantCount: 1,
+          contactName: bookerFullName || data.contactName,
+          contactEmail: bData.booker?.email || data.contactEmail,
+        });
+      } else {
+        events.push({
+          id: meetingId,
+          sourceId: meetingId,
+          sourceType: 'meeting',
+          title: data.title || 'Scheduled Meeting',
+          startAt: data.meetingTime,
+          endAt: new Date(endMs).toISOString(),
+          hostUserId: data.hostUserId || 'unassigned',
+          hostName: data.hostName || 'Host',
+          color: data.color || '#3b82f6',
+          locationType: data.locationType || (data.meetingLink ? 'video_conference' : 'google_meet'),
+          status: data.status || 'scheduled',
+          joinUrl: data.meetingLink || data.joinUrl,
+          participantCount: data.attendeeCount || 0,
+          contactName: data.contactName,
+          contactEmail: data.contactEmail,
         });
       }
+
+      handledMeetingIds.add(meetingId);
+    }
+
+    // Process remaining bookings that had no corresponding meeting doc in this query
+    for (const [bookingId, { data: b }] of bookingDocsMap.entries()) {
+      if (handledBookingIds.has(bookingId)) continue;
+      if (b.status === 'cancelled') continue;
+      if (hostUserIds && hostUserIds.length > 0 && b.hostUserId && !hostUserIds.includes(b.hostUserId)) continue;
+
+      const bookerFullName = [b.booker?.firstName, b.booker?.lastName].filter(Boolean).join(' ').trim();
+      const displayTitle = bookerFullName
+        ? `${b.eventTypeName || 'Consultation'} with ${bookerFullName}`
+        : b.eventTypeName || 'Scheduled Consultation';
+
+      events.push({
+        id: bookingId,
+        sourceId: bookingId,
+        sourceType: 'meeting',
+        title: displayTitle,
+        startAt: b.startAt,
+        endAt: b.endAt,
+        hostUserId: b.hostUserId || 'unassigned',
+        hostName: 'Host',
+        color: '#8b5cf6',
+        locationType: b.locationType || 'google_meet',
+        status: b.status || 'confirmed',
+        joinUrl: b.joinUrl,
+        participantCount: 1,
+        contactName: bookerFullName || undefined,
+        contactEmail: b.booker?.email || undefined,
+      });
+
+      handledBookingIds.add(bookingId);
+    }
+
+    // 4. Fetch active booking holds (temporary concurrency locks)
+    const nowIso = new Date().toISOString();
+    try {
+      const holdsSnap = await adminDb
+        .collection('booking_holds')
+        .where('workspaceId', '==', workspaceId)
+        .where('status', '==', 'active')
+        .where('expiresAt', '>', nowIso)
+        .get();
+
+      for (const doc of holdsSnap.docs) {
+        const h = doc.data();
+        if (h.startAt >= startIso && h.startAt <= endIso) {
+          events.push({
+            id: `hold_${doc.id}`,
+            sourceId: doc.id,
+            sourceType: 'booking_hold',
+            title: '⏳ Pending Reservation Hold',
+            startAt: h.startAt,
+            endAt: h.endAt,
+            hostUserId: h.hostUserId || 'unassigned',
+            color: '#f59e0b',
+            status: 'held',
+          });
+        }
+      }
+    } catch (holdErr) {
+      console.warn('[getWorkspaceCalendarEventsAction] booking_holds query notice:', holdErr);
     }
 
     events.sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
@@ -209,6 +333,7 @@ export async function quickScheduleMeetingAction(payload: {
       const meetingData = {
         id: docRef.id,
         workspaceId,
+        workspaceIds: [workspaceId],
         organizationId: organizationId || '',
         title: title.trim(),
         description: description?.trim() || '',
@@ -217,6 +342,7 @@ export async function quickScheduleMeetingAction(payload: {
         meetingTime: startAt,
         endTime: endAt,
         duration: durationMinutes,
+        durationMinutes,
         status: 'scheduled',
         locationType: normalizedLocationType,
         meetingLink,
