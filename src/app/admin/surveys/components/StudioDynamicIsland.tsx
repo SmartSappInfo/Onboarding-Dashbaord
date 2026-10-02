@@ -35,6 +35,7 @@ import {
   Eye,
   EyeOff,
   SlidersHorizontal,
+  Bot,
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -70,6 +71,7 @@ interface StudioDynamicIslandProps {
   onOpenQuestionBank: () => void;
   onOpenVersionHistory: () => void;
   onOpenDeployments: () => void;
+  onOpenSyntheticSimulator?: () => void;
   isPreviewMode: boolean;
   onTogglePreviewMode: () => void;
   currentVersionNumber?: number;
@@ -98,6 +100,7 @@ export function StudioDynamicIsland({
   onOpenQuestionBank,
   onOpenVersionHistory,
   onOpenDeployments,
+  onOpenSyntheticSimulator,
   isPreviewMode,
   onTogglePreviewMode,
   currentVersionNumber = 1,
@@ -330,6 +333,15 @@ export function StudioDynamicIsland({
                   <Share2 className="h-4 w-4 text-muted-foreground" />
                   <span>Distribution & Links</span>
                 </DropdownMenuItem>
+                {onOpenSyntheticSimulator && (
+                  <DropdownMenuItem
+                    onClick={onOpenSyntheticSimulator}
+                    className="rounded-xl text-xs font-medium cursor-pointer gap-2 py-2"
+                  >
+                    <Bot className="h-4 w-4 text-primary" />
+                    <span>Audience Simulator & Friction Cockpit</span>
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
 

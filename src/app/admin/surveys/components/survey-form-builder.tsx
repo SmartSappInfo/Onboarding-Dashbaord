@@ -40,6 +40,7 @@ import { StructureNavigator } from './StructureNavigator';
 import { LogicStudioModal } from './LogicStudioModal';
 import { AiQuestionRefinementModal } from './AiQuestionRefinementModal';
 import { SurveyQualityAuditorDrawer } from './SurveyQualityAuditorDrawer';
+import { SyntheticPersonaSimulatorModal } from './SyntheticPersonaSimulatorModal';
 import { StudioDynamicIsland } from './StudioDynamicIsland';
 
 function isLayoutBlock(element: SurveyElement): element is SurveyLayoutBlock {
@@ -80,6 +81,7 @@ export default function SurveyFormBuilder() {
     const [isQuestionBankOpen, setIsQuestionBankOpen] = React.useState(false);
     const [isDeploymentDialogOpen, setIsDeploymentDialogOpen] = React.useState(false);
     const [isQualityAuditorOpen, setIsQualityAuditorOpen] = React.useState(false);
+    const [isSyntheticSimulatorOpen, setIsSyntheticSimulatorOpen] = React.useState(false);
 
     const { activeWorkspaceId, activeOrganization } = useWorkspace();
     const currentVersionNumber = watch('currentVersionNumber') || 1;
@@ -428,6 +430,7 @@ export default function SurveyFormBuilder() {
                         onOpenQuestionBank={() => setIsQuestionBankOpen(true)}
                         onOpenVersionHistory={() => setIsVersionDrawerOpen(true)}
                         onOpenDeployments={() => setIsDeploymentDialogOpen(true)}
+                        onOpenSyntheticSimulator={() => setIsSyntheticSimulatorOpen(true)}
                         isPreviewMode={isPreviewMode}
                         onTogglePreviewMode={() => setIsPreviewMode(!isPreviewMode)}
                         currentVersionNumber={currentVersionNumber}
@@ -755,6 +758,23 @@ export default function SurveyFormBuilder() {
                             setValue(`elements.${idx}.${key}`, val, { shouldDirty: true });
                         });
                     }
+                }}
+            />
+
+            <SyntheticPersonaSimulatorModal
+                open={isSyntheticSimulatorOpen}
+                onOpenChange={setIsSyntheticSimulatorOpen}
+                survey={{
+                    id: surveyId,
+                    title: surveyTitle,
+                    description: watch('description'),
+                    elements: elements,
+                    workspaceIds: activeWorkspaceId ? [activeWorkspaceId] : [],
+                } as Survey}
+                onNavigateToQuestion={(qId) => {
+                    setSelectedBlockIds([qId]);
+                    setLastSelectedId(qId);
+                    setIsSyntheticSimulatorOpen(false);
                 }}
             />
         </div>
