@@ -3,59 +3,77 @@
  * Enforces OWASP Top 10 and CWE-598 (Information Exposure via Query Strings).
  * Governed by SmartSapp Agentic Development Rules (Rules 1, 4, 8, 10, 13, 54).
  *
- * This utility prevents sensitive credentials (such as passwords, secret tokens,
- * or credentials) from persisting in browser history, URL address bars, or leaking
- * into same-origin HTTP Referer headers.
+ * Single Source of Truth for sensitive parameter pattern recognition across
+ * both the Next.js Edge proxy and client-side DOM hooks.
+ *
+ * Prevents sensitive credentials (passwords, temporary tokens, API secrets)
+ * from persisting in browser history, address bars, proxy access logs, or
+ * leaking into same-origin HTTP Referer headers.
  */
 
 /**
- * Strict set of lower-cased parameter names that are classified as sensitive credentials.
- * Legitimate routing tokens (such as `redirect`, `invite`, `email`, `oobCode`) are
- * explicitly excluded and preserved.
+ * Blocklist of sensitive query parameter patterns that must NEVER appear in URL strings.
+ *
+ * Performance Budget (Rule 9 & 54): Pre-compiled regex patterns executed against
+ * URLSearchParams keys ensure O(N) evaluation (< 1ms execution on the Edge runtime).
+ *
+ * Supports snake_case, camelCase, kebab-case, and abbreviations:
+ * - password, current_password, current-password, temp_password, temp-password, new_password, new-password, confirm_password, confirm-password
+ * - pass, temppass, newpass, confirmpass
+ * - pwd, passwd
+ * - secret, client_secret, client-secret
+ * - auth_token, auth-token, access_token, access-token, refresh_token, refresh-token, id_token, id-token
+ * - credential, credentials
  */
-const SENSITIVE_PARAM_NAMES: ReadonlySet<string> = new Set([
-  'password',
-  'pass',
-  'pwd',
-  'passwd',
-  'temppassword',
-  'temp_password',
-  'newpassword',
-  'new_password',
-  'confirmpassword',
-  'confirm_password',
-  'secret',
-  'client_secret',
-  'authtoken',
-  'auth_token',
-  'accesstoken',
-  'access_token',
-  'refreshtoken',
-  'refresh_token',
-  'credential',
-  'credentials',
-]);
+export const SENSITIVE_PARAM_PATTERNS: readonly RegExp[] = [
+  /^(current_?|confirm_?|temp_?|new_?)?pass(word)?$/i,
+  /^(current|confirm|temp|new)-pass(word)?$/i,
+  /^pwd$/i,
+  /^passwd$/i,
+  /^(client_?)?secret$/i,
+  /^client-secret$/i,
+  /^(auth|access|refresh|id)[_-]?token$/i,
+  /^credentials?$/i,
+];
 
 /**
- * Checks whether a given query parameter key matches any sensitive credential name.
+ * Checks whether a given query parameter key matches any sensitive credential pattern.
  * Normalizes input by lowercasing and trimming (Rule 2: Case variation resilience).
  */
 export function isSensitiveParamKey(key: string): boolean {
   if (!key) return false;
-  return SENSITIVE_PARAM_NAMES.has(key.toLowerCase().trim());
+  const normalized = key.trim();
+  return SENSITIVE_PARAM_PATTERNS.some((pattern) => pattern.test(normalized));
 }
 
 /**
- * Determines whether a given query string contains any sensitive parameter keys.
+ * Determines whether a given query string or URLSearchParams contains any sensitive parameter keys.
  */
-export function hasSensitiveParams(searchString: string): boolean {
-  if (!searchString) return false;
-  const search = searchString.startsWith('?') ? searchString.slice(1) : searchString;
-  const params = new URLSearchParams(search);
+export function hasSensitiveParams(searchStringOrParams: string | URLSearchParams): boolean {
+  if (!searchStringOrParams) return false;
+  const params =
+    typeof searchStringOrParams === 'string'
+      ? new URLSearchParams(searchStringOrParams.startsWith('?') ? searchStringOrParams.slice(1) : searchStringOrParams)
+      : searchStringOrParams;
+
   for (const key of params.keys()) {
     if (isSensitiveParamKey(key)) return true;
   }
   return false;
+}
+
+/**
+ * Returns a cleaned URLSearchParams instance with all sensitive parameters stripped.
+ * Preserves all safe parameters and returns a mutated clone.
+ */
+export function sanitizeSearchParams(searchParams: URLSearchParams): URLSearchParams {
+  const sanitized = new URLSearchParams(searchParams);
+  for (const key of Array.from(sanitized.keys())) {
+    if (isSensitiveParamKey(key)) {
+      sanitized.delete(key);
+    }
+  }
+  return sanitized;
 }
 
 /**

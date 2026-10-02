@@ -442,7 +442,7 @@ function LoginContent() {
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="absolute right-1 top-1/2 h-8 w-8 min-h-[44px] min-w-[44px] -translate-y-1/2 text-muted-foreground flex items-center justify-center"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-11 w-11 min-h-[44px] min-w-[44px] text-muted-foreground flex items-center justify-center"
                         onClick={() => setShowPassword((prev) => !prev)}
                         disabled={isBusy}
                       >

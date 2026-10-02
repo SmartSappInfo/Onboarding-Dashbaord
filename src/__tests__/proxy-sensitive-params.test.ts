@@ -45,6 +45,24 @@ describe('Proxy sensitive query parameters sanitizer (CWE-598 Defense)', () => {
     expect(location.searchParams.get('validParam')).toBe('1');
   });
 
+  it('redirects requests containing only sensitive parameters to clean pathname without query string', () => {
+    const req = new NextRequest(
+      new URL('https://app.example.com/login?password=SecurePassword123%21')
+    );
+    const res = proxy(req);
+    expect(res.status).toBe(307);
+    const location = new URL(res.headers.get('location')!);
+    expect(location.pathname).toBe('/login');
+    expect(location.search).toBe('');
+    expect(location.searchParams.has('password')).toBe(false);
+
+    // Verify security & anti-caching headers (IMP-3)
+    expect(res.headers.get('Cache-Control')).toContain('no-store');
+    expect(res.headers.get('Referrer-Policy')).toBe('no-referrer');
+    expect(res.headers.get('x-content-type-options')).toBe('nosniff');
+    expect(res.headers.get('x-frame-options')).toBe('DENY');
+  });
+
   it('allows safe query parameters and invite tokens to pass through untouched', () => {
     const req = new NextRequest(
       new URL('https://app.example.com/login?redirect=%2Fadmin&email=user%40test.com&invite=ENC_TOKEN_123')
@@ -53,3 +71,4 @@ describe('Proxy sensitive query parameters sanitizer (CWE-598 Defense)', () => {
     expect(res.status).toBe(200);
   });
 });
+

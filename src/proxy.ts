@@ -6,6 +6,8 @@ import type { NextRequest } from 'next/server';
  * Handles route protection and request preprocessing
  * Note: In Next.js 16, middleware.ts has been renamed to proxy.ts
  */
+import { hasSensitiveParams, sanitizeSearchParams } from '@/lib/auth/url-sanitizer';
+
 /**
  * Areas that require a signed-in user.
  *
@@ -27,50 +29,6 @@ const protectedPrefixes = [
   '/seeds',
 ];
 
-/**
- * Blocklist of sensitive query parameter patterns that must NEVER appear in URL strings.
- * Enforces OWASP Top 10 and CWE-598 (Information Exposure via Query String).
- *
- * Performance Budget (Rule 9 & 54): Pre-compiled regex patterns executed against
- * URLSearchParams keys ensure O(N) evaluation (< 1ms execution on the Edge runtime).
- */
-const SENSITIVE_QUERY_PARAM_PATTERNS: readonly RegExp[] = [
-  /^pass(word)?$/i,
-  /^temp_?pass(word)?$/i,
-  /^new_?pass(word)?$/i,
-  /^confirm_?pass(word)?$/i,
-  /^pwd$/i,
-  /^passwd$/i,
-  /^secret$/i,
-  /^client_?secret$/i,
-  /^auth_?token$/i,
-  /^access_?token$/i,
-  /^refresh_?token$/i,
-  /^credentials?$/i,
-];
-
-function isSensitiveQueryKey(key: string): boolean {
-  const normalizedKey = key.trim();
-  return SENSITIVE_QUERY_PARAM_PATTERNS.some((pattern) => pattern.test(normalizedKey));
-}
-
-function containsSensitiveQueryParam(searchParams: URLSearchParams): boolean {
-  for (const key of searchParams.keys()) {
-    if (isSensitiveQueryKey(key)) return true;
-  }
-  return false;
-}
-
-function sanitizeUrlSearchParams(searchParams: URLSearchParams): URLSearchParams {
-  const sanitized = new URLSearchParams(searchParams);
-  for (const key of Array.from(sanitized.keys())) {
-    if (isSensitiveQueryKey(key)) {
-      sanitized.delete(key);
-    }
-  }
-  return sanitized;
-}
-
 export function proxy(request: NextRequest) {
   const { pathname, search, searchParams } = request.nextUrl;
   
@@ -78,10 +36,18 @@ export function proxy(request: NextRequest) {
   // If an incoming request includes sensitive credentials in the query string (e.g. from
   // an unhydrated native GET submission), immediately issue an Edge redirect to the
   // sanitized URL so that page SSR, referer headers, and server logs never process raw credentials.
-  if (containsSensitiveQueryParam(searchParams)) {
+  if (hasSensitiveParams(searchParams)) {
     const sanitizedUrl = request.nextUrl.clone();
-    sanitizedUrl.search = sanitizeUrlSearchParams(searchParams).toString();
-    return NextResponse.redirect(sanitizedUrl, { status: 307 });
+    sanitizedUrl.search = sanitizeSearchParams(searchParams).toString();
+    const redirectResponse = NextResponse.redirect(sanitizedUrl, { status: 307 });
+    
+    // Security & Anti-caching headers on redirect response (IMP-3):
+    // Prevents browser Referer leakage of the previous URL and stops intermediate proxy caching.
+    redirectResponse.headers.set('Cache-Control', 'private, no-cache, no-store, max-age=0, must-revalidate');
+    redirectResponse.headers.set('Referrer-Policy', 'no-referrer');
+    redirectResponse.headers.set('x-content-type-options', 'nosniff');
+    redirectResponse.headers.set('x-frame-options', 'DENY');
+    return redirectResponse;
   }
   
   // Auto-correct legacy survey route /s/[slug] -> /surveys/[slug]

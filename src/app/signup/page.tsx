@@ -55,7 +55,9 @@ function SignupContent() {
   const firestore = useFirestore();
   const [showPassword, setShowPassword] = React.useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
-  const [_isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isGoogleSigningIn, setIsGoogleSigningIn] = React.useState(false);
+  const isBusy = isSubmitting || isGoogleSigningIn;
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -71,48 +73,54 @@ function SignupContent() {
     document.title = 'Sign Up - Onboarding Workspace';
   }, []);
 
-  const onSubmit = (data: FormData) => {
-    setIsSubmitting(true);
-    createUserWithEmailAndPassword(auth, data.email, data.password)
-      .then(async (userCredential) => {
-        const user = userCredential.user;
-        
-        const userProfile = {
-          name: data.name,
-          email: data.email,
-          phone: '',
-          isAuthorized: false,
-          profileCompleted: false,
-          approvalStatus: 'pending' as const,
-          createdAt: new Date().toISOString(),
-        };
-
-        const userDocRef = doc(firestore, 'users', user.uid);
-        
-        await setDoc(userDocRef, userProfile);
-
-        toast({
-          title: 'Welcome to SmartSapp',
-          description: "Your account has been created. Let's set up your profile details.",
-          duration: 5000,
-        });
-        router.push(returnTo || '/profile-setup');
-
-      })
-      .catch((error: unknown) => {
-        console.error("Sign-Up Error:", error);
-        const friendly = formatAuthError(error, 'signup');
-        toast({
-          variant: 'destructive',
-          title: friendly.title,
-          description: friendly.description,
-        });
-      }).finally(() => {
-        setIsSubmitting(false);
+  const onSubmit = async (data: FormData) => {
+    if (!auth || !firestore) {
+      toast({
+        variant: 'destructive',
+        title: 'Service unavailable',
+        description: 'Please check your connection and try again.',
       });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+      const user = userCredential.user;
+      
+      const userProfile = {
+        name: data.name,
+        email: data.email,
+        phone: '',
+        isAuthorized: false,
+        profileCompleted: false,
+        approvalStatus: 'pending' as const,
+        createdAt: new Date().toISOString(),
+      };
+
+      const userDocRef = doc(firestore, 'users', user.uid);
+      await setDoc(userDocRef, userProfile);
+
+      toast({
+        title: 'Welcome to SmartSapp',
+        description: "Your account has been created. Let's set up your profile details.",
+        duration: 5000,
+      });
+      router.push(returnTo || '/profile-setup');
+    } catch (error: unknown) {
+      console.error("Sign-Up Error:", error);
+      const friendly = formatAuthError(error, 'signup');
+      toast({
+        variant: 'destructive',
+        title: friendly.title,
+        description: friendly.description,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
     if (!auth || !firestore) {
       toast({
         variant: "destructive",
@@ -122,50 +130,52 @@ function SignupContent() {
       return;
     }
 
+    setIsGoogleSigningIn(true);
     const provider = new GoogleAuthProvider();
-    signInWithPopup(auth, provider)
-      .then(async (result) => {
-        const user = result.user;
-        const userDocRef = doc(firestore, 'users', user.uid);
-        const docSnap = await getDoc(userDocRef);
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      const userDocRef = doc(firestore, 'users', user.uid);
+      const docSnap = await getDoc(userDocRef);
 
-        if (docSnap.exists()) {
-          await auth.signOut();
-          toast({
-            title: 'Account Exists',
-            description: 'An account with this Google profile already exists. Please log in.',
-          });
-          router.push(loginHref);
-        } else {
-          const userProfile = {
-            name: user.displayName,
-            email: user.email,
-            phone: user.phoneNumber || '',
-            isAuthorized: false,
-            profileCompleted: false,
-            approvalStatus: 'pending' as const,
-            createdAt: new Date().toISOString(),
-          };
-
-          await setDoc(userDocRef, userProfile);
-          
-          toast({
-            title: 'Welcome to SmartSapp',
-            description: "Your account has been created. Let's set up your profile details.",
-            duration: 5000,
-          });
-          router.push(returnTo || '/profile-setup');
-        }
-      })
-      .catch((error: unknown) => {
-        console.error("Google Sign-Up Error:", error);
-        const friendly = formatAuthError(error, 'google-signup');
+      if (docSnap.exists()) {
+        await auth.signOut();
         toast({
-          variant: 'destructive',
-          title: friendly.title,
-          description: friendly.description,
+          title: 'Account Exists',
+          description: 'An account with this Google profile already exists. Please log in.',
         });
+        router.push(loginHref);
+      } else {
+        const userProfile = {
+          name: user.displayName,
+          email: user.email,
+          phone: user.phoneNumber || '',
+          isAuthorized: false,
+          profileCompleted: false,
+          approvalStatus: 'pending' as const,
+          createdAt: new Date().toISOString(),
+        };
+
+        await setDoc(userDocRef, userProfile);
+        
+        toast({
+          title: 'Welcome to SmartSapp',
+          description: "Your account has been created. Let's set up your profile details.",
+          duration: 5000,
+        });
+        router.push(returnTo || '/profile-setup');
+      }
+    } catch (error: unknown) {
+      console.error("Google Sign-Up Error:", error);
+      const friendly = formatAuthError(error, 'google-signup');
+      toast({
+        variant: 'destructive',
+        title: friendly.title,
+        description: friendly.description,
       });
+    } finally {
+      setIsGoogleSigningIn(false);
+    }
   };
 
   return (
@@ -181,9 +191,9 @@ function SignupContent() {
 
           <InviteContextBanner mode="signup" />
 
-          <Button variant="outline" className="w-full" onClick={handleGoogleSignIn}>
+          <Button variant="outline" className="w-full min-h-[44px]" onClick={handleGoogleSignIn} disabled={isBusy}>
             <GoogleIcon className="mr-2 h-5 w-5" />
-            Sign up with Google
+            {isGoogleSigningIn ? 'Signing up with Google...' : 'Sign up with Google'}
           </Button>
 
            <div className="relative my-8">
@@ -221,6 +231,7 @@ function SignupContent() {
                         placeholder="Jane Doe"
                         autoComplete="name"
                         className="min-h-[44px]"
+                        disabled={isBusy}
                         {...field}
                       />
                     </FormControl>
@@ -240,6 +251,7 @@ function SignupContent() {
                         placeholder="admin@example.com"
                         autoComplete="email"
                         className="min-h-[44px]"
+                        disabled={isBusy}
                         {...field}
                       />
                     </FormControl>
@@ -260,6 +272,7 @@ function SignupContent() {
                           placeholder="Min. 8 characters"
                           autoComplete="new-password"
                           className="min-h-[44px]"
+                          disabled={isBusy}
                           {...field}
                         />
                       </FormControl>
@@ -267,8 +280,9 @@ function SignupContent() {
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 min-h-[44px] min-w-[44px] text-muted-foreground flex items-center justify-center"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-11 w-11 min-h-[44px] min-w-[44px] text-muted-foreground flex items-center justify-center"
                         onClick={() => setShowPassword((prev) => !prev)}
+                        disabled={isBusy}
                       >
                         {showPassword ? <EyeOff /> : <Eye />}
                         <span className="sr-only">{showPassword ? 'Hide password' : 'Show password'}</span>
@@ -291,6 +305,7 @@ function SignupContent() {
                           placeholder="Min. 8 characters"
                           autoComplete="new-password"
                           className="min-h-[44px]"
+                          disabled={isBusy}
                           {...field}
                         />
                       </FormControl>
@@ -298,8 +313,9 @@ function SignupContent() {
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 min-h-[44px] min-w-[44px] text-muted-foreground flex items-center justify-center"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-11 w-11 min-h-[44px] min-w-[44px] text-muted-foreground flex items-center justify-center"
                         onClick={() => setShowConfirmPassword((prev) => !prev)}
+                        disabled={isBusy}
                       >
                         {showConfirmPassword ? <EyeOff /> : <Eye />}
                         <span className="sr-only">{showConfirmPassword ? 'Hide password' : 'Show password'}</span>
@@ -309,8 +325,8 @@ function SignupContent() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full min-h-[44px] font-semibold" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? 'Creating Account...' : 'Create Account'}
+              <Button type="submit" className="w-full min-h-[44px] font-semibold" disabled={isBusy}>
+                {isSubmitting ? 'Creating Account...' : 'Create Account'}
               </Button>
                <div className="mt-4 text-center text-sm text-muted-foreground">
                 Already have an account?{' '}

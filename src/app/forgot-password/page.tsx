@@ -43,7 +43,6 @@ export default function ForgotPasswordPage() {
   const router = useRouter();
   const auth = useAuth();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [_method, setMethod] = React.useState<'email' | 'phone'>('email');
 
   const emailForm = useForm<z.infer<typeof emailSchema>>({
     resolver: zodResolver(emailSchema),
@@ -116,7 +115,7 @@ export default function ForgotPasswordPage() {
             </p>
           </div>
 
-          <Tabs defaultValue="email" className="w-full" onValueChange={(v) => setMethod(v as any)}>
+          <Tabs defaultValue="email" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-8 h-12 p-1 bg-muted/50 rounded-xl">
               <TabsTrigger value="email" className="rounded-lg font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm">
                 <Mail className="h-4 w-4 mr-2" /> Email
