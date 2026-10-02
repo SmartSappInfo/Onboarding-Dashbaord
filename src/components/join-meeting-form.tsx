@@ -157,28 +157,33 @@ export default function JoinMeetingForm({
       return;
     }
 
-    setIsSubmitting(true);
+    // Synchronously open the meeting room to preserve browser user gesture across all mobile browsers
+    window.open(trimmedUrl, '_blank', 'noopener,noreferrer');
 
+    // Asynchronously record attendance details in Firestore without delaying room access
     if (firestore && meetingId) {
       try {
         const attendeesCollection = collection(firestore, `meetings/${meetingId}/attendees`);
         const children = data.childrenNames.map(c => c.value).filter(v => !!v);
 
-        await addDoc(attendeesCollection, {
+        addDoc(attendeesCollection, {
           meetingId,
           entityId: entityId || '',
           parentName: data.name,
           childrenNames: children,
           joinedAt: new Date().toISOString(),
+        }).catch((error) => {
+          console.warn("[JoinMeetingForm] Non-fatal: failed to log attendance:", error);
         });
       } catch (error) {
-        console.error("[JoinMeetingForm] Failed to log attendance:", error);
+        console.warn("[JoinMeetingForm] Non-fatal: error logging attendance:", error);
       }
     }
 
-    window.open(trimmedUrl, '_blank', 'noopener,noreferrer');
-    setIsSubmitting(false);
-    form.reset();
+    setTimeout(() => {
+      setIsSubmitting(false);
+      form.reset();
+    }, 1500);
   };
 
   if (!isClient) return null;
