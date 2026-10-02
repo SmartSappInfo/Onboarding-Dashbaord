@@ -22,6 +22,7 @@ import {
   Flame,
   ExternalLink,
 } from 'lucide-react';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 interface NeedsAttentionPanelProps {
   unconfirmedCount?: number;
@@ -45,12 +46,12 @@ export function NeedsAttentionPanel({
   return (
     <Card className="rounded-3xl border border-amber-200/50 bg-amber-50/20 dark:bg-amber-950/10 shadow-xs">
       <CardHeader className="pb-3 border-b border-amber-200/30 flex flex-row items-center justify-between">
-        <div className="space-y-0.5">
+        <div className="flex items-center gap-2">
           <CardTitle className="text-sm font-bold uppercase tracking-wider text-amber-900 dark:text-amber-400 flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
             Needs Attention
           </CardTitle>
-          <p className="text-xs text-muted-foreground">Actionable items requiring host intervention</p>
+          <CardInfoTooltip text="Actionable operational items requiring host intervention." />
         </div>
         <Badge variant="outline" className="text-[11px] font-bold bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-300/40">
           {totalIssues} {totalIssues === 1 ? 'Action' : 'Actions'}

@@ -19,10 +19,9 @@ describe('Unified Meeting Service (SSOT Adapter)', () => {
       meetingLink: 'https://meet.google.com/abc-defg-hij',
       durationMinutes: 45,
       type: {
-        id: 'parent-engagement',
+        id: 'parent',
         slug: 'parent-engagement',
         name: 'Parent Engagement',
-        description: 'Orientation session',
       },
       meetingSlug: 'parent-orientation-2026',
       hostUserId: 'user_host_1',

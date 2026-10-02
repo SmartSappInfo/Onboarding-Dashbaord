@@ -19,6 +19,7 @@ import {
   ArrowRight,
   Flame,
 } from 'lucide-react';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import type { Booking } from '@/lib/meetings/types';
 
 interface MyDayTimelineProps {
@@ -62,12 +63,12 @@ export function MyDayTimeline({ bookings, onOpenBookingDetail }: MyDayTimelinePr
   return (
     <Card className="rounded-3xl border border-border/80 shadow-xs bg-card">
       <CardHeader className="pb-3 border-b border-border/40 flex flex-row items-center justify-between">
-        <div className="space-y-0.5">
+        <div className="flex items-center gap-2">
           <CardTitle className="text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
             <Clock className="w-4 h-4 text-primary" />
             My Day Timeline
           </CardTitle>
-          <p className="text-xs text-muted-foreground">Today&apos;s chronological schedule and sessions</p>
+          <CardInfoTooltip text="Today's chronological schedule and sessions." />
         </div>
         <Badge variant="outline" className="text-[11px] font-bold text-primary bg-primary/10 border-primary/20">
           {sortedBookings.length} Scheduled

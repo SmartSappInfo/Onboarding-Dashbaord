@@ -3688,6 +3688,10 @@ export interface Meeting {
   hostUserId?: string;
   hostName?: string;
   hostEmail?: string;
+  duration?: number;
+  endTime?: string;
+  locationType?: string;
+  attendeeCount?: number;
 }
 
 // ── Meeting Facilitator ────────────────────────────────────────────────────

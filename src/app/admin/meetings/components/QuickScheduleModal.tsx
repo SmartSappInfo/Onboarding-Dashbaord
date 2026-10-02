@@ -7,7 +7,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +28,7 @@ import { quickScheduleMeetingAction } from '@/app/actions/meeting-calendar-actio
 import { useConnectedMeetingProviders } from '@/lib/meetings/hooks/use-connected-meeting-providers';
 import type { MeetingLocationType } from '@/lib/meetings/types';
 import { format } from 'date-fns';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 interface QuickScheduleModalProps {
   open: boolean;
@@ -146,150 +146,155 @@ export function QuickScheduleModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md rounded-3xl p-6">
-        <DialogHeader>
-          <DialogTitle className="text-lg font-bold flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-primary" />
-            Quick Schedule Meeting
-          </DialogTitle>
-          <DialogDescription className="text-xs">
+      <DialogContent className="max-w-md sm:rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl p-0 gap-0 overflow-hidden font-figtree">
+        <DialogHeader demarcated>
+          <div className="flex items-center gap-2">
+            <DialogTitle className="text-base font-bold flex items-center gap-2 text-foreground">
+              <Calendar className="h-4 w-4 text-primary" />
+              Quick Schedule Meeting
+            </DialogTitle>
+            <CardInfoTooltip text="Directly create and place a meeting onto your workspace calendar." />
+          </div>
+          <DialogDescription className="sr-only">
             Directly create and place a meeting onto your workspace calendar.
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 py-2 text-xs">
-          <div className="space-y-1.5">
-            <Label className="font-semibold">Meeting Title *</Label>
-            <Input
-              required
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              placeholder="e.g. Enrollment Strategy Session"
-              className="rounded-xl min-h-[44px] text-xs"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
+        <form onSubmit={handleSubmit} className="flex flex-col">
+          <div className="p-6 space-y-4 max-h-[calc(85vh-130px)] overflow-y-auto text-xs">
             <div className="space-y-1.5">
-              <Label className="font-semibold">Date</Label>
+              <Label className="font-semibold text-foreground">Meeting Title *</Label>
               <Input
-                type="date"
-                value={dateStr}
-                onChange={e => setDateStr(e.target.value)}
+                required
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                placeholder="e.g. Enrollment Strategy Session"
                 className="rounded-xl min-h-[44px] text-xs"
               />
             </div>
-            <div className="space-y-1.5">
-              <Label className="font-semibold">Start Time</Label>
-              <Input
-                type="time"
-                value={timeStr}
-                onChange={e => setTimeStr(e.target.value)}
-                className="rounded-xl min-h-[44px] text-xs"
-              />
-            </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="font-semibold">Duration (Minutes)</Label>
-              <Select value={duration} onValueChange={setDuration}>
-                <SelectTrigger className="rounded-xl min-h-[44px] text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  <SelectItem value="15">15 mins</SelectItem>
-                  <SelectItem value="30">30 mins</SelectItem>
-                  <SelectItem value="45">45 mins</SelectItem>
-                  <SelectItem value="60">60 mins (1 hr)</SelectItem>
-                  <SelectItem value="90">90 mins</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="font-semibold">Location / Video</Label>
-              <Select
-                value={locationType}
-                onValueChange={(v: MeetingLocationType) => setLocationType(v)}
-              >
-                <SelectTrigger className="rounded-xl h-10 min-h-[44px] text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  {locationOptions.map(opt => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      <div className="flex items-center justify-between w-full gap-2">
-                        <span>{opt.label}</span>
-                        {opt.badge && (
-                          <span
-                            className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${
-                              opt.isConnected
-                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                                : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
-                            }`}
-                          >
-                            {opt.badge}
-                          </span>
-                        )}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Invitee Contact Info */}
-          <div className="pt-2 border-t space-y-3">
-            <Label className="font-semibold text-foreground">Invitee Details (Optional)</Label>
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-[10px] text-muted-foreground">Invitee Name</Label>
+              <div className="space-y-1.5">
+                <Label className="font-semibold text-foreground">Date</Label>
                 <Input
-                  value={contactName}
-                  onChange={e => setContactName(e.target.value)}
-                  placeholder="Jane Doe"
+                  type="date"
+                  value={dateStr}
+                  onChange={e => setDateStr(e.target.value)}
                   className="rounded-xl min-h-[44px] text-xs"
                 />
               </div>
-              <div className="space-y-1">
-                <Label className="text-[10px] text-muted-foreground">Invitee Email</Label>
+              <div className="space-y-1.5">
+                <Label className="font-semibold text-foreground">Start Time</Label>
                 <Input
-                  type="email"
-                  value={contactEmail}
-                  onChange={e => setContactEmail(e.target.value)}
-                  placeholder="jane@example.com"
+                  type="time"
+                  value={timeStr}
+                  onChange={e => setTimeStr(e.target.value)}
                   className="rounded-xl min-h-[44px] text-xs"
                 />
               </div>
             </div>
-          </div>
 
-          <div className="space-y-1.5 pt-1">
-            <Label className="font-semibold">Description / Agenda</Label>
-            <Textarea
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder="Brief context or goals for this session..."
-              className="rounded-xl min-h-[60px] text-xs"
-            />
-          </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="font-semibold text-foreground">Duration</Label>
+                <Select value={duration} onValueChange={setDuration}>
+                  <SelectTrigger className="rounded-xl min-h-[44px] text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl text-xs">
+                    <SelectItem value="15">15 mins</SelectItem>
+                    <SelectItem value="30">30 mins</SelectItem>
+                    <SelectItem value="45">45 mins</SelectItem>
+                    <SelectItem value="60">60 mins (1 hr)</SelectItem>
+                    <SelectItem value="90">90 mins</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <div className="flex items-center justify-between pt-2 border-t">
-            <div className="space-y-0.5">
-              <Label className="text-xs font-semibold cursor-pointer">Force Schedule Overrides</Label>
-              <p className="text-[10px] text-muted-foreground">Bypass calendar collision checking</p>
+              <div className="space-y-1.5">
+                <Label className="font-semibold text-foreground">Location / Video</Label>
+                <Select
+                  value={locationType}
+                  onValueChange={(v: MeetingLocationType) => setLocationType(v)}
+                >
+                  <SelectTrigger className="rounded-xl min-h-[44px] text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl text-xs">
+                    {locationOptions.map(opt => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        <div className="flex items-center justify-between w-full gap-2">
+                          <span>{opt.label}</span>
+                          {opt.badge && (
+                            <span
+                              className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${
+                                opt.isConnected
+                                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                                  : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                              }`}
+                            >
+                              {opt.badge}
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <Switch checked={forceSchedule} onCheckedChange={setForceSchedule} />
+
+            {/* Invitee Contact Info */}
+            <div className="pt-2 border-t space-y-3">
+              <Label className="font-semibold text-foreground">Invitee Details (Optional)</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">Invitee Name</Label>
+                  <Input
+                    value={contactName}
+                    onChange={e => setContactName(e.target.value)}
+                    placeholder="Jane Doe"
+                    className="rounded-xl min-h-[44px] text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">Invitee Email</Label>
+                  <Input
+                    type="email"
+                    value={contactEmail}
+                    onChange={e => setContactEmail(e.target.value)}
+                    placeholder="jane@example.com"
+                    className="rounded-xl min-h-[44px] text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-1.5 pt-1">
+              <Label className="font-semibold text-foreground">Description / Agenda</Label>
+              <Textarea
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                placeholder="Brief context or goals for this session..."
+                className="rounded-xl min-h-[60px] text-xs resize-none"
+              />
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t">
+              <div className="space-y-0.5">
+                <Label className="text-xs font-semibold cursor-pointer text-foreground">Force Schedule Overrides</Label>
+                <p className="text-[10px] text-muted-foreground">Bypass calendar collision checking</p>
+              </div>
+              <Switch checked={forceSchedule} onCheckedChange={setForceSchedule} />
+            </div>
           </div>
 
-          <DialogFooter className="gap-2 pt-2">
+          <div className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5 shrink-0">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="rounded-xl min-h-[44px]"
+              className="rounded-xl min-h-[44px] active:scale-[0.97]"
             >
               Cancel
             </Button>
@@ -300,7 +305,7 @@ export function QuickScheduleModal({
             >
               {isSubmitting ? 'Scheduling...' : 'Confirm & Schedule'}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

@@ -29,8 +29,10 @@ export function normalizeMeetingToUnified(
     status = 'pending';
   } else if (m.status === 'cancelled') {
     status = 'cancelled';
-  } else if (m.status === 'completed') {
+  } else if (m.status === 'ended') {
     status = 'completed';
+  } else if (m.status === 'active') {
+    status = 'live';
   }
 
   return {

@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Video, Users, Share2, ArrowRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 export function UpcomingSessionsCard() {
   const { toast } = useToast();
@@ -30,12 +31,12 @@ export function UpcomingSessionsCard() {
   return (
     <Card className="rounded-3xl border border-border/80 shadow-xs bg-card overflow-hidden">
       <CardHeader className="pb-3 border-b border-border/40 flex flex-row items-center justify-between">
-        <div className="space-y-0.5">
+        <div className="flex items-center gap-2">
           <CardTitle className="text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
             <Video className="w-4 h-4 text-purple-600" />
             Upcoming Sessions & Webinars
           </CardTitle>
-          <p className="text-xs text-muted-foreground">Broadcast sessions, workshops, and large group meetings</p>
+          <CardInfoTooltip text="Broadcast sessions, workshops, and large group meetings." />
         </div>
         <Link href="/admin/meetings/sessions">
           <Button variant="ghost" size="sm" className="rounded-xl text-xs font-semibold text-primary hover:underline h-7 px-2">

@@ -30,6 +30,7 @@ import {
 } from '@/lib/meetings/calendar-view-service';
 import { format } from 'date-fns';
 import { QuickScheduleModal } from '../components/QuickScheduleModal';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -171,9 +172,14 @@ export function CalendarClient() {
       ) : viewMode === 'agenda' ? (
         /* Agenda List Mode */
         <Card className="rounded-3xl border shadow-sm p-6 space-y-4">
-          <CardHeader className="p-0 pb-3 border-b">
-            <CardTitle className="text-base font-bold">Upcoming Agenda</CardTitle>
-            <CardDescription className="text-xs">Chronological list of all scheduled events and collision holds</CardDescription>
+          <CardHeader className="p-0 pb-3 border-b flex flex-row items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-base font-bold text-foreground">Upcoming Agenda</CardTitle>
+              <CardInfoTooltip text="Chronological list of all scheduled events and collision holds." />
+            </div>
+            <CardDescription className="sr-only">
+              Chronological list of all scheduled events and collision holds
+            </CardDescription>
           </CardHeader>
           <div className="space-y-2">
             {events.length === 0 ? (
