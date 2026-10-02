@@ -69,6 +69,7 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
+  AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -280,10 +281,16 @@ export default function AiSurveyMessagingModal({
   // Local editable copy of the generated output
   const [editableOutput, setEditableOutput] = React.useState<GenerateSurveyMessagingOutput | null>(null);
 
+  // Baseline sanitized output against which edits are measured
+  const baselineOutput = React.useMemo(() => {
+    if (!generatedOutput) return null;
+    return sanitizeTemplateVariables(generatedOutput, effectiveTerminology);
+  }, [generatedOutput, effectiveTerminology]);
+
   // Reset editableOutput whenever new generatedOutput arrives, sanitizing any deprecated tokens
   React.useEffect(() => {
-    if (generatedOutput) {
-      setEditableOutput(sanitizeTemplateVariables(generatedOutput, { singular: effectiveSingular, plural: effectivePlural }));
+    if (baselineOutput) {
+      setEditableOutput(baselineOutput);
       // Initialize channel enabled states based on availability and pre-existing saved IDs
       const hasSavedIds = !!(
         savedTemplateIds?.emailTemplateId ||
@@ -291,14 +298,14 @@ export default function AiSurveyMessagingModal({
         savedTemplateIds?.whatsappTemplateId
       );
       setEnabledChannels({
-        email: !!generatedOutput.email && (!hasSavedIds || !!savedTemplateIds?.emailTemplateId),
-        sms: !!generatedOutput.sms && (!hasSavedIds || !!savedTemplateIds?.smsTemplateId),
-        whatsapp: !!generatedOutput.whatsapp && (!hasSavedIds || !!savedTemplateIds?.whatsappTemplateId),
+        email: !!baselineOutput.email && (!hasSavedIds || !!savedTemplateIds?.emailTemplateId),
+        sms: !!baselineOutput.sms && (!hasSavedIds || !!savedTemplateIds?.smsTemplateId),
+        whatsapp: !!baselineOutput.whatsapp && (!hasSavedIds || !!savedTemplateIds?.whatsappTemplateId),
       });
     } else {
       setEditableOutput(null);
     }
-  }, [generatedOutput, savedTemplateIds, effectiveSingular, effectivePlural]);
+  }, [baselineOutput, savedTemplateIds]);
 
   // Set default active tab based on what was generated
   React.useEffect(() => {
@@ -334,9 +341,9 @@ export default function AiSurveyMessagingModal({
 
   // Check if user made any edits
   const hasEdits = React.useMemo(() => {
-    if (!generatedOutput || !editableOutput) return false;
-    return JSON.stringify(generatedOutput) !== JSON.stringify(editableOutput);
-  }, [generatedOutput, editableOutput]);
+    if (!baselineOutput || !editableOutput) return false;
+    return JSON.stringify(baselineOutput) !== JSON.stringify(editableOutput);
+  }, [baselineOutput, editableOutput]);
 
   const handleOpenChangeRequest = (nextOpen: boolean) => {
     if (!nextOpen && hasEdits) {
@@ -2014,6 +2021,7 @@ export default function AiSurveyMessagingModal({
       <AlertDialog open={showDiscardConfirm} onOpenChange={setShowDiscardConfirm}>
         <AlertDialogContent className="max-w-md p-0 overflow-hidden sm:rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl font-figtree">
           <AlertDialogHeader demarcated className="px-6 py-3.5 sm:py-4 min-h-[52px] sm:min-h-[56px] border-b border-border/80 bg-muted/20 flex flex-row items-center gap-2.5">
+            <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
             <AlertDialogTitle className="text-base font-bold tracking-tight">
               Discard unsaved changes?
             </AlertDialogTitle>
@@ -2024,15 +2032,18 @@ export default function AiSurveyMessagingModal({
             </AlertDialogDescription>
           </div>
           <AlertDialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
-            <AlertDialogCancel className="rounded-xl h-10 px-4 text-xs font-semibold active:scale-[0.97]">
+            <AlertDialogCancel className="rounded-xl h-11 min-h-[44px] px-4 text-xs font-semibold active:scale-[0.97]">
               Keep Editing
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 setShowDiscardConfirm(false);
+                if (generatedOutput) {
+                  setEditableOutput(sanitizeTemplateVariables(generatedOutput, effectiveTerminology));
+                }
                 onOpenChange(false);
               }}
-              className="rounded-xl h-10 px-4 text-xs font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90 active:scale-[0.97]"
+              className="rounded-xl h-11 min-h-[44px] px-4 text-xs font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90 active:scale-[0.97]"
             >
               Discard Changes
             </AlertDialogAction>

@@ -735,6 +735,92 @@ describe('AiSurveyMessagingModal', () => {
     fireEvent.click(discardButton);
     expect(handleOpenChange).toHaveBeenCalledWith(false);
   });
+
+  it('resets editableOutput to baseline when discard changes is confirmed', () => {
+    const handleOpenChange = vi.fn();
+
+    const { rerender } = render(
+      <AiSurveyMessagingModal
+        open={true}
+        onOpenChange={handleOpenChange}
+        generatedOutput={sampleAiOutput}
+        onApply={vi.fn()}
+      />
+    );
+
+    // Verify initial subject
+    fireEvent.click(screen.getByRole('button', { name: /Edit Content/i }));
+    const subjectInput = screen.getByLabelText(/Email Subject Line/i) as HTMLInputElement;
+    expect(subjectInput.value).toBe(sampleAiOutput.email!.subject);
+
+    // Make an edit
+    fireEvent.change(subjectInput, { target: { value: 'Unsaved draft subject' } });
+    expect(subjectInput.value).toBe('Unsaved draft subject');
+    expect(screen.getByText('Customized')).toBeDefined();
+
+    // Click Close to trigger discard dialog
+    const closeButton = screen.getAllByRole('button', { name: /Close/i })[0];
+    fireEvent.click(closeButton);
+
+    // Click Discard Changes
+    const discardButton = screen.getByRole('button', { name: /Discard Changes/i });
+    fireEvent.click(discardButton);
+
+    expect(handleOpenChange).toHaveBeenCalledWith(false);
+
+    // Reopen modal and verify state was reset
+    rerender(
+      <AiSurveyMessagingModal
+        open={true}
+        onOpenChange={handleOpenChange}
+        generatedOutput={sampleAiOutput}
+        onApply={vi.fn()}
+      />
+    );
+
+    const reopenedSubjectInput = screen.getByLabelText(/Email Subject Line/i) as HTMLInputElement;
+    expect(reopenedSubjectInput.value).toBe(sampleAiOutput.email!.subject);
+    expect(screen.queryByText('Customized')).toBeNull();
+  });
+
+  it('does not trigger hasEdits or show Customized badge when generatedOutput contains raw HTML before user edits', () => {
+    const rawHtmlOutput: GenerateSurveyMessagingOutput = {
+      ...sampleAiOutput,
+      email: {
+        ...sampleAiOutput.email!,
+        subject: '<b>Alert:</b> New Survey Submission',
+        body: '<strong>Submission details</strong>',
+        blocks: [
+          {
+            id: 'blk_html_test',
+            type: 'text',
+            content: '<strong>Respondent:</strong> {{contact_name}}<br><strong>Entity:</strong> {{entity_name}}',
+          },
+        ],
+      },
+    };
+
+    const handleOpenChange = vi.fn();
+
+    render(
+      <AiSurveyMessagingModal
+        open={true}
+        onOpenChange={handleOpenChange}
+        generatedOutput={rawHtmlOutput}
+        onApply={vi.fn()}
+      />
+    );
+
+    // Customized badge should NOT be displayed
+    expect(screen.queryByText('Customized')).toBeNull();
+
+    // Attempting to close the modal should close immediately without prompting discard alert
+    const closeButton = screen.getAllByRole('button', { name: /Close/i })[0];
+    fireEvent.click(closeButton);
+
+    expect(handleOpenChange).toHaveBeenCalledWith(false);
+    expect(screen.queryByText('Discard unsaved changes?')).toBeNull();
+  });
 });
 
 
