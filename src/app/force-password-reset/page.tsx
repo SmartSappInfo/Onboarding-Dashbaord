@@ -23,6 +23,7 @@ import { SmartSappIcon } from '@/components/icons';
 import { Eye, EyeOff, ShieldCheck, Loader2 } from 'lucide-react';
 import LightRays from '@/components/LightRays';
 import { completeForcePasswordResetAction } from '@/lib/user-invite-actions';
+import { useSanitizeSensitiveQueryParams } from '@/hooks/use-sanitize-sensitive-query-params';
 
 const schema = z.object({
   password: z.string().min(8, { message: 'Password must be at least 8 characters.' }),
@@ -33,6 +34,7 @@ const schema = z.object({
 });
 
 export default function ForcePasswordResetPage() {
+  useSanitizeSensitiveQueryParams();
   const { toast } = useToast();
   const router = useRouter();
   const auth = useAuth();
@@ -99,7 +101,19 @@ export default function ForcePasswordResetPage() {
           </div>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Security Note (CWE-598): method="POST" and action="#" guarantee that if JS hydration
+                is delayed or fails, native browser submission will NEVER default to GET with
+                serialized credentials in the URL query string. */}
+            <form
+              method="POST"
+              action="#"
+              onSubmit={(e) => {
+                e.preventDefault();
+                form.handleSubmit(onSubmit)(e);
+              }}
+              className="space-y-6"
+              noValidate
+            >
               <FormField
                 control={form.control}
                 name="password"
@@ -111,8 +125,9 @@ export default function ForcePasswordResetPage() {
                         <Input
                           type={showPassword ? 'text' : 'password'}
                           placeholder="Min. 8 characters"
+                          autoComplete="new-password"
                           disabled={isSubmitting}
-                          className="h-12 rounded-xl"
+                          className="h-12 rounded-xl min-h-[44px]"
                           {...field}
                         />
                       </FormControl>
@@ -120,7 +135,7 @@ export default function ForcePasswordResetPage() {
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground"
+                        className="absolute right-1 top-1/2 h-8 w-8 min-h-[44px] min-w-[44px] -translate-y-1/2 text-muted-foreground flex items-center justify-center"
                         onClick={() => setShowPassword((prev) => !prev)}
                         disabled={isSubmitting}
                       >
@@ -142,8 +157,9 @@ export default function ForcePasswordResetPage() {
                       <Input
                         type={showPassword ? 'text' : 'password'}
                         placeholder="Re-enter password"
+                        autoComplete="new-password"
                         disabled={isSubmitting}
-                        className="h-12 rounded-xl"
+                        className="h-12 rounded-xl min-h-[44px]"
                         {...field}
                       />
                     </FormControl>
@@ -152,7 +168,7 @@ export default function ForcePasswordResetPage() {
                 )}
               />
 
-              <Button type="submit" className="w-full h-12 rounded-xl font-bold" disabled={isSubmitting}>
+              <Button type="submit" className="w-full h-12 rounded-xl font-bold min-h-[44px]" disabled={isSubmitting}>
                 {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
                 Secure Account
               </Button>

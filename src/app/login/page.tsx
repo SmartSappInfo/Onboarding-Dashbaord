@@ -36,6 +36,7 @@ import LightRays from '@/components/LightRays';
 import { safeInternalRedirect } from '@/lib/auth/return-to';
 import InviteContextBanner from '@/components/auth/InviteContextBanner';
 import { formatAuthError } from '@/lib/auth/auth-error-messages';
+import { useSanitizeSensitiveQueryParams } from '@/hooks/use-sanitize-sensitive-query-params';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
@@ -45,6 +46,7 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 function LoginContent() {
+  useSanitizeSensitiveQueryParams();
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -385,7 +387,19 @@ function LoginContent() {
           </div>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Security Note (CWE-598): method="POST" and action="#" guarantee that if JS hydration
+                is delayed or fails, native browser submission will NEVER default to GET with
+                serialized credentials in the URL query string. */}
+            <form
+              method="POST"
+              action="#"
+              onSubmit={(e) => {
+                e.preventDefault();
+                form.handleSubmit(onSubmit)(e);
+              }}
+              className="space-y-6"
+              noValidate
+            >
               <FormField
                 control={form.control}
                 name="email"
@@ -396,6 +410,8 @@ function LoginContent() {
                       <Input
                         type="email"
                         placeholder="first.last@smartsapp.com"
+                        autoComplete="email"
+                        className="min-h-[44px]"
                         disabled={isBusy}
                         {...field}
                       />
@@ -416,6 +432,8 @@ function LoginContent() {
                         <Input
                           type={showPassword ? 'text' : 'password'}
                           placeholder="Min. 8 characters"
+                          autoComplete="current-password"
+                          className="min-h-[44px]"
                           disabled={isBusy}
                           {...field}
                         />
@@ -424,7 +442,7 @@ function LoginContent() {
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground"
+                        className="absolute right-1 top-1/2 h-8 w-8 min-h-[44px] min-w-[44px] -translate-y-1/2 text-muted-foreground flex items-center justify-center"
                         onClick={() => setShowPassword((prev) => !prev)}
                         disabled={isBusy}
                       >
@@ -445,8 +463,7 @@ function LoginContent() {
                 </Link>
               </div>
 
-
-              <Button type="submit" className="w-full" disabled={isBusy}>
+              <Button type="submit" className="w-full min-h-[44px] font-semibold" disabled={isBusy}>
                 {isSubmitting ? 'Signing In...' : 'Sign In'}
               </Button>
 

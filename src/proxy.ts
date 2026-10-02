@@ -27,8 +27,62 @@ const protectedPrefixes = [
   '/seeds',
 ];
 
+/**
+ * Blocklist of sensitive query parameter patterns that must NEVER appear in URL strings.
+ * Enforces OWASP Top 10 and CWE-598 (Information Exposure via Query String).
+ *
+ * Performance Budget (Rule 9 & 54): Pre-compiled regex patterns executed against
+ * URLSearchParams keys ensure O(N) evaluation (< 1ms execution on the Edge runtime).
+ */
+const SENSITIVE_QUERY_PARAM_PATTERNS: readonly RegExp[] = [
+  /^pass(word)?$/i,
+  /^temp_?pass(word)?$/i,
+  /^new_?pass(word)?$/i,
+  /^confirm_?pass(word)?$/i,
+  /^pwd$/i,
+  /^passwd$/i,
+  /^secret$/i,
+  /^client_?secret$/i,
+  /^auth_?token$/i,
+  /^access_?token$/i,
+  /^refresh_?token$/i,
+  /^credentials?$/i,
+];
+
+function isSensitiveQueryKey(key: string): boolean {
+  const normalizedKey = key.trim();
+  return SENSITIVE_QUERY_PARAM_PATTERNS.some((pattern) => pattern.test(normalizedKey));
+}
+
+function containsSensitiveQueryParam(searchParams: URLSearchParams): boolean {
+  for (const key of searchParams.keys()) {
+    if (isSensitiveQueryKey(key)) return true;
+  }
+  return false;
+}
+
+function sanitizeUrlSearchParams(searchParams: URLSearchParams): URLSearchParams {
+  const sanitized = new URLSearchParams(searchParams);
+  for (const key of Array.from(sanitized.keys())) {
+    if (isSensitiveQueryKey(key)) {
+      sanitized.delete(key);
+    }
+  }
+  return sanitized;
+}
+
 export function proxy(request: NextRequest) {
-  const { pathname, search } = request.nextUrl;
+  const { pathname, search, searchParams } = request.nextUrl;
+  
+  // ── CWE-598 Defense: Sensitive Credential URL Scrubbing ────────────────────
+  // If an incoming request includes sensitive credentials in the query string (e.g. from
+  // an unhydrated native GET submission), immediately issue an Edge redirect to the
+  // sanitized URL so that page SSR, referer headers, and server logs never process raw credentials.
+  if (containsSensitiveQueryParam(searchParams)) {
+    const sanitizedUrl = request.nextUrl.clone();
+    sanitizedUrl.search = sanitizeUrlSearchParams(searchParams).toString();
+    return NextResponse.redirect(sanitizedUrl, { status: 307 });
+  }
   
   // Auto-correct legacy survey route /s/[slug] -> /surveys/[slug]
   if (pathname.startsWith('/s/')) {

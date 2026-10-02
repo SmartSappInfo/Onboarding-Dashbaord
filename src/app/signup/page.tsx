@@ -28,6 +28,7 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { Eye, EyeOff } from 'lucide-react';
 import LightRays from '@/components/LightRays';
 import { formatAuthError } from '@/lib/auth/auth-error-messages';
+import { useSanitizeSensitiveQueryParams } from '@/hooks/use-sanitize-sensitive-query-params';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -42,6 +43,7 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 function SignupContent() {
+  useSanitizeSensitiveQueryParams();
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -195,7 +197,19 @@ function SignupContent() {
             </div>
           </div>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Security Note (CWE-598): method="POST" and action="#" guarantee that if JS hydration
+                is delayed or fails, native browser submission will NEVER default to GET with
+                serialized credentials in the URL query string. */}
+            <form
+              method="POST"
+              action="#"
+              onSubmit={(e) => {
+                e.preventDefault();
+                form.handleSubmit(onSubmit)(e);
+              }}
+              className="space-y-6"
+              noValidate
+            >
               <FormField
                 control={form.control}
                 name="name"
@@ -203,7 +217,12 @@ function SignupContent() {
                   <FormItem>
                     <FormLabel>Full Name*</FormLabel>
                     <FormControl>
-                      <Input placeholder="Jane Doe" {...field} />
+                      <Input
+                        placeholder="Jane Doe"
+                        autoComplete="name"
+                        className="min-h-[44px]"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -216,7 +235,13 @@ function SignupContent() {
                   <FormItem>
                     <FormLabel>Email*</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="admin@example.com" {...field} />
+                      <Input
+                        type="email"
+                        placeholder="admin@example.com"
+                        autoComplete="email"
+                        className="min-h-[44px]"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -230,13 +255,19 @@ function SignupContent() {
                     <FormLabel>Password*</FormLabel>
                     <div className="relative">
                       <FormControl>
-                        <Input type={showPassword ? "text" : "password"} placeholder="Min. 8 characters" {...field} />
+                        <Input
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Min. 8 characters"
+                          autoComplete="new-password"
+                          className="min-h-[44px]"
+                          {...field}
+                        />
                       </FormControl>
                        <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 min-h-[44px] min-w-[44px] text-muted-foreground flex items-center justify-center"
                         onClick={() => setShowPassword((prev) => !prev)}
                       >
                         {showPassword ? <EyeOff /> : <Eye />}
@@ -255,13 +286,19 @@ function SignupContent() {
                     <FormLabel>Confirm Password*</FormLabel>
                     <div className="relative">
                       <FormControl>
-                        <Input type={showConfirmPassword ? "text" : "password"} placeholder="Min. 8 characters" {...field} />
+                        <Input
+                          type={showConfirmPassword ? "text" : "password"}
+                          placeholder="Min. 8 characters"
+                          autoComplete="new-password"
+                          className="min-h-[44px]"
+                          {...field}
+                        />
                       </FormControl>
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 min-h-[44px] min-w-[44px] text-muted-foreground flex items-center justify-center"
                         onClick={() => setShowConfirmPassword((prev) => !prev)}
                       >
                         {showConfirmPassword ? <EyeOff /> : <Eye />}
@@ -272,7 +309,7 @@ function SignupContent() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+              <Button type="submit" className="w-full min-h-[44px] font-semibold" disabled={form.formState.isSubmitting}>
                 {form.formState.isSubmitting ? 'Creating Account...' : 'Create Account'}
               </Button>
                <div className="mt-4 text-center text-sm text-muted-foreground">

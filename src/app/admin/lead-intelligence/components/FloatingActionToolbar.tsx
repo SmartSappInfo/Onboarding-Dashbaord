@@ -43,10 +43,12 @@ export const FloatingActionToolbar: React.FC<FloatingActionToolbarProps> = ({
 }) => {
   if (selectedCount <= 0) return null;
 
+  // Architectural Note: Explicit [animation-timing-function:...] prevents Tailwind compiler
+  // ambiguity between transition-timing-function and animation-timing-function for the toolbar slide-in.
   return (
     <aside 
       aria-label="Bulk actions toolbar"
-      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-6 duration-300 ease-[cubic-bezier(0.23,1,0.32,1)]"
+      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-6 duration-300 [animation-timing-function:cubic-bezier(0.23,1,0.32,1)]"
     >
       <div className="flex flex-wrap items-center gap-2 bg-zinc-950/95 border border-zinc-800 text-zinc-100 px-4 py-2.5 rounded-2xl shadow-2xl backdrop-blur-md max-w-[95vw] sm:max-w-2xl">
         {/* Selection Counter */}

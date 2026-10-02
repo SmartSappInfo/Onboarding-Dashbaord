@@ -27,6 +27,7 @@ import LightRays from '@/components/LightRays';
 import { publicResetPasswordViaPhoneAction } from '@/lib/user-invite-actions';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { getErrorMessage } from '@/lib/errors/report-error';
+import { useSanitizeSensitiveQueryParams } from '@/hooks/use-sanitize-sensitive-query-params';
 
 const emailSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
@@ -37,6 +38,7 @@ const phoneSchema = z.object({
 });
 
 export default function ForgotPasswordPage() {
+  useSanitizeSensitiveQueryParams();
   const { toast } = useToast();
   const router = useRouter();
   const auth = useAuth();
@@ -126,7 +128,19 @@ export default function ForgotPasswordPage() {
 
             <TabsContent value="email">
               <Form {...emailForm}>
-                <form onSubmit={emailForm.handleSubmit(onEmailSubmit)} className="space-y-6">
+                {/* Security Note (CWE-598): method="POST" and action="#" guarantee that if JS hydration
+                    is delayed or fails, native browser submission will NEVER default to GET with
+                    serialized credentials in the URL query string. */}
+                <form
+                  method="POST"
+                  action="#"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    emailForm.handleSubmit(onEmailSubmit)(e);
+                  }}
+                  className="space-y-6"
+                  noValidate
+                >
                   <FormField
                     control={emailForm.control}
                     name="email"
@@ -137,8 +151,9 @@ export default function ForgotPasswordPage() {
                           <Input
                             type="email"
                             placeholder="first.last@smartsapp.com"
+                            autoComplete="email"
                             disabled={isSubmitting}
-                            className="h-12 rounded-xl"
+                            className="h-12 rounded-xl min-h-[44px]"
                             {...field}
                           />
                         </FormControl>
@@ -146,7 +161,7 @@ export default function ForgotPasswordPage() {
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full h-12 rounded-xl font-bold" disabled={isSubmitting}>
+                  <Button type="submit" className="w-full h-12 rounded-xl font-bold min-h-[44px]" disabled={isSubmitting}>
                     {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     Send Reset Link
                   </Button>
@@ -156,7 +171,19 @@ export default function ForgotPasswordPage() {
 
             <TabsContent value="phone">
               <Form {...phoneForm}>
-                <form onSubmit={phoneForm.handleSubmit(onPhoneSubmit)} className="space-y-6">
+                {/* Security Note (CWE-598): method="POST" and action="#" guarantee that if JS hydration
+                    is delayed or fails, native browser submission will NEVER default to GET with
+                    serialized credentials in the URL query string. */}
+                <form
+                  method="POST"
+                  action="#"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    phoneForm.handleSubmit(onPhoneSubmit)(e);
+                  }}
+                  className="space-y-6"
+                  noValidate
+                >
                   <FormField
                     control={phoneForm.control}
                     name="phone"
@@ -167,8 +194,9 @@ export default function ForgotPasswordPage() {
                           <Input
                             type="tel"
                             placeholder="e.g. 0244123456"
+                            autoComplete="tel"
                             disabled={isSubmitting}
-                            className="h-12 rounded-xl"
+                            className="h-12 rounded-xl min-h-[44px]"
                             {...field}
                           />
                         </FormControl>
@@ -176,7 +204,7 @@ export default function ForgotPasswordPage() {
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full h-12 rounded-xl font-bold" disabled={isSubmitting}>
+                  <Button type="submit" className="w-full h-12 rounded-xl font-bold min-h-[44px]" disabled={isSubmitting}>
                     {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     Get New Password
                   </Button>
