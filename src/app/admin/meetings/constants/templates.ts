@@ -17,7 +17,8 @@ export const MEETING_TEMPLATES = [
             heroCtaLabel: 'Register Now',
             registrationEnabled: true,
             brandingEnabled: true,
-            heroLayout: 'image'
+            heroLayout: 'image',
+            collectAttendeeDetails: false,
         }
     },
     {
@@ -35,7 +36,8 @@ export const MEETING_TEMPLATES = [
             heroCtaLabel: 'Join Kickoff',
             registrationEnabled: false,
             brandingEnabled: true,
-            heroLayout: 'form'
+            heroLayout: 'form',
+            collectAttendeeDetails: false,
         }
     },
     {
@@ -54,7 +56,8 @@ export const MEETING_TEMPLATES = [
             registrationEnabled: true,
             registrationRequiredToJoin: true,
             brandingEnabled: true,
-            heroLayout: 'image'
+            heroLayout: 'image',
+            collectAttendeeDetails: false,
         }
     },
     {
@@ -73,7 +76,8 @@ export const MEETING_TEMPLATES = [
             registrationEnabled: true,
             capacityLimit: 500,
             brandingEnabled: true,
-            heroLayout: 'form'
+            heroLayout: 'form',
+            collectAttendeeDetails: false,
         }
     }
 ];

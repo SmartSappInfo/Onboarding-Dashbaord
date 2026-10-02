@@ -37,7 +37,10 @@ import {
     Webhook,
     Pencil,
     X,
-    Code
+    Code,
+    UserCheck,
+    UserCircle,
+    Zap
 } from 'lucide-react';
 import ShareEmbedDialog from '@/components/share-embed-dialog';
 
@@ -110,6 +113,7 @@ const formSchema = z.object({
   registrationSuccessMessage: z.string().optional(),
   capacityLimit: z.number().int().min(0).optional(),
   waitlistEnabled: z.boolean().default(false),
+  collectAttendeeDetails: z.boolean().default(false),
 
   // Hero
   heroImageUrl: z.string().url().optional().or(z.literal('')),
@@ -258,6 +262,7 @@ export default function EditMeetingPage() {
       registrationSuccessMessage: 'You have successfully registered for this session.',
       capacityLimit: 0,
       waitlistEnabled: false,
+      collectAttendeeDetails: false,
       heroImageUrl: '',
       heroTitle: '',
       heroDescription: '',
@@ -361,6 +366,7 @@ export default function EditMeetingPage() {
         registrationSuccessMessage: meeting.registrationSuccessMessage || 'You have successfully registered for this session.',
         capacityLimit: meeting.capacityLimit || 0,
         waitlistEnabled: meeting.waitlistEnabled || false,
+        collectAttendeeDetails: meeting.collectAttendeeDetails || false,
         heroImageUrl: meeting.heroImageUrl || '',
         heroTitle: meeting.heroTitle || '',
         heroDescription: meeting.heroDescription || '',
@@ -477,6 +483,7 @@ export default function EditMeetingPage() {
             registrationSuccessMessage: data.registrationSuccessMessage || '',
             capacityLimit: data.capacityLimit || 0,
             waitlistEnabled: data.waitlistEnabled,
+            collectAttendeeDetails: data.collectAttendeeDetails ?? false,
 
             // Hero fields
             heroImageUrl: data.heroImageUrl || '',
@@ -1382,6 +1389,64 @@ export default function EditMeetingPage() {
                                 </CardContent>
                             )}
                         </Card>
+
+                        {/* ── Guest & Live Entry Access Card ── */}
+                        <Card className="border border-border/80 shadow-sm rounded-2xl overflow-hidden bg-card text-card-foreground">
+                            <CardHeader className="bg-muted/15 border-b border-border/70 py-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-emerald-500/10 rounded-xl">
+                                            <UserCheck className="h-5 w-5 text-emerald-600" />
+                                        </div>
+                                        <div className="text-left">
+                                            <CardTitle className="text-lg font-semibold tracking-tight">Guest & Live Entry Access</CardTitle>
+                                            <p className="text-xs text-muted-foreground">Controls how attendees access the live session room</p>
+                                        </div>
+                                    </div>
+                                    <FormField
+                                        control={form.control}
+                                        name="collectAttendeeDetails"
+                                        render={({ field }) => (
+                                            <FormItem className="flex items-center gap-2 space-y-0 text-left">
+                                                <Label htmlFor="collect-details-toggle" className="text-[10px] font-semibold text-muted-foreground">
+                                                    Collect Details Before Entry
+                                                </Label>
+                                                <FormControl>
+                                                    <Switch checked={field.value} onCheckedChange={field.onChange} id="collect-details-toggle" />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                            </CardHeader>
+                            <CardContent className="p-6 space-y-4 bg-card">
+                                {form.watch('collectAttendeeDetails') ? (
+                                    <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 flex items-start gap-3 text-left">
+                                        <div className="p-2 bg-primary/10 rounded-lg shrink-0 mt-0.5">
+                                            <UserCircle className="h-4 w-4 text-primary" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-xs font-bold text-foreground">Information Gate Active</p>
+                                            <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                                Attendees are asked to enter their Full Name (and child details for parent sessions) before opening the meeting room. Attendance will be logged in the participants list.
+                                            </p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 flex items-start gap-3 text-left">
+                                        <div className="p-2 bg-emerald-500/10 rounded-lg shrink-0 mt-0.5">
+                                            <Zap className="h-4 w-4 text-emerald-600" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">Direct 1-Click Join Active (Default)</p>
+                                            <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                                Attendees can enter the meeting room instantly with zero form fields once the countdown ends. Fast, frictionless access for public broadcasts and community calls.
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
                     </div>
 
                     {/* Live Preview (Right Column) */}
@@ -1399,6 +1464,7 @@ export default function EditMeetingPage() {
                                 type: form.watch('type'),
                                 entityName: form.watch('entity')?.displayName || form.watch('brandingName'),
                                 registrationEnabled: form.watch('registrationEnabled'),
+                                collectAttendeeDetails: form.watch('collectAttendeeDetails'),
                             }}
                             className="sticky top-24"
                         />

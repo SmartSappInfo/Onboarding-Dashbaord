@@ -27,6 +27,7 @@ interface MeetingPreviewPanelProps {
         type?: { name: string; slug: string };
         entityName?: string;
         registrationEnabled?: boolean;
+        collectAttendeeDetails?: boolean;
     };
     className?: string;
 }
@@ -141,9 +142,16 @@ export default function MeetingPreviewPanel({ data, className }: MeetingPreviewP
                                 )}
                             </div>
 
-                            <Button className="w-full h-10 rounded-xl font-bold shadow-lg shadow-primary/20">
-                                {data.heroCtaLabel || (data.registrationEnabled ? 'Register Now' : 'Join Session')}
-                            </Button>
+                            <div className="space-y-1.5">
+                                <Button className="w-full h-10 rounded-xl font-bold shadow-lg shadow-primary/20">
+                                    {data.heroCtaLabel || (data.registrationEnabled ? 'Register Now' : data.collectAttendeeDetails ? 'Enter Room (Details Required)' : '⚡ Enter Meeting Room')}
+                                </Button>
+                                {!data.registrationEnabled && (
+                                    <p className="text-[8px] text-center text-slate-400 font-semibold">
+                                        {data.collectAttendeeDetails ? '📝 Attendee details collected before entry' : '⚡ Direct 1-click access enabled'}
+                                    </p>
+                                )}
+                            </div>
                         </div>
 
                         {/* Social Proof Placeholder */}

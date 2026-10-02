@@ -353,6 +353,7 @@ export default function MeetingsHubClient() {
                 registrationSuccessMessage: meetingForTemplate.registrationSuccessMessage || '',
                 capacityLimit: meetingForTemplate.capacityLimit || 0,
                 waitlistEnabled: meetingForTemplate.waitlistEnabled ?? false,
+                collectAttendeeDetails: meetingForTemplate.collectAttendeeDetails ?? false,
             }
         });
         toast({ title: "Template Saved", description: "You can now use this layout for new sessions." });

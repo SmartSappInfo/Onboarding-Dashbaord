@@ -183,13 +183,15 @@ function MeetingJoinSectionInner({
     return <MeetingRegistrationForm meeting={meeting} entityId={resolvedEntityId} onRegistered={setToken} />;
   }
 
-  // Fallback to original join form
+  // Fallback to direct join / guest entry form
   return (
     <JoinMeetingForm
       meetingId={meeting.id}
       entityId={resolvedEntityId}
       meetingLink={meeting.meetingLink || ''}
       meetingTime={meeting.meetingTime || ''}
+      collectAttendeeDetails={meeting.collectAttendeeDetails ?? false}
+      heroCtaLabel={meeting.heroCtaLabel}
     />
   );
 }

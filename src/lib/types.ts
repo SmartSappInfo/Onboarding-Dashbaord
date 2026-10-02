@@ -3656,6 +3656,11 @@ export interface Meeting {
   registrationSuccessMessage?: string;
   capacityLimit?: number;
   waitlistEnabled?: boolean;
+  /**
+   * Whether to prompt attendees for full name and child details before entering the meeting.
+   * Default: false (Direct 1-Click Join with zero friction).
+   */
+  collectAttendeeDetails?: boolean;
   recordingUrl?: string;
   brochureUrl?: string;
   resourceUrl?: string;
@@ -3901,6 +3906,7 @@ export interface MeetingTemplate {
     registrationFields?: MeetingRegistrationField[];
     registrationSuccessMessage?: string;
     capacityLimit?: number;
+    collectAttendeeDetails?: boolean;
   };
   createdAt: string;
   createdBy?: string;
@@ -3924,6 +3930,7 @@ export const BUILT_IN_TEMPLATES: MeetingTemplate[] = [
       heroCtaLabel: 'Join Session',
       brandingEnabled: true,
       heroLayout: 'image',
+      collectAttendeeDetails: false,
     },
     createdAt: '2025-01-01T00:00:00Z',
   },
@@ -3940,6 +3947,7 @@ export const BUILT_IN_TEMPLATES: MeetingTemplate[] = [
       heroCtaLabel: 'Join Kickoff',
       brandingEnabled: true,
       heroLayout: 'image',
+      collectAttendeeDetails: false,
     },
     createdAt: '2025-01-01T00:00:00Z',
   },
@@ -3956,6 +3964,7 @@ export const BUILT_IN_TEMPLATES: MeetingTemplate[] = [
       heroCtaLabel: 'Join Training',
       brandingEnabled: true,
       heroLayout: 'image',
+      collectAttendeeDetails: false,
     },
     createdAt: '2025-01-01T00:00:00Z',
   },
@@ -3973,6 +3982,7 @@ export const BUILT_IN_TEMPLATES: MeetingTemplate[] = [
       brandingEnabled: true,
       heroLayout: 'form',
       registrationEnabled: true,
+      collectAttendeeDetails: false,
     },
     createdAt: '2025-01-01T00:00:00Z',
   },
@@ -4847,7 +4857,7 @@ export interface AutomationEventPayload {
 }
 
 export interface AutomationAction {
-  type: 'SEND_MESSAGE' | 'CREATE_TASK' | 'UPDATE_FIELD' | 'WEBHOOK' | 'CREATE_DEAL' | 'SEND_NOTIFICATION_EMAIL' | 'SEND_NOTIFICATION_SMS' | 'SEND_NOTIFICATION_IN_APP' | 'SEND_NOTIFICATION_PUSH' | 'DIRECT_EMAIL' | 'DIRECT_SMS' | 'SEND_WHATSAPP' | 'DIRECT_WHATSAPP' | 'DIRECT_NOTIFICATION_EMAIL' | 'DIRECT_NOTIFICATION_SMS';
+  type: 'SEND_MESSAGE' | 'CREATE_TASK' | 'UPDATE_FIELD' | 'WEBHOOK' | 'CREATE_DEAL' | 'SEND_NOTIFICATION_EMAIL' | 'SEND_NOTIFICATION_SMS' | 'SEND_NOTIFICATION_WHATSAPP' | 'SEND_NOTIFICATION_IN_APP' | 'SEND_NOTIFICATION_PUSH' | 'DIRECT_EMAIL' | 'DIRECT_SMS' | 'SEND_WHATSAPP' | 'DIRECT_WHATSAPP' | 'DIRECT_NOTIFICATION_EMAIL' | 'DIRECT_NOTIFICATION_SMS';
   // Legacy template ID (for backward compatibility)
   templateId?: string;
   // New template resolution by category/type (Task 15.2)
