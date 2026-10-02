@@ -74,6 +74,7 @@ import { extractFileNameFromStorageUrl } from '@/lib/survey-response-utils';
 import { createPortal } from 'react-dom';
 import { FallbackEditorModal } from '@/components/shared/FallbackEditorModal';
 import { FILE_TYPE_PRESETS } from '@/lib/survey-file-utils';
+import { syncElementsOnOptionChange } from '@/lib/survey-logic-utils';
 
 const QuestionVariablesContext = React.createContext<TemplateVariable[]>([]);
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -348,12 +349,13 @@ const RichTextEditor = ({
 };
 
 function isQuestion(element: SurveyElement): element is SurveyQuestion {
-    const questionTypes: SurveyQuestion['type'][] = [
+    const questionTypes: readonly string[] = [
         'text', 'long-text', 'yes-no', 'multiple-choice', 'checkboxes', 
         'dropdown', 'rating', 'date', 'time', 'file-upload',
-        'email', 'phone', 'number', 'link'
+        'email', 'phone', 'number', 'link',
+        'matrix', 'ranking', 'slider', 'nps', 'ces', 'signature', 'calculated', 'consent'
     ];
-    return questionTypes.includes(element.type as any);
+    return questionTypes.includes(element.type);
 }
 
 function isLayoutBlock(element: SurveyElement): element is SurveyLayoutBlock {
@@ -545,7 +547,7 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
                                 if (e.key === "Enter" || e.key === " ") {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    handleRemove(option.value, e as any);
+                                    handleRemove(option.value, e);
                                 }
                             }}
                         >
@@ -863,14 +865,13 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
     remove(index);
 
     if (enableScoring) {
-        const currentScores = getValues(`elements.${questionIndex}.optionScores`) || [];
-        const newScores = currentScores.filter((_:any, i:number) => i !== index);
+        const currentScores = (getValues(`elements.${questionIndex}.optionScores`) as number[] | undefined) || [];
+        const newScores = currentScores.filter((_: number, i: number) => i !== index);
         setValue(`elements.${questionIndex}.optionScores`, newScores, { shouldDirty: true });
     }
 
     if (questionId && optionVal) {
-      const allElements = getValues('elements') || [];
-      const { syncElementsOnOptionChange } = require('@/lib/survey-logic-utils');
+      const allElements = (getValues('elements') as SurveyElement[] | undefined) || [];
       const updatedElements = syncElementsOnOptionChange(allElements, questionId, optionVal, null);
       setValue('elements', updatedElements, { shouldDirty: true });
     }
@@ -880,8 +881,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
     onChange(newVal);
     const questionId = getValues(`elements.${questionIndex}.id`);
     if (questionId && oldVal && oldVal !== newVal) {
-      const allElements = getValues('elements') || [];
-      const { syncElementsOnOptionChange } = require('@/lib/survey-logic-utils');
+      const allElements = (getValues('elements') as SurveyElement[] | undefined) || [];
       const updatedElements = syncElementsOnOptionChange(allElements, questionId, oldVal, newVal);
       setValue('elements', updatedElements, { shouldDirty: true });
     }
@@ -1202,7 +1202,8 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
                       />
                       {showValueInput && (() => {
                         const sourceQuestionId = watch(`elements.${elementIndex}.rules.${index}.sourceQuestionId`);
-                        const sourceQuestion = allElements.find(el => el.id === sourceQuestionId) as any;
+                        const rawSource = allElements.find(el => el.id === sourceQuestionId);
+                        const sourceQuestion = rawSource && isQuestion(rawSource) ? rawSource : null;
                         const isChoiceType = sourceQuestion && ['multiple-choice', 'dropdown', 'checkboxes', 'yes-no'].includes(sourceQuestion.type);
                         const options = sourceQuestion?.type === 'yes-no' ? ['Yes', 'No'] : (sourceQuestion?.options || []);
 
@@ -2241,7 +2242,11 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                 <MediaSelect 
                                                     value={field.value} 
                                                     onValueChange={field.onChange}
-                                                    filterType={element.type as any}
+                                                    filterType={
+                                                        element.type === 'image' || element.type === 'video' || element.type === 'audio'
+                                                            ? element.type
+                                                            : undefined
+                                                    }
                                                 />
                                             )}
                                         />
@@ -2367,7 +2372,17 @@ export default function QuestionEditor({ fields, remove, move, swap, insert, req
   }, [workspaceId]);
 
   const { formState: { errors } } = useFormContext();
-  const formErrors = errors.elements as any[] | undefined;
+  const elementsError = errors.elements;
+  const rootErrorMessage = (() => {
+    if (!elementsError || typeof elementsError !== 'object') return null;
+    if ('message' in elementsError && typeof elementsError.message === 'string') {
+      return elementsError.message;
+    }
+    if ('root' in elementsError && elementsError.root && typeof elementsError.root === 'object' && 'message' in elementsError.root && typeof elementsError.root.message === 'string') {
+      return elementsError.root.message;
+    }
+    return null;
+  })();
   
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -2454,10 +2469,10 @@ export default function QuestionEditor({ fields, remove, move, swap, insert, req
               </Button>
           </div>
           <div className="mt-8">
-              {formErrors && typeof formErrors === 'object' && 'message' in formErrors && (
+              {rootErrorMessage && (
                   <FormMessage className="text-sm font-bold bg-destructive/10 p-4 rounded-xl flex items-center gap-3 border border-destructive/20 shadow-sm">
                       <X className="h-5 w-5 text-destructive" />
-                      {(formErrors as any).message}
+                      {rootErrorMessage}
                   </FormMessage>
               )}
           </div>

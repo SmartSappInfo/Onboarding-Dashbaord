@@ -13,7 +13,13 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { PlusCircle, CloudUpload, Settings, LayoutDashboard, PanelRightClose, PanelRightOpen, Sparkles } from 'lucide-react';
 import { useUser, useDoc, useFirestore } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import type { SurveyElement, SurveyQuestion, SurveySection, SurveyLayoutBlock, SurveyVersion, Survey } from '@/lib/types';
+import type { SurveyElement, SurveyQuestion, SurveySection, SurveyLayoutBlock, SurveyVersion, Survey, Entity } from '@/lib/types';
+
+interface SurveyEntityData extends Entity {
+    institutionData?: {
+        logoUrl?: string;
+    };
+}
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import Link from 'next/link';
@@ -201,7 +207,7 @@ export default function SurveyFormBuilder() {
         if (!firestore || !watchedForm.entityId) return null;
         return doc(firestore, 'entities', watchedForm.entityId);
     }, [firestore, watchedForm.entityId]);
-    const { data: entity } = useDoc<any>(entityDocRef);
+    const { data: entity } = useDoc<SurveyEntityData>(entityDocRef);
 
     const displayLogoUrl = watchedForm.showBranding === false 
         ? 'none' 
@@ -217,7 +223,7 @@ export default function SurveyFormBuilder() {
         canUndo,
         canRedo,
         reset: _resetHistory
-    } = useUndoRedo<any>(getValues());
+    } = useUndoRedo<Record<string, unknown>>(getValues() as Record<string, unknown>);
 
     const isProgrammaticChange = React.useRef(false);
     const lastSavedRef = React.useRef<string>(JSON.stringify(getValues()));
@@ -227,7 +233,7 @@ export default function SurveyFormBuilder() {
     // Keep the ref in sync if the URL-based surveyId changes (e.g. after navigation)
     React.useEffect(() => { activeSurveyIdRef.current = surveyId; }, [surveyId]);
 
-    const triggerSave = React.useCallback(async (data: any) => {
+    const triggerSave = React.useCallback(async (data: Partial<Survey>) => {
         if (!user || !isDirty) return;
         const currentString = JSON.stringify(data);
         if (currentString === lastSavedRef.current) return;
@@ -252,7 +258,7 @@ export default function SurveyFormBuilder() {
         }
     }, [user, isDirty, router]);
 
-    const handleBulkAction = React.useCallback(async (action: string, value?: any) => {
+    const handleBulkAction = React.useCallback(async (action: string, value?: string | boolean) => {
         const currentElements: SurveyElement[] = getValues('elements') || [];
         const selectedIndices = selectedBlockIds
             .map(id => currentElements.findIndex(el => el.id === id))
@@ -312,29 +318,33 @@ export default function SurveyFormBuilder() {
 
             case 'visibility':
                 selectedIndices.forEach(idx => {
-                    updatedElements[idx] = { ...updatedElements[idx], hidden: value };
+                    updatedElements[idx] = { ...updatedElements[idx], hidden: Boolean(value) };
                 });
                 break;
 
             case 'align':
                 selectedIndices.forEach(idx => {
+                    const textAlignValue = typeof value === 'string' && ['left', 'center', 'right', 'justify'].includes(value)
+                        ? (value as 'left' | 'center' | 'right' | 'justify')
+                        : undefined;
                     updatedElements[idx] = { 
                         ...updatedElements[idx], 
-                        style: { ...(updatedElements[idx].style || {}), textAlign: value } 
+                        style: { ...(updatedElements[idx].style || {}), textAlign: textAlignValue } 
                     };
                 });
                 break;
 
             case 'format':
-                const tag = value;
+                const tag = typeof value === 'string' ? value : 'b';
                 selectedIndices.forEach(idx => {
                     const el = updatedElements[idx];
-                    const fieldsToFormat = ['title', 'description', 'text'];
-                    const updatedEl = { ...el };
+                    const fieldsToFormat: Array<'title' | 'description' | 'text'> = ['title', 'description', 'text'];
+                    const updatedEl: SurveyElement & { description?: string; text?: string } = { ...el };
                     
-                    fieldsToFormat.forEach(field => {
-                        if ((updatedEl as any)[field]) {
-                            (updatedEl as any)[field] = `<${tag}>${(updatedEl as any)[field]}</${tag}>`;
+                    fieldsToFormat.forEach((field) => {
+                        const val = updatedEl[field];
+                        if (typeof val === 'string' && val) {
+                            updatedEl[field] = `<${tag}>${val}</${tag}>`;
                         }
                     });
                     updatedElements[idx] = updatedEl;
@@ -347,16 +357,16 @@ export default function SurveyFormBuilder() {
             title: "Bulk Action Complete", 
             description: `Successfully applied ${action} to ${selectedIndices.length} blocks.` 
         });
-    }, [getValues, setValue, selectedBlockIds, toast]);
+    }, [getValues, setValue, selectedBlockIds, toast, confirm]);
 
-    React.useEffect(() => { triggerSave(debouncedForm); }, [debouncedForm, triggerSave]);
+    React.useEffect(() => { triggerSave(debouncedForm as Partial<Survey>); }, [debouncedForm, triggerSave]);
 
     React.useEffect(() => {
         if (isProgrammaticChange.current) {
             reset(historyState, { keepDirty: true });
             isProgrammaticChange.current = false;
         } else {
-            setHistory(watchedForm);
+            setHistory(watchedForm as Record<string, unknown>);
         }
     }, [watchedForm, historyState, reset, setHistory]);
 
@@ -709,7 +719,7 @@ export default function SurveyFormBuilder() {
                 organizationId={activeOrganization?.id}
                 onApplyRefinement={(patch) => {
                     if (!aiRefineQuestion) return;
-                    const idx = elements.findIndex((el: any) => el.id === aiRefineQuestion.id);
+                    const idx = elements.findIndex((el: SurveyElement) => el.id === aiRefineQuestion.id);
                     if (idx !== -1) {
                         Object.entries(patch).forEach(([key, val]) => {
                             setValue(`elements.${idx}.${key}`, val, { shouldDirty: true });
@@ -718,7 +728,7 @@ export default function SurveyFormBuilder() {
                 }}
                 onAddFollowupQuestion={(newQ) => {
                     if (!aiRefineQuestion) return;
-                    const idx = elements.findIndex((el: any) => el.id === aiRefineQuestion.id);
+                    const idx = elements.findIndex((el: SurveyElement) => el.id === aiRefineQuestion.id);
                     const newElem = {
                         ...newQ,
                         id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,

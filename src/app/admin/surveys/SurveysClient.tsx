@@ -72,6 +72,15 @@ function SurveyResponseCount({ surveyId }: { surveyId: string }) {
 }
 
 
+interface AssigneeLink {
+  userId: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  photoURL?: string;
+  link: string;
+}
+
 export default function SurveysClient() {
   const firestore = useFirestore();
   const router = useRouter();
@@ -82,7 +91,7 @@ export default function SurveysClient() {
   const [cloningId, setCloningId] = useState<string | null>(null);
   const [assigneeModalOpen, setAssigneeModalOpen] = useState(false);
   const [selectedSurvey, setSelectedSurvey] = useState<Survey | null>(null);
-  const [assigneeLinks, setAssigneeLinks] = useState<any[]>([]);
+  const [assigneeLinks, setAssigneeLinks] = useState<AssigneeLink[]>([]);
   const [loadingAssignees, setLoadingAssignees] = useState(false);
   const [shareSurvey, setShareSurvey] = useState<Survey | null>(null);
   
