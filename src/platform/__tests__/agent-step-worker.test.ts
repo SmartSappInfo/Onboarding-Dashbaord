@@ -240,6 +240,19 @@ describe('agent-step worker', () => {
     expect(outcome.body).toMatchObject({ status: 'failed', code: 'AUTHORIZATION_DENIED' });
   });
 
+  it('fails and halts execution when actor standing is revoked (Rule 18)', async () => {
+    const handler = vi.fn(async () => ok());
+    registerCapability(buildCapability(handler));
+    seedRunAndStep(db);
+    const outcome = await processAgentStep(payload, {
+      store: createFirestoreAgentStepStore(db.asFirestore()),
+      resolveCapability: getCapability,
+      verifyActorStanding: async () => ({ active: false, reason: 'User account suspended' }),
+    });
+    expect(handler).not.toHaveBeenCalled();
+    expect(outcome.body).toMatchObject({ status: 'failed', code: 'ACTOR_REVOKED', message: 'User account suspended' });
+  });
+
   it('refuses input that targets another workspace than the run', async () => {
     const handler = vi.fn(async () => ok());
     registerCapability(buildCapability(handler));

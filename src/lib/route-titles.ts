@@ -76,6 +76,7 @@ export const ADMIN_ROUTE_TITLES: RouteTitleMap = {
   '/admin/social/accounts': 'Social Accounts',
   '/admin/social/listening': 'Social Listening',
   '/admin/social/analytics': 'Social Analytics',
+  '/admin/activity': 'Activities',
   '/admin/activities': 'Activities',
   '/admin/workforce/intelligence': 'User Intelligence',
   '/admin/workforce/onboarding': 'Onboarding Journeys',

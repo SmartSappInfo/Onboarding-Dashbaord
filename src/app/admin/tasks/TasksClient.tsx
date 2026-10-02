@@ -44,7 +44,6 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
-    createTaskAction, 
     updateTaskAction, 
     deleteTaskAction, 
     bulkUpdateTasksAction, 
@@ -93,6 +92,13 @@ import { Progress } from '@/components/ui/progress';
 import { useTenant } from '@/context/TenantContext';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { getErrorMessage } from '@/lib/errors/report-error';
+import { useCapability } from '@/platform/capabilities/ui/use-capability';
+import { CapabilityErrorNotice } from '@/components/capabilities/CapabilityErrorNotice';
+import { VersionConflictDialog } from '@/components/capabilities/VersionConflictDialog';
+import type { ClientCapabilityError } from '@/platform/capabilities/ui/types';
+import type { TaskCreateInput, TaskCreateOutput } from '@/platform/domains/tasks_productivity/contracts/task-create.contract';
+import type { TaskCompleteInput, TaskCompleteOutput } from '@/platform/domains/tasks_productivity/contracts/task-complete.contract';
+import type { TaskUpdateInput, TaskUpdateOutput } from '@/platform/domains/tasks_productivity/contracts/task-update.contract';
 
 const PRIORITY_CONFIG: Record<TaskPriority, { label: string, color: string, icon: any }> = {
     urgent: { label: 'Urgent', color: 'text-rose-600 bg-rose-500/10 border-rose-200/20', icon: ShieldAlert },
@@ -140,6 +146,23 @@ export default function TasksClient() {
     const [searchTerm, setSearchTerm] = React.useState('');
     const [smartFilter, _setSmartFilter] = React.useState<'none' | 'today' | 'overdue'>('none');
     const [isSimpleView, setIsSimpleView] = React.useState(true);
+
+    // Capability Governance & Error/Conflict Surfaces (Phase 1 / PR-9 / PR-11)
+    const [capabilityError, setCapabilityError] = React.useState<ClientCapabilityError | null>(null);
+    const [versionConflict, setVersionConflict] = React.useState<{
+        expectedVersion?: string | number;
+        actualVersion?: string | number;
+    } | null>(null);
+
+    const taskCreateCap = useCapability<TaskCreateInput, TaskCreateOutput>('task.create', {
+        workspaceId: activeWorkspaceId,
+    });
+    const taskCompleteCap = useCapability<TaskCompleteInput, TaskCompleteOutput>('task.complete', {
+        workspaceId: activeWorkspaceId,
+    });
+    const taskUpdateCap = useCapability<TaskUpdateInput, TaskUpdateOutput>('task.update', {
+        workspaceId: activeWorkspaceId,
+    });
 
     // Date Interval Filter States
     const [dateFilterType, setDateFilterType] = React.useState<'all' | 'range' | 'month' | 'week' | 'day'>('all');
@@ -592,21 +615,51 @@ export default function TasksClient() {
         }
     };
 
-    const handleSaveTask = async (payload: any) => {
+    const handleSaveTask = async (payload: { title: string; description?: string; priority?: TaskPriority; dueDate?: string; entityId?: string; category?: string; [key: string]: unknown }) => {
         if (!currentUser) return;
         setIsSaving(true);
+        setCapabilityError(null);
         try {
-            const finalPayload = { ...payload, workspaceId: activeWorkspaceId };
-            const res = editingTask 
-                ? await updateTaskAction(editingTask.id, finalPayload)
-                : await createTaskAction(finalPayload);
+            if (editingTask) {
+                const outcome = await taskUpdateCap.execute({
+                    workspaceId: activeWorkspaceId,
+                    taskId: editingTask.id,
+                    title: payload.title,
+                    description: payload.description,
+                    priority: payload.priority,
+                    dueDate: payload.dueDate,
+                });
 
-            if (res.success) {
-                toast({ title: editingTask ? 'Task Architecture Synchronized' : 'Task Initialized' });
-                setEditorOpen(false);
-                setEditingTask(null);
+                if (outcome.success) {
+                    toast({ title: 'Task Architecture Synchronized' });
+                    setEditorOpen(false);
+                    setEditingTask(null);
+                } else {
+                    if (outcome.error.code === 'VERSION_CONFLICT' || outcome.error.conflict) {
+                        setVersionConflict(outcome.error.conflict || { expectedVersion: 'current', actualVersion: 'latest' });
+                    }
+                    setCapabilityError(outcome.error);
+                    toast({ variant: 'destructive', title: 'Operation Failed', description: outcome.error.message });
+                }
             } else {
-                toast({ variant: 'destructive', title: 'Operation Failed', description: res.error });
+                const outcome = await taskCreateCap.execute({
+                    workspaceId: activeWorkspaceId,
+                    title: payload.title,
+                    description: payload.description,
+                    priority: payload.priority,
+                    dueDate: payload.dueDate,
+                    entityId: payload.entityId,
+                    category: payload.category || 'follow_up',
+                });
+
+                if (outcome.success) {
+                    toast({ title: 'Task Initialized' });
+                    setEditorOpen(false);
+                    setEditingTask(null);
+                } else {
+                    setCapabilityError(outcome.error);
+                    toast({ variant: 'destructive', title: 'Operation Failed', description: outcome.error.message });
+                }
             }
         } catch (e: unknown) {
             toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) || "Failed to save task." });
@@ -638,14 +691,30 @@ export default function TasksClient() {
         if (!currentUser || !taskToComplete) return;
         
         const isDone = taskToComplete.status === 'done';
-        const newStatus = isDone ? 'todo' : 'done';
+        setCapabilityError(null);
         
         try {
-            const res = await updateTaskAction(taskToComplete.id, { ...taskToComplete, status: newStatus });
-            if (res.success) {
-                toast({ title: isDone ? 'Task Reopened' : 'Protocol Resolved' });
+            if (!isDone) {
+                const outcome = await taskCompleteCap.execute({
+                    workspaceId: activeWorkspaceId,
+                    taskId: taskToComplete.id,
+                });
+                if (outcome.success) {
+                    toast({ title: 'Protocol Resolved' });
+                } else {
+                    if (outcome.error.code === 'VERSION_CONFLICT' || outcome.error.conflict) {
+                        setVersionConflict(outcome.error.conflict || { expectedVersion: 'current', actualVersion: 'latest' });
+                    }
+                    setCapabilityError(outcome.error);
+                    toast({ variant: 'destructive', title: 'Update Failed', description: outcome.error.message });
+                }
             } else {
-                toast({ variant: 'destructive', title: 'Update Failed', description: res.error });
+                const res = await updateTaskAction(taskToComplete.id, { ...taskToComplete, status: 'todo' });
+                if (res.success) {
+                    toast({ title: 'Task Reopened' });
+                } else {
+                    toast({ variant: 'destructive', title: 'Update Failed', description: res.error });
+                }
             }
         } catch (e: unknown) {
             toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
@@ -830,6 +899,14 @@ export default function TasksClient() {
                         </TabsTrigger>
                     </TabsList>
                 </div>
+
+                {/* Capability Error Notice Surface (Rule 51 & PRD §53) */}
+                {capabilityError && (
+                    <CapabilityErrorNotice
+                        error={capabilityError}
+                        onDismiss={() => setCapabilityError(null)}
+                    />
+                )}
                 {activeTab === 'list' && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                         <StatCard 
@@ -1782,6 +1859,19 @@ export default function TasksClient() {
                     </div>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* TOCTOU Version Conflict Dialog (Rule 18, Rule 51 & Theme §8) */}
+            <VersionConflictDialog
+                open={!!versionConflict}
+                onOpenChange={(open) => !open && setVersionConflict(null)}
+                expectedVersion={versionConflict?.expectedVersion}
+                actualVersion={versionConflict?.actualVersion}
+                onReload={() => {
+                    setVersionConflict(null);
+                    setCapabilityError(null);
+                }}
+                resourceName="task"
+            />
             </Tabs>
         </PageContainerFluid>
     );

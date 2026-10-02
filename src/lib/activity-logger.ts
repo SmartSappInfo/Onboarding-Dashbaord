@@ -148,6 +148,20 @@ export async function logActivity(activityData: LogActivityInput): Promise<void>
                 });
             }
         }
+
+        // 5. STRANGLER BRIDGE TO REACTIVE EVENT BACKBONE (Phase 2 Milestone 2 - Rule 69)
+        // Bridges legacy activities to canonical DomainEvents asynchronously via runAfter
+        runAfter(async () => {
+            try {
+                const { bridgeLegacyActivityToEventBackbone } = await import(
+                    '@/platform/events/adapters/legacy-activity-strangler'
+                );
+                await bridgeLegacyActivityToEventBackbone(finalData);
+            } catch (bridgeErr: unknown) {
+                // Non-blocking fail-open (Rule 69): legacy logging must never be interrupted
+                console.warn('[ACTIVITY] Strangler bridge non-blocking dispatch error:', bridgeErr);
+            }
+        });
         
         // Recalculate score asynchronously on any logged activity
         if (finalData.entityId && finalData.workspaceId && finalData.organizationId) {

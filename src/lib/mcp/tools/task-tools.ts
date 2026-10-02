@@ -15,10 +15,13 @@
 
 import { z } from 'zod';
 import { McpToolDefinition } from '../types';
-import { adminDb } from '@/lib/firebase-admin';
-// The MCP gateway authenticates the caller before tools run, so tools use the task core directly.
-import { createTaskCore } from '@/lib/tasks/task-core';
-import type { TaskPriority, TaskStatus } from '@/lib/types';
+import { registerCapability } from '@/platform/capabilities/registry/capability-registry';
+import {
+  taskCreateCapability,
+} from '@/platform/domains/tasks_productivity/contracts/task-create.contract';
+import {
+  taskSearchCapability,
+} from '@/platform/domains/tasks_productivity/contracts/task-search.contract';
 
 // ==========================================
 // 1. task.list (Read-Only)
@@ -58,36 +61,34 @@ export const taskListTool: McpToolDefinition<
   parameters: listTasksInputSchema,
   responseSchema: listTasksOutputSchema,
   handler: async (params, context) => {
-    let queryRef: FirebaseFirestore.Query = adminDb
-      .collection('tasks')
-      .where('workspaceId', '==', context.workspaceId);
+    const callerUserId = context.callerType === 'agent' ? `system-${context.callerId}` : context.callerId;
+    const result = await taskSearchCapability.handler(
+      {
+        workspaceId: context.workspaceId,
+        entityId: params.entityId,
+        status: params.status,
+        limit: params.limit,
+      },
+      {
+        principal: {
+          actorType: context.callerType === 'agent' ? 'agent' : 'user',
+          userId: callerUserId,
+          agentId: context.callerType === 'agent' ? context.callerId : undefined,
+          workspaceId: context.workspaceId,
+          organizationId: context.organizationId,
+          grantedScopes: ['operations:tasks:view', 'app:tasks_view', 'tasks:read'],
+          effectiveRole: 'mcp_caller',
+        },
+        correlationId: context.requestId,
+        timestamp: context.timestamp,
+      }
+    );
 
-    if (params.entityId) {
-      queryRef = queryRef.where('entityId', '==', params.entityId);
+    if (!result.success) {
+      throw new Error(result.error.message || 'Failed to list tasks via MCP.');
     }
-    if (params.status) {
-      queryRef = queryRef.where('status', '==', params.status);
-    }
 
-    const snapshot = await queryRef.limit(params.limit ?? 10).get();
-
-    const tasks = snapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        title: data?.title || 'Untitled Task',
-        description: data?.description || '',
-        status: data?.status || 'todo',
-        priority: data?.priority || 'medium',
-        dueDate: data?.dueDate || null,
-        entityId: data?.entityId || null,
-      };
-    });
-
-    return {
-      totalFound: tasks.length,
-      tasks,
-    };
+    return result.data;
   },
 };
 
@@ -124,37 +125,38 @@ export const taskCreateTool: McpToolDefinition<
   responseSchema: createTaskOutputSchema,
   handler: async (params, context) => {
     const callerUserId = context.callerType === 'agent' ? `system-${context.callerId}` : context.callerId;
-
-    const result = await createTaskCore(
+    const result = await taskCreateCapability.handler(
       {
         workspaceId: context.workspaceId,
-        organizationId: context.organizationId,
         title: params.title,
-        description: params.description || '',
-        priority: (params.priority as TaskPriority) || 'medium',
-        dueDate: params.dueDate || new Date().toISOString(),
+        description: params.description,
+        priority: params.priority,
+        dueDate: params.dueDate,
         entityId: params.entityId,
-        status: 'todo' as TaskStatus,
-        category: 'follow_up',
-        assignedTo: callerUserId,
-        reminders: [],
-        reminderSent: false,
       },
-      // Agents act as system actors (as before); human callers are permission-checked as themselves.
-      context.callerType === 'agent'
-        ? { kind: 'system', source: callerUserId }
-        : { kind: 'user', uid: context.callerId }
+      {
+        principal: {
+          actorType: context.callerType === 'agent' ? 'agent' : 'user',
+          userId: callerUserId,
+          agentId: context.callerType === 'agent' ? context.callerId : undefined,
+          workspaceId: context.workspaceId,
+          organizationId: context.organizationId,
+          grantedScopes: ['operations:tasks:create', 'app:tasks_create', 'tasks:create'],
+          effectiveRole: 'mcp_caller',
+        },
+        correlationId: context.requestId,
+        timestamp: context.timestamp,
+      }
     );
 
-    if (!result.success || !result.id) {
-      throw new Error(result.error || 'Failed to create task via MCP.');
+    if (!result.success) {
+      throw new Error(result.error.message || 'Failed to create task via MCP.');
     }
 
-    return {
-      taskId: result.id,
-      title: params.title,
-      status: 'todo',
-      createdAt: new Date().toISOString(),
-    };
+    return result.data;
   },
 };
+
+// In-place upgrade of canonical capability definitions into unified registry (Decision D1 / Rule 69)
+registerCapability(taskCreateCapability, { allowOverride: true });
+registerCapability(taskSearchCapability, { allowOverride: true });

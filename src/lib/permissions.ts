@@ -43,6 +43,9 @@ export type Permission =
   | 'pipeline_manage'
   | 'finance_view'
   | 'finance_manage'
+  | 'portals_view'
+  | 'portals_manage'
+  | 'portal_members_manage'
   // SaaS permissions
   | 'saas_trials_manage'
   | 'saas_usage_view'
@@ -98,6 +101,9 @@ export function getIndustryPermissions(industry: IndustryVertical): Permission[]
     'pipeline_manage',
     'finance_view',
     'finance_manage',
+    'portals_view',
+    'portals_manage',
+    'portal_members_manage',
   ];
   
   const industryPermissions: Record<IndustryVertical, Permission[]> = {

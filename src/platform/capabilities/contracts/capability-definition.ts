@@ -121,11 +121,14 @@ export interface CapabilityExecutionSuccess<TOutput> {
   durationMs: number;
 }
 
+export type StateChanged = 'no' | 'yes' | 'unknown';
+
 export interface CapabilityExecutionFailure {
   success: false;
   error: {
     code: string;
     message: string;
+    stateChanged?: StateChanged;
     retryable: boolean;
     details?: unknown;
   };
@@ -138,6 +141,19 @@ export type CapabilityExecutionResult<TOutput> =
   | CapabilityExecutionSuccess<TOutput>
   | CapabilityExecutionFailure;
 
+export interface SchemaIssue {
+  path: (string | number)[];
+  message: string;
+}
+
+export type SchemaParseResult<T> =
+  | { success: true; data: T; error?: never }
+  | { success: false; data?: never; error: { issues: SchemaIssue[] } };
+
+export interface SchemaParser<T = unknown> {
+  safeParse(data: unknown): SchemaParseResult<T>;
+}
+
 export interface CapabilityDefinition<TInput = unknown, TOutput = unknown> {
   id: string; // e.g. "portal.membership.create_plan", "crm.contact.update"
   version: string; // SemVer string
@@ -146,8 +162,8 @@ export interface CapabilityDefinition<TInput = unknown, TOutput = unknown> {
   domain: CapabilityDomain;
   operation: CapabilityOperation;
 
-  inputSchema: z.ZodType<TInput>;
-  outputSchema: z.ZodType<TOutput>;
+  inputSchema: z.ZodType<TInput> | SchemaParser<TInput>;
+  outputSchema: z.ZodType<TOutput> | SchemaParser<TOutput>;
 
   permissions: string[];
   workspaceScoped: boolean;
@@ -178,6 +194,7 @@ export interface CapabilityDefinition<TInput = unknown, TOutput = unknown> {
     dataClassification?: 'public' | 'internal' | 'confidential' | 'restricted';
     breakingChangePolicy?: 'additive_only' | 'major_version_bump';
     implementationRef?: string;
+    isLegacyCompatibility?: boolean;
   };
 
   /** TOCTOU and Idempotency Policies */
@@ -185,7 +202,23 @@ export interface CapabilityDefinition<TInput = unknown, TOutput = unknown> {
     requiresIdempotencyKey: boolean;
     requiresExpectedVersion: boolean;
     auditRequired: boolean;
+    defaultEnabled?: boolean;
   };
+
+  /**
+   * Optional resource-level ownership/existence check (Step 7, PRD §73).
+   * Loads target record(s) and verifies they belong to the tenant/workspace.
+   * If a record is missing or belongs to another tenant, returns null/void to signal NOT_FOUND (never reveal existence).
+   */
+  resolveResourceScope?: (
+    input: TInput,
+    context: CapabilityExecutionContext
+  ) => Promise<{
+    organizationId?: string;
+    workspaceId?: string;
+    resourceId?: string;
+    resourceVersion?: string | number;
+  } | null | void>;
 
   /** The underlying canonical execution implementation */
   handler: (
@@ -196,10 +229,19 @@ export interface CapabilityDefinition<TInput = unknown, TOutput = unknown> {
 
 export type AnyCapabilityDefinition = Omit<
   CapabilityDefinition<never, unknown>,
-  'inputSchema' | 'outputSchema' | 'handler'
+  'inputSchema' | 'outputSchema' | 'handler' | 'resolveResourceScope'
 > & {
-  inputSchema: z.ZodType<unknown>;
-  outputSchema: z.ZodType<unknown>;
+  inputSchema: z.ZodType<unknown> | SchemaParser<unknown>;
+  outputSchema: z.ZodType<unknown> | SchemaParser<unknown>;
+  resolveResourceScope?(
+    input: unknown,
+    ctx: CapabilityExecutionContext
+  ): Promise<{
+    organizationId?: string;
+    workspaceId?: string;
+    resourceId?: string;
+    resourceVersion?: string | number;
+  } | null | void>;
   /**
    * Declared with method syntax on purpose: it lets any `CapabilityDefinition<TInput, TOutput>` be stored
    * here, while callers pass `unknown` input. Callers MUST pass the output of `inputSchema.safeParse`

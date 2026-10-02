@@ -22,11 +22,10 @@ import { isBackofficeSurface } from '@/lib/platform/app-surface';
 import type {
   AgentPrincipal,
   AnyCapabilityDefinition,
-  CapabilityExecutionContext,
 } from '../capabilities/contracts/capability-definition';
 import { sha256Hex } from '../capabilities/contracts/canonical-json';
-import { evaluatePrincipalAuthority } from '../capabilities/policy/principal-evaluator';
-import { findTenantMismatch } from '../tasks/agent-step-contract';
+import { executeCapability } from '../capabilities/execution/execute-capability';
+import type { CapabilityInvocation } from '../capabilities/execution/invocation';
 import { toMcpToolSchema } from './to-mcp-tool-schema';
 
 export interface McpToolAuditEntry {
@@ -62,14 +61,8 @@ export interface McpToolResult {
   isError?: boolean;
 }
 
-const MAX_REPORTED_ISSUES = 5;
-
 function textResult(text: string, isError = false): McpToolResult {
   return isError ? { content: [{ type: 'text', text }], isError: true } : { content: [{ type: 'text', text }] };
-}
-
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 export function toolNameFor(capabilityId: string): string {
@@ -123,72 +116,77 @@ export function createCapabilityToolHandler(
     // force agent rules (approvals, non-delegable, no wildcard) regardless of what was resolved.
     const principal: AgentPrincipal = { ...resolved, actorType: 'agent' };
 
-    // 2. Validate input; the handler only ever receives parsed data (Rule 31)
-    const parsed = cap.inputSchema.safeParse(args);
-    if (!parsed.success) {
-      const issues = parsed.error.issues
-        .slice(0, MAX_REPORTED_ISSUES)
-        .map((issue) => `${issue.path.join('.') || '(root)'}: ${issue.message}`)
-        .join('; ');
-      await record(principal, 'denied', 'denied', 'INVALID_INPUT');
-      return textResult(`Invalid input: ${issues}`, true);
-    }
-    const input: unknown = parsed.data;
-
-    // 3. Tenant binding: arguments may not point at another tenant than the caller's
-    const tenantMismatch = isPlainRecord(input) ? findTenantMismatch(input, principal) : null;
-    if (tenantMismatch) {
-      await record(principal, 'denied', 'denied', 'TENANT_SCOPE_VIOLATION');
-      return textResult('Access denied: the request targets a different organization or workspace.', true);
+    // 2. Derive deterministic idempotency key for tools requiring one (Rule 19)
+    // Pre-calculate parsed input for deterministic key hash if possible
+    let idempotencyKey: string | undefined;
+    if (cap.policies.requiresIdempotencyKey) {
+      const parsedCandidate = cap.inputSchema.safeParse(args);
+      const inputForHash = parsedCandidate.success ? parsedCandidate.data : args;
+      idempotencyKey = `mcp:${sha256Hex([
+        principal.organizationId,
+        principal.workspaceId,
+        principal.userId,
+        principal.agentId ?? '',
+        cap.id,
+        cap.version,
+        inputForHash,
+      ])}`;
     }
 
-    // 4. Authorize against the caller's authenticated tenant
-    const authority = evaluatePrincipalAuthority(principal, cap, {
-      organizationId: principal.organizationId,
-      workspaceId: principal.workspaceId,
-    });
-    if (!authority.allowed) {
-      await record(principal, 'denied', 'denied', 'AUTHORIZATION_DENIED');
-      return textResult(`Access denied: ${authority.reason ?? 'not authorized to invoke this capability.'}`, true);
-    }
-
-    // 5. Idempotency (Rule 19): identical calls by the same caller share a deterministic key,
-    //    so a client retry after a lost response cannot duplicate side effects.
-    const idempotencyKey = cap.policies.requiresIdempotencyKey
-      ? `mcp:${sha256Hex([principal.organizationId, principal.workspaceId, principal.userId, principal.agentId ?? '', cap.id, cap.version, input])}`
-      : undefined;
-
-    const context: CapabilityExecutionContext = {
+    // 3. Delegate to Canonical Execution Gateway (PR-4 / Rule 69)
+    const invocation: CapabilityInvocation = {
+      capabilityId: cap.id,
+      version: cap.version,
+      surface: 'mcp',
+      input: args,
       principal,
-      correlationId,
       idempotencyKey,
-      timestamp,
+      correlationId,
     };
 
-    // 6. Execute
-    let result;
-    try {
-      result = await cap.handler(input, context);
-    } catch (err: unknown) {
-      console.error(`[MCP] Capability '${cap.id}' threw (correlationId=${correlationId}):`, err);
-      await record(principal, 'allowed', 'failed', 'HANDLER_EXCEPTION');
-      return textResult(`Capability failed unexpectedly. Reference: ${correlationId}`, true);
+    const outcome = await executeCapability(invocation, {
+      registryLookup: (id) => (id === cap.id ? cap : undefined),
+    });
+
+    if (outcome.success) {
+      await record(principal, 'allowed', 'succeeded');
+      return textResult(typeof outcome.data === 'string' ? outcome.data : JSON.stringify(outcome.data, null, 2));
     }
 
-    if (!result.success) {
-      await record(principal, 'allowed', 'failed', result.error.code);
-      return textResult(`Error [${result.error.code}]: ${result.error.message}`, true);
-    }
+    // 4. Handle refusal or failure
+    const isDenied =
+      outcome.error.code === 'UNAUTHENTICATED' ||
+      outcome.error.code === 'AUTHORIZATION_DENIED' ||
+      outcome.error.code === 'APPROVAL_REQUIRED' ||
+      outcome.error.code === 'TENANT_SCOPE_VIOLATION' ||
+      outcome.error.code === 'INVALID_INPUT';
 
-    // 7. Output validation (Rule 48: never trust the tool either)
-    if (!cap.outputSchema.safeParse(result.data).success) {
+    await record(
+      outcome.error.code === 'UNAUTHENTICATED' ? null : principal,
+      isDenied ? 'denied' : 'allowed',
+      isDenied ? 'denied' : 'failed',
+      outcome.error.code
+    );
+
+    let text: string;
+    if (outcome.error.code === 'UNAUTHENTICATED') {
+      text = 'Access denied: authentication required.';
+    } else if (outcome.error.code === 'TENANT_SCOPE_VIOLATION') {
+      text = 'Access denied: the request targets a different organization or workspace.';
+    } else if (outcome.error.code === 'AUTHORIZATION_DENIED' || outcome.error.code === 'APPROVAL_REQUIRED') {
+      text = `Access denied: ${outcome.error.message}`;
+    } else if (outcome.error.code === 'INVALID_INPUT') {
+      text = outcome.error.message;
+    } else if (outcome.error.code === 'INVALID_OUTPUT') {
       console.error(`[MCP] Capability '${cap.id}' returned output that failed its schema (correlationId=${correlationId}).`);
-      await record(principal, 'allowed', 'failed', 'INVALID_OUTPUT');
-      return textResult(`Capability returned an invalid result. Reference: ${correlationId}`, true);
+      text = `Capability returned an invalid result. Reference: ${correlationId}`;
+    } else if (outcome.error.code === 'HANDLER_EXCEPTION' || outcome.error.code === 'TIMEOUT') {
+      text = `Capability failed unexpectedly. Reference: ${correlationId}`;
+    } else {
+      text = `Error [${outcome.error.code}]: ${outcome.error.message}`;
     }
 
-    await record(principal, 'allowed', 'succeeded');
-    return textResult(typeof result.data === 'string' ? result.data : JSON.stringify(result.data, null, 2));
+    return textResult(text, true);
   };
 }
 

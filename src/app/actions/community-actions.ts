@@ -472,10 +472,10 @@ export async function seedCommunitySpacesAction(
 
 export async function getMemberPublicProfileAction(
   portalId: string,
-  userId: string
+  targetUserId: string
 ): Promise<ActionResponse<MemberPublicProfile | null>> {
   try {
-    const profile = await CommunityService.getMemberPublicProfile(portalId, userId);
+    const profile = await CommunityService.getMemberPublicProfile(portalId, targetUserId);
     return { success: true, data: profile };
   } catch (err: unknown) {
     return failure(err, 'Failed to load member profile.');

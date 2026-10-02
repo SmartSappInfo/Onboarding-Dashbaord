@@ -216,20 +216,25 @@ export async function inviteUserAction(params: {
         }
 
         // 6. Generate tamper-proof encrypted onboarding payload
-        const exp = Date.now() + 7 * 24 * 60 * 60 * 1000;
-        const encryptedInviteToken = InviteCryptoService.encryptInvitePayload({
-            invitationId: invitationId || userRecord.uid,
-            organizationId,
-            organizationName: orgName,
-            departmentId: deptId || '',
-            departmentName: finalDeptName,
-            email,
-            fullName,
-            tempPassword,
-            workspaceId: workspaceIds[0] || undefined,
-            roleIds: workspaceRoles[workspaceIds[0]] || [],
-            exp,
-        });
+        let encryptedInviteToken: string | undefined;
+        try {
+            const exp = Date.now() + 7 * 24 * 60 * 60 * 1000;
+            encryptedInviteToken = InviteCryptoService.encryptInvitePayload({
+                invitationId: invitationId || userRecord.uid,
+                organizationId,
+                organizationName: orgName,
+                departmentId: deptId || '',
+                departmentName: finalDeptName,
+                email,
+                fullName,
+                tempPassword,
+                workspaceId: workspaceIds[0] || undefined,
+                roleIds: workspaceRoles[workspaceIds[0]] || [],
+                exp,
+            });
+        } catch (cryptoErr) {
+            console.warn('[inviteUserAction] Failed to generate encryptedInviteToken, falling back to direct login link:', cryptoErr);
+        }
 
         // 7. Dispatch credentials over requested channels (Email, SMS, WhatsApp)
         const dispatchRes = await InvitationDispatchService.dispatchUserCredentials({

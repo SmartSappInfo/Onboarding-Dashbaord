@@ -1,21 +1,27 @@
 /**
- * @fileOverview CompanyBrain 2.0 Phase 6: Governed CRM Entity MCP Tools
+ * @fileOverview CompanyBrain 2.0 Phase 6 / Phase 1: Governed CRM Entity MCP Tools
  *
- * ARCHITECTURAL GUIDELINES & CAUTION FOR MAINTAINERS (Rule 10):
+ * ARCHITECTURAL GUIDELINES & CAUTION FOR MAINTAINERS (Rule 10 & Rule 69):
  * 1. Single Source of Truth for CRM Data:
- *    - Reads directly from Firestore `/entities` with tenant scoping.
+ *    - Delegates directly to canonical capabilities `entityGetCapability` and `entitySearchCapability`.
  * 2. Risk Tier:
- *    - `crm.get_entity`: read_only (Zero mutation, scoped by workspaceId).
- *    - `crm.search_entities`: read_only (Tenant-safe search).
+ *    - `crm.get_entity`: read_only (L0_READ, scoped by workspaceId).
+ *    - `crm.search_entities`: read_only (L0_READ, bounded search <= 100).
  * 3. Strict Zero-`any` & Zero-`unknown` Invariant:
  *    - Uses Zod schemas and recursive `McpPayloadValue`.
+ * 4. In-Place Upgrades:
+ *    - Registers canonical definitions with `{ allowOverride: true }`.
  *
- * @testability Covered in `src/lib/mcp/__tests__/mcp-gateway.test.ts`.
+ * @testability Covered in `src/lib/mcp/__tests__/mcp-gateway.test.ts` and `src/platform/__tests__/domains/crm-entities.test.ts`.
  */
 
 import { z } from 'zod';
 import { McpToolDefinition } from '../types';
-import { adminDb } from '@/lib/firebase-admin';
+import { registerCapability } from '@/platform/capabilities/registry/capability-registry';
+import {
+  entityGetCapability,
+  entitySearchCapability,
+} from '@/platform/domains/crm_contacts/contracts/entity-capabilities.contract';
 
 // ==========================================
 // 1. crm.get_entity (Read-Only)
@@ -51,38 +57,32 @@ export const crmGetEntityTool: McpToolDefinition<
   parameters: getEntityInputSchema,
   responseSchema: getEntityOutputSchema,
   handler: async (params, context) => {
-    const docSnap = await adminDb.collection('entities').doc(params.entityId).get();
-    if (!docSnap.exists) {
-      throw new Error(`[crm.get_entity] Entity "${params.entityId}" not found.`);
+    const callerUserId = context.callerType === 'agent' ? `system-${context.callerId}` : context.callerId;
+    const result = await entityGetCapability.handler(
+      {
+        workspaceId: context.workspaceId,
+        entityId: params.entityId,
+      },
+      {
+        principal: {
+          actorType: context.callerType === 'agent' ? 'agent' : 'user',
+          userId: callerUserId,
+          agentId: context.callerType === 'agent' ? context.callerId : undefined,
+          workspaceId: context.workspaceId,
+          organizationId: context.organizationId,
+          grantedScopes: ['operations:campuses:view', 'app:contacts_view', 'crm:entities:read'],
+          effectiveRole: 'mcp_caller',
+        },
+        correlationId: context.requestId,
+        timestamp: context.timestamp,
+      }
+    );
+
+    if (!result.success) {
+      throw new Error(`[crm.get_entity] ${result.error.message}`);
     }
 
-    const data = docSnap.data();
-    if (data?.workspaceId && data.workspaceId !== context.workspaceId) {
-      throw new Error(`[crm.get_entity] Access denied: entity belongs to another workspace.`);
-    }
-
-    const name = data?.name || data?.displayName || 'Unknown Entity';
-    const type = data?.type || 'company';
-    const status = data?.status || 'active';
-    const industry = data?.industry || 'general';
-    const email = data?.email || data?.primaryContact?.email || null;
-    const phone = data?.phone || data?.primaryContact?.phone || null;
-    const city = data?.city || null;
-    const address = data?.address || null;
-    const createdAt = data?.createdAt || new Date().toISOString();
-
-    return {
-      id: docSnap.id,
-      name,
-      type,
-      status,
-      industry,
-      email,
-      phone,
-      city,
-      address,
-      createdAt,
-    };
+    return result.data;
   },
 };
 
@@ -123,56 +123,47 @@ export const crmSearchEntitiesTool: McpToolDefinition<
   parameters: searchEntitiesInputSchema,
   responseSchema: searchEntitiesOutputSchema,
   handler: async (params, context) => {
-    const limitCount = params.limit ?? 10;
-    const normalizedQuery = params.query.toLowerCase().trim();
-
-    // Query workspace entities (up to 100 recent)
-    const snapshot = await adminDb
-      .collection('entities')
-      .where('workspaceId', '==', context.workspaceId)
-      .limit(100)
-      .get();
-
-    const matches: Array<{
-      id: string;
-      name: string;
-      type: string;
-      status: string;
-      industry: string;
-      email: string | null;
-      phone: string | null;
-    }> = [];
-
-    for (const doc of snapshot.docs) {
-      const data = doc.data();
-      const name = (data?.name || data?.displayName || '').toLowerCase();
-      const email = (data?.email || data?.primaryContact?.email || '').toLowerCase();
-      const industry = (data?.industry || '').toLowerCase();
-
-      if (
-        name.includes(normalizedQuery) ||
-        email.includes(normalizedQuery) ||
-        industry.includes(normalizedQuery)
-      ) {
-        matches.push({
-          id: doc.id,
-          name: data?.name || data?.displayName || 'Unknown Entity',
-          type: data?.type || 'company',
-          status: data?.status || 'active',
-          industry: data?.industry || 'general',
-          email: data?.email || data?.primaryContact?.email || null,
-          phone: data?.phone || data?.primaryContact?.phone || null,
-        });
-
-        if (matches.length >= limitCount) {
-          break;
-        }
+    const callerUserId = context.callerType === 'agent' ? `system-${context.callerId}` : context.callerId;
+    const result = await entitySearchCapability.handler(
+      {
+        workspaceId: context.workspaceId,
+        query: params.query,
+        limit: params.limit,
+      },
+      {
+        principal: {
+          actorType: context.callerType === 'agent' ? 'agent' : 'user',
+          userId: callerUserId,
+          agentId: context.callerType === 'agent' ? context.callerId : undefined,
+          workspaceId: context.workspaceId,
+          organizationId: context.organizationId,
+          grantedScopes: ['operations:campuses:view', 'app:contacts_view', 'crm:entities:read'],
+          effectiveRole: 'mcp_caller',
+        },
+        correlationId: context.requestId,
+        timestamp: context.timestamp,
       }
+    );
+
+    if (!result.success) {
+      throw new Error(`[crm.search_entities] ${result.error.message}`);
     }
 
     return {
-      totalFound: matches.length,
-      entities: matches,
+      totalFound: result.data.totalFound,
+      entities: result.data.entities.map((e) => ({
+        id: e.id,
+        name: e.name,
+        type: e.type,
+        status: e.status,
+        industry: e.industry,
+        email: e.email,
+        phone: e.phone,
+      })),
     };
   },
 };
+
+// In-place upgrade of canonical capability definitions into unified registry (Decision D1 / Rule 69)
+registerCapability(entityGetCapability, { allowOverride: true });
+registerCapability(entitySearchCapability, { allowOverride: true });

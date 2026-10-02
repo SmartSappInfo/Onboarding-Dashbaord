@@ -1,5 +1,12 @@
-import ActivitiesClient from './ActivitiesClient';
-import { Metadata } from 'next';
+import GlobalActivityClient from '../activity/GlobalActivityClient';
+import type { Metadata } from 'next';
+
+/**
+ * @fileOverview Legacy Activities Route Alias (Rule 1, Rule 69)
+ *
+ * Seamlessly wrappers the unified GlobalActivityClient to preserve 100% backward
+ * compatibility for existing bookmarks, internal route links, and sidebar entries.
+ */
 
 export const metadata: Metadata = {
   title: 'Platform Audit Trail',
@@ -10,5 +17,5 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 export default function ActivitiesPage() {
-  return <ActivitiesClient />;
+  return <GlobalActivityClient />;
 }

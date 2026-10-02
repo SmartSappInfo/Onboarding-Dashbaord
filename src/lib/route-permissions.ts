@@ -78,6 +78,7 @@ export const ROUTE_PERMISSION_MAP: { path: string; check: RoutePermissionCheck }
     { path: '/admin/verify-studio', check: { label: 'Verify Studio', section: 'studios', feature: 'verifyStudio' } },
 
     // Management
+    { path: '/admin/activity', check: { label: 'Activities', section: 'management', feature: 'activities' } },
     { path: '/admin/activities', check: { label: 'Activities', section: 'management', feature: 'activities' } },
     { path: '/admin/settings/fields', check: { label: 'Fields & Variables', section: 'management', feature: 'fields' } },
     { path: '/admin/settings/invitation', check: { label: 'Messaging Settings', section: 'management', feature: 'messagingSettings' } },

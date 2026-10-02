@@ -33,7 +33,16 @@ import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 import { useEntityResolver } from '@/context/EntityCacheContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { triggerInternalNotification } from '@/lib/notification-engine';
-import { updateDealStageAction, updateStageOrdersAction } from '@/app/actions/deal-actions';
+import { updateStageOrdersAction } from '@/app/actions/deal-actions';
+import { useCapability } from '@/platform/capabilities/ui/use-capability';
+import { CapabilityErrorNotice } from '@/components/capabilities/CapabilityErrorNotice';
+import { VersionConflictDialog } from '@/components/capabilities/VersionConflictDialog';
+import type { ClientCapabilityError } from '@/platform/capabilities/ui/types';
+import type {
+  DealAdvanceStageInput,
+  DealAdvanceStageOutput,
+} from '@/platform/domains/deals_revenue/contracts/deal-capabilities.contract';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import {
   Dialog,
   DialogContent,
@@ -174,6 +183,20 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
   const [mounted, setMounted] = React.useState<boolean>(false);
   const [draggedItemWidth, setDraggedItemWidth] = React.useState<number | null>(null);
 
+  // Canonical Capability Hook & Conflict/Error State (PR-12 UI Proof Point)
+  const [capabilityError, setCapabilityError] = React.useState<ClientCapabilityError | null>(null);
+  const [versionConflict, setVersionConflict] = React.useState<{
+    expectedVersion?: string | number;
+    actualVersion?: string | number;
+  } | null>(null);
+
+  const dealAdvanceStageCap = useCapability<DealAdvanceStageInput, DealAdvanceStageOutput>(
+    'deal.advance_stage',
+    {
+      workspaceId: activeWorkspaceId,
+    }
+  );
+
   React.useEffect(() => {
     setMounted(true);
   }, []);
@@ -307,11 +330,32 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
     try {
       const lostReasonString = `${selectedReason}${extraNotes ? ': ' + extraNotes : ''}`;
       
-      const res = await updateDealStageAction(deal.id, targetStage.id, {
-        status: 'lost',
-        lostReason: lostReasonString,
+      const outcome = await dealAdvanceStageCap.execute({
+        workspaceId: activeWorkspaceId,
+        dealId: deal.id,
+        stageId: targetStage.id,
+        reason: lostReasonString,
+        bypassValidation: true,
       });
-      if (!res.success) throw new Error(res.error || 'Failed to update deal stage');
+
+      if (!outcome.success) {
+        if (outcome.error.code === 'VERSION_CONFLICT' || outcome.error.conflict) {
+          setVersionConflict(
+            outcome.error.conflict || { expectedVersion: 'current', actualVersion: 'latest' }
+          );
+        }
+        setCapabilityError(outcome.error);
+        toast({
+          variant: 'destructive',
+          title: 'Stage Advance Failed',
+          description: outcome.error.message,
+        });
+        setDealsByStage(initialDealsByStage.current);
+        setPendingLostDeal(null);
+        setSelectedReason('Competitor');
+        setExtraNotes('');
+        return;
+      }
 
       toast({
         title: 'Deal Updated',
@@ -319,6 +363,7 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
       });
 
       initialDealsByStage.current = dealsByStage;
+      setCapabilityError(null);
       setPendingLostDeal(null);
       setSelectedReason('Competitor');
       setExtraNotes('');
@@ -423,17 +468,37 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
         return;
       }
 
-      // 3. Normal or Terminal Won Progression
+      // 3. Normal or Terminal Won Progression via useCapability('deal.advance_stage')
       try {
         const isWonStage = newStage.terminalType === 'won' || newStage.isWon || newStage.name.toLowerCase().includes('won') || newStage.name.toLowerCase().includes('live');
-        const targetStatus = isWonStage ? 'won' : 'open';
 
-        const resStage = await updateDealStageAction(deal.id, newStage.id, {
-          status: targetStatus,
+        const outcome = await dealAdvanceStageCap.execute({
+          workspaceId: activeWorkspaceId,
+          dealId: deal.id,
+          stageId: newStage.id,
         });
-        if (!resStage.success) {
-          throw new Error(resStage.error || 'Failed to update deal stage');
+
+        if (!outcome.success) {
+          // Refusal Rollback (PR-12 / Rule 23 / Rule 51): Restore card to origin column
+          setDealsByStage(initialDealsByStage.current);
+
+          if (outcome.error.code === 'VERSION_CONFLICT' || outcome.error.conflict) {
+            setVersionConflict(
+              outcome.error.conflict || { expectedVersion: 'current', actualVersion: 'latest' }
+            );
+          }
+          setCapabilityError(outcome.error);
+          toast({
+            variant: 'destructive',
+            title: 'Stage Advance Rejected',
+            description: outcome.error.message,
+          });
+          return;
         }
+
+        // Commit optimistic drag state on success
+        initialDealsByStage.current = dealsByStage;
+        setCapabilityError(null);
 
         toast({
           title: isWonStage ? '🎉 Deal Won!' : 'Deal Moved',
@@ -443,7 +508,6 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
             label: 'View Deal',
           },
         });
-        initialDealsByStage.current = dealsByStage;
 
         if (isWonStage) {
           triggerInternalNotification({
@@ -502,6 +566,16 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
+      {/* Capability Error / Refusal Banner (Rule 51) */}
+      {capabilityError && (
+        <div className="px-6 pt-3 shrink-0">
+          <CapabilityErrorNotice
+            error={capabilityError}
+            onDismiss={() => setCapabilityError(null)}
+          />
+        </div>
+      )}
+
       {/* Mobile Stage Switcher */}
       <MobileStageSwitcher
         stages={stages}
@@ -586,7 +660,7 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
           document.body
         ) : null}
 
-      {/* Loss Reason Dialog */}
+      {/* Loss Reason Dialog (SSOT Modal Architecture conforming to theme.md §8) */}
       <Dialog open={pendingLostDeal !== null} onOpenChange={(open) => {
         if (!open) {
           setDealsByStage(initialDealsByStage.current);
@@ -595,22 +669,25 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
           setExtraNotes('');
         }
       }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
+        <DialogContent className="max-w-md border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl font-figtree">
+          <DialogHeader demarcated>
+            <div className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-              Mark Deal as Lost
-            </DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground mt-1">
-              Please specify the reason why you lost the deal for <strong>{pendingLostDeal?.deal.name}</strong>.
+              <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">
+                Mark Deal as Lost
+              </DialogTitle>
+              <CardInfoTooltip text={`Specify why ${pendingLostDeal?.deal.name || 'this deal'} was marked as lost.`} />
+            </div>
+            <DialogDescription className="sr-only">
+              Please specify the reason why you lost the deal for {pendingLostDeal?.deal.name}.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 px-6 py-4">
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Reason Category</label>
               <Select value={selectedReason} onValueChange={setSelectedReason}>
-                <SelectTrigger className="w-full rounded-xl border border-input bg-background/50 hover:bg-background/80 transition-colors">
+                <SelectTrigger className="w-full min-h-[44px] rounded-xl border border-input bg-background/50 hover:bg-background/80 transition-colors">
                   <SelectValue placeholder="Select a reason" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-none shadow-2xl">
@@ -634,7 +711,7 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
             </div>
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
             <Button
               variant="ghost"
               onClick={() => {
@@ -644,14 +721,14 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
                 setExtraNotes('');
               }}
               disabled={isSavingLoss}
-              className="rounded-xl font-bold text-xs"
+              className="rounded-xl font-bold text-xs min-h-[44px] active:scale-[0.97]"
             >
               Cancel
             </Button>
             <Button
               onClick={handleSaveLossReason}
               disabled={isSavingLoss}
-              className="rounded-xl font-bold text-xs bg-red-600 hover:bg-red-700 text-white shrink-0"
+              className="rounded-xl font-bold text-xs min-h-[44px] bg-red-600 hover:bg-red-700 text-white shrink-0 active:scale-[0.97]"
             >
               {isSavingLoss ? 'Saving...' : 'Confirm Lost'}
             </Button>
@@ -669,6 +746,15 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
         onSuccess={() => {
           setPendingBlockedDeal(null);
         }}
+      />
+
+      {/* Version Conflict Modal (Rule 18 / Rule 51) */}
+      <VersionConflictDialog
+        open={versionConflict !== null}
+        onOpenChange={(open) => !open && setVersionConflict(null)}
+        expectedVersion={versionConflict?.expectedVersion}
+        actualVersion={versionConflict?.actualVersion}
+        onReload={() => setVersionConflict(null)}
       />
     </DndContext>
     </div>

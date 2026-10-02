@@ -14,9 +14,11 @@ import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import type { Tag, TagCategory } from '@/lib/types';
-import { applyTagsAction, removeTagsAction, createTagAction } from '@/lib/tag-actions';
+import { createTagAction } from '@/lib/tag-actions';
 import { useToast } from '@/hooks/use-toast';
-import { withRetryAction } from '@/lib/tag-retry';
+import { useCapability } from '@/platform/capabilities/ui/use-capability';
+import type { AddTagInput, AddTagOutput } from '@/platform/domains/crm_contacts/contracts/tag-capabilities.contract';
+import type { RemoveTagInput, RemoveTagOutput } from '@/platform/domains/crm_contacts/contracts/tag-capabilities.contract';
 import { ToastAction } from '@/components/ui/toast';
 import { HighlightedText } from './HighlightedText';
 import { Button } from '@/components/ui/button';
@@ -121,6 +123,13 @@ export function TagSelector({
 
   const [optimisticTagIds, setOptimisticTagIds] = useOptimistic<string[]>(localTagIds);
   const [isPending, startTransition] = useTransition();
+
+  const addTagCap = useCapability<AddTagInput, AddTagOutput>('crm.entity.add_tag', {
+    workspaceId: activeWorkspaceId,
+  });
+  const removeTagCap = useCapability<RemoveTagInput, RemoveTagOutput>('crm.entity.remove_tag', {
+    workspaceId: activeWorkspaceId,
+  });
 
   const recentTagsKey = `recent_tags_${activeWorkspaceId}`;
 
@@ -267,15 +276,13 @@ export function TagSelector({
     startTransition(async () => {
       setOptimisticTagIds(prev => prev.includes(tagId) ? prev : [...prev, tagId]);
       
-      const result = await withRetryAction(
-        () => applyTagsAction(contactId, contactType, [tagId], user.uid, user.displayName || undefined),
-        {
-          onRetry: (attempt) => {
-            setAnnouncement(`Retrying… attempt ${attempt + 1}`);
-          },
-        }
-      );
-      if (result.success) {
+      const outcome = await addTagCap.execute({
+        workspaceId: activeWorkspaceId,
+        entityId: contactId,
+        tagIds: [tagId],
+      });
+
+      if (outcome.success) {
         recordRecentTag(tagId);
         setLocalTagIds(prev => {
           const next = prev.includes(tagId) ? prev : [...prev, tagId];
@@ -297,7 +304,8 @@ export function TagSelector({
           ),
         });
       } else {
-        toast({ variant: 'destructive', title: 'Error', description: result.error });
+        setOptimisticTagIds(prev => prev.filter(id => id !== tagId));
+        toast({ variant: 'destructive', title: 'Error', description: outcome.error?.message || 'Failed to apply tag' });
         setAnnouncement(`Failed to apply tag`);
       }
     });
@@ -321,15 +329,13 @@ export function TagSelector({
     startTransition(async () => {
       setOptimisticTagIds(prev => prev.filter(id => id !== tagId));
 
-      const result = await withRetryAction(
-        () => removeTagsAction(contactId, contactType, [tagId], user.uid, user.displayName || undefined),
-        {
-          onRetry: (attempt) => {
-            setAnnouncement(`Retrying… attempt ${attempt + 1}`);
-          },
-        }
-      );
-      if (result.success) {
+      const outcome = await removeTagCap.execute({
+        workspaceId: activeWorkspaceId,
+        entityId: contactId,
+        tagIds: [tagId],
+      });
+
+      if (outcome.success) {
         setLocalTagIds(prev => {
           const next = prev.filter(id => id !== tagId);
           setTimeout(() => onTagsChange?.(next), 0);
@@ -350,7 +356,8 @@ export function TagSelector({
           ),
         });
       } else {
-        toast({ variant: 'destructive', title: 'Error', description: result.error });
+        setOptimisticTagIds(prev => prev.includes(tagId) ? prev : [...prev, tagId]);
+        toast({ variant: 'destructive', title: 'Error', description: outcome.error?.message || 'Failed to remove tag' });
       }
     });
   };

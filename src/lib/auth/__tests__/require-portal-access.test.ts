@@ -8,7 +8,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const h = vi.hoisted(() => ({
-  session: null as null | { uid: string; isSystemAdmin: boolean; profile: { organizationId?: string } },
+  session: null as null | {
+    uid: string;
+    isSystemAdmin: boolean;
+    profile: {
+      organizationId?: string;
+      permissions?: string[];
+      role?: string;
+      roles?: string[];
+      roleNames?: string[];
+    };
+  },
   tokens: new Map<string, { uid: string; email?: string }>(),
   portals: new Map<string, { id: string; organizationId: string }>(),
   memberships: new Map<string, { status: string }>(),
@@ -68,6 +78,7 @@ import {
   portalIdOfRecord,
   requirePortalAdmin,
   requirePortalMember,
+  requirePortalOrganizationAdmin,
   requirePortalUser,
 } from '@/lib/auth/require-portal-access';
 
@@ -100,6 +111,74 @@ describe('requirePortalAdmin', () => {
   it('refuses unknown portals', async () => {
     h.session = { uid: 'u1', isSystemAdmin: false, profile: { organizationId: 'org-1' } };
     await expect(requirePortalAdmin('missing')).rejects.toThrow('Portal not found.');
+  });
+
+  describe('granular portal permissions (PR-3)', () => {
+    it('enforces view vs manage vs members permissions for staff', async () => {
+      // User with view only
+      h.session = {
+        uid: 'u-view',
+        isSystemAdmin: false,
+        profile: { organizationId: 'org-1', permissions: ['portals_view'] },
+      };
+      await expect(requirePortalAdmin('p1', 'view')).resolves.toMatchObject({ portal: { id: 'p1' } });
+      await expect(requirePortalAdmin('p1', 'manage')).rejects.toThrow(/Insufficient permissions/);
+      await expect(requirePortalAdmin('p1', 'members')).rejects.toThrow(/Insufficient permissions/);
+
+      // User with members only
+      h.session = {
+        uid: 'u-members',
+        isSystemAdmin: false,
+        profile: { organizationId: 'org-1', permissions: ['portal_members_manage'] },
+      };
+      await expect(requirePortalAdmin('p1', 'members')).resolves.toMatchObject({ portal: { id: 'p1' } });
+      await expect(requirePortalAdmin('p1', 'manage')).rejects.toThrow(/Insufficient permissions/);
+
+      // User with manage (grants view, manage, and members)
+      h.session = {
+        uid: 'u-manage',
+        isSystemAdmin: false,
+        profile: { organizationId: 'org-1', permissions: ['portals_manage'] },
+      };
+      await expect(requirePortalAdmin('p1', 'view')).resolves.toMatchObject({ portal: { id: 'p1' } });
+      await expect(requirePortalAdmin('p1', 'manage')).resolves.toMatchObject({ portal: { id: 'p1' } });
+      await expect(requirePortalAdmin('p1', 'members')).resolves.toMatchObject({ portal: { id: 'p1' } });
+
+      // User with no portal permissions
+      h.session = {
+        uid: 'u-none',
+        isSystemAdmin: false,
+        profile: { organizationId: 'org-1', permissions: ['contacts_view'] },
+      };
+      await expect(requirePortalAdmin('p1', 'view')).rejects.toThrow(/Insufficient permissions/);
+      await expect(requirePortalAdmin('p1', 'manage')).rejects.toThrow(/Insufficient permissions/);
+    });
+
+    it('allows admin role or system admin regardless of explicit permissions', async () => {
+      h.session = {
+        uid: 'admin-1',
+        isSystemAdmin: false,
+        profile: { organizationId: 'org-1', role: 'admin', permissions: [] },
+      };
+      await expect(requirePortalAdmin('p1', 'manage')).resolves.toMatchObject({ portal: { id: 'p1' } });
+
+      h.session = {
+        uid: 'sysadmin',
+        isSystemAdmin: true,
+        profile: { organizationId: 'other-org', permissions: [] },
+      };
+      await expect(requirePortalAdmin('p1', 'manage')).resolves.toMatchObject({ portal: { id: 'p1' } });
+    });
+
+    it('enforces permissions in requirePortalOrganizationAdmin', async () => {
+      h.session = {
+        uid: 'u-view',
+        isSystemAdmin: false,
+        profile: { organizationId: 'org-1', permissions: ['portals_view'] },
+      };
+      await expect(requirePortalOrganizationAdmin('org-1', 'view')).resolves.toMatchObject({ uid: 'u-view' });
+      await expect(requirePortalOrganizationAdmin('org-1', 'manage')).rejects.toThrow(/Insufficient permissions/);
+    });
   });
 });
 

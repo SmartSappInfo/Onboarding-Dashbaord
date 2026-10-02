@@ -15,6 +15,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { isAuthorizedCloudTaskRequest } from '@/lib/security/cloud-tasks-auth';
+import { verifyCloudTasksOidcToken } from '@/lib/security/cloud-tasks-oidc';
 import { toClientErrorMessage } from '@/lib/errors/report-error';
 import { createFirestoreApprovalVerifier } from '@/platform/capabilities/policy/approval-verifier';
 import { getCapability } from '@/platform/capabilities/registry/capability-registry';
@@ -25,10 +26,17 @@ import { createFirestoreAgentStepStore } from '@/platform/tasks/firestore-agent-
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
-  // 1. Authenticate Cloud Tasks handshake (fail-closed)
+  // 1. Authenticate Cloud Tasks handshake secret (fail-closed, Rule 34)
   if (!isAuthorizedCloudTaskRequest(request.headers)) {
     console.warn('[AGENT-STEP-WORKER] Unauthorized Cloud Tasks handshake signature.');
     return NextResponse.json({ error: 'Unauthorized handshake signature' }, { status: 401 });
+  }
+
+  // 2. Authenticate Cloud Tasks OIDC token (fail-closed in prod, dev-bypass allowed in non-prod, Rule 13 & 34)
+  const oidcResult = await verifyCloudTasksOidcToken(request.headers);
+  if (!oidcResult.authorized) {
+    console.warn('[AGENT-STEP-WORKER] Unauthorized Cloud Tasks OIDC token:', oidcResult.reason);
+    return NextResponse.json({ error: oidcResult.reason || 'Unauthorized OIDC token' }, { status: 401 });
   }
 
   try {

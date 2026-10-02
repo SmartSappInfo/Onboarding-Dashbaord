@@ -267,6 +267,27 @@ describe('agent-step worker with approvals', () => {
     const outcome = await process(false);
     expect(outcome.body).toMatchObject({ status: 'failed', code: 'APPROVAL_VERIFIER_UNAVAILABLE' });
   });
+
+  it('does not burn or bind approval if base authority (e.g. scopes revoked) fails', async () => {
+    const handler = vi.fn(sendMessage.handler);
+    registerCapability({ ...sendMessage, handler });
+    db.write(`${CAPABILITY_APPROVALS_COLLECTION}/appr-1`, approvalRecord());
+    db.write('agent_runs/run-9', {
+      runId: 'run-9',
+      ...tenant,
+      principal: { actorType: 'agent', userId: 'user-1', ...tenant, agentId: 'sdr-agent', grantedScopes: [], effectiveRole: 'agent' },
+      status: 'running',
+      correlationId: 'corr',
+      createdAt: '2026-09-27T10:00:00.000Z',
+      updatedAt: '2026-09-27T10:00:00.000Z',
+    });
+
+    const outcome = await process();
+    expect(outcome.body).toMatchObject({ status: 'failed', code: 'AUTHORIZATION_DENIED' });
+    expect(handler).not.toHaveBeenCalled();
+    // Approval MUST still be 'approved', NOT 'bound' (Rule 21/22 burn prevention)
+    expect(db.read(`${CAPABILITY_APPROVALS_COLLECTION}/appr-1`)).toMatchObject({ status: 'approved', boundToolInvocationId: null });
+  });
 });
 
 describe('dispatcher approval gate', () => {

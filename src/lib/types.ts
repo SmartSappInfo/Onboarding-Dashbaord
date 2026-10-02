@@ -981,6 +981,9 @@ export const APP_PERMISSIONS = [
   { id: 'fields_manage', label: 'Manage Fields', category: 'Management' },
   { id: 'call_centre_view', label: 'View Call Centre', category: 'Studios' },
   { id: 'call_centre_manage', label: 'Manage Call Centre', category: 'Studios' },
+  { id: 'portals_view', label: 'View Portals', category: 'Studios' },
+  { id: 'portals_manage', label: 'Manage Portals', category: 'Studios' },
+  { id: 'portal_members_manage', label: 'Manage Portal Members', category: 'Operations' },
 ] as const;
 
 export type AppPermissionId = typeof APP_PERMISSIONS[number]['id'];

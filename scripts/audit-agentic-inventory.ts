@@ -160,7 +160,8 @@ function inferDomain(filePath: string): CapabilityDomain {
     norm.includes('approval') ||
     norm.includes('risk') ||
     norm.includes('safety') ||
-    norm.includes('guardrail')
+    norm.includes('guardrail') ||
+    norm.includes('mcp')
   ) {
     return 'ai_governance';
   }
@@ -237,7 +238,9 @@ function inferDomain(filePath: string): CapabilityDomain {
     norm.includes('scheduler') ||
     norm.includes('workflow') ||
     norm.includes('trigger') ||
-    norm.includes('agent-step')
+    norm.includes('agent-step') ||
+    norm.includes('supervisor') ||
+    norm.includes('orchestrat')
   ) {
     return 'automation_workflows';
   }
@@ -283,7 +286,8 @@ function inferDomain(filePath: string): CapabilityDomain {
     norm.includes('vector') ||
     norm.includes('embedding') ||
     norm.includes('qdrant') ||
-    norm.includes('graph')
+    norm.includes('graph') ||
+    norm.includes('context')
   ) {
     return 'knowledge_memory';
   }
@@ -494,6 +498,11 @@ function runInventoryAudit(): void {
   const serviceFiles = [
     ...walkDir(path.join(SRC_DIR, 'lib', 'services'), (f) => isSource(f) && !isTest(f)),
     ...walkDir(path.join(SRC_DIR, 'lib', 'lead-intelligence'), (f) => isSource(f) && !isTest(f)),
+    ...walkDir(path.join(SRC_DIR, 'lib', 'mcp'), (f) => isSource(f) && !isTest(f) && !/action/i.test(path.basename(f))),
+    ...walkDir(path.join(SRC_DIR, 'lib', 'agents'), (f) => isSource(f) && !isTest(f) && !/action/i.test(path.basename(f))),
+    ...walkDir(path.join(SRC_DIR, 'lib', 'memory'), (f) => isSource(f) && !isTest(f) && !/action/i.test(path.basename(f))),
+    ...walkDir(path.join(SRC_DIR, 'lib', 'workflows'), (f) => isSource(f) && !isTest(f) && !/action/i.test(path.basename(f))),
+    ...walkDir(path.join(SRC_DIR, 'lib', 'supervisor'), (f) => isSource(f) && !isTest(f) && !/action/i.test(path.basename(f))),
   ];
   const portalFiles = walkDir(path.join(SRC_DIR, 'lib', 'page-builder', 'blocks', 'portal'), (f) => isSource(f) && !isTest(f));
 

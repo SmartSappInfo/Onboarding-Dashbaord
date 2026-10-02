@@ -19,7 +19,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Plus, Minus, Edit, Trash2, Merge, Tag as TagIcon,
-  RefreshCw, Search, Filter, User, Clock,
+  RefreshCw, Filter, User, Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

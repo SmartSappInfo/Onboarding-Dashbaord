@@ -495,6 +495,9 @@ function mapLegacyPermissionToCoordinates(permission: AppPermissionId): { sectio
     call_centre_manage: { section: 'studios', feature: 'callCentre', action: 'edit' },
     system_admin: { section: 'management', feature: 'users', action: 'view' }, // Dummy mapping, usually bypassed
     system_user_switch: { section: 'management', feature: 'users', action: 'edit' },
+    portals_view: { section: 'studios', feature: 'publicPortals', action: 'view' },
+    portals_manage: { section: 'studios', feature: 'publicPortals', action: 'edit' },
+    portal_members_manage: { section: 'studios', feature: 'publicPortals', action: 'edit' },
   };
 
   return mapping[permission] || null;

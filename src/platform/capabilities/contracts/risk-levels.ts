@@ -54,6 +54,12 @@ export const NON_DELEGABLE_ACTIONS = [
   'billing.change_owner',
   'organization.delete',
   'workspace.delete',
+  // Canonical coordinates (PR-2 / D6 alignment)
+  'app:system_admin',
+  'app:contracts_delete',
+  'rbac:management.users.edit',
+  'rbac:management.users.delete',
+  'rbac:finance.agreements.delete',
 ] as const;
 
 export type NonDelegableAction = (typeof NON_DELEGABLE_ACTIONS)[number];

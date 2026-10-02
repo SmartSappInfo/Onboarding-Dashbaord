@@ -1,22 +1,27 @@
 /**
- * @fileOverview CompanyBrain 2.0 Phase 6: Governed Deal MCP Tools
+ * @fileOverview CompanyBrain 2.0 Phase 6 / Phase 1: Governed Deal MCP Tools
  *
- * ARCHITECTURAL GUIDELINES & CAUTION FOR MAINTAINERS (Rule 10):
+ * ARCHITECTURAL GUIDELINES & CAUTION FOR MAINTAINERS (Rule 10 & Rule 69):
  * 1. Single Source of Truth for Deal State:
- *    - Delegates stage progression to `updateDealStageAction` (validating entry gates).
+ *    - Delegates stage progression to canonical `dealAdvanceStageCapability` and reads to `dealGetCapability`.
  * 2. Risk Tier:
- *    - `deal.get`: read_only (Zero mutation).
- *    - `deal.update_stage`: high_risk (Commercial stage mutation; requires human approval).
+ *    - `deal.get`: read_only (L0_READ, zero mutation).
+ *    - `deal.update_stage`: high_risk (L2_STATE_MUTATION; transitions stage and checks gate validation).
  * 3. Strict Zero-`any` & Zero-`unknown` Invariant:
  *    - Uses Zod schemas and recursive `McpPayloadValue`.
+ * 4. In-Place Upgrades:
+ *    - Registers canonical definitions with `{ allowOverride: true }`.
  *
- * @testability Covered in `src/lib/mcp/__tests__/mcp-gateway.test.ts`.
+ * @testability Covered in `src/lib/mcp/__tests__/mcp-gateway.test.ts` and `src/platform/__tests__/domains/deals-pipelines.test.ts`.
  */
 
 import { z } from 'zod';
 import { McpToolDefinition } from '../types';
-import { adminDb } from '@/lib/firebase-admin';
-import { updateDealStageCore } from '@/lib/crm/deal-core';
+import { registerCapability } from '@/platform/capabilities/registry/capability-registry';
+import {
+  dealGetCapability,
+  dealAdvanceStageCapability,
+} from '@/platform/domains/deals_revenue/contracts/deal-capabilities.contract';
 
 // ==========================================
 // 1. deal.get (Read-Only)
@@ -50,26 +55,32 @@ export const dealGetTool: McpToolDefinition<
   parameters: getDealInputSchema,
   responseSchema: getDealOutputSchema,
   handler: async (params, context) => {
-    const docSnap = await adminDb.collection('deals').doc(params.dealId).get();
-    if (!docSnap.exists) {
-      throw new Error(`[deal.get] Deal "${params.dealId}" not found.`);
+    const callerUserId = context.callerType === 'agent' ? `system-${context.callerId}` : context.callerId;
+    const result = await dealGetCapability.handler(
+      {
+        workspaceId: context.workspaceId,
+        dealId: params.dealId,
+      },
+      {
+        principal: {
+          actorType: context.callerType === 'agent' ? 'agent' : 'user',
+          userId: callerUserId,
+          agentId: context.callerType === 'agent' ? context.callerId : undefined,
+          workspaceId: context.workspaceId,
+          organizationId: context.organizationId,
+          grantedScopes: ['sales:pipeline:view', 'app:deals_view', 'deal:read'],
+          effectiveRole: 'mcp_caller',
+        },
+        correlationId: context.requestId,
+        timestamp: context.timestamp,
+      }
+    );
+
+    if (!result.success) {
+      throw new Error(`[deal.get] ${result.error.message}`);
     }
 
-    const data = docSnap.data();
-    if (data?.workspaceId && data.workspaceId !== context.workspaceId) {
-      throw new Error(`[deal.get] Access denied: deal belongs to another workspace.`);
-    }
-
-    return {
-      id: docSnap.id,
-      name: data?.name || 'Untitled Deal',
-      entityId: data?.entityId || '',
-      stageId: data?.stageId || '',
-      stageName: data?.stageName || data?.stageId || 'Unknown Stage',
-      value: typeof data?.value === 'number' ? data.value : 0,
-      status: data?.status || 'open',
-      createdAt: data?.createdAt || new Date().toISOString(),
-    };
+    return result.data;
   },
 };
 
@@ -103,28 +114,42 @@ export const dealUpdateStageTool: McpToolDefinition<
   parameters: updateStageInputSchema,
   responseSchema: updateStageOutputSchema,
   handler: async (params, context) => {
-    // SECURITY (N1): the tool may only touch deals of the calling workspace, and runs with the
-    // caller's own pipeline permission (checked by the core against the deal's stored workspace).
-    const dealSnap = await adminDb.collection('deals').doc(params.dealId).get();
-    if (!dealSnap.exists || dealSnap.get('workspaceId') !== context.workspaceId) {
-      throw new Error(`Deal ${params.dealId} was not found in this workspace.`);
-    }
-    const result = await updateDealStageCore(
-      { kind: 'user', uid: context.userId ?? context.callerId },
-      params.dealId,
-      params.stageId,
-      { reason: params.reason }
+    const callerUserId = context.callerType === 'agent' ? `system-${context.callerId}` : context.callerId;
+    const result = await dealAdvanceStageCapability.handler(
+      {
+        workspaceId: context.workspaceId,
+        dealId: params.dealId,
+        stageId: params.stageId,
+        reason: params.reason,
+      },
+      {
+        principal: {
+          actorType: context.callerType === 'agent' ? 'agent' : 'user',
+          userId: callerUserId,
+          agentId: context.callerType === 'agent' ? context.callerId : undefined,
+          workspaceId: context.workspaceId,
+          organizationId: context.organizationId,
+          grantedScopes: ['sales:pipeline:edit', 'app:deals_edit', 'deal:stage_update'],
+          effectiveRole: 'mcp_caller',
+        },
+        correlationId: context.requestId,
+        timestamp: context.timestamp,
+      }
     );
 
     if (!result.success) {
-      throw new Error(result.error || `Failed to transition deal ${params.dealId} to stage ${params.stageId}.`);
+      throw new Error(result.error.message || `Failed to transition deal ${params.dealId} to stage ${params.stageId}.`);
     }
 
     return {
-      dealId: params.dealId,
-      stageId: params.stageId,
-      success: true,
-      updatedAt: new Date().toISOString(),
+      dealId: result.data.dealId,
+      stageId: result.data.stageId,
+      success: result.data.success,
+      updatedAt: result.data.updatedAt,
     };
   },
 };
+
+// In-place upgrade of canonical capability definitions into unified registry (Decision D1 / Rule 69)
+registerCapability(dealGetCapability, { allowOverride: true });
+registerCapability(dealAdvanceStageCapability, { allowOverride: true });

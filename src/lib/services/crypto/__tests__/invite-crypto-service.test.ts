@@ -78,4 +78,61 @@ describe('InviteCryptoService', () => {
     expect(InviteCryptoService.decryptInvitePayload('invalid.parts.format')).toBeNull();
     expect(InviteCryptoService.decryptInvitePayload('!!!@@@###$$$')).toBeNull();
   });
+
+  it('never throws in production mode when secrets are missing and falls back gracefully', () => {
+    const origNodeEnv = process.env.NODE_ENV;
+    const origInviteSecret = process.env.INVITATION_SECRET_KEY;
+    const origCredSecret = process.env.CREDENTIAL_ENCRYPTION_KEY;
+    const origWaSecret = process.env.WHATSAPP_ENCRYPTION_KEY;
+    const origTaskSecret = process.env.CLOUD_TASKS_SECRET;
+    const origResendSecret = process.env.RESEND_WEBHOOK_SECRET;
+
+    try {
+      // Simulate strict production without any environment secrets set
+      // @ts-expect-error mutating for test isolation
+      process.env.NODE_ENV = 'production';
+      delete process.env.INVITATION_SECRET_KEY;
+      delete process.env.CREDENTIAL_ENCRYPTION_KEY;
+      delete process.env.WHATSAPP_ENCRYPTION_KEY;
+      delete process.env.CLOUD_TASKS_SECRET;
+      delete process.env.RESEND_WEBHOOK_SECRET;
+
+      // Must not throw in production
+      expect(() => {
+        const token = InviteCryptoService.encryptInvitePayload(samplePayload);
+        expect(token).toBeDefined();
+        const decrypted = InviteCryptoService.decryptInvitePayload(token);
+        expect(decrypted?.email).toBe(samplePayload.email);
+        expect(decrypted?.invitationId).toBe(samplePayload.invitationId);
+      }).not.toThrow();
+    } finally {
+      // @ts-expect-error restoring
+      process.env.NODE_ENV = origNodeEnv;
+      process.env.INVITATION_SECRET_KEY = origInviteSecret;
+      process.env.CREDENTIAL_ENCRYPTION_KEY = origCredSecret;
+      process.env.WHATSAPP_ENCRYPTION_KEY = origWaSecret;
+      process.env.CLOUD_TASKS_SECRET = origTaskSecret;
+      process.env.RESEND_WEBHOOK_SECRET = origResendSecret;
+    }
+  });
+
+  it('uses WHATSAPP_ENCRYPTION_KEY or secondary secrets if primary invitation key is unset', () => {
+    const origInviteSecret = process.env.INVITATION_SECRET_KEY;
+    const origCredSecret = process.env.CREDENTIAL_ENCRYPTION_KEY;
+    const origWaSecret = process.env.WHATSAPP_ENCRYPTION_KEY;
+
+    try {
+      delete process.env.INVITATION_SECRET_KEY;
+      delete process.env.CREDENTIAL_ENCRYPTION_KEY;
+      process.env.WHATSAPP_ENCRYPTION_KEY = 'secondary-test-secret-for-encryption';
+
+      const token = InviteCryptoService.encryptInvitePayload(samplePayload);
+      const decrypted = InviteCryptoService.decryptInvitePayload(token);
+      expect(decrypted?.organizationId).toBe(samplePayload.organizationId);
+    } finally {
+      process.env.INVITATION_SECRET_KEY = origInviteSecret;
+      process.env.CREDENTIAL_ENCRYPTION_KEY = origCredSecret;
+      process.env.WHATSAPP_ENCRYPTION_KEY = origWaSecret;
+    }
+  });
 });

@@ -1,6 +1,6 @@
 # SmartSapp Capability Coverage Matrix (tools §7.3)
 
-Generated 2026-09-27T06:15:34.246Z by `pnpm audit:agentic-inventory`. Do not edit by hand.
+Generated 2026-10-01T22:57:33.154Z by `pnpm audit:agentic-inventory`. Do not edit by hand.
 
 > **How to read this.** Collections, guards, permission ids and external APIs are extracted from each
 > capability's own code. **Risk** and **catalog mapping** are name-based heuristics: treat them as
@@ -10,39 +10,39 @@ Generated 2026-09-27T06:15:34.246Z by `pnpm audit:agentic-inventory`. Do not edi
 
 | Measure | Value |
 | --- | --- |
-| Capabilities discovered | 2214 |
-| API route files / with handlers found | 85 / 85 |
-| With an auth/permission guard detected | 1130 |
-| With an explicit permission id | 191 |
-| Domain assigned by fallback (`crm_contacts`) | 664 |
-| Risk assigned with low confidence | 442 |
+| Capabilities discovered | 2337 |
+| API route files / with handlers found | 91 / 91 |
+| With an auth/permission guard detected | 1205 |
+| With an explicit permission id | 190 |
+| Domain assigned by fallback (`crm_contacts`) | 693 |
+| Risk assigned with low confidence | 495 |
 | Catalog tools with at least one candidate | 80 / 310 |
 | Missing catalog tools | 230 |
-| Unmapped existing capabilities (actions/services) | 1832 |
-| Auth gaps (actions/routes with no guard detected) | 731 |
-| Test gaps (actions/routes with no test reference) | 1478 |
-| Duplicate-implementation groups | 28 |
+| Unmapped existing capabilities (actions/services) | 1946 |
+| Auth gaps (actions/routes with no guard detected) | 725 |
+| Test gaps (actions/routes with no test reference) | 1411 |
+| Duplicate-implementation groups | 33 |
 
 ## By domain
 
 | Domain | Capabilities | reuse | wrap | extend | unmapped |
 | --- | --- | --- | --- | --- | --- |
-| `crm_contacts` | 753 | 0 | 17 | 15 | 721 |
-| `forms_surveys` | 178 | 0 | 8 | 13 | 157 |
-| `lead_intelligence` | 165 | 0 | 8 | 0 | 157 |
-| `automation_workflows` | 132 | 0 | 4 | 4 | 124 |
-| `knowledge_memory` | 123 | 0 | 14 | 0 | 109 |
-| `experience_portal` | 121 | 0 | 0 | 0 | 121 |
-| `meetings_conversations` | 120 | 0 | 13 | 5 | 102 |
-| `deals_revenue` | 115 | 0 | 9 | 1 | 105 |
-| `identity_access` | 90 | 0 | 0 | 1 | 89 |
+| `crm_contacts` | 781 | 4 | 13 | 15 | 749 |
+| `forms_surveys` | 183 | 0 | 9 | 12 | 162 |
+| `lead_intelligence` | 167 | 0 | 8 | 0 | 159 |
+| `automation_workflows` | 166 | 0 | 9 | 4 | 153 |
+| `knowledge_memory` | 143 | 0 | 10 | 0 | 133 |
+| `meetings_conversations` | 121 | 0 | 13 | 5 | 103 |
+| `experience_portal` | 120 | 0 | 0 | 0 | 120 |
+| `deals_revenue` | 119 | 0 | 10 | 0 | 109 |
+| `ai_governance` | 100 | 0 | 4 | 0 | 96 |
+| `identity_access` | 92 | 0 | 1 | 0 | 91 |
 | `media_creative` | 82 | 0 | 0 | 0 | 82 |
-| `ai_governance` | 79 | 0 | 4 | 0 | 75 |
 | `communication_messaging` | 66 | 0 | 3 | 2 | 61 |
 | `finance_subscriptions` | 56 | 0 | 2 | 2 | 52 |
 | `analytics_reporting` | 44 | 0 | 2 | 0 | 42 |
-| `tasks_productivity` | 35 | 0 | 4 | 5 | 26 |
-| `campaigns_marketing` | 23 | 0 | 0 | 0 | 23 |
+| `tasks_productivity` | 35 | 0 | 5 | 4 | 26 |
+| `campaigns_marketing` | 30 | 1 | 0 | 0 | 29 |
 | `platform_integrations` | 18 | 0 | 0 | 0 | 18 |
 | `school_operations` | 14 | 0 | 0 | 0 | 14 |
 
@@ -114,7 +114,7 @@ Generated 2026-09-27T06:15:34.246Z by `pnpm audit:agentic-inventory`. Do not edi
 | `campaign.propose_audience` | **missing** |
 | `campaign.record_outcome` | **missing** |
 | `campaign.request_launch_approval` | **missing** |
-| `campaign.search` | `listCrmCampaignsAction` (src/app/actions/creative-crm-actions.ts)<br>`listCallCampaignsAction` (src/lib/call-centre-actions.ts)<br>`listWorkspaceCampaignPerformanceAction` (src/app/actions/creative-performance-actions.ts) |
+| `campaign.search` | `listCrmCampaignsAction` (src/app/actions/creative-crm-actions.ts)<br>`listCallCampaignsAction` (src/lib/call-centre-actions.ts)<br>`listWorkspaceBulkCampaignsAction` (src/app/actions/bulk-campaign-actions.ts) |
 | `campaign.simulate` | **missing** |
 | `campaign.update_draft` | **missing** |
 | `campaign.validate_audience` | **missing** |
@@ -220,13 +220,13 @@ Generated 2026-09-27T06:15:34.246Z by `pnpm audit:agentic-inventory`. Do not edi
 | `integration.calendar.list_events` | **missing** |
 | `integration.connection.revoke` | **missing** |
 | `integration.email.get_status` | `fetchEmailStatusAction` (src/lib/resend-actions.ts) |
-| `integration.get_status` | `getMigrationStatusAction` (src/app/actions/get-migration-status-action.ts)<br>`fetchSmsStatusAction` (src/lib/mnotify-actions.ts)<br>`fetchEmailStatusAction` (src/lib/resend-actions.ts) |
+| `integration.get_status` | `getMigrationStatusAction` (src/app/actions/get-migration-status-action.ts)<br>`getMigrationStatusAction` (src/app/actions/migration-cutover-actions.ts)<br>`fetchSmsStatusAction` (src/lib/mnotify-actions.ts) |
 | `integration.list_connected` | `listConnectedChannelsAction` (src/app/actions/creative-publishing-actions.ts) |
 | `integration.refresh_connection` | **missing** |
 | `integration.request_connection` | **missing** |
 | `integration.webhook.create_draft` | **missing** |
 | `integration.webhook.get_delivery_logs` | `getWebhookDeliveryLogsAction` (src/app/actions/meeting-webhook-actions.ts) |
-| `integration.webhook.test` | `testDispatchWebhookAction` (src/app/actions/meeting-webhook-actions.ts) |
+| `integration.webhook.test` | `testWebhookDeliveryAction` (src/app/actions/developer-platform-actions.ts)<br>`testDispatchWebhookAction` (src/app/actions/meeting-webhook-actions.ts) |
 | `integration.whatsapp.get_status` | **missing** |
 | `knowledge.access.check` | **missing** |
 | `knowledge.audit.search` | **missing** |
@@ -361,7 +361,7 @@ Generated 2026-09-27T06:15:34.246Z by `pnpm audit:agentic-inventory`. Do not edi
 | `workspace.get_details` | **missing** |
 | `workspace.list_accessible` | **missing** |
 
-## Auth gaps (731)
+## Auth gaps (725)
 
 Server actions and API routes where no known guard was detected in the function or the same-file helpers it calls. Verify each: some may be guarded by a wrapper this scanner does not know yet (add it to `GUARD_CALLS`).
 
@@ -406,10 +406,7 @@ Server actions and API routes where no known guard was detected in the function 
 | `importKnowledgeArchiveAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/quick-notes-federation-actions.ts |
 | `bulkDeleteTasks` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/task-actions.ts |
 | `deleteTaskNonBlocking` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/task-actions.ts |
-| `bulkArchiveEntitiesAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/workspace-entity-actions.ts |
-| `bulkDeleteEntitiesAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/workspace-entity-actions.ts |
 | `DELETE /api/auth/session` | api | `L4_PRIVILEGED_DESTRUCTIVE` | src/app/api/auth/session/route.ts |
-| `DELETE /api/tasks/[taskId]` | task_worker | `L4_PRIVILEGED_DESTRUCTIVE` | src/app/api/tasks/[taskId]/route.ts |
 | `publishContentItemAction` | server_action | `L3_EXTERNAL_COMMUNICATION_FINANCE` | src/app/actions/content-actions.ts |
 | `publishCreativeToChannelAction` | server_action | `L3_EXTERNAL_COMMUNICATION_FINANCE` | src/app/actions/creative-publishing-actions.ts |
 | `publishEventReplayAction` | server_action | `L3_EXTERNAL_COMMUNICATION_FINANCE` | src/app/actions/event-actions.ts |
@@ -439,7 +436,6 @@ Server actions and API routes where no known guard was detected in the function 
 | `createBookingFromHoldAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/booking-actions.ts |
 | `cancelBookingAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/booking-actions.ts |
 | `rescheduleBookingAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/booking-actions.ts |
-| `bulkCreateDealsActionCore` | server_action | `L2_STATE_MUTATION` | src/app/actions/bulk-deal-actions.ts |
 | `bulkRegisterParticipantsActionCore` | server_action | `L2_STATE_MUTATION` | src/app/actions/bulk-meeting-actions.ts |
 | `bulkCreateTasksActionCore` | server_action | `L2_STATE_MUTATION` | src/app/actions/bulk-task-actions.ts |
 | `createOfferAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/commerce-actions.ts |
@@ -479,10 +475,6 @@ Server actions and API routes where no known guard was detected in the function 
 | `createCertificateTemplateAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/credential-actions.ts |
 | `issueCertificateAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/credential-actions.ts |
 | `createBadgeDefinitionAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/credential-actions.ts |
-| `createDeal` | server_action | `L2_STATE_MUTATION` | src/app/actions/deal-actions.ts |
-| `updateDealValueAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/deal-actions.ts |
-| `updateDealStatusAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/deal-actions.ts |
-| `updateDealOwnerAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/deal-actions.ts |
 | `acceptPublicQuoteAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/deal-line-item-actions.ts |
 | `executeDealMigration` | server_action | `L2_STATE_MUTATION` | src/app/actions/deal-migration-actions.ts |
 | `saveContentStudioDraftAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/draft-actions.ts |
@@ -500,6 +492,11 @@ Server actions and API routes where no known guard was detected in the function 
 | `saveWhiteLabelConfigAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/enterprise-actions.ts |
 | `createHierarchyNodeAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/enterprise-actions.ts |
 | `installMarketplaceTemplateAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/enterprise-actions.ts |
+| `createAssuranceProfileAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/enterprise-governance-actions.ts |
+| `createWebhookSubscriptionAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/enterprise-governance-actions.ts |
+| `replayWebhookDeliveryAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/enterprise-governance-actions.ts |
+| `toggleContractLegalHoldAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/enterprise-governance-actions.ts |
+| `setRetentionPolicyAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/enterprise-governance-actions.ts |
 | `createLiveEventAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/event-actions.ts |
 | `updateLiveEventAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/event-actions.ts |
 | `registerForEventAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/event-actions.ts |
@@ -518,6 +515,8 @@ Server actions and API routes where no known guard was detected in the function 
 | `enrichSchoolsWithSaaSIndustry` | server_action | `L2_STATE_MUTATION` | src/app/actions/industry-migration-actions.ts |
 | `restoreSaaSMigration` | server_action | `L2_STATE_MUTATION` | src/app/actions/industry-migration-actions.ts |
 | `rollbackSaaSMigration` | server_action | `L2_STATE_MUTATION` | src/app/actions/industry-migration-actions.ts |
+| `acceptInvitationLandingAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/invitation-crypto-actions.ts |
+| `declineInvitationLandingAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/invitation-crypto-actions.ts |
 | `createCourseAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/learning-actions.ts |
 | `updateCourseAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/learning-actions.ts |
 | `createModuleAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/learning-actions.ts |
@@ -567,14 +566,10 @@ Server actions and API routes where no known guard was detected in the function 
 | `joinOfficeHoursQueueAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/office-hours-actions.ts |
 | `pingQueueHeartbeatAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/office-hours-actions.ts |
 | `leaveOfficeHoursQueueAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/office-hours-actions.ts |
-| `submitOnboardingProfileAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/onboarding-actions.ts |
-| `enforceSuperAdminProfileAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/onboarding-actions.ts |
-| `completeOrganizationOnboardingAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/onboarding-actions.ts |
 | `createPortalAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/portal-actions.ts |
 | `updatePortalAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/portal-actions.ts |
 | `suspendPortalAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/portal-actions.ts |
 | `duplicatePortalAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/portal-actions.ts |
-| `runMasterExperienceSeederAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/portal-actions.ts |
 | `normalizeExistingPortalNavigationAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/portal-actions.ts |
 | `refreshPortalAnalyticsAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/portal-analytics-actions.ts |
 | `enrichUsersWithWorkspaceRbac` | server_action | `L2_STATE_MUTATION` | src/app/actions/rbac-workspace-migration-actions.ts |
@@ -596,6 +591,7 @@ Server actions and API routes where no known guard was detected in the function 
 | `seedPromptsAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/seed-prompts-action.ts |
 | `executeStripAccountStatusFerAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/strip-account-status-fer-action.ts |
 | `executeStripLifecycleStatusFerAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/strip-lifecycle-status-fer-action.ts |
+| `executeSyncRolePermissionsFerAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/sync-role-permissions-fer-action.ts |
 | `executeTemplateIdentifiersFerAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/template-identifiers-fer-action.ts |
 | `runGenerateThumbnail` | server_action | `L2_STATE_MUTATION` | src/app/actions/thumbnail-actions.ts |
 | `runModifyThumbnail` | server_action | `L2_STATE_MUTATION` | src/app/actions/thumbnail-actions.ts |
@@ -603,6 +599,7 @@ Server actions and API routes where no known guard was detected in the function 
 | `executeUnexpireImportPayloadsFerAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/unexpire-import-payloads-fer-action.ts |
 | `updatePreferencesAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/unsubscribe-actions.ts |
 | `acceptInvitationAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/workforce-actions.ts |
+| `updateWorkspaceBrandingAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/workspace-branding-actions.ts |
 | `enrichWorkspacesWithIndustry` | server_action | `L2_STATE_MUTATION` | src/app/actions/workspace-industry-migration-actions.ts |
 | `restoreWorkspaceIndustryMigration` | server_action | `L2_STATE_MUTATION` | src/app/actions/workspace-industry-migration-actions.ts |
 | `rollbackWorkspaceIndustryMigration` | server_action | `L2_STATE_MUTATION` | src/app/actions/workspace-industry-migration-actions.ts |
@@ -611,6 +608,7 @@ Server actions and API routes where no known guard was detected in the function 
 | `NodeActionToolbar` | server_action | `L2_STATE_MUTATION` | src/app/admin/automations/[id]/edit/components/nodes/NodeActionToolbar.tsx |
 | `TagActionNode` | server_action | `L2_STATE_MUTATION` | src/app/admin/automations/[id]/edit/components/nodes/TagActionNode.tsx |
 | `ActionConfigPanel` | server_action | `L2_STATE_MUTATION` | src/app/admin/automations/components/ActionConfigPanel.tsx |
+| `QuickLogDropdownContent` | server_action | `L2_STATE_MUTATION` | src/app/admin/deals/[id]/components/DealQuickActions.tsx |
 | `DealQuickActions` | server_action | `L2_STATE_MUTATION` | src/app/admin/deals/[id]/components/DealQuickActions.tsx |
 | `BulkActionDock` | server_action | `L2_STATE_MUTATION` | src/app/admin/entities/components/BulkActionDock.tsx |
 | `FloatingActionToolbar` | server_action | `L2_STATE_MUTATION` | src/app/admin/lead-intelligence/components/FloatingActionToolbar.tsx |
@@ -698,7 +696,11 @@ Server actions and API routes where no known guard was detected in the function 
 | `updateRetainer` | server_action | `L2_STATE_MUTATION` | src/lib/consultancy-actions.ts |
 | `submitDocumentLeadAction` | server_action | `L2_STATE_MUTATION` | src/lib/document-actions.ts |
 | `recordDocumentEventAction` | server_action | `L2_STATE_MUTATION` | src/lib/document-actions.ts |
+| `approveObligationCandidate` | server_action | `L2_STATE_MUTATION` | src/lib/documents/contract-obligation-extraction-service.ts |
+| `dismissObligationCandidate` | server_action | `L2_STATE_MUTATION` | src/lib/documents/contract-obligation-extraction-service.ts |
 | `recordObservabilityMetricAction` | server_action | `L2_STATE_MUTATION` | src/lib/documents/document-observability-actions.ts |
+| `submitRecipientSignatureAction` | server_action | `L2_STATE_MUTATION` | src/lib/documents/envelope-actions.ts |
+| `declineEnvelopeAction` | server_action | `L2_STATE_MUTATION` | src/lib/documents/envelope-actions.ts |
 | `executeLayerActionServerAction` | server_action | `L2_STATE_MUTATION` | src/lib/documents/interactive-layer-actions.ts |
 | `queueDocumentProcessingAction` | server_action | `L2_STATE_MUTATION` | src/lib/documents/processing-actions.ts |
 | `createFlipbookAction` | server_action | `L2_STATE_MUTATION` | src/lib/flipbook-actions.ts |
@@ -742,17 +744,11 @@ Server actions and API routes where no known guard was detected in the function 
 | `updateClientReport` | server_action | `L2_STATE_MUTATION` | src/lib/marketing-actions.ts |
 | `createStrategyDoc` | server_action | `L2_STATE_MUTATION` | src/lib/marketing-actions.ts |
 | `updateStrategyDoc` | server_action | `L2_STATE_MUTATION` | src/lib/marketing-actions.ts |
-| `logNoteActivity` | server_action | `L2_STATE_MUTATION` | src/lib/note-actions.ts |
 | `saveAgreementProgressAction` | server_action | `L2_STATE_MUTATION` | src/lib/pdf-actions.ts |
 | `finalizeAgreementAction` | server_action | `L2_STATE_MUTATION` | src/lib/pdf-actions.ts |
 | `setOutboundPausedAction` | server_action | `L2_STATE_MUTATION` | src/lib/platform/platform-controls-actions.ts |
 | `updateProfile` | server_action | `L2_STATE_MUTATION` | src/lib/profile-actions.ts |
 | `recordScanEvent` | server_action | `L2_STATE_MUTATION` | src/lib/qr-scan-actions.ts |
-| `logQuickNoteActivity` | server_action | `L2_STATE_MUTATION` | src/lib/quick-notes-actions.ts |
-| `enrichNoteLink` | server_action | `L2_STATE_MUTATION` | src/lib/quick-notes-actions.ts |
-| `logQuickNoteCreated` | server_action | `L2_STATE_MUTATION` | src/lib/quick-notes-actions.ts |
-| `createQuickNoteAction` | server_action | `L2_STATE_MUTATION` | src/lib/quick-notes-actions.ts |
-| `createTaskFromActionItem` | server_action | `L2_STATE_MUTATION` | src/lib/quick-notes-ai-actions.ts |
 | `deployConceptToCampaignStudioAction` | server_action | `L2_STATE_MUTATION` | src/lib/quick-notes-campaign-actions.ts |
 | `updateCampaignConceptStatusAction` | server_action | `L2_STATE_MUTATION` | src/lib/quick-notes-campaign-actions.ts |
 | `createFederatedSpaceAction` | server_action | `L2_STATE_MUTATION` | src/lib/quick-notes-federation-actions.ts |
@@ -803,7 +799,6 @@ Server actions and API routes where no known guard was detected in the function 
 | `executeSurveyResultButtonActions` | server_action | `L2_STATE_MUTATION` | src/lib/survey-actions.ts |
 | `logSurveyStartedAction` | server_action | `L2_STATE_MUTATION` | src/lib/survey-actions.ts |
 | `seedSystemQuestionBankAction` | server_action | `L2_STATE_MUTATION` | src/lib/surveys/question-bank-actions.ts |
-| `executeSurveyCrmSyncAction` | server_action | `L2_STATE_MUTATION` | src/lib/surveys/survey-crm-sync-actions.ts |
 | `promoteWinningVariantAction` | server_action | `L2_STATE_MUTATION` | src/lib/surveys/survey-experiment-actions.ts |
 | `executePredictiveNextBestAction` | server_action | `L2_STATE_MUTATION` | src/lib/surveys/survey-predictive-actions.ts |
 | `createSurveyProjectAction` | server_action | `L2_STATE_MUTATION` | src/lib/surveys/survey-project-actions.ts |
@@ -816,16 +811,12 @@ Server actions and API routes where no known guard was detected in the function 
 | `completeTaskNonBlocking` | server_action | `L2_STATE_MUTATION` | src/lib/task-actions.ts |
 | `bulkUpdateTasks` | server_action | `L2_STATE_MUTATION` | src/lib/task-actions.ts |
 | `bulkCompleteTasks` | server_action | `L2_STATE_MUTATION` | src/lib/task-actions.ts |
-| `createTaskFromAutomation` | server_action | `L2_STATE_MUTATION` | src/lib/task-server-actions.ts |
 | `adminResetUserPasswordAction` | server_action | `L2_STATE_MUTATION` | src/lib/user-invite-actions.ts |
 | `publicResetPasswordViaPhoneAction` | server_action | `L2_STATE_MUTATION` | src/lib/user-invite-actions.ts |
 | `adminUpdateUserAccessAction` | server_action | `L2_STATE_MUTATION` | src/lib/user-invite-actions.ts |
 | `declineJoinRequestAction` | server_action | `L2_STATE_MUTATION` | src/lib/user-invite-actions.ts |
 | `removeUserFromOrgAction` | server_action | `L2_STATE_MUTATION` | src/lib/user-invite-actions.ts |
 | `updateWorkspaceVocabularyAction` | server_action | `L2_STATE_MUTATION` | src/lib/vocabulary-map-actions.ts |
-| `linkEntityToWorkspaceAction` | server_action | `L2_STATE_MUTATION` | src/lib/workspace-entity-actions.ts |
-| `updateWorkspaceEntityAction` | server_action | `L2_STATE_MUTATION` | src/lib/workspace-entity-actions.ts |
-| `ensureEntitySharedToWorkspace` | server_action | `L2_STATE_MUTATION` | src/lib/workspace-entity-actions.ts |
 | `POST /api/automations/enroll` | api | `L2_STATE_MUTATION` | src/app/api/automations/enroll/route.ts |
 | `POST /api/automations/webhook/[id]` | webhook | `L2_STATE_MUTATION` | src/app/api/automations/webhook/[id]/route.ts |
 | `POST /api/call-centre/webhook` | webhook | `L2_STATE_MUTATION` | src/app/api/call-centre/webhook/route.ts |
@@ -849,8 +840,8 @@ Server actions and API routes where no known guard was detected in the function 
 | `OPTIONS /api/proxy-image` | api | `L2_STATE_MUTATION` | src/app/api/proxy-image/route.ts |
 | `POST /api/qr/batch-export` | api | `L2_STATE_MUTATION` | src/app/api/qr/batch-export/route.ts |
 | `POST /api/qr/unlock` | api | `L2_STATE_MUTATION` | src/app/api/qr/unlock/route.ts |
-| `PATCH /api/tasks/[taskId]` | task_worker | `L2_STATE_MUTATION` | src/app/api/tasks/[taskId]/route.ts |
-| `POST /api/tasks` | api | `L2_STATE_MUTATION` | src/app/api/tasks/route.ts |
+| `POST /api/v1/envelopes/[id]/void` | api | `L2_STATE_MUTATION` | src/app/api/v1/envelopes/[id]/void/route.ts |
+| `POST /api/v1/envelopes` | api | `L2_STATE_MUTATION` | src/app/api/v1/envelopes/route.ts |
 | `POST /api/v1/quick-notes/ingest` | api | `L2_STATE_MUTATION` | src/app/api/v1/quick-notes/ingest/route.ts |
 | `POST /api/verify-email/bulk` | api | `L2_STATE_MUTATION` | src/app/api/verify-email/bulk/route.ts |
 | `POST /api/verify-email` | api | `L2_STATE_MUTATION` | src/app/api/verify-email/route.ts |
@@ -866,8 +857,8 @@ Server actions and API routes where no known guard was detected in the function 
 | `generateCreativeConceptsAction` | server_action | `L1_INTERNAL_DRAFT` | src/app/actions/creative-ai-actions.ts |
 | `generateCopyVariationsAction` | server_action | `L1_INTERNAL_DRAFT` | src/app/actions/creative-ai-actions.ts |
 | `generateBatchPersonalizedCreativesAction` | server_action | `L1_INTERNAL_DRAFT` | src/app/actions/creative-crm-actions.ts |
-| `resolveWorkspaceEntityRecord` | server_action | `L1_INTERNAL_DRAFT` | src/app/actions/deal-actions.ts |
 | `discardContentStudioDraftAction` | server_action | `L1_INTERNAL_DRAFT` | src/app/actions/draft-actions.ts |
+| `generateEvidencePackageAction` | server_action | `L1_INTERNAL_DRAFT` | src/app/actions/enterprise-governance-actions.ts |
 | `generateEntityDossierSummaryAction` | server_action | `L1_INTERNAL_DRAFT` | src/app/actions/entity-dossier-actions.ts |
 | `generateHeadlineVariationsAction` | server_action | `L1_INTERNAL_DRAFT` | src/app/actions/headline-iq-actions.ts |
 | `generateKeywordsAction` | server_action | `L1_INTERNAL_DRAFT` | src/app/actions/survey-seo-actions.ts |
@@ -899,7 +890,7 @@ Server actions and API routes where no known guard was detected in the function 
 | `listLessonPostsAction` | server_action | `L0_READ` | src/app/actions/community-actions.ts |
 | `getCommunityLeaderboardAction` | server_action | `L0_READ` | src/app/actions/community-actions.ts |
 | `getMemberPublicProfileAction` | server_action | `L0_READ` | src/app/actions/community-actions.ts |
-| `getContentItemBySlugAction` | server_action | `L0_READ` | src/app/actions/content-actions.ts |
+| `getContentItemForViewerAction` | server_action | `L0_READ` | src/app/actions/content-actions.ts |
 | `searchPortalContentAction` | server_action | `L0_READ` | src/app/actions/content-actions.ts |
 | `listContentItemsByPortalAction` | server_action | `L0_READ` | src/app/actions/content-actions.ts |
 | `listPortalContentTemplatesAction` | server_action | `L0_READ` | src/app/actions/content-actions.ts |
@@ -930,14 +921,17 @@ Server actions and API routes where no known guard was detected in the function 
 | `getEnterpriseSsoAction` | server_action | `L0_READ` | src/app/actions/enterprise-actions.ts |
 | `getWhiteLabelConfigAction` | server_action | `L0_READ` | src/app/actions/enterprise-actions.ts |
 | `listHierarchyNodesAction` | server_action | `L0_READ` | src/app/actions/enterprise-actions.ts |
-| `listMarketplaceListingsAction` | server_action | `L0_READ` | src/app/actions/enterprise-actions.ts |
 | `listEnterpriseAuditLogsAction` | server_action | `L0_READ` | src/app/actions/enterprise-actions.ts |
+| `getAssuranceProfilesAction` | server_action | `L0_READ` | src/app/actions/enterprise-governance-actions.ts |
+| `getWebhookHealthAction` | server_action | `L0_READ` | src/app/actions/enterprise-governance-actions.ts |
+| `getLegalHoldAndRetentionAction` | server_action | `L0_READ` | src/app/actions/enterprise-governance-actions.ts |
 | `listLiveEventsByPortalAction` | server_action | `L0_READ` | src/app/actions/event-actions.ts |
 | `listCohortsByPortalAction` | server_action | `L0_READ` | src/app/actions/event-actions.ts |
 | `listCohortMembersAction` | server_action | `L0_READ` | src/app/actions/event-actions.ts |
 | `getEventTypesAction` | server_action | `L0_READ` | src/app/actions/event-type-actions.ts |
 | `getMigrationStatusAction` | server_action | `L0_READ` | src/app/actions/get-migration-status-action.ts |
 | `fetchSchoolsForSaaSMigration` | server_action | `L0_READ` | src/app/actions/industry-migration-actions.ts |
+| `validateEncryptedInvitationAction` | server_action | `L0_READ` | src/app/actions/invitation-crypto-actions.ts |
 | `listCoursesByPortalAction` | server_action | `L0_READ` | src/app/actions/learning-actions.ts |
 | `listLessonsByCourseAction` | server_action | `L0_READ` | src/app/actions/learning-actions.ts |
 | `getSanitizedAssessmentAction` | server_action | `L0_READ` | src/app/actions/learning-actions.ts |
@@ -952,10 +946,8 @@ Server actions and API routes where no known guard was detected in the function 
 | `listMembershipsByPortalAction` | server_action | `L0_READ` | src/app/actions/membership-actions.ts |
 | `listInvitationsByPortalAction` | server_action | `L0_READ` | src/app/actions/membership-actions.ts |
 | `listPlansByPortalAction` | server_action | `L0_READ` | src/app/actions/membership-actions.ts |
-| `evaluateContentAccessAction` | server_action | `L0_READ` | src/app/actions/membership-actions.ts |
 | `getParkedJobsCountAction` | server_action | `L0_READ` | src/app/actions/node-deletion-reconciliation-actions.ts |
 | `validateJoinCodeAction` | server_action | `L0_READ` | src/app/actions/onboarding-actions.ts |
-| `getOnboardingSetupStateAction` | server_action | `L0_READ` | src/app/actions/onboarding-actions.ts |
 | `verifyPortalSlugAvailabilityAction` | server_action | `L0_READ` | src/app/actions/portal-actions.ts |
 | `validatePortalPasswordAction` | server_action | `L0_READ` | src/app/actions/portal-actions.ts |
 | `getPublicPortalBySlugAction` | server_action | `L0_READ` | src/app/actions/portal-actions.ts |
@@ -966,8 +958,8 @@ Server actions and API routes where no known guard was detected in the function 
 | `getBookingPageBySlugAction` | server_action | `L0_READ` | src/app/actions/scheduler-actions.ts |
 | `getAvailableSlotsAction` | server_action | `L0_READ` | src/app/actions/scheduler-actions.ts |
 | `validateInvitationTokenAction` | server_action | `L0_READ` | src/app/actions/workforce-actions.ts |
+| `getWorkspaceBrandingAction` | server_action | `L0_READ` | src/app/actions/workspace-branding-actions.ts |
 | `fetchWorkspacesForIndustryMigration` | server_action | `L0_READ` | src/app/actions/workspace-industry-migration-actions.ts |
-| `getActivitiesForContactCore` | server_action | `L0_READ` | src/lib/activity-actions.ts |
 | `handleFindContact` | server_action | `L0_READ` | src/lib/automations/actions/entity-actions.ts |
 | `getGlobalAiKeys` | server_action | `L0_READ` | src/lib/backoffice/backoffice-ai-actions.ts |
 | `getGlobalAiConfig` | server_action | `L0_READ` | src/lib/backoffice/backoffice-ai-actions.ts |
@@ -1013,7 +1005,9 @@ Server actions and API routes where no known guard was detected in the function 
 | `getRetainersForEntity` | server_action | `L0_READ` | src/lib/consultancy-actions.ts |
 | `getEffectiveContactTypes` | server_action | `L0_READ` | src/lib/contact-type-actions.ts |
 | `verifyDocumentPasscodeAction` | server_action | `L0_READ` | src/lib/document-actions.ts |
+| `extractContractObligations` | server_action | `L0_READ` | src/lib/documents/contract-obligation-extraction-service.ts |
 | `getWorkspaceHealthReportAction` | server_action | `L0_READ` | src/lib/documents/document-observability-actions.ts |
+| `getEnvelopeForSigningAction` | server_action | `L0_READ` | src/lib/documents/envelope-actions.ts |
 | `getFieldsForWorkspace` | server_action | `L0_READ` | src/lib/fields-actions.ts |
 | `getInvoiceAllocationsAction` | server_action | `L0_READ` | src/lib/finance-actions.ts |
 | `loadFormDraftAction` | server_action | `L0_READ` | src/lib/forms/form-draft-actions.ts |
@@ -1038,7 +1032,6 @@ Server actions and API routes where no known guard was detected in the function 
 | `getStrategyDocsForEntity` | server_action | `L0_READ` | src/lib/marketing-actions.ts |
 | `checkSlugAvailabilityAction` | server_action | `L0_READ` | src/lib/media-analytics-actions.ts |
 | `extractActionItemsFromTranscript` | server_action | `L0_READ` | src/lib/meetings/action-items-service.ts |
-| `getEntityAiSummary` | server_action | `L0_READ` | src/lib/note-actions.ts |
 | `getPlatformControlsAction` | server_action | `L0_READ` | src/lib/platform/platform-controls-actions.ts |
 | `getQRCode` | server_action | `L0_READ` | src/lib/qr-actions.ts |
 | `getQRCodeByShortPath` | server_action | `L0_READ` | src/lib/qr-actions.ts |
@@ -1075,15 +1068,14 @@ Server actions and API routes where no known guard was detected in the function 
 | `getSystemAiArchitectGovernanceAction` | server_action | `L0_READ` | src/lib/surveys/survey-ai-architect-governance-actions.ts |
 | `exportSurveyDataAction` | server_action | `L0_READ` | src/lib/surveys/survey-analytics-actions.ts |
 | `getSurveyResponsesListAction` | server_action | `L0_READ` | src/lib/surveys/survey-analytics-actions.ts |
-| `getSurveyCrmFieldDefinitionsAction` | server_action | `L0_READ` | src/lib/surveys/survey-crm-sync-actions.ts |
 | `getWorkspaceActiveSurveysAction` | server_action | `L0_READ` | src/lib/surveys/survey-crm-trigger-actions.ts |
 | `getSurveyExperimentResultsAction` | server_action | `L0_READ` | src/lib/surveys/survey-experiment-actions.ts |
 | `getSurveyProjectsAction` | server_action | `L0_READ` | src/lib/surveys/survey-project-actions.ts |
 | `getTaskInterlinkUrl` | server_action | `L0_READ` | src/lib/task-actions.ts |
-| `getTasksForContact` | server_action | `L0_READ` | src/lib/task-server-actions.ts |
 | `getThemesAction` | server_action | `L0_READ` | src/lib/theme-actions.ts |
 | `GET /api/auth/social/callback` | api | `L0_READ` | src/app/api/auth/social/callback/route.ts |
 | `GET /api/automations/webhook/[id]` | webhook | `L0_READ` | src/app/api/automations/webhook/[id]/route.ts |
+| `GET /api/documents/signature` | api | `L0_READ` | src/app/api/documents/signature/route.ts |
 | `GET /api/integrations/google/callback` | api | `L0_READ` | src/app/api/integrations/google/callback/route.ts |
 | `GET /api/integrations/microsoft/callback` | api | `L0_READ` | src/app/api/integrations/microsoft/callback/route.ts |
 | `GET /api/integrations/zoom/callback` | api | `L0_READ` | src/app/api/integrations/zoom/callback/route.ts |
@@ -1094,12 +1086,14 @@ Server actions and API routes where no known guard was detected in the function 
 | `GET /api/pdfs/[pdfId]/generate/[submissionId]` | api | `L0_READ` | src/app/api/pdfs/[pdfId]/generate/[submissionId]/route.ts |
 | `GET /api/proxy-image` | api | `L0_READ` | src/app/api/proxy-image/route.ts |
 | `GET /api/sentry-example-api` | api | `L0_READ` | src/app/api/sentry-example-api/route.ts |
-| `GET /api/tasks` | api | `L0_READ` | src/app/api/tasks/route.ts |
+| `GET /api/v1/envelopes/[id]` | api | `L0_READ` | src/app/api/v1/envelopes/[id]/route.ts |
+| `GET /api/v1/envelopes` | api | `L0_READ` | src/app/api/v1/envelopes/route.ts |
 | `GET /api/v1/quick-notes/export` | api | `L0_READ` | src/app/api/v1/quick-notes/export/route.ts |
+| `GET /api/v1/templates` | api | `L0_READ` | src/app/api/v1/templates/route.ts |
 | `GET /api/webhooks/inbound/[id]` | webhook | `L0_READ` | src/app/api/webhooks/inbound/[id]/route.ts |
 | `GET /api/webhooks/whatsapp` | webhook | `L0_READ` | src/app/api/webhooks/whatsapp/route.ts |
 
-## Duplicate-implementation candidates (28)
+## Duplicate-implementation candidates (33)
 
 | Signature | Implementations |
 | --- | --- |
@@ -1113,11 +1107,16 @@ Server actions and API routes where no known guard was detected in the function 
 | `get:available+slot` | `getAvailableSlotsAction` (src/app/actions/booking-actions.ts)<br>`getAvailableSlotsAction` (src/app/actions/scheduler-actions.ts) |
 | `create:offer` | `createOfferAction` (src/app/actions/commerce-actions.ts)<br>`createOffer` (src/lib/real-estate-actions.ts) |
 | `update:post` | `updatePostAction` (src/app/actions/community-actions.ts)<br>`updatePostScheduleAction` (src/app/actions/social-composer-actions.ts) |
+| `extract:contract+obligation` | `extractContractObligationsAction` (src/app/actions/contract-ai-intelligence-actions.ts)<br>`extractContractObligations` (src/lib/documents/contract-obligation-extraction-service.ts) |
 | `create:deal` | `createDeal` (src/app/actions/deal-actions.ts)<br>`createDeal` (src/lib/real-estate-actions.ts) |
 | `update:deal` | `updateDealAction` (src/app/actions/deal-actions.ts)<br>`updateDeal` (src/lib/real-estate-actions.ts) |
+| `search:api+key` | `listApiKeysAction` (src/app/actions/developer-platform-actions.ts)<br>`listApiKeys` (src/lib/api-key-actions.ts) |
+| `revoke:api+key` | `revokeApiKeyAction` (src/app/actions/developer-platform-actions.ts)<br>`revokeApiKey` (src/lib/api-key-actions.ts) |
+| `ask:document+question` | `askDocumentQuestionAction` (src/app/actions/document-ai-copilot-actions.ts)<br>`askDocumentQuestionAction` (src/lib/documents/ai-document-actions.ts) |
 | `create:task` | `createTaskAction` (src/app/actions/engagement-actions.ts)<br>`createTaskAction` (src/lib/task-server-actions.ts) |
 | `update:task` | `updateTaskAction` (src/app/actions/engagement-actions.ts)<br>`updateTaskAction` (src/lib/task-server-actions.ts) |
 | `delete:task` | `deleteTaskAction` (src/app/actions/engagement-actions.ts)<br>`deleteTaskAction` (src/lib/task-server-actions.ts) |
+| `get:migration+statu` | `getMigrationStatusAction` (src/app/actions/get-migration-status-action.ts)<br>`getMigrationStatusAction` (src/app/actions/migration-cutover-actions.ts) |
 | `revoke:invitation` | `revokeInvitationAction` (src/app/actions/membership-actions.ts)<br>`revokeInvitationAction` (src/app/actions/workforce-actions.ts) |
 | `create:product` | `createProductAction` (src/app/actions/product-actions.ts)<br>`createProductAction` (src/lib/product-actions.ts) |
 | `update:product` | `updateProductAction` (src/app/actions/product-actions.ts)<br>`updateProductAction` (src/lib/product-actions.ts) |
@@ -1136,7 +1135,7 @@ Server actions and API routes where no known guard was detected in the function 
 
 `access.check_tool_policy`, `access.list_effective_permissions`, `access.request_elevation`, `ai.access_review.generate`, `ai.audit.search`, `ai.execution.get_receipt`, `ai.execution.get_status`, `ai.model.get_capabilities`, `ai.proposal.cancel`, `ai.proposal.get`, `ai.proposal.get_approvals`, `ai.proposal.request_approval`, `ai.proposal.simulate_impact`, `ai.role_advisor.get_recommendations`, `ai.usage.get_summary`, `ai.workforce_risk.get_findings`, `analytics.ask_data`, `analytics.compare_periods`, `analytics.explain_change`, `analytics.export_report`, `analytics.generate_executive_brief`, `analytics.get_campaign_report`, `analytics.get_finance_report`, `analytics.get_metric_definition`, `analytics.get_pipeline_report`, `analytics.get_sales_performance`, `analytics.get_survey_report`, `analytics.query_crm`, `automation.activate`, `automation.create_draft`, `automation.enroll_entity`, `automation.generate_draft`, `automation.get`, `automation.get_dead_letters`, `automation.get_run`, `automation.get_run_logs`, `automation.pause`, `automation.reconcile_run`, `automation.request_activation`, `automation.resume`, `automation.retry_step`, `automation.search`, `automation.simulate`, `automation.validate_graph`, `automation.validate_permissions`, `campaign.create_draft`, `campaign.generate_assets`, `campaign.generate_journey`, `campaign.generate_strategy`, `campaign.get_attribution`, `campaign.get_audience`, `campaign.get_recommendations`, `campaign.pause`, `campaign.propose_audience`, `campaign.record_outcome`, `campaign.request_launch_approval`, `campaign.simulate`, `campaign.update_draft`, `campaign.validate_audience`, `catalog.get_product`, `catalog.search_products`, `context.explain_inclusion`, `context.get_agent_memory`, `context.get_campaign_brief`, `context.get_deal_brief`, `context.get_entity_brief`, `context.get_shared_memory`, `context.validate_scope`, `creative.generate_copy_variants`, `creative.generate_page_draft`, `creative.generate_qr_design`, `creative.generate_seo_metadata`, `creative.generate_social_variants`, `creative.generate_thumbnail`, `creative.generate_visual_style`, `creative.get_asset_metadata`, `creative.get_brand_profile`, `creative.modify_canvas`, `creative.modify_page`, `creative.modify_thumbnail`, `creative.request_publish_approval`, `creative.search_assets`, `crm.activity.create`, `crm.entity.add_note`, `crm.entity.add_tag`, `crm.entity.assign_owner`, `crm.entity.find_duplicates`, `crm.entity.get_relationships`, `crm.entity.get_timeline`, `crm.entity.propose_merge`, `crm.entity.remove_tag`, `crm.entity.summarize_history`, `crm.pipeline.list`, `crm.stage.propose_transition`, `crm.workspace_entity.archive`, `crm.workspace_entity.create`, `deal.add_line_item`, `deal.advance_stage`, `deal.create_followup_tasks`, `deal.get_forecast`, `deal.get_line_items`, `deal.get_next_best_actions`, `deal.get_risks`, `deal.get_stage_history`, `deal.propose_stage_change`, `deal.remove_line_item`, `finance.account.get_balance`, `finance.collection.execute_action`, `finance.collection.propose_action`, `finance.invoice.create_draft`, `finance.invoice.issue`, `finance.invoice.search`, `finance.invoice.validate`, `finance.payment.execute_refund`, `finance.payment.propose_refund`, `finance.payment.reconcile`, `finance.payment.search`, `finance.receivables.get_aging`, `finance.revenue.get_summary`, `finance.subscription.change_plan`, `finance.subscription.get`, `form.map_pdf_fields`, `form.modify`, `form.search`, `form.validate`, `identity.get_current_actor`, `integration.calendar.check_availability`, `integration.calendar.list_events`, `integration.connection.revoke`, `integration.refresh_connection`, `integration.request_connection`, `integration.webhook.create_draft`, `integration.whatsapp.get_status`, `knowledge.access.check`, `knowledge.audit.search`, `knowledge.capture_observation`, `knowledge.classify_item`, `knowledge.deletion.request`, `knowledge.export.request`, `knowledge.extract_entities`, `knowledge.get_citations`, `knowledge.get_evidence`, `knowledge.get_recent_changes`, `knowledge.get_related_items`, `knowledge.get_source`, `knowledge.ingest_document`, `knowledge.ingest_meeting_outcome`, `knowledge.ingest_text`, `knowledge.propose_decision`, `knowledge.propose_fact`, `knowledge.propose_memory`, `knowledge.propose_procedure`, `knowledge.quality.evaluate`, `knowledge.reindex.request`, `knowledge.review_queue.decide`, `knowledge.review_queue.get`, `knowledge.review_queue.list`, `knowledge.search`, `knowledge.search_meetings`, `knowledge.search_playbooks`, `knowledge_graph.approve_relationship`, `knowledge_graph.flag_inconsistency`, `knowledge_graph.get_neighbors`, `knowledge_graph.get_provenance`, `knowledge_graph.get_relationships`, `knowledge_graph.propose_relationship`, `knowledge_graph.query_subgraph`, `knowledge_graph.rebuild_projection`, `knowledge_graph.search_entities`, `lead.enrich`, `lead.get_buying_signals`, `lead.get_decision_makers`, `lead.get_intelligence`, `lead.get_objection_handlers`, `lead.get_recommended_pitch`, `meeting.capture_decisions`, `meeting.check_availability`, `meeting.confirm_booking`, `meeting.create_followup_tasks`, `meeting.extract_action_items`, `meeting.ingest_transcript`, `meeting.link_to_crm`, `meeting.propose_booking`, `meeting.search`, `meeting.summarize`, `memory.approve`, `memory.archive`, `memory.get_history`, `memory.propose_update`, `memory.record_feedback`, `memory.reject`, `memory.restore`, `memory.review_expiry`, `memory.supersede`, `message.cancel_scheduled`, `message.check_compliance`, `message.create_draft`, `message.generate_draft`, `message.get_approval_status`, `message.get_delivery_status`, `message.get_engagement`, `message.get_template`, `message.get_unsubscribe_status`, `message.preview`, `message.refine_draft`, `message.request_approval`, `message.search_templates`, `message.unsubscribe_contact`, `message.validate_variables`, `organization.get_current`, `sdr.create_whatsapp_link`, `sdr.generate_outreach_draft`, `sdr.get_conversion_insights`, `sdr.get_daily_briefing`, `sdr.get_priority_queue`, `sdr.record_outreach_outcome`, `sdr.request_outreach_approval`, `survey.analyze_sentiment`, `survey.generate_report`, `survey.query_analytics`, `task.add_comment`, `task.assign`, `task.cancel`, `task.create_reminder`, `task.get_my_priorities`, `task.get_overdue`, `task.propose_batch_update`, `task.set_due_date`, `workspace.get_details`, `workspace.list_accessible`
 
-## Unmapped existing capabilities (1832)
+## Unmapped existing capabilities (1946)
 
 Existing actions/services with no suggested catalog tool. Each needs a tool, an internal-only decision, or an explicit exclusion.
 
@@ -1204,7 +1203,12 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `rescheduleBookingAction` | `crm_contacts` | src/app/actions/booking-actions.ts |
 | `getWorkspaceBrandKitAction` | `crm_contacts` | src/app/actions/brand-kit-actions.ts |
 | `saveWorkspaceBrandKitAction` | `crm_contacts` | src/app/actions/brand-kit-actions.ts |
-| `bulkCreateDealsActionCore` | `deals_revenue` | src/app/actions/bulk-deal-actions.ts |
+| `createBulkCampaignAction` | `campaigns_marketing` | src/app/actions/bulk-campaign-actions.ts |
+| `previewBulkCsvMergeAction` | `campaigns_marketing` | src/app/actions/bulk-campaign-actions.ts |
+| `dispatchBulkCampaignSliceAction` | `campaigns_marketing` | src/app/actions/bulk-campaign-actions.ts |
+| `retryFailedCampaignRecipientsAction` | `campaigns_marketing` | src/app/actions/bulk-campaign-actions.ts |
+| `getBulkCampaignProgressAction` | `campaigns_marketing` | src/app/actions/bulk-campaign-actions.ts |
+| `previewBulkCrmRecipientsAction` | `campaigns_marketing` | src/app/actions/bulk-campaign-actions.ts |
 | `bulkRegisterParticipantsActionCore` | `meetings_conversations` | src/app/actions/bulk-meeting-actions.ts |
 | `bulkRegisterParticipantsAction` | `meetings_conversations` | src/app/actions/bulk-meeting-actions.ts |
 | `bulkPushWhatsAppSkeletonsAction` | `communication_messaging` | src/app/actions/bulk-push-whatsapp-skeletons-action.ts |
@@ -1259,6 +1263,11 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `getCommunityLeaderboardAction` | `experience_portal` | src/app/actions/community-actions.ts |
 | `seedCommunitySpacesAction` | `experience_portal` | src/app/actions/community-actions.ts |
 | `getMemberPublicProfileAction` | `experience_portal` | src/app/actions/community-actions.ts |
+| `placeContractLegalHoldAction` | `crm_contacts` | src/app/actions/compliance-archival-actions.ts |
+| `releaseContractLegalHoldAction` | `crm_contacts` | src/app/actions/compliance-archival-actions.ts |
+| `getContractLegalHoldStatusAction` | `crm_contacts` | src/app/actions/compliance-archival-actions.ts |
+| `generateEDiscoveryPackageAction` | `crm_contacts` | src/app/actions/compliance-archival-actions.ts |
+| `getRetentionScheduleAction` | `crm_contacts` | src/app/actions/compliance-archival-actions.ts |
 | `getConferenceSessionAction` | `crm_contacts` | src/app/actions/conference-session-actions.ts |
 | `createOrUpdateConferenceSessionAction` | `crm_contacts` | src/app/actions/conference-session-actions.ts |
 | `createContentItemAction` | `crm_contacts` | src/app/actions/content-actions.ts |
@@ -1266,11 +1275,16 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `publishContentItemAction` | `crm_contacts` | src/app/actions/content-actions.ts |
 | `archiveContentItemAction` | `crm_contacts` | src/app/actions/content-actions.ts |
 | `deleteContentItemAction` | `crm_contacts` | src/app/actions/content-actions.ts |
-| `getContentItemBySlugAction` | `crm_contacts` | src/app/actions/content-actions.ts |
+| `getContentItemForViewerAction` | `crm_contacts` | src/app/actions/content-actions.ts |
 | `searchPortalContentAction` | `crm_contacts` | src/app/actions/content-actions.ts |
 | `listContentItemsByPortalAction` | `crm_contacts` | src/app/actions/content-actions.ts |
 | `createPortalContentTemplateAction` | `crm_contacts` | src/app/actions/content-actions.ts |
 | `listPortalContentTemplatesAction` | `crm_contacts` | src/app/actions/content-actions.ts |
+| `compareContractVersionsAction` | `crm_contacts` | src/app/actions/contract-ai-intelligence-actions.ts |
+| `getContractObligationCandidatesAction` | `crm_contacts` | src/app/actions/contract-ai-intelligence-actions.ts |
+| `extractContractObligationsAction` | `crm_contacts` | src/app/actions/contract-ai-intelligence-actions.ts |
+| `approveContractObligationCandidateAction` | `crm_contacts` | src/app/actions/contract-ai-intelligence-actions.ts |
+| `dismissContractObligationCandidateAction` | `crm_contacts` | src/app/actions/contract-ai-intelligence-actions.ts |
 | `getCoachingWorkspaceAction` | `crm_contacts` | src/app/actions/conversation-coaching-actions.ts |
 | `getCallIntelligenceDetailAction` | `crm_contacts` | src/app/actions/conversation-coaching-actions.ts |
 | `submitManualScorecardReviewAction` | `crm_contacts` | src/app/actions/conversation-coaching-actions.ts |
@@ -1301,6 +1315,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `listProjectExperimentsAction` | `crm_contacts` | src/app/actions/creative-experiment-actions.ts |
 | `promoteWinningVariantAction` | `crm_contacts` | src/app/actions/creative-experiment-actions.ts |
 | `getProjectPerformanceMetricsAction` | `forms_surveys` | src/app/actions/creative-performance-actions.ts |
+| `listWorkspaceCampaignPerformanceAction` | `forms_surveys` | src/app/actions/creative-performance-actions.ts |
 | `exportHighResolutionAssetAction` | `forms_surveys` | src/app/actions/creative-performance-actions.ts |
 | `createCreativeProjectAction` | `crm_contacts` | src/app/actions/creative-project-actions.ts |
 | `updateCreativeProjectAction` | `crm_contacts` | src/app/actions/creative-project-actions.ts |
@@ -1334,7 +1349,6 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `getUpcomingMeetingsData` | `analytics_reporting` | src/app/actions/dashboard-actions.ts |
 | `getLatestSurveysData` | `analytics_reporting` | src/app/actions/dashboard-actions.ts |
 | `getRecentActivitiesData` | `analytics_reporting` | src/app/actions/dashboard-actions.ts |
-| `resolveWorkspaceEntityRecord` | `deals_revenue` | src/app/actions/deal-actions.ts |
 | `updateDealValueAction` | `deals_revenue` | src/app/actions/deal-actions.ts |
 | `updateDealProbabilityAction` | `deals_revenue` | src/app/actions/deal-actions.ts |
 | `updateDealStatusAction` | `deals_revenue` | src/app/actions/deal-actions.ts |
@@ -1361,7 +1375,6 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `savePipelineTargetAction` | `deals_revenue` | src/app/actions/deal-analytics-actions.ts |
 | `deletePipelineTargetAction` | `deals_revenue` | src/app/actions/deal-analytics-actions.ts |
 | `createDealBulkJobAction` | `deals_revenue` | src/app/actions/deal-bulk-job-actions.ts |
-| `processDealBulkJob` | `deals_revenue` | src/app/actions/deal-bulk-job-actions.ts |
 | `getDealBulkJobStatusAction` | `deals_revenue` | src/app/actions/deal-bulk-job-actions.ts |
 | `getDealHealthDetailAction` | `deals_revenue` | src/app/actions/deal-intelligence-actions.ts |
 | `actionBuyerSignalAction` | `deals_revenue` | src/app/actions/deal-intelligence-actions.ts |
@@ -1379,6 +1392,15 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `createDealSavedViewAction` | `deals_revenue` | src/app/actions/deal-saved-view-actions.ts |
 | `updateDealSavedViewAction` | `deals_revenue` | src/app/actions/deal-saved-view-actions.ts |
 | `deleteDealSavedViewAction` | `deals_revenue` | src/app/actions/deal-saved-view-actions.ts |
+| `createApiKeyAction` | `forms_surveys` | src/app/actions/developer-platform-actions.ts |
+| `listApiKeysAction` | `forms_surveys` | src/app/actions/developer-platform-actions.ts |
+| `revokeApiKeyAction` | `forms_surveys` | src/app/actions/developer-platform-actions.ts |
+| `rotateApiKeyAction` | `forms_surveys` | src/app/actions/developer-platform-actions.ts |
+| `updateAllowedEmbedOriginsAction` | `forms_surveys` | src/app/actions/developer-platform-actions.ts |
+| `getAllowedEmbedOriginsAction` | `forms_surveys` | src/app/actions/developer-platform-actions.ts |
+| `getOfflineSyncQueueStatusAction` | `forms_surveys` | src/app/actions/developer-platform-actions.ts |
+| `askDocumentQuestionAction` | `crm_contacts` | src/app/actions/document-ai-copilot-actions.ts |
+| `getDocumentExecutiveSummaryAction` | `crm_contacts` | src/app/actions/document-ai-copilot-actions.ts |
 | `saveContentStudioDraftAction` | `crm_contacts` | src/app/actions/draft-actions.ts |
 | `getContentStudioDraftAction` | `crm_contacts` | src/app/actions/draft-actions.ts |
 | `discardContentStudioDraftAction` | `crm_contacts` | src/app/actions/draft-actions.ts |
@@ -1404,6 +1426,15 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `listMarketplaceListingsAction` | `crm_contacts` | src/app/actions/enterprise-actions.ts |
 | `installMarketplaceTemplateAction` | `crm_contacts` | src/app/actions/enterprise-actions.ts |
 | `listEnterpriseAuditLogsAction` | `crm_contacts` | src/app/actions/enterprise-actions.ts |
+| `getAssuranceProfilesAction` | `ai_governance` | src/app/actions/enterprise-governance-actions.ts |
+| `createAssuranceProfileAction` | `ai_governance` | src/app/actions/enterprise-governance-actions.ts |
+| `getWebhookHealthAction` | `ai_governance` | src/app/actions/enterprise-governance-actions.ts |
+| `createWebhookSubscriptionAction` | `ai_governance` | src/app/actions/enterprise-governance-actions.ts |
+| `replayWebhookDeliveryAction` | `ai_governance` | src/app/actions/enterprise-governance-actions.ts |
+| `getLegalHoldAndRetentionAction` | `ai_governance` | src/app/actions/enterprise-governance-actions.ts |
+| `toggleContractLegalHoldAction` | `ai_governance` | src/app/actions/enterprise-governance-actions.ts |
+| `setRetentionPolicyAction` | `ai_governance` | src/app/actions/enterprise-governance-actions.ts |
+| `generateEvidencePackageAction` | `ai_governance` | src/app/actions/enterprise-governance-actions.ts |
 | `getEnterpriseIdpConfigAction` | `crm_contacts` | src/app/actions/enterprise-identity-actions.ts |
 | `saveEnterpriseIdpConfigAction` | `crm_contacts` | src/app/actions/enterprise-identity-actions.ts |
 | `saveMfaPolicyAction` | `crm_contacts` | src/app/actions/enterprise-identity-actions.ts |
@@ -1474,6 +1505,9 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `enrichSchoolsWithSaaSIndustry` | `crm_contacts` | src/app/actions/industry-migration-actions.ts |
 | `restoreSaaSMigration` | `crm_contacts` | src/app/actions/industry-migration-actions.ts |
 | `rollbackSaaSMigration` | `crm_contacts` | src/app/actions/industry-migration-actions.ts |
+| `validateEncryptedInvitationAction` | `crm_contacts` | src/app/actions/invitation-crypto-actions.ts |
+| `acceptInvitationLandingAction` | `crm_contacts` | src/app/actions/invitation-crypto-actions.ts |
+| `declineInvitationLandingAction` | `crm_contacts` | src/app/actions/invitation-crypto-actions.ts |
 | `getKnowledgeGraphGovernanceAction` | `ai_governance` | src/app/actions/knowledge-graph-governance-actions.ts |
 | `updateKnowledgeGraphGovernanceAction` | `ai_governance` | src/app/actions/knowledge-graph-governance-actions.ts |
 | `getKnowledgeGraphMetricsAction` | `ai_governance` | src/app/actions/knowledge-graph-governance-actions.ts |
@@ -1651,11 +1685,16 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `listMembershipsByPortalAction` | `experience_portal` | src/app/actions/membership-actions.ts |
 | `listInvitationsByPortalAction` | `experience_portal` | src/app/actions/membership-actions.ts |
 | `listPlansByPortalAction` | `experience_portal` | src/app/actions/membership-actions.ts |
-| `evaluateContentAccessAction` | `experience_portal` | src/app/actions/membership-actions.ts |
 | `migrateLegacyTemplatesToBlocksAction` | `crm_contacts` | src/app/actions/migrate-legacy-templates-to-blocks-action.ts |
 | `fetchOutdatedCampaignPages` | `crm_contacts` | src/app/actions/migrate-legacy-testimonials-action.ts |
 | `migrateLegacyTestimonialBlocksAction` | `crm_contacts` | src/app/actions/migrate-legacy-testimonials-action.ts |
 | `migrateTemplatesAction` | `crm_contacts` | src/app/actions/migrate-templates-action.ts |
+| `startMigrationRunAction` | `crm_contacts` | src/app/actions/migration-cutover-actions.ts |
+| `runReconciliationAuditAction` | `crm_contacts` | src/app/actions/migration-cutover-actions.ts |
+| `getRolloutCohortAction` | `crm_contacts` | src/app/actions/migration-cutover-actions.ts |
+| `updateRolloutCohortAction` | `crm_contacts` | src/app/actions/migration-cutover-actions.ts |
+| `triggerEmergencyRollbackAction` | `crm_contacts` | src/app/actions/migration-cutover-actions.ts |
+| `exportReconciliationReportAction` | `crm_contacts` | src/app/actions/migration-cutover-actions.ts |
 | `getParkedJobsCountAction` | `finance_subscriptions` | src/app/actions/node-deletion-reconciliation-actions.ts |
 | `reconcileParkedJobsOnNodeDeletionAction` | `finance_subscriptions` | src/app/actions/node-deletion-reconciliation-actions.ts |
 | `getOfficeHoursRoomAction` | `crm_contacts` | src/app/actions/office-hours-actions.ts |
@@ -1809,6 +1848,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `getAssigneeDetails` | `forms_surveys` | src/app/actions/survey-assignee-actions.ts |
 | `sendSurveyLinkToAssignee` | `forms_surveys` | src/app/actions/survey-assignee-actions.ts |
 | `generateKeywordsAction` | `forms_surveys` | src/app/actions/survey-seo-actions.ts |
+| `executeSyncRolePermissionsFerAction` | `identity_access` | src/app/actions/sync-role-permissions-fer-action.ts |
 | `executeTemplateIdentifiersFerAction` | `crm_contacts` | src/app/actions/template-identifiers-fer-action.ts |
 | `runTenantSenderHygieneAction` | `crm_contacts` | src/app/actions/tenant-hygiene-action.ts |
 | `runGenerateThumbnail` | `media_creative` | src/app/actions/thumbnail-actions.ts |
@@ -1841,6 +1881,8 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `executeBulkWorkforceAction` | `lead_intelligence` | src/app/actions/workforce-actions.ts |
 | `getWorkforceIntelligenceSnapshotAction` | `lead_intelligence` | src/app/actions/workforce-intelligence-actions.ts |
 | `refreshWorkforceIntelligenceSnapshotAction` | `lead_intelligence` | src/app/actions/workforce-intelligence-actions.ts |
+| `getWorkspaceBrandingAction` | `identity_access` | src/app/actions/workspace-branding-actions.ts |
+| `updateWorkspaceBrandingAction` | `identity_access` | src/app/actions/workspace-branding-actions.ts |
 | `fetchWorkspacesForIndustryMigration` | `identity_access` | src/app/actions/workspace-industry-migration-actions.ts |
 | `enrichWorkspacesWithIndustry` | `identity_access` | src/app/actions/workspace-industry-migration-actions.ts |
 | `restoreWorkspaceIndustryMigration` | `identity_access` | src/app/actions/workspace-industry-migration-actions.ts |
@@ -1850,6 +1892,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `NodeActionToolbar` | `automation_workflows` | src/app/admin/automations/[id]/edit/components/nodes/NodeActionToolbar.tsx |
 | `TagActionNode` | `automation_workflows` | src/app/admin/automations/[id]/edit/components/nodes/TagActionNode.tsx |
 | `ActionConfigPanel` | `automation_workflows` | src/app/admin/automations/components/ActionConfigPanel.tsx |
+| `QuickLogDropdownContent` | `deals_revenue` | src/app/admin/deals/[id]/components/DealQuickActions.tsx |
 | `DealQuickActions` | `deals_revenue` | src/app/admin/deals/[id]/components/DealQuickActions.tsx |
 | `BulkActionDock` | `crm_contacts` | src/app/admin/entities/components/BulkActionDock.tsx |
 | `FloatingActionToolbar` | `lead_intelligence` | src/app/admin/lead-intelligence/components/FloatingActionToolbar.tsx |
@@ -1863,7 +1906,6 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `BulkActionsFloatingToolbar` | `identity_access` | src/app/admin/users/components/BulkActionsFloatingToolbar.tsx |
 | `QuickActions` | `analytics_reporting` | src/components/dashboard/QuickActions.tsx |
 | `ContextualActionBar` | `media_creative` | src/components/shared/thumbnail-designer/ContextualActionBar.tsx |
-| `getActivitiesForContactCore` | `crm_contacts` | src/lib/activity-actions.ts |
 | `updateNote` | `crm_contacts` | src/lib/activity-actions.ts |
 | `deleteNote` | `crm_contacts` | src/lib/activity-actions.ts |
 | `getActivitiesForContact` | `crm_contacts` | src/lib/activity-actions.ts |
@@ -2133,6 +2175,16 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `applyAiRecommendedHotspotAction` | `crm_contacts` | src/lib/documents/ai-document-actions.ts |
 | `saveAiSummaryToDocumentMetadataAction` | `crm_contacts` | src/lib/documents/ai-document-actions.ts |
 | `getDocumentAnalyticsAction` | `analytics_reporting` | src/lib/documents/analytics-actions.ts |
+| `publishTemplateVersionAction` | `crm_contacts` | src/lib/documents/contract-actions.ts |
+| `createContractRecordAction` | `crm_contacts` | src/lib/documents/contract-actions.ts |
+| `createContractAmendmentAction` | `crm_contacts` | src/lib/documents/contract-actions.ts |
+| `createContractRenewalAction` | `crm_contacts` | src/lib/documents/contract-actions.ts |
+| `createContractObligationAction` | `crm_contacts` | src/lib/documents/contract-actions.ts |
+| `fulfillContractObligationAction` | `crm_contacts` | src/lib/documents/contract-actions.ts |
+| `transitionContractStatusAction` | `crm_contacts` | src/lib/documents/contract-actions.ts |
+| `extractContractObligations` | `crm_contacts` | src/lib/documents/contract-obligation-extraction-service.ts |
+| `approveObligationCandidate` | `crm_contacts` | src/lib/documents/contract-obligation-extraction-service.ts |
+| `dismissObligationCandidate` | `crm_contacts` | src/lib/documents/contract-obligation-extraction-service.ts |
 | `getContactDocumentInsightsAction` | `crm_contacts` | src/lib/documents/crm-actions.ts |
 | `linkContactDocumentSessionAction` | `crm_contacts` | src/lib/documents/crm-actions.ts |
 | `awardContactScoreAction` | `crm_contacts` | src/lib/documents/crm-actions.ts |
@@ -2149,6 +2201,13 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `archiveDocumentVersionAction` | `crm_contacts` | src/lib/documents/document-version-actions.ts |
 | `getDocumentVersionsAction` | `crm_contacts` | src/lib/documents/document-version-actions.ts |
 | `auditWorkspaceSecurityPostureAction` | `crm_contacts` | src/lib/documents/enterprise-security-actions.ts |
+| `createEnvelopeAction` | `crm_contacts` | src/lib/documents/envelope-actions.ts |
+| `submitRecipientSignatureAction` | `crm_contacts` | src/lib/documents/envelope-actions.ts |
+| `declineEnvelopeAction` | `crm_contacts` | src/lib/documents/envelope-actions.ts |
+| `reassignRecipientAction` | `crm_contacts` | src/lib/documents/envelope-actions.ts |
+| `getEnvelopeForSigningAction` | `crm_contacts` | src/lib/documents/envelope-actions.ts |
+| `getEnvelopeAdminDetailsAction` | `crm_contacts` | src/lib/documents/envelope-actions.ts |
+| `regenerateRecipientLinkAction` | `crm_contacts` | src/lib/documents/envelope-actions.ts |
 | `executeLayerActionServerAction` | `crm_contacts` | src/lib/documents/interactive-layer-actions.ts |
 | `queueDocumentProcessingAction` | `crm_contacts` | src/lib/documents/processing-actions.ts |
 | `getProcessingJobStatusAction` | `crm_contacts` | src/lib/documents/processing-actions.ts |
@@ -2341,11 +2400,11 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `invalidateMemoryAction` | `knowledge_memory` | src/lib/memory/actions/memory-actions.ts |
 | `updateMemoryAction` | `knowledge_memory` | src/lib/memory/actions/memory-actions.ts |
 | `getMemoryHealthStatsAction` | `knowledge_memory` | src/lib/memory/actions/memory-actions.ts |
-| `scanMemoryConflictsBatchAction` | `knowledge_memory` | src/lib/memory/actions/orchestrator-actions.ts |
-| `reconfirmMemoryFreshnessAction` | `knowledge_memory` | src/lib/memory/actions/orchestrator-actions.ts |
-| `findConsolidationCandidatesAction` | `knowledge_memory` | src/lib/memory/actions/orchestrator-actions.ts |
-| `applyConsolidationAction` | `knowledge_memory` | src/lib/memory/actions/orchestrator-actions.ts |
-| `unifiedRecallAction` | `knowledge_memory` | src/lib/memory/actions/orchestrator-actions.ts |
+| `scanMemoryConflictsBatchAction` | `automation_workflows` | src/lib/memory/actions/orchestrator-actions.ts |
+| `reconfirmMemoryFreshnessAction` | `automation_workflows` | src/lib/memory/actions/orchestrator-actions.ts |
+| `findConsolidationCandidatesAction` | `automation_workflows` | src/lib/memory/actions/orchestrator-actions.ts |
+| `applyConsolidationAction` | `automation_workflows` | src/lib/memory/actions/orchestrator-actions.ts |
+| `unifiedRecallAction` | `automation_workflows` | src/lib/memory/actions/orchestrator-actions.ts |
 | `semanticSearchMemoriesAction` | `knowledge_memory` | src/lib/memory/actions/semantic-search-actions.ts |
 | `reindexMemoryAction` | `knowledge_memory` | src/lib/memory/actions/semantic-search-actions.ts |
 | `reindexWorkspaceMemoriesAction` | `knowledge_memory` | src/lib/memory/actions/semantic-search-actions.ts |
@@ -2379,8 +2438,8 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `sendReceiptAcknowledgementAction` | `crm_contacts` | src/lib/notification-actions.ts |
 | `fetchPlatformObservabilityAction` | `crm_contacts` | src/lib/observability-actions.ts |
 | `purgeEdgeCacheAction` | `crm_contacts` | src/lib/observability-actions.ts |
-| `saveCampaignOrchestrationAction` | `crm_contacts` | src/lib/orchestration-actions.ts |
-| `triggerCrossChannelSyncAction` | `crm_contacts` | src/lib/orchestration-actions.ts |
+| `saveCampaignOrchestrationAction` | `automation_workflows` | src/lib/orchestration-actions.ts |
+| `triggerCrossChannelSyncAction` | `automation_workflows` | src/lib/orchestration-actions.ts |
 | `saveOrganizationAction` | `identity_access` | src/lib/organization-actions.ts |
 | `deleteOrganizationAction` | `identity_access` | src/lib/organization-actions.ts |
 | `archiveOrganizationAction` | `identity_access` | src/lib/organization-actions.ts |
@@ -2394,6 +2453,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `saveAgreementProgressAction` | `crm_contacts` | src/lib/pdf-actions.ts |
 | `finalizeAgreementAction` | `crm_contacts` | src/lib/pdf-actions.ts |
 | `createPdfForm` | `crm_contacts` | src/lib/pdf-actions.ts |
+| `createStarterPdfForm` | `crm_contacts` | src/lib/pdf-actions.ts |
 | `clonePdfForm` | `crm_contacts` | src/lib/pdf-actions.ts |
 | `savePdfForm` | `crm_contacts` | src/lib/pdf-actions.ts |
 | `updatePdfFormStatus` | `crm_contacts` | src/lib/pdf-actions.ts |
@@ -2405,6 +2465,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `savePerspectiveAction` | `crm_contacts` | src/lib/perspective-actions.ts |
 | `deletePerspectiveAction` | `crm_contacts` | src/lib/perspective-actions.ts |
 | `archivePerspectiveAction` | `crm_contacts` | src/lib/perspective-actions.ts |
+| `reconcilePhoneHygieneAction` | `crm_contacts` | src/lib/phone-hygiene-actions.ts |
 | `createPipelineWithStagesAction` | `deals_revenue` | src/lib/pipeline-actions.ts |
 | `savePipelineAction` | `deals_revenue` | src/lib/pipeline-actions.ts |
 | `setPipelineAsDefaultAction` | `deals_revenue` | src/lib/pipeline-actions.ts |
@@ -2412,6 +2473,9 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `archivePipelineAction` | `deals_revenue` | src/lib/pipeline-actions.ts |
 | `clonePipelineAction` | `deals_revenue` | src/lib/pipeline-actions.ts |
 | `createDefaultPipelineForIndustry` | `deals_revenue` | src/lib/pipeline-actions.ts |
+| `addPipelineDealCustomFieldAction` | `deals_revenue` | src/lib/pipeline-actions.ts |
+| `updatePipelineDealCustomFieldsAction` | `deals_revenue` | src/lib/pipeline-actions.ts |
+| `removePipelineDealCustomFieldAction` | `deals_revenue` | src/lib/pipeline-actions.ts |
 | `getPlatformControlsAction` | `forms_surveys` | src/lib/platform/platform-controls-actions.ts |
 | `setOutboundPausedAction` | `forms_surveys` | src/lib/platform/platform-controls-actions.ts |
 | `createProductAction` | `crm_contacts` | src/lib/product-actions.ts |
@@ -2603,13 +2667,13 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `updateSettings` | `crm_contacts` | src/lib/settings-actions.ts |
 | `createSettings` | `crm_contacts` | src/lib/settings-actions.ts |
 | `handleSignupAction` | `crm_contacts` | src/lib/signup-actions.ts |
-| `startSupervisorMissionAction` | `crm_contacts` | src/lib/supervisor/actions/supervisor-actions.ts |
-| `resumeSupervisorMissionAction` | `crm_contacts` | src/lib/supervisor/actions/supervisor-actions.ts |
-| `cancelSupervisorMissionAction` | `crm_contacts` | src/lib/supervisor/actions/supervisor-actions.ts |
-| `getSupervisorRunAction` | `crm_contacts` | src/lib/supervisor/actions/supervisor-actions.ts |
-| `listSupervisorRunsAction` | `crm_contacts` | src/lib/supervisor/actions/supervisor-actions.ts |
-| `executeProposedActionAction` | `crm_contacts` | src/lib/supervisor/actions/supervisor-actions.ts |
-| `listAgentDescriptorsAction` | `crm_contacts` | src/lib/supervisor/actions/supervisor-actions.ts |
+| `startSupervisorMissionAction` | `automation_workflows` | src/lib/supervisor/actions/supervisor-actions.ts |
+| `resumeSupervisorMissionAction` | `automation_workflows` | src/lib/supervisor/actions/supervisor-actions.ts |
+| `cancelSupervisorMissionAction` | `automation_workflows` | src/lib/supervisor/actions/supervisor-actions.ts |
+| `getSupervisorRunAction` | `automation_workflows` | src/lib/supervisor/actions/supervisor-actions.ts |
+| `listSupervisorRunsAction` | `automation_workflows` | src/lib/supervisor/actions/supervisor-actions.ts |
+| `executeProposedActionAction` | `automation_workflows` | src/lib/supervisor/actions/supervisor-actions.ts |
+| `listAgentDescriptorsAction` | `automation_workflows` | src/lib/supervisor/actions/supervisor-actions.ts |
 | `syncSurveyUploadedFilesToMedia` | `forms_surveys` | src/lib/survey-actions.ts |
 | `sanitizeEntityPayloadForUpdate` | `forms_surveys` | src/lib/survey-actions.ts |
 | `getSurveysForContact` | `forms_surveys` | src/lib/survey-actions.ts |
@@ -2624,10 +2688,8 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `autoSaveSurveyAction` | `forms_surveys` | src/lib/survey-actions.ts |
 | `submitPublicSurveyLead` | `forms_surveys` | src/lib/survey-actions.ts |
 | `finalizeSurveySubmission` | `forms_surveys` | src/lib/survey-actions.ts |
-| `executeSurveyPipelineAndAutomations` | `forms_surveys` | src/lib/survey-actions.ts |
 | `executeSurveyResultButtonActions` | `forms_surveys` | src/lib/survey-actions.ts |
 | `logSurveyStartedAction` | `forms_surveys` | src/lib/survey-actions.ts |
-| `addOrMoveEntityInPipeline` | `forms_surveys` | src/lib/survey-actions.ts |
 | `quickSaveSurveyTemplateAction` | `communication_messaging` | src/lib/survey-ai-messaging-actions.ts |
 | `bulkApplyTagsToSurveyEntitiesAction` | `forms_surveys` | src/lib/survey-entity-actions.ts |
 | `bulkMoveSurveyEntitiesStageAction` | `forms_surveys` | src/lib/survey-entity-actions.ts |
@@ -2649,7 +2711,6 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `estimateAudienceSizeAction` | `campaigns_marketing` | src/lib/surveys/survey-campaign-actions.ts |
 | `getSystemDispatchGovernanceAction` | `campaigns_marketing` | src/lib/surveys/survey-campaign-actions.ts |
 | `saveSystemDispatchGovernanceAction` | `campaigns_marketing` | src/lib/surveys/survey-campaign-actions.ts |
-| `executeSurveyCrmSyncAction` | `forms_surveys` | src/lib/surveys/survey-crm-sync-actions.ts |
 | `getSurveyCrmFieldDefinitionsAction` | `forms_surveys` | src/lib/surveys/survey-crm-sync-actions.ts |
 | `saveSurveyCrmConfigAction` | `forms_surveys` | src/lib/surveys/survey-crm-sync-actions.ts |
 | `getSystemCrmFieldMappingTemplatesAction` | `forms_surveys` | src/lib/surveys/survey-crm-sync-actions.ts |
@@ -2705,7 +2766,6 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `bulkUpdateTasks` | `tasks_productivity` | src/lib/task-actions.ts |
 | `bulkDeleteTasks` | `tasks_productivity` | src/lib/task-actions.ts |
 | `deleteTaskNonBlocking` | `tasks_productivity` | src/lib/task-actions.ts |
-| `createTaskFromAutomation` | `tasks_productivity` | src/lib/task-server-actions.ts |
 | `deleteTaskAction` | `tasks_productivity` | src/lib/task-server-actions.ts |
 | `bulkUpdateTasksAction` | `tasks_productivity` | src/lib/task-server-actions.ts |
 | `bulkDeleteTasksAction` | `tasks_productivity` | src/lib/task-server-actions.ts |
@@ -2772,12 +2832,11 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `bulkArchiveEntitiesAction` | `identity_access` | src/lib/workspace-entity-actions.ts |
 | `bulkDeleteEntitiesAction` | `identity_access` | src/lib/workspace-entity-actions.ts |
 | `getFilteredEntityIdsAction` | `identity_access` | src/lib/workspace-entity-actions.ts |
-| `ensureEntitySharedToWorkspace` | `identity_access` | src/lib/workspace-entity-actions.ts |
 | `IngestionDeduplicator` | `crm_contacts` | src/lib/services/IngestionDeduplicator.ts |
 | `AgingService` | `finance_subscriptions` | src/lib/services/aging-service.ts |
 | `calculateInvoiceAging` | `finance_subscriptions` | src/lib/services/aging-utils.ts |
 | `AgreementSequenceService` | `crm_contacts` | src/lib/services/agreement-sequence-service.ts |
-| `AiIdentityContextResolver` | `crm_contacts` | src/lib/services/ai/ai-identity-context-resolver.ts |
+| `AiIdentityContextResolver` | `knowledge_memory` | src/lib/services/ai/ai-identity-context-resolver.ts |
 | `AiRoleAdvisorService` | `identity_access` | src/lib/services/ai/ai-role-advisor-service.ts |
 | `AiWorkforceRiskEngine` | `ai_governance` | src/lib/services/ai/ai-workforce-risk-engine.ts |
 | `AiApprovalRoutingService` | `ai_governance` | src/lib/services/ai-admin/ai-approval-routing-service.ts |
@@ -2808,6 +2867,8 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `CredentialService` | `experience_portal` | src/lib/services/credential-service.ts |
 | `CreditNoteSequenceService` | `finance_subscriptions` | src/lib/services/credit-note-sequence-service.ts |
 | `CreditNoteService` | `finance_subscriptions` | src/lib/services/credit-note-service.ts |
+| `EncryptedInvitePayloadSchema` | `crm_contacts` | src/lib/services/crypto/invite-crypto-service.ts |
+| `InviteCryptoService` | `crm_contacts` | src/lib/services/crypto/invite-crypto-service.ts |
 | `getDashboardConfig` | `analytics_reporting` | src/lib/services/dashboard.service.ts |
 | `saveDashboardLayout` | `analytics_reporting` | src/lib/services/dashboard.service.ts |
 | `checkMessageDeliveryLogs` | `analytics_reporting` | src/lib/services/delivery-telemetry.ts |
@@ -2926,6 +2987,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `DepartmentService` | `lead_intelligence` | src/lib/services/workforce/department-service.ts |
 | `InvitationDispatchService` | `lead_intelligence` | src/lib/services/workforce/invitation-dispatch-service.ts |
 | `InvitationLifecycleService` | `lead_intelligence` | src/lib/services/workforce/invitation-lifecycle-service.ts |
+| `assertInviteScope` | `lead_intelligence` | src/lib/services/workforce/invite-scope.ts |
 | `OffboardingGuardService` | `lead_intelligence` | src/lib/services/workforce/offboarding-guard-service.ts |
 | `OwnershipTransferService` | `lead_intelligence` | src/lib/services/workforce/ownership-transfer-service.ts |
 | `TeamService` | `lead_intelligence` | src/lib/services/workforce/team-service.ts |
@@ -2974,8 +3036,59 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `EmailSyntaxSanitizer` | `lead_intelligence` | src/lib/lead-intelligence/verification/EmailSyntaxSanitizer.ts |
 | `SMTPHandshakeProberService` | `lead_intelligence` | src/lib/lead-intelligence/verification/SMTPHandshakeProberService.ts |
 | `WaterfallEnrichmentEngine` | `lead_intelligence` | src/lib/lead-intelligence/waterfall/WaterfallEnrichmentEngine.ts |
+| `McpApiKeyService` | `ai_governance` | src/lib/mcp/api-key-service.ts |
+| `McpApprovalEngine` | `ai_governance` | src/lib/mcp/approval-engine.ts |
+| `McpAuditLogger` | `ai_governance` | src/lib/mcp/audit-logger.ts |
+| `McpGateway` | `ai_governance` | src/lib/mcp/gateway.ts |
+| `McpRegistry` | `ai_governance` | src/lib/mcp/registry.ts |
+| `registerAllCoreTools` | `ai_governance` | src/lib/mcp/tools/index.ts |
+| `zMcpPayloadValue` | `ai_governance` | src/lib/mcp/types.ts |
+| `zMcpJsonRpcRequest` | `ai_governance` | src/lib/mcp/types.ts |
+| `zDomainSpecialistId` | `crm_contacts` | src/lib/agents/domain-types.ts |
+| `zSpecialistAutonomyLevel` | `crm_contacts` | src/lib/agents/domain-types.ts |
+| `zSwarmMode` | `crm_contacts` | src/lib/agents/domain-types.ts |
+| `zSwarmMissionRequest` | `crm_contacts` | src/lib/agents/domain-types.ts |
+| `SwarmOrchestrator` | `automation_workflows` | src/lib/agents/services/swarm-orchestrator.ts |
+| `AgentSecurityViolationError` | `crm_contacts` | src/lib/agents/specialists/base-domain-specialist.ts |
+| `BaseDomainSpecialist` | `crm_contacts` | src/lib/agents/specialists/base-domain-specialist.ts |
+| `GovernanceSpecialist` | `ai_governance` | src/lib/agents/specialists/governance-specialist.ts |
+| `KnowledgeSpecialist` | `knowledge_memory` | src/lib/agents/specialists/knowledge-specialist.ts |
+| `MeetingSpecialist` | `meetings_conversations` | src/lib/agents/specialists/meeting-specialist.ts |
+| `OperationsSpecialist` | `crm_contacts` | src/lib/agents/specialists/operations-specialist.ts |
+| `RevenueSpecialist` | `deals_revenue` | src/lib/agents/specialists/revenue-specialist.ts |
+| `SdrSpecialist` | `lead_intelligence` | src/lib/agents/specialists/sdr-specialist.ts |
+| `ConflictRepository` | `knowledge_memory` | src/lib/memory/conflict-repository.ts |
+| `GraphRepository` | `knowledge_memory` | src/lib/memory/graph-repository.ts |
+| `memoryTypeToRelationship` | `knowledge_memory` | src/lib/memory/graph-types.ts |
+| `MemoryRepository` | `knowledge_memory` | src/lib/memory/memory-repository.ts |
+| `GraphProjectionService` | `deals_revenue` | src/lib/memory/pipeline/graph-projection-service.ts |
+| `NoteMemoryPipeline` | `deals_revenue` | src/lib/memory/pipeline/note-memory-pipeline.ts |
+| `computeCosineSimilarity` | `knowledge_memory` | src/lib/memory/qdrant/qdrant-client.ts |
+| `QdrantClient` | `knowledge_memory` | src/lib/memory/qdrant/qdrant-client.ts |
+| `QdrantIndexer` | `knowledge_memory` | src/lib/memory/qdrant/qdrant-indexer.ts |
+| `ConflictEngine` | `knowledge_memory` | src/lib/memory/services/conflict-engine.ts |
+| `ContextBudgetManager` | `knowledge_memory` | src/lib/memory/services/context-budget-manager.ts |
+| `ContextBuilderService` | `knowledge_memory` | src/lib/memory/services/context-builder-service.ts |
+| `ContextRelevanceScorer` | `knowledge_memory` | src/lib/memory/services/context-relevance-scorer.ts |
+| `EmbeddingService` | `knowledge_memory` | src/lib/memory/services/embedding-service.ts |
+| `getMemoryTtlDays` | `knowledge_memory` | src/lib/memory/services/freshness-engine.ts |
+| `calculateFreshnessScore` | `knowledge_memory` | src/lib/memory/services/freshness-engine.ts |
+| `reconfirmFreshness` | `knowledge_memory` | src/lib/memory/services/freshness-engine.ts |
+| `evaluateMemoriesFreshness` | `knowledge_memory` | src/lib/memory/services/freshness-engine.ts |
+| `filterStaleMemories` | `knowledge_memory` | src/lib/memory/services/freshness-engine.ts |
+| `getMemoryFreshnessHealthMetrics` | `knowledge_memory` | src/lib/memory/services/freshness-engine.ts |
+| `KnowledgeGraphService` | `knowledge_memory` | src/lib/memory/services/knowledge-graph-service.ts |
+| `MemoryConsolidationEngine` | `knowledge_memory` | src/lib/memory/services/memory-consolidation-engine.ts |
+| `MemoryRouter` | `knowledge_memory` | src/lib/memory/services/memory-router.ts |
+| `OrganizationMemoryService` | `knowledge_memory` | src/lib/memory/services/organization-memory-service.ts |
+| `SemanticSearchService` | `knowledge_memory` | src/lib/memory/services/semantic-search-service.ts |
+| `EventTriggerRouter` | `automation_workflows` | src/lib/workflows/services/event-trigger-router.ts |
+| `WorkflowEngine` | `automation_workflows` | src/lib/workflows/services/workflow-engine.ts |
+| `AgentRegistry` | `automation_workflows` | src/lib/supervisor/agent-registry.ts |
+| `SupervisorEngine` | `automation_workflows` | src/lib/supervisor/services/supervisor-engine.ts |
+| `zSupervisorPlanStep` | `automation_workflows` | src/lib/supervisor/types.ts |
 
-## Test gaps (1478)
+## Test gaps (1411)
 
 | Capability | Kind | Risk | File |
 | --- | --- | --- | --- |
@@ -3060,39 +3173,29 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `cleanupEntityCustomData` | server_action | `L2_STATE_MUTATION` | src/app/actions/cleanup-entity-customdata-action.ts |
 | `validateCustomDataCleanup` | server_action | `L0_READ` | src/app/actions/cleanup-entity-customdata-action.ts |
 | `clearAllImportLogsAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/clear-import-logs-action.ts |
-| `createOfferAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/commerce-actions.ts |
 | `updateOfferAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/commerce-actions.ts |
 | `deleteOfferAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/app/actions/commerce-actions.ts |
 | `listOffersByPortalAction` | server_action | `L0_READ` | src/app/actions/commerce-actions.ts |
 | `createCouponAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/commerce-actions.ts |
 | `deleteCouponAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/app/actions/commerce-actions.ts |
 | `listCouponsByPortalAction` | server_action | `L0_READ` | src/app/actions/commerce-actions.ts |
-| `validateCouponAction` | server_action | `L0_READ` | src/app/actions/commerce-actions.ts |
-| `processCheckoutOrderAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/commerce-actions.ts |
 | `listOrdersByPortalAction` | server_action | `L0_READ` | src/app/actions/commerce-actions.ts |
 | `registerAffiliatePartnerAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/commerce-actions.ts |
 | `listAffiliatesByPortalAction` | server_action | `L0_READ` | src/app/actions/commerce-actions.ts |
 | `updateAffiliatePartnerStatusAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/commerce-actions.ts |
-| `joinPortalWaitlistAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/commerce-actions.ts |
 | `createSpaceAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/community-actions.ts |
 | `updateSpaceAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/community-actions.ts |
 | `deleteSpaceAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/app/actions/community-actions.ts |
 | `listSpacesByPortalAction` | server_action | `L0_READ` | src/app/actions/community-actions.ts |
-| `createPostAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/community-actions.ts |
-| `updatePostAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/community-actions.ts |
 | `deletePostAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/app/actions/community-actions.ts |
 | `togglePinPostAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/community-actions.ts |
-| `createCommentAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/community-actions.ts |
 | `deleteCommentAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/app/actions/community-actions.ts |
-| `castPollVoteAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/community-actions.ts |
-| `toggleReactionAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/community-actions.ts |
 | `reportContentAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/community-actions.ts |
 | `listModerationReportsAction` | server_action | `L0_READ` | src/app/actions/community-actions.ts |
 | `resolveModerationReportAction` | server_action | `L1_INTERNAL_DRAFT` | src/app/actions/community-actions.ts |
 | `listLessonPostsAction` | server_action | `L0_READ` | src/app/actions/community-actions.ts |
 | `getCommunityLeaderboardAction` | server_action | `L0_READ` | src/app/actions/community-actions.ts |
 | `seedCommunitySpacesAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/community-actions.ts |
-| `getMemberPublicProfileAction` | server_action | `L0_READ` | src/app/actions/community-actions.ts |
 | `getConferenceSessionAction` | server_action | `L0_READ` | src/app/actions/conference-session-actions.ts |
 | `createOrUpdateConferenceSessionAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/conference-session-actions.ts |
 | `createContentItemAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/content-actions.ts |
@@ -3100,11 +3203,13 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `publishContentItemAction` | server_action | `L3_EXTERNAL_COMMUNICATION_FINANCE` | src/app/actions/content-actions.ts |
 | `archiveContentItemAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/app/actions/content-actions.ts |
 | `deleteContentItemAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/app/actions/content-actions.ts |
-| `getContentItemBySlugAction` | server_action | `L0_READ` | src/app/actions/content-actions.ts |
-| `searchPortalContentAction` | server_action | `L0_READ` | src/app/actions/content-actions.ts |
-| `listContentItemsByPortalAction` | server_action | `L0_READ` | src/app/actions/content-actions.ts |
 | `createPortalContentTemplateAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/content-actions.ts |
 | `listPortalContentTemplatesAction` | server_action | `L0_READ` | src/app/actions/content-actions.ts |
+| `compareContractVersionsAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/contract-ai-intelligence-actions.ts |
+| `getContractObligationCandidatesAction` | server_action | `L0_READ` | src/app/actions/contract-ai-intelligence-actions.ts |
+| `extractContractObligationsAction` | server_action | `L0_READ` | src/app/actions/contract-ai-intelligence-actions.ts |
+| `approveContractObligationCandidateAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/contract-ai-intelligence-actions.ts |
+| `dismissContractObligationCandidateAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/contract-ai-intelligence-actions.ts |
 | `getCoachingWorkspaceAction` | server_action | `L0_READ` | src/app/actions/conversation-coaching-actions.ts |
 | `getCallIntelligenceDetailAction` | server_action | `L0_READ` | src/app/actions/conversation-coaching-actions.ts |
 | `submitManualScorecardReviewAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/conversation-coaching-actions.ts |
@@ -3156,10 +3261,8 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `createCertificateTemplateAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/credential-actions.ts |
 | `listCertificateTemplatesAction` | server_action | `L0_READ` | src/app/actions/credential-actions.ts |
 | `issueCertificateAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/credential-actions.ts |
-| `verifyCertificateAction` | server_action | `L0_READ` | src/app/actions/credential-actions.ts |
 | `revokeCertificateAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/app/actions/credential-actions.ts |
 | `listIssuedCertificatesAction` | server_action | `L0_READ` | src/app/actions/credential-actions.ts |
-| `exportOpenBadgeAction` | server_action | `L0_READ` | src/app/actions/credential-actions.ts |
 | `listXApiStatementsAction` | server_action | `L0_READ` | src/app/actions/credential-actions.ts |
 | `createBadgeDefinitionAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/credential-actions.ts |
 | `listBadgeDefinitionsAction` | server_action | `L0_READ` | src/app/actions/credential-actions.ts |
@@ -3173,22 +3276,13 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `getUpcomingMeetingsData` | server_action | `L0_READ` | src/app/actions/dashboard-actions.ts |
 | `getLatestSurveysData` | server_action | `L0_READ` | src/app/actions/dashboard-actions.ts |
 | `getRecentActivitiesData` | server_action | `L0_READ` | src/app/actions/dashboard-actions.ts |
-| `resolveWorkspaceEntityRecord` | server_action | `L1_INTERNAL_DRAFT` | src/app/actions/deal-actions.ts |
 | `updateDealProbabilityAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/deal-actions.ts |
-| `updateDealOwnerAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/deal-actions.ts |
-| `updateDealDetailsAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/deal-actions.ts |
 | `addDealContactAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/deal-actions.ts |
 | `removeDealContactAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/deal-actions.ts |
-| `deleteDealAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/app/actions/deal-actions.ts |
 | `cleanLegacyDealNamesAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/deal-actions.ts |
-| `updateStageOrdersAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/deal-actions.ts |
-| `updateDealAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/deal-actions.ts |
-| `bulkAssignDealsAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/deal-actions.ts |
-| `bulkDeleteDealsAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/app/actions/deal-actions.ts |
 | `bulkArchiveDealsAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/app/actions/deal-actions.ts |
 | `evaluateAndAdvanceDealOnMeetingAction` | server_action | `L0_READ` | src/app/actions/deal-advancer-actions.ts |
 | `generateDealAiInsightsAction` | server_action | `L1_INTERNAL_DRAFT` | src/app/actions/deal-ai-actions.ts |
-| `processDealBulkJob` | server_action | `L2_STATE_MUTATION` | src/app/actions/deal-bulk-job-actions.ts |
 | `getDealIntelligenceOverviewAction` | server_action | `L0_READ` | src/app/actions/deal-intelligence-actions.ts |
 | `getDealHealthDetailAction` | server_action | `L0_READ` | src/app/actions/deal-intelligence-actions.ts |
 | `actionBuyerSignalAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/deal-intelligence-actions.ts |
@@ -3204,6 +3298,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `convertQuoteToInvoiceAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/deal-line-item-actions.ts |
 | `deleteDealQuoteAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/app/actions/deal-line-item-actions.ts |
 | `executeDealMigration` | server_action | `L2_STATE_MUTATION` | src/app/actions/deal-migration-actions.ts |
+| `getDocumentExecutiveSummaryAction` | server_action | `L0_READ` | src/app/actions/document-ai-copilot-actions.ts |
 | `saveContentStudioDraftAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/draft-actions.ts |
 | `getContentStudioDraftAction` | server_action | `L0_READ` | src/app/actions/draft-actions.ts |
 | `discardContentStudioDraftAction` | server_action | `L1_INTERNAL_DRAFT` | src/app/actions/draft-actions.ts |
@@ -3230,7 +3325,6 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `listHierarchyNodesAction` | server_action | `L0_READ` | src/app/actions/enterprise-actions.ts |
 | `listMarketplaceListingsAction` | server_action | `L0_READ` | src/app/actions/enterprise-actions.ts |
 | `installMarketplaceTemplateAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/enterprise-actions.ts |
-| `listEnterpriseAuditLogsAction` | server_action | `L0_READ` | src/app/actions/enterprise-actions.ts |
 | `getEnterpriseIdpConfigAction` | server_action | `L0_READ` | src/app/actions/enterprise-identity-actions.ts |
 | `saveEnterpriseIdpConfigAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/enterprise-identity-actions.ts |
 | `getMfaPolicyAction` | server_action | `L0_READ` | src/app/actions/enterprise-identity-actions.ts |
@@ -3252,9 +3346,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `deleteLiveEventAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/app/actions/event-actions.ts |
 | `listLiveEventsByPortalAction` | server_action | `L0_READ` | src/app/actions/event-actions.ts |
 | `listCohortsByPortalAction` | server_action | `L0_READ` | src/app/actions/event-actions.ts |
-| `registerForEventAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/event-actions.ts |
 | `cancelEventRegistrationAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/event-actions.ts |
-| `recordEventAttendanceAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/event-actions.ts |
 | `recordJoinSessionAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/event-actions.ts |
 | `recordLeaveSessionAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/event-actions.ts |
 | `publishEventReplayAction` | server_action | `L3_EXTERNAL_COMMUNICATION_FINANCE` | src/app/actions/event-actions.ts |
@@ -3297,7 +3389,6 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `generateHeadlineVariationsAction` | server_action | `L1_INTERNAL_DRAFT` | src/app/actions/headline-iq-actions.ts |
 | `getPeopleDirectoryAction` | server_action | `L0_READ` | src/app/actions/identity-actions.ts |
 | `getPersonDetailAction` | server_action | `L0_READ` | src/app/actions/identity-actions.ts |
-| `updatePersonProfileAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/identity-actions.ts |
 | `updateMembershipStatusAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/identity-actions.ts |
 | `manageWorkspaceMembershipsAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/identity-actions.ts |
 | `invitePersonAction` | server_action | `L3_EXTERNAL_COMMUNICATION_FINANCE` | src/app/actions/identity-actions.ts |
@@ -3390,12 +3481,9 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `updateLessonAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/learning-actions.ts |
 | `deleteLessonAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/app/actions/learning-actions.ts |
 | `listLessonsByCourseAction` | server_action | `L0_READ` | src/app/actions/learning-actions.ts |
-| `enrollInCourseAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/learning-actions.ts |
-| `completeLessonAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/learning-actions.ts |
 | `recordVideoProgressAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/learning-actions.ts |
 | `submitAssessmentAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/learning-actions.ts |
 | `submitAssignmentAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/learning-actions.ts |
-| `getSanitizedAssessmentAction` | server_action | `L0_READ` | src/app/actions/learning-actions.ts |
 | `getLinkMetadataAction` | server_action | `L0_READ` | src/app/actions/link-metadata-actions.ts |
 | `getManagerCommandOverviewAction` | server_action | `L0_READ` | src/app/actions/manager-command-actions.ts |
 | `executeManagerInterventionAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/manager-command-actions.ts |
@@ -3484,15 +3572,11 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `suspendMembershipAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/membership-actions.ts |
 | `reactivateMembershipAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/membership-actions.ts |
 | `deleteMembershipAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/app/actions/membership-actions.ts |
-| `updatePortalMemberProfileAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/membership-actions.ts |
 | `updateMembershipPlanAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/membership-actions.ts |
 | `updateMembershipTagsAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/membership-actions.ts |
 | `createInvitationAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/membership-actions.ts |
 | `createBulkInvitationsAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/membership-actions.ts |
-| `verifyInvitationTokenAction` | server_action | `L0_READ` | src/app/actions/membership-actions.ts |
 | `acceptInvitationAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/membership-actions.ts |
-| `joinPortalDirectAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/membership-actions.ts |
-| `revokeInvitationAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/app/actions/membership-actions.ts |
 | `createPlanAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/membership-actions.ts |
 | `updatePlanAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/membership-actions.ts |
 | `archivePlanAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/app/actions/membership-actions.ts |
@@ -3502,10 +3586,16 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `listMembershipsByPortalAction` | server_action | `L0_READ` | src/app/actions/membership-actions.ts |
 | `listInvitationsByPortalAction` | server_action | `L0_READ` | src/app/actions/membership-actions.ts |
 | `listPlansByPortalAction` | server_action | `L0_READ` | src/app/actions/membership-actions.ts |
-| `evaluateContentAccessAction` | server_action | `L0_READ` | src/app/actions/membership-actions.ts |
 | `migrateLegacyTemplatesToBlocksAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/migrate-legacy-templates-to-blocks-action.ts |
 | `fetchOutdatedCampaignPages` | server_action | `L0_READ` | src/app/actions/migrate-legacy-testimonials-action.ts |
 | `migrateLegacyTestimonialBlocksAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/migrate-legacy-testimonials-action.ts |
+| `startMigrationRunAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/migration-cutover-actions.ts |
+| `getMigrationStatusAction` | server_action | `L0_READ` | src/app/actions/migration-cutover-actions.ts |
+| `runReconciliationAuditAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/migration-cutover-actions.ts |
+| `getRolloutCohortAction` | server_action | `L0_READ` | src/app/actions/migration-cutover-actions.ts |
+| `updateRolloutCohortAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/migration-cutover-actions.ts |
+| `triggerEmergencyRollbackAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/migration-cutover-actions.ts |
+| `exportReconciliationReportAction` | server_action | `L0_READ` | src/app/actions/migration-cutover-actions.ts |
 | `getParkedJobsCountAction` | server_action | `L0_READ` | src/app/actions/node-deletion-reconciliation-actions.ts |
 | `reconcileParkedJobsOnNodeDeletionAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/node-deletion-reconciliation-actions.ts |
 | `getOfficeHoursRoomAction` | server_action | `L0_READ` | src/app/actions/office-hours-actions.ts |
@@ -3537,14 +3627,11 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `getBackofficePoliciesListAction` | server_action | `L0_READ` | src/app/actions/policy-studio-actions.ts |
 | `createPortalAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/portal-actions.ts |
 | `updatePortalAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/portal-actions.ts |
-| `publishPortalAction` | server_action | `L3_EXTERNAL_COMMUNICATION_FINANCE` | src/app/actions/portal-actions.ts |
 | `suspendPortalAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/portal-actions.ts |
 | `archivePortalAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/app/actions/portal-actions.ts |
 | `duplicatePortalAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/portal-actions.ts |
 | `deletePortalAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/app/actions/portal-actions.ts |
 | `verifyPortalSlugAvailabilityAction` | server_action | `L0_READ` | src/app/actions/portal-actions.ts |
-| `validatePortalPasswordAction` | server_action | `L0_READ` | src/app/actions/portal-actions.ts |
-| `getPublicPortalBySlugAction` | server_action | `L0_READ` | src/app/actions/portal-actions.ts |
 | `getPortalByIdAction` | server_action | `L0_READ` | src/app/actions/portal-actions.ts |
 | `runMasterExperienceSeederAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/portal-actions.ts |
 | `normalizeExistingPortalNavigationAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/portal-actions.ts |
@@ -3663,24 +3750,10 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `postWebinarQuestionAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/webinar-stage-actions.ts |
 | `upvoteWebinarQuestionAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/webinar-stage-actions.ts |
 | `promoteWaitlistRegistrantsAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/webinar-stage-actions.ts |
-| `createOrUpdateDepartmentAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/workforce-actions.ts |
-| `deleteDepartmentAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/app/actions/workforce-actions.ts |
-| `listDepartmentsAction` | server_action | `L0_READ` | src/app/actions/workforce-actions.ts |
-| `purgeSampleDepartmentsAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/app/actions/workforce-actions.ts |
 | `backfillDepartmentSeedsAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/workforce-actions.ts |
-| `createOrUpdateTeamAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/workforce-actions.ts |
-| `deleteTeamAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/app/actions/workforce-actions.ts |
-| `listTeamsAction` | server_action | `L0_READ` | src/app/actions/workforce-actions.ts |
-| `dispatchInvitationsAction` | server_action | `L3_EXTERNAL_COMMUNICATION_FINANCE` | src/app/actions/workforce-actions.ts |
-| `resendInvitationAction` | server_action | `L3_EXTERNAL_COMMUNICATION_FINANCE` | src/app/actions/workforce-actions.ts |
-| `revokeInvitationAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/app/actions/workforce-actions.ts |
-| `listInvitationsAction` | server_action | `L0_READ` | src/app/actions/workforce-actions.ts |
 | `validateInvitationTokenAction` | server_action | `L0_READ` | src/app/actions/workforce-actions.ts |
 | `acceptInvitationAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/workforce-actions.ts |
 | `submitAccessRequestAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/workforce-actions.ts |
-| `resolveAccessRequestAction` | server_action | `L1_INTERNAL_DRAFT` | src/app/actions/workforce-actions.ts |
-| `listAccessRequestsAction` | server_action | `L0_READ` | src/app/actions/workforce-actions.ts |
-| `executeBulkWorkforceAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/workforce-actions.ts |
 | `getWorkforceIntelligenceSnapshotAction` | server_action | `L0_READ` | src/app/actions/workforce-intelligence-actions.ts |
 | `refreshWorkforceIntelligenceSnapshotAction` | server_action | `L2_STATE_MUTATION` | src/app/actions/workforce-intelligence-actions.ts |
 | `fetchWorkspacesForIndustryMigration` | server_action | `L0_READ` | src/app/actions/workspace-industry-migration-actions.ts |
@@ -3692,6 +3765,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `NodeActionToolbar` | server_action | `L2_STATE_MUTATION` | src/app/admin/automations/[id]/edit/components/nodes/NodeActionToolbar.tsx |
 | `TagActionNode` | server_action | `L2_STATE_MUTATION` | src/app/admin/automations/[id]/edit/components/nodes/TagActionNode.tsx |
 | `ActionConfigPanel` | server_action | `L2_STATE_MUTATION` | src/app/admin/automations/components/ActionConfigPanel.tsx |
+| `QuickLogDropdownContent` | server_action | `L2_STATE_MUTATION` | src/app/admin/deals/[id]/components/DealQuickActions.tsx |
 | `DealQuickActions` | server_action | `L2_STATE_MUTATION` | src/app/admin/deals/[id]/components/DealQuickActions.tsx |
 | `BulkActionDock` | server_action | `L2_STATE_MUTATION` | src/app/admin/entities/components/BulkActionDock.tsx |
 | `FloatingActionToolbar` | server_action | `L2_STATE_MUTATION` | src/app/admin/lead-intelligence/components/FloatingActionToolbar.tsx |
@@ -3705,10 +3779,6 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `BulkActionsFloatingToolbar` | server_action | `L2_STATE_MUTATION` | src/app/admin/users/components/BulkActionsFloatingToolbar.tsx |
 | `QuickActions` | server_action | `L2_STATE_MUTATION` | src/components/dashboard/QuickActions.tsx |
 | `ContextualActionBar` | server_action | `L2_STATE_MUTATION` | src/components/shared/thumbnail-designer/ContextualActionBar.tsx |
-| `getActivitiesForContactCore` | server_action | `L0_READ` | src/lib/activity-actions.ts |
-| `updateNote` | server_action | `L2_STATE_MUTATION` | src/lib/activity-actions.ts |
-| `deleteNote` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/activity-actions.ts |
-| `getActivitiesForContact` | server_action | `L0_READ` | src/lib/activity-actions.ts |
 | `listSpecialistsAction` | server_action | `L0_READ` | src/lib/agents/actions/domain-agent-actions.ts |
 | `getSpecialistDetailsAction` | server_action | `L0_READ` | src/lib/agents/actions/domain-agent-actions.ts |
 | `updateSpecialistConfigAction` | server_action | `L2_STATE_MUTATION` | src/lib/agents/actions/domain-agent-actions.ts |
@@ -3729,9 +3799,6 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `recordPageViewAction` | server_action | `L2_STATE_MUTATION` | src/lib/analytics-actions.ts |
 | `recordInteractionAction` | server_action | `L2_STATE_MUTATION` | src/lib/analytics-actions.ts |
 | `recordConversion` | server_action | `L2_STATE_MUTATION` | src/lib/analytics-actions.ts |
-| `generateApiKey` | server_action | `L1_INTERNAL_DRAFT` | src/lib/api-key-actions.ts |
-| `listApiKeys` | server_action | `L0_READ` | src/lib/api-key-actions.ts |
-| `revokeApiKey` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/api-key-actions.ts |
 | `getPendingApprovalsAction` | server_action | `L0_READ` | src/lib/approval-actions.ts |
 | `submitApprovalRequestAction` | server_action | `L2_STATE_MUTATION` | src/lib/approval-actions.ts |
 | `decideApprovalRequestAction` | server_action | `L2_STATE_MUTATION` | src/lib/approval-actions.ts |
@@ -3904,9 +3971,6 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `updateOutcome` | server_action | `L2_STATE_MUTATION` | src/lib/consultancy-actions.ts |
 | `updateRetainer` | server_action | `L2_STATE_MUTATION` | src/lib/consultancy-actions.ts |
 | `saveContactTypeOverrides` | server_action | `L2_STATE_MUTATION` | src/lib/contact-type-actions.ts |
-| `upsertContractAction` | server_action | `L2_STATE_MUTATION` | src/lib/contract-actions.ts |
-| `sendContractAction` | server_action | `L3_EXTERNAL_COMMUNICATION_FINANCE` | src/lib/contract-actions.ts |
-| `deleteContractAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/contract-actions.ts |
 | `createCreditNoteAction` | server_action | `L2_STATE_MUTATION` | src/lib/credit-note-actions.ts |
 | `getCreditNotesByAccountAction` | server_action | `L0_READ` | src/lib/credit-note-actions.ts |
 | `recordCustomPageEvent` | server_action | `L2_STATE_MUTATION` | src/lib/custom-page-analytics-actions.ts |
@@ -3917,9 +3981,14 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `deleteDocumentAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/document-actions.ts |
 | `verifyDocumentPasscodeAction` | server_action | `L0_READ` | src/lib/document-actions.ts |
 | `submitDocumentLeadAction` | server_action | `L2_STATE_MUTATION` | src/lib/document-actions.ts |
+| `createContractRenewalAction` | server_action | `L2_STATE_MUTATION` | src/lib/documents/contract-actions.ts |
 | `recordObservabilityMetricAction` | server_action | `L2_STATE_MUTATION` | src/lib/documents/document-observability-actions.ts |
 | `checkDocumentPermissionAction` | server_action | `L0_READ` | src/lib/documents/enterprise-security-actions.ts |
 | `auditWorkspaceSecurityPostureAction` | server_action | `L0_READ` | src/lib/documents/enterprise-security-actions.ts |
+| `reassignRecipientAction` | server_action | `L2_STATE_MUTATION` | src/lib/documents/envelope-actions.ts |
+| `getEnvelopeForSigningAction` | server_action | `L0_READ` | src/lib/documents/envelope-actions.ts |
+| `getEnvelopeAdminDetailsAction` | server_action | `L0_READ` | src/lib/documents/envelope-actions.ts |
+| `regenerateRecipientLinkAction` | server_action | `L2_STATE_MUTATION` | src/lib/documents/envelope-actions.ts |
 | `retryFailedProcessingJobAction` | server_action | `L2_STATE_MUTATION` | src/lib/documents/processing-actions.ts |
 | `convertToOnboardingAction` | server_action | `L2_STATE_MUTATION` | src/lib/entity-actions.ts |
 | `saveAudienceAction` | server_action | `L2_STATE_MUTATION` | src/lib/experience-actions.ts |
@@ -4018,15 +4087,6 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `getGoldStandardExamples` | server_action | `L0_READ` | src/lib/learning-loop-actions.ts |
 | `updateClientReport` | server_action | `L2_STATE_MUTATION` | src/lib/marketing-actions.ts |
 | `updateStrategyDoc` | server_action | `L2_STATE_MUTATION` | src/lib/marketing-actions.ts |
-| `listMcpToolsAction` | server_action | `L0_READ` | src/lib/mcp/actions/mcp-governance-actions.ts |
-| `executeMcpToolAction` | server_action | `L2_STATE_MUTATION` | src/lib/mcp/actions/mcp-governance-actions.ts |
-| `listPendingApprovalsAction` | server_action | `L0_READ` | src/lib/mcp/actions/mcp-governance-actions.ts |
-| `adjudicateApprovalAction` | server_action | `L2_STATE_MUTATION` | src/lib/mcp/actions/mcp-governance-actions.ts |
-| `listMcpApiKeysAction` | server_action | `L0_READ` | src/lib/mcp/actions/mcp-governance-actions.ts |
-| `createMcpApiKeyAction` | server_action | `L2_STATE_MUTATION` | src/lib/mcp/actions/mcp-governance-actions.ts |
-| `revokeMcpApiKeyAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/mcp/actions/mcp-governance-actions.ts |
-| `listMcpAuditLogsAction` | server_action | `L0_READ` | src/lib/mcp/actions/mcp-governance-actions.ts |
-| `upsertMcpApprovalPolicyAction` | server_action | `L2_STATE_MUTATION` | src/lib/mcp/actions/mcp-governance-actions.ts |
 | `updateMediaName` | server_action | `L2_STATE_MUTATION` | src/lib/media-actions.ts |
 | `deleteMediaAsset` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/media-actions.ts |
 | `saveImageToMediaLibrary` | server_action | `L2_STATE_MUTATION` | src/lib/media-actions.ts |
@@ -4090,8 +4150,6 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `updateScheduledMessageAction` | server_action | `L2_STATE_MUTATION` | src/lib/mnotify-actions.ts |
 | `deleteScheduledMessageAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/mnotify-actions.ts |
 | `fetchSmsReportsAction` | server_action | `L0_READ` | src/lib/mnotify-actions.ts |
-| `logNoteActivity` | server_action | `L2_STATE_MUTATION` | src/lib/note-actions.ts |
-| `getEntityAiSummary` | server_action | `L0_READ` | src/lib/note-actions.ts |
 | `sendReceiptAcknowledgementAction` | server_action | `L3_EXTERNAL_COMMUNICATION_FINANCE` | src/lib/notification-actions.ts |
 | `fetchPlatformObservabilityAction` | server_action | `L0_READ` | src/lib/observability-actions.ts |
 | `purgeEdgeCacheAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/observability-actions.ts |
@@ -4107,13 +4165,8 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `deletePageAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/page-actions.ts |
 | `registerCustomCodedPage` | server_action | `L2_STATE_MUTATION` | src/lib/page-registry-actions.ts |
 | `seedKnownCustomPages` | server_action | `L2_STATE_MUTATION` | src/lib/page-registry-actions.ts |
-| `generatePdfBuffer` | server_action | `L1_INTERNAL_DRAFT` | src/lib/pdf-actions.ts |
-| `saveAgreementProgressAction` | server_action | `L2_STATE_MUTATION` | src/lib/pdf-actions.ts |
-| `finalizeAgreementAction` | server_action | `L2_STATE_MUTATION` | src/lib/pdf-actions.ts |
-| `createPdfForm` | server_action | `L2_STATE_MUTATION` | src/lib/pdf-actions.ts |
 | `clonePdfForm` | server_action | `L2_STATE_MUTATION` | src/lib/pdf-actions.ts |
 | `savePdfForm` | server_action | `L2_STATE_MUTATION` | src/lib/pdf-actions.ts |
-| `updatePdfFormStatus` | server_action | `L2_STATE_MUTATION` | src/lib/pdf-actions.ts |
 | `deletePdfForm` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/pdf-actions.ts |
 | `deleteSubmissions` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/pdf-actions.ts |
 | `purgeContractAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/pdf-actions.ts |
@@ -4122,20 +4175,22 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `savePerspectiveAction` | server_action | `L2_STATE_MUTATION` | src/lib/perspective-actions.ts |
 | `deletePerspectiveAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/perspective-actions.ts |
 | `archivePerspectiveAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/perspective-actions.ts |
+| `reconcilePhoneHygieneAction` | server_action | `L2_STATE_MUTATION` | src/lib/phone-hygiene-actions.ts |
 | `savePipelineAction` | server_action | `L2_STATE_MUTATION` | src/lib/pipeline-actions.ts |
 | `setPipelineAsDefaultAction` | server_action | `L2_STATE_MUTATION` | src/lib/pipeline-actions.ts |
 | `clonePipelineAction` | server_action | `L2_STATE_MUTATION` | src/lib/pipeline-actions.ts |
+| `addPipelineDealCustomFieldAction` | server_action | `L2_STATE_MUTATION` | src/lib/pipeline-actions.ts |
+| `updatePipelineDealCustomFieldsAction` | server_action | `L2_STATE_MUTATION` | src/lib/pipeline-actions.ts |
+| `removePipelineDealCustomFieldAction` | server_action | `L2_STATE_MUTATION` | src/lib/pipeline-actions.ts |
 | `updateProductAction` | server_action | `L2_STATE_MUTATION` | src/lib/product-actions.ts |
 | `createPricingPlanAction` | server_action | `L2_STATE_MUTATION` | src/lib/product-actions.ts |
 | `updateProfile` | server_action | `L2_STATE_MUTATION` | src/lib/profile-actions.ts |
 | `updateEntityIdentity` | server_action | `L2_STATE_MUTATION` | src/lib/profile-actions.ts |
 | `updateWorkspaceEntityOperations` | server_action | `L2_STATE_MUTATION` | src/lib/profile-actions.ts |
-| `createQRCode` | server_action | `L2_STATE_MUTATION` | src/lib/qr-actions.ts |
 | `batchCreateQRCodes` | server_action | `L2_STATE_MUTATION` | src/lib/qr-actions.ts |
 | `generateQRsForAudienceAction` | server_action | `L1_INTERNAL_DRAFT` | src/lib/qr-actions.ts |
 | `bulkTagQRCodesAction` | server_action | `L2_STATE_MUTATION` | src/lib/qr-actions.ts |
 | `getQRCode` | server_action | `L0_READ` | src/lib/qr-actions.ts |
-| `getQRCodeByUrl` | server_action | `L0_READ` | src/lib/qr-actions.ts |
 | `listQRCodes` | server_action | `L0_READ` | src/lib/qr-actions.ts |
 | `updateQRCode` | server_action | `L2_STATE_MUTATION` | src/lib/qr-actions.ts |
 | `updateQRDesign` | server_action | `L2_STATE_MUTATION` | src/lib/qr-actions.ts |
@@ -4147,7 +4202,6 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `pauseQRCode` | server_action | `L2_STATE_MUTATION` | src/lib/qr-actions.ts |
 | `resumeQRCode` | server_action | `L2_STATE_MUTATION` | src/lib/qr-actions.ts |
 | `archiveQRCode` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/qr-actions.ts |
-| `updateQRShortPath` | server_action | `L2_STATE_MUTATION` | src/lib/qr-actions.ts |
 | `bulkQRAction` | server_action | `L2_STATE_MUTATION` | src/lib/qr-actions.ts |
 | `duplicateQRCode` | server_action | `L2_STATE_MUTATION` | src/lib/qr-actions.ts |
 | `deleteQRCode` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/qr-actions.ts |
@@ -4281,11 +4335,8 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `autoSaveSurveyAction` | server_action | `L2_STATE_MUTATION` | src/lib/survey-actions.ts |
 | `submitPublicSurveyLead` | server_action | `L2_STATE_MUTATION` | src/lib/survey-actions.ts |
 | `finalizeSurveySubmission` | server_action | `L2_STATE_MUTATION` | src/lib/survey-actions.ts |
-| `executeSurveyPipelineAndAutomations` | server_action | `L2_STATE_MUTATION` | src/lib/survey-actions.ts |
-| `executeSurveyResultButtonActions` | server_action | `L2_STATE_MUTATION` | src/lib/survey-actions.ts |
 | `getWorkspaceEntitiesForSimulationAction` | server_action | `L0_READ` | src/lib/survey-actions.ts |
 | `logSurveyStartedAction` | server_action | `L2_STATE_MUTATION` | src/lib/survey-actions.ts |
-| `addOrMoveEntityInPipeline` | server_action | `L2_STATE_MUTATION` | src/lib/survey-actions.ts |
 | `getSurveyCrossTabsAction` | server_action | `L0_READ` | src/lib/surveys/survey-analytics-actions.ts |
 | `getSurveyResponsesListAction` | server_action | `L0_READ` | src/lib/surveys/survey-analytics-actions.ts |
 | `dispatchSurveyDistributionCampaignAction` | server_action | `L3_EXTERNAL_COMMUNICATION_FINANCE` | src/lib/surveys/survey-campaign-actions.ts |
@@ -4309,22 +4360,16 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `bulkDeleteTasks` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/task-actions.ts |
 | `bulkCompleteTasks` | server_action | `L2_STATE_MUTATION` | src/lib/task-actions.ts |
 | `deleteTaskNonBlocking` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/task-actions.ts |
-| `createTaskFromAutomation` | server_action | `L2_STATE_MUTATION` | src/lib/task-server-actions.ts |
 | `deleteTaskAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/task-server-actions.ts |
 | `getTasksForContact` | server_action | `L0_READ` | src/lib/task-server-actions.ts |
 | `bulkUpdateTasksAction` | server_action | `L2_STATE_MUTATION` | src/lib/task-server-actions.ts |
-| `bulkDeleteTasksAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/task-server-actions.ts |
 | `listGlobalTemplates` | server_action | `L0_READ` | src/lib/template-actions.ts |
 | `getBlueprintAdoptionStats` | server_action | `L0_READ` | src/lib/template-actions.ts |
 | `getTemplateById` | server_action | `L0_READ` | src/lib/template-actions.ts |
 | `sendTestMessage` | server_action | `L3_EXTERNAL_COMMUNICATION_FINANCE` | src/lib/template-actions.ts |
 | `saveThemeAction` | server_action | `L2_STATE_MUTATION` | src/lib/theme-actions.ts |
 | `getThemesAction` | server_action | `L0_READ` | src/lib/theme-actions.ts |
-| `adminResetUserPasswordAction` | server_action | `L2_STATE_MUTATION` | src/lib/user-invite-actions.ts |
 | `publicResetPasswordViaPhoneAction` | server_action | `L2_STATE_MUTATION` | src/lib/user-invite-actions.ts |
-| `adminUpdateUserAccessAction` | server_action | `L2_STATE_MUTATION` | src/lib/user-invite-actions.ts |
-| `declineJoinRequestAction` | server_action | `L2_STATE_MUTATION` | src/lib/user-invite-actions.ts |
-| `removeUserFromOrgAction` | server_action | `L2_STATE_MUTATION` | src/lib/user-invite-actions.ts |
 | `updateUserAiPreferencesAction` | server_action | `L2_STATE_MUTATION` | src/lib/user-preferences-actions.ts |
 | `updateWorkspaceVocabularyAction` | server_action | `L2_STATE_MUTATION` | src/lib/vocabulary-map-actions.ts |
 | `getWorkspaceVocabulary` | server_action | `L0_READ` | src/lib/vocabulary-map-actions.ts |
@@ -4352,10 +4397,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `deleteWorkspaceAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/workspace-actions.ts |
 | `archiveWorkspaceAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/workspace-actions.ts |
 | `migrateLegacyWorkspaceScopesAction` | server_action | `L2_STATE_MUTATION` | src/lib/workspace-actions.ts |
-| `archiveEntityAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/workspace-entity-actions.ts |
-| `deleteEntityPermanentlyAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/workspace-entity-actions.ts |
 | `bulkArchiveEntitiesAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/workspace-entity-actions.ts |
-| `bulkDeleteEntitiesAction` | server_action | `L4_PRIVILEGED_DESTRUCTIVE` | src/lib/workspace-entity-actions.ts |
 | `getFilteredEntityIdsAction` | server_action | `L0_READ` | src/lib/workspace-entity-actions.ts |
 | `GET /api/activities` | api | `L0_READ` | src/app/api/activities/route.ts |
 | `POST /api/activities` | api | `L2_STATE_MUTATION` | src/app/api/activities/route.ts |
@@ -4381,10 +4423,12 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `GET /api/cron/messaging-status-sync` | cron | `L2_STATE_MUTATION` | src/app/api/cron/messaging-status-sync/route.ts |
 | `POST /api/cron/process-scheduled-messages` | cron | `L2_STATE_MUTATION` | src/app/api/cron/process-scheduled-messages/route.ts |
 | `GET /api/cron/process-scheduled-messages` | cron | `L2_STATE_MUTATION` | src/app/api/cron/process-scheduled-messages/route.ts |
+| `GET /api/cron/signing-reminders` | cron | `L2_STATE_MUTATION` | src/app/api/cron/signing-reminders/route.ts |
 | `GET /api/cron/social-publisher` | cron | `L2_STATE_MUTATION` | src/app/api/cron/social-publisher/route.ts |
 | `GET /api/diagnostic` | api | `L0_READ` | src/app/api/diagnostic/route.ts |
 | `POST /api/documents/events` | api | `L2_STATE_MUTATION` | src/app/api/documents/events/route.ts |
 | `POST /api/documents/process` | api | `L2_STATE_MUTATION` | src/app/api/documents/process/route.ts |
+| `GET /api/documents/signature` | api | `L0_READ` | src/app/api/documents/signature/route.ts |
 | `OPTIONS /api/external/forms/submit` | api | `L2_STATE_MUTATION` | src/app/api/external/forms/submit/route.ts |
 | `POST /api/external/forms/submit` | api | `L2_STATE_MUTATION` | src/app/api/external/forms/submit/route.ts |
 | `POST /api/external/v1/entities` | api | `L2_STATE_MUTATION` | src/app/api/external/v1/entities/route.ts |
@@ -4430,9 +4474,10 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `GET /api/sentry-example-api` | api | `L0_READ` | src/app/api/sentry-example-api/route.ts |
 | `PATCH /api/tasks/[taskId]` | task_worker | `L2_STATE_MUTATION` | src/app/api/tasks/[taskId]/route.ts |
 | `DELETE /api/tasks/[taskId]` | task_worker | `L4_PRIVILEGED_DESTRUCTIVE` | src/app/api/tasks/[taskId]/route.ts |
-| `POST /api/tasks/agent-step` | task_worker | `L2_STATE_MUTATION` | src/app/api/tasks/agent-step/route.ts |
-| `GET /api/tasks` | api | `L0_READ` | src/app/api/tasks/route.ts |
-| `POST /api/tasks` | api | `L2_STATE_MUTATION` | src/app/api/tasks/route.ts |
+| `GET /api/v1/envelopes/[id]` | api | `L0_READ` | src/app/api/v1/envelopes/[id]/route.ts |
+| `POST /api/v1/envelopes/[id]/void` | api | `L2_STATE_MUTATION` | src/app/api/v1/envelopes/[id]/void/route.ts |
+| `GET /api/v1/envelopes` | api | `L0_READ` | src/app/api/v1/envelopes/route.ts |
+| `POST /api/v1/envelopes` | api | `L2_STATE_MUTATION` | src/app/api/v1/envelopes/route.ts |
 | `GET /api/v1/media/assets/[assetId]` | api | `L0_READ` | src/app/api/v1/media/assets/[assetId]/route.ts |
 | `GET /api/v1/media/assets` | api | `L0_READ` | src/app/api/v1/media/assets/route.ts |
 | `POST /api/v1/media/assets` | api | `L2_STATE_MUTATION` | src/app/api/v1/media/assets/route.ts |
@@ -4442,6 +4487,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `POST /api/v1/media/search` | api | `L2_STATE_MUTATION` | src/app/api/v1/media/search/route.ts |
 | `GET /api/v1/quick-notes/export` | api | `L0_READ` | src/app/api/v1/quick-notes/export/route.ts |
 | `POST /api/v1/quick-notes/ingest` | api | `L2_STATE_MUTATION` | src/app/api/v1/quick-notes/ingest/route.ts |
+| `GET /api/v1/templates` | api | `L0_READ` | src/app/api/v1/templates/route.ts |
 | `POST /api/verify-email/bulk` | api | `L2_STATE_MUTATION` | src/app/api/verify-email/bulk/route.ts |
 | `GET /api/verify-email/cron` | cron | `L2_STATE_MUTATION` | src/app/api/verify-email/cron/route.ts |
 | `POST /api/verify-email` | api | `L2_STATE_MUTATION` | src/app/api/verify-email/route.ts |
@@ -4458,12 +4504,12 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `POST /api/whatsapp/upload-media` | api | `L2_STATE_MUTATION` | src/app/api/whatsapp/upload-media/route.ts |
 | `GET /api/workspaces/[workspaceId]/contacts` | api | `L0_READ` | src/app/api/workspaces/[workspaceId]/contacts/route.ts |
 
-## Full inventory (2214)
+## Full inventory (2337)
 
 | Capability | Domain | Op | Risk | Status | Guards | Permissions | Collections | File |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `AccessReviewService` | `ai_governance` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `workspace_memberships` | src/lib/services/governance/access-review-service.ts |
-| `adjudicateApprovalAction` | `ai_governance` | execute | `L2_STATE_MUTATION`* | unmapped | `checkWorkspaceAccess` | — | — | src/lib/mcp/actions/mcp-governance-actions.ts |
+| `adjudicateApprovalAction` | `ai_governance` | execute | `L2_STATE_MUTATION`* | unmapped | `canUser`, `requireWorkspace` | `canUser:management` | `workspaces` | src/lib/mcp/actions/mcp-governance-actions.ts |
 | `AiActionProposalService` | `ai_governance` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/services/ai-admin/ai-action-proposal-service.ts |
 | `AiApprovalRoutingService` | `ai_governance` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/services/ai-admin/ai-approval-routing-service.ts |
 | `AiExecutionEngine` | `ai_governance` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/services/ai-admin/ai-execution-engine.ts |
@@ -4473,55 +4519,69 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `cancelApprovalRequest` | `ai_governance` | execute | `L2_STATE_MUTATION` | unmapped | — | — | `platform_approval_requests` | src/lib/backoffice/backoffice-approval-actions.ts |
 | `createAccessReviewCampaignAction` | `ai_governance` | create | `L2_STATE_MUTATION` | unmapped | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/governance-actions.ts |
 | `createAiActionProposalAction` | `ai_governance` | create | `L2_STATE_MUTATION` | wrap | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/ai-admin-actions.ts |
-| `createMcpApiKeyAction` | `ai_governance` | create | `L2_STATE_MUTATION` | unmapped | `checkWorkspaceAccess` | — | — | src/lib/mcp/actions/mcp-governance-actions.ts |
+| `createAssuranceProfileAction` | `ai_governance` | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/enterprise-governance-actions.ts |
+| `createMcpApiKeyAction` | `ai_governance` | create | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireWorkspace` | `canUser:management` | `workspaces` | src/lib/mcp/actions/mcp-governance-actions.ts |
 | `createOrUpdateSoDRuleAction` | `ai_governance` | create | `L2_STATE_MUTATION` | unmapped | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/governance-actions.ts |
+| `createWebhookSubscriptionAction` | `ai_governance` | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/enterprise-governance-actions.ts |
 | `decideApprovalRequest` | `ai_governance` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `platform_approval_requests` | src/lib/backoffice/backoffice-approval-actions.ts |
 | `decideApprovalRequestAction` | `ai_governance` | execute | `L2_STATE_MUTATION`* | unmapped | `canUser`, `requireWorkspace` | `canUser:edit`, `canUser:finance`, `canUser:invoices` | — | src/lib/approval-actions.ts |
 | `deleteSoDRuleAction` | `ai_governance` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/governance-actions.ts |
 | `EnterpriseGovernanceEngine` | `ai_governance` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/lead-intelligence/governance/EnterpriseGovernanceEngine.ts |
-| `executeMcpToolAction` | `ai_governance` | execute | `L2_STATE_MUTATION` | unmapped | `checkWorkspaceAccess` | — | — | src/lib/mcp/actions/mcp-governance-actions.ts |
+| `executeMcpToolAction` | `ai_governance` | execute | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireWorkspace` | `canUser:management` | `workspaces` | src/lib/mcp/actions/mcp-governance-actions.ts |
 | `fetchAuditLogs` | `ai_governance` | read | `L0_READ` | unmapped | — | — | `platform_audit_logs` | src/lib/backoffice/backoffice-audit-actions.ts |
 | `fetchPageAuditLogsAction` | `ai_governance` | read | `L0_READ` | unmapped | `requireAuth` | — | `page_audit_logs` | src/lib/governance-actions.ts |
 | `FinancialApprovalService` | `ai_governance` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `financial_approval_policies`, `financial_approval_requests` | src/lib/services/financial-approval-service.ts |
 | `FinancialAuditService` | `ai_governance` | analyze | `L0_READ` | unmapped | — | — | `financial_audit_logs` | src/lib/services/financial-audit-service.ts |
+| `generateEvidencePackageAction` | `ai_governance` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/app/actions/enterprise-governance-actions.ts |
 | `getApprovalPolicyAction` | `ai_governance` | read | `L0_READ` | unmapped | `canUser`, `requireWorkspace` | `canUser:finance`, `canUser:invoices`, `canUser:view` | — | src/lib/approval-actions.ts |
+| `getAssuranceProfilesAction` | `ai_governance` | read | `L0_READ` | unmapped | — | — | — | src/app/actions/enterprise-governance-actions.ts |
 | `getBackofficePoliciesListAction` | `ai_governance` | read | `L0_READ` | unmapped | `requireAuth` | — | `performancePolicies` | src/app/actions/policy-studio-actions.ts |
 | `getDocumentAuditHistoryAction` | `ai_governance` | read | `L0_READ` | unmapped | `canUser` | `canUser:finance`, `canUser:invoices`, `canUser:view` | — | src/lib/audit-actions.ts |
 | `getKnowledgeGraphGovernanceAction` | `ai_governance` | read | `L0_READ` | unmapped | `canUser`, `requireWorkspace` | `canUser:operations`, `canUser:view` | — | src/app/actions/knowledge-graph-governance-actions.ts |
 | `getKnowledgeGraphMetricsAction` | `ai_governance` | read | `L0_READ` | unmapped | `requireWorkspace` | — | — | src/app/actions/knowledge-graph-governance-actions.ts |
+| `getLegalHoldAndRetentionAction` | `ai_governance` | read | `L0_READ` | unmapped | — | — | — | src/app/actions/enterprise-governance-actions.ts |
 | `getPendingApprovalsAction` | `ai_governance` | read | `L0_READ` | unmapped | `canUser`, `requireWorkspace` | `canUser:finance`, `canUser:invoices`, `canUser:view` | `financial_approval_requests` | src/lib/approval-actions.ts |
 | `getPolicyVersionHistoryAction` | `ai_governance` | read | `L0_READ` | unmapped | `requireWorkspace` | — | `performancePolicyVersions` | src/app/actions/policy-studio-actions.ts |
 | `getRecentFinancialAuditLogsAction` | `ai_governance` | read | `L0_READ` | unmapped | `canUser` | `canUser:finance`, `canUser:invoices`, `canUser:view` | — | src/lib/audit-actions.ts |
 | `getSecurityPolicyAction` | `ai_governance` | read | `L0_READ` | wrap | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/governance-actions.ts |
 | `getSystemAiArchitectGovernanceAction` | `ai_governance` | read | `L0_READ` | unmapped | — | — | `system_settings` | src/lib/surveys/survey-ai-architect-governance-actions.ts |
+| `getWebhookHealthAction` | `ai_governance` | read | `L0_READ` | unmapped | — | — | — | src/app/actions/enterprise-governance-actions.ts |
 | `getWorkspacePolicyAction` | `ai_governance` | read | `L0_READ` | wrap | `requireWorkspace` | — | `performancePolicies` | src/app/actions/policy-studio-actions.ts |
 | `governanceAuditFlow` | `ai_governance` | analyze | `L0_READ` | unmapped | — | — | — | src/ai/flows/governance-audit-flow.ts |
 | `governanceAuditInputSchema` | `ai_governance` | analyze | `L0_READ` | unmapped | — | — | — | src/ai/flows/governance-audit-flow.ts |
 | `governanceAuditOutputSchema` | `ai_governance` | analyze | `L0_READ` | unmapped | — | — | — | src/ai/flows/governance-audit-flow.ts |
+| `GovernanceSpecialist` | `ai_governance` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/agents/specialists/governance-specialist.ts |
 | `grantTemporaryAccessAction` | `ai_governance` | execute | `L2_STATE_MUTATION`* | unmapped | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/governance-actions.ts |
 | `listAccessReviewCampaignsAction` | `ai_governance` | read | `L0_READ` | unmapped | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/governance-actions.ts |
 | `listAiActionProposalsAction` | `ai_governance` | read | `L0_READ` | unmapped | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/ai-admin-actions.ts |
 | `listAiExecutionAuditsAction` | `ai_governance` | read | `L0_READ` | unmapped | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/ai-admin-actions.ts |
 | `listApprovalRequests` | `ai_governance` | read | `L0_READ` | unmapped | — | — | `platform_approval_requests` | src/lib/backoffice/backoffice-approval-actions.ts |
-| `listMcpApiKeysAction` | `ai_governance` | read | `L0_READ` | unmapped | `checkWorkspaceAccess` | — | — | src/lib/mcp/actions/mcp-governance-actions.ts |
-| `listMcpAuditLogsAction` | `ai_governance` | read | `L0_READ` | unmapped | `checkWorkspaceAccess` | — | — | src/lib/mcp/actions/mcp-governance-actions.ts |
-| `listMcpToolsAction` | `ai_governance` | read | `L0_READ` | unmapped | `checkWorkspaceAccess` | — | — | src/lib/mcp/actions/mcp-governance-actions.ts |
-| `listPendingApprovalsAction` | `ai_governance` | read | `L0_READ` | unmapped | `checkWorkspaceAccess` | — | — | src/lib/mcp/actions/mcp-governance-actions.ts |
+| `listMcpApiKeysAction` | `ai_governance` | read | `L0_READ` | unmapped | `canUser`, `requireWorkspace` | `canUser:management` | `workspaces` | src/lib/mcp/actions/mcp-governance-actions.ts |
+| `listMcpAuditLogsAction` | `ai_governance` | read | `L0_READ` | unmapped | `canUser`, `requireWorkspace` | `canUser:management` | `workspaces` | src/lib/mcp/actions/mcp-governance-actions.ts |
+| `listMcpToolsAction` | `ai_governance` | read | `L0_READ` | unmapped | `canUser`, `requireWorkspace` | `canUser:management` | `workspaces` | src/lib/mcp/actions/mcp-governance-actions.ts |
+| `listPendingApprovalsAction` | `ai_governance` | read | `L0_READ` | unmapped | `canUser`, `requireWorkspace` | `canUser:management` | `workspaces` | src/lib/mcp/actions/mcp-governance-actions.ts |
 | `listReviewDecisionsAction` | `ai_governance` | read | `L0_READ` | wrap | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/governance-actions.ts |
 | `listSecurityAuditEventsAction` | `ai_governance` | read | `L0_READ` | unmapped | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/governance-actions.ts |
 | `listSessionsAction` | `ai_governance` | read | `L0_READ` | unmapped | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/governance-actions.ts |
 | `listSoDRulesAction` | `ai_governance` | read | `L0_READ` | unmapped | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/governance-actions.ts |
 | `listTemporaryAccessGrantsAction` | `ai_governance` | read | `L0_READ` | unmapped | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/governance-actions.ts |
+| `McpApiKeyService` | `ai_governance` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/mcp/api-key-service.ts |
+| `McpApprovalEngine` | `ai_governance` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/mcp/approval-engine.ts |
+| `McpAuditLogger` | `ai_governance` | analyze | `L0_READ` | unmapped | — | — | — | src/lib/mcp/audit-logger.ts |
+| `McpGateway` | `ai_governance` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/mcp/gateway.ts |
+| `McpRegistry` | `ai_governance` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/mcp/registry.ts |
 | `MfaPolicyService` | `ai_governance` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/services/enterprise-identity/mfa-policy-service.ts |
 | `PolicyEngineService` | `ai_governance` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/services/authorization/policy-engine-service.ts |
 | `reapExpiredGrantsAction` | `ai_governance` | execute | `L2_STATE_MUTATION`* | unmapped | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/governance-actions.ts |
 | `recordAuditLogAction` | `ai_governance` | create | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `page_audit_logs` | src/lib/governance-actions.ts |
+| `registerAllCoreTools` | `ai_governance` | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/lib/mcp/tools/index.ts |
 | `rejectAiProposalAction` | `ai_governance` | execute | `L2_STATE_MUTATION` | unmapped | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/ai-admin-actions.ts |
+| `replayWebhookDeliveryAction` | `ai_governance` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/actions/enterprise-governance-actions.ts |
 | `resetKnowledgeGraphGovernanceAction` | `ai_governance` | execute | `L2_STATE_MUTATION`* | unmapped | `requireWorkspace` | — | — | src/app/actions/knowledge-graph-governance-actions.ts |
 | `resetPolicyToDefaultsAction` | `ai_governance` | execute | `L2_STATE_MUTATION`* | unmapped | `requireWorkspace` | — | — | src/app/actions/policy-studio-actions.ts |
 | `reviewApprovalRequestAction` | `ai_governance` | execute | `L2_STATE_MUTATION`* | unmapped | `requireAuth` | — | `approval_requests`, `page_audit_logs` | src/lib/governance-actions.ts |
 | `revokeAllSessionsAction` | `ai_governance` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/governance-actions.ts |
-| `revokeMcpApiKeyAction` | `ai_governance` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `checkWorkspaceAccess` | — | — | src/lib/mcp/actions/mcp-governance-actions.ts |
+| `revokeMcpApiKeyAction` | `ai_governance` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `canUser`, `requireWorkspace` | `canUser:management` | `workspaces` | src/lib/mcp/actions/mcp-governance-actions.ts |
 | `revokeSessionAction` | `ai_governance` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/governance-actions.ts |
 | `revokeTemporaryAccessAction` | `ai_governance` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/governance-actions.ts |
 | `rollbackPolicyVersionAction` | `ai_governance` | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `performancePolicies`, `performancePolicyVersions` | src/app/actions/policy-studio-actions.ts |
@@ -4532,15 +4592,22 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `SecurityAuditService` | `ai_governance` | analyze | `L0_READ` | unmapped | — | — | — | src/lib/services/governance/security-audit-service.ts |
 | `SeparationOfDutyService` | `ai_governance` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `users` | src/lib/services/governance/separation-of-duty-service.ts |
 | `SessionManagementService` | `ai_governance` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/services/governance/session-management-service.ts |
+| `setRetentionPolicyAction` | `ai_governance` | update | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/enterprise-governance-actions.ts |
 | `simulatePolicyImpactAction` | `ai_governance` | draft | `L1_INTERNAL_DRAFT` | unmapped | `requireWorkspace` | — | `effortEvents`, `performancePolicies`, `salesPerformanceDaily` | src/app/actions/policy-studio-actions.ts |
 | `submitApprovalRequestAction` | `ai_governance` | create | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireWorkspace` | `canUser:edit`, `canUser:finance`, `canUser:invoices` | — | src/lib/approval-actions.ts |
 | `submitApprovalRequestAction` | `ai_governance` | create | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `approval_requests` | src/lib/governance-actions.ts |
 | `submitReviewDecisionAction` | `ai_governance` | create | `L2_STATE_MUTATION` | unmapped | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/governance-actions.ts |
 | `TemporaryAccessService` | `ai_governance` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `workspace_memberships` | src/lib/services/governance/temporary-access-service.ts |
+| `toggleContractLegalHoldAction` | `ai_governance` | update | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/enterprise-governance-actions.ts |
 | `triggerBackfillCrmRelationsAction` | `ai_governance` | execute | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | — | src/app/actions/knowledge-graph-governance-actions.ts |
 | `updateKnowledgeGraphGovernanceAction` | `ai_governance` | update | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireWorkspace` | `canUser:edit`, `canUser:operations` | — | src/app/actions/knowledge-graph-governance-actions.ts |
 | `updateSecurityPolicyAction` | `ai_governance` | update | `L2_STATE_MUTATION` | unmapped | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/governance-actions.ts |
-| `upsertMcpApprovalPolicyAction` | `ai_governance` | update | `L2_STATE_MUTATION` | unmapped | `checkWorkspaceAccess` | — | — | src/lib/mcp/actions/mcp-governance-actions.ts |
+| `upsertMcpApprovalPolicyAction` | `ai_governance` | update | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireWorkspace` | `canUser:management` | `workspaces` | src/lib/mcp/actions/mcp-governance-actions.ts |
+| `zMcpJsonRpcRequest` | `ai_governance` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/mcp/types.ts |
+| `zMcpPayloadValue` | `ai_governance` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/mcp/types.ts |
+| `OPTIONS /api/mcp` | `ai_governance` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/api/mcp/route.ts |
+| `POST /api/mcp` | `ai_governance` | execute | `L2_STATE_MUTATION`* | unmapped | `authenticateApiRequest` | — | — | src/app/api/mcp/route.ts |
+| `GET /api/mcp/sse` | `ai_governance` | read | `L0_READ` | unmapped | — | — | — | src/app/api/mcp/sse/route.ts |
 | `assignCustomPageWorkspaceAction` | `analytics_reporting` | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `campaign_pages`, `custom_page_analytics` | src/lib/custom-page-analytics-actions.ts |
 | `checkMessageDeliveryLogs` | `analytics_reporting` | read | `L0_READ` | unmapped | — | — | `message_logs` | src/lib/services/delivery-telemetry.ts |
 | `createOrUpdateSavedViewAction` | `analytics_reporting` | create | `L2_STATE_MUTATION` | unmapped | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/analytics-actions.ts |
@@ -4600,6 +4667,8 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `ActionConfigPanel` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/admin/automations/components/ActionConfigPanel.tsx |
 | `ActionNode` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/admin/automations/[id]/edit/components/nodes/ActionNode.tsx |
 | `addContactsToCallCampaignAction` | `automation_workflows` | create | `L2_STATE_MUTATION` | unmapped | `canUser`, `verifyPermission` | `canUser:messaging`, `canUser:studios`, `verifyPermission:edit` | — | src/lib/call-centre-actions.ts |
+| `AgentRegistry` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/supervisor/agent-registry.ts |
+| `applyConsolidationAction` | `automation_workflows` | update | `L2_STATE_MUTATION` | unmapped | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/orchestrator-actions.ts |
 | `archiveAutomationAction` | `automation_workflows` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireAuth` | — | — | src/lib/automation-actions.ts |
 | `archiveCallCampaignAction` | `automation_workflows` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `canUser`, `verifyPermission` | `canUser:messaging`, `canUser:studios`, `verifyPermission:edit` | — | src/lib/call-centre-actions.ts |
 | `bulkCleanContactsAction` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | `requireAuth` | — | `entities`, `workspace_entities` | src/lib/automation-actions.ts |
@@ -4609,6 +4678,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `calculateFreeSlots` | `automation_workflows` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | `calendar_connections`, `meetings`, `tasks`, `user_availabilities` | src/lib/services/scheduler/availability.ts |
 | `CallCentreService` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `call_campaigns`, `call_queue_items`, `call_scripts`, `deals`, `entities`, `entity_notes`, `meetings`, `message_templates`, `onboardingStages`, `organizations`, `portal_invitations`, `portal_memberships`, `portals`, `users`, `workspace_entities`, `workspaces` | src/lib/services/call-centre-service.ts |
 | `cancelAutomationRunAction` | `automation_workflows` | execute | `L2_STATE_MUTATION` | wrap | `assertAutomationManagePermission`, `requireAuth` | `assertAutomationManagePermission:edit` | `automation_runs`, `automations` | src/lib/automation-actions.ts |
+| `cancelSupervisorMissionAction` | `automation_workflows` | execute | `L2_STATE_MUTATION` | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | `users` | src/lib/supervisor/actions/supervisor-actions.ts |
 | `cleanAndVerifyRunContactAction` | `automation_workflows` | read | `L0_READ` | unmapped | `assertAutomationManagePermission`, `requireAuth` | `assertAutomationManagePermission:edit` | `automation_runs` | src/lib/automation-actions.ts |
 | `cleanContactEmailAction` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | `requireAuth` | — | `entities`, `workspace_entities` | src/lib/automation-actions.ts |
 | `cloneCallCampaignAction` | `automation_workflows` | create | `L2_STATE_MUTATION` | unmapped | `canUser`, `verifyPermission` | `canUser:messaging`, `canUser:studios`, `verifyPermission:create` | — | src/lib/call-centre-actions.ts |
@@ -4616,6 +4686,10 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `createCallCampaignAction` | `automation_workflows` | create | `L2_STATE_MUTATION` | unmapped | `canUser`, `verifyPermission` | `canUser:messaging`, `canUser:studios`, `verifyPermission:create` | — | src/lib/call-centre-actions.ts |
 | `createCallScriptAction` | `automation_workflows` | create | `L2_STATE_MUTATION` | unmapped | `canUser`, `verifyPermission` | `canUser:messaging`, `canUser:studios`, `verifyPermission:create` | — | src/lib/call-centre-actions.ts |
 | `createContactFollowupTaskAction` | `automation_workflows` | create | `L2_STATE_MUTATION` | unmapped | `assertAutomationManagePermission`, `requireWorkspace` | `assertAutomationManagePermission:edit` | — | src/lib/automation-actions.ts |
+| `decomposeGoalDeterministic` | `automation_workflows` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/decompose-supervisor-goal-flow.ts |
+| `decomposeGoalInputSchema` | `automation_workflows` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/decompose-supervisor-goal-flow.ts |
+| `decomposeGoalOutputSchema` | `automation_workflows` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/decompose-supervisor-goal-flow.ts |
+| `decomposeSupervisorGoalFlow` | `automation_workflows` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/decompose-supervisor-goal-flow.ts |
 | `deferQueueItemAction` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | `canUser`, `verifyPermission` | `canUser:messaging`, `canUser:studios`, `verifyPermission:edit` | — | src/lib/call-centre-actions.ts |
 | `deleteAllArchivedAutomationsAction` | `automation_workflows` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireWorkspace` | — | — | src/lib/automation-actions.ts |
 | `deleteAutomationAction` | `automation_workflows` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireAuth` | — | — | src/lib/automation-actions.ts |
@@ -4628,11 +4702,15 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `enqueueAndLockSingleCallAction` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | `canUser`, `verifyPermission` | `canUser:messaging`, `canUser:studios`, `verifyPermission:edit` | — | src/lib/call-centre-actions.ts |
 | `enrollContactsInAutomationAction` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/automation-actions.ts |
 | `ensureWorkspaceAvailabilityAction` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `user_availabilities` | src/app/actions/scheduler-actions.ts |
+| `EventTriggerRouter` | `automation_workflows` | execute | `L2_STATE_MUTATION` | unmapped | — | — | — | src/lib/workflows/services/event-trigger-router.ts |
 | `executeMessageStatusAutomationsAction` | `automation_workflows` | execute | `L2_STATE_MUTATION` | unmapped | `assertAutomationManagePermission`, `requireWorkspace` | `assertAutomationManagePermission:edit` | — | src/lib/automation-actions.ts |
 | `executeOutcomeAutomationsAction` | `automation_workflows` | execute | `L2_STATE_MUTATION` | unmapped | `canUser`, `verifyPermission` | `canUser:messaging`, `canUser:studios`, `verifyPermission:edit` | — | src/lib/call-centre-actions.ts |
+| `executeProposedActionAction` | `automation_workflows` | execute | `L2_STATE_MUTATION` | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | `users` | src/lib/supervisor/actions/supervisor-actions.ts |
 | `executeScriptActionAction` | `automation_workflows` | execute | `L2_STATE_MUTATION` | unmapped | `canUser`, `verifyPermission` | `canUser:messaging`, `canUser:studios`, `verifyPermission:edit` | — | src/lib/call-centre-actions.ts |
 | `exportAutomationAction` | `automation_workflows` | read | `L0_READ` | unmapped | `requireAuth` | — | — | src/lib/automation-actions.ts |
+| `fetchCampaignOrchestrationsAction` | `automation_workflows` | read | `L0_READ` | wrap | `requireAuth` | — | `campaign_orchestrations` | src/lib/orchestration-actions.ts |
 | `FinanceAutomationService` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `finance_reminder_logs`, `invoices` | src/lib/services/finance-automation-service.ts |
+| `findConsolidationCandidatesAction` | `automation_workflows` | search | `L0_READ` | unmapped | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/orchestrator-actions.ts |
 | `forceAdvanceRunAction` | `automation_workflows` | execute | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | — | src/lib/automation-actions.ts |
 | `forceEndRunAction` | `automation_workflows` | execute | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | — | src/lib/automation-actions.ts |
 | `generateAutomation` | `automation_workflows` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/generate-automation-flow.ts |
@@ -4643,25 +4721,27 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `getCallCampaignAction` | `automation_workflows` | read | `L0_READ` | wrap | `canUser`, `verifyPermission` | `canUser:messaging`, `canUser:studios`, `verifyPermission:view` | — | src/lib/call-centre-actions.ts |
 | `getCallScriptAction` | `automation_workflows` | read | `L0_READ` | unmapped | `canUser`, `verifyPermission` | `canUser:messaging`, `canUser:studios`, `verifyPermission:view` | — | src/lib/call-centre-actions.ts |
 | `getGoogleAuthUrlAction` | `automation_workflows` | read | `L0_READ` | unmapped | `requireWorkspace` | — | — | src/app/actions/scheduler-actions.ts |
+| `getMemoryHealthAction` | `automation_workflows` | read | `L0_READ` | wrap | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/orchestrator-actions.ts |
 | `getMessageNodeLogsAction` | `automation_workflows` | read | `L0_READ` | unmapped | `requireAuth` | — | `message_logs` | src/lib/automation-actions.ts |
 | `getMessageNodeStatsAction` | `automation_workflows` | read | `L0_READ` | unmapped | `requireAuth` | — | — | src/lib/automation-actions.ts |
 | `getMicrosoftAuthUrlAction` | `automation_workflows` | read | `L0_READ` | unmapped | `requireWorkspace` | — | — | src/app/actions/scheduler-actions.ts |
 | `getReminderLogsAction` | `automation_workflows` | read | `L0_READ` | unmapped | `canUser`, `requireWorkspace` | `canUser:finance`, `canUser:invoices`, `canUser:view` | `finance_reminder_logs` | src/lib/finance-automation-actions.ts |
+| `getSupervisorRunAction` | `automation_workflows` | read | `L0_READ` | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | `users` | src/lib/supervisor/actions/supervisor-actions.ts |
 | `getWorkflowAction` | `automation_workflows` | read | `L0_READ` | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | `brain_workflows`, `users` | src/lib/workflows/actions/workflow-actions.ts |
 | `getWorkflowRunAction` | `automation_workflows` | read | `L0_READ` | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | `users` | src/lib/workflows/actions/workflow-actions.ts |
 | `getZoomAuthUrlAction` | `automation_workflows` | read | `L0_READ` | unmapped | `requireWorkspace` | — | — | src/app/actions/scheduler-actions.ts |
 | `handleAddNote` | `automation_workflows` | create | `L2_STATE_MUTATION` | unmapped | — | — | `entity_notes` | src/lib/automations/actions/entity-actions.ts |
 | `handleAssignEntity` | `automation_workflows` | update | `L2_STATE_MUTATION` | unmapped | — | — | `workspace_entities` | src/lib/automations/actions/entity-actions.ts |
-| `handleCreateContactForEntity` | `automation_workflows` | create | `L2_STATE_MUTATION` | unmapped | — | — | `automation_runs`, `entities`, `organizations`, `workspace_entities` | src/lib/automations/actions/entity-actions.ts |
+| `handleCreateContactForEntity` | `automation_workflows` | create | `L2_STATE_MUTATION` | unmapped | — | — | `automation_runs`, `entities`, `workspace_entities` | src/lib/automations/actions/entity-actions.ts |
 | `handleCreateEntity` | `automation_workflows` | create | `L2_STATE_MUTATION` | extend | — | — | `app_fields`, `automation_runs`, `automations` | src/lib/automations/actions/entity-actions.ts |
 | `handleCreateTask` | `automation_workflows` | create | `L2_STATE_MUTATION` | unmapped | — | — | `workspaces` | src/lib/automations/actions/task-actions.ts |
 | `handleDirectMessage` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/automations/actions/message-actions.ts |
 | `handleDirectNotification` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `users`, `workspaces` | src/lib/automations/actions/notification-actions.ts |
-| `handleFindContact` | `automation_workflows` | search | `L0_READ` | unmapped | — | — | `automation_runs`, `entities`, `organizations`, `workspace_contacts`, `workspace_entities` | src/lib/automations/actions/entity-actions.ts |
-| `handleSendMessage` | `automation_workflows` | execute | `L3_EXTERNAL_COMMUNICATION_FINANCE` | unmapped | — | — | `entities`, `organizations`, `workspaces` | src/lib/automations/actions/message-actions.ts |
+| `handleFindContact` | `automation_workflows` | search | `L0_READ` | unmapped | — | — | `automation_runs`, `entities`, `workspace_contacts`, `workspace_entities` | src/lib/automations/actions/entity-actions.ts |
+| `handleSendMessage` | `automation_workflows` | execute | `L3_EXTERNAL_COMMUNICATION_FINANCE` | unmapped | — | — | `entities`, `workspaces` | src/lib/automations/actions/message-actions.ts |
 | `handleSendNotification` | `automation_workflows` | execute | `L3_EXTERNAL_COMMUNICATION_FINANCE` | unmapped | — | — | `in_app_notifications`, `message_templates`, `users`, `workspaces` | src/lib/automations/actions/notification-actions.ts |
 | `handleTriggerOutboundWebhook` | `automation_workflows` | execute | `L2_STATE_MUTATION` | unmapped | — | — | — | src/lib/automations/actions/webhook-actions.ts |
-| `handleUpdateContact` | `automation_workflows` | update | `L2_STATE_MUTATION` | unmapped | — | — | `automation_runs`, `entities`, `organizations`, `workspace_contacts`, `workspace_entities` | src/lib/automations/actions/entity-actions.ts |
+| `handleUpdateContact` | `automation_workflows` | update | `L2_STATE_MUTATION` | unmapped | — | — | `automation_runs`, `entities`, `workspace_contacts`, `workspace_entities` | src/lib/automations/actions/entity-actions.ts |
 | `handleUpdateEntity` | `automation_workflows` | update | `L2_STATE_MUTATION` | extend | — | — | `entities`, `workspace_entities` | src/lib/automations/actions/entity-actions.ts |
 | `handleUpdateLeadScore` | `automation_workflows` | update | `L2_STATE_MUTATION` | extend | — | — | `workspaces` | src/lib/automations/actions/score-automation-actions.ts |
 | `handleUpdateTask` | `automation_workflows` | update | `L2_STATE_MUTATION` | extend | — | — | `tasks` | src/lib/automations/actions/task-actions.ts |
@@ -4670,8 +4750,12 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `importCallScriptAction` | `automation_workflows` | create | `L2_STATE_MUTATION` | unmapped | `canUser`, `verifyPermission` | `canUser:messaging`, `canUser:studios`, `verifyPermission:create` | — | src/lib/call-centre-actions.ts |
 | `installBlueprintAction` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | `brain_workflows`, `users` | src/lib/workflows/actions/workflow-actions.ts |
 | `jumpRunToStepAction` | `automation_workflows` | execute | `L2_STATE_MUTATION` | unmapped | `assertAutomationManagePermission`, `requireAuth` | `assertAutomationManagePermission:edit` | `automation_runs` | src/lib/automation-actions.ts |
+| `listAgentDescriptorsAction` | `automation_workflows` | read | `L0_READ` | unmapped | `requireAuth` | — | — | src/lib/supervisor/actions/supervisor-actions.ts |
 | `listCallCampaignsAction` | `automation_workflows` | read | `L0_READ` | wrap | `canUser`, `verifyPermission` | `canUser:messaging`, `canUser:studios`, `verifyPermission:view` | — | src/lib/call-centre-actions.ts |
 | `listCallScriptsAction` | `automation_workflows` | read | `L0_READ` | unmapped | `canUser`, `verifyPermission` | `canUser:messaging`, `canUser:studios`, `verifyPermission:view` | — | src/lib/call-centre-actions.ts |
+| `listMemoryConflictsAction` | `automation_workflows` | read | `L0_READ` | wrap | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/orchestrator-actions.ts |
+| `listStaleMemoriesAction` | `automation_workflows` | read | `L0_READ` | wrap | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/orchestrator-actions.ts |
+| `listSupervisorRunsAction` | `automation_workflows` | read | `L0_READ` | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | `users` | src/lib/supervisor/actions/supervisor-actions.ts |
 | `listWorkflowRunsAction` | `automation_workflows` | read | `L0_READ` | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | `users`, `workflow_runs` | src/lib/workflows/actions/workflow-actions.ts |
 | `listWorkflowsAction` | `automation_workflows` | read | `L0_READ` | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | `brain_workflows`, `users` | src/lib/workflows/actions/workflow-actions.ts |
 | `lockQueueItemAction` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | `canUser`, `verifyPermission` | `canUser:messaging`, `canUser:studios`, `verifyPermission:edit` | — | src/lib/call-centre-actions.ts |
@@ -4681,8 +4765,10 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `NodeActionToolbar` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/admin/automations/[id]/edit/components/nodes/NodeActionToolbar.tsx |
 | `parseManualRecipients` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/automations/actions/notification-actions.ts |
 | `pauseRunAction` | `automation_workflows` | execute | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | — | src/lib/automation-actions.ts |
+| `planStepSchema` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/decompose-supervisor-goal-flow.ts |
 | `pulseAutomationEngineAction` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | `requireAuth` | — | — | src/lib/automation-actions.ts |
 | `reconcilePendingSmsLogsAction` | `automation_workflows` | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | — | src/lib/automation-actions.ts |
+| `reconfirmMemoryFreshnessAction` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/orchestrator-actions.ts |
 | `refineCallScriptAction` | `automation_workflows` | draft | `L1_INTERNAL_DRAFT` | unmapped | `canUser`, `verifyPermission` | `canUser:messaging`, `canUser:studios`, `verifyPermission:edit` | — | src/lib/call-centre-actions.ts |
 | `releaseQueueItemAction` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | `canUser`, `verifyPermission` | `canUser:messaging`, `canUser:studios`, `verifyPermission:edit` | — | src/lib/call-centre-actions.ts |
 | `releaseSingleCallAction` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | `canUser`, `verifyPermission` | `canUser:messaging`, `canUser:studios`, `verifyPermission:edit` | — | src/lib/call-centre-actions.ts |
@@ -4690,39 +4776,56 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `rescheduleWaitJobAction` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | `assertAutomationManagePermission`, `requireAuth` | `assertAutomationManagePermission:edit` | `automation_jobs` | src/lib/automation-actions.ts |
 | `resendFailedMessageAction` | `automation_workflows` | execute | `L3_EXTERNAL_COMMUNICATION_FINANCE` | unmapped | `assertAutomationManagePermission`, `requireAuth` | `assertAutomationManagePermission:edit` | `message_logs` | src/lib/automation-actions.ts |
 | `resendFailedMessagesAction` | `automation_workflows` | execute | `L3_EXTERNAL_COMMUNICATION_FINANCE` | wrap | `requireWorkspace` | — | — | src/lib/automation-actions.ts |
+| `resolveMemoryConflictAction` | `automation_workflows` | draft | `L1_INTERNAL_DRAFT` | wrap | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/orchestrator-actions.ts |
 | `restartRunAction` | `automation_workflows` | execute | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | — | src/lib/automation-actions.ts |
 | `restoreAutomationAction` | `automation_workflows` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | — | src/lib/automation-actions.ts |
 | `resumeRunAction` | `automation_workflows` | execute | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | — | src/lib/automation-actions.ts |
+| `resumeSupervisorMissionAction` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | `users` | src/lib/supervisor/actions/supervisor-actions.ts |
 | `resumeWorkflowRunAction` | `automation_workflows` | execute | `L2_STATE_MUTATION` | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | `users` | src/lib/workflows/actions/workflow-actions.ts |
 | `retryFailedStepAction` | `automation_workflows` | execute | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | — | src/lib/automation-actions.ts |
 | `runReminderCycleAction` | `automation_workflows` | execute | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireWorkspace` | `canUser:edit`, `canUser:finance`, `canUser:invoices` | — | src/lib/finance-automation-actions.ts |
 | `saveAutomationAction` | `automation_workflows` | update | `L2_STATE_MUTATION` | unmapped | — | — | — | src/lib/automation-actions.ts |
 | `saveBookingPageAction` | `automation_workflows` | update | `L2_STATE_MUTATION` | unmapped | — | — | `booking_pages` | src/app/actions/scheduler-actions.ts |
+| `saveCampaignOrchestrationAction` | `automation_workflows` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `campaign_orchestrations` | src/lib/orchestration-actions.ts |
 | `saveWorkflowAction` | `automation_workflows` | update | `L2_STATE_MUTATION` | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | `brain_workflows`, `users` | src/lib/workflows/actions/workflow-actions.ts |
+| `scanMemoryConflictsBatchAction` | `automation_workflows` | analyze | `L0_READ` | unmapped | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/orchestrator-actions.ts |
 | `scheduleCallbackAction` | `automation_workflows` | execute | `L2_STATE_MUTATION` | unmapped | `canUser`, `verifyPermission` | `canUser:messaging`, `canUser:studios`, `verifyPermission:edit` | — | src/lib/call-centre-actions.ts |
 | `seedDefaultAutomationsAction` | `automation_workflows` | create | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | — | src/lib/automation-actions.ts |
 | `sendInvoiceReminderAction` | `automation_workflows` | execute | `L3_EXTERNAL_COMMUNICATION_FINANCE` | unmapped | `canUser`, `requireWorkspace` | `canUser:edit`, `canUser:finance`, `canUser:invoices` | — | src/lib/finance-automation-actions.ts |
 | `simulateWorkflowAction` | `automation_workflows` | draft | `L1_INTERNAL_DRAFT` | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | `users` | src/lib/workflows/actions/workflow-actions.ts |
 | `skipQueueItemAction` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | `canUser`, `verifyPermission` | `canUser:messaging`, `canUser:studios`, `verifyPermission:edit` | — | src/lib/call-centre-actions.ts |
+| `startSupervisorMissionAction` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | `users` | src/lib/supervisor/actions/supervisor-actions.ts |
 | `startWorkflowRunAction` | `automation_workflows` | execute | `L2_STATE_MUTATION` | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | `brain_workflows`, `users` | src/lib/workflows/actions/workflow-actions.ts |
 | `submitCallOutcomeAction` | `automation_workflows` | create | `L2_STATE_MUTATION` | unmapped | `canUser`, `verifyPermission` | `canUser:messaging`, `canUser:studios`, `verifyPermission:edit` | — | src/lib/call-centre-actions.ts |
+| `SupervisorEngine` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/supervisor/services/supervisor-engine.ts |
+| `SwarmOrchestrator` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `swarm_runs` | src/lib/agents/services/swarm-orchestrator.ts |
+| `synthesizeResultDeterministic` | `automation_workflows` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/synthesize-supervisor-result-flow.ts |
+| `synthesizeResultInputSchema` | `automation_workflows` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/synthesize-supervisor-result-flow.ts |
+| `synthesizeResultOutputSchema` | `automation_workflows` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/synthesize-supervisor-result-flow.ts |
+| `synthesizeSupervisorResultFlow` | `automation_workflows` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/synthesize-supervisor-result-flow.ts |
 | `TagActionNode` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/admin/automations/[id]/edit/components/nodes/TagActionNode.tsx |
 | `testAutomationFlowAction` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | `requireAuth` | — | — | src/lib/automation-actions.ts |
 | `testAutomationStepAction` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | `requireAuth` | — | — | src/lib/automation-actions.ts |
 | `toggleAutomationStatusAction` | `automation_workflows` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | — | src/lib/automation-actions.ts |
 | `toggleWorkflowAction` | `automation_workflows` | update | `L2_STATE_MUTATION` | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | `brain_workflows`, `users` | src/lib/workflows/actions/workflow-actions.ts |
 | `transferMediaAutomationsAction` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | `requireAuth` | — | `media`, `media_shares` | src/lib/media-automation-actions.ts |
+| `triggerCrossChannelSyncAction` | `automation_workflows` | execute | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `campaign_orchestrations` | src/lib/orchestration-actions.ts |
+| `unifiedRecallAction` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/orchestrator-actions.ts |
 | `updateCallCampaignAction` | `automation_workflows` | update | `L2_STATE_MUTATION` | unmapped | `canUser`, `verifyPermission` | `canUser:messaging`, `canUser:studios`, `verifyPermission:edit` | — | src/lib/call-centre-actions.ts |
 | `updateCallScriptAction` | `automation_workflows` | update | `L2_STATE_MUTATION` | unmapped | `canUser`, `verifyPermission` | `canUser:messaging`, `canUser:studios`, `verifyPermission:edit` | — | src/lib/call-centre-actions.ts |
 | `updateNotesDraftAction` | `automation_workflows` | update | `L2_STATE_MUTATION` | unmapped | `canUser`, `verifyPermission` | `canUser:messaging`, `canUser:studios`, `verifyPermission:edit` | — | src/lib/call-centre-actions.ts |
 | `updateRunPayloadAction` | `automation_workflows` | update | `L2_STATE_MUTATION` | unmapped | `assertAutomationManagePermission`, `requireAuth` | `assertAutomationManagePermission:edit` | `automation_runs` | src/lib/automation-actions.ts |
 | `verifySingleContactAction` | `automation_workflows` | read | `L0_READ` | unmapped | `requireAuth` | — | `entities`, `workspace_entities` | src/lib/automation-actions.ts |
+| `WorkflowEngine` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `brain_workflows`, `workflow_runs` | src/lib/workflows/services/workflow-engine.ts |
+| `zSupervisorPlanStep` | `automation_workflows` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/supervisor/types.ts |
 | `addQRCodesToCampaign` | `campaigns_marketing` | create | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `organizations`, `qr_campaigns`, `qr_codes`, `workspaces` | src/lib/qr-campaign-actions.ts |
+| `createBulkCampaignAction` | `campaigns_marketing` | create | `L2_STATE_MUTATION` | unmapped | `requireAuth`, `requireWorkspace` | — | — | src/app/actions/bulk-campaign-actions.ts |
 | `createQRCampaign` | `campaigns_marketing` | create | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `organizations`, `qr_campaigns`, `qr_codes`, `workspaces` | src/lib/qr-campaign-actions.ts |
 | `createSurveyDistributionCampaignAction` | `campaigns_marketing` | create | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `survey_distribution_campaigns` | src/lib/surveys/survey-campaign-actions.ts |
 | `deleteCampaignConceptAction` | `campaigns_marketing` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | — | — | — | src/lib/quick-notes-campaign-actions.ts |
 | `deleteQRCampaign` | `campaigns_marketing` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireWorkspace` | — | `organizations`, `qr_campaigns`, `qr_codes`, `workspaces` | src/lib/qr-campaign-actions.ts |
 | `deployConceptToCampaignStudioAction` | `campaigns_marketing` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/quick-notes-campaign-actions.ts |
+| `dispatchBulkCampaignSliceAction` | `campaigns_marketing` | execute | `L3_EXTERNAL_COMMUNICATION_FINANCE` | unmapped | `requireAuth`, `requireWorkspace` | — | — | src/app/actions/bulk-campaign-actions.ts |
 | `dispatchSurveyDistributionCampaignAction` | `campaigns_marketing` | execute | `L3_EXTERNAL_COMMUNICATION_FINANCE` | unmapped | `requireWorkspace` | — | `contacts`, `survey_distribution_campaigns`, `surveys` | src/lib/surveys/survey-campaign-actions.ts |
 | `estimateAudienceSizeAction` | `campaigns_marketing` | draft | `L1_INTERNAL_DRAFT` | unmapped | `requireWorkspace` | — | `contacts` | src/lib/surveys/survey-campaign-actions.ts |
 | `generateCampaignConceptAction` | `campaigns_marketing` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/lib/quick-notes-campaign-actions.ts |
@@ -4730,12 +4833,17 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `generateCampaignConceptInputSchema` | `campaigns_marketing` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/generate-campaign-concept-flow.ts |
 | `generateCampaignConceptOutputSchema` | `campaigns_marketing` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/generate-campaign-concept-flow.ts |
 | `generateWorkspaceBattlecardsAction` | `campaigns_marketing` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/lib/quick-notes-campaign-actions.ts |
+| `getBulkCampaignProgressAction` | `campaigns_marketing` | read | `L0_READ` | unmapped | `requireAuth`, `requireWorkspace` | — | — | src/app/actions/bulk-campaign-actions.ts |
 | `getCampaignAnalytics` | `campaigns_marketing` | read | `L0_READ` | unmapped | `requireWorkspace` | — | `organizations`, `qr_campaigns`, `qr_codes`, `workspaces` | src/lib/qr-campaign-actions.ts |
 | `getQRCampaigns` | `campaigns_marketing` | read | `L0_READ` | unmapped | `requireWorkspace` | — | `organizations`, `qr_campaigns`, `workspaces` | src/lib/qr-campaign-actions.ts |
 | `getSystemDispatchGovernanceAction` | `campaigns_marketing` | read | `L0_READ` | unmapped | `requireAuth` | — | `system_settings` | src/lib/surveys/survey-campaign-actions.ts |
 | `getWorkspaceBattlecardsAction` | `campaigns_marketing` | read | `L0_READ` | unmapped | — | — | — | src/lib/quick-notes-campaign-actions.ts |
 | `getWorkspaceCampaignConceptsAction` | `campaigns_marketing` | read | `L0_READ` | unmapped | — | — | — | src/lib/quick-notes-campaign-actions.ts |
+| `listWorkspaceBulkCampaignsAction` | `campaigns_marketing` | read | `L0_READ` | reuse | `requireAuth`, `requireWorkspace` | — | `bulk_campaigns` | src/app/actions/bulk-campaign-actions.ts |
+| `previewBulkCrmRecipientsAction` | `campaigns_marketing` | draft | `L1_INTERNAL_DRAFT` | unmapped | `requireAuth`, `requireWorkspace` | — | `entities`, `workspace_entities` | src/app/actions/bulk-campaign-actions.ts |
+| `previewBulkCsvMergeAction` | `campaigns_marketing` | draft | `L1_INTERNAL_DRAFT` | unmapped | `requireAuth`, `requireWorkspace` | — | — | src/app/actions/bulk-campaign-actions.ts |
 | `removeQRCodeFromCampaign` | `campaigns_marketing` | delete | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `organizations`, `qr_campaigns`, `qr_codes`, `workspaces` | src/lib/qr-campaign-actions.ts |
+| `retryFailedCampaignRecipientsAction` | `campaigns_marketing` | execute | `L2_STATE_MUTATION` | unmapped | `requireAuth`, `requireWorkspace` | — | — | src/app/actions/bulk-campaign-actions.ts |
 | `saveSystemDispatchGovernanceAction` | `campaigns_marketing` | update | `L3_EXTERNAL_COMMUNICATION_FINANCE` | unmapped | `requireAuth` | — | `system_settings` | src/lib/surveys/survey-campaign-actions.ts |
 | `synthesizeCampaignLearningsAction` | `campaigns_marketing` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/lib/quick-notes-campaign-actions.ts |
 | `updateCampaignConceptStatusAction` | `campaigns_marketing` | update | `L2_STATE_MUTATION` | unmapped | — | — | — | src/lib/quick-notes-campaign-actions.ts |
@@ -4777,7 +4885,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `generateEmailTemplate` | `communication_messaging` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/generate-email-template-flow.ts |
 | `generateSurveyMessaging` | `communication_messaging` | draft | `L1_INTERNAL_DRAFT` | extend | — | — | — | src/ai/flows/generate-survey-messaging-flow.ts |
 | `generateSurveyMessagingFlow` | `communication_messaging` | draft | `L1_INTERNAL_DRAFT` | extend | — | — | — | src/ai/flows/generate-survey-messaging-flow.ts |
-| `generateSurveyMessagingTemplatesAction` | `communication_messaging` | draft | `L1_INTERNAL_DRAFT` | wrap | `canUser`, `requireAuth` | `canUser:edit`, `canUser:operations`, `canUser:templates` | `message_templates` | src/lib/survey-ai-messaging-actions.ts |
+| `generateSurveyMessagingTemplatesAction` | `communication_messaging` | draft | `L1_INTERNAL_DRAFT` | wrap | `canUser`, `requireAuth` | `canUser:edit`, `canUser:operations`, `canUser:templates` | `message_styles`, `message_templates`, `workspaces` | src/lib/survey-ai-messaging-actions.ts |
 | `getMessagingDeliveryMetricsAction` | `communication_messaging` | read | `L0_READ` | unmapped | — | — | `organizations` | src/lib/backoffice/backoffice-messaging-observatory-actions.ts |
 | `getSimulationVariablesAction` | `communication_messaging` | read | `L0_READ` | unmapped | `requireAuth` | — | `app_fields`, `contracts`, `meetings`, `organizations`, `pdfs`, `responses`, `submissions`, `surveys`, `tags`, `workspace_entities`, `workspaces` | src/lib/messaging-actions.ts |
 | `getWhatsAppConnection` | `communication_messaging` | read | `L0_READ` | unmapped | `requireOrgAdmin` | — | — | src/lib/whatsapp-actions.ts |
@@ -4819,11 +4927,9 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `GET /api/diagnostic` | `crm_contacts`* | read | `L0_READ` | unmapped | `authenticateApiRequest` | — | `automation_jobs`, `automation_runs` | src/app/api/diagnostic/route.ts |
 | `POST /api/documents/events` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/api/documents/events/route.ts |
 | `POST /api/documents/process` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/api/documents/process/route.ts |
+| `GET /api/documents/signature` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | — | src/app/api/documents/signature/route.ts |
 | `POST /api/external/v1/entities` | `crm_contacts` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `api_keys` | src/app/api/external/v1/entities/route.ts |
 | `GET /api/l/[linkId]` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | — | src/app/api/l/[linkId]/route.ts |
-| `OPTIONS /api/mcp` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/api/mcp/route.ts |
-| `POST /api/mcp` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | `authenticateApiRequest` | — | — | src/app/api/mcp/route.ts |
-| `GET /api/mcp/sse` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | — | src/app/api/mcp/sse/route.ts |
 | `GET /api/migration/alerts` | `crm_contacts`* | read | `L0_READ` | unmapped | `authenticateApiRequest` | — | — | src/app/api/migration/alerts/route.ts |
 | `POST /api/migration/alerts` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | `authenticateApiRequest` | — | — | src/app/api/migration/alerts/route.ts |
 | `POST /api/migration/cleanup` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | `authenticateApiRequest` | — | — | src/app/api/migration/cleanup/route.ts |
@@ -4835,9 +4941,15 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `GET /api/pdfs/[pdfId]/generate/[submissionId]` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `pdfs`, `submissions` | src/app/api/pdfs/[pdfId]/generate/[submissionId]/route.ts |
 | `POST /api/pdfs/submit` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `contracts`, `pdfs`, `submissions` | src/app/api/pdfs/submit/route.ts |
 | `GET /api/sentry-example-api` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | — | src/app/api/sentry-example-api/route.ts |
+| `GET /api/v1/envelopes` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `signing_envelopes` | src/app/api/v1/envelopes/route.ts |
+| `POST /api/v1/envelopes` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `signing_envelopes` | src/app/api/v1/envelopes/route.ts |
+| `GET /api/v1/envelopes/[id]` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `signing_envelopes` | src/app/api/v1/envelopes/[id]/route.ts |
+| `POST /api/v1/envelopes/[id]/void` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `signing_envelopes` | src/app/api/v1/envelopes/[id]/void/route.ts |
+| `GET /api/v1/templates` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | — | src/app/api/v1/templates/route.ts |
 | `POST /api/verify-phone` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/api/verify-phone/route.ts |
 | `POST /api/verify-phone/bulk` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/api/verify-phone/bulk/route.ts |
 | `GET /api/verify-phone/cron` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | `authenticateCronRequest` | — | `organizations` | src/app/api/verify-phone/cron/route.ts |
+| `acceptInvitationLandingAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `invitations` | src/app/actions/invitation-crypto-actions.ts |
 | `acquireBookingHoldAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `booking_holds`, `bookings`, `event_types` | src/app/actions/booking-actions.ts |
 | `ActionExecutionDrawer` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/admin/my-day/components/ActionExecutionDrawer.tsx |
 | `ActionTargetModal` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/admin/pages/[id]/builder/components/ActionTargetModal.tsx |
@@ -4851,17 +4963,20 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `adminOverrideStepAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/onboarding-actions.ts |
 | `admitNextVisitorAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | `requireWorkspace` | — | `office_hours_queue`, `office_hours_rooms` | src/app/actions/office-hours-actions.ts |
 | `advanceOnboardingStepAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/actions/engagement-actions.ts |
+| `AgentSecurityViolationError` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/agents/specialists/base-domain-specialist.ts |
 | `AgreementSequenceService` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `system_counters` | src/lib/services/agreement-sequence-service.ts |
-| `AiIdentityContextResolver` | `crm_contacts` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/services/ai/ai-identity-context-resolver.ts |
 | `analyzeHeadline` | `crm_contacts`* | analyze | `L0_READ` | unmapped | — | — | — | src/lib/services/headline-iq.ts |
 | `applyAiRecommendedHotspotAction` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `document_layers`, `document_pages`, `documents` | src/lib/documents/ai-document-actions.ts |
 | `applyTagAction` | `crm_contacts` | update | `L2_STATE_MUTATION` | unmapped | — | — | `entities`, `tags`, `workspace_entities` | src/lib/scoped-tag-actions.ts |
 | `applyTagsAction` | `crm_contacts` | update | `L2_STATE_MUTATION` | unmapped | — | — | `tag_audit_logs`, `tags`, `workspace_entities` | src/lib/tag-actions.ts |
+| `approveContractObligationCandidateAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | — | src/app/actions/contract-ai-intelligence-actions.ts |
 | `approveCreativeProjectAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | — | — | `creative_projects`, `creative_reviews` | src/app/actions/creative-collab-actions.ts |
+| `approveObligationCandidate` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | — | — | `contract_obligations`, `obligation_candidates` | src/lib/documents/contract-obligation-extraction-service.ts |
 | `archiveContentItemAction` | `crm_contacts`* | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | — | — | — | src/app/actions/content-actions.ts |
 | `archiveDocumentVersionAction` | `crm_contacts`* | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireWorkspace` | — | `document_versions` | src/lib/documents/document-version-actions.ts |
 | `archivePerspectiveAction` | `crm_contacts`* | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireAuth` | — | `perspectives` | src/lib/perspective-actions.ts |
 | `archiveTemplate` | `crm_contacts`* | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireAuth` | — | `message_templates`, `template_audit_logs` | src/lib/template-actions.ts |
+| `askDocumentQuestionAction` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | `requireWorkspace` | — | — | src/app/actions/document-ai-copilot-actions.ts |
 | `askDocumentQuestionAction` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | `requireWorkspace` | — | `document_pages`, `documents` | src/lib/documents/ai-document-actions.ts |
 | `assignCaseAction` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireWorkspace` | `canUser:edit`, `canUser:finance`, `canUser:invoices` | — | src/lib/collection-actions.ts |
 | `assignCoachingDrillAction` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `coachingProfiles` | src/app/actions/conversation-coaching-actions.ts |
@@ -4869,6 +4984,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `auditWorkspaceSecurityPostureAction` | `crm_contacts`* | analyze | `L0_READ` | unmapped | `requireWorkspace` | — | `documents` | src/lib/documents/enterprise-security-actions.ts |
 | `awardContactScoreAction` | `crm_contacts` | analyze | `L0_READ` | unmapped | `requireWorkspace` | — | — | src/lib/documents/crm-actions.ts |
 | `backfillSenderOrgAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | `requireSystemAdmin` | — | — | src/app/actions/backfill-sender-org-action.ts |
+| `BaseDomainSpecialist` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `agent_specialists` | src/lib/agents/specialists/base-domain-specialist.ts |
 | `buildOrgFooterVars` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | extend | — | — | — | src/lib/services/org-footer-service.ts |
 | `BulkActionDock` | `crm_contacts` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/admin/entities/components/BulkActionDock.tsx |
 | `bulkApplyTagsAction` | `crm_contacts` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `tag_audit_logs`, `tags`, `workspace_entities` | src/lib/tag-actions.ts |
@@ -4880,7 +4996,6 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `cancelJob` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | — | — | `platform_jobs` | src/lib/backoffice/backoffice-job-actions.ts |
 | `cancelMessageAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | — | src/app/actions/scheduled-message-actions.ts |
 | `cancelRecurringSeriesAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `recurring_series` | src/app/actions/recurring-series-actions.ts |
-| `cancelSupervisorMissionAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | `users` | src/lib/supervisor/actions/supervisor-actions.ts |
 | `CanvasElementSchema` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/schemas.ts |
 | `challengeIdeaAssumptionsFlow` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/challenge-idea-assumptions-flow.ts |
 | `challengeIdeaAssumptionsInputSchema` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/challenge-idea-assumptions-flow.ts |
@@ -4897,7 +5012,8 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `CollectionActivityService` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `collection_activities` | src/lib/services/collection-activity-service.ts |
 | `CollectionCaseSequenceService` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `system_counters` | src/lib/services/collection-case-sequence-service.ts |
 | `CollectionCaseService` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `collection_cases`, `financial_accounts`, `invoices` | src/lib/services/collection-case-service.ts |
-| `completeOrganizationOnboardingAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `organizations`, `users`, `workspaces` | src/app/actions/onboarding-actions.ts |
+| `compareContractVersionsAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | `requireWorkspace` | — | — | src/app/actions/contract-ai-intelligence-actions.ts |
+| `completeOrganizationOnboardingAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | `verifyIdToken` | — | `organizations`, `users`, `workspaces` | src/app/actions/onboarding-actions.ts |
 | `completeTaskAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | extend | — | — | — | src/app/actions/engagement-actions.ts |
 | `confirmAIScheduledBookingAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | `requireAuth` | — | `meetings` | src/app/actions/ai-scheduling-actions.ts |
 | `consolidateMemoriesDeterministic` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/consolidate-memories-flow.ts |
@@ -4905,8 +5021,6 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `consolidateMemoriesInputSchema` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/consolidate-memories-flow.ts |
 | `consolidateMemoriesOutputSchema` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/consolidate-memories-flow.ts |
 | `ContentService` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `versions` | src/lib/services/content-service.ts |
-| `contextDossierInputSchema` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/generate-context-dossier-flow.ts |
-| `contextDossierOutputSchema` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/generate-context-dossier-flow.ts |
 | `convertToOnboardingAction` | `crm_contacts` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `onboardingStages`, `workspace_entities` | src/lib/entity-actions.ts |
 | `createAgreementAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireAuth` | `canUser:create`, `canUser:finance`, `canUser:invoices` | `billing_agreements` | src/lib/agreement-actions.ts |
 | `createAvailabilityProfileAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `availability_profiles` | src/app/actions/availability-actions.ts |
@@ -4918,6 +5032,10 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `createConflictCheck` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | — | — | `conflictChecks` | src/lib/law-actions.ts |
 | `createConsultation` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | — | — | `consultations` | src/lib/law-actions.ts |
 | `createContentItemAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/content-actions.ts |
+| `createContractAmendmentAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | `requireAuth`, `requireWorkspace` | — | `contract_relationships`, `contracts` | src/lib/documents/contract-actions.ts |
+| `createContractObligationAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | `requireAuth`, `requireWorkspace` | — | `contract_obligations`, `contracts` | src/lib/documents/contract-actions.ts |
+| `createContractRecordAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | `requireAuth`, `requireWorkspace` | — | `contracts` | src/lib/documents/contract-actions.ts |
+| `createContractRenewalAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | `requireAuth`, `requireWorkspace` | — | `contract_relationships`, `contracts` | src/lib/documents/contract-actions.ts |
 | `createCourtDate` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | — | — | `courtDates` | src/lib/law-actions.ts |
 | `createCreativeExperimentAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | — | — | `creative_documents`, `creative_experiments` | src/app/actions/creative-experiment-actions.ts |
 | `createCreativeProjectAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `creative_documents`, `creative_projects` | src/app/actions/creative-project-actions.ts |
@@ -4928,7 +5046,8 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `createDocumentDistributionAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `document_distributions` | src/lib/documents/distribution-actions.ts |
 | `createDocumentVersionAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `document_pages`, `document_versions`, `documents` | src/lib/documents/document-version-actions.ts |
 | `createEngagement` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | — | — | `engagements` | src/lib/consultancy-actions.ts |
-| `createEntityAction` | `crm_contacts` | create | `L2_STATE_MUTATION` | wrap | `canUser`, `requireWorkspace` | `canUser:campuses`, `canUser:create`, `canUser:operations` | `entities`, `organizations`, `workspace_entities`, `workspaces` | src/lib/entity-actions.ts |
+| `createEntityAction` | `crm_contacts` | create | `L2_STATE_MUTATION` | reuse | `requireWorkspace` | — | — | src/lib/entity-actions.ts |
+| `createEnvelopeAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | `requireAuth`, `requireWorkspace` | — | `signing_envelopes` | src/lib/documents/envelope-actions.ts |
 | `createEventTypeAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `event_types` | src/app/actions/event-type-actions.ts |
 | `createFieldAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | `canUser` | `canUser:create`, `canUser:fields`, `canUser:management` | `app_fields` | src/lib/fields-actions.ts |
 | `createFieldGroupAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | `canUser` | `canUser:create`, `canUser:fields`, `canUser:management` | `field_groups` | src/lib/fields-actions.ts |
@@ -4970,6 +5089,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `createRetainer` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | — | — | `retainers` | src/lib/consultancy-actions.ts |
 | `createSettings` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `settings` | src/lib/settings-actions.ts |
 | `createSocialPostAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `socialPosts` | src/app/actions/social-composer-actions.ts |
+| `createStarterPdfForm` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `media`, `pdfs` | src/lib/pdf-actions.ts |
 | `createStrategyDoc` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | — | — | `strategyDocs` | src/lib/marketing-actions.ts |
 | `createSubscription` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | — | — | `subscriptions` | src/lib/saas-actions.ts |
 | `createSupportTicket` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | — | — | `supportTickets` | src/lib/saas-actions.ts |
@@ -4980,13 +5100,11 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `createTrial` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | — | — | `trials` | src/lib/saas-actions.ts |
 | `createVersionSnapshotAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `creative_documents`, `creative_versions` | src/app/actions/creative-project-actions.ts |
 | `createViewing` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | — | — | `viewings` | src/lib/real-estate-actions.ts |
-| `decomposeGoalDeterministic` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/decompose-supervisor-goal-flow.ts |
-| `decomposeGoalInputSchema` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/decompose-supervisor-goal-flow.ts |
-| `decomposeGoalOutputSchema` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/decompose-supervisor-goal-flow.ts |
+| `declineEnvelopeAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `signing_envelopes` | src/lib/documents/envelope-actions.ts |
+| `declineInvitationLandingAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/actions/invitation-crypto-actions.ts |
 | `decomposeIdeaCanvasFlow` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/decompose-idea-canvas-flow.ts |
 | `decomposeIdeaCanvasInputSchema` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/decompose-idea-canvas-flow.ts |
 | `decomposeIdeaCanvasOutputSchema` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/decompose-idea-canvas-flow.ts |
-| `decomposeSupervisorGoalFlow` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/decompose-supervisor-goal-flow.ts |
 | `decryptRecipientAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | `requireAuth` | — | `contacts`, `workspace_entities` | src/app/actions/recipient-tracking-actions.ts |
 | `DEFAULT_ORG_FOOTER_HTML` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/services/org-footer-service.ts |
 | `DEFAULT_ORG_STYLE_WRAPPER` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/services/style-resolver.ts |
@@ -5004,7 +5122,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `deleteGlobalTemplate` | `crm_contacts`* | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireAuth` | — | `message_templates`, `scheduled_messages` | src/lib/template-actions.ts |
 | `deleteJourneyAction` | `crm_contacts`* | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/onboarding-actions.ts |
 | `deleteLiveEventAction` | `crm_contacts`* | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | — | — | — | src/app/actions/event-actions.ts |
-| `deleteNote` | `crm_contacts`* | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireAuth` | — | `activities` | src/lib/activity-actions.ts |
+| `deleteNote` | `crm_contacts`* | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireAuth`, `requireWorkspace` | — | `activities` | src/lib/activity-actions.ts |
 | `deletePageAction` | `crm_contacts`* | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireAuth` | — | `campaign_page_versions`, `campaign_pages` | src/lib/page-actions.ts |
 | `deletePdfForm` | `crm_contacts`* | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireAuth` | — | `pdfs` | src/lib/pdf-actions.ts |
 | `deletePerspectiveAction` | `crm_contacts`* | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireAuth` | — | `activities`, `perspectives`, `pipelines`, `schools`, `tasks` | src/lib/perspective-actions.ts |
@@ -5030,11 +5148,14 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `developIdeaInputSchema` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/develop-idea-flow.ts |
 | `developIdeaOutputSchema` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/develop-idea-flow.ts |
 | `discardContentStudioDraftAction` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/app/actions/draft-actions.ts |
+| `dismissContractObligationCandidateAction` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | — | src/app/actions/contract-ai-intelligence-actions.ts |
 | `dismissInsightAction` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `page_insights` | src/lib/insight-actions.ts |
+| `dismissObligationCandidate` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | — | — | `obligation_candidates` | src/lib/documents/contract-obligation-extraction-service.ts |
 | `duplicateDocumentPageAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `document_pages`, `documents`, `flipbook_pages`, `flipbooks` | src/lib/documents/document-page-actions.ts |
 | `duplicateEventTypeAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `event_types` | src/app/actions/event-type-actions.ts |
 | `duplicatePageAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `campaign_page_versions`, `campaign_pages` | src/lib/page-actions.ts |
-| `enforceSuperAdminProfileAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `system_config`, `users` | src/app/actions/onboarding-actions.ts |
+| `EncryptedInvitePayloadSchema` | `crm_contacts`* | execute | `L3_EXTERNAL_COMMUNICATION_FINANCE` | unmapped | — | — | — | src/lib/services/crypto/invite-crypto-service.ts |
+| `enforceSuperAdminProfileAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | `verifyIdToken` | — | `system_config`, `users` | src/app/actions/onboarding-actions.ts |
 | `EngagementService` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `community_posts`, `learning_progress`, `member_engagement_profiles`, `member_onboarding_progress`, `member_tasks`, `onboarding_flows`, `portal_member_activities`, `portal_memberships`, `task_submissions` | src/lib/services/engagement-service.ts |
 | `enrichEntitiesWithNewSchema` | `crm_contacts` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `entities` | src/app/actions/entity-schema-restructure-actions.ts |
 | `enrichSchoolsWithSaaSIndustry` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | — | — | `entities`, `subscriptionPackages` | src/app/actions/industry-migration-actions.ts |
@@ -5053,11 +5174,10 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `executeAiCanvasCommandAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/creative-ai-actions.ts |
 | `executeCryptographicDeletionAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | `users` | src/lib/intelligence/actions/intelligence-actions.ts |
 | `executeFinanceMigrationAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | `canUser` | `canUser:edit`, `canUser:finance`, `canUser:settings` | — | src/lib/migration-actions.ts |
-| `executeImportBatch` | `crm_contacts` | execute | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `districts`, `organizations`, `workspaces` | src/lib/import-export/entity-import-actions.ts |
+| `executeImportBatch` | `crm_contacts` | execute | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireWorkspace` | `canUser:campuses`, `canUser:create`, `canUser:operations` | `districts`, `workspaces` | src/lib/import-export/entity-import-actions.ts |
 | `executeJointProposalAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | wrap | `requireWorkspace` | — | — | src/lib/agents/actions/domain-agent-actions.ts |
 | `executeLayerActionServerAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | — | — | `contacts` | src/lib/documents/interactive-layer-actions.ts |
 | `executeManagerInterventionAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `deals`, `effortEvents`, `managerInterventions`, `tasks` | src/app/actions/manager-command-actions.ts |
-| `executeProposedActionAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | `users` | src/lib/supervisor/actions/supervisor-actions.ts |
 | `executePurgeFocalPersonsFerAction` | `crm_contacts` | execute | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | — | — | `entities`, `system_migrations` | src/app/actions/purge-focal-persons-fer-action.ts |
 | `executePurgeLegacyFieldsFerAction` | `crm_contacts`* | execute | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | — | — | `app_fields`, `field_groups`, `system_migrations`, `workspaces` | src/app/actions/purge-legacy-fields-fer-action.ts |
 | `executeRecurringBillingAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireWorkspace` | `canUser:create`, `canUser:finance`, `canUser:invoices` | — | src/lib/agreement-actions.ts |
@@ -5069,12 +5189,14 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `executeUnexpireImportPayloadsFerAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | — | — | `import_logs`, `system_migrations` | src/app/actions/unexpire-import-payloads-fer-action.ts |
 | `executeVariablesFERMigrationAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/execute-variables-fer-migration-action.ts |
 | `exportEntitiesToCSVAction` | `crm_contacts` | read | `L0_READ` | unmapped | `requireWorkspace` | — | `entities`, `workspace_entities` | src/lib/import-export/entity-export-actions.ts |
+| `exportReconciliationReportAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `requireWorkspace` | — | — | src/app/actions/migration-cutover-actions.ts |
+| `extractContractObligations` | `crm_contacts`* | analyze | `L0_READ` | unmapped | — | — | `obligation_candidates` | src/lib/documents/contract-obligation-extraction-service.ts |
+| `extractContractObligationsAction` | `crm_contacts`* | analyze | `L0_READ` | unmapped | `requireWorkspace` | — | — | src/app/actions/contract-ai-intelligence-actions.ts |
 | `extractMemories` | `crm_contacts`* | analyze | `L0_READ` | unmapped | — | — | — | src/ai/flows/extract-memories-flow.ts |
 | `extractMemoriesFlow` | `crm_contacts`* | analyze | `L0_READ` | unmapped | — | — | — | src/ai/flows/extract-memories-flow.ts |
 | `extractMemoriesInputSchema` | `crm_contacts`* | analyze | `L0_READ` | unmapped | — | — | — | src/ai/flows/extract-memories-flow.ts |
 | `extractMemoriesOutputSchema` | `crm_contacts`* | analyze | `L0_READ` | unmapped | — | — | — | src/ai/flows/extract-memories-flow.ts |
 | `fetchBanditPolicyAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `requireAuth` | — | `bandit_policies` | src/lib/bandit-actions.ts |
-| `fetchCampaignOrchestrationsAction` | `crm_contacts`* | read | `L0_READ` | wrap | `requireAuth` | — | `campaign_orchestrations` | src/lib/orchestration-actions.ts |
 | `fetchEntitiesForSchemaRestructure` | `crm_contacts` | read | `L0_READ` | unmapped | `requireAuth` | — | `entities` | src/app/actions/entity-schema-restructure-actions.ts |
 | `fetchEntitiesWithCustomData` | `crm_contacts` | read | `L0_READ` | unmapped | `requireAuth` | — | `entities` | src/app/actions/cleanup-entity-customdata-action.ts |
 | `fetchOutdatedCampaignPages` | `crm_contacts`* | read | `L0_READ` | unmapped | `requireAuth` | — | `page_versions` | src/app/actions/migrate-legacy-testimonials-action.ts |
@@ -5087,14 +5209,14 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `finalizeAgreementAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `contracts`, `pdfs`, `submissions` | src/lib/pdf-actions.ts |
 | `FinancialAccountService` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `financial_accounts`, `system_counters` | src/lib/services/financial-account-service.ts |
 | `FinancialEventService` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/services/financial-event-service.ts |
+| `fulfillContractObligationAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | `requireAuth`, `requireWorkspace` | — | `contract_obligations` | src/lib/documents/contract-actions.ts |
 | `generateApiKey` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | `api_keys` | src/lib/api-key-actions.ts |
 | `generateBatchPersonalizedCreativesAction` | `crm_contacts` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | `contacts`, `creative_batch_jobs`, `creative_documents`, `creative_projects` | src/app/actions/creative-crm-actions.ts |
 | `generateComplianceExportAction` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | `users` | src/lib/intelligence/actions/intelligence-actions.ts |
-| `generateContextDossierDeterministic` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/generate-context-dossier-flow.ts |
-| `generateContextDossierFlow` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/generate-context-dossier-flow.ts |
 | `generateCopyVariationsAction` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/app/actions/creative-ai-actions.ts |
 | `generateCreativeConceptsAction` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | extend | — | — | `creative_concepts` | src/app/actions/creative-ai-actions.ts |
 | `generateDocumentSummaryAction` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | `requireWorkspace` | — | `document_pages`, `documents` | src/lib/documents/ai-document-actions.ts |
+| `generateEDiscoveryPackageAction` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | `requireAuth`, `requireWorkspace` | — | — | src/app/actions/compliance-archival-actions.ts |
 | `generateEntityDossierPdf` | `crm_contacts` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/lib/services/entity-dossier-pdf-service.ts |
 | `generateEntityDossierSummaryAction` | `crm_contacts` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/app/actions/entity-dossier-actions.ts |
 | `generateHeadlineVariationsAction` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/app/actions/headline-iq-actions.ts |
@@ -5114,8 +5236,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `generateVisualStyle` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/generate-visual-style-flow.ts |
 | `getAccountAgingProfileAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `canUser` | `canUser:finance`, `canUser:invoices`, `canUser:view` | — | src/lib/receivables-actions.ts |
 | `getActionMeta` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | — | src/lib/call-action-types.ts |
-| `getActivitiesForContact` | `crm_contacts`* | read | `L0_READ` | unmapped | `requireWorkspace` | — | `activities` | src/lib/activity-actions.ts |
-| `getActivitiesForContactCore` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `activities` | src/lib/activity-actions.ts |
+| `getActivitiesForContact` | `crm_contacts`* | read | `L0_READ` | unmapped | `canUser`, `requireWorkspace` | `canUser:campuses`, `canUser:operations`, `canUser:view` | — | src/lib/activity-actions.ts |
 | `getAgreementsByEntityAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `requireWorkspace` | — | `billing_agreements` | src/lib/agreement-actions.ts |
 | `getAvailableSlotsAction` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `availability_profiles`, `booking_holds`, `bookings`, `calendar_connections`, `event_types` | src/app/actions/booking-actions.ts |
 | `getBackofficeSalesTeamsAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `requireWorkspace` | — | `salesAgents`, `salesTeams` | src/app/actions/manager-command-actions.ts |
@@ -5132,8 +5253,10 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `getContactsByTagsAction` | `crm_contacts` | read | `L0_READ` | unmapped | `requireWorkspace` | — | `tags`, `workspace_entities` | src/lib/tag-actions.ts |
 | `getContactTypeDefaults` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `platform_contact_type_defaults` | src/lib/backoffice/backoffice-field-actions.ts |
 | `getContactTypeDefaultsInternal` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `platform_contact_type_defaults` | src/lib/backoffice/backoffice-field-actions.ts |
-| `getContentItemBySlugAction` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | — | src/app/actions/content-actions.ts |
+| `getContentItemForViewerAction` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | — | src/app/actions/content-actions.ts |
 | `getContentStudioDraftAction` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | — | src/app/actions/draft-actions.ts |
+| `getContractLegalHoldStatusAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `requireAuth`, `requireWorkspace` | — | — | src/app/actions/compliance-archival-actions.ts |
+| `getContractObligationCandidatesAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `requireWorkspace` | — | `contract_obligation_candidates` | src/app/actions/contract-ai-intelligence-actions.ts |
 | `getCourtDatesForMatter` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `courtDates` | src/lib/law-actions.ts |
 | `getCreativeProjectWithDocumentAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `requireAuth` | — | `creative_documents`, `creative_projects`, `thumbnail_designs` | src/app/actions/creative-project-actions.ts |
 | `getCrmContactPreviewDataAction` | `crm_contacts` | read | `L0_READ` | unmapped | — | — | `contacts` | src/app/actions/creative-crm-actions.ts |
@@ -5144,6 +5267,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `getDefaultStyle` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | — | src/lib/services/style-resolver.ts |
 | `getDirectorySyncConfigAction` | `crm_contacts` | read | `L0_READ` | unmapped | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/enterprise-identity-actions.ts |
 | `getDiscoveriesForEntity` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `discoveries` | src/lib/consultancy-actions.ts |
+| `getDocumentExecutiveSummaryAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `requireWorkspace` | — | — | src/app/actions/document-ai-copilot-actions.ts |
 | `getDocumentVersionsAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `requireWorkspace` | — | `document_versions` | src/lib/documents/document-version-actions.ts |
 | `getEffectiveContactTypes` | `crm_contacts` | read | `L0_READ` | unmapped | — | — | `contact_type_templates` | src/lib/contact-type-actions.ts |
 | `getEngagementsForEntity` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `engagements` | src/lib/consultancy-actions.ts |
@@ -5153,6 +5277,8 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `getEntityContactsAction` | `crm_contacts` | read | `L0_READ` | wrap | `requireAuth` | — | `entities` | src/app/actions/entity-contact-actions.ts |
 | `getEntityDealDefaultsAction` | `crm_contacts` | read | `L0_READ` | unmapped | `requireWorkspace` | — | `entities`, `workspace_entities` | src/app/actions/entity-contact-actions.ts |
 | `getEntityTagsAction` | `crm_contacts` | read | `L0_READ` | wrap | `requireAuth` | — | `entities`, `workspace_entities` | src/lib/scoped-tag-actions.ts |
+| `getEnvelopeAdminDetailsAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `requireAuth`, `requireWorkspace` | — | `contracts`, `pdf_forms`, `pdfs`, `signing_envelopes` | src/lib/documents/envelope-actions.ts |
+| `getEnvelopeForSigningAction` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `signing_envelopes` | src/lib/documents/envelope-actions.ts |
 | `getEventTypesAction` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `event_types` | src/app/actions/event-type-actions.ts |
 | `getExecutiveIntelligenceAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | `users` | src/lib/intelligence/actions/intelligence-actions.ts |
 | `getFeatureDetail` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `platform_features` | src/lib/backoffice/backoffice-feature-actions.ts |
@@ -5175,6 +5301,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `getMfaPolicyAction` | `crm_contacts` | read | `L0_READ` | wrap | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/enterprise-identity-actions.ts |
 | `getMigrationParityStatusAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `canUser` | `canUser:finance`, `canUser:settings`, `canUser:view` | — | src/lib/migration-actions.ts |
 | `getMigrationStatusAction` | `crm_contacts`* | read | `L0_READ` | extend | — | — | `system_migrations` | src/app/actions/get-migration-status-action.ts |
+| `getMigrationStatusAction` | `crm_contacts`* | read | `L0_READ` | reuse | `requireWorkspace` | — | — | src/app/actions/migration-cutover-actions.ts |
 | `getMilestonesForEngagement` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `milestones` | src/lib/consultancy-actions.ts |
 | `getNegotiationsForProperty` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `negotiations` | src/lib/real-estate-actions.ts |
 | `getNextSerial` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `system_counters` | src/lib/services/serial-allocator.ts |
@@ -5182,7 +5309,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `getOffersForProperty` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `offers` | src/lib/real-estate-actions.ts |
 | `getOfficeHoursRoomAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `requireWorkspace` | — | `office_hours_queue`, `office_hours_rooms` | src/app/actions/office-hours-actions.ts |
 | `getOnboardingFlowAction` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | — | src/app/actions/engagement-actions.ts |
-| `getOnboardingSetupStateAction` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `organizations`, `users` | src/app/actions/onboarding-actions.ts |
+| `getOnboardingSetupStateAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `verifyIdToken` | — | `organizations`, `users` | src/app/actions/onboarding-actions.ts |
 | `getOrganizationDetail` | `crm_contacts`* | read | `L0_READ` | extend | — | — | `entities`, `organizations`, `users`, `workspaces` | src/lib/backoffice/backoffice-org-actions.ts |
 | `getOrganizationDiagnostics` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `entities`, `organizations`, `roles`, `users`, `workspaces` | src/lib/backoffice/backoffice-org-actions.ts |
 | `getOutcomesForEngagement` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `outcomes` | src/lib/consultancy-actions.ts |
@@ -5199,11 +5326,12 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `getRecurringSeriesAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `requireWorkspace` | — | `recurring_series` | src/app/actions/recurring-series-actions.ts |
 | `getRelatedPartiesForMatter` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `relatedParties` | src/lib/law-actions.ts |
 | `getRetainersForEntity` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `retainers` | src/lib/consultancy-actions.ts |
+| `getRetentionScheduleAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `requireAuth`, `requireWorkspace` | — | — | src/app/actions/compliance-archival-actions.ts |
+| `getRolloutCohortAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `requireWorkspace` | — | — | src/app/actions/migration-cutover-actions.ts |
 | `getSectionTemplatesAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `requireAuth` | — | `campaign_page_sections` | src/lib/section-actions.ts |
 | `getSelfHealingHealthAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | `users` | src/lib/intelligence/actions/intelligence-actions.ts |
 | `getSpecialistDetailsAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `requireWorkspace` | — | `agent_specialists` | src/lib/agents/actions/domain-agent-actions.ts |
 | `getStrategyDocsForEntity` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `strategyDocs` | src/lib/marketing-actions.ts |
-| `getSupervisorRunAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | `users` | src/lib/supervisor/actions/supervisor-actions.ts |
 | `getSwarmRunAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `requireAuth` | — | — | src/lib/agents/actions/domain-agent-actions.ts |
 | `getSystemEngineManifestAction` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | — | src/lib/backoffice/backoffice-health-actions.ts |
 | `getTagAction` | `crm_contacts` | read | `L0_READ` | unmapped | `requireAuth` | — | `tags` | src/lib/tag-actions.ts |
@@ -5237,17 +5365,17 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `identifyPrimaryField` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/identify-primary-field-flow.ts |
 | `IdentityAccountService` | `crm_contacts` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/services/identity/identity-account-service.ts |
 | `IdentityMigrationService` | `crm_contacts` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `users` | src/lib/services/identity/identity-migration-service.ts |
-| `IdentityProjectionService` | `crm_contacts` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `roles`, `users` | src/lib/services/identity/identity-projection-service.ts |
+| `IdentityProjectionService` | `crm_contacts` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `departments`, `roles`, `users` | src/lib/services/identity/identity-projection-service.ts |
 | `IngestionDeduplicator` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/services/IngestionDeduplicator.ts |
 | `installMarketplaceTemplateAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/actions/enterprise-actions.ts |
 | `installPredefinedIndustryGroupsAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | `canUser`, `requireWorkspace` | `canUser:create`, `canUser:fields`, `canUser:management` | `app_fields`, `field_groups`, `platform_industry_field_groups`, `workspaces` | src/lib/fields-actions.ts |
+| `InviteCryptoService` | `crm_contacts`* | execute | `L3_EXTERNAL_COMMUNICATION_FINANCE` | unmapped | — | — | — | src/lib/services/crypto/invite-crypto-service.ts |
 | `invitePersonAction` | `crm_contacts` | execute | `L3_EXTERNAL_COMMUNICATION_FINANCE` | unmapped | `hasPlatformAdminClaim`, `verifyCallerContext`, `verifyIdToken` | — | `organizations`, `users` | src/app/actions/identity-actions.ts |
 | `joinOfficeHoursQueueAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `office_hours_queue`, `office_hours_rooms` | src/app/actions/office-hours-actions.ts |
 | `leaveOfficeHoursQueueAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `office_hours_queue` | src/app/actions/office-hours-actions.ts |
 | `linkContactDocumentSessionAction` | `crm_contacts` | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `documents`, `viewer_sessions` | src/lib/documents/crm-actions.ts |
 | `linkCreativeToCrmCampaignAction` | `crm_contacts` | update | `L2_STATE_MUTATION` | unmapped | — | — | `creative_projects` | src/app/actions/creative-crm-actions.ts |
 | `linkInboxToCRMAction` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `socialInbox` | src/app/actions/social-composer-actions.ts |
-| `listAgentDescriptorsAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `requireAuth` | — | — | src/lib/supervisor/actions/supervisor-actions.ts |
 | `listAllFeatures` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `platform_features` | src/lib/backoffice/backoffice-feature-actions.ts |
 | `listAllJobs` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `platform_jobs` | src/lib/backoffice/backoffice-job-actions.ts |
 | `listAllOrganizations` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `organizations`, `users`, `workspaces` | src/lib/backoffice/backoffice-org-actions.ts |
@@ -5270,7 +5398,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `listIndustryPredefinedGroupsAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `requireAuth` | — | — | src/lib/fields-actions.ts |
 | `listJourneysAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/onboarding-actions.ts |
 | `listLiveEventsByPortalAction` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | — | src/app/actions/event-actions.ts |
-| `listMarketplaceListingsAction` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | — | src/app/actions/enterprise-actions.ts |
+| `listMarketplaceListingsAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `requireAuth` | — | — | src/app/actions/enterprise-actions.ts |
 | `listNativeFields` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `platform_native_fields` | src/lib/backoffice/backoffice-field-actions.ts |
 | `listOnboardingInstancesAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/onboarding-actions.ts |
 | `listPendingSubmissionsAction` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | — | src/app/actions/engagement-actions.ts |
@@ -5288,19 +5416,18 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `listPublicationHistoryAction` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `creative_publications` | src/app/actions/creative-publishing-actions.ts |
 | `listRecommendationsAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | `users` | src/lib/intelligence/actions/intelligence-actions.ts |
 | `listSpecialistsAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `requireWorkspace` | — | — | src/lib/agents/actions/domain-agent-actions.ts |
-| `listSupervisorRunsAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | `users` | src/lib/supervisor/actions/supervisor-actions.ts |
 | `listSwarmRunsAction` | `crm_contacts`* | read | `L0_READ` | unmapped | `requireWorkspace` | — | — | src/lib/agents/actions/domain-agent-actions.ts |
 | `listTasksByPortalAction` | `crm_contacts`* | read | `L0_READ` | extend | — | — | — | src/app/actions/engagement-actions.ts |
 | `listTemplates` | `crm_contacts`* | read | `L0_READ` | unmapped | `requireAuth` | — | `message_templates` | src/lib/template-actions.ts |
 | `listTenantIssuesAction` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `tenant_issues` | src/lib/backoffice/backoffice-health-actions.ts |
 | `loadSettings` | `crm_contacts`* | read | `L0_READ` | unmapped | `requireWorkspace` | — | `settings` | src/lib/settings-actions.ts |
-| `lockWorkspaceScope` | `crm_contacts` | execute | `L2_STATE_MUTATION`* | unmapped | `requireWorkspace` | — | `workspaces` | src/lib/entity-actions.ts |
+| `lockWorkspaceScope` | `crm_contacts` | execute | `L2_STATE_MUTATION`* | unmapped | `requireWorkspace` | — | — | src/lib/entity-actions.ts |
 | `logCollectionActivityAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireWorkspace` | `canUser:edit`, `canUser:finance`, `canUser:invoices` | — | src/lib/collection-actions.ts |
 | `logFlipbookAnalyticsAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/lib/flipbook-actions.ts |
 | `logMemberActivityAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/engagement-actions.ts |
 | `manageWorkspaceMembershipsAction` | `crm_contacts` | execute | `L2_STATE_MUTATION`* | unmapped | `hasPlatformAdminClaim`, `verifyCallerContext`, `verifyIdToken` | — | `users` | src/app/actions/identity-actions.ts |
 | `memoryItemSchema` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/consolidate-memories-flow.ts |
-| `mergeSignupIntoEntityAction` | `crm_contacts`* | update | `L2_STATE_MUTATION` | wrap | `requireAuth` | — | `workspace_entities` | src/lib/signup-conflict-actions.ts |
+| `mergeSignupIntoEntityAction` | `crm_contacts`* | update | `L2_STATE_MUTATION` | reuse | `requireAuth` | — | `workspace_entities` | src/lib/signup-conflict-actions.ts |
 | `mergeTagsAction` | `crm_contacts` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `prospects`, `schools`, `tag_audit_logs`, `tags` | src/lib/tag-actions.ts |
 | `migrateLegacyTemplatesToBlocksAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/actions/migrate-legacy-templates-to-blocks-action.ts |
 | `migrateLegacyTestimonialBlocksAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | `requireAuth` | — | `page_versions` | src/app/actions/migrate-legacy-testimonials-action.ts |
@@ -5312,10 +5439,11 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `normalizeBulkRow` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/bulk-normalization-flow.ts |
 | `OnboardingInstanceService` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `organization_memberships`, `users` | src/lib/services/onboarding/onboarding-instance-service.ts |
 | `OnboardingJourneyService` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `onboarding_instances` | src/lib/services/onboarding/onboarding-journey-service.ts |
+| `OperationsSpecialist` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/agents/specialists/operations-specialist.ts |
 | `parseAndSuggestSlotsAction` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | `requireAuth` | — | — | src/app/actions/ai-scheduling-actions.ts |
 | `PersonService` | `crm_contacts` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `users` | src/lib/services/identity/person-service.ts |
 | `pingQueueHeartbeatAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `office_hours_queue`, `office_hours_rooms` | src/app/actions/office-hours-actions.ts |
-| `planStepSchema` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/decompose-supervisor-goal-flow.ts |
+| `placeContractLegalHoldAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | `requireAuth`, `requireWorkspace` | — | — | src/app/actions/compliance-archival-actions.ts |
 | `postWebinarQuestionAction` | `crm_contacts` | execute | `L2_STATE_MUTATION`* | unmapped | `requireWorkspace` | — | `webinar_questions` | src/app/actions/webinar-stage-actions.ts |
 | `processLeadCaptureAction` | `crm_contacts` | execute | `L2_STATE_MUTATION` | unmapped | — | — | `campaign_pages`, `entities`, `form_submissions`, `responses`, `surveys`, `tags`, `workspace_entities` | src/lib/lead-actions.ts |
 | `processMeetingInvitations` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | — | — | `meetings`, `organizations` | src/lib/invitation-actions.ts |
@@ -5331,15 +5459,18 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `publishCreativeToChannelAction` | `crm_contacts`* | publish | `L3_EXTERNAL_COMMUNICATION_FINANCE` | extend | — | — | `creative_projects`, `creative_publications` | src/app/actions/creative-publishing-actions.ts |
 | `publishEventReplayAction` | `crm_contacts`* | publish | `L3_EXTERNAL_COMMUNICATION_FINANCE` | unmapped | — | — | — | src/app/actions/event-actions.ts |
 | `publishTemplate` | `crm_contacts`* | publish | `L3_EXTERNAL_COMMUNICATION_FINANCE` | unmapped | — | — | `platform_templates` | src/lib/backoffice/backoffice-template-actions.ts |
+| `publishTemplateVersionAction` | `crm_contacts`* | publish | `L3_EXTERNAL_COMMUNICATION_FINANCE` | unmapped | `requireAuth`, `requireWorkspace` | — | `document_templates`, `template_versions` | src/lib/documents/contract-actions.ts |
 | `purgeContractAction` | `crm_contacts`* | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireAuth` | — | `contracts`, `pdfs`, `submissions` | src/lib/pdf-actions.ts |
 | `purgeEdgeCacheAction` | `crm_contacts`* | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireAuth` | — | — | src/lib/observability-actions.ts |
 | `queueDocumentProcessingAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `document_processing_jobs`, `document_versions` | src/lib/documents/processing-actions.ts |
+| `reassignRecipientAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | `requireAuth`, `requireWorkspace` | — | `signing_envelopes` | src/lib/documents/envelope-actions.ts |
 | `rebalanceTeamWorkloadAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | `requireWorkspace` | — | `managerInterventions` | src/app/actions/manager-command-actions.ts |
 | `recalibrateSummaryAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | `canUser` | `canUser:edit`, `canUser:finance`, `canUser:settings` | — | src/lib/migration-actions.ts |
 | `recommendBestTimeAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | `requireWorkspace` | — | `socialPosts` | src/app/actions/social-composer-actions.ts |
 | `recommendDocumentHotspotsAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | `requireWorkspace` | — | `document_pages`, `documents` | src/lib/documents/ai-document-actions.ts |
 | `reconcileOnboardingAction` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/engagement-actions.ts |
 | `reconcileOrganizationIdentitiesAction` | `crm_contacts` | update | `L2_STATE_MUTATION` | unmapped | `hasPlatformAdminClaim`, `verifyCallerContext`, `verifyIdToken` | — | `users` | src/app/actions/identity-actions.ts |
+| `reconcilePhoneHygieneAction` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | `assertUserTenantPermission`, `requireAuth` | `assertUserTenantPermission:administrator` | `workspace_entities` | src/lib/phone-hygiene-actions.ts |
 | `recordBanditRewardAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `bandit_policies` | src/lib/bandit-actions.ts |
 | `recordDocumentEventAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/lib/document-actions.ts |
 | `recordEventAttendanceAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/event-actions.ts |
@@ -5352,8 +5483,10 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `recordProductUsage` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | — | — | `productUsage` | src/lib/saas-actions.ts |
 | `recordPromiseToPayAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireAuth` | `canUser:edit`, `canUser:finance`, `canUser:invoices` | — | src/lib/collection-actions.ts |
 | `refineMessage` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/refine-message-flow.ts |
+| `regenerateRecipientLinkAction` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | `requireAuth`, `requireWorkspace` | — | `signing_envelopes` | src/lib/documents/envelope-actions.ts |
 | `registerCustomCodedPage` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `campaign_pages`, `custom_page_analytics` | src/lib/page-registry-actions.ts |
 | `registerForEventAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/event-actions.ts |
+| `releaseContractLegalHoldAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | `requireAuth`, `requireWorkspace` | — | — | src/app/actions/compliance-archival-actions.ts |
 | `ReleaseScheduleService` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | — | — | — | src/lib/services/release-schedule-service.ts |
 | `removeCohortMemberAction` | `crm_contacts`* | delete | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/event-actions.ts |
 | `removeTagAction` | `crm_contacts` | delete | `L2_STATE_MUTATION` | unmapped | `requireAuth`, `requireWorkspace` | — | `entities`, `tags`, `workspace_entities` | src/lib/scoped-tag-actions.ts |
@@ -5374,7 +5507,6 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `restoreEntitySchemaRestructure` | `crm_contacts` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `entities` | src/app/actions/entity-schema-restructure-actions.ts |
 | `restoreOrganization` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | — | — | `organizations` | src/lib/backoffice/backoffice-org-actions.ts |
 | `restoreSaaSMigration` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | — | — | `entities` | src/app/actions/industry-migration-actions.ts |
-| `resumeSupervisorMissionAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | `users` | src/lib/supervisor/actions/supervisor-actions.ts |
 | `resumeSwarmMissionAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | `requireAuth` | — | — | src/lib/agents/actions/domain-agent-actions.ts |
 | `retryFailedProcessingJobAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `document_processing_jobs` | src/lib/documents/processing-actions.ts |
 | `revertToGlobal` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | `requireAuth` | — | `message_templates` | src/lib/template-actions.ts |
@@ -5387,6 +5519,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `runCoachingMigrationAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | — | src/app/actions/conversation-coaching-actions.ts |
 | `runDocumentCtaBackfillAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | — | — | `media_shares` | src/app/actions/backfill-document-cta-action.ts |
 | `runObservationScanAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | `users` | src/lib/intelligence/actions/intelligence-actions.ts |
+| `runReconciliationAuditAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | — | src/app/actions/migration-cutover-actions.ts |
 | `runSalesTeamMigrationAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | — | src/app/actions/manager-command-actions.ts |
 | `runTenantDiagnostics` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | — | — | — | src/lib/backoffice/backoffice-job-actions.ts |
 | `runTenantSenderHygieneAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | `requireAuth`, `requireOrgAdmin` | — | — | src/app/actions/tenant-hygiene-action.ts |
@@ -5394,7 +5527,6 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `saveAgreementProgressAction` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | — | — | `contracts`, `pdfs`, `submissions` | src/lib/pdf-actions.ts |
 | `saveAiSummaryToDocumentMetadataAction` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `documents` | src/lib/documents/ai-document-actions.ts |
 | `saveBanditPolicyAction` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `bandit_policies` | src/lib/bandit-actions.ts |
-| `saveCampaignOrchestrationAction` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `campaign_orchestrations` | src/lib/orchestration-actions.ts |
 | `saveCanvasAsTemplateAction` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | — | — | `creative_documents`, `creative_templates` | src/app/actions/creative-template-actions.ts |
 | `saveContactTypeDefaults` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | — | — | `platform_contact_type_defaults` | src/lib/backoffice/backoffice-field-actions.ts |
 | `saveContactTypeOverrides` | `crm_contacts` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `contact_type_templates` | src/lib/contact-type-actions.ts |
@@ -5448,26 +5580,23 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `simulateInboundMessageAction` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | `requireWorkspace` | — | `brandVoiceProfiles`, `socialInbox` | src/app/actions/social-composer-actions.ts |
 | `simulateListeningMentionAction` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | `requireWorkspace` | — | `notifications`, `socialListeningAlerts`, `socialListeningRules` | src/app/actions/social-composer-actions.ts |
 | `simulateSocialConversionsAction` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | `requireWorkspace` | — | `invoices`, `socialPosts`, `workspace_entities` | src/app/actions/social-composer-actions.ts |
+| `startMigrationRunAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | — | src/app/actions/migration-cutover-actions.ts |
 | `startOnboardingJourneyAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/onboarding-actions.ts |
 | `startRoleplaySessionAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | `requireWorkspace` | — | `practiceLabScenarios`, `practiceLabSessions` | src/app/actions/conversation-coaching-actions.ts |
-| `startSupervisorMissionAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | `users` | src/lib/supervisor/actions/supervisor-actions.ts |
 | `startSwarmMissionAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | `requireAuth` | — | — | src/lib/agents/actions/domain-agent-actions.ts |
 | `submitDocumentLeadAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | — | — | `documents`, `flipbook_leads`, `flipbooks` | src/lib/document-actions.ts |
 | `submitFlipbookLeadAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/lib/flipbook-actions.ts |
 | `submitManualScorecardReviewAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `callConversations`, `callScorecards`, `scorecardTemplates` | src/app/actions/conversation-coaching-actions.ts |
-| `submitOnboardingProfileAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | — | — | `organizations`, `users`, `workspaces` | src/app/actions/onboarding-actions.ts |
+| `submitOnboardingProfileAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | `verifyIdToken` | — | `organizations`, `users`, `workspaces` | src/app/actions/onboarding-actions.ts |
 | `submitOnboardingStepAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/onboarding-actions.ts |
 | `submitProjectForReviewAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | — | — | `creative_projects`, `creative_reviews` | src/app/actions/creative-collab-actions.ts |
+| `submitRecipientSignatureAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | — | — | `signing_envelopes` | src/lib/documents/envelope-actions.ts |
 | `submitRoleplayTurnAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `coachingProfiles`, `practiceLabScenarios`, `practiceLabSessions` | src/app/actions/conversation-coaching-actions.ts |
 | `submitTaskAction` | `crm_contacts`* | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/engagement-actions.ts |
 | `suggestBulkMapping` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/bulk-mapping-flow.ts |
 | `summarizeEntityNotesFlow` | `crm_contacts` | analyze | `L0_READ` | unmapped | — | — | — | src/ai/flows/entity-summarizer.ts |
 | `summarizeEntityTimelineFlow` | `crm_contacts` | analyze | `L0_READ` | unmapped | — | — | — | src/ai/flows/summarize-entity-timeline-flow.ts |
 | `suspendOrganization` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `organizations` | src/lib/backoffice/backoffice-org-actions.ts |
-| `synthesizeResultDeterministic` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/synthesize-supervisor-result-flow.ts |
-| `synthesizeResultInputSchema` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/synthesize-supervisor-result-flow.ts |
-| `synthesizeResultOutputSchema` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/synthesize-supervisor-result-flow.ts |
-| `synthesizeSupervisorResultFlow` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/synthesize-supervisor-result-flow.ts |
 | `synthesizeSwarmConsensusFlow` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/synthesize-swarm-consensus-flow.ts |
 | `synthesizeSwarmDeterministic` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/synthesize-swarm-consensus-flow.ts |
 | `synthesizeSwarmInputSchema` | `crm_contacts`* | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/synthesize-swarm-consensus-flow.ts |
@@ -5478,7 +5607,8 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `toggleOrganizationActivityLogging` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | — | — | `organizations` | src/lib/backoffice/backoffice-org-actions.ts |
 | `togglePresenterStageStatusAction` | `crm_contacts` | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `meeting_participants` | src/app/actions/webinar-stage-actions.ts |
 | `TopicAnalysisSchema` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/schemas.ts |
-| `triggerCrossChannelSyncAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `campaign_orchestrations` | src/lib/orchestration-actions.ts |
+| `transitionContractStatusAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | `requireAuth`, `requireWorkspace` | — | `contracts` | src/lib/documents/contract-actions.ts |
+| `triggerEmergencyRollbackAction` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | — | src/app/actions/migration-cutover-actions.ts |
 | `triggerJobExecution` | `crm_contacts`* | execute | `L2_STATE_MUTATION` | unmapped | — | — | `platform_jobs` | src/lib/backoffice/backoffice-job-actions.ts |
 | `unarchiveTemplate` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | `requireAuth` | — | `message_templates`, `template_audit_logs` | src/lib/template-actions.ts |
 | `updateAgentCapacityAction` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `salesAgents` | src/app/actions/manager-command-actions.ts |
@@ -5499,7 +5629,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `updateDiscovery` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | — | — | — | src/lib/consultancy-actions.ts |
 | `updateDocumentAction` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `access_policies`, `documents`, `flipbooks` | src/lib/document-actions.ts |
 | `updateEngagement` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | — | — | — | src/lib/consultancy-actions.ts |
-| `updateEntityAction` | `crm_contacts` | update | `L2_STATE_MUTATION` | wrap | `canUser` | `canUser:campuses`, `canUser:edit`, `canUser:operations` | `automations`, `entities`, `organizations`, `tags`, `workspace_entities` | src/lib/entity-actions.ts |
+| `updateEntityAction` | `crm_contacts` | update | `L2_STATE_MUTATION` | reuse | `requireWorkspace` | — | — | src/lib/entity-actions.ts |
 | `updateEntityIdentity` | `crm_contacts`* | update | `L2_STATE_MUTATION` | wrap | `requireAuth` | — | — | src/lib/profile-actions.ts |
 | `updateEventTypeAction` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `event_types` | src/app/actions/event-type-actions.ts |
 | `updateFeatureRolloutRules` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | — | — | `platform_features` | src/lib/backoffice/backoffice-feature-actions.ts |
@@ -5513,7 +5643,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `updateMembershipStatusAction` | `crm_contacts` | update | `L2_STATE_MUTATION` | unmapped | `hasPlatformAdminClaim`, `verifyCallerContext`, `verifyIdToken` | — | `users` | src/app/actions/identity-actions.ts |
 | `updateMilestoneStatus` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | — | — | — | src/lib/consultancy-actions.ts |
 | `updateNegotiation` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | — | — | — | src/lib/real-estate-actions.ts |
-| `updateNote` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `activities` | src/lib/activity-actions.ts |
+| `updateNote` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | `requireAuth`, `requireWorkspace` | — | `activities` | src/lib/activity-actions.ts |
 | `updateOfferStatus` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | — | — | — | src/lib/real-estate-actions.ts |
 | `updateOnboardingMilestone` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | — | — | — | src/lib/saas-actions.ts |
 | `updateOrganizationFeaturesAction` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `organizations` | src/lib/feature-actions.ts |
@@ -5537,6 +5667,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `updatePropertyPreference` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | — | — | — | src/lib/real-estate-actions.ts |
 | `updateProposal` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | — | — | — | src/lib/marketing-actions.ts |
 | `updateRetainer` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | — | — | — | src/lib/consultancy-actions.ts |
+| `updateRolloutCohortAction` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | — | src/app/actions/migration-cutover-actions.ts |
 | `updateScheduledMessageContentAction` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | — | src/app/actions/scheduled-message-actions.ts |
 | `updateSettings` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `settings` | src/lib/settings-actions.ts |
 | `updateSpecialistConfigAction` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `agent_specialists` | src/lib/agents/actions/domain-agent-actions.ts |
@@ -5555,28 +5686,33 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `upsertContractAction` | `crm_contacts`* | update | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireWorkspace` | `canUser:agreements`, `canUser:create`, `canUser:finance` | `contracts` | src/lib/contract-actions.ts |
 | `upvoteWebinarQuestionAction` | `crm_contacts` | execute | `L2_STATE_MUTATION`* | unmapped | `requireAuth` | — | `webinar_questions` | src/app/actions/webinar-stage-actions.ts |
 | `validateCustomDataCleanup` | `crm_contacts` | read | `L0_READ` | unmapped | `requireAuth` | — | `entities` | src/app/actions/cleanup-entity-customdata-action.ts |
-| `validateImportBatch` | `crm_contacts` | read | `L0_READ` | unmapped | `requireAuth` | — | `entities`, `organizations`, `workspaces` | src/lib/import-export/entity-import-actions.ts |
+| `validateEncryptedInvitationAction` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `organizations`, `users` | src/app/actions/invitation-crypto-actions.ts |
+| `validateImportBatch` | `crm_contacts` | read | `L0_READ` | unmapped | `requireAuth` | — | `entities`, `workspaces` | src/lib/import-export/entity-import-actions.ts |
 | `validateJoinCodeAction` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `organizations` | src/app/actions/onboarding-actions.ts |
 | `verifyDocumentPasscodeAction` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | `access_policies`, `flipbooks` | src/lib/document-actions.ts |
 | `verifyUnsubscribeToken` | `crm_contacts`* | read | `L0_READ` | unmapped | — | — | — | src/lib/services/unsubscribe-service.ts |
+| `zDomainSpecialistId` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/agents/domain-types.ts |
+| `zSpecialistAutonomyLevel` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/agents/domain-types.ts |
+| `zSwarmMissionRequest` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/agents/domain-types.ts |
+| `zSwarmMode` | `crm_contacts`* | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/agents/domain-types.ts |
 | `acceptPublicQuoteAction` | `deals_revenue` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `deal_quotes`, `deals` | src/app/actions/deal-line-item-actions.ts |
 | `actionBuyerSignalAction` | `deals_revenue` | execute | `L2_STATE_MUTATION`* | unmapped | `checkWorkspaceAccess`, `requireWorkspace`, `verifyCallerAccess` | — | `buyerSignals` | src/app/actions/deal-intelligence-actions.ts |
-| `addDealContactAction` | `deals_revenue` | create | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `deals`, `entities`, `workspace_entities` | src/app/actions/deal-actions.ts |
+| `addDealContactAction` | `deals_revenue` | create | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | — | src/app/actions/deal-actions.ts |
+| `addPipelineDealCustomFieldAction` | `deals_revenue` | create | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireAuth` | `canUser:edit`, `canUser:operations`, `canUser:pipeline` | `pipelines` | src/lib/pipeline-actions.ts |
 | `applyStrategicRecommendationAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | `checkWorkspaceAccess`, `requireWorkspace` | — | `aiStrategicRecommendations` | src/app/actions/revenue-os-actions.ts |
-| `archiveDealAction` | `deals_revenue` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `canUser`, `requireAuth` | `canUser:edit`, `canUser:operations`, `canUser:pipeline` | `deals` | src/app/actions/deal-actions.ts |
+| `archiveDealAction` | `deals_revenue` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireAuth` | — | `deals` | src/app/actions/deal-actions.ts |
 | `archivePipelineAction` | `deals_revenue` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `canUser`, `requireAuth` | `canUser:edit`, `canUser:operations`, `canUser:pipeline` | `pipelines` | src/lib/pipeline-actions.ts |
-| `bulkArchiveDealsAction` | `deals_revenue` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `canUser`, `requireWorkspace` | `canUser:edit`, `canUser:operations`, `canUser:pipeline` | `deals` | src/app/actions/deal-actions.ts |
-| `bulkAssignDealsAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireWorkspace` | `canUser:edit`, `canUser:operations`, `canUser:pipeline` | `deals` | src/app/actions/deal-actions.ts |
-| `bulkCreateDealsAction` | `deals_revenue` | create | `L2_STATE_MUTATION` | wrap | `requireAuth` | — | `deals`, `onboardingStages`, `pipelines`, `users`, `workspace_entities` | src/app/actions/bulk-deal-actions.ts |
-| `bulkCreateDealsActionCore` | `deals_revenue` | create | `L2_STATE_MUTATION` | unmapped | — | — | `deals`, `onboardingStages`, `pipelines`, `users`, `workspace_entities` | src/app/actions/bulk-deal-actions.ts |
-| `bulkDeleteDealsAction` | `deals_revenue` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `canUser`, `requireWorkspace` | `canUser:edit`, `canUser:operations`, `canUser:pipeline` | `deals` | src/app/actions/deal-actions.ts |
-| `bulkUpdateDealsStageAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireWorkspace` | `canUser:edit`, `canUser:operations`, `canUser:pipeline` | `deals`, `onboardingStages` | src/app/actions/deal-actions.ts |
-| `cleanLegacyDealNamesAction` | `deals_revenue` | execute | `L2_STATE_MUTATION`* | unmapped | `canUser`, `requireAuth` | `canUser:edit`, `canUser:operations`, `canUser:pipeline` | `deals`, `entities`, `workspace_entities` | src/app/actions/deal-actions.ts |
-| `clearStageDealsAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireWorkspace` | `canUser:edit`, `canUser:operations`, `canUser:pipeline` | `deals`, `onboardingStages`, `workspaces` | src/app/actions/deal-actions.ts |
+| `bulkArchiveDealsAction` | `deals_revenue` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireWorkspace` | — | `deals` | src/app/actions/deal-actions.ts |
+| `bulkAssignDealsAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `deals` | src/app/actions/deal-actions.ts |
+| `bulkCreateDealsAction` | `deals_revenue` | create | `L2_STATE_MUTATION` | wrap | `requireWorkspace` | — | — | src/app/actions/bulk-deal-actions.ts |
+| `bulkDeleteDealsAction` | `deals_revenue` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireWorkspace` | — | `deals` | src/app/actions/deal-actions.ts |
+| `bulkUpdateDealsStageAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `deals`, `onboardingStages` | src/app/actions/deal-actions.ts |
+| `cleanLegacyDealNamesAction` | `deals_revenue` | execute | `L2_STATE_MUTATION`* | unmapped | `requireWorkspace` | — | `deals` | src/app/actions/deal-actions.ts |
+| `clearStageDealsAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `deals`, `onboardingStages`, `workspaces` | src/app/actions/deal-actions.ts |
 | `clonePipelineAction` | `deals_revenue` | create | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireAuth` | `canUser:create`, `canUser:operations`, `canUser:pipeline` | `onboardingStages`, `pipelines` | src/lib/pipeline-actions.ts |
-| `convertLeadToDealAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireAuth` | `canUser:create`, `canUser:operations`, `canUser:pipeline` | `deals`, `entities`, `notes`, `onboardingStages`, `pipelines`, `workspace_entities` | src/app/actions/deal-actions.ts |
+| `convertLeadToDealAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireWorkspace` | `canUser:create`, `canUser:operations`, `canUser:pipeline` | `deals`, `notes`, `onboardingStages`, `pipelines`, `workspace_entities` | src/app/actions/deal-actions.ts |
 | `convertQuoteToInvoiceAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireWorkspace` | `canUser:edit`, `canUser:operations`, `canUser:pipeline` | `deal_quotes`, `invoices` | src/app/actions/deal-line-item-actions.ts |
-| `createDeal` | `deals_revenue` | create | `L2_STATE_MUTATION` | extend | — | — | `deals`, `entities`, `onboardingStages`, `pipelines`, `users`, `workspace_entities` | src/app/actions/deal-actions.ts |
+| `createDeal` | `deals_revenue` | create | `L2_STATE_MUTATION` | wrap | `requireWorkspace` | — | — | src/app/actions/deal-actions.ts |
 | `createDealBulkJobAction` | `deals_revenue` | create | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireWorkspace` | `canUser:edit`, `canUser:operations`, `canUser:pipeline` | `deal_bulk_jobs`, `deals` | src/app/actions/deal-bulk-job-actions.ts |
 | `createDealQuoteAction` | `deals_revenue` | create | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireAuth` | `canUser:edit`, `canUser:operations`, `canUser:pipeline` | `deal_quotes`, `deals` | src/app/actions/deal-line-item-actions.ts |
 | `createDealSavedViewAction` | `deals_revenue` | create | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireAuth` | `canUser:edit`, `canUser:operations`, `canUser:pipeline` | `deal_saved_views` | src/app/actions/deal-saved-view-actions.ts |
@@ -5587,14 +5723,14 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `dealIntelligenceInputSchema` | `deals_revenue` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/deal-intelligence-flow.ts |
 | `dealIntelligenceOutputSchema` | `deals_revenue` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/deal-intelligence-flow.ts |
 | `DealQuickActions` | `deals_revenue` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/admin/deals/[id]/components/DealQuickActions.tsx |
-| `deleteDealAction` | `deals_revenue` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `canUser`, `requireWorkspace` | `canUser:edit`, `canUser:operations`, `canUser:pipeline` | `deals` | src/app/actions/deal-actions.ts |
+| `deleteDealAction` | `deals_revenue` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireAuth` | — | — | src/app/actions/deal-actions.ts |
 | `deleteDealQuoteAction` | `deals_revenue` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `canUser`, `requireWorkspace` | `canUser:delete`, `canUser:operations`, `canUser:pipeline` | `deal_quotes` | src/app/actions/deal-line-item-actions.ts |
 | `deleteDealSavedViewAction` | `deals_revenue` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `canUser`, `requireAuth` | `canUser:edit`, `canUser:operations`, `canUser:pipeline` | `deal_saved_views` | src/app/actions/deal-saved-view-actions.ts |
 | `deletePipelineAction` | `deals_revenue` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `canUser`, `requireAuth` | `canUser:delete`, `canUser:operations`, `canUser:pipeline` | `deals`, `onboardingStages`, `pipelines` | src/lib/pipeline-actions.ts |
 | `deletePipelineTargetAction` | `deals_revenue` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `canUser`, `requireWorkspace` | `canUser:edit`, `canUser:operations`, `canUser:pipeline` | `pipeline_targets` | src/app/actions/deal-analytics-actions.ts |
 | `deleteRevenueScenarioAction` | `deals_revenue` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `checkWorkspaceAccess`, `requireWorkspace` | — | `revenueScenarios` | src/app/actions/revenue-os-actions.ts |
 | `deleteTargetAction` | `deals_revenue` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireWorkspace` | — | `salesTargets` | src/app/actions/sales-performance-actions.ts |
-| `duplicateDealAction` | `deals_revenue` | create | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireAuth` | `canUser:create`, `canUser:operations`, `canUser:pipeline` | `deals`, `onboardingStages`, `pipelines` | src/app/actions/deal-actions.ts |
+| `duplicateDealAction` | `deals_revenue` | create | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `deals`, `onboardingStages`, `pipelines` | src/app/actions/deal-actions.ts |
 | `enrichDealData` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/automated-deal-fer-actions.ts |
 | `enrichDealsWithStageName` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | — | — | `deals`, `onboardingStages` | src/app/actions/backfill-deal-stagename-action.ts |
 | `evaluateAndAdvanceDealOnMeetingAction` | `deals_revenue` | analyze | `L0_READ` | unmapped | `requireAuth` | — | `deal_activities`, `deals` | src/app/actions/deal-advancer-actions.ts |
@@ -5622,6 +5758,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `getRepPerformanceDetailAction` | `deals_revenue` | read | `L0_READ` | unmapped | `requireWorkspace` | — | `performancePolicies`, `userEffortSummary` | src/app/actions/sales-performance-actions.ts |
 | `getRevenueForecastOverviewAction` | `deals_revenue` | read | `L0_READ` | unmapped | `checkWorkspaceAccess`, `requireWorkspace`, `verifyCallerAccess` | — | `forecastDeals`, `forecastGovernance`, `quarterlyTargets`, `revenueAttribution` | src/app/actions/revenue-forecasting-actions.ts |
 | `getSalesOrchestrationDataAction` | `deals_revenue` | read | `L0_READ` | unmapped | `checkWorkspaceAccess`, `requireWorkspace`, `verifyCallerAccess` | — | `salesOrchestrationApprovals`, `salesOrchestrationEscalations`, `salesOrchestrationExecutions`, `salesOrchestrationGovernance`, `salesOrchestrationIncidents`, `salesOrchestrationPlays`, `salesOrchestrationRoutingRules` | src/app/actions/sales-orchestration-actions.ts |
+| `GraphProjectionService` | `deals_revenue` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/memory/pipeline/graph-projection-service.ts |
 | `handleAddDealNote` | `deals_revenue` | create | `L2_STATE_MUTATION` | unmapped | — | — | `deal_notes`, `deals` | src/lib/automations/actions/deal-automation-actions.ts |
 | `handleAssignDealOwner` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | — | — | `deals` | src/lib/automations/actions/deal-automation-actions.ts |
 | `handleCreateDeal` | `deals_revenue` | create | `L2_STATE_MUTATION` | unmapped | — | — | `pipelines`, `workspace_entities` | src/lib/automations/actions/deal-automation-actions.ts |
@@ -5634,16 +5771,18 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `listWorkspaceTargetsAction` | `deals_revenue` | read | `L0_READ` | unmapped | `requireWorkspace` | — | `salesTargets` | src/app/actions/sales-performance-actions.ts |
 | `logDealInteractionAction` | `deals_revenue` | create | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireWorkspace` | `canUser:edit`, `canUser:operations`, `canUser:pipeline` | `deals` | src/app/actions/deal-actions.ts |
 | `mergeDealsAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireWorkspace` | `canUser:edit`, `canUser:operations`, `canUser:pipeline` | `deals`, `tasks` | src/app/actions/deal-actions.ts |
+| `NoteMemoryPipeline` | `deals_revenue` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `workspace_entities` | src/lib/memory/pipeline/note-memory-pipeline.ts |
 | `PipelineActionsView` | `deals_revenue` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/admin/pipeline/components/PipelineActionsView.tsx |
-| `processDealBulkJob` | `deals_revenue` | execute | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `deal_bulk_jobs`, `deals` | src/app/actions/deal-bulk-job-actions.ts |
+| `QuickLogDropdownContent` | `deals_revenue` | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/admin/deals/[id]/components/DealQuickActions.tsx |
 | `reassignForecastCategoryAction` | `deals_revenue` | execute | `L2_STATE_MUTATION`* | unmapped | `checkWorkspaceAccess`, `requireWorkspace`, `verifyCallerAccess` | — | `forecastDeals` | src/app/actions/revenue-forecasting-actions.ts |
 | `recalculateDealAttributionAction` | `deals_revenue` | execute | `L2_STATE_MUTATION`* | unmapped | `checkWorkspaceAccess`, `requireWorkspace`, `verifyCallerAccess` | — | `attributionTouchpoints`, `forecastDeals`, `forecastGovernance`, `revenueAttribution` | src/app/actions/revenue-forecasting-actions.ts |
-| `removeDealContactAction` | `deals_revenue` | delete | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `deals` | src/app/actions/deal-actions.ts |
+| `removeDealContactAction` | `deals_revenue` | delete | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | — | src/app/actions/deal-actions.ts |
+| `removePipelineDealCustomFieldAction` | `deals_revenue` | delete | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireAuth` | `canUser:edit`, `canUser:operations`, `canUser:pipeline` | `pipelines` | src/lib/pipeline-actions.ts |
 | `reseedRevenueOsDefaultsAction` | `deals_revenue` | execute | `L2_STATE_MUTATION`* | unmapped | `checkWorkspaceAccess`, `requireWorkspace` | — | — | src/app/actions/revenue-os-actions.ts |
 | `resolveApprovalRequestAction` | `deals_revenue` | draft | `L1_INTERNAL_DRAFT` | unmapped | `checkWorkspaceAccess`, `requireWorkspace`, `verifyCallerAccess` | — | `salesOrchestrationApprovals` | src/app/actions/sales-orchestration-actions.ts |
 | `resolveEscalationIncidentAction` | `deals_revenue` | draft | `L1_INTERNAL_DRAFT` | unmapped | `checkWorkspaceAccess`, `requireWorkspace`, `verifyCallerAccess` | — | `salesOrchestrationIncidents` | src/app/actions/sales-orchestration-actions.ts |
-| `resolveWorkspaceEntityRecord` | `deals_revenue` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | `entities`, `workspace_entities` | src/app/actions/deal-actions.ts |
 | `restoreDealStageNameBackfill` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | — | — | `deals` | src/app/actions/backfill-deal-stagename-action.ts |
+| `RevenueSpecialist` | `deals_revenue` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/agents/specialists/revenue-specialist.ts |
 | `rollbackDealStageNameBackfill` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | — | — | `deals` | src/app/actions/backfill-deal-stagename-action.ts |
 | `runAutomatedDealFERProtocol` | `deals_revenue` | execute | `L2_STATE_MUTATION` | unmapped | — | — | `deals`, `workspace_entities` | src/app/actions/automated-deal-fer-actions.ts |
 | `saveDealIntelligenceGovernanceAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | `checkWorkspaceAccess`, `requireWorkspace`, `verifyCallerAccess` | — | `dealIntelligenceGovernance` | src/app/actions/deal-intelligence-actions.ts |
@@ -5662,18 +5801,19 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `submitPostMeetingIntelligenceAction` | `deals_revenue` | create | `L2_STATE_MUTATION` | unmapped | `checkWorkspaceAccess`, `requireWorkspace`, `verifyCallerAccess` | — | `deals`, `meetingBriefs`, `postMeetingIntelligences`, `tasks` | src/app/actions/deal-intelligence-actions.ts |
 | `toggleSalesPlayStatusAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | `checkWorkspaceAccess`, `requireWorkspace`, `verifyCallerAccess` | — | `salesOrchestrationPlays` | src/app/actions/sales-orchestration-actions.ts |
 | `triggerSalesPlayManuallyAction` | `deals_revenue` | execute | `L2_STATE_MUTATION` | unmapped | `checkWorkspaceAccess`, `requireWorkspace`, `verifyCallerAccess` | — | `salesOrchestrationExecutions`, `salesOrchestrationPlays` | src/app/actions/sales-orchestration-actions.ts |
-| `unarchiveDealAction` | `deals_revenue` | execute | `L2_STATE_MUTATION`* | unmapped | `canUser`, `requireAuth` | `canUser:edit`, `canUser:operations`, `canUser:pipeline` | `deals` | src/app/actions/deal-actions.ts |
-| `updateDealAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | wrap | `canUser`, `requireWorkspace` | `canUser:edit`, `canUser:operations`, `canUser:pipeline` | `deals` | src/app/actions/deal-actions.ts |
-| `updateDealDetailsAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `deals` | src/app/actions/deal-actions.ts |
-| `updateDealOwnerAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | — | — | `deals` | src/app/actions/deal-actions.ts |
-| `updateDealProbabilityAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `deals` | src/app/actions/deal-actions.ts |
+| `unarchiveDealAction` | `deals_revenue` | execute | `L2_STATE_MUTATION`* | unmapped | `requireAuth` | — | `deals` | src/app/actions/deal-actions.ts |
+| `updateDealAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | wrap | `requireAuth` | — | — | src/app/actions/deal-actions.ts |
+| `updateDealDetailsAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | — | src/app/actions/deal-actions.ts |
+| `updateDealOwnerAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | — | src/app/actions/deal-actions.ts |
+| `updateDealProbabilityAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | — | src/app/actions/deal-actions.ts |
 | `updateDealSavedViewAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireAuth` | `canUser:edit`, `canUser:operations`, `canUser:pipeline` | `deal_saved_views` | src/app/actions/deal-saved-view-actions.ts |
-| `updateDealStageAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | wrap | `canUser` | `canUser:edit`, `canUser:operations`, `canUser:pipeline` | `deals`, `onboardingStages` | src/app/actions/deal-actions.ts |
-| `updateDealStatusAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | — | — | `deals` | src/app/actions/deal-actions.ts |
-| `updateDealValueAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | — | — | `deals` | src/app/actions/deal-actions.ts |
+| `updateDealStageAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | wrap | `requireAuth` | — | — | src/app/actions/deal-actions.ts |
+| `updateDealStatusAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | — | src/app/actions/deal-actions.ts |
+| `updateDealValueAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | — | src/app/actions/deal-actions.ts |
+| `updatePipelineDealCustomFieldsAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireAuth` | `canUser:edit`, `canUser:operations`, `canUser:pipeline` | `pipelines` | src/lib/pipeline-actions.ts |
 | `updateQuoteStatusAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | `canUser` | `canUser:edit`, `canUser:operations`, `canUser:pipeline` | `deal_quotes` | src/app/actions/deal-line-item-actions.ts |
 | `updateRevenueOsGovernanceAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | `checkWorkspaceAccess`, `requireWorkspace` | — | `revenueOsGovernance` | src/app/actions/revenue-os-actions.ts |
-| `updateStageOrdersAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireAuth` | `canUser:edit`, `canUser:operations`, `canUser:pipeline` | `onboardingStages` | src/app/actions/deal-actions.ts |
+| `updateStageOrdersAction` | `deals_revenue` | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `onboardingStages`, `pipelines` | src/app/actions/deal-actions.ts |
 | `POST /api/admin/seed-experience` | `experience_portal` | execute | `L2_STATE_MUTATION`* | unmapped | `authenticateApiRequest` | — | — | src/app/api/admin/seed-experience/route.ts |
 | `GET /api/v1/media/experiences` | `experience_portal` | read | `L0_READ` | unmapped | `authenticateApiRequest` | — | `media_experiences` | src/app/api/v1/media/experiences/route.ts |
 | `acceptInvitationAction` | `experience_portal` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/actions/membership-actions.ts |
@@ -5681,15 +5821,15 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `archivePlanAction` | `experience_portal` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | — | — | — | src/app/actions/membership-actions.ts |
 | `archivePortalAction` | `experience_portal` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | — | — | — | src/app/actions/portal-actions.ts |
 | `askAiTutorAction` | `experience_portal` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/app/actions/ai-experience-actions.ts |
-| `castPollVoteAction` | `experience_portal` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/actions/community-actions.ts |
+| `castPollVoteAction` | `experience_portal` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `community_spaces` | src/app/actions/community-actions.ts |
 | `checkEntitlementAction` | `experience_portal` | read | `L0_READ` | unmapped | — | — | — | src/app/actions/membership-actions.ts |
-| `CommunityService` | `experience_portal` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `community_comments`, `community_polls`, `community_posts`, `community_reactions`, `community_spaces`, `moderation_reports`, `poll_votes`, `portal_memberships` | src/lib/services/community-service.ts |
+| `CommunityService` | `experience_portal` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `cohort_members`, `community_comments`, `community_polls`, `community_posts`, `community_reactions`, `community_spaces`, `course_cohorts`, `moderation_reports`, `poll_votes`, `portal_memberships` | src/lib/services/community-service.ts |
 | `completeLessonAction` | `experience_portal` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/actions/learning-actions.ts |
 | `CourseService` | `experience_portal` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `course_assessments`, `course_certificates`, `course_enrollments`, `course_lessons`, `course_modules`, `courses`, `learning_progress` | src/lib/services/course-service.ts |
 | `createBadgeDefinitionAction` | `experience_portal` | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/credential-actions.ts |
 | `createBulkInvitationsAction` | `experience_portal` | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/membership-actions.ts |
 | `createCertificateTemplateAction` | `experience_portal` | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/credential-actions.ts |
-| `createCommentAction` | `experience_portal` | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/community-actions.ts |
+| `createCommentAction` | `experience_portal` | create | `L2_STATE_MUTATION` | unmapped | — | — | `community_spaces` | src/app/actions/community-actions.ts |
 | `createCourseAction` | `experience_portal` | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/learning-actions.ts |
 | `createInvitationAction` | `experience_portal` | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/membership-actions.ts |
 | `createLearningSignalAction` | `experience_portal` | create | `L2_STATE_MUTATION` | unmapped | — | — | `learning_signals` | src/lib/learning-loop-actions.ts |
@@ -5698,7 +5838,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `createModuleAction` | `experience_portal` | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/learning-actions.ts |
 | `createPlanAction` | `experience_portal` | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/membership-actions.ts |
 | `createPortalAction` | `experience_portal` | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/portal-actions.ts |
-| `createPostAction` | `experience_portal` | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/community-actions.ts |
+| `createPostAction` | `experience_portal` | create | `L2_STATE_MUTATION` | unmapped | — | — | `community_spaces` | src/app/actions/community-actions.ts |
 | `createSpaceAction` | `experience_portal` | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/community-actions.ts |
 | `CredentialService` | `experience_portal` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `awarded_badges`, `badge_definitions`, `certificate_codes`, `certificate_templates`, `issued_certificates`, `xapi_statements` | src/lib/services/credential-service.ts |
 | `deleteCommentAction` | `experience_portal` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | — | — | — | src/app/actions/community-actions.ts |
@@ -5712,7 +5852,6 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `deleteSpaceAction` | `experience_portal` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | — | — | — | src/app/actions/community-actions.ts |
 | `duplicatePortalAction` | `experience_portal` | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/portal-actions.ts |
 | `enrollInCourseAction` | `experience_portal` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/actions/learning-actions.ts |
-| `evaluateContentAccessAction` | `experience_portal` | analyze | `L0_READ` | unmapped | — | — | — | src/app/actions/membership-actions.ts |
 | `exportOpenBadgeAction` | `experience_portal` | read | `L0_READ` | unmapped | — | — | — | src/app/actions/credential-actions.ts |
 | `fetchAudiencesAction` | `experience_portal` | read | `L0_READ` | unmapped | `requireAuth` | — | `audiences` | src/lib/experience-actions.ts |
 | `fetchPageExperienceRulesAction` | `experience_portal` | read | `L0_READ` | unmapped | `requireAuth` | — | `experience_rules` | src/lib/experience-actions.ts |
@@ -5732,7 +5871,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `getSanitizedAssessmentAction` | `experience_portal` | read | `L0_READ` | unmapped | — | — | `course_assessments` | src/app/actions/learning-actions.ts |
 | `grantAccessAction` | `experience_portal` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/actions/membership-actions.ts |
 | `issueCertificateAction` | `experience_portal` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/actions/credential-actions.ts |
-| `joinPortalDirectAction` | `experience_portal` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `users` | src/app/actions/membership-actions.ts |
+| `joinPortalDirectAction` | `experience_portal` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/actions/membership-actions.ts |
 | `LearningProgressService` | `experience_portal` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `assignment_submissions`, `course_assessments`, `course_certificates`, `course_enrollments`, `course_lessons`, `course_modules`, `courses`, `learning_progress`, `portal_memberships` | src/lib/services/learning-progress-service.ts |
 | `listBadgeDefinitionsAction` | `experience_portal` | read | `L0_READ` | unmapped | — | — | — | src/app/actions/credential-actions.ts |
 | `listCertificateTemplatesAction` | `experience_portal` | read | `L0_READ` | unmapped | — | — | — | src/app/actions/credential-actions.ts |
@@ -5749,7 +5888,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `MembershipPlanService` | `experience_portal` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/services/membership-plan-service.ts |
 | `normaliseCertificateCode` | `experience_portal` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/services/certificate-code.ts |
 | `normalizeExistingPortalNavigationAction` | `experience_portal` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/actions/portal-actions.ts |
-| `OrganizationMembershipService` | `experience_portal` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/services/identity/organization-membership-service.ts |
+| `OrganizationMembershipService` | `experience_portal` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `users` | src/lib/services/identity/organization-membership-service.ts |
 | `PortalAccessService` | `experience_portal` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/services/portal-access-service.ts |
 | `PortalAnalyticsService` | `experience_portal` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `community_comments`, `community_posts`, `course_enrollments`, `portal_analytics_snapshots`, `portal_memberships`, `portal_orders` | src/lib/services/portal-analytics-service.ts |
 | `PortalEventService` | `experience_portal` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/services/portal-event-service.ts |
@@ -5765,7 +5904,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `revokeAccessAction` | `experience_portal` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | — | — | — | src/app/actions/membership-actions.ts |
 | `revokeCertificateAction` | `experience_portal` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | — | — | — | src/app/actions/credential-actions.ts |
 | `revokeInvitationAction` | `experience_portal` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | — | — | — | src/app/actions/membership-actions.ts |
-| `runMasterExperienceSeederAction` | `experience_portal` | execute | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/portal-actions.ts |
+| `runMasterExperienceSeederAction` | `experience_portal` | execute | `L2_STATE_MUTATION` | unmapped | `requireSystemAdmin` | — | — | src/app/actions/portal-actions.ts |
 | `saveAudienceAction` | `experience_portal` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `audiences` | src/lib/experience-actions.ts |
 | `saveExperienceRuleAction` | `experience_portal` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `campaign_pages`, `experience_rules` | src/lib/experience-actions.ts |
 | `seedCommunitySpacesAction` | `experience_portal` | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/community-actions.ts |
@@ -5777,7 +5916,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `synthesizeCampaignLearningsInputSchema` | `experience_portal` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/synthesize-campaign-learnings-flow.ts |
 | `synthesizeCampaignLearningsOutputSchema` | `experience_portal` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/synthesize-campaign-learnings-flow.ts |
 | `togglePinPostAction` | `experience_portal` | update | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/community-actions.ts |
-| `toggleReactionAction` | `experience_portal` | update | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/community-actions.ts |
+| `toggleReactionAction` | `experience_portal` | update | `L2_STATE_MUTATION` | unmapped | — | — | `community_spaces` | src/app/actions/community-actions.ts |
 | `updateCourseAction` | `experience_portal` | update | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/learning-actions.ts |
 | `updateLessonAction` | `experience_portal` | update | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/learning-actions.ts |
 | `updateMembershipPlanAction` | `experience_portal` | update | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/membership-actions.ts |
@@ -5854,7 +5993,6 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `OPTIONS /api/external/forms/submit` | `forms_surveys` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/api/external/forms/submit/route.ts |
 | `POST /api/external/forms/submit` | `forms_surveys` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/api/external/forms/submit/route.ts |
 | `POST /api/migration/survey-seo` | `forms_surveys` | execute | `L2_STATE_MUTATION`* | unmapped | `authenticateApiRequest` | — | `surveys` | src/app/api/migration/survey-seo/route.ts |
-| `addOrMoveEntityInPipeline` | `forms_surveys` | create | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `deals`, `onboardingStages` | src/lib/survey-actions.ts |
 | `addSubmissionNoteAction` | `forms_surveys` | create | `L2_STATE_MUTATION` | unmapped | — | — | `form_submissions`, `notes` | src/lib/forms/form-response-actions.ts |
 | `applySurveyAiOptimizationAction` | `forms_surveys` | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `surveys` | src/lib/surveys/survey-ai-intelligence-actions.ts |
 | `assignSurveysToProjectAction` | `forms_surveys` | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `survey_projects`, `surveys` | src/lib/surveys/survey-project-actions.ts |
@@ -5875,6 +6013,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `clusterFormTopicsFlow` | `forms_surveys` | execute | `L2_STATE_MUTATION`* | extend | — | — | `organizations` | src/ai/flows/form-intelligence-flow.ts |
 | `computeFormHealthScoreAction` | `forms_surveys` | draft | `L1_INTERNAL_DRAFT` | unmapped | `requireAuth` | — | `forms`, `optimization` | src/lib/forms/form-optimization-actions.ts |
 | `concludeSurveyWaveAction` | `forms_surveys` | execute | `L2_STATE_MUTATION`* | unmapped | `requireWorkspace` | — | `survey_projects`, `waves` | src/lib/surveys/survey-longitudinal-actions.ts |
+| `createApiKeyAction` | `forms_surveys` | create | `L2_STATE_MUTATION` | unmapped | `requireAuth`, `requireWorkspace` | — | — | src/app/actions/developer-platform-actions.ts |
 | `createDistributionLinkAction` | `forms_surveys` | create | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `form_distributions`, `forms` | src/lib/forms/form-distribution-actions.ts |
 | `createDraftVersionAction` | `forms_surveys` | create | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `surveys`, `versions` | src/lib/surveys/survey-version-actions.ts |
 | `createFormAction` | `forms_surveys` | create | `L2_STATE_MUTATION` | unmapped | `canUser` | `canUser:create`, `canUser:forms`, `canUser:studios` | `forms` | src/lib/forms-actions.ts |
@@ -5895,15 +6034,13 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `executeCrmInboundSurveyTriggerAction` | `forms_surveys` | execute | `L2_STATE_MUTATION` | unmapped | `requireAuth`, `requireWorkspace` | — | `surveys` | src/lib/surveys/survey-crm-trigger-actions.ts |
 | `executePredictiveNextBestAction` | `forms_surveys` | execute | `L2_STATE_MUTATION` | unmapped | — | — | `tasks` | src/lib/surveys/survey-predictive-actions.ts |
 | `executeRecommendedAction` | `forms_surveys` | execute | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `form_submissions`, `tasks` | src/lib/forms/form-intelligence-actions.ts |
-| `executeSurveyCrmSyncAction` | `forms_surveys` | execute | `L2_STATE_MUTATION` | unmapped | — | — | `activities`, `contacts`, `tasks`, `workspace_entities` | src/lib/surveys/survey-crm-sync-actions.ts |
 | `executeSurveyDataRetentionAction` | `forms_surveys` | execute | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `responses`, `surveys` | src/lib/surveys/survey-retention-actions.ts |
-| `executeSurveyPipelineAndAutomations` | `forms_surveys` | execute | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `deals`, `onboardingStages` | src/lib/survey-actions.ts |
-| `executeSurveyResultButtonActions` | `forms_surveys` | execute | `L2_STATE_MUTATION` | unmapped | — | — | `surveys` | src/lib/survey-actions.ts |
+| `executeSurveyResultButtonActions` | `forms_surveys` | execute | `L2_STATE_MUTATION` | unmapped | — | — | `responses`, `surveys` | src/lib/survey-actions.ts |
 | `exportAnalyticsDataAsCsvAction` | `forms_surveys` | read | `L0_READ` | unmapped | `requireAuth` | — | `app_fields`, `form_metrics_daily`, `forms` | src/lib/forms/form-analytics-actions.ts |
 | `exportHighResolutionAssetAction` | `forms_surveys` | read | `L0_READ` | unmapped | — | — | — | src/app/actions/creative-performance-actions.ts |
 | `exportSubmissionsAsCsvAction` | `forms_surveys` | read | `L0_READ` | unmapped | — | — | `app_fields`, `form_submissions`, `forms` | src/lib/forms-actions.ts |
 | `exportSurveyDataAction` | `forms_surveys` | read | `L0_READ` | unmapped | — | — | `responses`, `surveys` | src/lib/surveys/survey-analytics-actions.ts |
-| `finalizeSurveySubmission` | `forms_surveys` | execute | `L2_STATE_MUTATION`* | unmapped | `ensureEntitySharedToWorkspace`, `requireAuth`, `requireWorkspace` | — | `deals`, `entities`, `onboardingStages`, `responses`, `surveys`, `webhooks`, `workspace_entities`, `workspaces` | src/lib/survey-actions.ts |
+| `finalizeSurveySubmission` | `forms_surveys` | execute | `L2_STATE_MUTATION`* | unmapped | `ensureEntitySharedToWorkspace`, `requireWorkspace` | — | `deals`, `entities`, `onboardingStages`, `responses`, `surveys`, `webhooks`, `workspace_entities`, `workspaces` | src/lib/survey-actions.ts |
 | `generateFormCustomReportAction` | `forms_surveys` | draft | `L1_INTERNAL_DRAFT` | wrap | `requireAuth` | — | `forms` | src/lib/forms/form-reports-actions.ts |
 | `generateFormFlow` | `forms_surveys` | draft | `L1_INTERNAL_DRAFT` | extend | — | — | `organizations` | src/ai/flows/generate-form-flow.ts |
 | `generateFormLogicWithAiAction` | `forms_surveys` | draft | `L1_INTERNAL_DRAFT` | unmapped | `requireAuth` | — | — | src/lib/forms/form-ai-actions.ts |
@@ -5918,6 +6055,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `generateSurveySentimentThemesFlow` | `forms_surveys` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | `organizations` | src/ai/flows/survey-sentiment-theme-flow.ts |
 | `generateSurveySummary` | `forms_surveys` | draft | `L1_INTERNAL_DRAFT` | unmapped | `requireAuth` | — | `organizations` | src/ai/flows/generate-survey-summary-flow.ts |
 | `generateSurveyThematicInsightsAction` | `forms_surveys` | draft | `L1_INTERNAL_DRAFT` | unmapped | `requireWorkspace` | — | `ai_insights`, `responses`, `surveys` | src/lib/surveys/survey-ai-intelligence-actions.ts |
+| `getAllowedEmbedOriginsAction` | `forms_surveys` | read | `L0_READ` | unmapped | `requireAuth`, `requireWorkspace` | — | — | src/app/actions/developer-platform-actions.ts |
 | `getAssigneeDetails` | `forms_surveys` | read | `L0_READ` | unmapped | `requireAuth` | — | `users` | src/app/actions/survey-assignee-actions.ts |
 | `getEntitySurveyHistoryAction` | `forms_surveys` | read | `L0_READ` | unmapped | `requireWorkspace` | — | `responses`, `surveys` | src/lib/surveys/survey-crm-trigger-actions.ts |
 | `getFormAnalyticsAction` | `forms_surveys` | read | `L0_READ` | wrap | `requireAuth` | — | `app_fields`, `form_metrics_daily`, `forms` | src/lib/forms/form-analytics-actions.ts |
@@ -5927,6 +6065,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `getFormSavedViewsAction` | `forms_surveys` | read | `L0_READ` | unmapped | `requireAuth` | — | `form_saved_views` | src/lib/forms/form-response-actions.ts |
 | `getFormSubmissionsAction` | `forms_surveys` | read | `L0_READ` | extend | — | — | `form_submissions` | src/lib/forms-actions.ts |
 | `getFormWithVersionAction` | `forms_surveys` | read | `L0_READ` | unmapped | `requireAuth` | — | `forms`, `versions` | src/lib/forms-version-actions.ts |
+| `getOfflineSyncQueueStatusAction` | `forms_surveys` | read | `L0_READ` | unmapped | `requireAuth`, `requireWorkspace` | — | `offline_sync_conflicts`, `offline_sync_records` | src/app/actions/developer-platform-actions.ts |
 | `getOrGenerateFormTopicClustersAction` | `forms_surveys` | read | `L0_READ` | wrap | `requireAuth` | — | `form_submissions`, `forms`, `intelligence` | src/lib/forms/form-intelligence-actions.ts |
 | `getPlatformControlsAction` | `forms_surveys` | read | `L0_READ` | unmapped | — | — | — | src/lib/platform/platform-controls-actions.ts |
 | `getProjectAnalyticsSummaryAction` | `forms_surveys` | read | `L0_READ` | unmapped | `requireWorkspace` | — | `responses`, `survey_projects`, `surveys` | src/lib/surveys/survey-project-actions.ts |
@@ -5939,7 +6078,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `getScheduledReportConfigAction` | `forms_surveys` | read | `L0_READ` | unmapped | `requireAuth` | — | `scheduled_reports` | src/lib/forms/form-reports-actions.ts |
 | `getSubmissionNotesAction` | `forms_surveys` | read | `L0_READ` | unmapped | — | — | `form_submissions`, `notes` | src/lib/forms/form-response-actions.ts |
 | `getSurveyAnalyticsOverviewAction` | `forms_surveys` | read | `L0_READ` | unmapped | `requireWorkspace` | — | `responses`, `surveys` | src/lib/surveys/survey-analytics-actions.ts |
-| `getSurveyCrmFieldDefinitionsAction` | `forms_surveys` | read | `L0_READ` | unmapped | — | — | `app_fields` | src/lib/surveys/survey-crm-sync-actions.ts |
+| `getSurveyCrmFieldDefinitionsAction` | `forms_surveys` | read | `L0_READ` | unmapped | `requireWorkspace` | — | `app_fields` | src/lib/surveys/survey-crm-sync-actions.ts |
 | `getSurveyCrossTabsAction` | `forms_surveys` | read | `L0_READ` | unmapped | `requireWorkspace` | — | `responses`, `surveys` | src/lib/surveys/survey-analytics-actions.ts |
 | `getSurveyDeploymentsAction` | `forms_surveys` | read | `L0_READ` | unmapped | `requireWorkspace` | — | `survey_deployments` | src/lib/surveys/survey-deployment-actions.ts |
 | `getSurveyExperimentResultsAction` | `forms_surveys` | read | `L0_READ` | unmapped | — | — | `responses`, `surveys` | src/lib/surveys/survey-experiment-actions.ts |
@@ -5961,7 +6100,8 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `getWorkspacePredictiveOverviewAction` | `forms_surveys` | read | `L0_READ` | unmapped | `requireAuth`, `requireWorkspace` | — | `contacts`, `deals`, `responses`, `surveys`, `system_config`, `workspace_entities` | src/lib/surveys/survey-predictive-actions.ts |
 | `getWorkspaceTeamMembersAction` | `forms_surveys` | read | `L0_READ` | unmapped | `requireWorkspace` | — | `users` | src/lib/forms/crm-integration-actions.ts |
 | `initializeFormSessionAction` | `forms_surveys` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `form_sessions` | src/lib/forms/form-session-actions.ts |
-| `listWorkspaceCampaignPerformanceAction` | `forms_surveys` | read | `L0_READ` | extend | — | — | — | src/app/actions/creative-performance-actions.ts |
+| `listApiKeysAction` | `forms_surveys` | read | `L0_READ` | unmapped | `requireAuth`, `requireWorkspace` | — | — | src/app/actions/developer-platform-actions.ts |
+| `listWorkspaceCampaignPerformanceAction` | `forms_surveys` | read | `L0_READ` | unmapped | — | — | — | src/app/actions/creative-performance-actions.ts |
 | `loadFormDraftAction` | `forms_surveys` | read | `L0_READ` | unmapped | — | — | `form_drafts` | src/lib/forms/form-draft-actions.ts |
 | `logSurveyStartedAction` | `forms_surveys` | create | `L2_STATE_MUTATION` | unmapped | — | — | `surveys` | src/lib/survey-actions.ts |
 | `modifySurvey` | `forms_surveys` | execute | `L2_STATE_MUTATION`* | extend | — | — | — | src/ai/flows/modify-survey-flow.ts |
@@ -5983,8 +6123,10 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `RefineSurveyQuestionInputSchema` | `forms_surveys` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/refine-survey-question-flow.ts |
 | `RefineSurveyQuestionOutputSchema` | `forms_surveys` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/refine-survey-question-flow.ts |
 | `resolveOrMatchWorkspaceEntity` | `forms_surveys` | draft | `L1_INTERNAL_DRAFT` | unmapped | `ensureEntitySharedToWorkspace`, `requireWorkspace` | — | `entities`, `workspace_entities`, `workspaces` | src/lib/survey-actions.ts |
+| `revokeApiKeyAction` | `forms_surveys` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireAuth`, `requireWorkspace` | — | — | src/app/actions/developer-platform-actions.ts |
 | `rewriteQuestionCopyAction` | `forms_surveys` | execute | `L2_STATE_MUTATION`* | unmapped | `requireAuth` | — | — | src/lib/forms/form-ai-actions.ts |
 | `rewriteQuestionCopyFlow` | `forms_surveys` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `organizations` | src/ai/flows/ai-form-assistant-flow.ts |
+| `rotateApiKeyAction` | `forms_surveys` | execute | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireAuth`, `requireWorkspace` | — | — | src/app/actions/developer-platform-actions.ts |
 | `runFormsFerAuditAction` | `forms_surveys` | execute | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | — | src/lib/backoffice/backoffice-forms-actions.ts |
 | `sanitizeEntityPayloadForUpdate` | `forms_surveys` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | — | src/lib/survey-actions.ts |
 | `saveFormCrmSettingsAction` | `forms_surveys` | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `forms` | src/lib/forms/crm-integration-actions.ts |
@@ -5996,7 +6138,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `saveScheduledReportConfigAction` | `forms_surveys` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `scheduled_reports` | src/lib/forms/form-reports-actions.ts |
 | `saveSurveyCrmConfigAction` | `forms_surveys` | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `surveys` | src/lib/surveys/survey-crm-sync-actions.ts |
 | `saveSurveyExperimentConfigAction` | `forms_surveys` | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `surveys` | src/lib/surveys/survey-experiment-actions.ts |
-| `saveSystemCrmFieldMappingTemplatesAction` | `forms_surveys` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `system_settings` | src/lib/surveys/survey-crm-sync-actions.ts |
+| `saveSystemCrmFieldMappingTemplatesAction` | `forms_surveys` | update | `L2_STATE_MUTATION` | unmapped | `requireSystemAdmin` | — | `system_settings` | src/lib/surveys/survey-crm-sync-actions.ts |
 | `saveSystemPredictiveWeightsAction` | `forms_surveys` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `system_config` | src/lib/surveys/survey-predictive-actions.ts |
 | `saveSystemResearchGovernanceAction` | `forms_surveys` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `system_settings` | src/lib/surveys/survey-retention-actions.ts |
 | `scanFormAnomaliesAction` | `forms_surveys` | analyze | `L0_READ` | unmapped | `requireAuth` | — | `forms` | src/lib/forms/form-optimization-actions.ts |
@@ -6019,9 +6161,11 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `SurveyAnalyticsBulkActionsBar` | `forms_surveys` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `onboardingStages`, `pipelines` | src/app/admin/surveys/[id]/results/components/SurveyAnalyticsBulkActionsBar.tsx |
 | `syncSurveyUploadedFilesToMedia` | `forms_surveys` | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `media` | src/lib/survey-actions.ts |
 | `synthesizeLogicRuleFlow` | `forms_surveys` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | `organizations` | src/ai/flows/ai-form-assistant-flow.ts |
+| `testWebhookDeliveryAction` | `forms_surveys` | execute | `L2_STATE_MUTATION`* | wrap | `requireAuth`, `requireWorkspace` | — | — | src/app/actions/developer-platform-actions.ts |
 | `toggleFormStatusAction` | `forms_surveys` | update | `L2_STATE_MUTATION` | unmapped | `canUser` | `canUser:edit`, `canUser:forms`, `canUser:studios` | `forms` | src/lib/forms-actions.ts |
 | `triggerSurveyWebhook` | `forms_surveys` | execute | `L2_STATE_MUTATION` | unmapped | — | — | `webhooks` | src/lib/survey-actions.ts |
 | `unflagSubmissionAction` | `forms_surveys` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/backoffice/backoffice-survey-actions.ts |
+| `updateAllowedEmbedOriginsAction` | `forms_surveys` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth`, `requireWorkspace` | — | — | src/app/actions/developer-platform-actions.ts |
 | `updateDeploymentStatusAction` | `forms_surveys` | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `survey_deployments` | src/lib/surveys/survey-deployment-actions.ts |
 | `updateExperimentStatusAction` | `forms_surveys` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `experiments`, `forms` | src/lib/forms/form-optimization-actions.ts |
 | `updateFormAction` | `forms_surveys` | update | `L2_STATE_MUTATION` | unmapped | `canUser` | `canUser:edit`, `canUser:forms`, `canUser:studios` | `forms` | src/lib/forms-actions.ts |
@@ -6038,19 +6182,19 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `adminResetUserPasswordAction` | `identity_access` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `organizations`, `users` | src/lib/user-invite-actions.ts |
 | `adminUpdateUserAccessAction` | `identity_access` | update | `L2_STATE_MUTATION` | unmapped | — | — | `organizations`, `users` | src/lib/user-invite-actions.ts |
 | `AiRoleAdvisorService` | `identity_access` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/services/ai/ai-role-advisor-service.ts |
-| `archiveEntityAction` | `identity_access` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireAuth` | — | `workspace_entities` | src/lib/workspace-entity-actions.ts |
+| `archiveEntityAction` | `identity_access` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireAuth`, `requireWorkspace` | — | — | src/lib/workspace-entity-actions.ts |
 | `archiveOrganizationAction` | `identity_access` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `assertUserTenantPermission`, `requireAuth` | `assertUserTenantPermission:administrator` | `organizations` | src/lib/organization-actions.ts |
 | `archiveWorkspaceAction` | `identity_access` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireAuth` | — | `workspaces` | src/lib/workspace-actions.ts |
 | `archiveWorkspaceFromBackoffice` | `identity_access` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | — | — | `workspaces` | src/lib/backoffice/backoffice-workspace-actions.ts |
 | `AuthorizationService` | `identity_access` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `policies`, `roles`, `users` | src/lib/services/authorization/authorization-service.ts |
 | `BulkActionsFloatingToolbar` | `identity_access` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/admin/users/components/BulkActionsFloatingToolbar.tsx |
-| `bulkArchiveEntitiesAction` | `identity_access` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | — | — | `workspace_entities` | src/lib/workspace-entity-actions.ts |
-| `bulkDeleteEntitiesAction` | `identity_access` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | — | — | `entities`, `workspace_entities` | src/lib/workspace-entity-actions.ts |
+| `bulkArchiveEntitiesAction` | `identity_access` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireAuth`, `requireWorkspace` | — | — | src/lib/workspace-entity-actions.ts |
+| `bulkDeleteEntitiesAction` | `identity_access` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireAuth`, `requireWorkspace` | — | — | src/lib/workspace-entity-actions.ts |
 | `completeForcePasswordResetAction` | `identity_access` | execute | `L2_STATE_MUTATION`* | unmapped | `verifyIdToken` | — | `people`, `users` | src/lib/user-invite-actions.ts |
 | `createOrUpdateRoleAction` | `identity_access` | create | `L2_STATE_MUTATION` | unmapped | `hasPlatformAdminClaim`, `verifyCallerAuth`, `verifyIdToken` | — | `users` | src/app/actions/authorization-actions.ts |
 | `dealItemInputSchema` | `identity_access` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/detect-organizational-patterns-flow.ts |
 | `declineJoinRequestAction` | `identity_access` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `organizations`, `users` | src/lib/user-invite-actions.ts |
-| `deleteEntityPermanentlyAction` | `identity_access` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireAuth` | — | `entities`, `workspace_entities` | src/lib/workspace-entity-actions.ts |
+| `deleteEntityPermanentlyAction` | `identity_access` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireAuth`, `requireWorkspace` | — | — | src/lib/workspace-entity-actions.ts |
 | `deleteOrganizationAction` | `identity_access` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `assertUserTenantPermission`, `requireAuth` | `assertUserTenantPermission:administrator` | `organizations`, `users`, `workspaces` | src/lib/organization-actions.ts |
 | `deleteRoleAction` | `identity_access` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `hasPlatformAdminClaim`, `verifyCallerAuth`, `verifyIdToken` | — | `users` | src/app/actions/authorization-actions.ts |
 | `deleteWorkspaceAction` | `identity_access` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireAuth` | — | `activities`, `pipelines`, `tasks`, `workspace_entities`, `workspaces` | src/lib/workspace-actions.ts |
@@ -6065,12 +6209,12 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `enrichUsersWithWorkspaceRbac` | `identity_access` | update | `L2_STATE_MUTATION` | unmapped | — | — | `roles`, `users` | src/app/actions/rbac-workspace-migration-actions.ts |
 | `enrichWorkspaceEntitiesContactsAction` | `identity_access` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `system_migrations`, `workspace_entities` | src/app/actions/enrich-workspace-entities-contacts-action.ts |
 | `enrichWorkspacesWithIndustry` | `identity_access` | update | `L2_STATE_MUTATION` | unmapped | — | — | `workspaces` | src/app/actions/workspace-industry-migration-actions.ts |
-| `ensureEntitySharedToWorkspace` | `identity_access` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `entities`, `workspace_entities`, `workspaces` | src/lib/workspace-entity-actions.ts |
 | `EntitlementService` | `identity_access` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/services/entitlement-service.ts |
 | `evaluateAccessAction` | `identity_access` | analyze | `L0_READ` | unmapped | `hasPlatformAdminClaim`, `verifyCallerAuth`, `verifyIdToken` | — | `users` | src/app/actions/authorization-actions.ts |
 | `executeFixOrgAdminPermissionsFerAction` | `identity_access` | execute | `L2_STATE_MUTATION` | unmapped | — | — | `roles`, `system_config`, `system_migrations`, `users` | src/app/actions/fix-org-admin-permissions-fer-action.ts |
 | `executeQuickActionAction` | `identity_access` | execute | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `lead_signals`, `tasks` | src/app/actions/seller-workspace-actions.ts |
 | `executeSeedAllWorkspacesFieldsFerAction` | `identity_access` | execute | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/seed-all-workspaces-fields-fer-action.ts |
+| `executeSyncRolePermissionsFerAction` | `identity_access` | execute | `L2_STATE_MUTATION` | unmapped | — | — | `roles` | src/app/actions/sync-role-permissions-fer-action.ts |
 | `executeWorkspaceScopeFetchEnrichRestoreAction` | `identity_access` | execute | `L2_STATE_MUTATION` | unmapped | — | — | `workspace_entities`, `workspaces` | src/app/actions/workspace-scope-migration-actions.ts |
 | `explainUserAccessAction` | `identity_access` | analyze | `L0_READ` | unmapped | `hasPlatformAdminClaim`, `verifyCallerAuth`, `verifyIdToken` | — | `users` | src/app/actions/authorization-actions.ts |
 | `fetchUsersForWorkspaceRbacMigration` | `identity_access` | read | `L0_READ` | unmapped | — | — | `users` | src/app/actions/rbac-workspace-migration-actions.ts |
@@ -6084,9 +6228,10 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `getPermissionCatalogAction` | `identity_access` | read | `L0_READ` | unmapped | — | — | — | src/app/actions/authorization-actions.ts |
 | `getTerminologyAction` | `identity_access` | read | `L0_READ` | unmapped | `requireWorkspace` | — | `workspaces` | src/lib/workspace-actions.ts |
 | `getWorkspaceAiSettingsAction` | `identity_access` | read | `L0_READ` | unmapped | `checkWorkspaceAccess`, `requireWorkspace` | — | `users` | src/lib/ai/actions/workspace-ai-actions.ts |
+| `getWorkspaceBrandingAction` | `identity_access` | read | `L0_READ` | unmapped | — | — | — | src/app/actions/workspace-branding-actions.ts |
 | `getWorkspaceDiagnostics` | `identity_access` | read | `L0_READ` | unmapped | — | — | `organizations`, `pipelines`, `teams`, `users`, `workspace_entities`, `workspaces` | src/lib/backoffice/backoffice-workspace-actions.ts |
 | `inviteUserAction` | `identity_access` | execute | `L3_EXTERNAL_COMMUNICATION_FINANCE` | unmapped | — | — | `organizations`, `roles`, `users` | src/lib/user-invite-actions.ts |
-| `linkEntityToWorkspaceAction` | `identity_access` | update | `L2_STATE_MUTATION` | unmapped | — | — | `entities`, `stages`, `workspace_entities`, `workspaces` | src/lib/workspace-entity-actions.ts |
+| `linkEntityToWorkspaceAction` | `identity_access` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth`, `requireWorkspace` | — | — | src/lib/workspace-entity-actions.ts |
 | `listAllWorkspaces` | `identity_access` | read | `L0_READ` | unmapped | — | — | `organizations`, `users`, `workspaces` | src/lib/backoffice/backoffice-workspace-actions.ts |
 | `listRolesAction` | `identity_access` | read | `L0_READ` | unmapped | `hasPlatformAdminClaim`, `verifyCallerAuth`, `verifyIdToken` | — | `users` | src/app/actions/authorization-actions.ts |
 | `meetingCommitmentInputSchema` | `identity_access` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/detect-organizational-patterns-flow.ts |
@@ -6096,12 +6241,12 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `PermissionUsageService` | `identity_access` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/services/analytics/permission-usage-service.ts |
 | `publicResetPasswordViaPhoneAction` | `identity_access` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `organizations`, `users` | src/lib/user-invite-actions.ts |
 | `removeUserFromOrgAction` | `identity_access` | delete | `L2_STATE_MUTATION` | unmapped | — | — | `users` | src/lib/user-invite-actions.ts |
-| `resolveContextWorkspaceId` | `identity_access` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | `contracts`, `meetings`, `pdf_forms`, `surveys`, `users`, `workspace_entities` | src/lib/services/workspace-resolver.ts |
+| `resolveContextWorkspaceId` | `identity_access` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | `contracts`, `meetings`, `pdf_forms`, `pdfs`, `surveys`, `users`, `workspace_entities` | src/lib/services/workspace-resolver.ts |
 | `resolveWorkspaceIdForUser` | `identity_access` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | `users` | src/lib/services/workspace-resolver.ts |
 | `resolveWorkspaceIdFromContract` | `identity_access` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | `contracts` | src/lib/services/workspace-resolver.ts |
 | `resolveWorkspaceIdFromEntity` | `identity_access` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | `workspace_entities` | src/lib/services/workspace-resolver.ts |
 | `resolveWorkspaceIdFromMeeting` | `identity_access` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | `meetings` | src/lib/services/workspace-resolver.ts |
-| `resolveWorkspaceIdFromPDFForm` | `identity_access` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | `pdf_forms` | src/lib/services/workspace-resolver.ts |
+| `resolveWorkspaceIdFromPDFForm` | `identity_access` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | `pdf_forms`, `pdfs` | src/lib/services/workspace-resolver.ts |
 | `resolveWorkspaceIdFromSurvey` | `identity_access` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | `surveys` | src/lib/services/workspace-resolver.ts |
 | `restoreWorkspaceFromBackoffice` | `identity_access` | update | `L2_STATE_MUTATION` | unmapped | — | — | `workspaces` | src/lib/backoffice/backoffice-workspace-actions.ts |
 | `restoreWorkspaceIndustryMigration` | `identity_access` | update | `L2_STATE_MUTATION` | unmapped | — | — | `workspaces` | src/app/actions/workspace-industry-migration-actions.ts |
@@ -6114,16 +6259,17 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `setOrganizationDefaultWorkspaceAction` | `identity_access` | update | `L2_STATE_MUTATION` | unmapped | `assertUserTenantPermission`, `requireAuth` | `assertUserTenantPermission:administrator` | `organizations` | src/lib/organization-actions.ts |
 | `simulateRolePermissionsAction` | `identity_access` | draft | `L1_INTERNAL_DRAFT` | unmapped | `hasPlatformAdminClaim`, `verifyCallerAuth`, `verifyIdToken` | — | `users` | src/app/actions/authorization-actions.ts |
 | `snoozeQueueItemAction` | `identity_access` | execute | `L2_STATE_MUTATION`* | unmapped | `requireWorkspace` | — | `tasks` | src/app/actions/seller-workspace-actions.ts |
-| `unlinkEntityFromWorkspaceAction` | `identity_access` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `entities`, `workspace_entities` | src/lib/workspace-entity-actions.ts |
+| `unlinkEntityFromWorkspaceAction` | `identity_access` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth`, `requireWorkspace` | — | — | src/lib/workspace-entity-actions.ts |
 | `updateUserAiPreferencesAction` | `identity_access` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `users` | src/lib/user-preferences-actions.ts |
 | `updateWorkspaceAiSettingsAction` | `identity_access` | update | `L2_STATE_MUTATION` | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | `users` | src/lib/ai/actions/workspace-ai-actions.ts |
-| `updateWorkspaceEntityAction` | `identity_access` | update | `L2_STATE_MUTATION` | extend | — | — | `entities`, `stages`, `workspace_entities` | src/lib/workspace-entity-actions.ts |
+| `updateWorkspaceBrandingAction` | `identity_access` | update | `L2_STATE_MUTATION` | unmapped | — | — | — | src/app/actions/workspace-branding-actions.ts |
+| `updateWorkspaceEntityAction` | `identity_access` | update | `L2_STATE_MUTATION` | wrap | `requireAuth`, `requireWorkspace` | — | — | src/lib/workspace-entity-actions.ts |
 | `updateWorkspaceScopeAction` | `identity_access` | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `workspace_entities`, `workspaces` | src/lib/workspace-actions.ts |
 | `GET /api/v1/quick-notes/export` | `knowledge_memory` | read | `L0_READ` | unmapped | — | — | `api_keys` | src/app/api/v1/quick-notes/export/route.ts |
 | `POST /api/v1/quick-notes/ingest` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `api_keys` | src/app/api/v1/quick-notes/ingest/route.ts |
-| `aiAssistEditorAction` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | `canUser` | `canUser:operations`, `canUser:view` | — | src/lib/quick-notes-ai-actions.ts |
+| `aiAssistEditorAction` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | `canUser`, `requireWorkspace` | `canUser:operations`, `canUser:view` | — | src/lib/quick-notes-ai-actions.ts |
+| `AiIdentityContextResolver` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/services/ai/ai-identity-context-resolver.ts |
 | `aiLinkSuggestionOutputSchema` | `knowledge_memory` | update | `L2_STATE_MUTATION` | unmapped | — | — | — | src/ai/flows/detect-knowledge-links-flow.ts |
-| `applyConsolidationAction` | `knowledge_memory` | update | `L2_STATE_MUTATION` | unmapped | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/orchestrator-actions.ts |
 | `askKnowledgeInputSchema` | `knowledge_memory` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/ask-knowledge-rag-flow.ts |
 | `askKnowledgeOutputSchema` | `knowledge_memory` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/ask-knowledge-rag-flow.ts |
 | `askKnowledgeRagFlow` | `knowledge_memory` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/ask-knowledge-rag-flow.ts |
@@ -6132,14 +6278,23 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `backfillCrmRelationsAction` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | `canUser` | `canUser:edit`, `canUser:operations` | — | src/lib/quick-notes-graph-actions.ts |
 | `buildContextAction` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | wrap | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/context-builder-actions.ts |
 | `bulkReviewInboxAction` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | `requireWorkspace` | — | — | src/lib/quick-notes-insight-actions.ts |
+| `calculateFreshnessScore` | `knowledge_memory` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/lib/memory/services/freshness-engine.ts |
 | `candidateObjectSchema` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/detect-knowledge-links-flow.ts |
 | `challengeIdeaAssumptionsAiAction` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | `requireWorkspace` | — | — | src/lib/quick-notes-idea-actions.ts |
-| `classifyDraftKnowledgeAction` | `knowledge_memory` | analyze | `L0_READ` | unmapped | `canUser` | `canUser:operations`, `canUser:view` | — | src/lib/quick-notes-ai-actions.ts |
+| `classifyDraftKnowledgeAction` | `knowledge_memory` | analyze | `L0_READ` | unmapped | `canUser`, `requireWorkspace` | `canUser:operations`, `canUser:view` | — | src/lib/quick-notes-ai-actions.ts |
 | `classifyKnowledgeFlow` | `knowledge_memory` | analyze | `L0_READ` | unmapped | — | — | — | src/ai/flows/classify-knowledge-flow.ts |
 | `clearEmbeddingCacheAction` | `knowledge_memory` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth`, `verifyBackofficeAdmin` | — | `users` | src/lib/memory/actions/backoffice-companybrain-actions.ts |
 | `cloneFederatedItemToWorkspaceAction` | `knowledge_memory` | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/lib/quick-notes-federation-actions.ts |
 | `commitOfflineBatchAction` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/quick-notes-offline-actions.ts |
+| `computeCosineSimilarity` | `knowledge_memory` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/lib/memory/qdrant/qdrant-client.ts |
 | `confirmMemoryAction` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/memory-actions.ts |
+| `ConflictEngine` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/memory/services/conflict-engine.ts |
+| `ConflictRepository` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/memory/conflict-repository.ts |
+| `ContextBudgetManager` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/memory/services/context-budget-manager.ts |
+| `ContextBuilderService` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `deals`, `entities`, `entity_notes`, `tasks` | src/lib/memory/services/context-builder-service.ts |
+| `contextDossierInputSchema` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/generate-context-dossier-flow.ts |
+| `contextDossierOutputSchema` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/generate-context-dossier-flow.ts |
+| `ContextRelevanceScorer` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/memory/services/context-relevance-scorer.ts |
 | `convertIdeaToTaskAction` | `knowledge_memory` | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `tasks` | src/lib/quick-notes-idea-actions.ts |
 | `convertInsightToIdeaAction` | `knowledge_memory` | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | — | src/lib/quick-notes-insight-actions.ts |
 | `convertInsightToTaskAction` | `knowledge_memory` | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `tasks` | src/lib/quick-notes-insight-actions.ts |
@@ -6147,8 +6302,8 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `createGraphEdgeAction` | `knowledge_memory` | create | `L2_STATE_MUTATION` | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | — | src/lib/memory/actions/graph-actions.ts |
 | `createIdeaAction` | `knowledge_memory` | create | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | — | src/lib/quick-notes-idea-actions.ts |
 | `createKnowledgeRelationAction` | `knowledge_memory` | create | `L2_STATE_MUTATION` | unmapped | `canUser` | `canUser:edit`, `canUser:operations` | — | src/lib/quick-notes-graph-actions.ts |
-| `createQuickNoteAction` | `knowledge_memory` | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/lib/quick-notes-actions.ts |
-| `createTaskFromActionItem` | `knowledge_memory` | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/lib/quick-notes-ai-actions.ts |
+| `createQuickNoteAction` | `knowledge_memory` | create | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | — | src/lib/quick-notes-actions.ts |
+| `createTaskFromActionItem` | `knowledge_memory` | create | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | — | src/lib/quick-notes-ai-actions.ts |
 | `decomposeIdeaCanvasAiAction` | `knowledge_memory` | draft | `L1_INTERNAL_DRAFT` | unmapped | `requireWorkspace` | — | — | src/lib/quick-notes-idea-actions.ts |
 | `deleteFederatedSpaceAction` | `knowledge_memory` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | — | — | — | src/lib/quick-notes-federation-actions.ts |
 | `deleteGraphEdgeAction` | `knowledge_memory` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | — | src/lib/memory/actions/graph-actions.ts |
@@ -6164,8 +6319,10 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `detectMemoryContradictionsFlow` | `knowledge_memory` | analyze | `L0_READ` | unmapped | — | — | — | src/ai/flows/detect-memory-contradictions-flow.ts |
 | `detectWorkspaceContradictionsAction` | `knowledge_memory` | analyze | `L0_READ` | unmapped | `requireWorkspace` | — | — | src/lib/quick-notes-insight-actions.ts |
 | `developRawIdeaAiAction` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | `requireWorkspace` | — | — | src/lib/quick-notes-idea-actions.ts |
+| `EmbeddingService` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/memory/services/embedding-service.ts |
 | `embedText` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/embed-note-flow.ts |
-| `enrichNoteLink` | `knowledge_memory` | update | `L2_STATE_MUTATION` | unmapped | — | — | — | src/lib/quick-notes-actions.ts |
+| `enrichNoteLink` | `knowledge_memory` | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | — | src/lib/quick-notes-actions.ts |
+| `evaluateMemoriesFreshness` | `knowledge_memory` | analyze | `L0_READ` | unmapped | — | — | — | src/lib/memory/services/freshness-engine.ts |
 | `explainGraphConnectionAction` | `knowledge_memory` | analyze | `L0_READ` | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | — | src/lib/memory/actions/graph-actions.ts |
 | `explainGraphConnectionFlow` | `knowledge_memory` | analyze | `L0_READ` | unmapped | — | — | — | src/ai/flows/explain-graph-connection-flow.ts |
 | `explainGraphConnectionInputSchema` | `knowledge_memory` | analyze | `L0_READ` | unmapped | — | — | — | src/ai/flows/explain-graph-connection-flow.ts |
@@ -6173,23 +6330,26 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `exportWorkspaceKnowledgeAction` | `knowledge_memory` | read | `L0_READ` | unmapped | — | — | — | src/lib/quick-notes-federation-actions.ts |
 | `extractMemoriesFromNoteAction` | `knowledge_memory` | analyze | `L0_READ` | unmapped | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/memory-actions.ts |
 | `fetchAggregatedNotes` | `knowledge_memory` | read | `L0_READ` | unmapped | `canUser` | `canUser:operations`, `canUser:view` | — | src/lib/quick-notes-feed-actions.ts |
-| `findConsolidationCandidatesAction` | `knowledge_memory` | search | `L0_READ` | unmapped | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/orchestrator-actions.ts |
+| `filterStaleMemories` | `knowledge_memory` | search | `L0_READ` | unmapped | — | — | — | src/lib/memory/services/freshness-engine.ts |
 | `findGraphPathAction` | `knowledge_memory` | search | `L0_READ` | wrap | `checkWorkspaceAccess`, `requireAuth` | — | — | src/lib/memory/actions/graph-actions.ts |
+| `generateContextDossierDeterministic` | `knowledge_memory` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/generate-context-dossier-flow.ts |
+| `generateContextDossierFlow` | `knowledge_memory` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/ai/flows/generate-context-dossier-flow.ts |
 | `generateIngestionWebhookKeyAction` | `knowledge_memory` | draft | `L1_INTERNAL_DRAFT` | unmapped | — | — | — | src/lib/quick-notes-federation-actions.ts |
-| `generateQuickNoteInsight` | `knowledge_memory` | draft | `L1_INTERNAL_DRAFT` | unmapped | `canUser` | `canUser:operations`, `canUser:view` | — | src/lib/quick-notes-ai-actions.ts |
-| `generateQuickNotesDigest` | `knowledge_memory` | draft | `L1_INTERNAL_DRAFT` | unmapped | `canUser` | `canUser:operations`, `canUser:view` | — | src/lib/quick-notes-ai-actions.ts |
+| `generateQuickNoteInsight` | `knowledge_memory` | draft | `L1_INTERNAL_DRAFT` | unmapped | `canUser`, `requireWorkspace` | `canUser:operations`, `canUser:view` | — | src/lib/quick-notes-ai-actions.ts |
+| `generateQuickNotesDigest` | `knowledge_memory` | draft | `L1_INTERNAL_DRAFT` | unmapped | `canUser`, `requireWorkspace` | `canUser:operations`, `canUser:view` | — | src/lib/quick-notes-ai-actions.ts |
 | `generateWorkspaceInsightsAction` | `knowledge_memory` | draft | `L1_INTERNAL_DRAFT` | unmapped | `requireWorkspace` | — | — | src/lib/quick-notes-insight-actions.ts |
 | `getBacklinksAction` | `knowledge_memory` | read | `L0_READ` | unmapped | `canUser` | `canUser:operations`, `canUser:view` | — | src/lib/quick-notes-graph-actions.ts |
 | `getCompanyBrainHealthAction` | `knowledge_memory` | read | `L0_READ` | unmapped | `requireAuth`, `verifyBackofficeAdmin` | — | `users` | src/lib/memory/actions/backoffice-companybrain-actions.ts |
 | `getDealDossierAction` | `knowledge_memory` | read | `L0_READ` | wrap | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/context-builder-actions.ts |
-| `getEntityAiSummary` | `knowledge_memory` | read | `L0_READ` | unmapped | — | — | — | src/lib/note-actions.ts |
+| `getEntityAiSummary` | `knowledge_memory` | read | `L0_READ` | unmapped | `canUser`, `requireWorkspace` | `canUser:campuses`, `canUser:operations`, `canUser:view` | — | src/lib/note-actions.ts |
 | `getEntityDossierAction` | `knowledge_memory` | read | `L0_READ` | wrap | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/context-builder-actions.ts |
 | `getEntitySubGraphAction` | `knowledge_memory` | read | `L0_READ` | wrap | `checkWorkspaceAccess`, `requireAuth` | — | — | src/lib/memory/actions/graph-actions.ts |
 | `getFederatedKnowledgeFeedAction` | `knowledge_memory` | read | `L0_READ` | unmapped | — | — | — | src/lib/quick-notes-federation-actions.ts |
 | `getGraphTopologyMetricsAction` | `knowledge_memory` | read | `L0_READ` | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | — | src/lib/memory/actions/graph-actions.ts |
 | `getLatestServerSnapshotsAction` | `knowledge_memory` | read | `L0_READ` | unmapped | — | — | — | src/lib/quick-notes-offline-actions.ts |
-| `getMemoryHealthAction` | `knowledge_memory` | read | `L0_READ` | wrap | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/orchestrator-actions.ts |
+| `getMemoryFreshnessHealthMetrics` | `knowledge_memory` | read | `L0_READ` | unmapped | — | — | — | src/lib/memory/services/freshness-engine.ts |
 | `getMemoryHealthStatsAction` | `knowledge_memory` | read | `L0_READ` | unmapped | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/memory-actions.ts |
+| `getMemoryTtlDays` | `knowledge_memory` | read | `L0_READ` | unmapped | — | — | — | src/lib/memory/services/freshness-engine.ts |
 | `getNoteMemoriesAction` | `knowledge_memory` | read | `L0_READ` | wrap | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/memory-actions.ts |
 | `getRelatedMemoriesAction` | `knowledge_memory` | read | `L0_READ` | wrap | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/semantic-search-actions.ts |
 | `getWorkspaceFederatedSpacesAction` | `knowledge_memory` | read | `L0_READ` | unmapped | — | — | — | src/lib/quick-notes-federation-actions.ts |
@@ -6198,46 +6358,52 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `getWorkspaceInboxAction` | `knowledge_memory` | read | `L0_READ` | unmapped | `requireWorkspace` | — | — | src/lib/quick-notes-insight-actions.ts |
 | `getWorkspaceInsightsAction` | `knowledge_memory` | read | `L0_READ` | unmapped | — | — | — | src/lib/quick-notes-insight-actions.ts |
 | `getWorkspaceKnowledgeGraphAction` | `knowledge_memory` | read | `L0_READ` | unmapped | `canUser` | `canUser:operations`, `canUser:view` | — | src/lib/quick-notes-graph-actions.ts |
+| `GraphRepository` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/memory/graph-repository.ts |
 | `hybridSearchKnowledgeAction` | `knowledge_memory` | search | `L0_READ` | unmapped | `canUser`, `requireAuth` | `canUser:operations`, `canUser:view` | — | src/lib/quick-notes-search-actions.ts |
 | `importKnowledgeArchiveAction` | `knowledge_memory` | create | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | — | — | — | src/lib/quick-notes-federation-actions.ts |
 | `invalidateMemoryAction` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/memory-actions.ts |
 | `knowledgeClassificationResultSchema` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/classify-knowledge-flow.ts |
-| `listMemoryConflictsAction` | `knowledge_memory` | read | `L0_READ` | wrap | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/orchestrator-actions.ts |
-| `listStaleMemoriesAction` | `knowledge_memory` | read | `L0_READ` | wrap | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/orchestrator-actions.ts |
+| `KnowledgeGraphService` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/memory/services/knowledge-graph-service.ts |
+| `KnowledgeSpecialist` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/agents/specialists/knowledge-specialist.ts |
 | `listWorkspaceMemoriesAction` | `knowledge_memory` | read | `L0_READ` | wrap | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/memory-actions.ts |
-| `logNoteActivity` | `knowledge_memory` | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/lib/note-actions.ts |
-| `logQuickNoteActivity` | `knowledge_memory` | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/lib/quick-notes-actions.ts |
-| `logQuickNoteCreated` | `knowledge_memory` | create | `L2_STATE_MUTATION` | unmapped | — | — | — | src/lib/quick-notes-actions.ts |
+| `logNoteActivity` | `knowledge_memory` | create | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireWorkspace` | `canUser:campuses`, `canUser:operations`, `canUser:view` | — | src/lib/note-actions.ts |
+| `logQuickNoteActivity` | `knowledge_memory` | create | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | — | src/lib/quick-notes-actions.ts |
+| `logQuickNoteCreated` | `knowledge_memory` | create | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | — | src/lib/quick-notes-actions.ts |
+| `MemoryConsolidationEngine` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/memory/services/memory-consolidation-engine.ts |
+| `MemoryRepository` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/memory/memory-repository.ts |
+| `MemoryRouter` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/memory/services/memory-router.ts |
 | `memoryStatementSchema` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/detect-memory-contradictions-flow.ts |
+| `memoryTypeToRelationship` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/memory/graph-types.ts |
 | `mergeDuplicateNotesAction` | `knowledge_memory` | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | — | src/lib/quick-notes-insight-actions.ts |
+| `OrganizationMemoryService` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/memory/services/organization-memory-service.ts |
 | `publishCollectionToSpaceAction` | `knowledge_memory` | publish | `L3_EXTERNAL_COMMUNICATION_FINANCE` | unmapped | — | — | — | src/lib/quick-notes-federation-actions.ts |
+| `QdrantClient` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/memory/qdrant/qdrant-client.ts |
+| `QdrantIndexer` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/memory/qdrant/qdrant-indexer.ts |
 | `quickNoteInsightSchema` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/summarize-quick-note-flow.ts |
 | `quickNotesDigestFlow` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/quick-notes-digest-flow.ts |
 | `quickNotesDigestSchema` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/quick-notes-digest-flow.ts |
 | `ragActionSuggestionOutputSchema` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/ask-knowledge-rag-flow.ts |
 | `ragChunkInputSchema` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/ask-knowledge-rag-flow.ts |
 | `ragCitationOutputSchema` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/ai/flows/ask-knowledge-rag-flow.ts |
-| `reconfirmMemoryFreshnessAction` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/orchestrator-actions.ts |
+| `reconfirmFreshness` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/memory/services/freshness-engine.ts |
 | `reindexMemoryAction` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/semantic-search-actions.ts |
 | `reindexWorkspaceKnowledgeAction` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | `canUser`, `requireWorkspace` | `canUser:edit`, `canUser:operations` | — | src/lib/quick-notes-search-actions.ts |
 | `reindexWorkspaceMemoriesAction` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/semantic-search-actions.ts |
-| `resolveMemoryConflictAction` | `knowledge_memory` | draft | `L1_INTERNAL_DRAFT` | wrap | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/orchestrator-actions.ts |
-| `resolveNoteEntitiesAction` | `knowledge_memory` | draft | `L1_INTERNAL_DRAFT` | unmapped | `canUser` | `canUser:operations`, `canUser:view` | — | src/lib/quick-notes-ai-actions.ts |
+| `resolveNoteEntitiesAction` | `knowledge_memory` | draft | `L1_INTERNAL_DRAFT` | unmapped | `canUser`, `requireWorkspace` | `canUser:operations`, `canUser:view` | — | src/lib/quick-notes-ai-actions.ts |
 | `reviewInboxItemAction` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | `requireWorkspace` | — | — | src/lib/quick-notes-insight-actions.ts |
 | `saveIdeaCanvasLayoutAction` | `knowledge_memory` | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | — | src/lib/quick-notes-idea-actions.ts |
 | `scanDuplicatesAction` | `knowledge_memory` | analyze | `L0_READ` | unmapped | `requireWorkspace` | — | — | src/lib/quick-notes-insight-actions.ts |
-| `scanMemoryConflictsBatchAction` | `knowledge_memory` | analyze | `L0_READ` | unmapped | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/orchestrator-actions.ts |
 | `semanticSearchMemoriesAction` | `knowledge_memory` | search | `L0_READ` | unmapped | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/semantic-search-actions.ts |
 | `semanticSearchNotes` | `knowledge_memory` | search | `L0_READ` | wrap | `canUser`, `requireAuth` | `canUser:operations`, `canUser:view` | — | src/lib/quick-notes-search-actions.ts |
+| `SemanticSearchService` | `knowledge_memory` | search | `L0_READ` | unmapped | — | — | — | src/lib/memory/services/semantic-search-service.ts |
 | `subscribeToFederatedSpaceAction` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/quick-notes-federation-actions.ts |
 | `suggestKnowledgeLinksAction` | `knowledge_memory` | draft | `L1_INTERNAL_DRAFT` | unmapped | `canUser` | `canUser:operations`, `canUser:view` | — | src/lib/quick-notes-graph-actions.ts |
-| `summarizeEntityTimelineAction` | `knowledge_memory` | analyze | `L0_READ` | unmapped | `canUser` | `canUser:operations`, `canUser:view` | — | src/lib/quick-notes-ai-actions.ts |
+| `summarizeEntityTimelineAction` | `knowledge_memory` | analyze | `L0_READ` | unmapped | `canUser`, `requireWorkspace` | `canUser:operations`, `canUser:view` | — | src/lib/quick-notes-ai-actions.ts |
 | `summarizeQuickNoteFlow` | `knowledge_memory` | analyze | `L0_READ` | unmapped | — | — | — | src/ai/flows/summarize-quick-note-flow.ts |
 | `syncWorkspaceGraphMeshAction` | `knowledge_memory` | update | `L2_STATE_MUTATION` | unmapped | `checkWorkspaceAccess`, `requireAuth` | — | `contacts`, `deals`, `entities` | src/lib/memory/actions/graph-actions.ts |
 | `synthesizeContextDossierWithAIAction` | `knowledge_memory` | draft | `L1_INTERNAL_DRAFT` | unmapped | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/context-builder-actions.ts |
 | `transitionIdeaStageAction` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | wrap | `requireWorkspace` | — | — | src/lib/quick-notes-idea-actions.ts |
 | `triggerCompanyBrainReindexAction` | `knowledge_memory` | execute | `L2_STATE_MUTATION` | unmapped | `requireAuth`, `verifyBackofficeAdmin` | — | `users` | src/lib/memory/actions/backoffice-companybrain-actions.ts |
-| `unifiedRecallAction` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | `checkWorkspaceAccess` | — | — | src/lib/memory/actions/orchestrator-actions.ts |
 | `unsubscribeFromFederatedSpaceAction` | `knowledge_memory` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/quick-notes-federation-actions.ts |
 | `updateFederatedSpaceAction` | `knowledge_memory` | update | `L2_STATE_MUTATION` | unmapped | — | — | — | src/lib/quick-notes-federation-actions.ts |
 | `updateIdeaAction` | `knowledge_memory` | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | — | src/lib/quick-notes-idea-actions.ts |
@@ -6252,6 +6418,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `AccessRequestService` | `lead_intelligence` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `access_requests` | src/lib/services/workforce/access-request-service.ts |
 | `addProspectsToListAction` | `lead_intelligence` | create | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `lead_lists` | src/app/actions/lead-intelligence-actions.ts |
 | `applyAiRecommendationAction` | `lead_intelligence` | update | `L2_STATE_MUTATION` | unmapped | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/ai-workforce-actions.ts |
+| `assertInviteScope` | `lead_intelligence` | execute | `L3_EXTERNAL_COMMUNICATION_FINANCE` | unmapped | — | — | `roles`, `workspaces` | src/lib/services/workforce/invite-scope.ts |
 | `AutonomousSDREngine` | `lead_intelligence` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/lead-intelligence/sdr/AutonomousSDREngine.ts |
 | `backfillDepartmentSeedsAction` | `lead_intelligence` | execute | `L2_STATE_MUTATION`* | unmapped | `hasPlatformAdminClaim`, `verifyCallerAuth`, `verifyIdToken` | — | `users` | src/app/actions/workforce-actions.ts |
 | `batchEnrichProspectsAction` | `lead_intelligence` | update | `L2_STATE_MUTATION` | unmapped | `requireAuth`, `requireWorkspace` | — | `prospects`, `system_settings` | src/app/actions/lead-intelligence-actions.ts |
@@ -6277,11 +6444,11 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `deleteTeamAction` | `lead_intelligence` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `hasPlatformAdminClaim`, `verifyCallerAuth`, `verifyIdToken` | — | `users` | src/app/actions/workforce-actions.ts |
 | `DeliverabilityScoreEngine` | `lead_intelligence` | analyze | `L0_READ` | unmapped | — | — | — | src/lib/lead-intelligence/verification/DeliverabilityScoreEngine.ts |
 | `DepartmentSeedService` | `lead_intelligence` | create | `L2_STATE_MUTATION` | unmapped | — | — | `departments`, `organizations`, `workspaces` | src/lib/services/workforce/department-seed-service.ts |
-| `DepartmentService` | `lead_intelligence` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `departments`, `people` | src/lib/services/workforce/department-service.ts |
+| `DepartmentService` | `lead_intelligence` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `departments`, `organizations`, `people`, `users` | src/lib/services/workforce/department-service.ts |
 | `dismissAiRecommendationAction` | `lead_intelligence` | update | `L2_STATE_MUTATION` | unmapped | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/ai-workforce-actions.ts |
 | `dismissCollisionAction` | `lead_intelligence` | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `identity_collisions` | src/app/actions/lead-intelligence-actions.ts |
 | `dismissSignalAction` | `lead_intelligence` | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `lead_signals` | src/app/actions/lead-intelligence-actions.ts |
-| `dispatchInvitationsAction` | `lead_intelligence` | execute | `L3_EXTERNAL_COMMUNICATION_FINANCE` | unmapped | `hasPlatformAdminClaim`, `verifyCallerAuth`, `verifyIdToken` | — | `users` | src/app/actions/workforce-actions.ts |
+| `dispatchInvitationsAction` | `lead_intelligence` | execute | `L3_EXTERNAL_COMMUNICATION_FINANCE` | unmapped | `hasPlatformAdminClaim`, `verifyCallerAuth`, `verifyIdToken` | — | `organizations`, `users` | src/app/actions/workforce-actions.ts |
 | `DisposableEmailDetector` | `lead_intelligence` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/lead-intelligence/verification/DisposableEmailDetector.ts |
 | `DNSMXResolverService` | `lead_intelligence` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/lead-intelligence/verification/DNSMXResolverService.ts |
 | `DOMScraperService` | `lead_intelligence` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/lead-intelligence/scraper/DOMScraperService.ts |
@@ -6369,7 +6536,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `refreshWorkforceIntelligenceSnapshotAction` | `lead_intelligence` | update | `L2_STATE_MUTATION` | unmapped | `verifyCaller`, `verifyIdToken` | — | — | src/app/actions/workforce-intelligence-actions.ts |
 | `regenerateExtensionTokenAction` | `lead_intelligence` | execute | `L2_STATE_MUTATION`* | unmapped | `requireWorkspace` | — | `system_settings` | src/app/actions/lead-intelligence-actions.ts |
 | `reseedAiWorkforceDefaultsAction` | `lead_intelligence` | execute | `L2_STATE_MUTATION`* | unmapped | `checkWorkspaceAccess`, `requireWorkspace` | — | — | src/app/actions/ai-sales-workforce-actions.ts |
-| `resendInvitationAction` | `lead_intelligence` | execute | `L3_EXTERNAL_COMMUNICATION_FINANCE` | unmapped | `hasPlatformAdminClaim`, `verifyCallerAuth`, `verifyIdToken` | — | `invitations`, `users` | src/app/actions/workforce-actions.ts |
+| `resendInvitationAction` | `lead_intelligence` | execute | `L3_EXTERNAL_COMMUNICATION_FINANCE` | unmapped | `hasPlatformAdminClaim`, `verifyCallerAuth`, `verifyIdToken` | — | `invitations`, `organizations`, `users` | src/app/actions/workforce-actions.ts |
 | `resolveAccessRequestAction` | `lead_intelligence` | draft | `L1_INTERNAL_DRAFT` | unmapped | `hasPlatformAdminClaim`, `verifyCallerAuth`, `verifyIdToken` | — | `users` | src/app/actions/workforce-actions.ts |
 | `resolveAiApprovalAction` | `lead_intelligence` | draft | `L1_INTERNAL_DRAFT` | unmapped | `checkWorkspaceAccess`, `requireWorkspace` | — | `aiSalesApprovals` | src/app/actions/ai-sales-workforce-actions.ts |
 | `RevenueAttributionEngine` | `lead_intelligence` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/lead-intelligence/attribution/RevenueAttributionEngine.ts |
@@ -6385,6 +6552,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `saveViewAction` | `lead_intelligence` | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `saved_views` | src/app/actions/lead-intelligence-actions.ts |
 | `saveWorkspaceScoringModelAction` | `lead_intelligence` | update | `L2_STATE_MUTATION` | unmapped | `requireWorkspace` | — | `scoring_models` | src/app/actions/lead-intelligence-actions.ts |
 | `scanWorkspaceForCollisionsAction` | `lead_intelligence` | analyze | `L0_READ` | unmapped | `requireWorkspace` | — | `identity_collisions`, `prospects`, `workspace_entities` | src/app/actions/lead-intelligence-actions.ts |
+| `SdrSpecialist` | `lead_intelligence` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/agents/specialists/sdr-specialist.ts |
 | `searchProspectsAction` | `lead_intelligence` | search | `L0_READ` | unmapped | `requireWorkspace` | — | `prospects`, `system_settings` | src/app/actions/lead-intelligence-actions.ts |
 | `SegmentPredicateEvaluator` | `lead_intelligence` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/lead-intelligence/segmentation/SegmentPredicateEvaluator.ts |
 | `SimulatedAIProvider` | `lead_intelligence` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/lead-intelligence/providers/SimulatedAIProvider.ts |
@@ -6566,6 +6734,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `getZoomAuthUrlAction` | `meetings_conversations` | read | `L0_READ` | unmapped | `requireWorkspace` | — | — | src/app/actions/calendar-connection-actions.ts |
 | `logFacilitatorAttendance` | `meetings_conversations` | create | `L2_STATE_MUTATION` | unmapped | `requireAuth` | — | `attendees` | src/app/actions/meeting-facilitator-actions.ts |
 | `manuallyUpdateGuestStatusAction` | `meetings_conversations` | update | `L2_STATE_MUTATION` | unmapped | — | — | `meetings`, `scheduled_messages` | src/app/actions/meeting-registrants-actions.ts |
+| `MeetingSpecialist` | `meetings_conversations` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/lib/agents/specialists/meeting-specialist.ts |
 | `migrateMeetingToUnifiedSchemaAction` | `meetings_conversations` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | — | src/app/actions/meeting-migration-actions.ts |
 | `overrideSeriesInstanceAction` | `meetings_conversations` | execute | `L2_STATE_MUTATION`* | unmapped | `requireWorkspace` | — | `series_instance_overrides` | src/app/actions/meeting-bulk-actions.ts |
 | `processBookingRefundAction` | `meetings_conversations` | execute | `L3_EXTERNAL_COMMUNICATION_FINANCE` | unmapped | `requireWorkspace` | — | `payment_transactions` | src/app/actions/meeting-payment-actions.ts |
@@ -6641,10 +6810,11 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `updateEnrollmentStatus` | `school_operations` | update | `L2_STATE_MUTATION` | unmapped | — | — | — | src/lib/school-enrollment-actions.ts |
 | `updateVisitStatus` | `school_operations` | update | `L2_STATE_MUTATION` | unmapped | — | — | — | src/lib/school-enrollment-actions.ts |
 | `validateRegistrantToken` | `school_operations` | read | `L0_READ` | unmapped | `requireAuth` | — | `meetings`, `registrants` | src/app/actions/meeting-attendance-actions.ts |
-| `GET /api/tasks` | `tasks_productivity` | read | `L0_READ` | unmapped | — | — | — | src/app/api/tasks/route.ts |
-| `POST /api/tasks` | `tasks_productivity` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `tasks` | src/app/api/tasks/route.ts |
-| `DELETE /api/tasks/[taskId]` | `tasks_productivity` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | — | — | — | src/app/api/tasks/[taskId]/route.ts |
-| `PATCH /api/tasks/[taskId]` | `tasks_productivity` | update | `L2_STATE_MUTATION` | unmapped | — | — | `tasks` | src/app/api/tasks/[taskId]/route.ts |
+| `GET /api/cron/signing-reminders` | `tasks_productivity` | execute | `L2_STATE_MUTATION` | unmapped | `cronSecret` | — | — | src/app/api/cron/signing-reminders/route.ts |
+| `GET /api/tasks` | `tasks_productivity` | read | `L0_READ` | unmapped | `authenticateApiRequest` | — | — | src/app/api/tasks/route.ts |
+| `POST /api/tasks` | `tasks_productivity` | execute | `L2_STATE_MUTATION`* | unmapped | `authenticateApiRequest` | — | `tasks` | src/app/api/tasks/route.ts |
+| `DELETE /api/tasks/[taskId]` | `tasks_productivity` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `authenticateApiRequest` | — | — | src/app/api/tasks/[taskId]/route.ts |
+| `PATCH /api/tasks/[taskId]` | `tasks_productivity` | update | `L2_STATE_MUTATION` | unmapped | `authenticateApiRequest` | — | `tasks` | src/app/api/tasks/[taskId]/route.ts |
 | `autoEndCompletedMeetings` | `tasks_productivity` | execute | `L2_STATE_MUTATION`* | unmapped | — | — | `meetings` | src/lib/reminder-actions.ts |
 | `bulkCompleteTasks` | `tasks_productivity` | execute | `L2_STATE_MUTATION`* | extend | — | — | — | src/lib/task-actions.ts |
 | `bulkCreateTasksAction` | `tasks_productivity` | create | `L2_STATE_MUTATION` | wrap | `requireAuth` | — | `tasks`, `workspace_entities` | src/app/actions/bulk-task-actions.ts |
@@ -6655,13 +6825,12 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `bulkUpdateTasksAction` | `tasks_productivity` | update | `L2_STATE_MUTATION` | unmapped | `canUser`, `requireWorkspace` | `canUser:edit`, `canUser:operations`, `canUser:tasks` | `tasks` | src/lib/task-server-actions.ts |
 | `cancelRemindersForMeeting` | `tasks_productivity` | execute | `L2_STATE_MUTATION` | extend | — | — | `scheduled_messages` | src/lib/reminder-actions.ts |
 | `completeTaskNonBlocking` | `tasks_productivity` | execute | `L2_STATE_MUTATION`* | extend | — | — | — | src/lib/task-actions.ts |
-| `createTaskAction` | `tasks_productivity` | create | `L2_STATE_MUTATION` | wrap | `canUser` | `canUser:create`, `canUser:operations`, `canUser:tasks` | `tasks` | src/lib/task-server-actions.ts |
-| `createTaskFromAutomation` | `tasks_productivity` | create | `L2_STATE_MUTATION` | unmapped | — | — | `tasks` | src/lib/task-server-actions.ts |
+| `createTaskAction` | `tasks_productivity` | create | `L2_STATE_MUTATION` | wrap | `requireWorkspace` | — | — | src/lib/task-server-actions.ts |
 | `createTaskNonBlocking` | `tasks_productivity` | create | `L2_STATE_MUTATION` | unmapped | — | — | `tasks` | src/lib/task-actions.ts |
-| `deleteTaskAction` | `tasks_productivity` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `canUser` | `canUser:delete`, `canUser:operations`, `canUser:tasks` | `tasks` | src/lib/task-server-actions.ts |
+| `deleteTaskAction` | `tasks_productivity` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | `requireWorkspace` | — | — | src/lib/task-server-actions.ts |
 | `deleteTaskNonBlocking` | `tasks_productivity` | delete | `L4_PRIVILEGED_DESTRUCTIVE` | unmapped | — | — | — | src/lib/task-actions.ts |
 | `getTaskInterlinkUrl` | `tasks_productivity` | read | `L0_READ` | extend | — | — | — | src/lib/task-actions.ts |
-| `getTasksForContact` | `tasks_productivity` | read | `L0_READ` | extend | — | — | `tasks` | src/lib/task-server-actions.ts |
+| `getTasksForContact` | `tasks_productivity` | read | `L0_READ` | wrap | `requireWorkspace` | — | — | src/lib/task-server-actions.ts |
 | `processScheduledCampaigns` | `tasks_productivity` | execute | `L2_STATE_MUTATION` | unmapped | `cronSecret` | — | `message_campaigns` | src/lib/reminder-actions.ts |
 | `processScheduledMessages` | `tasks_productivity` | execute | `L2_STATE_MUTATION` | unmapped | — | — | `meetings`, `registrants`, `scheduled_messages` | src/lib/reminder-actions.ts |
 | `rescheduleRemindersForMeeting` | `tasks_productivity` | execute | `L2_STATE_MUTATION`* | unmapped | `requireAuth` | — | `entities`, `meetings`, `organizations`, `registrants`, `scheduled_messages` | src/lib/reminder-actions.ts |
@@ -6674,7 +6843,7 @@ Existing actions/services with no suggested catalog tool. Each needs a tool, an 
 | `scheduleRemindersForMeeting` | `tasks_productivity` | execute | `L2_STATE_MUTATION` | unmapped | — | — | `entities`, `scheduled_messages` | src/lib/reminder-actions.ts |
 | `scheduleRemindersForNewRegistrant` | `tasks_productivity` | execute | `L2_STATE_MUTATION` | unmapped | — | — | `meetings`, `registrants`, `scheduled_messages` | src/lib/reminder-actions.ts |
 | `sendFacilitatorNewRegistrationAlert` | `tasks_productivity` | execute | `L3_EXTERNAL_COMMUNICATION_FINANCE` | unmapped | — | — | `meetings`, `registrants`, `scheduled_messages` | src/lib/reminder-actions.ts |
-| `updateTaskAction` | `tasks_productivity` | update | `L2_STATE_MUTATION` | wrap | `canUser` | `canUser:edit`, `canUser:operations`, `canUser:tasks` | `tasks` | src/lib/task-server-actions.ts |
+| `updateTaskAction` | `tasks_productivity` | update | `L2_STATE_MUTATION` | wrap | `requireWorkspace` | — | — | src/lib/task-server-actions.ts |
 | `updateTaskNonBlocking` | `tasks_productivity` | update | `L2_STATE_MUTATION` | unmapped | — | — | — | src/lib/task-actions.ts |
 
 `*` = assigned by fallback / low confidence.

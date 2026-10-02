@@ -414,21 +414,26 @@ export async function dispatchInvitationsAction(params: {
           }
         }
 
-        const exp = new Date(invitation.expiresAt).getTime();
-        const encryptedInviteToken = InviteCryptoService.encryptInvitePayload({
-          invitationId: invitation.id,
-          organizationId: params.organizationId,
-          organizationName: orgName,
-          departmentId: invitation.departmentId || '',
-          departmentName: deptName,
-          email: invitation.email,
-          fullName: invitation.invitedPersonName,
-          workspaceId: invitation.workspaceId,
-          workspaceName: invitation.workspaceName,
-          roleIds: invitation.roleIds,
-          roleNames: invitation.roleNames,
-          exp,
-        });
+        let encryptedInviteToken: string | undefined;
+        try {
+          const exp = new Date(invitation.expiresAt).getTime();
+          encryptedInviteToken = InviteCryptoService.encryptInvitePayload({
+            invitationId: invitation.id,
+            organizationId: params.organizationId,
+            organizationName: orgName,
+            departmentId: invitation.departmentId || '',
+            departmentName: deptName,
+            email: invitation.email,
+            fullName: invitation.invitedPersonName,
+            workspaceId: invitation.workspaceId,
+            workspaceName: invitation.workspaceName,
+            roleIds: invitation.roleIds,
+            roleNames: invitation.roleNames,
+            exp,
+          });
+        } catch (cryptoErr) {
+          console.warn('[inviteWorkforceMemberAction] Crypto token generation failed, falling back to raw token:', cryptoErr);
+        }
 
         // Multi-channel dispatch (Email, SMS, WhatsApp)
         const dispatchResult = await InvitationDispatchService.dispatch({
@@ -521,21 +526,25 @@ export async function resendInvitationAction(params: {
         }
       }
 
-      const exp = new Date(res.expiresAt).getTime();
-      encryptedInviteToken = InviteCryptoService.encryptInvitePayload({
-        invitationId: params.invitationId,
-        organizationId: params.organizationId,
-        organizationName: orgName,
-        departmentId: invData?.departmentId || '',
-        departmentName: deptName,
-        email: invData?.email || '',
-        fullName: invData?.invitedPersonName,
-        workspaceId: invData?.workspaceId,
-        workspaceName: invData?.workspaceName,
-        roleIds: invData?.roleIds,
-        roleNames: invData?.roleNames,
-        exp,
-      });
+      try {
+        const exp = new Date(res.expiresAt).getTime();
+        encryptedInviteToken = InviteCryptoService.encryptInvitePayload({
+          invitationId: params.invitationId,
+          organizationId: params.organizationId,
+          organizationName: orgName,
+          departmentId: invData?.departmentId || '',
+          departmentName: deptName,
+          email: invData?.email || '',
+          fullName: invData?.invitedPersonName,
+          workspaceId: invData?.workspaceId,
+          workspaceName: invData?.workspaceName,
+          roleIds: invData?.roleIds,
+          roleNames: invData?.roleNames,
+          exp,
+        });
+      } catch (cryptoErr) {
+        console.warn('[resendWorkforceInvitationAction] Crypto token generation failed, falling back to raw token:', cryptoErr);
+      }
 
       const channelsToUse = params.channels || (Object.keys(invData?.channels || { email: true }) as ('email' | 'sms' | 'whatsapp')[]);
 

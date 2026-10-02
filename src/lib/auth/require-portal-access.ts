@@ -29,8 +29,51 @@ export interface PortalAdminContext {
   portal: Portal;
 }
 
+export type PortalAdminNeed = 'view' | 'manage' | 'members';
+
+function isRoleAdmin(profile: { role?: string; roles?: string[]; roleNames?: string[] }): boolean {
+  const adminRoles = ['admin', 'superadmin', 'administrator', 'system_admin'];
+  if (profile.role && adminRoles.includes(profile.role.toLowerCase())) {
+    return true;
+  }
+  if (profile.roles && profile.roles.some((r) => adminRoles.includes(r.toLowerCase()))) {
+    return true;
+  }
+  if (profile.roleNames && profile.roleNames.some((r) => adminRoles.includes(r.toLowerCase()))) {
+    return true;
+  }
+  return false;
+}
+
+function hasPortalPermission(
+  perms: readonly string[] | undefined,
+  need: PortalAdminNeed,
+  isRoleAdminUser: boolean
+): boolean {
+  if (isRoleAdminUser || !perms) {
+    return true;
+  }
+  if (perms.includes('system_admin')) {
+    return true;
+  }
+  const hasManage = perms.includes('portals_manage');
+  if (need === 'view') {
+    return hasManage || perms.includes('portals_view');
+  }
+  if (need === 'manage') {
+    return hasManage;
+  }
+  if (need === 'members') {
+    return hasManage || perms.includes('portal_members_manage');
+  }
+  return false;
+}
+
 /** Staff caller who may manage this portal: session + same organization (system admins bypass). */
-export async function requirePortalAdmin(portalId: string): Promise<PortalAdminContext> {
+export async function requirePortalAdmin(
+  portalId: string,
+  need: PortalAdminNeed = 'manage'
+): Promise<PortalAdminContext> {
   if (!portalId) throw new ForbiddenError('A portal id is required.');
   const auth = await requireAuth();
   const portal = await PortalService.getPortalById(portalId);
@@ -38,6 +81,14 @@ export async function requirePortalAdmin(portalId: string): Promise<PortalAdminC
   if (!auth.isSystemAdmin && auth.profile.organizationId !== portal.organizationId) {
     throw new ForbiddenError('No access to this portal.');
   }
+
+  if (!auth.isSystemAdmin) {
+    const isRoleAdminUser = isRoleAdmin(auth.profile);
+    if (!hasPortalPermission(auth.profile.permissions, need, isRoleAdminUser)) {
+      throw new ForbiddenError('Insufficient permissions for this portal operation.');
+    }
+  }
+
   return { auth, portal };
 }
 
@@ -45,8 +96,11 @@ export async function requirePortalAdmin(portalId: string): Promise<PortalAdminC
  * Non-throwing staff check for read endpoints that serve both staff and the public
  * (staff see drafts; everyone else sees published content only).
  */
-export async function isPortalAdminCaller(portalId: string): Promise<boolean> {
-  return requirePortalAdmin(portalId).then(
+export async function isPortalAdminCaller(
+  portalId: string,
+  need: PortalAdminNeed = 'view'
+): Promise<boolean> {
+  return requirePortalAdmin(portalId, need).then(
     () => true,
     () => false
   );
@@ -77,8 +131,18 @@ export async function resolvePortalViewer(idToken: string | null | undefined, po
 }
 
 /** Staff caller acting on an organization's portals before a portal exists (create, seed, slug check). */
-export async function requirePortalOrganizationAdmin(organizationId: string): Promise<AuthContext & { organizationId: string }> {
-  return requireOrganization(organizationId);
+export async function requirePortalOrganizationAdmin(
+  organizationId: string,
+  need: 'view' | 'manage' = 'manage'
+): Promise<AuthContext & { organizationId: string }> {
+  const auth = await requireOrganization(organizationId);
+  if (!auth.isSystemAdmin) {
+    const isRoleAdminUser = isRoleAdmin(auth.profile);
+    if (!hasPortalPermission(auth.profile.permissions, need, isRoleAdminUser)) {
+      throw new ForbiddenError('Insufficient permissions for this portal operation.');
+    }
+  }
+  return auth;
 }
 
 export interface PortalUserContext {

@@ -67,6 +67,11 @@ const config = [
       'src/app/actions/backfill-*.ts',
       'src/app/actions/purge-*.ts',
       'src/app/actions/seed-*.ts',
+      'src/app/actions/portal-*.ts',
+      'src/app/actions/membership-actions.ts',
+      'src/app/actions/learning-actions.ts',
+      'src/app/actions/community-actions.ts',
+      'src/lib/mcp/actions/*.ts',
     ],
     rules: {
       'no-restricted-syntax': ['error', IDENTITY_PARAM_BAN],
@@ -76,7 +81,13 @@ const config = [
     // agents_mcp build plan A2 / Rule 4: no `any`, no unsafe flows and no unchecked double casts in the
     // capability platform and the trusted cores. Type-aware (projectService), scoped to keep lint fast
     // (~20 s). Widen `files` as new core modules are added (src/lib/crm/** lands in PR-1).
-    files: ['src/platform/**/*.ts', 'src/lib/tasks/**/*.ts', 'src/lib/auth/require-portal-access.ts'],
+    files: [
+      'src/platform/**/*.ts',
+      'src/lib/tasks/**/*.ts',
+      'src/lib/auth/require-portal-access.ts',
+      'src/lib/security/cloud-tasks-auth.ts',
+      'src/lib/security/cloud-tasks-oidc.ts',
+    ],
     ignores: ['**/__tests__/**'],
     languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname } },
     rules: {

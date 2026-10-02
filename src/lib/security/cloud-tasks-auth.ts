@@ -1,13 +1,16 @@
 /**
- * @fileOverview Cloud Tasks & Worker Secret Verification Helper
+ * @fileOverview Cloud Tasks & Worker Secret Verification Helper (Phase 0 / PR-2)
  *
- * Provides standardized, fail-closed validation for GCP Cloud Tasks worker endpoints.
+ * Implements Rule 8 (High Security Standards & Timing Defense) and Rule 52 (Secret Isolation).
+ * Uses crypto.timingSafeEqual to prevent side-channel timing attacks when verifying task secrets.
  *
  * ARCHITECTURAL GUIDANCE FOR MAINTAINERS:
- * - In production, strictly requires `CLOUD_TASKS_SECRET` to match the `x-cloud-tasks-secret` header.
- * - In development/testing (`NODE_ENV !== 'production'`), allows `'local-secret'` fallback for seamless developer workflows.
- * - Zero `any` or `any[]` typing.
+ * - In production, fail closed: strictly requires CLOUD_TASKS_SECRET to be configured and >= 16 chars.
+ * - In development (NODE_ENV !== 'production'), allows 'local-secret' fallback for emulator flows.
+ * - Never reintroduce hardcoded fallback secrets in source code.
  */
+
+import crypto from 'crypto';
 
 export function isAuthorizedCloudTaskRequest(headers: Headers): boolean {
   const configuredSecret = process.env.CLOUD_TASKS_SECRET;
@@ -16,20 +19,33 @@ export function isAuthorizedCloudTaskRequest(headers: Headers): boolean {
 
   // In development, allow local-secret if configured or as fallback
   if (isDev) {
-    if (incomingSecret === 'local-secret' || (configuredSecret && incomingSecret === configuredSecret)) {
+    if (incomingSecret === 'local-secret') {
       return true;
     }
-    // Also allow if running in local emulator test suite
-    if (!configuredSecret && incomingSecret === 'cc6442af1b849d2250ab115c340ac11b7635b0a27c47d98741659fb98c7f1aaf') {
+    if (configuredSecret && incomingSecret === configuredSecret) {
       return true;
+    }
+    if (!configuredSecret && !incomingSecret) {
+      return false;
     }
   }
 
-  // In production, fail-closed: must have CLOUD_TASKS_SECRET configured and matching
-  if (!configuredSecret) {
-    console.error('[CLOUD_TASKS_AUTH] CLOUD_TASKS_SECRET is not configured in production environment.');
+  // In production, fail-closed: must have CLOUD_TASKS_SECRET configured and >= 16 chars entropy
+  if (!configuredSecret || configuredSecret.length < 16) {
+    console.error('[CLOUD_TASKS_AUTH] CLOUD_TASKS_SECRET is unset or insecure (< 16 chars) in production.');
     return false;
   }
 
-  return incomingSecret === configuredSecret;
+  if (!incomingSecret) {
+    return false;
+  }
+
+  const incomingBuf = Buffer.from(incomingSecret, 'utf8');
+  const configuredBuf = Buffer.from(configuredSecret, 'utf8');
+
+  if (incomingBuf.length !== configuredBuf.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(incomingBuf, configuredBuf);
 }
