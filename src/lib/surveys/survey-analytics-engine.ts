@@ -138,6 +138,39 @@ const CHI_SQUARE_CRITICAL_05: Record<number, number> = {
   30: 43.773,
 };
 
+/**
+ * Calculates or approximates the critical value for Chi-Square distribution (p = 0.05 default).
+ * 
+ * ARCHITECTURAL GUIDANCE & CAUTION FOR MAINTAINERS:
+ * - Uses exact tabulated critical values for small degrees of freedom (df <= 30) when alpha = 0.05.
+ * - For df > 30 (or unmapped degrees of freedom), applies the high-precision Wilson-Hilferty transformation:
+ *     χ²_crit ≈ v * (1 - 2/(9v) + Z * sqrt(2/(9v)))^3
+ *   where Z = 1.6448536269514722 for one-tailed alpha = 0.05.
+ * - Protects against zero or negative degrees of freedom by returning 0.
+ * 
+ * @param degreesOfFreedom - Degrees of freedom (df = (rows - 1) * (cols - 1))
+ * @param alpha - Significance level (defaults to 0.05)
+ * @returns Chi-Square critical threshold rounded to 3 decimal places
+ */
+export function calculateChiSquareCriticalValue(degreesOfFreedom: number, alpha: number = 0.05): number {
+  if (degreesOfFreedom <= 0) {
+    return 0;
+  }
+
+  if (alpha === 0.05 && CHI_SQUARE_CRITICAL_05[degreesOfFreedom]) {
+    return CHI_SQUARE_CRITICAL_05[degreesOfFreedom];
+  }
+
+  // Wilson-Hilferty approximation for df > 30 (or unmapped df)
+  const Z = 1.6448536269514722;
+  const v = degreesOfFreedom;
+  const factor = 2 / (9 * v);
+  const term = 1 - factor + Z * Math.sqrt(factor);
+  const criticalValue = v * Math.pow(term, 3);
+
+  return Number(criticalValue.toFixed(3));
+}
+
 // ─── HELPER FUNCTIONS ───────────────────────────────────────────────────────
 
 export function isSurveyQuestion(element: SurveyElement): element is SurveyQuestion {
@@ -635,8 +668,7 @@ export function computeCrossTabulation(
   }
 
   const degreesOfFreedom = Math.max(1, (numRows - 1) * (numCols - 1));
-  // Exact critical value lookup for p < 0.05
-  const criticalValue = CHI_SQUARE_CRITICAL_05[degreesOfFreedom] ?? (degreesOfFreedom * 1.35 + 3.84);
+  const criticalValue = calculateChiSquareCriticalValue(degreesOfFreedom);
   const isSignificant = chiSquare > criticalValue;
 
   return {

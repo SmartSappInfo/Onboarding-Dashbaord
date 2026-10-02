@@ -6,6 +6,7 @@ import {
   computeRankingMetrics,
   computeSliderMetrics,
   computeCrossTabulation,
+  calculateChiSquareCriticalValue,
   computeResponseQualityMetrics,
 } from '../survey-analytics-engine';
 import type { SurveyQuestion, SurveyResponse } from '@/lib/types';
@@ -184,6 +185,22 @@ describe('Survey Mathematical Analytics Engine', () => {
       expect(res.rowTotals[1]).toBe(1); // 1 Teacher
       expect(res.colTotals[0]).toBe(2); // 2 Satisfied
       expect(res.colTotals[1]).toBe(2); // 2 Dissatisfied
+    });
+
+    it('computes high-precision Wilson-Hilferty Chi-Square critical threshold for df > 30', () => {
+      // df = 40: Critical value at alpha=0.05 is approximately 55.76
+      const df40Critical = calculateChiSquareCriticalValue(40, 0.05);
+      expect(df40Critical).toBeGreaterThanOrEqual(55.6);
+      expect(df40Critical).toBeLessThanOrEqual(55.9);
+
+      // df = 60: Critical value at alpha=0.05 is approximately 79.08
+      const df60Critical = calculateChiSquareCriticalValue(60, 0.05);
+      expect(df60Critical).toBeGreaterThanOrEqual(78.9);
+      expect(df60Critical).toBeLessThanOrEqual(79.3);
+
+      // df <= 30 lookup table verification
+      expect(calculateChiSquareCriticalValue(1, 0.05)).toBe(3.841);
+      expect(calculateChiSquareCriticalValue(10, 0.05)).toBe(18.307);
     });
   });
 
