@@ -5,13 +5,12 @@
  *
  * CAUTION FOR FUTURE MAINTAINERS:
  * - Serves as the primary operational workspace landing page.
- * - Prioritizes operational action over static analytics.
+ * - Powered by SSOT useWorkspaceSchedule hook unifying bookings and group sessions.
+ * - Zero dummy data: every KPI, card, and stream binds to real schedule state.
  * - Zero 'any' policy strictly enforced.
  */
 
 import * as React from 'react';
-import { collection, query, where, orderBy } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -28,56 +27,33 @@ import { NeedsAttentionPanel } from './components/NeedsAttentionPanel';
 import { UpcomingSessionsCard } from './components/UpcomingSessionsCard';
 import { BookingDetailDrawer } from './bookings/components/BookingDetailDrawer';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
-import type { Booking } from '@/lib/meetings/types';
+import { useWorkspaceSchedule } from '@/lib/meetings/hooks/use-workspace-schedule';
 
 export default function MeetingsHomeClient() {
-  const firestore = useFirestore();
   const { activeWorkspaceId } = useWorkspace();
+  const [selectedBookingId, setSelectedBookingId] = React.useState<string | null>(null);
 
-  const [selectedBooking, setSelectedBooking] = React.useState<Booking | null>(null);
+  // Unified reactive schedule stream & live KPI engine
+  const {
+    isLoading,
+    rawBookings,
+    todayEvents,
+    upcomingWeekEvents,
+    nextUpcomingSession,
+    attendanceRate,
+    attendanceSubtitle,
+    unconfirmedBookings,
+    sessionsMissingLink,
+    isCalendarConnected,
+    connectedCalendarCount,
+    totalAttentionCount,
+  } = useWorkspaceSchedule(activeWorkspaceId);
 
-  // Query all bookings for active workspace
-  const bookingsQuery = useMemoFirebase(() => {
-    if (!firestore || !activeWorkspaceId) return null;
-    return query(
-      collection(firestore, 'bookings'),
-      where('workspaceId', '==', activeWorkspaceId),
-      orderBy('startAt', 'asc')
-    );
-  }, [firestore, activeWorkspaceId]);
-
-  const { data: bookings, isLoading } = useCollection<Booking>(bookingsQuery);
-
-  // Compute operational statistics
-  const todayBookings = React.useMemo(() => {
-    if (!bookings) return [];
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString();
-    return bookings.filter(b => b.startAt >= startOfToday && b.startAt <= endOfToday);
-  }, [bookings]);
-
-  const upcomingThisWeek = React.useMemo(() => {
-    if (!bookings) return [];
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-    const endOfWeek = new Date(now.getTime() + 7 * 86400000).toISOString();
-    return bookings.filter(b => b.startAt >= startOfToday && b.startAt <= endOfWeek && b.status !== 'cancelled');
-  }, [bookings]);
-
-  const attendanceRate = React.useMemo(() => {
-    if (!bookings || bookings.length === 0) return 100;
-    const completed = bookings.filter(b => b.status === 'completed').length;
-    const noShows = bookings.filter(b => b.status === 'no_show').length;
-    const total = completed + noShows;
-    if (total === 0) return 100;
-    return Math.round((completed / total) * 100);
-  }, [bookings]);
-
-  const unconfirmedCount = React.useMemo(() => {
-    if (!bookings) return 0;
-    return bookings.filter(b => b.status === 'pending').length;
-  }, [bookings]);
+  // Resolve selected booking for the detail slide-over drawer
+  const selectedBooking = React.useMemo(() => {
+    if (!selectedBookingId) return null;
+    return rawBookings.find(b => b.id === selectedBookingId) || null;
+  }, [selectedBookingId, rawBookings]);
 
   const currentDateDisplay = React.useMemo(() => {
     return new Date().toLocaleDateString('en-US', {
@@ -104,7 +80,7 @@ export default function MeetingsHomeClient() {
 
         {/* Operational KPI Row (4 Cards) */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Card 1: Today's Meetings */}
+          {/* Card 1: Today's Schedule */}
           <Card className="rounded-3xl border border-border/80 shadow-xs p-5 space-y-3 bg-card hover:shadow-sm transition-shadow">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
@@ -116,15 +92,25 @@ export default function MeetingsHomeClient() {
             </div>
             <div className="space-y-0.5">
               <div className="text-3xl font-black tracking-tight text-foreground">
-                {isLoading ? <Skeleton className="h-8 w-12 rounded-lg" /> : todayBookings.length}
+                {isLoading ? <Skeleton className="h-8 w-12 rounded-lg" /> : todayEvents.length}
               </div>
-              <p className="text-[11px] text-muted-foreground flex items-center gap-1 font-medium text-emerald-600">
-                <TrendingUp className="w-3 h-3" /> Scheduled for today
+              <p className="text-[11px] text-muted-foreground flex items-center gap-1 font-medium truncate">
+                {todayEvents.length === 0 ? (
+                  'Clear schedule today'
+                ) : (
+                  <>
+                    <TrendingUp className="w-3 h-3 text-emerald-600 shrink-0" />
+                    <span className="text-emerald-600 font-semibold">{todayEvents.length} scheduled</span>
+                    <span className="text-muted-foreground">
+                      ({todayEvents.filter(e => e.sourceType === 'booking').length} 1:1, {todayEvents.filter(e => e.sourceType === 'meeting').length} group)
+                    </span>
+                  </>
+                )}
               </p>
             </div>
           </Card>
 
-          {/* Card 2: Upcoming Bookings */}
+          {/* Card 2: Upcoming This Week */}
           <Card className="rounded-3xl border border-border/80 shadow-xs p-5 space-y-3 bg-card hover:shadow-sm transition-shadow">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
@@ -136,7 +122,7 @@ export default function MeetingsHomeClient() {
             </div>
             <div className="space-y-0.5">
               <div className="text-3xl font-black tracking-tight text-foreground">
-                {isLoading ? <Skeleton className="h-8 w-12 rounded-lg" /> : upcomingThisWeek.length}
+                {isLoading ? <Skeleton className="h-8 w-12 rounded-lg" /> : upcomingWeekEvents.length}
               </div>
               <p className="text-[11px] text-muted-foreground font-medium">
                 Next 7 days horizon
@@ -158,28 +144,62 @@ export default function MeetingsHomeClient() {
               <div className="text-3xl font-black tracking-tight text-emerald-600">
                 {isLoading ? <Skeleton className="h-8 w-16 rounded-lg" /> : `${attendanceRate}%`}
               </div>
-              <p className="text-[11px] text-muted-foreground font-medium text-emerald-600 flex items-center gap-1">
-                <TrendingUp className="w-3 h-3" /> +4.2% vs last month
+              <p className="text-[11px] text-muted-foreground font-medium truncate">
+                {attendanceSubtitle}
               </p>
             </div>
           </Card>
 
           {/* Card 4: Needs Attention */}
-          <Card className="rounded-3xl border border-amber-200/50 bg-amber-50/10 shadow-xs p-5 space-y-3 hover:shadow-sm transition-shadow">
+          <Card
+            className={`rounded-3xl shadow-xs p-5 space-y-3 transition-shadow ${
+              totalAttentionCount === 0
+                ? 'border border-emerald-500/20 bg-emerald-50/10 dark:bg-emerald-950/10'
+                : 'border border-amber-200/50 bg-amber-50/10 dark:bg-amber-950/10'
+            }`}
+          >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-amber-800 dark:text-amber-400 uppercase tracking-wider">
+              <span
+                className={`text-xs font-bold uppercase tracking-wider ${
+                  totalAttentionCount === 0
+                    ? 'text-emerald-800 dark:text-emerald-400'
+                    : 'text-amber-800 dark:text-amber-400'
+                }`}
+              >
                 Needs Attention
               </span>
-              <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center">
-                <AlertTriangle className="w-4 h-4" />
+              <div
+                className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                  totalAttentionCount === 0
+                    ? 'bg-emerald-500/10 text-emerald-600'
+                    : 'bg-amber-500/10 text-amber-600'
+                }`}
+              >
+                {totalAttentionCount === 0 ? (
+                  <CheckCircle2 className="w-4 h-4" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4" />
+                )}
               </div>
             </div>
             <div className="space-y-0.5">
-              <div className="text-3xl font-black tracking-tight text-amber-600">
-                3
+              <div
+                className={`text-3xl font-black tracking-tight ${
+                  totalAttentionCount === 0 ? 'text-emerald-600' : 'text-amber-600'
+                }`}
+              >
+                {isLoading ? <Skeleton className="h-8 w-12 rounded-lg" /> : totalAttentionCount}
               </div>
-              <p className="text-[11px] text-amber-700 dark:text-amber-400 font-medium">
-                Actionable follow-ups
+              <p
+                className={`text-[11px] font-medium truncate ${
+                  totalAttentionCount === 0
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-amber-700 dark:text-amber-400'
+                }`}
+              >
+                {totalAttentionCount === 0
+                  ? 'All systems operational'
+                  : `${totalAttentionCount} actionable item${totalAttentionCount === 1 ? '' : 's'}`}
               </p>
             </div>
           </Card>
@@ -189,25 +209,27 @@ export default function MeetingsHomeClient() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Left Column: My Day Timeline (Span 7) */}
           <div className="lg:col-span-7 space-y-6">
-            {isLoading ? (
-              <Skeleton className="h-96 w-full rounded-3xl" />
-            ) : (
-              <MyDayTimeline
-                bookings={todayBookings}
-                onOpenBookingDetail={bkg => setSelectedBooking(bkg)}
-              />
-            )}
+            <MyDayTimeline
+              items={todayEvents}
+              isLoading={isLoading}
+              onOpenBookingDetail={id => setSelectedBookingId(id)}
+            />
           </div>
 
           {/* Right Column: Needs Attention & Upcoming Sessions (Span 5) */}
           <div className="lg:col-span-5 space-y-6">
             <NeedsAttentionPanel
-              unconfirmedCount={unconfirmedCount}
-              overdueTasksCount={2}
-              unresolvedHighIntentCount={1}
+              unconfirmedBookings={unconfirmedBookings}
+              sessionsMissingLink={sessionsMissingLink}
+              isCalendarConnected={isCalendarConnected}
+              connectedCount={connectedCalendarCount}
+              isLoading={isLoading}
             />
 
-            <UpcomingSessionsCard />
+            <UpcomingSessionsCard
+              session={nextUpcomingSession}
+              isLoading={isLoading}
+            />
           </div>
         </div>
       </div>
@@ -216,7 +238,7 @@ export default function MeetingsHomeClient() {
       <BookingDetailDrawer
         booking={selectedBooking}
         open={!!selectedBooking}
-        onOpenChange={open => !open && setSelectedBooking(null)}
+        onOpenChange={open => !open && setSelectedBookingId(null)}
       />
     </>
   );
