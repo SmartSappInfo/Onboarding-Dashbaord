@@ -23,6 +23,7 @@ import {
   MessageSquare,
   Loader2 
 } from 'lucide-react';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { format } from 'date-fns';
 import type { Meeting } from '@/lib/types';
 
@@ -141,14 +142,18 @@ export function RecipientLogDrawer({
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <SheetContent className="sm:max-w-xl flex flex-col h-full bg-background overflow-hidden p-0 border-l">
-        <SheetHeader className="p-6 pb-4 border-b">
-          <SheetTitle className="text-xl font-bold tracking-tight">
-            {getReminderLabel(reminderType)}
-          </SheetTitle>
-          <SheetDescription className="text-sm">
+        {/* Header: Demarcated per theme.md §8 and AGENTS.md */}
+        <div className="min-h-[52px] sm:min-h-[56px] border-b border-border/80 bg-muted/20 px-6 py-3.5 sm:py-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <SheetTitle className="text-base sm:text-lg font-bold tracking-tight">
+              {getReminderLabel(reminderType)}
+            </SheetTitle>
+            <CardInfoTooltip text="List of recipients and delivery status logs for this scheduled notification slot." />
+          </div>
+          <SheetDescription className="sr-only">
             List of recipients and delivery status logs for this scheduled notification slot.
           </SheetDescription>
-        </SheetHeader>
+        </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {error && (
@@ -215,7 +220,7 @@ export function RecipientLogDrawer({
                       size="icon" 
                       variant="ghost" 
                       onClick={() => onPreviewMessage(log.id)}
-                      className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity rounded-lg h-8 w-8 hover:bg-muted"
+                      className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity rounded-xl min-h-[44px] sm:min-h-[36px] min-w-[36px] hover:bg-muted active:scale-[0.97]"
                       title="Preview personalized message"
                     >
                       <Eye className="h-4 w-4" />
@@ -231,7 +236,7 @@ export function RecipientLogDrawer({
                     size="sm" 
                     onClick={loadMore} 
                     disabled={isLoading}
-                    className="w-full sm:w-auto gap-2"
+                    className="w-full sm:w-auto min-h-[44px] rounded-xl gap-2 active:scale-[0.97]"
                   >
                     {isLoading && <Loader2 className="h-3 w-3 animate-spin" />}
                     Load More Recipients
@@ -240,6 +245,18 @@ export function RecipientLogDrawer({
               )}
             </div>
           )}
+        </div>
+
+        {/* Demarcated Footer per theme.md §8 */}
+        <div className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onClose}
+            className="rounded-xl min-h-[44px] sm:min-h-[36px] text-xs font-semibold active:scale-[0.97] px-4"
+          >
+            Close
+          </Button>
         </div>
       </SheetContent>
     </Sheet>

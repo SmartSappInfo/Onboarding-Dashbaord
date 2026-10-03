@@ -88,10 +88,11 @@ export default function BookingConfirmedClient({
 
   return (
     <div className="min-h-screen bg-background flex flex-col justify-center items-center p-4 sm:p-6 lg:p-12">
-      <Card className="w-full max-w-xl rounded-3xl border border-border shadow-xl overflow-hidden bg-card text-center">
+      {/* Geometry: Standardized to sm:rounded-2xl per theme.md §8 */}
+      <Card className="w-full max-w-xl sm:rounded-2xl border border-border/80 shadow-2xl overflow-hidden bg-card text-center">
         {/* Top Header Banner */}
-        <div className="p-8 pb-6 bg-primary/5 flex flex-col items-center space-y-3">
-          <div className="w-16 h-16 rounded-3xl bg-green-500/15 text-green-600 dark:text-green-400 flex items-center justify-center shadow-inner">
+        <div className="p-8 pb-6 bg-primary/5 flex flex-col items-center space-y-3 border-b border-border/60">
+          <div className="w-16 h-16 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-inner">
             <CheckCircle2 className="w-8 h-8" />
           </div>
           <div>
@@ -104,7 +105,7 @@ export default function BookingConfirmedClient({
 
         <CardContent className="p-6 sm:p-8 space-y-6 text-left">
           {/* Summary Box */}
-          <div className="p-5 rounded-2xl border border-border bg-card/60 space-y-4">
+          <div className="p-5 rounded-xl border border-border/80 bg-muted/20 space-y-4">
             <div className="space-y-1">
               <h2 className="text-lg font-bold text-foreground">{booking.eventTypeName}</h2>
               <p className="text-xs text-muted-foreground flex items-center gap-1.5 font-medium">
@@ -170,22 +171,22 @@ export default function BookingConfirmedClient({
             </div>
           </div>
 
-          {/* Self-Service Reschedule & Cancel Links */}
-          <div className="border-t border-border pt-4 flex items-center justify-between text-xs text-muted-foreground">
+          {/* Self-Service Reschedule & Cancel Links with >=44px Touch Targets */}
+          <div className="border-t border-border/60 pt-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
             <span>Need to make changes?</span>
             <div className="flex items-center gap-3">
               <Link
                 href={`/book/${slug}/reschedule/${booking.id}${manageToken ? `?token=${manageToken}` : ''}`}
-                className="inline-flex items-center gap-1 hover:text-foreground font-medium transition-colors"
+                className="min-h-[44px] inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg hover:text-foreground hover:bg-muted/50 font-medium transition-all active:scale-[0.97]"
               >
-                <RotateCcw className="w-3 h-3" /> Reschedule
+                <RotateCcw className="w-3.5 h-3.5" /> Reschedule
               </Link>
-              <span>•</span>
+              <span className="text-muted-foreground/40">•</span>
               <Link
                 href={`/book/${slug}/cancel/${booking.id}${manageToken ? `?token=${manageToken}` : ''}`}
-                className="inline-flex items-center gap-1 hover:text-destructive font-medium transition-colors"
+                className="min-h-[44px] inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg hover:text-destructive hover:bg-destructive/10 font-medium transition-all active:scale-[0.97]"
               >
-                <XCircle className="w-3 h-3" /> Cancel
+                <XCircle className="w-3.5 h-3.5" /> Cancel
               </Link>
             </div>
           </div>

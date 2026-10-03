@@ -101,9 +101,9 @@ export function PublicPollClient({ initialPoll, initialVotes: _initialVotes = []
   return (
     <div className="min-h-screen bg-gradient-to-b from-muted/30 to-background flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-xl mx-auto w-full space-y-6">
-        {/* Header Card */}
-        <Card className="rounded-3xl border shadow-sm overflow-hidden">
-          <CardHeader className="p-6 bg-gradient-to-r from-primary/5 via-primary/10 to-transparent border-b">
+        {/* Header Card: Standardized to sm:rounded-2xl per theme.md §8 */}
+        <Card className="sm:rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl overflow-hidden">
+          <CardHeader className="p-6 bg-gradient-to-r from-primary/5 via-primary/10 to-transparent border-b border-border/60">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
@@ -120,7 +120,7 @@ export function PublicPollClient({ initialPoll, initialVotes: _initialVotes = []
               <Badge
                 variant="secondary"
                 className={`text-[10px] uppercase font-bold ${
-                  poll.status === 'open' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-muted text-muted-foreground'
+                  poll.status === 'open' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-muted text-muted-foreground'
                 }`}
               >
                 {poll.status}
@@ -128,7 +128,7 @@ export function PublicPollClient({ initialPoll, initialVotes: _initialVotes = []
             </div>
 
             {poll.description && (
-              <p className="text-xs text-muted-foreground mt-3 pt-3 border-t">
+              <p className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border/60">
                 {poll.description}
               </p>
             )}
@@ -137,7 +137,7 @@ export function PublicPollClient({ initialPoll, initialVotes: _initialVotes = []
           <CardContent className="p-6">
             {isSubmitted ? (
               <div className="text-center py-8 space-y-4">
-                <div className="h-14 w-14 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center mx-auto">
+                <div className="h-14 w-14 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
                   <CheckCircle2 className="h-8 w-8" />
                 </div>
                 <h3 className="text-base font-bold text-foreground">Your availability has been recorded!</h3>
@@ -150,42 +150,42 @@ export function PublicPollClient({ initialPoll, initialVotes: _initialVotes = []
                 {/* Voter Info */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold">Your Name *</Label>
+                    <Label className="text-xs font-semibold text-foreground">Your Name *</Label>
                     <Input
                       required
                       value={voterName}
                       onChange={e => setVoterName(e.target.value)}
                       placeholder="Jane Doe"
-                      className="rounded-xl min-h-[44px] text-xs"
+                      className="rounded-xl min-h-[44px] text-xs bg-background"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold">Your Email *</Label>
+                    <Label className="text-xs font-semibold text-foreground">Your Email *</Label>
                     <Input
                       type="email"
                       required
                       value={voterEmail}
                       onChange={e => setVoterEmail(e.target.value)}
                       placeholder="jane@example.com"
-                      className="rounded-xl min-h-[44px] text-xs"
+                      className="rounded-xl min-h-[44px] text-xs bg-background"
                     />
                   </div>
                 </div>
 
                 {/* Candidate Slots Matrix */}
-                <div className="space-y-3 pt-2 border-t">
+                <div className="space-y-3 pt-2 border-t border-border/60">
                   <Label className="text-xs font-bold uppercase text-muted-foreground tracking-wider">
                     Select Which Times Work For You
                   </Label>
 
-                  <div className="space-y-2">
+                  <div className="space-y-2.5">
                     {poll.proposedSlots.map(slot => {
                       const currentChoice = slotVotes[slot.id] || 'yes';
 
                       return (
                         <div
                           key={slot.id}
-                          className="p-3.5 rounded-2xl border bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all"
+                          className="p-3.5 rounded-xl border border-border/80 bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all"
                         >
                           <div className="space-y-0.5">
                             <span className="text-xs font-bold text-foreground block">
@@ -197,12 +197,14 @@ export function PublicPollClient({ initialPoll, initialVotes: _initialVotes = []
                             </span>
                           </div>
 
-                          {/* Choice Triad */}
-                          <div className="grid grid-cols-3 gap-1.5 shrink-0">
+                          {/* Choice Triad with >=44px touch targets and ARIA states per Rule 7 */}
+                          <div className="grid grid-cols-3 gap-2 shrink-0">
                             <button
                               type="button"
                               onClick={() => handleVoteChoice(slot.id, 'yes')}
-                              className={`h-9 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition-all active:scale-[0.97] ${
+                              aria-pressed={currentChoice === 'yes'}
+                              aria-label={`Vote Yes for ${format(new Date(slot.startAt), 'p')}`}
+                              className={`min-h-[44px] sm:min-h-[38px] px-3.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-[0.97] ${
                                 currentChoice === 'yes'
                                   ? 'bg-emerald-600 text-white shadow-sm'
                                   : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -215,7 +217,9 @@ export function PublicPollClient({ initialPoll, initialVotes: _initialVotes = []
                             <button
                               type="button"
                               onClick={() => handleVoteChoice(slot.id, 'maybe')}
-                              className={`h-9 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition-all active:scale-[0.97] ${
+                              aria-pressed={currentChoice === 'maybe'}
+                              aria-label={`Vote Maybe for ${format(new Date(slot.startAt), 'p')}`}
+                              className={`min-h-[44px] sm:min-h-[38px] px-3.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-[0.97] ${
                                 currentChoice === 'maybe'
                                   ? 'bg-amber-600 text-white shadow-sm'
                                   : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -228,7 +232,9 @@ export function PublicPollClient({ initialPoll, initialVotes: _initialVotes = []
                             <button
                               type="button"
                               onClick={() => handleVoteChoice(slot.id, 'no')}
-                              className={`h-9 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition-all active:scale-[0.97] ${
+                              aria-pressed={currentChoice === 'no'}
+                              aria-label={`Vote No for ${format(new Date(slot.startAt), 'p')}`}
+                              className={`min-h-[44px] sm:min-h-[38px] px-3.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-[0.97] ${
                                 currentChoice === 'no'
                                   ? 'bg-rose-600 text-white shadow-sm'
                                   : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -244,20 +250,20 @@ export function PublicPollClient({ initialPoll, initialVotes: _initialVotes = []
                   </div>
                 </div>
 
-                <div className="space-y-1.5 pt-2 border-t">
-                  <Label className="text-xs font-semibold">Optional Note to Host</Label>
+                <div className="space-y-1.5 pt-2 border-t border-border/60">
+                  <Label className="text-xs font-semibold text-foreground">Optional Note to Host</Label>
                   <Textarea
                     value={comments}
                     onChange={e => setComments(e.target.value)}
                     placeholder="Any comments, constraints or preferred alternatives..."
-                    className="rounded-xl min-h-[60px] text-xs"
+                    className="rounded-xl min-h-[60px] text-xs bg-background"
                   />
                 </div>
 
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full rounded-2xl min-h-[48px] text-sm font-bold gap-2 shadow-sm active:scale-[0.97]"
+                  className="w-full rounded-xl min-h-[48px] text-sm font-bold gap-2 shadow-sm active:scale-[0.97] transition-all"
                 >
                   <Send className="h-4 w-4" />
                   {isSubmitting ? 'Submitting Vote...' : 'Submit Availability'}

@@ -44,7 +44,7 @@ import {
 } from 'lucide-react';
 import ShareEmbedDialog from '@/components/share-embed-dialog';
 
-import type { WorkspaceEntity, Meeting, MeetingType, MeetingRegistrationField, SeoConfig } from '@/lib/types';
+import type { WorkspaceEntity, Meeting, MeetingType, MeetingRegistrationField, SeoConfig, MeetingMessagingConfig, MeetingInvitationSlot } from '@/lib/types';
 import { SeoSettingsCard } from '@/components/seo/SeoSettingsCard';
 import { MEETING_TYPES, getDefaultMeetingMessagingConfig } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -177,7 +177,7 @@ const formSchema = z.object({
   })).default([]),
 
   // Messaging Config (Phase 5)
-  messagingConfig: z.any().optional(),
+  messagingConfig: z.custom<MeetingMessagingConfig>().optional(),
 
   // Webhook Config (Phase 8)
   registrationWebhookEnabled: z.boolean().default(false),
@@ -334,9 +334,13 @@ export default function EditMeetingPage() {
   React.useEffect(() => {
     // Wait until the bound entity (if any) is resolved before seeding the form.
     if (meeting && !hasInitialized && (!meeting.entityId || selectedEntity)) {
-      const selectedType = MEETING_TYPES.find(t => t.id === meeting.type?.id) ||
-                          MEETING_TYPES.find(t => t.slug === (meeting.type as any)?.slug) ||
-                          MEETING_TYPES.find(t => t.id === (meeting as any).type) ||
+      const meetingTypeVal = meeting.type as unknown;
+      const meetingTypeObj = typeof meetingTypeVal === 'object' && meetingTypeVal !== null ? (meetingTypeVal as { id?: string; slug?: string }) : null;
+      const meetingTypeStr = typeof meetingTypeVal === 'string' ? meetingTypeVal : undefined;
+
+      const selectedType = MEETING_TYPES.find(t => t.id === meetingTypeObj?.id) ||
+                          MEETING_TYPES.find(t => t.slug === meetingTypeObj?.slug) ||
+                          MEETING_TYPES.find(t => t.id === meetingTypeStr) ||
                           MEETING_TYPES[0];
 
       form.reset({
@@ -384,9 +388,28 @@ export default function EditMeetingPage() {
 
         // Phase 4: Lead Capture
         createEntity: meeting.createEntity || false,
-        entityMapping: (meeting.entityMapping || {}) as any,
+        entityMapping: {
+          nameField: meeting.entityMapping?.nameField || meeting.entityMapping?.entityNameFieldKey || '',
+          primaryContactField: meeting.entityMapping?.primaryContactField || meeting.entityMapping?.contactNameFieldKey || '',
+          emailField: meeting.entityMapping?.emailField || meeting.entityMapping?.contactEmailFieldKey || '',
+          phoneField: meeting.entityMapping?.phoneField || meeting.entityMapping?.contactPhoneFieldKey || '',
+          additionalMappings: (meeting.entityMapping?.additionalMappings || []).map(m => ({
+            sourceField: m.sourceField || m.fieldKey || '',
+            targetProperty: m.targetProperty || m.targetField || '',
+          })),
+        },
         autoTags: meeting.autoTags || [],
-        facilitators: (meeting.facilitators || []) as any,
+        facilitators: (meeting.facilitators || []).map(f => ({
+          id: f.id,
+          type: f.type,
+          userId: f.userId,
+          name: f.name,
+          role: f.role,
+          email: f.email,
+          phone: f.phone,
+          image: f.image,
+          joinLink: f.joinLink || '',
+        })),
 
         // Webhook Config
         registrationWebhookEnabled: meeting.messagingConfig?.registrationWebhookEnabled || false,
@@ -415,7 +438,7 @@ export default function EditMeetingPage() {
             const diffMs = newTime - oldTime;
             
             if (diffMs !== 0 && data.messagingConfig?.invitationSeries) {
-                const adjustedSeries = data.messagingConfig.invitationSeries.map((slot: any) => {
+                const adjustedSeries = data.messagingConfig.invitationSeries.map((slot: MeetingInvitationSlot) => {
                     if (slot.id === 'initial') {
                         const updated = { ...slot };
                         if (slot.emailScheduledDate) {
@@ -451,7 +474,7 @@ export default function EditMeetingPage() {
             return;
         }
 
-        const meetingData = {
+        const meetingData: Omit<Meeting, 'id'> = {
             title: data.title,
             entityId: data.entity?.entityId || '', 
             entityName: data.entity?.displayName || data.brandingName || data.heroTitle || 'Standalone Session',
@@ -510,7 +533,7 @@ export default function EditMeetingPage() {
 
             // Phase 5: Messaging Config
             messagingConfig: {
-              ...(data.messagingConfig || {}),
+              ...(data.messagingConfig || getDefaultMeetingMessagingConfig()),
               registrationWebhookEnabled: data.registrationWebhookEnabled || false,
               registrationWebhookUrl: data.registrationWebhookUrl || '',
               registrationWebhookSecret: data.registrationWebhookSecret || '',
@@ -519,15 +542,6 @@ export default function EditMeetingPage() {
             // Phase 7: Publish Status
             publishStatus: data.publishStatus || 'draft',
         };
-
-        // Clean up legacy properties by removing them from payload if present
-        delete (meetingData as any).adminAlertsEnabled;
-        delete (meetingData as any).adminAlertChannel;
-        delete (meetingData as any).adminAlertNotifyManager;
-        delete (meetingData as any).adminAlertSpecificUserIds;
-        delete (meetingData as any).adminAlertEmailTemplateId;
-        delete (meetingData as any).adminAlertSmsTemplateId;
-        delete (meetingData as any).enabledReminders;
 
         const docRef = doc(firestore, 'meetings', meetingId);
         
@@ -550,9 +564,14 @@ export default function EditMeetingPage() {
             ? new Date(meeting.meetingTime).getTime() !== data.meetingTime.getTime()
             : false;
 
+        const meetingRecord: Meeting = {
+            id: meetingId,
+            ...meetingData,
+        };
+
         // Consolidated robust scheduling of all meeting alerts, reminders and invitations
         rescheduleRemindersForMeeting(
-            { id: meetingId, ...meetingData } as any,
+            meetingRecord,
             activeOrganizationId,
             meetingTimeChanged
         ).catch(err => console.warn("Reminder rescheduling deferred:", err.message));
@@ -703,12 +722,13 @@ export default function EditMeetingPage() {
                 <button
                   type="button"
                   onClick={() => setCurrentStep(index)}
- className={cn(
-                    "flex-1 flex items-center gap-3 p-3 rounded-xl transition-all duration-300 text-left min-w-[140px]",
+                  className={cn(
+                    "flex-1 flex items-center gap-3 p-3 rounded-xl transition-all duration-300 text-left min-w-[140px] min-h-[44px] active:scale-[0.98]",
                     isActive && "bg-primary/10 ring-1 ring-primary/20 shadow-sm",
                     isCompleted && "bg-emerald-50 dark:bg-emerald-950/20",
                     !isActive && !isCompleted && "hover:bg-muted/50 opacity-70"
                   )}
+                  aria-current={isActive ? 'step' : undefined}
                 >
  <div className={cn(
                     "p-2 rounded-lg shrink-0 transition-colors",

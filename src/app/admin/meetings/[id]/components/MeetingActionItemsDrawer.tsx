@@ -18,6 +18,7 @@ import {
   AlertCircle,
   Send,
 } from 'lucide-react';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { useToast } from '@/hooks/use-toast';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import {
@@ -102,101 +103,119 @@ export function MeetingActionItemsDrawer({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl rounded-3xl p-6">
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-lg font-bold flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              AI Action Items & Commitments
-            </DialogTitle>
+      {/* Surface & Geometry: Conforms strictly to theme.md §8 Standardized Modal Architecture */}
+      <DialogContent className="max-w-xl border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl p-0 overflow-hidden flex flex-col max-h-[85vh]">
+        <DialogHeader demarcated>
+          <div className="flex items-center justify-between gap-3 w-full">
+            <div className="flex items-center gap-2">
+              <DialogTitle className="text-lg font-bold flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                AI Action Items & Commitments
+              </DialogTitle>
+              <CardInfoTooltip text="Review commitments, buying signals, and objections identified by AI before syncing into CRM tasks." />
+            </div>
             {transcriptText && items.length === 0 && (
               <Button
                 size="sm"
                 onClick={handleExtract}
                 disabled={isExtracting}
-                className="rounded-xl min-h-[36px] text-xs gap-1.5 active:scale-[0.97]"
+                className="rounded-xl min-h-[38px] text-xs gap-1.5 active:scale-[0.97]"
               >
                 <Sparkles className="h-3.5 w-3.5" />
                 {isExtracting ? 'Extracting...' : 'Extract from Transcript'}
               </Button>
             )}
           </div>
-          <DialogDescription className="text-xs">
+          <DialogDescription className="sr-only">
             Review commitments, buying signals, and objections identified by AI before syncing into CRM tasks.
           </DialogDescription>
         </DialogHeader>
 
-        {isLoading ? (
-          <div className="space-y-3 py-4">
-            <Skeleton className="h-16 rounded-2xl" />
-            <Skeleton className="h-16 rounded-2xl" />
-          </div>
-        ) : items.length === 0 ? (
-          <div className="py-10 text-center space-y-2">
-            <CheckCircle2 className="h-10 w-10 mx-auto text-muted-foreground opacity-30" />
-            <p className="text-xs text-muted-foreground">
-              {transcriptText
-                ? 'Click "Extract from Transcript" to detect tasks and buying signals.'
-                : 'No action items or commitments found for this meeting yet.'}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3 max-h-[420px] overflow-y-auto py-2 pr-1">
-            {items.map(item => (
-              <div
-                key={item.id}
-                className="p-4 rounded-2xl border bg-card/60 space-y-2.5 transition-all hover:border-primary/40"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-xs font-semibold text-foreground leading-relaxed">
-                    {item.title}
-                  </p>
-                  <Badge
-                    variant={item.priority === 'high' ? 'destructive' : 'secondary'}
-                    className="text-[10px] shrink-0 uppercase"
-                  >
-                    {item.priority}
-                  </Badge>
-                </div>
-
-                {item.buyingSignalDetected && (
-                  <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 font-medium bg-emerald-500/10 px-2.5 py-1 rounded-xl w-fit">
-                    <TrendingUp className="h-3.5 w-3.5" />
-                    <span>Signal: {item.buyingSignalDetected}</span>
-                  </div>
-                )}
-
-                {item.objectionDetected && (
-                  <div className="flex items-center gap-1.5 text-[11px] text-amber-600 font-medium bg-amber-500/10 px-2.5 py-1 rounded-xl w-fit">
-                    <AlertCircle className="h-3.5 w-3.5" />
-                    <span>Objection: {item.objectionDetected}</span>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between pt-2 border-t text-[11px]">
-                  <span className="text-muted-foreground">
-                    {item.syncedToCRM ? 'Synced to CRM' : 'Pending host approval'}
-                  </span>
-                  {!item.syncedToCRM ? (
-                    <Button
-                      size="sm"
-                      onClick={() => handleApproveAndSync(item.id)}
-                      className="rounded-xl h-7 text-[11px] gap-1 active:scale-[0.97]"
+        <div className="px-6 py-4 flex-1 overflow-y-auto">
+          {isLoading ? (
+            <div className="space-y-3 py-4">
+              <Skeleton className="h-16 rounded-2xl" />
+              <Skeleton className="h-16 rounded-2xl" />
+            </div>
+          ) : items.length === 0 ? (
+            <div className="py-10 text-center space-y-2">
+              <CheckCircle2 className="h-10 w-10 mx-auto text-muted-foreground opacity-30" />
+              <p className="text-xs text-muted-foreground">
+                {transcriptText
+                  ? 'Click "Extract from Transcript" to detect tasks and buying signals.'
+                  : 'No action items or commitments found for this meeting yet.'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3 pr-1">
+              {items.map(item => (
+                <div
+                  key={item.id}
+                  className="p-4 rounded-xl border border-border/80 bg-muted/20 space-y-2.5 transition-all hover:border-primary/40"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-xs font-semibold text-foreground leading-relaxed">
+                      {item.title}
+                    </p>
+                    <Badge
+                      variant={item.priority === 'high' ? 'destructive' : 'secondary'}
+                      className="text-[10px] shrink-0 uppercase"
                     >
-                      <Send className="h-3 w-3" />
-                      Approve & Sync Task
-                    </Button>
-                  ) : (
-                    <Badge variant="outline" className="text-[10px] gap-1 text-emerald-600 border-emerald-500/30">
-                      <CheckCircle2 className="h-3 w-3" />
-                      Approved
+                      {item.priority}
                     </Badge>
+                  </div>
+
+                  {item.buyingSignalDetected && (
+                    <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-500/10 px-2.5 py-1 rounded-xl w-fit">
+                      <TrendingUp className="h-3.5 w-3.5" />
+                      <span>Signal: {item.buyingSignalDetected}</span>
+                    </div>
                   )}
+
+                  {item.objectionDetected && (
+                    <div className="flex items-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400 font-medium bg-amber-500/10 px-2.5 py-1 rounded-xl w-fit">
+                      <AlertCircle className="h-3.5 w-3.5" />
+                      <span>Objection: {item.objectionDetected}</span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between pt-2 border-t border-border/60 text-[11px]">
+                    <span className="text-muted-foreground">
+                      {item.syncedToCRM ? 'Synced to CRM' : 'Pending host approval'}
+                    </span>
+                    {!item.syncedToCRM ? (
+                      <Button
+                        size="sm"
+                        onClick={() => handleApproveAndSync(item.id)}
+                        className="rounded-xl min-h-[36px] text-xs gap-1.5 active:scale-[0.97]"
+                      >
+                        <Send className="h-3.5 w-3.5" />
+                        Approve & Sync Task
+                      </Button>
+                    ) : (
+                      <Badge variant="outline" className="text-[10px] gap-1 text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Approved
+                      </Badge>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Demarcated Footer per theme.md §8 */}
+        <div className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onOpenChange(false)}
+            className="rounded-xl min-h-[44px] sm:min-h-[36px] text-xs font-semibold active:scale-[0.97] px-4"
+          >
+            Close
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

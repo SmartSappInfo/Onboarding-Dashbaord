@@ -27,6 +27,18 @@ interface PublicDropInClientProps {
   room: OfficeHoursRoom;
 }
 
+/**
+ * Validates meeting redirect URLs to guard against open redirects, javascript: injection,
+ * or unsafe protocols per Rule 8 and OWASP guidelines.
+ */
+function isValidMeetingUrl(url: string | null | undefined): boolean {
+  if (!url || typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  if (/^https?:\/\//i.test(trimmed)) return true;
+  if (/^\/(?!\/)/i.test(trimmed)) return true;
+  return false;
+}
+
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   if (typeof error === 'string') return error;
@@ -59,12 +71,21 @@ export function PublicDropInClient({ room }: PublicDropInClientProps) {
           if (res.position !== undefined) setPosition(res.position);
           if (res.status === 'admitted' && res.joinUrl) {
             setAdmittedJoinUrl(res.joinUrl);
-            toast({
-              title: "You're admitted!",
-              description: 'Redirecting to your video consultation now...',
-            });
-            // Auto redirect
-            window.location.href = res.joinUrl;
+            
+            // Security verification: enforce scheme before window redirection (Rule 8)
+            if (isValidMeetingUrl(res.joinUrl)) {
+              toast({
+                title: "You're admitted!",
+                description: 'Redirecting to your video consultation now...',
+              });
+              window.location.href = res.joinUrl;
+            } else {
+              toast({
+                variant: 'destructive',
+                title: 'Invalid Room Link',
+                description: 'The host room link could not be verified securely.',
+              });
+            }
           }
         }
       } catch (err) {
@@ -137,9 +158,9 @@ export function PublicDropInClient({ room }: PublicDropInClientProps) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-muted/30 to-background flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md mx-auto w-full space-y-6">
-        {/* Host Banner */}
-        <Card className="rounded-3xl border shadow-sm overflow-hidden">
-          <CardHeader className="p-6 bg-gradient-to-r from-primary/5 via-primary/10 to-transparent border-b">
+        {/* Host Banner: Surface standardized to sm:rounded-2xl per theme.md §8 */}
+        <Card className="sm:rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl overflow-hidden">
+          <CardHeader className="p-6 bg-gradient-to-r from-primary/5 via-primary/10 to-transparent border-b border-border/60">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <span className="relative flex h-3 w-3">
@@ -168,9 +189,9 @@ export function PublicDropInClient({ room }: PublicDropInClientProps) {
                 variant="secondary"
                 className={`text-[10px] uppercase font-bold ${
                   room.status === 'available'
-                    ? 'bg-emerald-500/10 text-emerald-600'
+                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                     : room.status === 'busy'
-                    ? 'bg-amber-500/10 text-amber-600'
+                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
                     : 'bg-muted text-muted-foreground'
                 }`}
               >
@@ -192,7 +213,7 @@ export function PublicDropInClient({ room }: PublicDropInClientProps) {
               /* Waiting in Line Screen */
               <div className="text-center py-6 space-y-5">
                 <div className="relative inline-flex">
-                  <div className="h-20 w-20 rounded-3xl bg-primary/10 text-primary font-extrabold text-3xl flex items-center justify-center mx-auto shadow-inner">
+                  <div className="h-20 w-20 rounded-2xl bg-primary/10 text-primary font-extrabold text-3xl flex items-center justify-center mx-auto shadow-inner">
                     #{position}
                   </div>
                   <span className="animate-ping absolute top-0 right-0 h-4 w-4 rounded-full bg-primary opacity-75" />
@@ -207,7 +228,7 @@ export function PublicDropInClient({ room }: PublicDropInClientProps) {
                   </p>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-muted/40 border text-xs space-y-2 text-left">
+                <div className="p-4 rounded-xl bg-muted/40 border border-border/60 text-xs space-y-2 text-left">
                   <div className="flex items-center justify-between text-muted-foreground">
                     <span>Est. Wait Time:</span>
                     <strong className="text-foreground">
@@ -220,7 +241,7 @@ export function PublicDropInClient({ room }: PublicDropInClientProps) {
                   </div>
                   <div className="flex items-center justify-between text-muted-foreground">
                     <span>Connection:</span>
-                    <span className="flex items-center gap-1.5 text-emerald-600 font-semibold text-[11px]">
+                    <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-semibold text-[11px]">
                       <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                       Live Heartbeat Active
                     </span>
@@ -231,7 +252,7 @@ export function PublicDropInClient({ room }: PublicDropInClientProps) {
                   variant="outline"
                   size="sm"
                   onClick={handleLeaveQueue}
-                  className="rounded-xl text-xs gap-1.5 text-rose-600 hover:text-rose-700 min-h-[40px] active:scale-[0.97]"
+                  className="rounded-xl text-xs gap-1.5 text-rose-600 dark:text-rose-400 hover:text-rose-700 min-h-[44px] active:scale-[0.97] transition-all"
                 >
                   <LogOut className="h-3.5 w-3.5" />
                   Leave Waiting Room
@@ -240,15 +261,15 @@ export function PublicDropInClient({ room }: PublicDropInClientProps) {
             ) : status === 'admitted' && admittedJoinUrl ? (
               /* Admitted Screen */
               <div className="text-center py-6 space-y-4">
-                <div className="h-16 w-16 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center mx-auto">
+                <div className="h-16 w-16 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
                   <CheckCircle2 className="h-10 w-10" />
                 </div>
                 <h3 className="text-base font-bold text-foreground">You&apos;ve been admitted!</h3>
                 <p className="text-xs text-muted-foreground">
                   Click the button below if your browser did not automatically open the meeting room.
                 </p>
-                <a href={admittedJoinUrl} target="_blank" rel="noopener noreferrer">
-                  <Button className="w-full rounded-2xl min-h-[48px] text-sm font-bold gap-2 active:scale-[0.97]">
+                <a href={admittedJoinUrl} target="_blank" rel="noopener noreferrer" className="block">
+                  <Button className="w-full rounded-xl min-h-[48px] text-sm font-bold gap-2 active:scale-[0.97] shadow-sm">
                     <Video className="h-4 w-4" />
                     Enter Meeting Now
                   </Button>
@@ -258,42 +279,42 @@ export function PublicDropInClient({ room }: PublicDropInClientProps) {
               /* Join Waiting Room Form */
               <form onSubmit={handleJoinQueue} className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">Your Name *</Label>
+                  <Label className="text-xs font-semibold text-foreground">Your Name *</Label>
                   <Input
                     required
                     value={visitorName}
                     onChange={e => setVisitorName(e.target.value)}
                     placeholder="Jane Doe"
-                    className="rounded-xl min-h-[44px] text-xs"
+                    className="rounded-xl min-h-[44px] text-xs bg-background"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">Your Email *</Label>
+                  <Label className="text-xs font-semibold text-foreground">Your Email *</Label>
                   <Input
                     type="email"
                     required
                     value={visitorEmail}
                     onChange={e => setVoterEmail(e.target.value)}
                     placeholder="jane@example.com"
-                    className="rounded-xl min-h-[44px] text-xs"
+                    className="rounded-xl min-h-[44px] text-xs bg-background"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">Topic / Question (Optional)</Label>
+                  <Label className="text-xs font-semibold text-foreground">Topic / Question (Optional)</Label>
                   <Textarea
                     value={topic}
                     onChange={e => setTopic(e.target.value)}
                     placeholder="Briefly describe what you'd like to discuss..."
-                    className="rounded-xl min-h-[60px] text-xs"
+                    className="rounded-xl min-h-[60px] text-xs bg-background"
                   />
                 </div>
 
                 <Button
                   type="submit"
                   disabled={isJoining}
-                  className="w-full rounded-2xl min-h-[48px] text-sm font-bold gap-2 shadow-sm active:scale-[0.97]"
+                  className="w-full rounded-xl min-h-[48px] text-sm font-bold gap-2 shadow-sm active:scale-[0.97] transition-all"
                 >
                   <LogIn className="h-4 w-4" />
                   {isJoining ? 'Joining Line...' : 'Join Waiting Room'}

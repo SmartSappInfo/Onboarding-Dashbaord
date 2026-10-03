@@ -115,10 +115,11 @@ export default function ConfirmBookingClient({ bookingPage, timeStr }: ConfirmBo
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.98 }}
-          transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+          transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
           className="w-full max-w-xl z-10"
         >
-          <Card className="border-none bg-slate-900/60 backdrop-blur-xl ring-1 ring-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl p-8 text-left space-y-6">
+          {/* Surface & Geometry: Conforms strictly to theme.md §8 (sm:rounded-2xl border border-border/80 bg-card) */}
+          <Card className="border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl p-6 sm:p-8 text-left space-y-6">
             
             {/* Header: Back Navigation & Date Summary */}
             <div className="space-y-4">
@@ -126,17 +127,17 @@ export default function ConfirmBookingClient({ bookingPage, timeStr }: ConfirmBo
                 variant="ghost"
                 size="sm"
                 onClick={() => router.back()}
-                className="h-8 text-slate-400 hover:text-white px-2 rounded-lg -ml-2"
+                className="min-h-[44px] sm:min-h-[36px] text-muted-foreground hover:text-foreground px-2.5 rounded-xl -ml-2 active:scale-[0.97] transition-transform"
               >
                 <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to Slots
               </Button>
 
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-white/5 pb-4">
-                <div className="flex items-center gap-1.5 text-slate-200">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border/60 pb-4">
+                <div className="flex items-center gap-1.5 text-foreground">
                   <CalendarIcon className="h-4 w-4 text-primary" />
                   <span className="text-xs font-bold">{format(parsedTime, 'EEEE, MMMM d')}</span>
                 </div>
-                <div className="flex items-center gap-1.5 text-slate-200">
+                <div className="flex items-center gap-1.5 text-foreground">
                   <Clock className="h-4 w-4 text-primary" />
                   <span className="text-xs font-bold tabular-nums">
                     {format(parsedTime, 'p')} ({bookingPage.durationMinutes} min)
@@ -150,42 +151,42 @@ export default function ConfirmBookingClient({ bookingPage, timeStr }: ConfirmBo
               
               {/* Standard Guest Info */}
               <div className="space-y-2">
-                <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Your Name *</Label>
+                <Label className="text-xs font-semibold text-foreground">Your Name *</Label>
                 <Input
                   required
                   value={visitorName}
                   onChange={e => setVisitorName(e.target.value)}
                   placeholder="e.g. John Doe"
-                  className="h-11 rounded-xl bg-white/[0.03] border-white/10 hover:border-white/20 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none text-sm px-4 text-slate-100"
+                  className="min-h-[44px] rounded-xl bg-background border border-input focus-visible:ring-2 focus-visible:ring-primary text-sm px-4 text-foreground placeholder:text-muted-foreground"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Your Email Address *</Label>
+                <Label className="text-xs font-semibold text-foreground">Your Email Address *</Label>
                 <Input
                   required
                   type="email"
                   value={visitorEmail}
                   onChange={e => setVisitorEmail(e.target.value)}
                   placeholder="e.g. john@example.com"
-                  className="h-11 rounded-xl bg-white/[0.03] border-white/10 hover:border-white/20 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none text-sm px-4 text-slate-100"
+                  className="min-h-[44px] rounded-xl bg-background border border-input focus-visible:ring-2 focus-visible:ring-primary text-sm px-4 text-foreground placeholder:text-muted-foreground"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Your Phone Number (Optional)</Label>
+                <Label className="text-xs font-semibold text-foreground">Your Phone Number (Optional)</Label>
                 <Input
                   value={visitorPhone}
                   onChange={e => setVisitorPhone(e.target.value)}
                   placeholder="e.g. +233240000000"
-                  className="h-11 rounded-xl bg-white/[0.03] border-white/10 hover:border-white/20 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none text-sm px-4 text-slate-100"
+                  className="min-h-[44px] rounded-xl bg-background border border-input focus-visible:ring-2 focus-visible:ring-primary text-sm px-4 text-foreground placeholder:text-muted-foreground"
                 />
               </div>
 
               {/* Custom Questions Grid */}
               {bookingPage.questions && bookingPage.questions.map(q => (
-                <div key={q.id} className="space-y-2 pt-2">
-                  <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
+                <div key={q.id} className="space-y-2 pt-2 border-t border-border/40">
+                  <Label className="text-xs font-semibold text-foreground">
                     {q.label} {q.required ? '*' : ''}
                   </Label>
                   
@@ -195,7 +196,7 @@ export default function ConfirmBookingClient({ bookingPage, timeStr }: ConfirmBo
                       value={(answers[q.id] as string) || ''}
                       onChange={e => handleQuestionChange(q.id, e.target.value)}
                       placeholder="Type your response..."
-                      className="h-11 rounded-xl bg-white/[0.03] border-white/10 hover:border-white/20 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none text-sm px-4 text-slate-100"
+                      className="min-h-[44px] rounded-xl bg-background border border-input focus-visible:ring-2 focus-visible:ring-primary text-sm px-4 text-foreground placeholder:text-muted-foreground"
                     />
                   )}
 
@@ -206,7 +207,7 @@ export default function ConfirmBookingClient({ bookingPage, timeStr }: ConfirmBo
                       value={(answers[q.id] as string) || ''}
                       onChange={e => handleQuestionChange(q.id, e.target.value)}
                       placeholder="Type details..."
-                      className="rounded-xl bg-white/[0.03] border-white/10 hover:border-white/20 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none text-sm p-4 text-slate-100"
+                      className="min-h-[80px] rounded-xl bg-background border border-input focus-visible:ring-2 focus-visible:ring-primary text-sm p-4 text-foreground placeholder:text-muted-foreground"
                     />
                   )}
 
@@ -215,7 +216,7 @@ export default function ConfirmBookingClient({ bookingPage, timeStr }: ConfirmBo
                       required={q.required}
                       value={(answers[q.id] as string) || ''}
                       onChange={e => handleQuestionChange(q.id, e.target.value)}
-                      className="h-11 w-full rounded-xl bg-slate-900 border border-white/10 hover:border-white/20 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none text-sm px-4 text-slate-100"
+                      className="min-h-[44px] w-full rounded-xl bg-background border border-input focus-visible:ring-2 focus-visible:ring-primary text-sm px-4 text-foreground"
                     >
                       <option value="" disabled>Select an option</option>
                       {q.options?.map(opt => (
@@ -225,17 +226,17 @@ export default function ConfirmBookingClient({ bookingPage, timeStr }: ConfirmBo
                   )}
 
                   {q.type === 'checkbox' && q.options && (
-                    <div className="space-y-2 pl-1 pt-1">
+                    <div className="space-y-2.5 pl-1 pt-1">
                       {q.options.map(opt => (
-                        <div key={opt} className="flex items-center gap-2">
+                        <div key={opt} className="flex items-center gap-2.5 min-h-[44px] sm:min-h-[32px]">
                           <input
                             type="checkbox"
                             id={`${q.id}_${opt}`}
                             checked={((answers[q.id] as string[]) || []).includes(opt)}
                             onChange={e => handleCheckboxChange(q.id, opt, e.target.checked)}
-                            className="h-4 w-4 rounded border-white/10 text-primary bg-transparent focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0 focus:ring-offset-0"
+                            className="h-5 w-5 rounded border-input text-primary bg-background focus-visible:ring-2 focus-visible:ring-primary"
                           />
-                          <label htmlFor={`${q.id}_${opt}`} className="text-xs font-semibold text-slate-300">
+                          <label htmlFor={`${q.id}_${opt}`} className="text-xs font-medium text-foreground cursor-pointer">
                             {opt}
                           </label>
                         </div>
@@ -244,18 +245,18 @@ export default function ConfirmBookingClient({ bookingPage, timeStr }: ConfirmBo
                   )}
 
                   {q.type === 'radio' && q.options && (
-                    <div className="space-y-2 pl-1 pt-1">
+                    <div className="space-y-2.5 pl-1 pt-1">
                       {q.options.map(opt => (
-                        <div key={opt} className="flex items-center gap-2">
+                        <div key={opt} className="flex items-center gap-2.5 min-h-[44px] sm:min-h-[32px]">
                           <input
                             type="radio"
                             name={`radio_${q.id}`}
                             id={`${q.id}_${opt}`}
                             checked={(answers[q.id] as string) === opt}
                             onChange={() => handleQuestionChange(q.id, opt)}
-                            className="h-4 w-4 border-white/10 text-primary bg-transparent focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0 focus:ring-offset-0"
+                            className="h-5 w-5 border-input text-primary bg-background focus-visible:ring-2 focus-visible:ring-primary"
                           />
-                          <label htmlFor={`${q.id}_${opt}`} className="text-xs font-semibold text-slate-300">
+                          <label htmlFor={`${q.id}_${opt}`} className="text-xs font-medium text-foreground cursor-pointer">
                             {opt}
                           </label>
                         </div>
@@ -265,12 +266,12 @@ export default function ConfirmBookingClient({ bookingPage, timeStr }: ConfirmBo
                 </div>
               ))}
 
-              {/* Submit footer */}
-              <div className="pt-6 border-t border-white/5 flex justify-end">
+              {/* Submit footer with >=44px tactile button */}
+              <div className="pt-6 border-t border-border/60 flex justify-end">
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="rounded-xl font-bold h-12 px-8 bg-primary hover:bg-primary-hover text-white text-xs active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none transition-all flex items-center gap-2"
+                  className="rounded-xl font-bold min-h-[48px] px-8 bg-primary hover:bg-primary/90 text-primary-foreground text-xs active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-primary transition-all flex items-center gap-2 shadow-sm"
                 >
                   {isSubmitting ? (
                     <>
@@ -295,38 +296,38 @@ export default function ConfirmBookingClient({ bookingPage, timeStr }: ConfirmBo
           transition={{ type: 'spring', damping: 20 }}
           className="w-full max-w-md z-10"
         >
-          <Card className="border-none bg-slate-900/60 backdrop-blur-xl ring-1 ring-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl p-8 text-center space-y-6">
+          <Card className="border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl p-6 sm:p-8 text-center space-y-6">
             
             <div className="flex justify-center">
-              <div className="p-4 bg-emerald-500/10 text-emerald-500 rounded-full animate-bounce">
+              <div className="p-4 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full animate-bounce">
                 <CheckCircle className="h-12 w-12" />
               </div>
             </div>
 
             <div className="space-y-2">
-              <h2 className="text-xl font-bold text-white tracking-tight">Appointment Scheduled!</h2>
-              <p className="text-xs font-semibold text-slate-400">
+              <h2 className="text-xl font-bold text-foreground tracking-tight">Appointment Scheduled!</h2>
+              <p className="text-xs text-muted-foreground">
                 Your booking with the host has been successfully confirmed. An email invite with connection details has been dispatched.
               </p>
             </div>
 
-            <div className="p-5 bg-white/[0.02] border border-white/5 rounded-2xl space-y-4 text-left">
-              <h3 className="text-xs font-bold text-white border-b border-white/5 pb-2">Meeting details</h3>
+            <div className="p-5 bg-muted/20 border border-border/60 rounded-xl space-y-4 text-left">
+              <h3 className="text-xs font-bold text-foreground border-b border-border/60 pb-2">Meeting details</h3>
               
               <div className="space-y-3">
-                <div className="flex items-center gap-2.5 text-slate-300 text-xs">
-                  <CalendarIcon className="h-4 w-4 text-emerald-500 shrink-0" />
-                  <span className="font-bold">{format(parsedTime, 'EEEE, MMMM d, yyyy')}</span>
+                <div className="flex items-center gap-2.5 text-muted-foreground text-xs">
+                  <CalendarIcon className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span className="font-semibold text-foreground">{format(parsedTime, 'EEEE, MMMM d, yyyy')}</span>
                 </div>
                 
-                <div className="flex items-center gap-2.5 text-slate-300 text-xs">
-                  <Clock className="h-4 w-4 text-emerald-500 shrink-0" />
-                  <span className="font-bold tabular-nums">{format(parsedTime, 'p')}</span>
+                <div className="flex items-center gap-2.5 text-muted-foreground text-xs">
+                  <Clock className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span className="font-semibold text-foreground tabular-nums">{format(parsedTime, 'p')}</span>
                 </div>
 
-                <div className="flex items-center gap-2.5 text-slate-300 text-xs">
-                  <Video className="h-4 w-4 text-emerald-500 shrink-0" />
-                  <span className="font-bold capitalize">{bookingPage.meetingProvider.replace('_', ' ').toLowerCase()} link generated</span>
+                <div className="flex items-center gap-2.5 text-muted-foreground text-xs">
+                  <Video className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span className="font-semibold text-foreground capitalize">{bookingPage.meetingProvider.replace('_', ' ').toLowerCase()} link generated</span>
                 </div>
               </div>
             </div>
@@ -334,7 +335,7 @@ export default function ConfirmBookingClient({ bookingPage, timeStr }: ConfirmBo
             <div className="pt-2">
               <Button
                 onClick={() => router.push(`/book/${bookingPage.slug}`)}
-                className="w-full rounded-xl font-bold h-11 bg-white/10 hover:bg-white/15 text-slate-200 text-xs active:scale-[0.97]"
+                className="w-full rounded-xl font-bold min-h-[44px] bg-secondary hover:bg-secondary/80 text-secondary-foreground text-xs active:scale-[0.97] transition-all"
               >
                 Back to Calendar
               </Button>

@@ -26,6 +26,7 @@ import {
   Clock,
   RefreshCw,
 } from 'lucide-react';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { format, formatDistanceToNow } from 'date-fns';
 import type { MeetingActivity, MeetingActivityType } from '@/lib/meetings/types';
 import { getMeetingActivitiesAction } from '@/app/actions/meeting-activity-actions';
@@ -92,27 +93,26 @@ export function MeetingActivityDrawer({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
-        {/* Header */}
-        <div className="p-6 border-b border-border bg-card">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                <Activity className="w-4 h-4" />
-              </div>
-              <SheetTitle className="text-lg font-bold">Activity Audit Stream</SheetTitle>
+        {/* Header: Demarcated per theme.md §8 and AGENTS.md */}
+        <div className="min-h-[52px] sm:min-h-[56px] border-b border-border/80 bg-muted/20 px-6 py-3.5 sm:py-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+              <Activity className="w-4 h-4" />
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={fetchActivities}
-              disabled={isLoading}
-              className="rounded-lg h-8 w-8 active:scale-[0.97]"
-              title="Refresh timeline"
-            >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-            </Button>
+            <SheetTitle className="text-base sm:text-lg font-bold">Activity Audit Stream</SheetTitle>
+            <CardInfoTooltip text="Immutable timeline of registrations, live check-ins, and meeting state changes." />
           </div>
-          <SheetDescription className="text-xs text-muted-foreground mt-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={fetchActivities}
+            disabled={isLoading}
+            className="rounded-xl h-9 w-9 min-h-[44px] sm:min-h-[36px] min-w-[36px] active:scale-[0.97]"
+            title="Refresh timeline"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </Button>
+          <SheetDescription className="sr-only">
             Immutable timeline of registrations, live check-ins, and meeting state changes.
           </SheetDescription>
         </div>
@@ -176,6 +176,18 @@ export function MeetingActivityDrawer({
               })}
             </div>
           )}
+        </div>
+
+        {/* Demarcated Footer per theme.md §8 */}
+        <div className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onOpenChange(false)}
+            className="rounded-xl min-h-[44px] sm:min-h-[36px] text-xs font-semibold active:scale-[0.97] px-4"
+          >
+            Close
+          </Button>
         </div>
       </SheetContent>
     </Sheet>

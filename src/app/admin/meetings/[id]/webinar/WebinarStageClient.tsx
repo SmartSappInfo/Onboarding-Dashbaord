@@ -15,6 +15,7 @@ import {
   UserPlus,
   ArrowLeft,
 } from 'lucide-react';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { useToast } from '@/hooks/use-toast';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import {
@@ -163,22 +164,20 @@ export function WebinarStageClient({ meetingId }: WebinarStageClientProps) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header with CardInfoTooltip per theme.md §8 and AGENTS.md */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Link href={`/admin/meetings/${meetingId}`}>
-            <Button variant="ghost" size="icon" className="rounded-xl h-9 w-9">
+            <Button variant="ghost" size="icon" className="rounded-xl h-10 w-10 min-h-[44px] sm:min-h-[36px] min-w-[36px] active:scale-[0.97]">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
-          <div>
+          <div className="flex items-center gap-2">
             <h2 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
               <Radio className="h-5 w-5 text-rose-500 animate-pulse" />
               Live Webinar & Broadcast Stage
             </h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Real-time backstage moderation, speaker stage assignments, raised hands, and Q&A queue.
-            </p>
+            <CardInfoTooltip text="Real-time backstage moderation, speaker stage assignments, raised hands, and Q&A queue." />
           </div>
         </div>
 
@@ -194,7 +193,7 @@ export function WebinarStageClient({ meetingId }: WebinarStageClientProps) {
               size="sm"
               onClick={handlePromoteWaitlist}
               disabled={isPromotingWaitlist}
-              className="rounded-xl text-xs font-semibold gap-1.5 active:scale-[0.97]"
+              className="rounded-xl text-xs font-semibold gap-1.5 min-h-[44px] sm:min-h-[36px] active:scale-[0.97]"
             >
               <UserPlus className="h-3.5 w-3.5" />
               Promote Waitlist ({state.waitlistedCount})
@@ -206,8 +205,8 @@ export function WebinarStageClient({ meetingId }: WebinarStageClientProps) {
       {/* Main 3-Column Broadcast Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Col 1: Presenters & Stage Management */}
-        <Card className="rounded-3xl border shadow-sm p-5 space-y-4">
-          <div className="flex items-center justify-between border-b pb-3">
+        <Card className="sm:rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm p-5 space-y-4">
+          <div className="flex items-center justify-between border-b border-border/60 pb-3">
             <div className="flex items-center gap-2">
               <Radio className="h-4 w-4 text-primary" />
               <h3 className="font-bold text-sm text-foreground">Speakers & Stage Roster</h3>
@@ -221,8 +220,8 @@ export function WebinarStageClient({ meetingId }: WebinarStageClientProps) {
             {presenters.map(p => (
               <div
                 key={p.userId}
-                className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 text-xs transition-all ${
-                  p.status === 'on_stage' ? 'bg-emerald-500/5 border-emerald-500/30' : 'bg-muted/20'
+                className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 text-xs transition-all ${
+                  p.status === 'on_stage' ? 'bg-emerald-500/5 border-emerald-500/30' : 'bg-muted/20 border-border/60'
                 }`}
               >
                 <div className="space-y-0.5">
@@ -231,7 +230,7 @@ export function WebinarStageClient({ meetingId }: WebinarStageClientProps) {
                     <Badge
                       variant="outline"
                       className={`text-[9px] uppercase font-bold ${
-                        p.status === 'on_stage' ? 'bg-emerald-500/10 text-emerald-600' : 'text-muted-foreground'
+                        p.status === 'on_stage' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'
                       }`}
                     >
                       {p.status.replace('_', ' ')}
@@ -244,7 +243,7 @@ export function WebinarStageClient({ meetingId }: WebinarStageClientProps) {
                   size="sm"
                   variant={p.status === 'on_stage' ? 'secondary' : 'default'}
                   onClick={() => handleToggleStage(p.userId, p.status)}
-                  className="rounded-xl h-8 text-xs font-semibold active:scale-[0.97]"
+                  className="rounded-xl min-h-[44px] sm:min-h-[36px] text-xs font-semibold active:scale-[0.97]"
                 >
                   {p.status === 'on_stage' ? 'Move Backstage' : 'Bring to Stage'}
                 </Button>
@@ -254,8 +253,8 @@ export function WebinarStageClient({ meetingId }: WebinarStageClientProps) {
         </Card>
 
         {/* Col 2: Raised Hands Queue */}
-        <Card className="rounded-3xl border shadow-sm p-5 space-y-4">
-          <div className="flex items-center justify-between border-b pb-3">
+        <Card className="sm:rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm p-5 space-y-4">
+          <div className="flex items-center justify-between border-b border-border/60 pb-3">
             <div className="flex items-center gap-2">
               <Hand className="h-4 w-4 text-amber-500" />
               <h3 className="font-bold text-sm text-foreground">Raised Hands Queue</h3>
@@ -274,14 +273,14 @@ export function WebinarStageClient({ meetingId }: WebinarStageClientProps) {
               raisedHands.map(h => (
                 <div
                   key={h.participantId}
-                  className="p-3.5 rounded-2xl border bg-amber-500/5 border-amber-500/20 flex items-center justify-between gap-3 text-xs"
+                  className="p-3.5 rounded-xl border bg-amber-500/5 border-amber-500/20 flex items-center justify-between gap-3 text-xs"
                 >
                   <div className="space-y-0.5">
                     <span className="font-bold text-foreground block">{h.participantName}</span>
                     <span className="text-[10px] text-muted-foreground">Attendee</span>
                   </div>
 
-                  <Button size="sm" className="rounded-xl h-8 text-xs font-semibold active:scale-[0.97]">
+                  <Button size="sm" className="rounded-xl min-h-[44px] sm:min-h-[36px] text-xs font-semibold active:scale-[0.97]">
                     Invite to Speak
                   </Button>
                 </div>
@@ -291,8 +290,8 @@ export function WebinarStageClient({ meetingId }: WebinarStageClientProps) {
         </Card>
 
         {/* Col 3: Audience Q&A Moderation */}
-        <Card className="rounded-3xl border shadow-sm p-5 space-y-4">
-          <div className="flex items-center justify-between border-b pb-3">
+        <Card className="sm:rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm p-5 space-y-4">
+          <div className="flex items-center justify-between border-b border-border/60 pb-3">
             <div className="flex items-center gap-2">
               <MessageSquare className="h-4 w-4 text-primary" />
               <h3 className="font-bold text-sm text-foreground">Live Audience Q&A</h3>
@@ -308,13 +307,13 @@ export function WebinarStageClient({ meetingId }: WebinarStageClientProps) {
               value={newQuestionText}
               onChange={e => setNewQuestionText(e.target.value)}
               placeholder="Ask or pin a question..."
-              className="rounded-xl text-xs h-9"
+              className="rounded-xl text-xs min-h-[44px] sm:min-h-[38px] bg-background"
             />
             <Button
               type="submit"
               size="sm"
               disabled={isPostingQ}
-              className="rounded-xl h-9 text-xs active:scale-[0.97]"
+              className="rounded-xl min-h-[44px] sm:min-h-[38px] text-xs active:scale-[0.97]"
             >
               Post
             </Button>
@@ -329,7 +328,7 @@ export function WebinarStageClient({ meetingId }: WebinarStageClientProps) {
               questions.map(q => (
                 <div
                   key={q.id}
-                  className="p-3 rounded-2xl border bg-muted/20 flex items-start justify-between gap-3 text-xs"
+                  className="p-3 rounded-xl border border-border/80 bg-muted/20 flex items-start justify-between gap-3 text-xs"
                 >
                   <div className="space-y-1">
                     <p className="font-semibold text-foreground">{q.questionText}</p>
@@ -342,9 +341,9 @@ export function WebinarStageClient({ meetingId }: WebinarStageClientProps) {
                     size="sm"
                     variant="ghost"
                     onClick={() => handleUpvote(q.id)}
-                    className="h-8 rounded-xl px-2 gap-1 text-xs text-primary"
+                    className="min-h-[44px] sm:min-h-[36px] rounded-xl px-2.5 gap-1.5 text-xs text-primary active:scale-[0.97]"
                   >
-                    <ThumbsUp className="h-3 w-3" />
+                    <ThumbsUp className="h-3.5 w-3.5" />
                     {q.upvotesCount}
                   </Button>
                 </div>

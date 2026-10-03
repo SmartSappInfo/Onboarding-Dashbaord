@@ -3692,6 +3692,16 @@ export interface Meeting {
   endTime?: string;
   locationType?: string;
   attendeeCount?: number;
+
+  // ── Legacy Alerts & Reminders ──────────────────────────────────────────
+  adminAlertsEnabled?: boolean;
+  adminAlertChannel?: 'email' | 'sms' | 'whatsapp' | 'both';
+  adminAlertNotifyManager?: boolean;
+  adminAlertSpecificUserIds?: string[];
+  adminAlertEmailTemplateId?: string;
+  adminAlertSmsTemplateId?: string;
+  adminAlertWhatsappTemplateId?: string;
+  enabledReminders?: string[];
 }
 
 // ── Meeting Facilitator ────────────────────────────────────────────────────
@@ -3714,7 +3724,16 @@ export interface MeetingEntityMapping {
   contactNameFieldKey?: string;     // registration field key for contact name
   contactEmailFieldKey?: string;    // registration field key for email
   contactPhoneFieldKey?: string;    // registration field key for phone
-  additionalMappings?: { fieldKey: string; targetField: string }[];
+  nameField?: string;
+  primaryContactField?: string;
+  emailField?: string;
+  phoneField?: string;
+  additionalMappings?: Array<{
+    fieldKey?: string;
+    targetField?: string;
+    sourceField?: string;
+    targetProperty?: string;
+  }>;
 }
 
 // ── Meeting Reminder Slot ──────────────────────────────────────────────────

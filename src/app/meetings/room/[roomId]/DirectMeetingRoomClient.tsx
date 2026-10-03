@@ -233,9 +233,9 @@ export default function DirectMeetingRoomClient({ sessionData }: DirectMeetingRo
               transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
               className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center"
             >
-              {/* Video Device Preview Box */}
+              {/* Video Device Preview Box: Conforms to theme.md §8 rounded-2xl geometry */}
               <div className="lg:col-span-7 flex flex-col items-center">
-                <div className="relative w-full aspect-video max-w-lg rounded-3xl overflow-hidden bg-slate-900 border border-border shadow-xl flex items-center justify-center">
+                <div className="relative w-full aspect-video max-w-lg rounded-2xl overflow-hidden bg-slate-900 border border-border shadow-xl flex items-center justify-center">
                   {mediaStream && isVideoEnabled ? (
                     <video
                       ref={videoRef}
@@ -354,8 +354,8 @@ export default function DirectMeetingRoomClient({ sessionData }: DirectMeetingRo
               transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
               className="flex flex-col items-center w-full max-w-4xl mx-auto space-y-4"
             >
-              {/* Virtual Stage View */}
-              <div className="relative w-full aspect-video rounded-3xl overflow-hidden bg-slate-950 border border-border shadow-2xl flex items-center justify-center">
+              {/* Virtual Stage View: Conforms to theme.md §8 rounded-2xl geometry */}
+              <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-slate-950 border border-border shadow-2xl flex items-center justify-center">
                 {mediaStream && isVideoEnabled ? (
                   <video
                     ref={videoRef}

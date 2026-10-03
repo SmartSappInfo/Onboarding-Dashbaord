@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useForm, FormProvider } from 'react-hook-form';
+import { useForm, FormProvider, type Path } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -42,7 +42,7 @@ import {
 } from 'lucide-react';
 import { MEETING_TEMPLATES } from '../constants/templates';
 
-import type { WorkspaceEntity, MeetingType, MeetingRegistrationField } from '@/lib/types';
+import type { WorkspaceEntity, MeetingType, MeetingRegistrationField, MeetingMessagingConfig, MeetingTemplate, Meeting } from '@/lib/types';
 import { MEETING_TYPES, getDefaultMeetingMessagingConfig } from '@/lib/types';
 import { Eye, EyeOff, LayoutTemplate, Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -172,7 +172,7 @@ const formSchema = z.object({
   })).default([]),
 
   // Messaging Config (Phase 5)
-  messagingConfig: z.any().optional(),
+  messagingConfig: z.custom<MeetingMessagingConfig>().optional(),
 
   // Webhook Config (Phase 8)
   registrationWebhookEnabled: z.boolean().default(false),
@@ -231,16 +231,41 @@ export default function NewMeetingPage() {
     return query(collection(firestore, 'custom_meeting_templates'), where('workspaceId', '==', activeWorkspaceId));
   }, [firestore, activeWorkspaceId]);
 
-  const { data: customTemplates, isLoading: isLoadingCustomTemplates } = useCollection<any>(customTemplatesCol);
+  const { data: customTemplates, isLoading: isLoadingCustomTemplates } = useCollection<MeetingTemplate>(customTemplatesCol);
 
-  const allTemplates = React.useMemo(() => {
-    const custom = (customTemplates || []).map(t => ({
-        ...t,
+  interface DisplayTemplate {
+    id: string;
+    title: string;
+    description: string;
+    typeId: string;
+    icon: React.ComponentType<{ className?: string }>;
+    color: string;
+    defaults: Record<string, unknown>;
+    isCustom?: boolean;
+  }
+
+  const allTemplates: DisplayTemplate[] = React.useMemo(() => {
+    const custom: DisplayTemplate[] = (customTemplates || []).map(t => ({
+        id: t.id,
+        title: t.name,
+        description: t.description,
+        typeId: t.typeId,
         icon: LayoutTemplate,
         color: 'bg-indigo-500',
+        defaults: (t.defaults || {}) as Record<string, unknown>,
         isCustom: true
     }));
-    return [...MEETING_TEMPLATES, ...custom];
+    const builtIn: DisplayTemplate[] = MEETING_TEMPLATES.map(t => ({
+        id: t.id,
+        title: t.title,
+        description: t.description,
+        typeId: t.typeId,
+        icon: t.icon,
+        color: t.color,
+        defaults: t.defaults as Record<string, unknown>,
+        isCustom: false
+    }));
+    return [...builtIn, ...custom];
   }, [customTemplates]);
 
   const form = useForm<FormData>({
@@ -397,14 +422,16 @@ export default function NewMeetingPage() {
     }
   }, [watchedType?.id, watchedEntity?.id]);
 
-  const handleSelectTemplate = (template: typeof MEETING_TEMPLATES[number]) => {
+  const handleSelectTemplate = (template: typeof allTemplates[number]) => {
     setSelectedTemplateId(template.id);
     const type = MEETING_TYPES.find(t => t.id === template.typeId);
     
     // Apply defaults
-    Object.entries(template.defaults).forEach(([key, value]) => {
-        setValue(key as any, value);
-    });
+    if (template.defaults) {
+      Object.entries(template.defaults).forEach(([key, value]) => {
+        setValue(key as Path<FormData>, value as FormData[keyof FormData]);
+      });
+    }
     
     if (type) setValue('type', type);
     
@@ -432,7 +459,7 @@ export default function NewMeetingPage() {
             return;
         }
         
-        const meetingData: Record<string, any> = {
+        const meetingData: Omit<Meeting, 'id'> = {
             title: data.title,
             // V3: meetingSlug is the primary public URL identifier
             meetingSlug: data.meetingSlug,
@@ -499,7 +526,7 @@ export default function NewMeetingPage() {
 
             // Phase 5: Messaging Config
             messagingConfig: {
-              ...(data.messagingConfig || {}),
+              ...(data.messagingConfig || getDefaultMeetingMessagingConfig()),
               registrationWebhookEnabled: data.registrationWebhookEnabled || false,
               registrationWebhookUrl: data.registrationWebhookUrl || '',
               registrationWebhookSecret: data.registrationWebhookSecret || '',
@@ -552,9 +579,14 @@ export default function NewMeetingPage() {
             }).catch(err => console.warn("Notification deferred:", err.message));
         }
 
+        const createdMeeting: Meeting = {
+            id: docRef.id,
+            ...meetingData,
+        };
+
         // Consolidated robust scheduling of all meeting alerts, reminders and invitations
         rescheduleRemindersForMeeting(
-            { id: docRef.id, ...meetingData } as any,
+            createdMeeting,
             activeOrganizationId,
             true
         ).catch(err => console.warn("Reminder rescheduling deferred:", err.message));
@@ -683,12 +715,13 @@ export default function NewMeetingPage() {
                 <button
                   type="button"
                   onClick={() => setCurrentStep(index)}
- className={cn(
-                    "flex-1 flex items-center gap-3 p-3 rounded-xl transition-all duration-300 text-left min-w-[140px]",
+                  className={cn(
+                    "flex-1 flex items-center gap-3 p-3 rounded-xl transition-all duration-300 text-left min-w-[140px] min-h-[44px] active:scale-[0.98]",
                     isActive && "bg-primary/10 ring-1 ring-primary/20 shadow-sm",
                     isCompleted && "bg-emerald-50 dark:bg-emerald-950/20",
                     !isActive && !isCompleted && "hover:bg-muted/50 opacity-70"
                   )}
+                  aria-current={isActive ? 'step' : undefined}
                 >
  <div className={cn(
                     "p-2 rounded-lg shrink-0 transition-colors",
@@ -734,7 +767,7 @@ export default function NewMeetingPage() {
                                     type="button"
                                     onClick={() => handleSelectTemplate(template)}
                                     className={cn(
-                                        "group relative flex flex-col text-left p-6 rounded-[2rem] border-2 transition-all duration-300 hover:shadow-2xl hover:shadow-primary/5 active:scale-[0.98]",
+                                        "group relative flex flex-col text-left p-6 sm:rounded-2xl border-2 transition-all duration-300 hover:shadow-2xl hover:shadow-primary/5 active:scale-[0.98]",
                                         isSelected 
                                             ? "border-primary bg-primary/5 ring-1 ring-primary/20 shadow-xl" 
                                             : "border-border bg-card hover:border-primary/40"
