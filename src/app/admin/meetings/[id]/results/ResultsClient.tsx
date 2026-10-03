@@ -41,6 +41,12 @@ import {
     LineChart,
     Line
 } from 'recharts';
+interface LegacyAttendeeFields {
+    name?: string;
+    fullName?: string;
+    children?: unknown[];
+    childNames?: unknown[];
+}
 
 /**
  * @fileOverview Meeting Intelligence Portal.
@@ -265,8 +271,9 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
                                     ))
                                 ) : attendees && attendees.length > 0 ? (
                                     attendees.map((a) => {
-                                        const parentName = a.parentName || (a as any).name || (a as any).fullName || 'Unknown';
-                                        const children = a.childrenNames || (a as any).children || (a as any).childNames || [];
+                                        const legacy = a as unknown as LegacyAttendeeFields;
+                                        const parentName = a.parentName || legacy.name || legacy.fullName || 'Unknown';
+                                        const children = a.childrenNames || legacy.children || legacy.childNames || [];
                                         
                                         return (
                                         <TableRow key={a.id} className="group hover:bg-muted/30 transition-colors">
@@ -278,10 +285,16 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex flex-wrap gap-1.5">
-                                                    {children.length > 0 ? children.map((child: any, idx: number) => {
-                                                        const childName = typeof child === 'string' ? child : child?.value || child?.name || 'Unknown Child';
+                                                    {children.length > 0 ? children.map((child: unknown, idx: number) => {
+                                                        const childName = typeof child === 'string' 
+                                                            ? child 
+                                                            : (child && typeof child === 'object' && 'value' in child && typeof (child as { value: unknown }).value === 'string')
+                                                                ? (child as { value: string }).value
+                                                                : (child && typeof child === 'object' && 'name' in child && typeof (child as { name: unknown }).name === 'string')
+                                                                    ? (child as { name: string }).name
+                                                                    : 'Unknown Child';
                                                         return (
-                                                            <Badge key={idx} variant="secondary" className="bg-background0 border-none font-bold text-[9px] uppercase tracking-tighter text-foreground/70 h-5">
+                                                            <Badge key={idx} variant="secondary" className="bg-muted border-none font-bold text-[9px] uppercase tracking-tighter text-foreground/70 h-5">
                                                                 {childName}
                                                             </Badge>
                                                         );
@@ -334,7 +347,7 @@ function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string,
     );
 }
 
-function DetailRow({ label, value, sub, icon: Icon }: { label: string, value: string, sub: string, icon: any }) {
+function DetailRow({ label, value, sub, icon: Icon }: { label: string, value: string, sub: string, icon: React.ElementType }) {
     return (
  <div className="flex gap-4 group text-left">
  <div className="p-2.5 bg-muted rounded-xl transition-transform group-hover:scale-110 shrink-0 h-fit mt-1"><Icon className="h-4 w-4 text-muted-foreground" /></div>
