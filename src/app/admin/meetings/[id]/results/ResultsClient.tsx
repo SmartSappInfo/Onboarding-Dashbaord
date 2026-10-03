@@ -30,6 +30,8 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import {
     XAxis,
     YAxis,
@@ -49,7 +51,7 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
     const _router = useRouter();
     const { toast } = useToast();
     const _firestore = useFirestore();
-    const meetingId = meetingIdProp || (params.id as string);
+    const _meetingId = meetingIdProp || (params.id as string);
 
     const [isExporting, setIsExporting] = React.useState(false);
 
@@ -100,7 +102,7 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
             link.click();
             document.body.removeChild(link);
             toast({ title: 'Report Exported', description: 'Attendance ledger is ready.' });
-        } catch (_e) {
+        } catch {
             toast({ variant: 'destructive', title: 'Export Failed' });
         } finally {
             setIsExporting(false);
@@ -120,16 +122,16 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
     }
 
     if (meetingError || attendeesError) {
-        const error = (meetingError || attendeesError) as any;
+        const error = meetingError || attendeesError;
         return (
- <div className="p-8 ">
- <Alert variant="destructive" className="rounded-2xl border-none ring-1 ring-destructive/20 bg-destructive/5">
- <AlertCircle className="h-4 w-4" />
- <AlertTitle className="font-semibold text-[10px]">Intelligence Error</AlertTitle>
- <AlertDescription className="text-sm font-medium mt-1">
-                        {error?.message || 'Access Denied or Connection Failure. Please verify your permissions.'}
+            <div className="p-8">
+                <Alert variant="destructive" className="rounded-2xl border-none ring-1 ring-destructive/20 bg-destructive/5">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle className="font-semibold text-[10px]">Intelligence Error</AlertTitle>
+                    <AlertDescription className="text-sm font-medium mt-1">
+                        {getErrorMessage(error)}
                     </AlertDescription>
- <Button variant="outline" size="sm" className="mt-4 font-bold rounded-xl" onClick={() => window.location.reload()}>
+                    <Button variant="outline" size="sm" className="mt-4 font-bold rounded-xl min-h-[44px] sm:min-h-[36px] active:scale-[0.97]" onClick={() => window.location.reload()}>
                         Refresh Intelligence
                     </Button>
                 </Alert>
@@ -137,13 +139,16 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
         );
     }
 
- if (!meeting) return <div className="p-20 text-center font-semibold opacity-20">Session Not Found</div>;
+    if (!meeting) return <div className="p-20 text-center font-semibold opacity-20">Session Not Found</div>;
 
     return (
         <div className="w-full space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b">
-                <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Session Intelligence</h2>
-                <Button onClick={handleExport} disabled={isExporting || !attendees?.length} className="rounded-xl font-semibold shadow-xl shadow-primary/20 h-10 px-5 text-xs gap-2">
+                <div className="flex items-center gap-2.5">
+                    <h2 className="text-xl font-bold tracking-tight text-foreground">Session Intelligence</h2>
+                    <CardInfoTooltip text="Live analytics, attendee velocity, and family attendance ledger." />
+                </div>
+                <Button onClick={handleExport} disabled={isExporting || !attendees?.length} className="rounded-xl font-semibold shadow-xs min-h-[44px] sm:min-h-[40px] px-5 text-xs gap-2 active:scale-[0.97]">
                     {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
                     Export Attendance
                 </Button>
@@ -160,11 +165,14 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Attendance Velocity Chart */}
  <Card className="lg:col-span-2 rounded-2xl border border-border shadow-sm bg-card overflow-hidden">
- <CardHeader className="bg-background border-b pb-6 px-8 pt-8">
- <div className="flex items-center justify-between">
- <div className="flex items-center gap-3">
- <div className="p-2 bg-card rounded-xl shadow-sm border border-border/20"><Zap className="h-4 w-4 text-primary" /></div>
- <CardTitle className="text-sm font-semibold tracking-tight">Login Velocity</CardTitle>
+                        <CardHeader className="bg-background border-b pb-6 px-8 pt-8">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-card rounded-xl shadow-xs border border-border/20"><Zap className="h-4 w-4 text-primary" /></div>
+                                    <div className="flex items-center gap-2">
+                                        <CardTitle className="text-sm font-semibold tracking-tight">Login Velocity</CardTitle>
+                                        <CardInfoTooltip text="Real-time participant entry velocity over the course of the session." />
+                                    </div>
                                 </div>
                                 <Badge variant="secondary" className="bg-primary/5 text-primary border-none font-semibold text-[10px] h-6 px-3">Real-time Pulse</Badge>
                             </div>
@@ -210,30 +218,31 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
                             <DetailRow label="Scheduled Implementation" value={format(new Date(meeting.meetingTime), 'PPPP')} sub={format(new Date(meeting.meetingTime), 'p')} icon={Clock} />
                             <DetailRow label="Institutional Binding" value={meeting.entityName || 'N/A'} sub="Active Campus Context" icon={Building} />
                             <Separator />
- <div className="pt-2">
- <Button asChild variant="outline" className="w-full rounded-xl font-semibold h-12 text-[10px] border-primary/20 text-primary gap-2">
-                                    <a href={meeting.meetingLink} target="_blank" rel="noopener noreferrer">
- Join Active Room <ArrowRight className="h-3.5 w-3.5" />
-                                    </a>
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
+                                <div className="pt-2">
+                                    <Button asChild variant="outline" className="w-full rounded-xl font-semibold min-h-[44px] text-xs border-primary/20 text-primary gap-2 active:scale-[0.97]">
+                                        <a href={meeting.meetingLink} target="_blank" rel="noopener noreferrer">
+                                            Join Active Room <ArrowRight className="h-3.5 w-3.5" />
+                                        </a>
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
 
-                {/* Attendee Registry */}
- <Card className="rounded-2xl border border-border shadow-sm bg-card overflow-hidden">
- <CardHeader className="bg-primary/5 p-8 border-b border-primary/10">
- <div className="flex items-center justify-between">
- <div className="flex items-center gap-3">
- <div className="p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20"><Contact className="h-5 w-5" /></div>
-                                <div>
- <CardTitle className="text-xl font-semibold tracking-tight">Family Attendance Ledger</CardTitle>
- <CardDescription className="text-xs font-bold text-primary/60">Verified institutional log of session participants.</CardDescription>
+                    {/* Attendee Registry */}
+                    <Card className="rounded-2xl border border-border shadow-xs bg-card overflow-hidden">
+                        <CardHeader className="bg-primary/5 p-8 border-b border-primary/10">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20"><Contact className="h-5 w-5" /></div>
+                                    <div className="flex items-center gap-2">
+                                        <CardTitle className="text-xl font-semibold tracking-tight">Family Attendance Ledger</CardTitle>
+                                        <CardInfoTooltip text="Verified institutional log of session participants." />
+                                        <CardDescription className="sr-only">Verified institutional log of session participants.</CardDescription>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </CardHeader>
+                        </CardHeader>
  <CardContent className="p-0">
                         <Table>
  <TableHeader className="bg-muted/30">
@@ -308,7 +317,7 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
     );
 }
 
-function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string, value: string | number, sub: string, icon: any, color: string, bg: string }) {
+function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string, value: string | number, sub: string, icon: React.ElementType, color: string, bg: string }) {
     return (
  <Card className="rounded-2xl border border-border shadow-sm bg-card overflow-hidden group hover:ring-primary/20 transition-all text-left">
  <CardContent className="p-6 flex items-center gap-5">

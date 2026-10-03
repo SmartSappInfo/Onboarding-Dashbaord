@@ -5,8 +5,8 @@ import { useFirestore } from '@/firebase';
 import type { MeetingRegistrant } from '@/lib/types';
 import { format } from 'date-fns';
 import { 
-    Users, ArrowLeft, ChevronLeft, CheckCircle2, Clock, Download, Mail, Search,
-    UserCheck, ClipboardCheck, Calendar, AlertCircle, Loader2,
+    Users, CheckCircle2, Clock, Download, Mail, Search,
+    UserCheck, ClipboardCheck, AlertCircle, Loader2,
     MoreHorizontal, Check, X, Trash2, Plus, UsersRound, Send,
     SlidersHorizontal, Copy, CopyCheck
 } from 'lucide-react';
@@ -47,6 +47,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { getErrorMessage } from '@/lib/errors/report-error';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 export default function RegistrantsClient({ meetingId }: { meetingId: string }) {
   const { toast } = useToast();
@@ -337,16 +338,16 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
   }
 
   if (meetingError || registrantsError) {
-      const error = (meetingError || registrantsError) as any;
+      const error = meetingError || registrantsError;
       return (
           <div className="p-8">
               <Alert variant="destructive" className="rounded-2xl border-none ring-1 ring-destructive/20 bg-destructive/5">
                   <AlertCircle className="h-4 w-4" />
                   <AlertTitle className="font-semibold text-[10px]">Database Error</AlertTitle>
                   <AlertDescription className="text-sm font-medium mt-1">
-                      {error?.message || 'An error occurred while fetching data. Check your connection or permissions.'}
+                      {getErrorMessage(error)}
                   </AlertDescription>
-                  <Button variant="outline" size="sm" className="mt-4 font-bold rounded-xl" onClick={() => window.location.reload()}>
+                  <Button variant="outline" size="sm" className="mt-4 font-bold rounded-xl min-h-[44px] sm:min-h-[36px] active:scale-[0.97]" onClick={() => window.location.reload()}>
                       Retry Connection
                   </Button>
               </Alert>
@@ -437,9 +438,10 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
             )}
 
             <CardHeader className="bg-muted/30 border-b flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-6">
-                <div>
+                <div className="flex items-center gap-2">
                     <CardTitle className="text-lg font-semibold tracking-tight">Registration Roster</CardTitle>
-                    <CardDescription className="text-xs font-medium">Manage and review all signups for this session.</CardDescription>
+                    <CardInfoTooltip text="Manage and review all signups for this session." />
+                    <CardDescription className="sr-only">Manage and review all signups for this session.</CardDescription>
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                     <div className="relative w-full sm:w-64">
@@ -734,17 +736,26 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
 
       {/* Delete Confirmation Alert */}
       <AlertDialog open={!!registrantToDelete} onOpenChange={(open) => !open && setRegistrantToDelete(null)}>
-        <AlertDialogContent className="rounded-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete <b>{registrantToDelete?.name}</b> from the registrant list. This action cannot be undone.
+        <AlertDialogContent className="border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl max-w-md p-0 overflow-hidden">
+          <AlertDialogHeader demarcated>
+            <div className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-destructive" />
+              <AlertDialogTitle className="text-lg font-bold">Are you absolutely sure?</AlertDialogTitle>
+              <CardInfoTooltip text="Permanent deletion cannot be undone." />
+            </div>
+            <AlertDialogDescription className="sr-only">
+              This will permanently delete {registrantToDelete?.name} from the registrant list. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+          <div className="p-6">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              This will permanently delete <span className="font-semibold text-foreground">{registrantToDelete?.name}</span> from the registrant list. This action cannot be undone.
+            </p>
+          </div>
+          <AlertDialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
+            <AlertDialogCancel className="rounded-xl min-h-[44px] active:scale-[0.97]">Cancel</AlertDialogCancel>
             <AlertDialogAction 
-              className="bg-destructive hover:bg-destructive/90 rounded-xl"
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-xl min-h-[44px] font-semibold active:scale-[0.97]"
               onClick={(e) => {
                   e.preventDefault();
                   handleDelete();
@@ -760,51 +771,59 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
 
       {/* Manual Registration Dialog */}
       <Dialog open={isRegisterOpen} onOpenChange={setIsRegisterOpen}>
-        <DialogContent className="sm:max-w-[425px] rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-                <UsersRound className="h-5 w-5 text-primary" />
-                Add Registrant Manually
-            </DialogTitle>
-            <DialogDescription>
+        <DialogContent className="border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl max-w-md p-0 overflow-hidden">
+          <DialogHeader demarcated>
+            <div className="flex items-center gap-2">
+              <UsersRound className="h-5 w-5 text-primary" />
+              <DialogTitle className="text-lg font-bold">Add Registrant Manually</DialogTitle>
+              <CardInfoTooltip text="Directly add a participant to this meeting. They will automatically be marked as approved." />
+            </div>
+            <DialogDescription className="sr-only">
               Directly add a participant to this meeting. They will automatically be marked as approved.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleManualRegister} className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input 
-                id="name" 
-                placeholder="John Doe" 
-                required 
-                value={regForm.name}
-                onChange={e => setRegForm({...regForm, name: e.target.value})}
-              />
+          <form onSubmit={handleManualRegister}>
+            <div className="p-6 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-xs font-semibold">Full Name *</Label>
+                <Input 
+                  id="name" 
+                  placeholder="John Doe" 
+                  required 
+                  value={regForm.name}
+                  onChange={e => setRegForm({...regForm, name: e.target.value})}
+                  className="rounded-xl min-h-[44px]"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-xs font-semibold">Email Address *</Label>
+                <Input 
+                  id="email" 
+                  type="email" 
+                  placeholder="john@example.com" 
+                  required 
+                  value={regForm.email}
+                  onChange={e => setRegForm({...regForm, email: e.target.value})}
+                  className="rounded-xl min-h-[44px]"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="text-xs font-semibold">Phone Number (Optional)</Label>
+                <Input 
+                  id="phone" 
+                  type="tel" 
+                  placeholder="+1 234 567 8900" 
+                  value={regForm.phone}
+                  onChange={e => setRegForm({...regForm, phone: e.target.value})}
+                  className="rounded-xl min-h-[44px]"
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
-              <Input 
-                id="email" 
-                type="email" 
-                placeholder="john@example.com" 
-                required 
-                value={regForm.email}
-                onChange={e => setRegForm({...regForm, email: e.target.value})}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number (Optional)</Label>
-              <Input 
-                id="phone" 
-                type="tel" 
-                placeholder="+1 234 567 8900" 
-                value={regForm.phone}
-                onChange={e => setRegForm({...regForm, phone: e.target.value})}
-              />
-            </div>
-            <DialogFooter className="pt-4">
-              <Button type="button" variant="ghost" onClick={() => setIsRegisterOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={isRegistering} className="rounded-xl">
+            <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
+              <Button type="button" variant="ghost" onClick={() => setIsRegisterOpen(false)} className="rounded-xl min-h-[44px] active:scale-[0.97]">
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isRegistering} className="rounded-xl min-h-[44px] px-6 font-semibold active:scale-[0.97]">
                 {isRegistering ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Register Participant
               </Button>

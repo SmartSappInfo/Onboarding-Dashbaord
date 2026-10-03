@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Code, Copy, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 interface EmbedCodeModalProps {
   open: boolean;
@@ -62,26 +63,39 @@ export function EmbedCodeModal({
 <script src="${origin}/embed-popup.js" async></script>`;
 
   const handleCopy = (snippet: string) => {
-    navigator.clipboard.writeText(snippet);
-    setCopied(true);
-    toast({ title: 'Embed code copied to clipboard!' });
-    setTimeout(() => setCopied(false), 2000);
+    navigator.clipboard.writeText(snippet)
+      .then(() => {
+        setCopied(true);
+        toast({ title: 'Embed code copied to clipboard!' });
+        setTimeout(() => setCopied(false), 2000);
+      })
+      .catch((err) => {
+        console.error('Failed to copy embed snippet:', err);
+        toast({
+          variant: 'destructive',
+          title: 'Copy Failed',
+          description: 'Could not access clipboard. Please copy manually.',
+        });
+      });
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl rounded-3xl p-6">
-        <DialogHeader>
-          <DialogTitle className="text-lg font-bold flex items-center gap-2">
+      <DialogContent className="border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl max-w-xl p-0 overflow-hidden">
+        <DialogHeader demarcated>
+          <div className="flex items-center gap-2">
             <Code className="h-5 w-5 text-primary" />
-            Embed &quot;{title}&quot; On Your Website
-          </DialogTitle>
-          <DialogDescription className="text-xs">
+            <DialogTitle className="text-lg font-bold">
+              Embed &quot;{title}&quot; On Your Website
+            </DialogTitle>
+            <CardInfoTooltip text="Add responsive scheduling directly to WordPress, Webflow, React, or custom landing pages." />
+          </div>
+          <DialogDescription className="sr-only">
             Add responsive scheduling directly to WordPress, Webflow, React, or custom landing pages.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2 text-xs">
+        <div className="p-6 space-y-4 text-xs">
           {/* Customization Options */}
           <div className="grid grid-cols-2 gap-3 p-3.5 rounded-2xl bg-muted/30 border">
             <div className="space-y-1">
@@ -156,11 +170,11 @@ export function EmbedCodeModal({
           </Tabs>
         </div>
 
-        <DialogFooter className="gap-2">
+        <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="rounded-xl min-h-[44px]"
+            className="rounded-xl min-h-[44px] sm:min-h-[36px] active:scale-[0.97]"
           >
             Close
           </Button>

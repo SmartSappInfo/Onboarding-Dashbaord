@@ -44,7 +44,8 @@ const QRPreview = dynamic(() => import('@/app/admin/qr-studio/components/qr-prev
   loading: () => <Skeleton className="h-[160px] w-[160px] rounded-xl mx-auto" />
 });
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { renderScheduledMessageAction, sendTestMessageAction } from '@/app/actions/scheduled-message-actions';
@@ -92,10 +93,19 @@ export default function MeetingDetailPage() {
   const { meeting, registrants, attendees, meetingDocRef } = useMeetingContext();
 
   const handleCopy = (text: string, type: 'short' | 'long' | string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedLink(type);
-    toast({ title: "Link Copied!", description: "Saved to clipboard." });
-    setTimeout(() => setCopiedLink(null), 2000);
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        setCopiedLink(type);
+        toast({ title: 'Link Copied! 🔗', description: 'Saved to clipboard.' });
+        setTimeout(() => setCopiedLink(null), 2000);
+      })
+      .catch(() => {
+        toast({
+          variant: 'destructive',
+          title: 'Unable to Copy',
+          description: 'Please copy the link directly from the input field.',
+        });
+      });
   };
 
   const handleOpenPreview = async (messageId: string) => {
@@ -411,11 +421,14 @@ export default function MeetingDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl">
-            <CardHeader className="bg-muted/30 border-b">
-              <CardTitle className="text-lg font-semibold tracking-tight flex items-center gap-2">
+            <CardHeader className="bg-muted/30 border-b flex flex-row items-center justify-between">
+              <div className="flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-primary" />
-                Meeting Information
-              </CardTitle>
+                <CardTitle className="text-lg font-semibold tracking-tight">
+                  Meeting Information
+                </CardTitle>
+                <CardInfoTooltip text="Core meeting configuration, live video room link, and registration toggle." />
+              </div>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -665,14 +678,17 @@ export default function MeetingDetailPage() {
         <div className="space-y-6">
           {/* Session Controls */}
           <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl">
-            <CardHeader className="bg-muted/30 border-b">
-              <CardTitle className="text-sm font-semibold tracking-tight">Session Controls</CardTitle>
+            <CardHeader className="bg-muted/30 border-b flex flex-row items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-sm font-semibold tracking-tight">Session Controls</CardTitle>
+                <CardInfoTooltip text="Direct control over session state and lifecycle triggers." />
+              </div>
             </CardHeader>
             <CardContent className="p-4">
               <Button 
                 variant={meeting.status === 'ended' ? "secondary" : "destructive"} 
                 size="sm" 
-                className="w-full justify-center font-bold transition-all rounded-xl shadow-sm h-10 text-xs"
+                className="w-full justify-center font-bold transition-all rounded-xl shadow-sm h-10 text-xs active:scale-[0.97]"
                 onClick={handleEndMeeting}
                 disabled={isEnding || meeting.status === 'ended'}
               >
@@ -703,11 +719,14 @@ export default function MeetingDetailPage() {
 
           {/* Distribution & Access */}
           <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-            <CardHeader className="bg-muted/30 border-b py-4">
-              <CardTitle className="text-sm font-semibold tracking-tight flex items-center gap-2">
+            <CardHeader className="bg-muted/30 border-b py-4 flex flex-row items-center justify-between">
+              <div className="flex items-center gap-2">
                 <LinkIcon className="h-4 w-4 text-primary" />
-                Distribution & Access
-              </CardTitle>
+                <CardTitle className="text-sm font-semibold tracking-tight">
+                  Distribution & Access
+                </CardTitle>
+                <CardInfoTooltip text="Public and shortened registration URLs and trackable QR codes." />
+              </div>
             </CardHeader>
             <CardContent className="p-0">
               <div className="p-4 space-y-4">
@@ -807,82 +826,83 @@ export default function MeetingDetailPage() {
       
       {/* Preview Modal */}
       <Dialog open={previewModalOpen} onOpenChange={setPreviewModalOpen}>
-        <DialogContent className="sm:max-w-[700px] gap-0 p-0 overflow-hidden bg-background">
-          <DialogHeader className="p-6 pb-4 border-b">
-            <DialogTitle className="flex items-center gap-2 text-xl">
+        <DialogContent className="border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl max-w-2xl p-0 overflow-hidden">
+          <DialogHeader demarcated>
+            <div className="flex items-center gap-2">
               <Eye className="h-5 w-5 text-primary" />
-              Message Preview
-            </DialogTitle>
+              <DialogTitle className="text-lg font-bold">Message Preview</DialogTitle>
+              <CardInfoTooltip text="Preview rendered message formatting across Email and SMS channels before dispatch." />
+            </div>
+            <DialogDescription className="sr-only">
+              Preview rendered email and SMS notifications and dispatch test messages.
+            </DialogDescription>
           </DialogHeader>
           <div className="p-0">
             {isPreviewLoading ? (
               <div className="flex flex-col items-center justify-center p-12 text-muted-foreground gap-4">
                 <Loader2 className="h-8 w-8 animate-spin" />
-                <p>Generating preview...</p>
+                <p className="text-sm">Generating preview...</p>
               </div>
             ) : previewContent ? (
               <div className="flex flex-col h-full max-h-[70vh]">
                 <div className="flex-1 overflow-y-auto bg-muted/10 p-6">
                   {previewContent.channel === 'email' ? (
                     <div className="space-y-4">
-                      <div className="flex flex-col gap-1.5 p-4 rounded-xl border bg-white shadow-sm">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="flex flex-col gap-1.5 p-4 rounded-xl border border-border bg-card shadow-xs">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <Mail className="h-4 w-4" />
                           <span className="font-semibold">Subject:</span>
                         </div>
-                        <p className="font-medium">{previewContent.subject || 'No Subject'}</p>
+                        <p className="font-medium text-sm text-foreground">{previewContent.subject || 'No Subject'}</p>
                       </div>
-                      <div className="border rounded-xl overflow-hidden bg-white shadow-sm min-h-[400px]">
+                      <div className="border border-border rounded-xl overflow-hidden bg-card shadow-xs min-h-[380px]">
                         <iframe 
                           srcDoc={previewContent.body} 
                           title="Message Preview"
-                          className="w-full h-full min-h-[400px] border-0"
+                          className="w-full h-full min-h-[380px] border-0"
                           sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
                         />
                       </div>
                     </div>
                   ) : (
-                    <div className="flex justify-center py-8">
-                      <div className="max-w-[320px] w-full border-[6px] border-slate-800 rounded-[32px] overflow-hidden shadow-2xl bg-slate-50 relative">
-                        <div className="absolute top-0 inset-x-0 h-6 bg-slate-800 rounded-b-xl mx-auto w-[120px] z-10" />
-                        <div className="bg-white p-4 pb-2 border-b flex items-center justify-center pt-8">
-                          <p className="text-xs font-semibold text-center text-slate-500 flex items-center gap-1.5">
-                            <MessageSquare className="h-3 w-3" />
+                    <div className="flex justify-center py-6">
+                      <div className="max-w-[340px] w-full border border-border/80 rounded-2xl overflow-hidden shadow-lg bg-card text-card-foreground relative">
+                        <div className="bg-muted/40 p-4 pb-3 border-b border-border/60 flex items-center justify-center">
+                          <p className="text-xs font-semibold text-center text-muted-foreground flex items-center gap-1.5">
+                            <MessageSquare className="h-3.5 w-3.5 text-primary" />
                             SMS Preview
                           </p>
                         </div>
-                        <div className="p-4 bg-slate-100 min-h-[400px] flex flex-col justify-end">
-                          <div className="bg-[#007AFF] text-white p-3.5 rounded-2xl rounded-br-sm text-[15px] leading-snug shadow-sm whitespace-pre-wrap">
+                        <div className="p-4 bg-muted/10 min-h-[360px] flex flex-col justify-end">
+                          <div className="bg-primary text-primary-foreground p-3.5 rounded-2xl rounded-br-xs text-sm leading-snug shadow-xs whitespace-pre-wrap">
                             {previewContent.body}
                           </div>
-                          <p className="text-[10px] text-slate-400 text-right mt-1.5 mr-1">Delivered via SmartSapp</p>
+                          <p className="text-[10px] text-muted-foreground text-right mt-2 mr-1">Delivered via SmartSapp</p>
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
-                <div className="p-4 border-t bg-muted/30">
-                  <div className="flex flex-col sm:flex-row items-center gap-3">
-                    <div className="flex-1 w-full">
-                      <Label htmlFor="test-recipient" className="sr-only">Test Recipient</Label>
-                      <Input 
-                        id="test-recipient"
-                        type={previewContent.channel === 'email' ? "email" : "tel"}
-                        placeholder={previewContent.channel === 'email' ? "Enter email address for test" : "Enter phone number for test"}
-                        value={testRecipient}
-                        onChange={(e) => setTestRecipient(e.target.value)}
-                        className="bg-background shadow-sm"
-                      />
-                    </div>
-                    <Button 
-                      onClick={handleTestSend} 
-                      disabled={isTesting || !testRecipient}
-                      className="w-full sm:w-auto shadow-sm gap-2"
-                    >
-                      {isTesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                      {isTesting ? 'Sending...' : 'Test Dispatch'}
-                    </Button>
+                <div className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-col sm:flex-row items-center gap-3">
+                  <div className="flex-1 w-full">
+                    <Label htmlFor="test-recipient" className="sr-only">Test Recipient</Label>
+                    <Input 
+                      id="test-recipient"
+                      type={previewContent.channel === 'email' ? "email" : "tel"}
+                      placeholder={previewContent.channel === 'email' ? "Enter email address for test" : "Enter phone number for test"}
+                      value={testRecipient}
+                      onChange={(e) => setTestRecipient(e.target.value)}
+                      className="rounded-xl min-h-[44px] bg-background shadow-xs"
+                    />
                   </div>
+                  <Button 
+                    onClick={handleTestSend} 
+                    disabled={isTesting || !testRecipient}
+                    className="w-full sm:w-auto rounded-xl min-h-[44px] font-semibold gap-2 shadow-xs active:scale-[0.97]"
+                  >
+                    {isTesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    {isTesting ? 'Sending...' : 'Test Dispatch'}
+                  </Button>
                 </div>
               </div>
             ) : (

@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +23,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import type { EventType } from '@/lib/meetings/types';
 
 interface ShareEventTypeModalProps {
@@ -46,37 +48,62 @@ export function ShareEventTypeModal({
   const embedCode = `<iframe\n  src="${origin}/embed/booking/${eventType.slug}"\n  width="100%"\n  height="700px"\n  frameborder="0"\n></iframe>`;
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(bookingUrl);
-    setCopiedLink(true);
-    toast({
-      title: 'Link Copied! 🔗',
-      description: 'Public booking URL copied to clipboard.',
-    });
-    setTimeout(() => setCopiedLink(false), 3000);
+    navigator.clipboard.writeText(bookingUrl)
+      .then(() => {
+        setCopiedLink(true);
+        toast({
+          title: 'Link Copied! 🔗',
+          description: 'Public booking URL copied to clipboard.',
+        });
+        setTimeout(() => setCopiedLink(false), 3000);
+      })
+      .catch((err) => {
+        console.error('Failed to copy link:', err);
+        toast({
+          variant: 'destructive',
+          title: 'Copy Failed',
+          description: 'Could not access clipboard. Please copy manually.',
+        });
+      });
   };
 
   const handleCopyEmbed = () => {
-    navigator.clipboard.writeText(embedCode);
-    setCopiedEmbed(true);
-    toast({
-      title: 'Embed Snippet Copied! 💻',
-      description: 'Iframe embed HTML copied to clipboard.',
-    });
-    setTimeout(() => setCopiedEmbed(false), 3000);
+    navigator.clipboard.writeText(embedCode)
+      .then(() => {
+        setCopiedEmbed(true);
+        toast({
+          title: 'Embed Snippet Copied! 💻',
+          description: 'Iframe embed HTML copied to clipboard.',
+        });
+        setTimeout(() => setCopiedEmbed(false), 3000);
+      })
+      .catch((err) => {
+        console.error('Failed to copy embed snippet:', err);
+        toast({
+          variant: 'destructive',
+          title: 'Copy Failed',
+          description: 'Could not access clipboard. Please copy manually.',
+        });
+      });
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg rounded-3xl p-6 space-y-4">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+      <DialogContent className="border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl sm:max-w-lg p-0 overflow-hidden">
+        <DialogHeader demarcated>
+          <div className="flex items-center gap-2">
             <Share2 className="w-5 h-5 text-primary" />
-            Share &quot;{eventType.name}&quot;
-          </DialogTitle>
-          <DialogDescription className="text-xs">
+            <DialogTitle className="text-lg font-bold">
+              Share &quot;{eventType.name}&quot;
+            </DialogTitle>
+            <CardInfoTooltip text="Distribute this booking page directly to clients, embed it on your website, or share via QR code." />
+          </div>
+          <DialogDescription className="sr-only">
             Distribute this booking page directly to clients, embed it on your website, or share via QR code.
           </DialogDescription>
         </DialogHeader>
+
+        <div className="p-6">
 
         <Tabs defaultValue="link" className="w-full space-y-4">
           <TabsList className="grid grid-cols-3 rounded-2xl p-1 bg-muted/50">
@@ -160,6 +187,18 @@ export function ShareEventTypeModal({
             </p>
           </TabsContent>
         </Tabs>
+        </div>
+
+        <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            className="rounded-xl min-h-[44px] sm:min-h-[36px] active:scale-[0.97]"
+          >
+            Close
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

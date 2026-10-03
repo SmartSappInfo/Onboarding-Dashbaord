@@ -38,6 +38,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useConnectedMeetingProviders } from '@/lib/meetings/hooks/use-connected-meeting-providers';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 interface SessionWizardModalProps {
   open: boolean;
@@ -111,34 +112,42 @@ export function SessionWizardModal({ open, onOpenChange }: SessionWizardModalPro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl rounded-3xl p-6 space-y-6">
-        <DialogHeader className="space-y-1 text-left">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600 bg-purple-500/10 px-2 py-0.5 rounded-md">
-              Step {step} of 5
-            </span>
-            <div className="flex items-center gap-1">
-              {[1, 2, 3, 4, 5].map(i => (
-                <div
-                  key={i}
-                  className={`w-5 h-1 rounded-full transition-colors ${
-                    i <= step ? 'bg-purple-600' : 'bg-muted'
-                  }`}
-                />
-              ))}
+      <DialogContent className="border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl sm:max-w-xl p-0 overflow-hidden">
+        <DialogHeader demarcated>
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-purple-600" />
+              <DialogTitle className="text-lg font-bold tracking-tight text-foreground">
+                {step === 1 && 'Select Session Format'}
+                {step === 2 && 'Basic Session Information'}
+                {step === 3 && 'Registration & Waitlist Settings'}
+                {step === 4 && 'Conferencing & AI Experience'}
+                {step === 5 && 'Automated Notification Cascade'}
+              </DialogTitle>
+              <CardInfoTooltip text="Configure high-capacity webinars, workshops, or group training sessions." />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600 bg-purple-500/10 px-2 py-0.5 rounded-md">
+                Step {step}/5
+              </span>
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map(i => (
+                  <div
+                    key={i}
+                    className={`w-3.5 h-1 rounded-full transition-colors ${
+                      i <= step ? 'bg-purple-600' : 'bg-muted'
+                    }`}
+                  />
+                ))}
+              </div>
             </div>
           </div>
-          <DialogTitle className="text-xl font-bold tracking-tight text-foreground">
-            {step === 1 && 'Select Session Format'}
-            {step === 2 && 'Basic Session Information'}
-            {step === 3 && 'Registration & Waitlist Settings'}
-            {step === 4 && 'Conferencing & AI Experience'}
-            {step === 5 && 'Automated Notification Cascade'}
-          </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
+          <DialogDescription className="sr-only">
             Configure high-capacity webinars, workshops, or group training sessions.
           </DialogDescription>
         </DialogHeader>
+
+        <div className="p-6 max-h-[65vh] overflow-y-auto space-y-5">
 
         {/* STEP 1: SESSION FORMAT */}
         {step === 1 && (
@@ -319,14 +328,16 @@ export function SessionWizardModal({ open, onOpenChange }: SessionWizardModalPro
           </div>
         )}
 
+        </div>
+
         {/* Footer Navigation */}
-        <DialogFooter className="flex items-center justify-between gap-2 pt-2 border-t border-border/60 sm:space-x-0">
+        <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-between gap-2.5 sm:space-x-0">
           {step > 1 ? (
             <Button
               variant="outline"
               size="sm"
               onClick={handleBack}
-              className="rounded-xl h-9 text-xs font-semibold gap-1.5"
+              className="rounded-xl min-h-[44px] sm:min-h-[36px] text-xs font-semibold gap-1.5 active:scale-[0.97]"
             >
               <ArrowLeft className="w-3.5 h-3.5" /> Back
             </Button>
@@ -336,7 +347,7 @@ export function SessionWizardModal({ open, onOpenChange }: SessionWizardModalPro
             <Button
               size="sm"
               onClick={handleNext}
-              className="rounded-xl h-9 text-xs font-bold gap-1.5 px-4 active:scale-[0.97]"
+              className="rounded-xl min-h-[44px] sm:min-h-[36px] text-xs font-bold gap-1.5 px-5 active:scale-[0.97]"
             >
               Next Step <ArrowRight className="w-3.5 h-3.5" />
             </Button>
@@ -345,7 +356,7 @@ export function SessionWizardModal({ open, onOpenChange }: SessionWizardModalPro
               size="sm"
               onClick={handleCreateSession}
               disabled={isSubmitting}
-              className="rounded-xl h-9 text-xs font-bold gap-1.5 px-5 bg-purple-600 hover:bg-purple-700 text-white active:scale-[0.97]"
+              className="rounded-xl min-h-[44px] sm:min-h-[36px] text-xs font-bold gap-1.5 px-6 bg-purple-600 hover:bg-purple-700 text-white active:scale-[0.97]"
             >
               <CheckCircle2 className="w-3.5 h-3.5" /> Create Session
             </Button>

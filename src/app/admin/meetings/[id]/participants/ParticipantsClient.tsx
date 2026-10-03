@@ -80,6 +80,7 @@ import {
   removeParticipantAction,
 } from '@/app/actions/meeting-participant-actions';
 import { migrateMeetingToUnifiedSchemaAction } from '@/app/actions/meeting-migration-actions';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { cn } from '@/lib/utils';
 
 function getErrorMessage(error: unknown): string {
@@ -348,11 +349,9 @@ export default function ParticipantsClient({ meetingId, meetingTitle }: Particip
     <div className="space-y-6">
       {/* Top Action Bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
+        <div className="flex items-center gap-2.5">
           <h2 className="text-xl font-bold tracking-tight">Participant Roster</h2>
-          <p className="text-sm text-muted-foreground">
-            Manage hosts, facilitators, and attendees with live check-in and attendance duration tracking.
-          </p>
+          <CardInfoTooltip text="Manage hosts, facilitators, and attendees with live check-in and attendance duration tracking." />
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -625,93 +624,99 @@ export default function ParticipantsClient({ meetingId, meetingTitle }: Particip
 
       {/* Add Participant Modal */}
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        <DialogContent className="sm:max-w-md rounded-2xl">
-          <DialogHeader>
-            <DialogTitle>Add Participant</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl max-w-md p-0 overflow-hidden">
+          <DialogHeader demarcated>
+            <div className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5 text-primary" />
+              <DialogTitle className="text-lg font-bold">Add Participant</DialogTitle>
+              <CardInfoTooltip text={`Add a host, facilitator, or attendee to ${meetingTitle}.`} />
+            </div>
+            <DialogDescription className="sr-only">
               Add a host, facilitator, or attendee to {meetingTitle}.
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleAddParticipant} className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="participant-name" className="text-xs font-semibold">Full Name *</Label>
-              <Input
-                id="participant-name"
-                value={newName}
-                onChange={e => setNewName(e.target.value)}
-                placeholder="e.g. John Doe"
-                className="rounded-xl min-h-[44px]"
-                required
-              />
+          <form onSubmit={handleAddParticipant}>
+            <div className="p-6 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="participant-name" className="text-xs font-semibold">Full Name *</Label>
+                <Input
+                  id="participant-name"
+                  value={newName}
+                  onChange={e => setNewName(e.target.value)}
+                  placeholder="e.g. John Doe"
+                  className="rounded-xl min-h-[44px]"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="participant-email" className="text-xs font-semibold">Email Address *</Label>
+                <Input
+                  id="participant-email"
+                  type="email"
+                  value={newEmail}
+                  onChange={e => setNewEmail(e.target.value)}
+                  placeholder="john@example.com"
+                  className="rounded-xl min-h-[44px]"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="participant-phone" className="text-xs font-semibold">Phone Number (Optional)</Label>
+                <Input
+                  id="participant-phone"
+                  type="tel"
+                  value={newPhone}
+                  onChange={e => setNewPhone(e.target.value)}
+                  placeholder="+1 555 0199"
+                  className="rounded-xl min-h-[44px]"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold">Participant Role</Label>
+                <Select value={newRole} onValueChange={(val: ParticipantRole) => setNewRole(val)}>
+                  <SelectTrigger className="rounded-xl min-h-[44px]">
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="attendee">Attendee</SelectItem>
+                    <SelectItem value="facilitator">Facilitator</SelectItem>
+                    <SelectItem value="host">Host</SelectItem>
+                    <SelectItem value="co_host">Co-Host</SelectItem>
+                    <SelectItem value="panelist">Panelist</SelectItem>
+                    <SelectItem value="guest">Guest</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <Checkbox
+                  id="send-invite-check"
+                  checked={sendInvite}
+                  onCheckedChange={c => setSendInvite(!!c)}
+                />
+                <label htmlFor="send-invite-check" className="text-xs font-medium cursor-pointer">
+                  Send email invitation with calendar (.ics) attachment
+                </label>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="participant-email" className="text-xs font-semibold">Email Address *</Label>
-              <Input
-                id="participant-email"
-                type="email"
-                value={newEmail}
-                onChange={e => setNewEmail(e.target.value)}
-                placeholder="john@example.com"
-                className="rounded-xl min-h-[44px]"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="participant-phone" className="text-xs font-semibold">Phone Number (Optional)</Label>
-              <Input
-                id="participant-phone"
-                type="tel"
-                value={newPhone}
-                onChange={e => setNewPhone(e.target.value)}
-                placeholder="+1 555 0199"
-                className="rounded-xl min-h-[44px]"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold">Participant Role</Label>
-              <Select value={newRole} onValueChange={(val: ParticipantRole) => setNewRole(val)}>
-                <SelectTrigger className="rounded-xl min-h-[44px]">
-                  <SelectValue placeholder="Select role" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  <SelectItem value="attendee">Attendee</SelectItem>
-                  <SelectItem value="facilitator">Facilitator</SelectItem>
-                  <SelectItem value="host">Host</SelectItem>
-                  <SelectItem value="co_host">Co-Host</SelectItem>
-                  <SelectItem value="panelist">Panelist</SelectItem>
-                  <SelectItem value="guest">Guest</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-center gap-2 pt-2">
-              <Checkbox
-                id="send-invite-check"
-                checked={sendInvite}
-                onCheckedChange={c => setSendInvite(!!c)}
-              />
-              <label htmlFor="send-invite-check" className="text-xs font-medium cursor-pointer">
-                Send email invitation with calendar (.ics) attachment
-              </label>
-            </div>
-
-            <DialogFooter className="pt-4">
+            <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
               <Button
                 type="button"
                 variant="ghost"
                 onClick={() => setIsAddOpen(false)}
-                className="rounded-xl min-h-[44px]"
+                className="rounded-xl min-h-[44px] active:scale-[0.97]"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={isSubmittingAdd}
-                className="rounded-xl min-h-[44px] px-6 active:scale-[0.97]"
+                className="rounded-xl min-h-[44px] px-6 active:scale-[0.97] font-semibold"
               >
                 {isSubmittingAdd ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                 Add Participant

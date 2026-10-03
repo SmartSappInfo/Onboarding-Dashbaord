@@ -17,8 +17,12 @@ import {
     DialogDescription,
     DialogHeader,
     DialogTitle,
+    DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from '@/hooks/use-toast';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+
+import type QRCodeStylingType from 'qr-code-styling';
 
 interface MeetingQRDialogProps {
     open: boolean;
@@ -35,7 +39,7 @@ export default function MeetingQRDialog({
 }: MeetingQRDialogProps) {
     const { toast } = useToast();
     const qrContainerRef = useRef<HTMLDivElement>(null);
-    const [qrEngine, setQrEngine] = useState<any>(null);
+    const [qrEngine, setQrEngine] = useState<QRCodeStylingType | null>(null);
     const [isGenerating, setIsGenerating] = useState(true);
     const [copied, setCopied] = useState(false);
     const [fullUrl, setFullUrl] = useState('');
@@ -114,7 +118,7 @@ export default function MeetingQRDialog({
                 title: "QR Code Downloaded",
                 description: `Successfully exported as ${extension.toUpperCase()}.`
             });
-        } catch (_error) {
+        } catch {
             toast({
                 variant: "destructive",
                 title: "Download Failed",
@@ -124,87 +128,100 @@ export default function MeetingQRDialog({
     };
 
     const handleCopyUrl = () => {
-        navigator.clipboard.writeText(fullUrl);
-        setCopied(true);
-        toast({
-            title: "URL Copied",
-            description: "Meeting link copied to clipboard."
-        });
-        setTimeout(() => setCopied(false), 2000);
+        navigator.clipboard.writeText(fullUrl)
+            .then(() => {
+                setCopied(true);
+                toast({
+                    title: "URL Copied",
+                    description: "Meeting link copied to clipboard."
+                });
+                setTimeout(() => setCopied(false), 2000);
+            })
+            .catch((err) => {
+                console.error("Failed to copy URL:", err);
+                toast({
+                    variant: "destructive",
+                    title: "Copy Failed",
+                    description: "Could not access clipboard. Please copy manually."
+                });
+            });
     };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[450px] rounded-[2.5rem] overflow-hidden border-none shadow-2xl p-0">
-                <div className="bg-primary/5 p-8 border-b border-primary/10">
-                    <DialogHeader>
-                        <div className="flex items-center gap-4 mb-2">
-                            <div className="p-3 bg-primary/10 rounded-2xl">
-                                <QrCode className="h-6 w-6 text-primary" />
-                            </div>
-                            <div>
-                                <DialogTitle className="text-xl font-bold tracking-tight">Meeting QR Access</DialogTitle>
-                                <DialogDescription className="text-xs font-medium">
-                                    Instant mobile access for {meetingTitle}
-                                </DialogDescription>
-                            </div>
-                        </div>
-                    </DialogHeader>
-                </div>
+            <DialogContent className="border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl sm:max-w-[450px] p-0 overflow-hidden">
+                <DialogHeader demarcated>
+                    <div className="flex items-center gap-2">
+                        <QrCode className="h-5 w-5 text-primary" />
+                        <DialogTitle className="text-lg font-bold tracking-tight">Meeting QR Access</DialogTitle>
+                        <CardInfoTooltip text="Scan with mobile camera for instant session registration or download print-ready assets." />
+                    </div>
+                    <DialogDescription className="sr-only">
+                        Instant mobile access for {meetingTitle}
+                    </DialogDescription>
+                </DialogHeader>
 
-                <div className="p-8 space-y-8 bg-background">
+                <div className="p-6 space-y-5 bg-background">
                     {/* QR Code Container */}
-                    <div className="relative aspect-square w-full max-w-[280px] mx-auto rounded-3xl bg-white border shadow-inner flex items-center justify-center p-4 overflow-hidden group">
+                    <div className="relative aspect-square w-full max-w-[260px] mx-auto rounded-2xl bg-white border border-border shadow-xs flex items-center justify-center p-3 overflow-hidden group">
                         {isGenerating && (
-                            <div className="absolute inset-0 z-10 bg-white/80 backdrop-blur-sm flex items-center justify-center">
-                                <Loader2 className="h-10 w-10 text-primary animate-spin" />
+                            <div className="absolute inset-0 z-10 bg-white/80 backdrop-blur-xs flex items-center justify-center">
+                                <Loader2 className="h-8 w-8 text-primary animate-spin" />
                             </div>
                         )}
-                        <div ref={qrContainerRef} className="w-full h-full flex items-center justify-center transition-transform group-hover:scale-105 duration-500" />
+                        <div ref={qrContainerRef} className="w-full h-full flex items-center justify-center transition-transform group-hover:scale-105 duration-300" />
                     </div>
 
                     {/* URL Bar */}
-                    <div className="bg-muted/50 rounded-2xl p-3 flex items-center gap-3 border border-border/50">
-                        <div className="flex-1 truncate text-[10px] font-mono text-muted-foreground px-2">
+                    <div className="bg-muted/40 rounded-xl p-2.5 flex items-center gap-2.5 border border-border/60">
+                        <div className="flex-1 truncate text-xs font-mono text-muted-foreground px-1">
                             {fullUrl}
                         </div>
                         <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-8 w-8 rounded-xl shrink-0"
+                            className="h-8 w-8 rounded-lg shrink-0 active:scale-[0.97]"
                             onClick={handleCopyUrl}
                         >
-                            {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                            {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
                         </Button>
                     </div>
 
                     {/* Actions */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-3">
                         <Button 
                             onClick={() => handleDownload('png')} 
-                            className="h-14 rounded-2xl font-bold gap-2 shadow-lg shadow-primary/10 transition-all active:scale-95"
+                            className="min-h-[44px] rounded-xl font-semibold gap-2 shadow-xs transition-all active:scale-[0.97]"
                             variant="default"
                         >
-                            <FileImage className="h-5 w-5" />
+                            <FileImage className="h-4 w-4" />
                             PNG Image
                         </Button>
                         <Button 
                             onClick={() => handleDownload('svg')} 
                             variant="outline"
-                            className="h-14 rounded-2xl font-bold gap-2 border-2 transition-all active:scale-95"
+                            className="min-h-[44px] rounded-xl font-semibold gap-2 transition-all active:scale-[0.97]"
                         >
-                            <FileCode className="h-5 w-5" />
+                            <FileCode className="h-4 w-4" />
                             Vector SVG
                         </Button>
                     </div>
                 </div>
 
-                <div className="px-8 pb-8 bg-background flex justify-center">
-                    <p className="text-[10px] text-muted-foreground font-medium flex items-center gap-2">
-                        <div className="h-1 w-1 rounded-full bg-primary" />
-                        Print this QR on flyers or posters for instant session registration.
+                <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-between gap-2.5">
+                    <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                        Print on flyers or posters
                     </p>
-                </div>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onOpenChange(false)}
+                        className="rounded-xl min-h-[44px] sm:min-h-[36px] active:scale-[0.97]"
+                    >
+                        Close
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );

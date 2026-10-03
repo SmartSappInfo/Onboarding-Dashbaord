@@ -456,7 +456,7 @@ export default function PublicBookingClient({ initialData, prefill }: PublicBook
                           variant="ghost"
                           size="icon"
                           onClick={() => setCurrentMonth(prev => subMonths(prev, 1))}
-                          className="h-8 w-8 rounded-xl"
+                          className="min-h-[44px] min-w-[44px] sm:h-9 sm:w-9 rounded-xl active:scale-[0.97]"
                         >
                           <ChevronLeft className="w-4 h-4" />
                         </Button>
@@ -465,7 +465,7 @@ export default function PublicBookingClient({ initialData, prefill }: PublicBook
                           variant="ghost"
                           size="icon"
                           onClick={() => setCurrentMonth(prev => addMonths(prev, 1))}
-                          className="h-8 w-8 rounded-xl"
+                          className="min-h-[44px] min-w-[44px] sm:h-9 sm:w-9 rounded-xl active:scale-[0.97]"
                         >
                           <ChevronRight className="w-4 h-4" />
                         </Button>
@@ -552,7 +552,7 @@ export default function PublicBookingClient({ initialData, prefill }: PublicBook
                               variant={isPicked ? 'default' : 'outline'}
                               disabled={isAcquiringHold}
                               onClick={() => handleSelectSlot(slot)}
-                              className="w-full rounded-xl min-h-[44px] justify-center font-semibold text-xs"
+                              className="w-full rounded-xl min-h-[44px] justify-center font-semibold text-xs active:scale-[0.98]"
                             >
                               {isAcquiringHold && isPicked ? (
                                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -592,7 +592,7 @@ export default function PublicBookingClient({ initialData, prefill }: PublicBook
                     variant="ghost"
                     size="icon"
                     onClick={() => setCurrentStep('select_time')}
-                    className="rounded-xl h-9 w-9"
+                    className="rounded-xl min-h-[44px] min-w-[44px] sm:h-9 sm:w-9 active:scale-[0.97]"
                   >
                     <ArrowLeft className="w-4 h-4" />
                   </Button>
@@ -726,14 +726,14 @@ export default function PublicBookingClient({ initialData, prefill }: PublicBook
                     type="button"
                     variant="ghost"
                     onClick={() => setCurrentStep('select_time')}
-                    className="rounded-xl min-h-[44px]"
+                    className="rounded-xl min-h-[44px] active:scale-[0.97]"
                   >
                     Back
                   </Button>
                   <Button
                     type="submit"
                     disabled={isSubmitting}
-                    className="rounded-xl min-h-[44px] px-6 font-semibold gap-2 shadow-sm"
+                    className="rounded-xl min-h-[44px] px-6 font-semibold gap-2 shadow-xs active:scale-[0.97]"
                   >
                     {isSubmitting ? (
                       <Loader2 className="w-4 h-4 animate-spin" />

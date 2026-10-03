@@ -63,7 +63,7 @@ export default function BookingSlotsClient({ bookingPage, initialDate, initialSl
     };
 
     loadSlots();
-  }, [selectedDate, bookingPage.availabilityId, initialDate, initialSlots]);
+  }, [selectedDate, bookingPage.availabilityId, bookingPage.durationMinutes, initialDate, initialSlots]);
 
   const handlePrevDay = () => {
     const prevDay = subDays(parseISO(selectedDate), 1);
@@ -139,7 +139,7 @@ export default function BookingSlotsClient({ bookingPage, initialDate, initialSl
                 size="icon"
                 onClick={handlePrevDay}
                 disabled={parseISO(selectedDate) <= new Date()}
-                className="h-8 w-8 rounded-lg text-slate-400 hover:text-white"
+                className="min-h-[44px] min-w-[44px] sm:h-9 sm:w-9 rounded-xl text-slate-400 hover:text-white active:scale-[0.97]"
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
@@ -153,7 +153,7 @@ export default function BookingSlotsClient({ bookingPage, initialDate, initialSl
                 variant="ghost"
                 size="icon"
                 onClick={handleNextDay}
-                className="h-8 w-8 rounded-lg text-slate-400 hover:text-white"
+                className="min-h-[44px] min-w-[44px] sm:h-9 sm:w-9 rounded-xl text-slate-400 hover:text-white active:scale-[0.97]"
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
@@ -182,7 +182,7 @@ export default function BookingSlotsClient({ bookingPage, initialDate, initialSl
                       transition={{ delay: index * 0.05, duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      className="w-full text-left p-3.5 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.06] hover:border-primary/30 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none transition-all flex items-center justify-between group cursor-pointer"
+                      className="w-full min-h-[48px] sm:min-h-[44px] text-left p-3.5 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.06] hover:border-primary/30 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none transition-all flex items-center justify-between group cursor-pointer active:scale-[0.98]"
                     >
                       <div className="flex items-center gap-2 text-slate-200">
                         <Clock className="h-3.5 w-3.5 text-primary opacity-60 group-hover:opacity-100 transition-opacity" />
