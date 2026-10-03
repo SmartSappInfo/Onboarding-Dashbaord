@@ -68,8 +68,10 @@ export function GlobalMeetingSearchModal({ open, onOpenChange }: GlobalMeetingSe
 
   const handleSelectEvent = (evt: CalendarGridEvent) => {
     onOpenChange(false);
-    if (evt.sourceType === 'meeting') {
-      router.push(`/admin/meetings/${evt.sourceId}`);
+    if (evt.sourceType === 'booking') {
+      router.push(`/admin/meetings/bookings?id=${encodeURIComponent(evt.sourceId)}`);
+    } else if (evt.sourceType === 'meeting') {
+      router.push(`/admin/meetings/${encodeURIComponent(evt.sourceId)}`);
     } else {
       router.push('/admin/meetings/calendar');
     }

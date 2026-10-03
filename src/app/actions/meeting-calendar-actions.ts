@@ -133,7 +133,7 @@ export async function getWorkspaceCalendarEventsAction(
         events.push({
           id: meetingId,
           sourceId: linkedBooking.id,
-          sourceType: 'meeting',
+          sourceType: 'booking',
           title: displayTitle,
           startAt: data.meetingTime,
           endAt: new Date(endMs).toISOString(),
@@ -184,7 +184,7 @@ export async function getWorkspaceCalendarEventsAction(
       events.push({
         id: bookingId,
         sourceId: bookingId,
-        sourceType: 'meeting',
+        sourceType: 'booking',
         title: displayTitle,
         startAt: b.startAt,
         endAt: b.endAt,

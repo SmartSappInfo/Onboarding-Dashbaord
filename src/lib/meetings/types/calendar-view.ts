@@ -11,7 +11,8 @@
 export type CalendarViewMode = 'day' | '3day' | 'week' | 'month' | 'agenda';
 
 export type CalendarEventSourceType =
-  | 'meeting'          // Confirmed SmartSapp meeting
+  | 'meeting'          // Confirmed SmartSapp group session/webinar
+  | 'booking'          // Confirmed 1:1 client appointment
   | 'booking_hold'      // 5-min temporary concurrency reservation
   | 'google_busy'       // Busy block from Google Calendar
   | 'microsoft_busy';   // Busy block from Microsoft Outlook / 365
