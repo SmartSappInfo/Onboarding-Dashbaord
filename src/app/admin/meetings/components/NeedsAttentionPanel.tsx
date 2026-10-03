@@ -96,7 +96,7 @@ export function NeedsAttentionPanel({
                 </h5>
                 <p className="text-[11px] text-muted-foreground truncate">
                   {connectedCount > 0
-                    ? `${connectedCount} calendar connected • All sessions confirmed`
+                    ? `${connectedCount} calendar${connectedCount === 1 ? '' : 's'} connected • All sessions confirmed`
                     : 'All appointments and group sessions are on schedule'}
                 </p>
               </div>
