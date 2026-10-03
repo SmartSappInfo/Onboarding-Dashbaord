@@ -37,8 +37,11 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useUser } from '@/firebase';
 import { useConnectedMeetingProviders } from '@/lib/meetings/hooks/use-connected-meeting-providers';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+
+import { quickScheduleMeetingAction } from '@/app/actions/meeting-calendar-actions';
 
 interface SessionWizardModalProps {
   open: boolean;
@@ -48,9 +51,10 @@ interface SessionWizardModalProps {
 type SessionType = 'webinar' | 'training' | 'consultation' | 'workshop' | 'general';
 
 export function SessionWizardModal({ open, onOpenChange }: SessionWizardModalProps) {
-  const _router = useRouter();
+  const router = useRouter();
   const { toast } = useToast();
-  const { activeWorkspaceId } = useWorkspace();
+  const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
+  const { user } = useUser();
   const { hasGoogle, hasZoom, hasTeams } = useConnectedMeetingProviders(activeWorkspaceId, { enabled: open });
 
   const [step, setStep] = React.useState<number>(1);
@@ -61,7 +65,7 @@ export function SessionWizardModal({ open, onOpenChange }: SessionWizardModalPro
   const [title, setTitle] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [date, setDate] = React.useState('');
-  const [_time, _setTime] = React.useState('19:00');
+  const [time, setTime] = React.useState('19:00');
   const [duration, setDuration] = React.useState('60');
 
   // Step 3: Registration
@@ -93,11 +97,50 @@ export function SessionWizardModal({ open, onOpenChange }: SessionWizardModalPro
   };
 
   const handleCreateSession = async () => {
+    if (!title.trim()) {
+      toast({
+        variant: 'destructive',
+        title: 'Title required',
+        description: 'Please provide a title for the session.',
+      });
+      return;
+    }
+
+    if (!activeWorkspaceId) {
+      toast({
+        variant: 'destructive',
+        title: 'Workspace required',
+        description: 'Please select an active workspace before creating a session.',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
+      const now = new Date();
+      const targetDate = date ? new Date(`${date}T${time || '10:00'}:00`) : new Date(now.getTime() + 24 * 60 * 60000);
+      const startIso = targetDate.toISOString();
+      const durationNum = parseInt(duration, 10) || 60;
+
+      const res = await quickScheduleMeetingAction({
+        workspaceId: activeWorkspaceId,
+        organizationId: activeOrganizationId || undefined,
+        title: title.trim(),
+        description: description.trim() || `Format: ${sessionType.toUpperCase()}`,
+        hostUserId: user?.uid || 'user',
+        hostName: user?.displayName || user?.email || 'Host',
+        startAt: startIso,
+        durationMinutes: durationNum,
+        locationType: provider,
+      });
+
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to schedule session');
+      }
+
       toast({
         title: 'Session Created! 🎉',
-        description: `"${title || 'Executive Masterclass'}" is now scheduled and ready for registrations.`,
+        description: `"${title}" is now scheduled and ready for registrations.`,
         actionConfig: {
           path: '/admin/meetings/sessions',
           label: 'View in Sessions',
@@ -105,6 +148,14 @@ export function SessionWizardModal({ open, onOpenChange }: SessionWizardModalPro
       });
       onOpenChange(false);
       setStep(1);
+      setTitle('');
+      setDescription('');
+    } catch (err: unknown) {
+      toast({
+        variant: 'destructive',
+        title: 'Session Creation Failed',
+        description: err instanceof Error ? err.message : 'An unexpected error occurred.',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -208,20 +259,29 @@ export function SessionWizardModal({ open, onOpenChange }: SessionWizardModalPro
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <Label className="font-semibold">Scheduled Date</Label>
                 <Input
                   type="date"
                   value={date}
                   onChange={e => setDate(e.target.value)}
-                  className="rounded-xl min-h-[40px] text-xs"
+                  className="rounded-xl min-h-[44px] text-xs"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="font-semibold">Duration (minutes)</Label>
+                <Label className="font-semibold">Scheduled Time</Label>
+                <Input
+                  type="time"
+                  value={time}
+                  onChange={e => setTime(e.target.value)}
+                  className="rounded-xl min-h-[44px] text-xs"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="font-semibold">Duration</Label>
                 <Select value={duration} onValueChange={setDuration}>
-                  <SelectTrigger className="rounded-xl text-xs min-h-[40px]">
+                  <SelectTrigger className="rounded-xl text-xs min-h-[44px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl">
@@ -229,6 +289,7 @@ export function SessionWizardModal({ open, onOpenChange }: SessionWizardModalPro
                     <SelectItem value="45">45 minutes</SelectItem>
                     <SelectItem value="60">60 minutes</SelectItem>
                     <SelectItem value="90">90 minutes</SelectItem>
+                    <SelectItem value="120">2 hours</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
