@@ -39,6 +39,7 @@ import type {
 import {
   buildHourSlots,
   getCalendarGridDays,
+  calculateEventGridPosition,
 } from '@/lib/meetings/calendar-view-service';
 import {
   format,
@@ -469,11 +470,14 @@ export function CalendarClient() {
           </div>
         </Card>
       ) : (
-        /* Multi-Day Grid View (Day, 3-Day, Week) */
-        <Card className="rounded-3xl border border-border/80 shadow-xs overflow-x-auto bg-card">
+        /* Multi-Day Grid View (Day, 3-Day, Week) with Continuous Duration Positioning */
+        <Card className="sm:rounded-2xl border border-border/80 shadow-sm overflow-x-auto bg-card">
           <div className="min-w-[700px]">
             {/* Day Header Row */}
-            <div className="grid grid-cols-[80px_repeat(auto-fit,minmax(100px,1fr))] border-b border-border/80 bg-muted/30">
+            <div 
+              className="grid border-b border-border/80 bg-muted/30"
+              style={{ gridTemplateColumns: `80px repeat(${gridDays.length}, minmax(100px, 1fr))` }}
+            >
               <div className="p-3 text-[11px] font-bold text-muted-foreground text-center border-r border-border/80">
                 Time
               </div>
@@ -497,62 +501,92 @@ export function CalendarClient() {
               })}
             </div>
 
-            {/* Hours & Grid Columns */}
-            <div className="divide-y divide-border/80 relative">
-              {hourSlots.filter(h => h.minute === 0).map((h, hourIdx) => (
-                <div
-                  key={hourIdx}
-                  className="grid grid-cols-[80px_repeat(auto-fit,minmax(100px,1fr))] min-h-[56px]"
+            {/* Continuous Grid Body: Time Labels + Day Columns */}
+            {(() => {
+              const displayHours = hourSlots.filter(h => h.minute === 0 && h.hour < 20);
+              return (
+                <div 
+                  className="grid relative"
+                  style={{ gridTemplateColumns: `80px repeat(${gridDays.length}, minmax(100px, 1fr))` }}
                 >
-                  <div className="p-2 text-[10px] font-semibold text-muted-foreground text-center border-r border-border/80">
-                    {h.timeStr}
+                  {/* Left Column: Hour Marks */}
+                  <div className="border-r border-border/80">
+                    {displayHours.map((h, hourIdx) => (
+                      <div
+                        key={hourIdx}
+                        className="h-[56px] p-2 text-[10px] font-semibold text-muted-foreground text-center border-b border-border/80 flex items-center justify-center"
+                      >
+                        {h.timeStr}
+                      </div>
+                    ))}
                   </div>
 
+                  {/* Day Columns with Continuous Event Positioning */}
                   {gridDays.map((dayDate, dayIdx) => {
                     const dayDateStr = format(dayDate, 'yyyy-MM-dd');
-                    // Find events on this day and hour
                     const dayEvents = filteredEvents.filter(evt => {
                       const eDate = new Date(evt.startAt);
-                      return (
-                        format(eDate, 'yyyy-MM-dd') === dayDateStr &&
-                        eDate.getHours() === h.hour
-                      );
+                      return format(eDate, 'yyyy-MM-dd') === dayDateStr;
                     });
 
                     return (
                       <div
                         key={dayIdx}
-                        onClick={() => handleSlotClick(dayDate, h.hour)}
-                        className="p-1 border-r border-border/80 last:border-r-0 hover:bg-primary/5 transition-colors cursor-pointer relative min-h-[56px]"
+                        className="relative border-r border-border/80 last:border-r-0 select-none"
                       >
-                        {dayEvents.map(evt => {
-                          const isLive = isMeetingLiveNow(evt.startAt, evt.endAt);
-                          return (
-                            <div
-                              key={evt.id}
-                              onClick={e => {
-                                e.stopPropagation();
-                                handleEventClick(evt);
-                              }}
-                              className={`p-1.5 rounded-lg text-[10px] font-semibold text-white truncate shadow-xs mb-1 hover:brightness-110 active:scale-[0.98] transition-transform ${
-                                isLive ? 'ring-2 ring-rose-500 animate-pulse' : ''
-                              }`}
-                              style={{ backgroundColor: evt.color || '#3b82f6' }}
-                              title={`${evt.title} (${format(new Date(evt.startAt), 'p')} - ${format(new Date(evt.endAt), 'p')})`}
-                            >
-                              <span className="block truncate">{evt.title}</span>
-                              <span className="text-[9px] opacity-90 block">
-                                {format(new Date(evt.startAt), 'p')}
-                              </span>
-                            </div>
-                          );
-                        })}
+                        {/* Background Clickable Hourly Slots */}
+                        {displayHours.map((h, hourIdx) => (
+                          <div
+                            key={hourIdx}
+                            onClick={() => handleSlotClick(dayDate, h.hour)}
+                            className="h-[56px] border-b border-border/80 hover:bg-primary/5 transition-colors cursor-pointer"
+                          />
+                        ))}
+
+                        {/* Continuous Absolute Duration Event Layer */}
+                        <div className="absolute inset-0 pointer-events-none p-1">
+                          {dayEvents.map(evt => {
+                            const pos = calculateEventGridPosition(new Date(evt.startAt), new Date(evt.endAt), 8, 20);
+                            const isLive = isMeetingLiveNow(evt.startAt, evt.endAt);
+                            return (
+                              <div
+                                key={evt.id}
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  handleEventClick(evt);
+                                }}
+                                className={cn(
+                                  "absolute left-1 right-1 rounded-lg p-2 text-[10px] font-semibold text-white shadow-xs overflow-hidden cursor-pointer pointer-events-auto hover:brightness-110 active:scale-[0.98] transition-all z-10 flex flex-col justify-between",
+                                  isLive && "ring-2 ring-rose-500 animate-pulse"
+                                )}
+                                style={{
+                                  top: `${pos.topPercent}%`,
+                                  height: `${Math.max(4, pos.heightPercent)}%`,
+                                  backgroundColor: evt.color || '#3b82f6',
+                                }}
+                                title={`${evt.title} (${format(new Date(evt.startAt), 'p')} - ${format(new Date(evt.endAt), 'p')})`}
+                              >
+                                <div className="min-w-0">
+                                  <span className="block truncate font-bold text-[11px] leading-tight">{evt.title}</span>
+                                  <span className="text-[9px] opacity-90 block truncate mt-0.5">
+                                    {format(new Date(evt.startAt), 'p')} – {format(new Date(evt.endAt), 'p')}
+                                  </span>
+                                </div>
+                                {evt.hostName && (
+                                  <span className="text-[9px] opacity-75 truncate block">
+                                    {evt.hostName}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     );
                   })}
                 </div>
-              ))}
-            </div>
+              );
+            })()}
           </div>
         </Card>
       )}
