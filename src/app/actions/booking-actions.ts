@@ -809,10 +809,15 @@ export async function rescheduleBookingAction(input: {
         updatedAt: now.toISOString(),
       });
 
-      // 3. Update materialized Meeting record
+      // 3. Update materialized Meeting record with synchronized start and end times
       if (booking.meetingId) {
+        const durationMinutes = booking.durationMinutes
+          || Math.max(15, Math.round((new Date(newEndAt).getTime() - new Date(newStartAt).getTime()) / 60000));
+
         tx.update(adminDb.collection('meetings').doc(booking.meetingId), {
           meetingTime: newStartAt,
+          endTime: newEndAt,
+          durationMinutes,
           updatedAt: now.toISOString(),
         });
       }
