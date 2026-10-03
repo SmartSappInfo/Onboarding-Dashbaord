@@ -40,6 +40,7 @@ import type { MeetingPoll } from '@/lib/meetings/types/polls';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -207,14 +208,12 @@ export function PollsClient() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+        <div className="flex items-center gap-2.5">
           <h2 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
             <Vote className="h-5 w-5 text-primary" />
             Meeting Polls
           </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Find times that work for everyone with 1:many voting and consensus heat maps.
-          </p>
+          <CardInfoTooltip text="Find times that work for everyone with 1:many voting and consensus heat maps." />
         </div>
 
         <Button

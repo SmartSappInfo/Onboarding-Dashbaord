@@ -29,6 +29,7 @@ import {
   Users,
   MapPin,
 } from 'lucide-react';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { useToast } from '@/hooks/use-toast';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import {
@@ -151,14 +152,12 @@ export function ResourcesClient() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+        <div className="flex items-center gap-2.5">
           <h2 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
             <Building2 className="h-5 w-5 text-primary" />
             Physical Rooms & Resource Booking
           </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Manage physical boardrooms, broadcast studios, and shared equipment with automated double-booking prevention.
-          </p>
+          <CardInfoTooltip text="Manage physical boardrooms, broadcast studios, and shared equipment with automated double-booking prevention." />
         </div>
 
         <Button

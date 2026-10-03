@@ -11,6 +11,7 @@ import {
   Globe,
   Video,
 } from 'lucide-react';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { useToast } from '@/hooks/use-toast';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { getWorkspaceTelemetryMetricsAction } from '@/app/actions/meeting-telemetry-actions';
@@ -59,14 +60,12 @@ export function TelemetryClient() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+        <div className="flex items-center gap-2.5">
           <h2 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
             <Activity className="h-5 w-5 text-primary" />
             Real-Time Telemetry & Web Vitals
           </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Monitor Core Web Vitals across public booking funnels and conferencing provider API latencies.
-          </p>
+          <CardInfoTooltip text="Monitor Core Web Vitals across public booking funnels and conferencing provider API latencies." />
         </div>
 
         <Badge variant="outline" className="text-xs py-1 px-3 gap-1.5 self-start sm:self-auto">

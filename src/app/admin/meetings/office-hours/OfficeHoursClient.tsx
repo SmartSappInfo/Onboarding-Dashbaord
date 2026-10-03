@@ -33,6 +33,7 @@ import type {
 } from '@/lib/meetings/types/polls';
 import { format } from 'date-fns';
 import Link from 'next/link';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -177,6 +178,7 @@ export function OfficeHoursClient() {
                 />
               </span>
               <h2 className="text-lg font-bold text-foreground">{room?.title || 'Drop-In Office Hours'}</h2>
+              <CardInfoTooltip text="Instant drop-in consultations. Toggle your status when ready to receive live visitors." />
               <Badge
                 variant="secondary"
                 className={`text-[10px] uppercase font-bold ${
@@ -190,9 +192,6 @@ export function OfficeHoursClient() {
                 {room?.status || 'offline'}
               </Badge>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Instant drop-in consultations. Toggle your status when ready to receive live visitors.
-            </p>
           </div>
 
           {/* Status Controls */}

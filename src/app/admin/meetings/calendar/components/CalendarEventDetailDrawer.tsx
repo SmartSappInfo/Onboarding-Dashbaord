@@ -81,21 +81,39 @@ export function CalendarEventDetailDrawer({
 
   const handleCopyJoinLink = () => {
     if (!event.joinUrl) return;
-    navigator.clipboard.writeText(event.joinUrl);
-    toast({
-      title: 'Link Copied! 🔗',
-      description: 'Video room meeting link copied to clipboard.',
-    });
+    navigator.clipboard.writeText(event.joinUrl)
+      .then(() => {
+        toast({
+          title: 'Link Copied! 🔗',
+          description: 'Video room meeting link copied to clipboard.',
+        });
+      })
+      .catch(() => {
+        toast({
+          title: 'Unable to Copy',
+          description: 'Please copy the link directly from your browser address bar.',
+          variant: 'destructive',
+        });
+      });
   };
 
   const handleCopyShareLink = () => {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const shareUrl = `${origin}/meetings/session/${event.sourceId || event.id}`;
-    navigator.clipboard.writeText(shareUrl);
-    toast({
-      title: 'Share Link Copied! 🔗',
-      description: 'Public session registration link copied to clipboard.',
-    });
+    navigator.clipboard.writeText(shareUrl)
+      .then(() => {
+        toast({
+          title: 'Share Link Copied! 🔗',
+          description: 'Public session registration link copied to clipboard.',
+        });
+      })
+      .catch(() => {
+        toast({
+          title: 'Unable to Copy',
+          description: 'Please copy the link directly from your browser address bar.',
+          variant: 'destructive',
+        });
+      });
   };
 
   return (

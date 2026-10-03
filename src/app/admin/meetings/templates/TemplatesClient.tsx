@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { getMeetingTemplatesAction, deployMeetingTemplateAction } from '@/app/actions/meeting-template-actions';
 import type { MeetingTemplate, TemplateCategory } from '@/lib/meetings/types/templates';
 
@@ -80,7 +81,7 @@ export function TemplatesClient() {
           description: res.error || 'Failed to deploy template.',
         });
       }
-    } catch (_err) {
+    } catch {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -130,14 +131,12 @@ export function TemplatesClient() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+        <div className="flex items-center gap-2.5">
           <h2 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
             <Layers className="h-5 w-5 text-primary" />
             Meeting Templates Studio
           </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Deploy pre-built, industry-standard scheduling templates with optimized intake questions, durations, and reminders.
-          </p>
+          <CardInfoTooltip text="Deploy pre-built, industry-standard scheduling templates with optimized intake questions, durations, and reminders." />
         </div>
       </div>
 

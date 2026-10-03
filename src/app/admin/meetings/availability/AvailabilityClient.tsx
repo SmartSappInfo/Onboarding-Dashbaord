@@ -22,8 +22,10 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import {
   Select,
   SelectContent,
@@ -311,11 +313,9 @@ export default function AvailabilityClient() {
       <div className="space-y-8 max-w-5xl pb-16">
         {/* Header Title & Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
+          <div className="flex items-center gap-2.5">
             <h1 className="text-2xl font-bold tracking-tight">Availability Schedules</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Set your weekly working hours, date exceptions, and booking buffer rules.
-            </p>
+            <CardInfoTooltip text="Set your weekly working hours, date exceptions, and booking buffer rules." />
           </div>
           <Button
             onClick={handleSave}
@@ -333,8 +333,9 @@ export default function AvailabilityClient() {
             <div className="flex items-center gap-2">
               <Globe className="w-5 h-5 text-primary" />
               <CardTitle className="text-lg">Timezone & Global Rules</CardTitle>
+              <CardInfoTooltip text="Configure how slots are generated and localized for visitors." />
             </div>
-            <CardDescription>
+            <CardDescription className="sr-only">
               Configure how slots are generated and localized for visitors.
             </CardDescription>
           </CardHeader>
@@ -449,8 +450,9 @@ export default function AvailabilityClient() {
             <div className="flex items-center gap-2">
               <Clock className="w-5 h-5 text-primary" />
               <CardTitle className="text-lg">Weekly Working Hours</CardTitle>
+              <CardInfoTooltip text="Toggle days and configure multiple shift intervals for each day of the week." />
             </div>
-            <CardDescription>
+            <CardDescription className="sr-only">
               Toggle days and configure multiple shift intervals for each day of the week.
             </CardDescription>
           </CardHeader>
@@ -578,8 +580,9 @@ export default function AvailabilityClient() {
               <div className="flex items-center gap-2">
                 <CalendarOff className="w-5 h-5 text-primary" />
                 <CardTitle className="text-lg">Date Overrides</CardTitle>
+                <CardInfoTooltip text="Add specific holidays, blackout dates, or special weekend working hours." />
               </div>
-              <CardDescription>
+              <CardDescription className="sr-only">
                 Add specific holidays, blackout dates, or special weekend working hours.
               </CardDescription>
             </div>
@@ -587,7 +590,7 @@ export default function AvailabilityClient() {
               type="button"
               variant="outline"
               onClick={() => setOverrideModalOpen(true)}
-              className="rounded-xl min-h-[44px] gap-2"
+              className="rounded-xl min-h-[44px] gap-2 active:scale-[0.97]"
             >
               <Plus className="w-4 h-4" />
               Add Date Override
@@ -627,7 +630,7 @@ export default function AvailabilityClient() {
                       variant="ghost"
                       size="icon"
                       onClick={() => handleRemoveOverride(override.id)}
-                      className="text-destructive hover:bg-destructive/10 rounded-xl"
+                      className="text-destructive hover:bg-destructive/10 rounded-xl min-h-[40px] min-w-[40px] active:scale-[0.97]"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -641,12 +644,18 @@ export default function AvailabilityClient() {
 
       {/* Add Date Override Modal */}
       <Dialog open={overrideModalOpen} onOpenChange={setOverrideModalOpen}>
-        <DialogContent className="rounded-2xl max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add Date Override</DialogTitle>
+        <DialogContent className="border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl max-w-md p-0 overflow-hidden">
+          <DialogHeader demarcated>
+            <div className="flex items-center gap-2">
+              <DialogTitle>Add Date Override</DialogTitle>
+              <CardInfoTooltip text="Specify unique date exceptions, company holidays, or custom slot intervals." />
+            </div>
+            <DialogDescription className="sr-only">
+              Add date-specific working hours or blackout dates.
+            </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
+          <div className="p-6 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="override-date" className="text-sm font-semibold">
                 Select Date
@@ -690,16 +699,20 @@ export default function AvailabilityClient() {
             </div>
           </div>
 
-          <DialogFooter className="gap-2">
+          <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
             <Button
               type="button"
               variant="outline"
               onClick={() => setOverrideModalOpen(false)}
-              className="rounded-xl"
+              className="rounded-xl min-h-[44px] active:scale-[0.97]"
             >
               Cancel
             </Button>
-            <Button type="button" onClick={handleAddOverride} className="rounded-xl">
+            <Button
+              type="button"
+              onClick={handleAddOverride}
+              className="rounded-xl min-h-[44px] active:scale-[0.97] font-semibold"
+            >
               Save Override
             </Button>
           </DialogFooter>
