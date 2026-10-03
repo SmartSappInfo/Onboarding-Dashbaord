@@ -120,7 +120,7 @@ export function MyDayTimeline({
           {sortedItems.map((item) => {
             const isCompleted = item.status === 'completed';
             const isCancelled = item.status === 'cancelled';
-            const isLive = isMeetingLiveNow(item);
+            const isLive = isMeetingLiveNow(item.startAt, item.endAt);
             const isBooking = item.sourceType === 'booking';
             const hasHighIntent =
               item.notes?.toLowerCase().includes('enterprise') ||
@@ -196,7 +196,7 @@ export function MyDayTimeline({
                     <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                       {isBooking ? (
                         <span>
-                          {item.bookerName || 'Guest'} {item.bookerEmail ? `(${item.bookerEmail})` : ''}
+                          {item.contactName || 'Guest'} {item.contactEmail ? `(${item.contactEmail})` : ''}
                         </span>
                       ) : (
                         <span className="flex items-center gap-1.5">

@@ -140,7 +140,7 @@ export function NeedsAttentionPanel({
                   {pendingCount} appointment{pendingCount === 1 ? '' : 's'} awaiting confirmation
                 </h5>
                 <p className="text-[11px] text-muted-foreground truncate">
-                  {unconfirmedBookings[0].bookerName ? `${unconfirmedBookings[0].bookerName} • ` : ''}
+                  {unconfirmedBookings[0].contactName ? `${unconfirmedBookings[0].contactName} • ` : ''}
                   {unconfirmedBookings[0].title}
                 </p>
               </div>
