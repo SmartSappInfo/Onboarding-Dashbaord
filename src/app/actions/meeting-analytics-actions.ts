@@ -61,17 +61,30 @@ export async function getMeetingsOperationalOverviewAction(
   await requireWorkspace(workspaceId);
 
   try {
-    // 1. Fetch meetings
-    const meetingsSnap = await adminDb
-      .collection('meetings')
-      .where('workspaceId', '==', workspaceId)
-      .limit(200)
-      .get();
+    // 1. Fetch meetings (both array workspaceIds and legacy scalar workspaceId)
+    const [arraySnap, scalarSnap] = await Promise.all([
+      adminDb
+        .collection('meetings')
+        .where('workspaceIds', 'array-contains', workspaceId)
+        .limit(200)
+        .get(),
+      adminDb
+        .collection('meetings')
+        .where('workspaceId', '==', workspaceId)
+        .limit(200)
+        .get(),
+    ]);
 
-    const meetings = meetingsSnap.docs.map(d => ({
+    const meetingDocsMap = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();
+    arraySnap.docs.forEach(d => meetingDocsMap.set(d.id, d));
+    scalarSnap.docs.forEach(d => {
+      if (!meetingDocsMap.has(d.id)) meetingDocsMap.set(d.id, d);
+    });
+
+    const meetings = Array.from(meetingDocsMap.values()).map(d => ({
       id: d.id,
       meetingTime: d.data().meetingTime || '',
-      duration: Number(d.data().duration) || 30,
+      duration: Number(d.data().durationMinutes || d.data().duration) || 30,
       status: d.data().status || 'scheduled',
       hostUserId: d.data().hostUserId,
       hostName: d.data().hostName,
