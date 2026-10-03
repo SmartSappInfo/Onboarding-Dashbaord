@@ -50,6 +50,7 @@ import type {
   RoutingConditionOperator,
 } from '@/lib/meetings/types/routing';
 import type { BookingQuestion, EventType } from '@/lib/types';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -271,13 +272,11 @@ export default function RoutingFormsClient() {
   return (
     <div className="space-y-6 pb-16">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+        <div className="flex flex-wrap items-center gap-2.5">
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
             Smart Routing Forms
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Qualify incoming leads and dynamically route prospects to the optimal event type and team host.
-          </p>
+          <CardInfoTooltip text="Qualify incoming leads and dynamically route prospects to the optimal event type and team host." />
         </div>
 
         <div className="flex items-center gap-2">

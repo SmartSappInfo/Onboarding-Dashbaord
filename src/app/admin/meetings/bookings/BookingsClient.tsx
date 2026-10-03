@@ -56,6 +56,7 @@ import { format, isAfter, isBefore } from 'date-fns';
 import type { Booking, BookingStatus } from '@/lib/meetings/types';
 import { cancelBookingAction } from '@/app/actions/booking-actions';
 import { BookingDetailDrawer } from './components/BookingDetailDrawer';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -226,16 +227,12 @@ export default function BookingsClient() {
       <div className="space-y-6 pb-16">
         {/* Header Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">Bookings Hub</h1>
-              <Badge variant="outline" className="text-xs font-semibold">
-                {filteredBookings.length} {filteredBookings.length === 1 ? 'Booking' : 'Total Bookings'}
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Real-time schedule of all customer bookings, video conferences, and participant statuses.
-            </p>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Bookings Hub</h1>
+            <CardInfoTooltip text="Real-time schedule of all customer bookings, video conferences, and participant statuses." />
+            <Badge variant="outline" className="text-xs font-semibold bg-muted/40 text-muted-foreground border-border/80">
+              {filteredBookings.length} {filteredBookings.length === 1 ? 'Booking' : 'Total Bookings'}
+            </Badge>
           </div>
 
           <div className="flex items-center gap-2">

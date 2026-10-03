@@ -47,6 +47,7 @@ import {
 } from 'lucide-react';
 import type { EventType } from '@/lib/meetings/types';
 import { ShareEventTypeModal } from '../components/ShareEventTypeModal';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import {
   deleteEventTypeAction,
   duplicateEventTypeAction,
@@ -189,11 +190,9 @@ export default function EventTypesClient() {
       <div className="space-y-6 max-w-6xl pb-16">
         {/* Header & Actions */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
+          <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="text-2xl font-bold tracking-tight">Event Types</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Create reusable 1:1, group, or consultation session formats with custom booking rules.
-            </p>
+            <CardInfoTooltip text="Create reusable 1:1, group, or consultation session formats with custom booking rules." />
           </div>
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <div className="relative flex-1 sm:w-72">

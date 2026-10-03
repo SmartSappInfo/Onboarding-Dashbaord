@@ -32,6 +32,7 @@ import {
   OAuthCredentialsModal,
   type OAuthProvider,
 } from '@/components/integrations/OAuthCredentialsModal';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -224,13 +225,11 @@ export default function CalendarsClient() {
   return (
     <div className="space-y-6 pb-16">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+        <div className="flex flex-wrap items-center gap-2.5">
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
             Connected Calendars & Sync
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Connect external calendars to prevent double-bookings and automatically sync confirmed appointments.
-          </p>
+          <CardInfoTooltip text="Connect external calendars to prevent double-bookings and automatically sync confirmed appointments." />
         </div>
 
         <div className="flex items-center gap-2">
