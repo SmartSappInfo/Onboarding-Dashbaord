@@ -85,10 +85,17 @@ const MeetingCalendar = dynamic(() => import('./components/MeetingCalendar'), {
 
 const MeetingQRDialog = dynamic(() => import('./components/MeetingQRDialog'), { ssr: false });
 import { getErrorMessage } from '@/lib/errors/report-error';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 const _getInitials = (name?: string) => {
     if (!name) return '?';
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
+}
+
+interface RegistrantStatsItem {
+  id: string;
+  source?: string;
+  status?: string;
 }
 
 function MeetingStats({ meetingId }: { meetingId: string }) {
@@ -98,7 +105,7 @@ function MeetingStats({ meetingId }: { meetingId: string }) {
     return collection(firestore, `meetings/${meetingId}/registrants`);
   }, [firestore, meetingId]);
 
-  const { data: registrants, isLoading } = useCollection<any>(registrantsQuery);
+  const { data: registrants, isLoading } = useCollection<RegistrantStatsItem>(registrantsQuery);
 
   if (isLoading) {
     return (
@@ -160,7 +167,7 @@ export default function MeetingsHubClient() {
       
       clonedData.meetingSlug = uniqueSlug;
       if (meeting.entitySlug) {
-        (clonedData as any).entitySlug = uniqueSlug;
+        clonedData.entitySlug = uniqueSlug;
       }
       
       clonedData.workspaceIds = [activeWorkspaceId];
@@ -262,7 +269,7 @@ export default function MeetingsHubClient() {
 
   const entityEmailMap = useMemo(() => {
     const map = new Map<string, string | undefined>();
-    entitiesById.forEach((e, id) => map.set(id, getEntityEmail(e as any)));
+    entitiesById.forEach((e, id) => map.set(id, getEntityEmail(e)));
     return map;
   }, [entitiesById]);
 
@@ -515,13 +522,11 @@ export default function MeetingsHubClient() {
         <TooltipProvider>
             <div className="space-y-8 pb-32 w-full">
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                        <div className="flex flex-col items-start">
+                        <div className="flex flex-wrap items-center gap-2.5">
                             <h1 className="text-3xl font-bold text-foreground">
                                 Meetings and Webinars
                             </h1>
-                            <p className="text-muted-foreground text-sm mt-1">
-                                Scheduled meetings, webinars, and attendance data
-                            </p>
+                            <CardInfoTooltip text="Scheduled group sessions, webinars, and audience attendance records." />
                         </div>
                         <div className="flex justify-end items-center gap-3 shrink-0">
                             <Button asChild className="rounded-xl font-bold shadow-lg h-11 px-6">
