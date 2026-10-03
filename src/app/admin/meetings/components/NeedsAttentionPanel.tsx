@@ -6,6 +6,7 @@
  * CAUTION FOR FUTURE MAINTAINERS:
  * - Surfaces high-priority operational items requiring host intervention.
  * - Actionable buttons route directly to the appropriate sub-view.
+ * - Zero dummy data: all indicators derived strictly from real schedule state.
  * - Zero 'any' policy strictly enforced.
  */
 
@@ -14,34 +15,102 @@ import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   AlertTriangle,
   CalendarDays,
-  CheckSquare,
+  CheckCircle2,
+  ShieldCheck,
+  Link2Off,
+  Clock,
   ArrowRight,
-  Flame,
-  ExternalLink,
 } from 'lucide-react';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+import type { UnifiedMeetingItem } from '@/lib/meetings/types/unified-meeting';
 
-interface NeedsAttentionPanelProps {
-  unconfirmedCount?: number;
-  calendarIssue?: boolean;
-  overdueTasksCount?: number;
-  unresolvedHighIntentCount?: number;
+export interface NeedsAttentionPanelProps {
+  unconfirmedBookings?: UnifiedMeetingItem[];
+  sessionsMissingLink?: UnifiedMeetingItem[];
+  isCalendarConnected?: boolean;
+  connectedCount?: number;
+  isLoading?: boolean;
 }
 
 export function NeedsAttentionPanel({
-  unconfirmedCount = 0,
-  calendarIssue = false,
-  overdueTasksCount = 2,
-  unresolvedHighIntentCount = 1,
+  unconfirmedBookings = [],
+  sessionsMissingLink = [],
+  isCalendarConnected = true,
+  connectedCount = 0,
+  isLoading = false,
 }: NeedsAttentionPanelProps) {
+  const pendingCount = unconfirmedBookings.length;
+  const missingLinkCount = sessionsMissingLink.length;
+  const calendarDisconnected = !isCalendarConnected;
+
   const totalIssues =
-    (unconfirmedCount > 0 ? 1 : 0) +
-    (calendarIssue ? 1 : 0) +
-    (overdueTasksCount > 0 ? 1 : 0) +
-    (unresolvedHighIntentCount > 0 ? 1 : 0);
+    (pendingCount > 0 ? 1 : 0) +
+    (missingLinkCount > 0 ? 1 : 0) +
+    (calendarDisconnected ? 1 : 0);
+
+  if (isLoading) {
+    return (
+      <Card className="rounded-3xl border border-border/80 shadow-xs bg-card overflow-hidden">
+        <CardHeader className="pb-3 border-b border-border/40 flex flex-row items-center justify-between">
+          <Skeleton className="h-5 w-36 rounded-lg" />
+          <Skeleton className="h-5 w-16 rounded-full" />
+        </CardHeader>
+        <CardContent className="p-4 space-y-2.5">
+          <Skeleton className="h-14 w-full rounded-2xl" />
+          <Skeleton className="h-14 w-full rounded-2xl" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // All clear state: zero pending issues
+  if (totalIssues === 0) {
+    return (
+      <Card className="rounded-3xl border border-emerald-500/20 bg-emerald-50/15 dark:bg-emerald-950/10 shadow-xs">
+        <CardHeader className="pb-3 border-b border-emerald-500/15 flex flex-row items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-sm font-bold uppercase tracking-wider text-emerald-900 dark:text-emerald-400 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              Needs Attention
+            </CardTitle>
+            <CardInfoTooltip text="Actionable operational items requiring host intervention." />
+          </div>
+          <Badge variant="outline" className="text-[11px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20">
+            All Clear
+          </Badge>
+        </CardHeader>
+
+        <CardContent className="p-4 space-y-2.5">
+          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-card/80 border border-emerald-500/20 gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              </div>
+              <div className="min-w-0">
+                <h5 className="text-xs font-bold text-foreground truncate">
+                  All Systems Operational
+                </h5>
+                <p className="text-[11px] text-muted-foreground truncate">
+                  {connectedCount > 0
+                    ? `${connectedCount} calendar connected • All sessions confirmed`
+                    : 'All appointments and group sessions are on schedule'}
+                </p>
+              </div>
+            </div>
+            <Link href="/admin/meetings/calendar">
+              <Button size="sm" variant="ghost" className="rounded-xl min-h-[44px] sm:min-h-[32px] text-[11px] font-semibold text-muted-foreground hover:text-foreground shrink-0 active:scale-[0.97]">
+                View Hub
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="rounded-3xl border border-amber-200/50 bg-amber-50/20 dark:bg-amber-950/10 shadow-xs">
@@ -59,75 +128,88 @@ export function NeedsAttentionPanel({
       </CardHeader>
 
       <CardContent className="p-4 space-y-2.5">
-        {/* Item 1: High Intent Prospect Needs Meeting */}
-        {unresolvedHighIntentCount > 0 && (
+        {/* Item 1: Pending Unconfirmed Bookings */}
+        {pendingCount > 0 && (
           <div className="flex items-center justify-between p-3 rounded-2xl bg-card border border-amber-200/60 dark:border-amber-900/40 gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
-                <Flame className="w-4 h-4" />
+                <Clock className="w-4 h-4" />
               </div>
               <div className="min-w-0">
                 <h5 className="text-xs font-bold text-foreground truncate">
-                  {unresolvedHighIntentCount} high-intent prospect has no next meeting
+                  {pendingCount} appointment{pendingCount === 1 ? '' : 's'} awaiting confirmation
                 </h5>
                 <p className="text-[11px] text-muted-foreground truncate">
-                  NovaTech expressed purchasing intent yesterday
+                  {unconfirmedBookings[0].bookerName ? `${unconfirmedBookings[0].bookerName} • ` : ''}
+                  {unconfirmedBookings[0].title}
                 </p>
               </div>
             </div>
             <Link href="/admin/meetings/bookings">
-              <Button size="sm" variant="outline" className="rounded-xl h-8 text-[11px] font-bold gap-1 shrink-0 active:scale-[0.97]">
-                Schedule <ArrowRight className="w-3 h-3" />
+              <Button size="sm" variant="outline" className="rounded-xl min-h-[44px] sm:min-h-[32px] text-[11px] font-bold gap-1 shrink-0 active:scale-[0.97]">
+                Review <ArrowRight className="w-3 h-3" />
               </Button>
             </Link>
           </div>
         )}
 
-        {/* Item 2: Overdue CRM Follow-Up Tasks */}
-        {overdueTasksCount > 0 && (
-          <div className="flex items-center justify-between p-3 rounded-2xl bg-card border border-border/80 gap-3">
+        {/* Item 2: Sessions Missing Video Conferencing Link */}
+        {missingLinkCount > 0 && (
+          <div className="flex items-center justify-between p-3 rounded-2xl bg-card border border-rose-200/60 dark:border-rose-900/40 gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center shrink-0">
-                <CheckSquare className="w-4 h-4" />
+              <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-600 flex items-center justify-center shrink-0">
+                <Link2Off className="w-4 h-4" />
               </div>
               <div className="min-w-0">
                 <h5 className="text-xs font-bold text-foreground truncate">
-                  {overdueTasksCount} meeting follow-up tasks are pending
+                  {missingLinkCount} session{missingLinkCount === 1 ? '' : 's'} missing conferencing link
                 </h5>
                 <p className="text-[11px] text-muted-foreground truncate">
-                  Send Enterprise Security Whitepaper
+                  {sessionsMissingLink[0].title}
                 </p>
               </div>
             </div>
-            <Link href="/admin/tasks">
-              <Button size="sm" variant="outline" className="rounded-xl h-8 text-[11px] font-bold gap-1 shrink-0 active:scale-[0.97]">
-                View Tasks <ExternalLink className="w-3 h-3" />
+            <Link
+              href={
+                sessionsMissingLink[0].sourceType === 'meeting'
+                  ? `/admin/meetings/${sessionsMissingLink[0].id}/edit`
+                  : '/admin/meetings/bookings'
+              }
+            >
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-xl min-h-[44px] sm:min-h-[32px] text-[11px] font-bold gap-1 shrink-0 active:scale-[0.97] border-rose-200/60 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+              >
+                Add Link <ArrowRight className="w-3 h-3" />
               </Button>
             </Link>
           </div>
         )}
 
-        {/* Item 3: Calendar Connection Sync */}
-        <div className="flex items-center justify-between p-3 rounded-2xl bg-card border border-border/80 gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0">
-              <CalendarDays className="w-4 h-4" />
+        {/* Item 3: Calendar Connection Issue */}
+        {calendarDisconnected && (
+          <div className="flex items-center justify-between p-3 rounded-2xl bg-card border border-amber-200/60 dark:border-amber-900/40 gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
+                <CalendarDays className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <h5 className="text-xs font-bold text-foreground truncate">
+                  No External Calendar Connected
+                </h5>
+                <p className="text-[11px] text-muted-foreground truncate">
+                  Connect Google or Outlook to prevent scheduling conflicts
+                </p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <h5 className="text-xs font-bold text-foreground truncate">
-                External Calendar Sync Active
-              </h5>
-              <p className="text-[11px] text-muted-foreground truncate">
-                Google Calendar synced 12 minutes ago
-              </p>
-            </div>
+            <Link href="/admin/meetings/calendars">
+              <Button size="sm" variant="outline" className="rounded-xl min-h-[44px] sm:min-h-[32px] text-[11px] font-bold gap-1 shrink-0 active:scale-[0.97]">
+                Connect <ArrowRight className="w-3 h-3" />
+              </Button>
+            </Link>
           </div>
-          <Link href="/admin/meetings/calendars">
-            <Button size="sm" variant="ghost" className="rounded-xl h-8 text-[11px] font-semibold text-muted-foreground hover:text-foreground shrink-0">
-              Settings
-            </Button>
-          </Link>
-        </div>
+        )}
       </CardContent>
     </Card>
   );
