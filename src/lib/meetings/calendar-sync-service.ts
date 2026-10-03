@@ -14,8 +14,8 @@ import { adminDb } from '@/lib/firebase-admin';
 import type { Booking } from '@/lib/meetings/types';
 import type { CalendarConnection } from '@/lib/types';
 import { resolveWorkspaceConnection } from './meeting-provider-service';
-import { createGoogleCalendarEvent } from '@/lib/services/integrations/google-calendar';
-import { createMicrosoftCalendarEvent } from '@/lib/services/integrations/microsoft-calendar';
+import { createGoogleCalendarEvent, deleteGoogleCalendarEvent } from '@/lib/services/integrations/google-calendar';
+import { createMicrosoftCalendarEvent, deleteMicrosoftCalendarEvent } from '@/lib/services/integrations/microsoft-calendar';
 import { logMeetingActivity } from '@/lib/meetings/activity-logger';
 
 function getErrorMessage(error: unknown): string {
@@ -168,3 +168,77 @@ export async function syncBookingToExternalCalendar(
     return { success: false, error: getErrorMessage(err) };
   }
 }
+
+/**
+ * Deletes or cancels the external calendar event for a cancelled or rescheduled booking.
+ * Defensively wrapped to prevent external API network or authentication failures from breaking database operations.
+ */
+export async function deleteExternalCalendarBooking(
+  booking: Booking
+): Promise<void> {
+  const eventId = booking.externalCalendarEventId;
+  if (!eventId) return;
+
+  try {
+    // 1. If calendarConnectionId is stored directly on the booking
+    if (booking.calendarConnectionId) {
+      const connDoc = await adminDb.collection('calendar_connections').doc(booking.calendarConnectionId).get();
+      if (connDoc.exists) {
+        const connData = connDoc.data();
+        if (connData?.provider === 'google_calendar') {
+          await deleteGoogleCalendarEvent(booking.calendarConnectionId, eventId);
+          return;
+        } else if (connData?.provider === 'microsoft_outlook') {
+          await deleteMicrosoftCalendarEvent(booking.calendarConnectionId, eventId);
+          return;
+        }
+      }
+    }
+
+    // 2. Fallback: Resolve active workspace connection for host
+    const googleConn = await resolveWorkspaceConnection(booking.workspaceId, 'google_calendar', booking.hostUserId);
+    if (googleConn) {
+      await deleteGoogleCalendarEvent(googleConn.id, eventId);
+      return;
+    }
+
+    const msConn = await resolveWorkspaceConnection(booking.workspaceId, 'microsoft_outlook', booking.hostUserId);
+    if (msConn) {
+      await deleteMicrosoftCalendarEvent(msConn.id, eventId);
+    }
+  } catch (err) {
+    console.warn(`[deleteExternalCalendarBooking] Non-blocking external event cleanup notice for booking ${booking.id}:`, err);
+  }
+}
+
+/**
+ * Re-synchronizes a rescheduled booking by deleting the outdated calendar event and pushing the updated time slot.
+ */
+export async function resyncRescheduledBookingToCalendar(
+  bookingId: string
+): Promise<CalendarSyncResult> {
+  try {
+    const bookingDoc = await adminDb.collection('bookings').doc(bookingId).get();
+    if (!bookingDoc.exists) {
+      return { success: false, error: 'Booking not found.' };
+    }
+
+    const booking = { id: bookingDoc.id, ...bookingDoc.data() } as Booking;
+
+    // Delete existing external event first if present
+    if (booking.externalCalendarEventId) {
+      await deleteExternalCalendarBooking(booking);
+      await adminDb.collection('bookings').doc(bookingId).update({
+        externalCalendarEventId: null,
+        externalCalendarEventUrl: null,
+      });
+    }
+
+    // Push new event with updated times
+    return await syncBookingToExternalCalendar(bookingId);
+  } catch (err) {
+    console.warn(`[resyncRescheduledBookingToCalendar] Error resyncing booking ${bookingId}:`, err);
+    return { success: false, error: getErrorMessage(err) };
+  }
+}
+

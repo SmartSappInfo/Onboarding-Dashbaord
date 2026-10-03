@@ -28,6 +28,7 @@ import { generateIcsContent } from '@/lib/meetings/ics-helpers';
 import { generateMeetingRoom, rollbackMeetingRoomAsync } from '@/lib/meetings/meeting-provider-service';
 import { createEntityFromRegistration } from '@/app/actions/meeting-lead-capture-action';
 import { sendEmail } from '@/lib/resend-service';
+import { deleteExternalCalendarBooking, resyncRescheduledBookingToCalendar } from '@/lib/meetings/calendar-sync-service';
 
 /**
  * Helper to compute SHA-256 hash of a string.
@@ -737,6 +738,13 @@ export async function cancelBookingAction(input: {
         .catch(() => {});
     }
 
+    // 3. Remove from external Google/Outlook calendar if present (non-blocking)
+    if (booking.externalCalendarEventId) {
+      deleteExternalCalendarBooking(booking).catch(err => {
+        console.warn('[cancelBookingAction] Background external calendar deletion notice:', err);
+      });
+    }
+
     return { success: true };
   } catch (error) {
     console.error('[cancelBookingAction]', error);
@@ -821,6 +829,11 @@ export async function rescheduleBookingAction(input: {
           updatedAt: now.toISOString(),
         });
       }
+    });
+
+    // 4. Re-synchronize external Google/Outlook calendar in background (non-blocking)
+    resyncRescheduledBookingToCalendar(bookingId).catch(err => {
+      console.warn('[rescheduleBookingAction] Background external calendar re-sync notice:', err);
     });
 
     return { success: true, newStartAt };
