@@ -163,4 +163,23 @@ describe('useWorkspaceSchedule Metric Engine', () => {
     // 1 pending booking + 1 session missing link + 1 calendar disconnected = 3 actions
     expect(metrics.totalAttentionCount).toBe(3);
   });
+
+  it('reports totalAttentionCount as 0 when all sessions are valid and calendar is connected', () => {
+    const normalSession = createItem({
+      id: 'ok_1',
+      joinUrl: 'https://meet.google.com/active-link',
+      status: 'confirmed',
+    });
+
+    const metrics = calculateScheduleMetrics({
+      allEvents: [normalSession],
+      referenceNow: fixedNow,
+      connectedCalendarCount: 1,
+    });
+
+    expect(metrics.unconfirmedBookings).toHaveLength(0);
+    expect(metrics.sessionsMissingLink).toHaveLength(0);
+    expect(metrics.isCalendarConnected).toBe(true);
+    expect(metrics.totalAttentionCount).toBe(0);
+  });
 });
