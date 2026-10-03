@@ -58,7 +58,7 @@ export function UpcomingSessionsCard({ session, isLoading = false }: UpcomingSes
           <CardInfoTooltip text="Broadcast sessions, workshops, and large group meetings." />
         </div>
         <Link href="/admin/meetings/sessions">
-          <Button variant="ghost" size="sm" className="rounded-xl text-xs font-semibold text-primary hover:underline h-7 px-2">
+          <Button variant="ghost" size="sm" className="rounded-xl text-xs font-semibold text-primary hover:underline min-h-[44px] sm:min-h-[28px] h-auto px-2.5 active:scale-[0.97]">
             View All <ArrowRight className="w-3 h-3 ml-1" />
           </Button>
         </Link>
