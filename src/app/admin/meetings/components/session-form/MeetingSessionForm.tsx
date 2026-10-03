@@ -823,7 +823,7 @@ export function MeetingSessionForm({
                   <button
                     type="button"
                     onClick={() => setCurrentStep(stepIndex('config'))}
-                    className="flex flex-col items-center justify-center p-6 rounded-[2rem] border-2 border-dashed border-border hover:border-primary/40 hover:bg-muted/30 transition-all group active:scale-[0.98]"
+                    className="flex flex-col items-center justify-center p-6 sm:rounded-2xl border-2 border-dashed border-border hover:border-primary/40 hover:bg-muted/30 transition-all group active:scale-[0.98]"
                   >
                     <div className="p-4 rounded-2xl bg-muted text-muted-foreground mb-4 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
                       <PlusCircle className="h-8 w-8" />
