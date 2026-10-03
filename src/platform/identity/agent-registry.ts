@@ -23,6 +23,8 @@ import {
   isAgentPersonaId,
 } from './agent-persona-types';
 
+export type AgentPersona = AgentPersonaDefinition;
+
 /** Numeric rank for comparing risk levels deterministically */
 const RISK_LEVEL_ORDER: Readonly<Record<RiskLevel, number>> = {
   L0_READ: 0,
@@ -227,6 +229,8 @@ export interface AgentPersonaRegistryStore {
   ): PersonaCapabilityValidation;
   resetForTests(): void;
 }
+
+export type AgentPersonaRegistry = AgentPersonaRegistryStore;
 
 /**
  * Creates an isolated AgentPersonaRegistry instance (for tests and runtime SSOT).

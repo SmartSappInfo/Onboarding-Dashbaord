@@ -22,6 +22,17 @@ export const RISK_LEVELS = [
 
 export type RiskLevel = (typeof RISK_LEVELS)[number];
 
+/**
+ * Numeric rank/weight for comparing risk levels deterministically (Rule 12).
+ */
+export const RISK_LEVEL_WEIGHTS: Readonly<Record<RiskLevel, number>> = {
+  L0_READ: 0,
+  L1_INTERNAL_DRAFT: 1,
+  L2_STATE_MUTATION: 2,
+  L3_EXTERNAL_COMMUNICATION_FINANCE: 3,
+  L4_PRIVILEGED_DESTRUCTIVE: 4,
+};
+
 export function isHighRiskLevel(level: RiskLevel): boolean {
   return level === 'L3_EXTERNAL_COMMUNICATION_FINANCE' || level === 'L4_PRIVILEGED_DESTRUCTIVE';
 }
@@ -43,6 +54,8 @@ export interface RiskMetadata {
   requiresHumanApproval: boolean;
   /** Non-delegable operations that cannot be inherited by sub-agents (Rule 17) */
   nonDelegable: boolean;
+  /** Optional Saga compensating capability ID to rollback this operation (Rule 27) */
+  compensatingCapabilityId?: string;
 }
 
 /**
