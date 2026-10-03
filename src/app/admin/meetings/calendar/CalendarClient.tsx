@@ -27,11 +27,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
-  Video,
   Radio,
-  Calendar as CalendarIcon,
-  Users,
-  Filter,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useWorkspace } from '@/context/WorkspaceContext';
