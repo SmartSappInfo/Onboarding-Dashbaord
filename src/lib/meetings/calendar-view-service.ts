@@ -67,18 +67,43 @@ export function getCalendarGridDays(anchorDate: Date, mode: CalendarViewMode): D
   }
 
   if (mode === 'month') {
-    // Return all days in the anchor's month
-    const year = base.getFullYear();
-    const month = base.getMonth();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const days: Date[] = [];
-    for (let d = 1; d <= daysInMonth; d++) {
-      days.push(new Date(year, month, d, 0, 0, 0, 0));
-    }
-    return days;
+    return getMonthGridCalendarDays(base);
   }
 
   return [new Date(base)];
+}
+
+/**
+ * Returns a complete 35- or 42-day 7-column calendar matrix for the given month,
+ * including leading days from the previous month and trailing days from the next month.
+ */
+export function getMonthGridCalendarDays(anchorDate: Date): Date[] {
+  const base = new Date(anchorDate);
+  const year = base.getFullYear();
+  const month = base.getMonth();
+
+  const firstDayOfMonth = new Date(year, month, 1, 0, 0, 0, 0);
+  const startDayOfWeek = firstDayOfMonth.getDay(); // 0 is Sunday
+
+  // Sunday preceding or matching first day
+  const gridStart = new Date(year, month, 1 - startDayOfWeek, 0, 0, 0, 0);
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const lastDayOfMonth = new Date(year, month, daysInMonth, 0, 0, 0, 0);
+  const endDayOfWeek = lastDayOfMonth.getDay();
+
+  // Saturday succeeding or matching last day
+  const trailingDays = 6 - endDayOfWeek;
+  const totalDays = startDayOfWeek + daysInMonth + trailingDays;
+
+  const days: Date[] = [];
+  for (let i = 0; i < totalDays; i++) {
+    const d = new Date(gridStart);
+    d.setDate(gridStart.getDate() + i);
+    days.push(d);
+  }
+
+  return days;
 }
 
 /**

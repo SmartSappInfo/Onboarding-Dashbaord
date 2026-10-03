@@ -92,4 +92,21 @@ describe('Calendar View & Grid Engine', () => {
     expect(Math.round(pos.topPercent)).toBe(8);
     expect(Math.round(pos.heightPercent)).toBe(8);
   });
+
+  it('generates a full 7-column month grid divisible by 7 with padding days', () => {
+    // October 2026: Oct 1 is Thursday, Oct 31 is Saturday
+    // Leading days: Sun Sep 27 to Wed Sep 30 (4 days)
+    // Month days: 31
+    // Trailing days: 0 (since Oct 31 is Saturday)
+    // Total days: 4 + 31 = 35 days (5 full weeks of 7 days)
+    const anchorOct = new Date('2026-10-15T12:00:00Z');
+    const octGrid = getCalendarGridDays(anchorOct, 'month');
+
+    expect(octGrid.length % 7).toBe(0);
+    expect(octGrid.length).toBe(35);
+    // Starts on Sunday
+    expect(octGrid[0].getDay()).toBe(0);
+    // Ends on Saturday
+    expect(octGrid[octGrid.length - 1].getDay()).toBe(6);
+  });
 });
