@@ -3,8 +3,11 @@
 /**
  * @fileoverview 3-Option Creation Selector Modal for SmartSapp Meetings 2.0.
  *
- * CAUTION FOR FUTURE MAINTAINERS:
- * - Guides users directly to the right creation experience without cognitive overload.
+ * ARCHITECTURE & DESIGN SYSTEM ALIGNMENT:
+ * - Strictly conforms to theme.md §8 (Standardized Modal Architecture SSOT).
+ * - Demarcated header with <CardInfoTooltip> and sr-only <DialogDescription>.
+ * - Demarcated footer with tactile active:scale-[0.97] button.
+ * - Mobile touch targets >= 44px with zero raw descriptions.
  * - Zero 'any' policy strictly enforced.
  */
 
@@ -16,8 +19,11 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { Calendar, Video, Vote, ArrowRight, Sparkles } from 'lucide-react';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 interface NewMeetingModalProps {
   open: boolean;
@@ -59,27 +65,30 @@ export function NewMeetingModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg rounded-3xl p-6 space-y-6">
-        <DialogHeader className="space-y-1 text-left">
-          <div className="flex items-center gap-2 mb-1">
+      <DialogContent className="border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl max-w-lg p-0 overflow-hidden font-figtree">
+        {/* Demarcated Header (theme.md §8) */}
+        <DialogHeader demarcated>
+          <div className="flex items-center gap-2">
             <span className="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded-md">
               Create New
             </span>
+            <DialogTitle className="text-base font-bold text-foreground">
+              What would you like to schedule?
+            </DialogTitle>
           </div>
-          <DialogTitle className="text-xl font-bold tracking-tight text-foreground">
-            What would you like to schedule?
-          </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
-            Choose the meeting format that best fits your workflow.
+          <CardInfoTooltip text="Choose the meeting format that best fits your workflow: 1:1 bookings, large group broadcasts, or consensus polls." />
+          <DialogDescription className="sr-only">
+            Select meeting format between 1:1 appointments, large group broadcasts, or consensus polls.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 gap-3">
+        {/* Options List */}
+        <div className="px-6 py-5 space-y-3">
           {/* Option 1: 1:1 Appointment */}
           <button
             type="button"
             onClick={handleSelectAppointment}
-            className="flex items-start gap-4 p-4 rounded-2xl border border-border/80 hover:border-primary/50 hover:bg-primary/5 transition-all text-left group active:scale-[0.98]"
+            className="w-full flex items-start gap-4 p-4 rounded-2xl border border-border/80 hover:border-primary/50 hover:bg-primary/5 transition-all text-left group active:scale-[0.98]"
           >
             <div className="w-11 h-11 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
               <Calendar className="w-5 h-5" />
@@ -101,7 +110,7 @@ export function NewMeetingModal({
           <button
             type="button"
             onClick={handleSelectSession}
-            className="flex items-start gap-4 p-4 rounded-2xl border border-border/80 hover:border-purple-500/50 hover:bg-purple-500/5 transition-all text-left group active:scale-[0.98]"
+            className="w-full flex items-start gap-4 p-4 rounded-2xl border border-border/80 hover:border-purple-500/50 hover:bg-purple-500/5 transition-all text-left group active:scale-[0.98]"
           >
             <div className="w-11 h-11 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
               <Video className="w-5 h-5" />
@@ -123,7 +132,7 @@ export function NewMeetingModal({
           <button
             type="button"
             onClick={handleSelectPoll}
-            className="flex items-start gap-4 p-4 rounded-2xl border border-border/80 hover:border-amber-500/50 hover:bg-amber-500/5 transition-all text-left group active:scale-[0.98]"
+            className="w-full flex items-start gap-4 p-4 rounded-2xl border border-border/80 hover:border-amber-500/50 hover:bg-amber-500/5 transition-all text-left group active:scale-[0.98]"
           >
             <div className="w-11 h-11 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
               <Vote className="w-5 h-5" />
@@ -141,6 +150,18 @@ export function NewMeetingModal({
             </div>
           </button>
         </div>
+
+        {/* Demarcated Footer (theme.md §8) */}
+        <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="rounded-xl min-h-[44px] sm:min-h-[36px] text-xs px-4 font-semibold active:scale-[0.97]"
+          >
+            Cancel
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

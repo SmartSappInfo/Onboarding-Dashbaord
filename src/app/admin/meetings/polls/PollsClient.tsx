@@ -1,5 +1,17 @@
 'use client';
 
+/**
+ * @fileoverview Consensus Scheduling Polls Studio for SmartSapp Meetings 2.0.
+ *
+ * ARCHITECTURE & DESIGN SYSTEM ALIGNMENT:
+ * - Strictly conforms to theme.md §8 (Standardized Modal Architecture SSOT).
+ * - Demarcated header with <CardInfoTooltip> and sr-only <DialogDescription>.
+ * - Demarcated footer with tactile buttons (active:scale-[0.97]).
+ * - Defensive Promise clipboard handling (.then().catch()).
+ * - Mobile touch targets >= 44px (or responsive sm:min-h-[36px]/[32px]).
+ * - Zero 'any' policy strictly enforced.
+ */
+
 import * as React from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -67,6 +79,7 @@ export function PollsClient() {
       setCreateModalOpen(true);
     }
   }, [searchParams]);
+
   const [title, setTitle] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [durationMinutes, setDurationMinutes] = React.useState('30');
@@ -186,10 +199,23 @@ export function PollsClient() {
   const handleCopyLink = (slug: string, id: string) => {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const url = `${origin}/book/poll/${slug}`;
-    navigator.clipboard.writeText(url);
-    setCopiedId(id);
-    toast({ title: 'Poll link copied to clipboard!' });
-    setTimeout(() => setCopiedId(null), 2000);
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      navigator.clipboard
+        .writeText(url)
+        .then(() => {
+          setCopiedId(id);
+          toast({ title: 'Poll link copied to clipboard!' });
+          setTimeout(() => setCopiedId(null), 2000);
+        })
+        .catch(err => {
+          console.warn('[copy poll link error]', err);
+          toast({
+            variant: 'destructive',
+            title: 'Copy Failed',
+            description: 'Unable to copy poll link to clipboard.',
+          });
+        });
+    }
   };
 
   if (isLoading) {
@@ -227,7 +253,7 @@ export function PollsClient() {
 
       {/* Polls Grid */}
       {polls.length === 0 ? (
-        <Card className="rounded-3xl border-dashed p-12 text-center space-y-3">
+        <Card className="rounded-2xl border border-dashed border-border/80 bg-card/50 p-12 text-center space-y-3">
           <Vote className="h-12 w-12 mx-auto text-primary opacity-30 animate-pulse" />
           <h3 className="text-base font-semibold text-foreground">No meeting polls created yet</h3>
           <p className="text-xs text-muted-foreground max-w-sm mx-auto">
@@ -244,9 +270,9 @@ export function PollsClient() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {polls.map(poll => (
-            <Card key={poll.id} className="rounded-2xl border shadow-sm flex flex-col justify-between overflow-hidden">
+            <Card key={poll.id} className="rounded-2xl border border-border/80 shadow-sm flex flex-col justify-between overflow-hidden bg-card">
               <div>
-                <CardHeader className="pb-3 border-b bg-muted/20">
+                <CardHeader className="pb-3 border-b border-border/80 bg-muted/20">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base font-bold text-foreground">{poll.title}</CardTitle>
                     <Badge
@@ -297,7 +323,7 @@ export function PollsClient() {
                           className={`p-2.5 rounded-xl border flex items-center justify-between text-xs transition-all ${
                             poll.winningSlotId === slot.id
                               ? 'bg-emerald-500/10 border-emerald-500/30'
-                              : 'bg-muted/30'
+                              : 'bg-muted/30 border-border/70'
                           }`}
                         >
                           <div className="flex items-center gap-2">
@@ -320,7 +346,7 @@ export function PollsClient() {
                                 variant="outline"
                                 onClick={() => handleFinalize(poll.id, slot.id)}
                                 disabled={finalizingPollId === poll.id}
-                                className="h-7 text-[10px] px-2 rounded-lg ml-2 active:scale-[0.97]"
+                                className="min-h-[32px] text-xs px-2.5 rounded-lg ml-2 active:scale-[0.97]"
                               >
                                 {finalizingPollId === poll.id ? 'Booking...' : 'Choose'}
                               </Button>
@@ -334,19 +360,19 @@ export function PollsClient() {
               </div>
 
               {/* Bottom Card Actions */}
-              <div className="p-4 bg-muted/20 border-t flex items-center justify-between gap-2">
+              <div className="p-4 bg-muted/20 border-t border-border/80 flex items-center justify-between gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => handleCopyLink(poll.slug, poll.id)}
-                  className="rounded-xl h-9 text-xs gap-1.5 active:scale-[0.97]"
+                  className="rounded-xl min-h-[38px] text-xs gap-1.5 active:scale-[0.97]"
                 >
                   {copiedId === poll.id ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
                   Share Voting Link
                 </Button>
 
                 <Link href={`/book/poll/${poll.slug}`} target="_blank">
-                  <Button variant="ghost" size="sm" className="rounded-xl h-9 text-xs gap-1">
+                  <Button variant="ghost" size="sm" className="rounded-xl min-h-[38px] text-xs gap-1 active:scale-[0.97]">
                     <ExternalLink className="h-3.5 w-3.5" />
                     Public View
                   </Button>
@@ -357,19 +383,23 @@ export function PollsClient() {
         </div>
       )}
 
-      {/* Create Poll Dialog */}
+      {/* Create Poll Dialog (theme.md §8 Standardized Modal Architecture) */}
       <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
-        <DialogContent className="max-w-lg rounded-3xl p-6">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold">Create Meeting Poll</DialogTitle>
-            <DialogDescription className="text-xs">
-              Propose candidate times and share a single link for everyone to vote.
+        <DialogContent className="border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl max-w-lg p-0 overflow-hidden font-figtree">
+          <DialogHeader demarcated>
+            <div className="flex items-center gap-2">
+              <Vote className="h-5 w-5 text-primary" />
+              <DialogTitle className="text-base font-bold text-foreground">Create Meeting Poll</DialogTitle>
+            </div>
+            <CardInfoTooltip text="Propose candidate meeting times and share a single link for participants to vote on their preferred slot." />
+            <DialogDescription className="sr-only">
+              Propose candidate meeting dates and times for group consensus voting.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-2 text-xs">
+          <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto text-xs">
             <div className="space-y-1.5">
-              <Label className="font-semibold">Meeting Title *</Label>
+              <Label className="font-semibold text-foreground">Meeting Title *</Label>
               <Input
                 value={title}
                 onChange={e => setTitle(e.target.value)}
@@ -379,7 +409,7 @@ export function PollsClient() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="font-semibold">Description</Label>
+              <Label className="font-semibold text-foreground">Description</Label>
               <Textarea
                 value={description}
                 onChange={e => setDescription(e.target.value)}
@@ -389,7 +419,7 @@ export function PollsClient() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="font-semibold">Meeting Duration (minutes)</Label>
+              <Label className="font-semibold text-foreground">Meeting Duration (minutes)</Label>
               <Input
                 type="number"
                 value={durationMinutes}
@@ -399,17 +429,17 @@ export function PollsClient() {
             </div>
 
             {/* Candidate Slots Builder */}
-            <div className="pt-2 border-t space-y-3">
+            <div className="pt-2 border-t border-border/80 space-y-3">
               <Label className="font-semibold text-foreground">Add Candidate Time Slots</Label>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <div>
                   <Label className="text-[10px] text-muted-foreground">Date</Label>
                   <Input
                     type="date"
                     value={slotDate}
                     onChange={e => setSlotDate(e.target.value)}
-                    className="rounded-xl text-xs h-9"
+                    className="rounded-xl text-xs min-h-[44px] sm:min-h-[36px]"
                   />
                 </div>
                 <div>
@@ -418,7 +448,7 @@ export function PollsClient() {
                     type="time"
                     value={slotStartTime}
                     onChange={e => setSlotStartTime(e.target.value)}
-                    className="rounded-xl text-xs h-9"
+                    className="rounded-xl text-xs min-h-[44px] sm:min-h-[36px]"
                   />
                 </div>
                 <div>
@@ -427,7 +457,7 @@ export function PollsClient() {
                     type="time"
                     value={slotEndTime}
                     onChange={e => setSlotEndTime(e.target.value)}
-                    className="rounded-xl text-xs h-9"
+                    className="rounded-xl text-xs min-h-[44px] sm:min-h-[36px]"
                   />
                 </div>
               </div>
@@ -436,7 +466,7 @@ export function PollsClient() {
                 type="button"
                 variant="outline"
                 onClick={handleAddSlot}
-                className="w-full rounded-xl min-h-[38px] text-xs gap-1.5 active:scale-[0.97]"
+                className="w-full rounded-xl min-h-[44px] sm:min-h-[38px] text-xs font-semibold gap-1.5 active:scale-[0.97]"
               >
                 <Plus className="h-3.5 w-3.5" />
                 Add Slot to Poll
@@ -447,14 +477,14 @@ export function PollsClient() {
                   {proposedSlots.map((slot, i) => (
                     <div
                       key={i}
-                      className="p-2 rounded-xl bg-muted/40 border flex items-center justify-between text-xs"
+                      className="p-2.5 rounded-xl bg-muted/40 border border-border/80 flex items-center justify-between text-xs"
                     >
                       <span>{format(new Date(slot.startAt), 'EEE, MMM d, p')} – {format(new Date(slot.endAt), 'p')}</span>
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => handleRemoveSlot(i)}
-                        className="h-6 w-6 text-rose-500 hover:text-rose-700"
+                        className="h-8 w-8 min-h-[32px] min-w-[32px] rounded-lg text-rose-500 hover:text-rose-700 active:scale-[0.95]"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
@@ -465,19 +495,20 @@ export function PollsClient() {
             </div>
           </div>
 
-          <DialogFooter className="gap-2">
+          {/* Demarcated Footer (theme.md §8) */}
+          <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
             <Button
               variant="outline"
               onClick={() => setCreateModalOpen(false)}
               disabled={isSubmitting}
-              className="rounded-xl min-h-[44px]"
+              className="rounded-xl min-h-[44px] sm:min-h-[36px] text-xs px-4 active:scale-[0.97]"
             >
               Cancel
             </Button>
             <Button
               onClick={handleCreatePoll}
               disabled={isSubmitting || proposedSlots.length === 0}
-              className="rounded-xl min-h-[44px] px-5 active:scale-[0.97]"
+              className="rounded-xl min-h-[44px] sm:min-h-[36px] text-xs px-5 font-semibold active:scale-[0.97]"
             >
               {isSubmitting ? 'Creating...' : 'Create & Share Poll'}
             </Button>

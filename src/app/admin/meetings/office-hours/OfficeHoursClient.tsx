@@ -1,5 +1,17 @@
 'use client';
 
+/**
+ * @fileoverview Drop-In Office Hours & Live Waiting Room Studio for SmartSapp Meetings 2.0.
+ *
+ * ARCHITECTURE & DESIGN SYSTEM ALIGNMENT:
+ * - Adheres strictly to theme.md §8 geometry and header standards.
+ * - Real-time queue telemetry with 5s polling and live pulsing status indicators.
+ * - Defensive Promise clipboard handling (.then().catch()).
+ * - Anti-popup-blocker resilience via actionable toast navigation.
+ * - Mobile touch targets >= 44px (or responsive sm:min-h-[38px]/[36px]).
+ * - Zero 'any' policy strictly enforced.
+ */
+
 import * as React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -90,7 +102,7 @@ export function OfficeHoursClient() {
           description:
             newStatus === 'available'
               ? 'Visitors can now enter your waiting room.'
-              : 'Visitors will be shown as offline.',
+              : 'Visitors will see you as currently unavailable.',
         });
       } else {
         throw new Error(res.error);
@@ -115,10 +127,19 @@ export function OfficeHoursClient() {
         toast({
           title: `Admitted ${entry.visitorName}`,
           description: 'Visitor is being redirected to your video room.',
+          ...(res.joinUrl?.startsWith('/')
+            ? {
+                actionConfig: {
+                  path: res.joinUrl,
+                  label: 'Join Call',
+                },
+              }
+            : {}),
         });
+
         // Open video room in new tab if available
         if (res.joinUrl) {
-          window.open(res.joinUrl, '_blank');
+          window.open(res.joinUrl, '_blank', 'noopener,noreferrer');
         }
         fetchRoomData();
       } else {
@@ -139,10 +160,23 @@ export function OfficeHoursClient() {
     if (!room) return;
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const url = `${origin}/book/drop-in/${room.slug}`;
-    navigator.clipboard.writeText(url);
-    setCopiedLink(true);
-    toast({ title: 'Drop-in link copied to clipboard!' });
-    setTimeout(() => setCopiedLink(false), 2000);
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      navigator.clipboard
+        .writeText(url)
+        .then(() => {
+          setCopiedLink(true);
+          toast({ title: 'Drop-in link copied to clipboard!' });
+          setTimeout(() => setCopiedLink(false), 2000);
+        })
+        .catch(err => {
+          console.warn('[copy drop-in link error]', err);
+          toast({
+            variant: 'destructive',
+            title: 'Copy Failed',
+            description: 'Unable to copy drop-in link automatically.',
+          });
+        });
+    }
   };
 
   if (isLoading) {
@@ -159,7 +193,7 @@ export function OfficeHoursClient() {
   return (
     <div className="space-y-6">
       {/* Top Banner with Live Status Toggle */}
-      <Card className="rounded-3xl border shadow-sm overflow-hidden bg-gradient-to-r from-primary/5 via-muted/30 to-transparent">
+      <Card className="rounded-2xl border border-border/80 shadow-sm overflow-hidden bg-gradient-to-r from-primary/5 via-muted/30 to-transparent">
         <CardContent className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -201,7 +235,7 @@ export function OfficeHoursClient() {
               variant={room?.status === 'available' ? 'default' : 'outline'}
               onClick={() => handleToggleStatus('available')}
               disabled={isTogglingStatus}
-              className={`rounded-xl text-xs min-h-[40px] gap-1.5 active:scale-[0.97] ${
+              className={`rounded-xl text-xs min-h-[44px] sm:min-h-[38px] px-3.5 gap-1.5 active:scale-[0.97] ${
                 room?.status === 'available' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''
               }`}
             >
@@ -213,7 +247,7 @@ export function OfficeHoursClient() {
               variant={room?.status === 'busy' ? 'default' : 'outline'}
               onClick={() => handleToggleStatus('busy')}
               disabled={isTogglingStatus}
-              className={`rounded-xl text-xs min-h-[40px] gap-1.5 active:scale-[0.97] ${
+              className={`rounded-xl text-xs min-h-[44px] sm:min-h-[38px] px-3.5 gap-1.5 active:scale-[0.97] ${
                 room?.status === 'busy' ? 'bg-amber-600 hover:bg-amber-700 text-white' : ''
               }`}
             >
@@ -225,7 +259,7 @@ export function OfficeHoursClient() {
               variant={room?.status === 'offline' ? 'default' : 'outline'}
               onClick={() => handleToggleStatus('offline')}
               disabled={isTogglingStatus}
-              className="rounded-xl text-xs min-h-[40px] gap-1.5 active:scale-[0.97]"
+              className="rounded-xl text-xs min-h-[44px] sm:min-h-[38px] px-3.5 gap-1.5 active:scale-[0.97]"
             >
               Offline
             </Button>
@@ -237,11 +271,11 @@ export function OfficeHoursClient() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2 Cols: Live Waiting Room Queue */}
         <div className="lg:col-span-2 space-y-4">
-          <Card className="rounded-2xl border shadow-sm">
-            <CardHeader className="pb-3 border-b flex flex-row items-center justify-between">
+          <Card className="rounded-2xl border border-border/80 shadow-sm bg-card overflow-hidden">
+            <CardHeader className="pb-3 border-b border-border/80 bg-muted/20 flex flex-row items-center justify-between">
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-primary" />
-                <CardTitle className="text-base font-semibold">
+                <CardTitle className="text-base font-semibold text-foreground">
                   Live Waiting Queue ({waitingVisitors.length})
                 </CardTitle>
               </div>
@@ -261,7 +295,7 @@ export function OfficeHoursClient() {
                 waitingVisitors.map(entry => (
                   <div
                     key={entry.id}
-                    className="p-4 rounded-xl border bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all"
+                    className="p-4 rounded-xl border border-border/80 bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all"
                   >
                     <div className="flex items-start gap-3">
                       <div className="h-8 w-8 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center text-xs shrink-0 mt-0.5">
@@ -285,7 +319,7 @@ export function OfficeHoursClient() {
                       size="sm"
                       onClick={() => handleAdmit(entry)}
                       disabled={admittingId === entry.id}
-                      className="rounded-xl min-h-[40px] text-xs gap-1.5 px-4 font-semibold shadow-sm active:scale-[0.97]"
+                      className="rounded-xl min-h-[44px] sm:min-h-[38px] text-xs gap-1.5 px-4 font-semibold shadow-sm active:scale-[0.97]"
                     >
                       <UserCheck className="h-3.5 w-3.5" />
                       {admittingId === entry.id ? 'Admitting...' : 'Admit to Call'}
@@ -299,9 +333,9 @@ export function OfficeHoursClient() {
 
         {/* Right Col: Public Link & Conference Setup */}
         <div className="space-y-6">
-          <Card className="rounded-2xl border shadow-sm">
-            <CardHeader className="pb-3 border-b">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+          <Card className="rounded-2xl border border-border/80 shadow-sm bg-card overflow-hidden">
+            <CardHeader className="pb-3 border-b border-border/80 bg-muted/20">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
                 <Video className="h-4 w-4 text-primary" />
                 Drop-In Access Link
               </CardTitle>
@@ -317,20 +351,20 @@ export function OfficeHoursClient() {
                         ? `${window.location.origin}/book/drop-in/${room?.slug}`
                         : `/book/drop-in/${room?.slug}`
                     }
-                    className="rounded-xl font-mono text-[11px] h-9"
+                    className="rounded-xl font-mono text-[11px] min-h-[44px] sm:min-h-[38px]"
                   />
                   <Button
                     size="icon"
                     variant="outline"
                     onClick={handleCopyLink}
-                    className="h-9 w-9 rounded-xl shrink-0"
+                    className="min-h-[44px] min-w-[44px] sm:min-h-[38px] sm:min-w-[38px] rounded-xl shrink-0 active:scale-[0.95]"
                   >
                     {copiedLink ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
                   </Button>
                 </div>
               </div>
 
-              <div className="pt-2 border-t space-y-2 text-muted-foreground">
+              <div className="pt-2 border-t border-border/80 space-y-2 text-muted-foreground">
                 <p className="flex items-center gap-2">
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
                   Max Queue: <strong>{room?.maxQueueSize || 10} visitors</strong>
@@ -343,7 +377,7 @@ export function OfficeHoursClient() {
 
               {room?.slug && (
                 <Link href={`/book/drop-in/${room.slug}`} target="_blank">
-                  <Button variant="secondary" className="w-full rounded-xl min-h-[40px] text-xs gap-1.5">
+                  <Button variant="secondary" className="w-full rounded-xl min-h-[44px] sm:min-h-[38px] text-xs gap-1.5 active:scale-[0.97]">
                     <ExternalLink className="h-3.5 w-3.5" />
                     Preview Waiting Room
                   </Button>

@@ -1,5 +1,16 @@
 'use client';
 
+/**
+ * @fileoverview Enterprise Compliance, GDPR Retention & Audit Exports for SmartSapp Meetings 2.0.
+ *
+ * ARCHITECTURE & DESIGN SYSTEM ALIGNMENT:
+ * - Strictly conforms to theme.md §8 (Standardized header taxonomy, zero raw descriptions).
+ * - Universal <CardInfoTooltip> beside titles with sr-only <CardDescription>.
+ * - Mobile touch targets >= 44px (or responsive sm:min-h-[36px]/[38px]).
+ * - Rounded-2xl card surfaces with high-contrast border definition.
+ * - Zero 'any' policy strictly enforced.
+ */
+
 import * as React from 'react';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import {
   getWorkspaceCompliancePolicyAction,
   saveWorkspaceCompliancePolicyAction,
@@ -154,9 +166,11 @@ export function ComplianceClient() {
       if (res.success && res.result) {
         setRetentionResult(res.result);
         toast({ title: 'GDPR Retention Evaluated' });
+      } else {
+        throw new Error(res.error);
       }
     } catch (err) {
-      console.warn('[evaluate purge]', err);
+      toast({ variant: 'destructive', title: 'Evaluation Failed', description: getErrorMessage(err) });
     } finally {
       setIsEvaluating(false);
     }
@@ -166,23 +180,21 @@ export function ComplianceClient() {
     return (
       <div className="space-y-4">
         <Skeleton className="h-12 w-48 rounded-xl" />
-        <Skeleton className="h-64 rounded-3xl" />
+        <Skeleton className="h-64 rounded-2xl" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header with CardInfoTooltip (zero raw descriptions) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+        <div className="flex items-center gap-2.5">
           <h2 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-primary" />
             Enterprise Compliance & Audit Exports
           </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Configure booking domain whitelists, GDPR data retention lifecycles, and export immutable CSV audit trails.
-          </p>
+          <CardInfoTooltip text="Configure booking domain whitelists, GDPR data retention lifecycles, and export immutable CSV audit trails." />
         </div>
 
         <Button
@@ -197,50 +209,53 @@ export function ComplianceClient() {
 
       <form onSubmit={handleSavePolicy} className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-xs">
         {/* Card 1: Domain Whitelists & Access Controls */}
-        <Card className="rounded-3xl border shadow-sm p-6 space-y-4">
-          <CardHeader className="p-0 pb-2 border-b">
-            <CardTitle className="text-sm font-bold flex items-center gap-2">
+        <Card className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm p-6 space-y-4">
+          <CardHeader className="p-0 pb-3 border-b border-border/80 flex flex-row items-center justify-between space-y-0">
+            <div className="flex items-center gap-2">
               <Lock className="h-4 w-4 text-primary" />
-              Booking Domain Whitelist & Blacklist
-            </CardTitle>
-            <CardDescription className="text-xs">
+              <CardTitle className="text-sm font-bold text-foreground">
+                Booking Domain Whitelist & Blacklist
+              </CardTitle>
+            </div>
+            <CardInfoTooltip text="Restrict who can schedule sessions on your public booking links by allowing or blocking specific email domains." />
+            <CardDescription className="sr-only">
               Restrict who can schedule sessions on your public booking links.
             </CardDescription>
           </CardHeader>
 
-          <div className="space-y-3">
+          <div className="space-y-3 pt-1">
             <div className="space-y-1.5">
-              <Label className="font-semibold">Allowed Email Domains (Comma separated)</Label>
+              <Label className="font-semibold text-foreground">Allowed Email Domains (Comma separated)</Label>
               <Input
                 value={allowedDomainsInput}
                 onChange={e => setAllowedDomainsInput(e.target.value)}
                 placeholder="@school.edu, @acme.com (leave empty for open access)"
-                className="rounded-xl text-xs h-10"
+                className="rounded-xl text-xs min-h-[44px] sm:min-h-[36px]"
               />
               <p className="text-[10px] text-muted-foreground">Only contacts with these email domains will be allowed to book.</p>
             </div>
 
             <div className="space-y-1.5">
-              <Label className="font-semibold">Blocked Email Domains (Comma separated)</Label>
+              <Label className="font-semibold text-foreground">Blocked Email Domains (Comma separated)</Label>
               <Input
                 value={blockedDomainsInput}
                 onChange={e => setBlockedDomainsInput(e.target.value)}
                 placeholder="@tempmail.com, @throwaway.net"
-                className="rounded-xl text-xs h-10"
+                className="rounded-xl text-xs min-h-[44px] sm:min-h-[36px]"
               />
             </div>
 
-            <div className="flex items-center justify-between pt-2 border-t">
+            <div className="flex items-center justify-between pt-2 border-t border-border/80">
               <div className="space-y-0.5">
-                <Label className="text-xs font-semibold">Require Meeting Passcode</Label>
+                <Label className="text-xs font-semibold text-foreground">Require Meeting Passcode</Label>
                 <p className="text-[10px] text-muted-foreground">Enforce random passcodes for guest entry</p>
               </div>
               <Switch checked={requirePasscode} onCheckedChange={setRequirePasscode} />
             </div>
 
-            <div className="flex items-center justify-between pt-2 border-t">
+            <div className="flex items-center justify-between pt-2 border-t border-border/80">
               <div className="space-y-0.5">
-                <Label className="text-xs font-semibold">Enforce Host Consent for AI Briefs</Label>
+                <Label className="text-xs font-semibold text-foreground">Enforce Host Consent for AI Briefs</Label>
                 <p className="text-[10px] text-muted-foreground">Require host confirmation before AI intelligence generation</p>
               </div>
               <Switch checked={enforceConsent} onCheckedChange={setEnforceConsent} />
@@ -249,33 +264,36 @@ export function ComplianceClient() {
         </Card>
 
         {/* Card 2: GDPR / HIPAA Data Retention */}
-        <Card className="rounded-3xl border shadow-sm p-6 space-y-4">
-          <CardHeader className="p-0 pb-2 border-b">
-            <CardTitle className="text-sm font-bold flex items-center gap-2">
+        <Card className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm p-6 space-y-4">
+          <CardHeader className="p-0 pb-3 border-b border-border/80 flex flex-row items-center justify-between space-y-0">
+            <div className="flex items-center gap-2">
               <HardDrive className="h-4 w-4 text-primary" />
-              GDPR / HIPAA Data Retention Policy
-            </CardTitle>
-            <CardDescription className="text-xs">
+              <CardTitle className="text-sm font-bold text-foreground">
+                GDPR / HIPAA Data Retention Policy
+              </CardTitle>
+            </div>
+            <CardInfoTooltip text="Automatically purge old recordings and transcripts beyond compliance window to comply with GDPR and HIPAA." />
+            <CardDescription className="sr-only">
               Automatically purge old recordings and transcripts beyond compliance window.
             </CardDescription>
           </CardHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-4 pt-1">
             <div className="space-y-1.5">
-              <Label className="font-semibold">Retention Period (Days)</Label>
+              <Label className="font-semibold text-foreground">Retention Period (Days)</Label>
               <Input
                 type="number"
                 value={retentionDays}
                 onChange={e => setRetentionDays(e.target.value)}
                 placeholder="90"
-                className="rounded-xl text-xs h-10"
+                className="rounded-xl text-xs min-h-[44px] sm:min-h-[36px]"
               />
               <p className="text-[10px] text-muted-foreground">
                 Enter 0 to retain indefinitely. Minimum safety floor is 30 days. Pinned recordings are exempt.
               </p>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-muted/30 border space-y-2">
+            <div className="p-3.5 rounded-2xl bg-muted/30 border border-border/80 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-foreground">Dry-Run Retention Purge Simulator</span>
                 <Button
@@ -284,14 +302,14 @@ export function ComplianceClient() {
                   variant="outline"
                   onClick={handleEvaluatePurge}
                   disabled={isEvaluating}
-                  className="rounded-xl h-8 text-xs active:scale-[0.97]"
+                  className="rounded-xl min-h-[36px] text-xs px-3 active:scale-[0.97]"
                 >
                   {isEvaluating ? 'Evaluating...' : 'Simulate Purge'}
                 </Button>
               </div>
 
               {retentionResult && (
-                <div className="text-[11px] text-muted-foreground space-y-1 pt-1 border-t">
+                <div className="text-[11px] text-muted-foreground space-y-1 pt-2 border-t border-border/80">
                   <p>
                     Eligible for purge: <strong>{retentionResult.eligibleMeetingIds.length}</strong> meetings
                   </p>

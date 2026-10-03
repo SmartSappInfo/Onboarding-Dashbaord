@@ -1,5 +1,17 @@
 'use client';
 
+/**
+ * @fileoverview Meeting Templates Studio for SmartSapp Meetings 2.0.
+ *
+ * ARCHITECTURE & DESIGN SYSTEM ALIGNMENT:
+ * - Strictly conforms to theme.md §8 (Standardized header taxonomy, zero raw descriptions).
+ * - Universal <CardInfoTooltip> in header.
+ * - Rounded-2xl card surfaces with high-contrast borders.
+ * - Mobile touch targets >= 44px (or responsive sm:min-h-[36px]).
+ * - Tactile micro-interactions (active:scale-[0.97]).
+ * - Zero 'any' policy strictly enforced.
+ */
+
 import * as React from 'react';
 import { Card, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -119,9 +131,9 @@ export function TemplatesClient() {
       <div className="space-y-4">
         <Skeleton className="h-10 w-48 rounded-xl" />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Skeleton className="h-64 rounded-3xl" />
-          <Skeleton className="h-64 rounded-3xl" />
-          <Skeleton className="h-64 rounded-3xl" />
+          <Skeleton className="h-64 rounded-2xl" />
+          <Skeleton className="h-64 rounded-2xl" />
+          <Skeleton className="h-64 rounded-2xl" />
         </div>
       </div>
     );
@@ -129,7 +141,7 @@ export function TemplatesClient() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header with CardInfoTooltip (zero raw descriptions) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2.5">
           <h2 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
@@ -148,7 +160,7 @@ export function TemplatesClient() {
             variant={activeCategory === tab.value ? 'default' : 'outline'}
             size="sm"
             onClick={() => setActiveCategory(tab.value)}
-            className="rounded-xl text-xs font-semibold shrink-0 min-h-[36px]"
+            className="rounded-xl text-xs font-semibold shrink-0 min-h-[44px] sm:min-h-[36px] active:scale-[0.97]"
           >
             {tab.label}
           </Button>
@@ -163,11 +175,11 @@ export function TemplatesClient() {
           return (
             <Card
               key={tmpl.id}
-              className="rounded-3xl border border-border shadow-sm flex flex-col justify-between overflow-hidden hover:shadow-md transition-shadow bg-card"
+              className="rounded-2xl border border-border/80 shadow-sm flex flex-col justify-between overflow-hidden hover:shadow-md transition-shadow bg-card"
             >
               <div className="p-6 space-y-4">
                 <div className="flex items-center justify-between">
-                  <div className="w-10 h-10 rounded-2xl bg-muted/60 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-muted/60 flex items-center justify-center">
                     {getTemplateIcon(tmpl.category)}
                   </div>
                   <Badge variant="outline" className="text-[11px] font-bold capitalize">
@@ -214,7 +226,7 @@ export function TemplatesClient() {
 
               <CardFooter className="p-6 pt-0 border-t border-border/40 mt-4">
                 <Button
-                  className="w-full rounded-2xl min-h-[44px] text-xs font-bold gap-2 active:scale-[0.97] transition-transform"
+                  className="w-full rounded-xl min-h-[44px] text-xs font-bold gap-2 active:scale-[0.97] transition-transform"
                   disabled={isDeploying}
                   onClick={() => handleDeployTemplate(tmpl)}
                 >

@@ -1,5 +1,16 @@
 'use client';
 
+/**
+ * @fileoverview Operational Overview & Intelligence Hub for SmartSapp Meetings 2.0.
+ *
+ * ARCHITECTURE & DESIGN SYSTEM ALIGNMENT:
+ * - Strictly conforms to theme.md §8 (Standardized header taxonomy, zero raw descriptions).
+ * - Universal <CardInfoTooltip> in card headers with sr-only <CardDescription>.
+ * - Mobile touch targets >= 44px (or responsive sm:min-h-[36px]).
+ * - High contrast rounded-2xl card surfaces.
+ * - Zero 'any' policy strictly enforced.
+ */
+
 import * as React from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +29,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import {
   getMeetingsOperationalOverviewAction,
   type OperationalOverviewResult,
@@ -60,7 +72,7 @@ export function OverviewClient() {
           <Skeleton className="h-28 rounded-2xl" />
           <Skeleton className="h-28 rounded-2xl" />
         </div>
-        <Skeleton className="h-64 rounded-3xl" />
+        <Skeleton className="h-64 rounded-2xl" />
       </div>
     );
   }
@@ -74,7 +86,7 @@ export function OverviewClient() {
     <div className="space-y-6">
       {/* Top 4 Operational KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="rounded-2xl border shadow-sm p-4 flex flex-col justify-between">
+        <Card className="rounded-2xl border border-border/80 shadow-sm p-4 flex flex-col justify-between bg-card">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-xs font-semibold">Total Meetings</span>
             <Video className="h-4 w-4 text-primary" />
@@ -87,7 +99,7 @@ export function OverviewClient() {
           </div>
         </Card>
 
-        <Card className="rounded-2xl border shadow-sm p-4 flex flex-col justify-between">
+        <Card className="rounded-2xl border border-border/80 shadow-sm p-4 flex flex-col justify-between bg-card">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-xs font-semibold">Total Bookings</span>
             <CalendarCheck className="h-4 w-4 text-primary" />
@@ -100,7 +112,7 @@ export function OverviewClient() {
           </div>
         </Card>
 
-        <Card className="rounded-2xl border shadow-sm p-4 flex flex-col justify-between">
+        <Card className="rounded-2xl border border-border/80 shadow-sm p-4 flex flex-col justify-between bg-card">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-xs font-semibold">Attendance Rate</span>
             <CheckCircle2 className="h-4 w-4 text-emerald-500" />
@@ -114,7 +126,7 @@ export function OverviewClient() {
           </div>
         </Card>
 
-        <Card className="rounded-2xl border shadow-sm p-4 flex flex-col justify-between">
+        <Card className="rounded-2xl border border-border/80 shadow-sm p-4 flex flex-col justify-between bg-card">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-xs font-semibold">Meeting Volume</span>
             <Clock className="h-4 w-4 text-primary" />
@@ -132,19 +144,20 @@ export function OverviewClient() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2 Cols: Today's Agenda Roster */}
         <div className="lg:col-span-2 space-y-4">
-          <Card className="rounded-3xl border shadow-sm">
-            <CardHeader className="pb-3 border-b flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-base font-bold flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-primary" />
+          <Card className="rounded-2xl border border-border/80 shadow-sm bg-card overflow-hidden">
+            <CardHeader className="pb-3 border-b border-border/80 bg-muted/20 flex flex-row items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-primary" />
+                <CardTitle className="text-base font-bold text-foreground">
                   Today&apos;s Schedule & Action Roster
                 </CardTitle>
-                <CardDescription className="text-xs">
+                <CardInfoTooltip text="Live schedule and action items for today's confirmed consultations and group sessions." />
+                <CardDescription className="sr-only">
                   {format(new Date(), 'EEEE, MMMM d, yyyy')}
                 </CardDescription>
               </div>
               <Link href="/admin/meetings/calendar">
-                <Button variant="ghost" size="sm" className="text-xs rounded-xl gap-1">
+                <Button variant="ghost" size="sm" className="text-xs rounded-xl min-h-[36px] gap-1 active:scale-[0.97]">
                   Full Calendar
                   <ExternalLink className="h-3 w-3" />
                 </Button>
@@ -162,7 +175,7 @@ export function OverviewClient() {
                 todayMeetings.map(meeting => (
                   <div
                     key={meeting.id}
-                    className="p-3.5 rounded-2xl border bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all"
+                    className="p-3.5 rounded-2xl border border-border/80 bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all"
                   >
                     <div className="space-y-0.5">
                       <div className="flex items-center gap-2">
@@ -181,7 +194,7 @@ export function OverviewClient() {
                         <a href={meeting.joinUrl} target="_blank" rel="noopener noreferrer">
                           <Button
                             size="sm"
-                            className="h-8 rounded-xl text-xs font-semibold gap-1.5 active:scale-[0.97]"
+                            className="min-h-[36px] rounded-xl text-xs font-semibold gap-1.5 active:scale-[0.97]"
                           >
                             <Play className="h-3 w-3" />
                             Join
@@ -189,7 +202,7 @@ export function OverviewClient() {
                         </a>
                       )}
                       <Link href={`/admin/meetings/${meeting.id}`}>
-                        <Button variant="outline" size="sm" className="h-8 rounded-xl text-xs active:scale-[0.97]">
+                        <Button variant="outline" size="sm" className="min-h-[36px] rounded-xl text-xs active:scale-[0.97]">
                           Details
                         </Button>
                       </Link>
@@ -204,19 +217,22 @@ export function OverviewClient() {
         {/* Right Col: Requires Attention & Host Workloads */}
         <div className="space-y-6">
           {/* Requires Attention */}
-          <Card className="rounded-3xl border shadow-sm">
-            <CardHeader className="pb-3 border-b">
-              <CardTitle className="text-sm font-bold flex items-center gap-2">
+          <Card className="rounded-2xl border border-border/80 shadow-sm bg-card overflow-hidden">
+            <CardHeader className="pb-3 border-b border-border/80 bg-muted/20 flex flex-row items-center justify-between">
+              <div className="flex items-center gap-2">
                 <AlertCircle className="h-4 w-4 text-amber-500" />
-                Requires Attention
-              </CardTitle>
+                <CardTitle className="text-sm font-bold text-foreground">
+                  Requires Attention
+                </CardTitle>
+              </div>
+              <CardInfoTooltip text="Operational action items requiring host attention, such as missing conferencing links or unattended no-shows." />
             </CardHeader>
             <CardContent className="p-4 space-y-2.5 text-xs">
-              <div className="flex items-center justify-between p-2 rounded-xl bg-muted/30">
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-muted/30 border border-border/60">
                 <span className="text-muted-foreground">Missing video links:</span>
                 <strong className="text-foreground">{attention?.noVideoLinkCount || 0}</strong>
               </div>
-              <div className="flex items-center justify-between p-2 rounded-xl bg-muted/30">
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-muted/30 border border-border/60">
                 <span className="text-muted-foreground">No-show follow-ups needed:</span>
                 <strong className="text-foreground">{attention?.overdueFollowupsCount || 0}</strong>
               </div>
@@ -224,19 +240,22 @@ export function OverviewClient() {
           </Card>
 
           {/* Host Workloads */}
-          <Card className="rounded-3xl border shadow-sm">
-            <CardHeader className="pb-3 border-b">
-              <CardTitle className="text-sm font-bold flex items-center gap-2">
+          <Card className="rounded-2xl border border-border/80 shadow-sm bg-card overflow-hidden">
+            <CardHeader className="pb-3 border-b border-border/80 bg-muted/20 flex flex-row items-center justify-between">
+              <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-primary" />
-                Team Host Workload
-              </CardTitle>
+                <CardTitle className="text-sm font-bold text-foreground">
+                  Team Host Workload
+                </CardTitle>
+              </div>
+              <CardInfoTooltip text="Distribution of meeting hours and volume across workspace hosts." />
             </CardHeader>
             <CardContent className="p-4 space-y-3 text-xs">
               {hostWorkloads.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No host metrics recorded yet.</p>
+                <p className="text-xs text-muted-foreground py-2 text-center">No host metrics recorded yet.</p>
               ) : (
                 hostWorkloads.slice(0, 4).map(host => (
-                  <div key={host.hostUserId} className="flex items-center justify-between">
+                  <div key={host.hostUserId} className="flex items-center justify-between p-1.5 rounded-lg hover:bg-muted/20 transition-colors">
                     <span className="font-semibold text-foreground truncate max-w-[120px]">
                       {host.hostName}
                     </span>

@@ -1,5 +1,16 @@
 'use client';
 
+/**
+ * @fileoverview Physical Rooms & Equipment Resource Inventory for SmartSapp Meetings 2.0.
+ *
+ * ARCHITECTURE & DESIGN SYSTEM ALIGNMENT:
+ * - Strictly conforms to theme.md §8 (Standardized Modal Architecture SSOT).
+ * - Demarcated header with <CardInfoTooltip> and sr-only <DialogDescription>.
+ * - Mobile touch targets >= 44px (or responsive sm:min-h-[36px]/[38px]).
+ * - Rounded-2xl card surfaces with high-contrast borders.
+ * - Zero 'any' policy strictly enforced.
+ */
+
 import * as React from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,7 +24,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from '@/components/ui/dialog';
 import {
   Select,
@@ -133,9 +143,16 @@ export function ResourcesClient() {
       if (res.success) {
         toast({ title: 'Resource deleted' });
         fetchResources();
+      } else {
+        throw new Error(res.error);
       }
     } catch (err) {
       console.warn('[delete resource]', err);
+      toast({
+        variant: 'destructive',
+        title: 'Delete Failed',
+        description: getErrorMessage(err),
+      });
     }
   };
 
@@ -150,7 +167,7 @@ export function ResourcesClient() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header with CardInfoTooltip (zero raw descriptions) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2.5">
           <h2 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
@@ -171,7 +188,7 @@ export function ResourcesClient() {
 
       {/* Resource Cards */}
       {resources.length === 0 ? (
-        <Card className="rounded-3xl border-dashed p-12 text-center space-y-3">
+        <Card className="rounded-2xl border border-dashed border-border/80 bg-card/50 p-12 text-center space-y-3">
           <Building2 className="h-12 w-12 mx-auto text-primary opacity-30 animate-pulse" />
           <h3 className="text-base font-semibold text-foreground">No physical rooms configured</h3>
           <p className="text-xs text-muted-foreground max-w-sm mx-auto">
@@ -188,7 +205,7 @@ export function ResourcesClient() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {resources.map(res => (
-            <Card key={res.id} className="rounded-2xl border shadow-sm p-5 space-y-3">
+            <Card key={res.id} className="rounded-2xl border border-border/80 shadow-sm p-5 space-y-3 bg-card">
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="font-bold text-sm text-foreground">{res.name}</h3>
@@ -200,13 +217,13 @@ export function ResourcesClient() {
                   size="icon"
                   variant="ghost"
                   onClick={() => handleDelete(res.id)}
-                  className="h-8 w-8 text-rose-500 hover:text-rose-700 rounded-lg"
+                  className="h-9 w-9 min-h-[36px] min-w-[36px] text-rose-500 hover:text-rose-700 rounded-lg active:scale-[0.95]"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
 
-              <div className="space-y-1 text-xs text-muted-foreground pt-1 border-t">
+              <div className="space-y-1 text-xs text-muted-foreground pt-1 border-t border-border/80">
                 {res.capacity && (
                   <p className="flex items-center gap-1.5">
                     <Users className="h-3.5 w-3.5 text-primary" />
@@ -222,7 +239,7 @@ export function ResourcesClient() {
               </div>
 
               {res.amenities && res.amenities.length > 0 && (
-                <div className="flex flex-wrap gap-1 pt-2 border-t">
+                <div className="flex flex-wrap gap-1 pt-2 border-t border-border/80">
                   {res.amenities.map((am, i) => (
                     <Badge key={i} variant="outline" className="text-[9px]">
                       {am}
@@ -235,22 +252,25 @@ export function ResourcesClient() {
         </div>
       )}
 
-      {/* Add Resource Modal */}
+      {/* Add Resource Modal (theme.md §8 Standardized Modal Architecture) */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-md rounded-3xl p-6">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold flex items-center gap-2">
+        <DialogContent className="border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl max-w-md p-0 overflow-hidden font-figtree">
+          <DialogHeader demarcated>
+            <div className="flex items-center gap-2">
               <Building2 className="h-5 w-5 text-primary" />
-              Add Physical Room / Resource
-            </DialogTitle>
-            <DialogDescription className="text-xs">
+              <DialogTitle className="text-base font-bold text-foreground">
+                Add Physical Room / Resource
+              </DialogTitle>
+            </div>
+            <CardInfoTooltip text="Configure physical meeting spaces, podcast studios, or equipment with address, capacity, and amenities." />
+            <DialogDescription className="sr-only">
               Configure room details, location, and capacity for in-person meetings.
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleSave} className="space-y-4 py-2 text-xs">
+          <form onSubmit={handleSave} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto text-xs">
             <div className="space-y-1.5">
-              <Label className="font-semibold">Resource Name *</Label>
+              <Label className="font-semibold text-foreground">Resource Name *</Label>
               <Input
                 required
                 value={name}
@@ -262,9 +282,9 @@ export function ResourcesClient() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="font-semibold">Type</Label>
+                <Label className="font-semibold text-foreground">Type</Label>
                 <Select value={type} onValueChange={v => setType(v as MeetingResourceType)}>
-                  <SelectTrigger className="rounded-xl h-9 text-xs">
+                  <SelectTrigger className="rounded-xl min-h-[44px] sm:min-h-[36px] text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl">
@@ -277,63 +297,64 @@ export function ResourcesClient() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="font-semibold">Capacity</Label>
+                <Label className="font-semibold text-foreground">Capacity</Label>
                 <Input
                   type="number"
                   value={capacity}
                   onChange={e => setCapacity(e.target.value)}
-                  className="rounded-xl h-9 text-xs"
+                  className="rounded-xl min-h-[44px] sm:min-h-[36px] text-xs"
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label className="font-semibold">Address / Building</Label>
+              <Label className="font-semibold text-foreground">Address / Building</Label>
               <Input
                 value={locationAddress}
                 onChange={e => setLocationAddress(e.target.value)}
                 placeholder="e.g. 123 Innovation Drive, Accra"
-                className="rounded-xl h-9 text-xs"
+                className="rounded-xl min-h-[44px] sm:min-h-[36px] text-xs"
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label className="font-semibold">Floor / Suite</Label>
+              <Label className="font-semibold text-foreground">Floor / Suite</Label>
               <Input
                 value={floorBuilding}
                 onChange={e => setFloorBuilding(e.target.value)}
                 placeholder="e.g. 3rd Floor, Suite 302"
-                className="rounded-xl h-9 text-xs"
+                className="rounded-xl min-h-[44px] sm:min-h-[36px] text-xs"
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label className="font-semibold">Amenities (Comma separated)</Label>
+              <Label className="font-semibold text-foreground">Amenities (Comma separated)</Label>
               <Input
                 value={amenitiesInput}
                 onChange={e => setAmenitiesInput(e.target.value)}
                 placeholder="4K Screen, Video Bar, Whiteboard"
-                className="rounded-xl h-9 text-xs"
+                className="rounded-xl min-h-[44px] sm:min-h-[36px] text-xs"
               />
             </div>
 
-            <DialogFooter className="gap-2 pt-2">
+            {/* Demarcated Footer inside Form */}
+            <div className="pt-4 border-t border-border/80 flex flex-row items-center justify-end gap-2.5">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setModalOpen(false)}
-                className="rounded-xl min-h-[44px]"
+                className="rounded-xl min-h-[44px] sm:min-h-[36px] text-xs px-4 active:scale-[0.97]"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={isSaving}
-                className="rounded-xl min-h-[44px] px-5 active:scale-[0.97]"
+                className="rounded-xl min-h-[44px] sm:min-h-[36px] text-xs px-5 font-semibold active:scale-[0.97]"
               >
                 {isSaving ? 'Saving...' : 'Save Resource'}
               </Button>
-            </DialogFooter>
+            </div>
           </form>
         </DialogContent>
       </Dialog>

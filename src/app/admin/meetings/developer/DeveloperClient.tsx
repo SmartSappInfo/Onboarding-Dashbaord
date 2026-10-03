@@ -1,5 +1,17 @@
 'use client';
 
+/**
+ * @fileoverview Developer Hub & Outbound Webhooks for SmartSapp Meetings 2.0.
+ *
+ * ARCHITECTURE & DESIGN SYSTEM ALIGNMENT:
+ * - Strictly conforms to theme.md §8 (Standardized Modal Architecture SSOT).
+ * - Demarcated headers with <CardInfoTooltip> and sr-only descriptions.
+ * - Demarcated footers with tactile active:scale-[0.97] buttons.
+ * - Defensive Promise clipboard handling (.then().catch()).
+ * - Mobile touch targets >= 44px (or responsive sm:min-h-[36px]/[38px]).
+ * - Zero 'any' policy strictly enforced.
+ */
+
 import * as React from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,6 +41,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import {
   getMeetingWebhooksAction,
   saveMeetingWebhookAction,
@@ -228,10 +241,23 @@ export function DeveloperClient() {
   };
 
   const handleCopySecret = (secret: string, id: string) => {
-    navigator.clipboard.writeText(secret);
-    setCopiedSecretId(id);
-    toast({ title: 'Signing Secret copied!' });
-    setTimeout(() => setCopiedSecretId(null), 2000);
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      navigator.clipboard
+        .writeText(secret)
+        .then(() => {
+          setCopiedSecretId(id);
+          toast({ title: 'Signing Secret copied!' });
+          setTimeout(() => setCopiedSecretId(null), 2000);
+        })
+        .catch(err => {
+          console.warn('[copy secret error]', err);
+          toast({
+            variant: 'destructive',
+            title: 'Copy Failed',
+            description: 'Unable to copy signing secret automatically.',
+          });
+        });
+    }
   };
 
   if (isLoading) {
@@ -245,16 +271,14 @@ export function DeveloperClient() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header with CardInfoTooltip (zero raw descriptions) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+        <div className="flex items-center gap-2.5">
           <h2 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
             <Webhook className="h-5 w-5 text-primary" />
             Developer Hub & Webhooks
           </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Receive signed real-time HTTP webhooks for booking lifecycles, attendance, and AI intelligence.
-          </p>
+          <CardInfoTooltip text="Receive signed real-time HTTP webhooks for booking lifecycles, attendance, and AI intelligence." />
         </div>
 
         <Button
@@ -268,7 +292,7 @@ export function DeveloperClient() {
 
       {/* Endpoints List */}
       {endpoints.length === 0 ? (
-        <Card className="rounded-3xl border-dashed p-12 text-center space-y-3">
+        <Card className="rounded-2xl border border-dashed border-border/80 bg-card/50 p-12 text-center space-y-3">
           <Webhook className="h-12 w-12 mx-auto text-primary opacity-30 animate-pulse" />
           <h3 className="text-base font-semibold text-foreground">No webhook endpoints registered</h3>
           <p className="text-xs text-muted-foreground max-w-sm mx-auto">
@@ -285,8 +309,8 @@ export function DeveloperClient() {
       ) : (
         <div className="grid grid-cols-1 gap-4">
           {endpoints.map(endpoint => (
-            <Card key={endpoint.id} className="rounded-2xl border shadow-sm p-5 space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
+            <Card key={endpoint.id} className="rounded-2xl border border-border/80 shadow-sm p-5 space-y-4 bg-card">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/80 pb-3">
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-xs font-bold text-foreground">{endpoint.url}</span>
@@ -310,7 +334,7 @@ export function DeveloperClient() {
                     variant="outline"
                     onClick={() => handleTestDispatch(endpoint)}
                     disabled={testingEndpointId === endpoint.id}
-                    className="rounded-xl h-9 text-xs gap-1.5 active:scale-[0.97]"
+                    className="rounded-xl min-h-[36px] text-xs gap-1.5 active:scale-[0.97]"
                   >
                     <Send className="h-3.5 w-3.5" />
                     {testingEndpointId === endpoint.id ? 'Pinging...' : 'Send Test Ping'}
@@ -320,7 +344,7 @@ export function DeveloperClient() {
                     size="sm"
                     variant="ghost"
                     onClick={() => handleViewLogs(endpoint)}
-                    className="rounded-xl h-9 text-xs gap-1.5"
+                    className="rounded-xl min-h-[36px] text-xs gap-1.5 active:scale-[0.97]"
                   >
                     <Activity className="h-3.5 w-3.5" />
                     Logs
@@ -330,7 +354,7 @@ export function DeveloperClient() {
                     size="icon"
                     variant="ghost"
                     onClick={() => handleDeleteEndpoint(endpoint.id)}
-                    className="rounded-xl h-9 w-9 text-rose-500 hover:text-rose-700"
+                    className="rounded-xl h-9 w-9 min-h-[36px] min-w-[36px] text-rose-500 hover:text-rose-700 active:scale-[0.95]"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -347,7 +371,7 @@ export function DeveloperClient() {
               </div>
 
               {/* Signing Secret Box */}
-              <div className="p-3 rounded-xl bg-muted/40 border flex items-center justify-between gap-3 text-xs">
+              <div className="p-3 rounded-xl bg-muted/40 border border-border/80 flex items-center justify-between gap-3 text-xs">
                 <div className="flex items-center gap-2">
                   <Key className="h-3.5 w-3.5 text-primary shrink-0" />
                   <span className="text-[11px] text-muted-foreground">Signing Secret:</span>
@@ -360,7 +384,7 @@ export function DeveloperClient() {
                   size="sm"
                   variant="ghost"
                   onClick={() => handleCopySecret(endpoint.secretKey, endpoint.id)}
-                  className="h-7 text-[11px] px-2 rounded-lg gap-1"
+                  className="min-h-[32px] text-[11px] px-2.5 rounded-lg gap-1 active:scale-[0.97]"
                 >
                   {copiedSecretId === endpoint.id ? (
                     <Check className="h-3 w-3 text-emerald-500" />
@@ -375,22 +399,25 @@ export function DeveloperClient() {
         </div>
       )}
 
-      {/* Add Webhook Modal */}
+      {/* Add Webhook Modal (theme.md §8 Standardized Modal Architecture) */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-lg rounded-3xl p-6">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold flex items-center gap-2">
+        <DialogContent className="border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl max-w-lg p-0 overflow-hidden font-figtree">
+          <DialogHeader demarcated>
+            <div className="flex items-center gap-2">
               <Webhook className="h-5 w-5 text-primary" />
-              Register Webhook Endpoint
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              Configure target URL and subscribed event triggers.
+              <DialogTitle className="text-base font-bold text-foreground">
+                Register Webhook Endpoint
+              </DialogTitle>
+            </div>
+            <CardInfoTooltip text="Configure external endpoint URLs and select lifecycle events to receive HMAC-SHA256 signed payloads." />
+            <DialogDescription className="sr-only">
+              Configure target URL and subscribed event triggers for webhook delivery.
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleSaveEndpoint} className="space-y-4 py-2 text-xs">
+          <form onSubmit={handleSaveEndpoint} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto text-xs">
             <div className="space-y-1.5">
-              <Label className="font-semibold">Endpoint URL *</Label>
+              <Label className="font-semibold text-foreground">Endpoint URL *</Label>
               <Input
                 required
                 type="url"
@@ -402,7 +429,7 @@ export function DeveloperClient() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="font-semibold">Description (Optional)</Label>
+              <Label className="font-semibold text-foreground">Description (Optional)</Label>
               <Input
                 value={description}
                 onChange={e => setDescription(e.target.value)}
@@ -411,74 +438,81 @@ export function DeveloperClient() {
               />
             </div>
 
-            <div className="space-y-2 pt-2 border-t">
+            <div className="space-y-2 pt-2 border-t border-border/80">
               <Label className="font-semibold text-foreground">Subscribed Events *</Label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {AVAILABLE_EVENTS.map(item => (
                   <button
                     key={item.event}
                     type="button"
                     onClick={() => handleToggleEvent(item.event)}
-                    className={`p-2.5 rounded-xl border text-left text-xs font-semibold flex items-center justify-between transition-all ${
+                    className={`p-3 rounded-xl border text-left text-xs font-semibold flex items-center justify-between transition-all min-h-[44px] sm:min-h-[38px] active:scale-[0.98] ${
                       selectedEvents.includes(item.event)
                         ? 'bg-primary/10 border-primary text-primary'
-                        : 'bg-muted/30 text-muted-foreground'
+                        : 'bg-muted/30 border-border/70 text-muted-foreground'
                     }`}
                   >
                     <span>{item.label}</span>
-                    {selectedEvents.includes(item.event) && <Check className="h-3.5 w-3.5" />}
+                    {selectedEvents.includes(item.event) && <Check className="h-3.5 w-3.5 shrink-0" />}
                   </button>
                 ))}
               </div>
             </div>
 
-            <DialogFooter className="gap-2 pt-3">
+            {/* Demarcated Footer inside Form */}
+            <div className="pt-4 border-t border-border/80 flex flex-row items-center justify-end gap-2.5">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setModalOpen(false)}
-                className="rounded-xl min-h-[44px]"
+                className="rounded-xl min-h-[44px] sm:min-h-[36px] text-xs px-4 active:scale-[0.97]"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={isSaving}
-                className="rounded-xl min-h-[44px] px-5 active:scale-[0.97]"
+                className="rounded-xl min-h-[44px] sm:min-h-[36px] text-xs px-5 font-semibold active:scale-[0.97]"
               >
                 {isSaving ? 'Registering...' : 'Register Endpoint'}
               </Button>
-            </DialogFooter>
+            </div>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Delivery Logs Viewer Modal */}
+      {/* Delivery Logs Viewer Modal (theme.md §8 Standardized Modal Architecture) */}
       {activeLogsEndpoint && (
         <Dialog open={Boolean(activeLogsEndpoint)} onOpenChange={() => setActiveLogsEndpoint(null)}>
-          <DialogContent className="max-w-2xl rounded-3xl p-6">
-            <DialogHeader>
-              <DialogTitle className="text-base font-bold flex items-center gap-2">
+          <DialogContent className="border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl max-w-2xl p-0 overflow-hidden font-figtree">
+            <DialogHeader demarcated>
+              <div className="flex items-center gap-2">
                 <Activity className="h-4 w-4 text-primary" />
-                Delivery Logs for {activeLogsEndpoint.url}
-              </DialogTitle>
+                <DialogTitle className="text-base font-bold text-foreground">
+                  Delivery Logs for {activeLogsEndpoint.url}
+                </DialogTitle>
+              </div>
+              <CardInfoTooltip text="Historical HTTP delivery attempts, response status codes, and execution latency." />
+              <DialogDescription className="sr-only">
+                Detailed inspection log of webhook delivery attempts.
+              </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-3 py-2 max-h-96 overflow-y-auto">
+            <div className="p-6 space-y-3 max-h-[70vh] overflow-y-auto">
               {isLoadingLogs ? (
                 <div className="space-y-2">
                   <Skeleton className="h-12 rounded-xl" />
                   <Skeleton className="h-12 rounded-xl" />
                 </div>
               ) : deliveryLogs.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-6">
-                  No delivery logs recorded yet. Send a test ping to verify!
+                <p className="text-xs text-muted-foreground text-center py-8">
+                  No delivery logs recorded yet. Send a test ping to verify endpoint connectivity.
                 </p>
               ) : (
                 deliveryLogs.map(log => (
                   <div
                     key={log.id}
-                    className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
+                    className={`p-3.5 rounded-xl border flex items-center justify-between text-xs transition-all ${
                       log.success ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-rose-500/5 border-rose-500/20'
                     }`}
                   >
@@ -508,6 +542,17 @@ export function DeveloperClient() {
                 ))
               )}
             </div>
+
+            <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setActiveLogsEndpoint(null)}
+                className="rounded-xl min-h-[44px] sm:min-h-[36px] text-xs px-4 font-semibold active:scale-[0.97]"
+              >
+                Close
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       )}
