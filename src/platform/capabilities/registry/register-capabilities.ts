@@ -12,11 +12,21 @@
  */
 
 import { registerMemoryCapabilities } from '../domains/memory/memory-capabilities';
+import { registerCrmContactsCapabilities } from '@/platform/domains/crm_contacts';
+import { registerDealsRevenueCapabilities } from '@/platform/domains/deals_revenue';
+import { registerIdentityAccessCapabilities } from '@/platform/domains/identity_access';
+import { registerTasksProductivityCapabilities } from '@/platform/domains/tasks_productivity';
 
 type Registrar = () => void;
 
 /** Platform domain registrars. */
-const DOMAIN_REGISTRARS: readonly Registrar[] = [registerMemoryCapabilities];
+export const DOMAIN_REGISTRARS: readonly Registrar[] = [
+  registerMemoryCapabilities,
+  registerCrmContactsCapabilities,
+  registerDealsRevenueCapabilities,
+  registerIdentityAccessCapabilities,
+  registerTasksProductivityCapabilities,
+];
 
 const globalRef = globalThis as { __smartsappCapabilitiesRegistered?: boolean };
 
@@ -24,4 +34,8 @@ export function ensureCapabilitiesRegistered(registrars: readonly Registrar[] = 
   if (globalRef.__smartsappCapabilitiesRegistered && registrars === DOMAIN_REGISTRARS) return;
   for (const register of registrars) register();
   if (registrars === DOMAIN_REGISTRARS) globalRef.__smartsappCapabilitiesRegistered = true;
+}
+
+export function resetCapabilitiesRegisteredForTests(): void {
+  globalRef.__smartsappCapabilitiesRegistered = false;
 }

@@ -170,6 +170,12 @@ export function listCapabilities(): AnyCapabilityDefinition[] {
   return canonicalCapabilityRegistryStore.list();
 }
 
+export function listCapabilitiesByDomain(domain: string): AnyCapabilityDefinition[] {
+  return canonicalCapabilityRegistryStore.list().filter(
+    (cap) => cap.domain === domain || cap.id.startsWith(`${domain}.`)
+  );
+}
+
 /**
  * Test-only: unregisters a specific capability id.
  */
@@ -180,5 +186,18 @@ export function unregisterCapabilityForTests(id: string): boolean {
 /** Test-only: clears every registration. Never call from application code. */
 export function resetCapabilityRegistryForTests(): void {
   canonicalCapabilityRegistryStore.clear();
+}
+
+/**
+ * Convenience accessor returning canonical registry methods.
+ */
+export function getCapabilityRegistry() {
+  return {
+    registerCapability,
+    getCapability,
+    hasCapability,
+    listCapabilities,
+    listCapabilitiesByDomain,
+  };
 }
 

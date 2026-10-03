@@ -318,6 +318,24 @@ function McpGovernanceContent() {
         </div>
       </div>
 
+      {/* Banner linking to new Operator Capability Console (Rule 69) */}
+      <div className="p-4 rounded-2xl border border-primary/30 bg-primary/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+            <Cpu className="h-5 w-5" />
+          </div>
+          <div className="text-xs space-y-0.5">
+            <span className="font-semibold text-foreground">New Operator Capability Console Available</span>
+            <p className="text-muted-foreground">Manage Streamable HTTP tools, cryptographic fingerprints, schema drift, and supply-chain allowlists.</p>
+          </div>
+        </div>
+        <Link href="/admin/mcp">
+          <Button size="sm" className="rounded-xl active:scale-[0.97] min-h-[44px] sm:min-h-[36px] text-xs shrink-0">
+            Open /admin/mcp
+          </Button>
+        </Link>
+      </div>
+
       {/* Main Governance Tabs */}
       <Tabs value={currentTab} onValueChange={setCurrentTab} className="space-y-5">
         <TabsList className="bg-slate-100 p-1 border border-slate-200 rounded-xl overflow-x-auto w-full justify-start sm:w-auto">

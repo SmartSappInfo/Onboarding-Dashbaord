@@ -1,11 +1,11 @@
 import { redirect } from 'next/navigation';
 
 /**
- * @fileOverview Alias Route: `/admin/settings/ai/capabilities` -> `/admin/companybrain/tools`
+ * @fileOverview Alias Route: `/admin/settings/ai/capabilities` -> `/admin/mcp?tab=catalog` (Phase 5 Milestone 4)
  *
- * Implements P-D3: redirects tenant capability admin requests directly to the canonical
- * CompanyBrain MCP tool and capability console.
+ * Implements Rule 69 (Strangler Pattern & SSOT): redirects capability admin requests directly
+ * to the canonical Operator Capability Console.
  */
 export default function CapabilitiesSettingsRedirectPage() {
-  redirect('/admin/companybrain/tools');
+  redirect('/admin/mcp?tab=catalog');
 }
