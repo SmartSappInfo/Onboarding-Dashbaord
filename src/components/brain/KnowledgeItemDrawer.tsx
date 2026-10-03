@@ -328,7 +328,7 @@ export function KnowledgeItemDrawer({
               size="sm"
               disabled={isProcessing}
               onClick={() => void onDelete(item.id)}
-              className="text-destructive hover:bg-destructive/10 hover:text-destructive rounded-xl active:scale-[0.97] mr-auto"
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive rounded-xl active:scale-[0.97] mr-auto min-h-[44px] sm:min-h-[36px]"
             >
               <Trash2 className="h-3.5 w-3.5 mr-1" />
               Delete
@@ -341,7 +341,7 @@ export function KnowledgeItemDrawer({
               size="sm"
               disabled={isProcessing}
               onClick={() => void onReject(item.id)}
-              className="rounded-xl active:scale-[0.97]"
+              className="rounded-xl active:scale-[0.97] min-h-[44px] sm:min-h-[36px]"
             >
               <XCircle className="h-3.5 w-3.5 mr-1 text-destructive" />
               Invalidate
@@ -354,7 +354,7 @@ export function KnowledgeItemDrawer({
               size="sm"
               disabled={isProcessing}
               onClick={() => void onVerify(item.id)}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl active:scale-[0.97]"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl active:scale-[0.97] min-h-[44px] sm:min-h-[36px]"
             >
               <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
               Verify & Add
@@ -365,7 +365,7 @@ export function KnowledgeItemDrawer({
             variant="ghost"
             size="sm"
             onClick={() => onOpenChange(false)}
-            className="rounded-xl active:scale-[0.97]"
+            className="rounded-xl active:scale-[0.97] min-h-[44px] sm:min-h-[36px]"
           >
             Close
           </Button>

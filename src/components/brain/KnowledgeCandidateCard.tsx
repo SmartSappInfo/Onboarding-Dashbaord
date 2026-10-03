@@ -92,7 +92,7 @@ export function KnowledgeCandidateCard({
               variant="outline"
               size="sm"
               onClick={() => onInspect(item)}
-              className="h-8 px-2.5 text-xs rounded-lg active:scale-[0.97]"
+              className="min-h-[44px] sm:min-h-[32px] sm:h-8 px-2.5 text-xs rounded-lg active:scale-[0.97]"
             >
               <Eye className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
               Inspect
@@ -105,7 +105,7 @@ export function KnowledgeCandidateCard({
                 size="sm"
                 disabled={isProcessing}
                 onClick={() => void onReject(item.id)}
-                className="h-8 px-2 text-xs rounded-lg text-destructive hover:bg-destructive/10 active:scale-[0.97]"
+                className="min-h-[44px] min-w-[44px] sm:min-h-[32px] sm:min-w-[32px] sm:h-8 px-2 text-xs rounded-lg text-destructive hover:bg-destructive/10 active:scale-[0.97]"
               >
                 <XCircle className="h-3.5 w-3.5" />
                 <span className="sr-only">Reject</span>
@@ -119,7 +119,7 @@ export function KnowledgeCandidateCard({
                 size="sm"
                 disabled={isProcessing}
                 onClick={() => void onVerify(item.id)}
-                className="h-8 px-2.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg active:scale-[0.97]"
+                className="min-h-[44px] sm:min-h-[32px] sm:h-8 px-2.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg active:scale-[0.97]"
               >
                 <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
                 Verify

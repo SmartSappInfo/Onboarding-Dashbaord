@@ -43,6 +43,7 @@ import {
 } from '@/components/brain/KnowledgeSearchBox';
 import { KnowledgeCandidateCard } from '@/components/brain/KnowledgeCandidateCard';
 import { KnowledgeItemDrawer } from '@/components/brain/KnowledgeItemDrawer';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { DeadManPauseBanner } from '@/components/brain/DeadManPauseBanner';
 import { KnowledgeGraphCanvas } from '@/components/brain/KnowledgeGraphCanvas';
 
@@ -204,16 +205,14 @@ export function BrainClient() {
     <PageContainerFluid className="space-y-6 py-6 max-w-7xl mx-auto">
       {/* Zone 1: Header, Executive KPI Metrics & Mission Control */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/70">
-        <div>
+        <div className="flex items-center gap-2.5">
           <div className="flex items-center gap-2">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Company Brain</h1>
             <Badge variant="outline" className="font-mono text-xs">
               Knowledge Plane
             </Badge>
           </div>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Institutional memory control plane unifying dense vectors, episodic action history, and organizational knowledge.
-          </p>
+          <CardInfoTooltip text="Institutional memory control plane unifying dense vectors, episodic action history, and organizational knowledge." />
         </div>
 
         <div className="flex items-center gap-2">

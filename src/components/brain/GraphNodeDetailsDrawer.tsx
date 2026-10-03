@@ -182,7 +182,7 @@ export function GraphNodeDetailsDrawer({
               asChild
               variant="outline"
               size="sm"
-              className="rounded-xl active:scale-[0.97] mr-auto gap-1.5"
+              className="rounded-xl active:scale-[0.97] mr-auto gap-1.5 min-h-[44px] sm:min-h-[36px]"
             >
               <Link href={node.originHref}>
                 <ExternalLink className="h-3.5 w-3.5 text-primary" />
@@ -195,7 +195,7 @@ export function GraphNodeDetailsDrawer({
             variant="default"
             size="sm"
             onClick={() => onOpenChange(false)}
-            className="rounded-xl active:scale-[0.97] min-h-[36px]"
+            className="rounded-xl active:scale-[0.97] min-h-[44px] sm:min-h-[36px]"
           >
             Close
           </Button>
