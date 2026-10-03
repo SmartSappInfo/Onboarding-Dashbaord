@@ -220,6 +220,8 @@ export interface Booking {
   cancelledAt?: string;
   rescheduledFromId?: string;
   rescheduledAt?: string;
+  calendarConnectionId?: string;
+  durationMinutes?: number;
   externalCalendarEventId?: string;
   externalCalendarEventUrl?: string;
   idempotencyKey?: string;
