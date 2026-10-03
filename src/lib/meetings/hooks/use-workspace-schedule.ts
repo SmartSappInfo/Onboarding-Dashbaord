@@ -159,8 +159,8 @@ export function useWorkspaceSchedule(workspaceId?: string | null): WorkspaceSche
 
   const { data: bookings, isLoading: isLoadingBookings } = useCollection<Booking>(bookingsQuery);
 
-  // 2. Reactive subscription to group meetings/webinars
-  const meetingsQuery = useMemoFirebase(() => {
+  // 2a. Reactive subscription to group meetings/webinars (multi-tenant array)
+  const meetingsArrayQuery = useMemoFirebase(() => {
     if (!firestore || !workspaceId) return null;
     return query(
       collection(firestore, 'meetings'),
@@ -168,7 +168,36 @@ export function useWorkspaceSchedule(workspaceId?: string | null): WorkspaceSche
     );
   }, [firestore, workspaceId]);
 
-  const { data: meetings, isLoading: isLoadingMeetings } = useCollection<Meeting>(meetingsQuery);
+  const { data: meetingsArray, isLoading: isLoadingMeetingsArray } = useCollection<Meeting>(meetingsArrayQuery);
+
+  // 2b. Reactive subscription to legacy scalar workspaceId meetings
+  const meetingsScalarQuery = useMemoFirebase(() => {
+    if (!firestore || !workspaceId) return null;
+    return query(
+      collection(firestore, 'meetings'),
+      where('workspaceId', '==', workspaceId)
+    );
+  }, [firestore, workspaceId]);
+
+  const { data: meetingsScalar, isLoading: isLoadingMeetingsScalar } = useCollection<Meeting>(meetingsScalarQuery);
+
+  // Combine and deduplicate meetings across both schema representations
+  const meetings = React.useMemo(() => {
+    const map = new Map<string, Meeting>();
+    if (meetingsArray) {
+      for (const m of meetingsArray) {
+        map.set(m.id, m);
+      }
+    }
+    if (meetingsScalar) {
+      for (const m of meetingsScalar) {
+        if (!map.has(m.id)) {
+          map.set(m.id, m);
+        }
+      }
+    }
+    return Array.from(map.values());
+  }, [meetingsArray, meetingsScalar]);
 
   // 3. Reactive subscription to calendar connections
   const { connectedCount: connectedCalendarCount, isLoading: isLoadingProviders } =
@@ -203,7 +232,7 @@ export function useWorkspaceSchedule(workspaceId?: string | null): WorkspaceSche
     });
   }, [allEvents, connectedCalendarCount]);
 
-  const isLoading = isLoadingBookings || isLoadingMeetings || isLoadingProviders;
+  const isLoading = isLoadingBookings || isLoadingMeetingsArray || isLoadingMeetingsScalar || isLoadingProviders;
 
   return {
     isLoading,
