@@ -104,6 +104,7 @@ import EntityAutomationsTab from '../components/EntityAutomationsTab';
 import EntitySurveysTab from '../components/EntitySurveysTab';
 import EntityGraphTab from '../components/EntityGraphTab';
 import EntityContextTab from '../components/EntityContextTab';
+import EntityAiOverviewSection from '../components/EntityAiOverviewSection';
 import EntityHeaderCard from './components/EntityHeaderCard';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import TaskEditor from '../../tasks/components/TaskEditor';
@@ -685,6 +686,12 @@ export default function EntityDetailPage() {
                     </TabsList>
 
   <TabsContent value="overview" className="m-0 p-6 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+                                {activeWorkspaceId && (
+                                    <>
+                                        <EntityAiOverviewSection entityId={entityId} workspaceId={activeWorkspaceId} />
+                                        <Separator className="bg-border/40" />
+                                    </>
+                                )}
                                 <EntityContactDirectory 
                                     entityId={entityId} 
                                     entityData={entityData} 

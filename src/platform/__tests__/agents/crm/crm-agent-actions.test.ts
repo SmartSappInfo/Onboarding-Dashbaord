@@ -202,8 +202,16 @@ describe('CRM Agent Server Actions (Phase 9 Milestone 3)', () => {
   });
 
   describe('Server Action Executions & Domain Events', () => {
+    const mockPublishResult = {
+      eventId: 'evt_test',
+      deliveredCount: 1,
+      failedCount: 0,
+      durationMs: 1,
+      errors: [],
+    };
+
     it('getAccountAiOverviewAction returns synthesized overview and emits event (Rule 40)', async () => {
-      const publishSpy = vi.spyOn(defaultEventBus, 'publish').mockResolvedValue();
+      const publishSpy = vi.spyOn(defaultEventBus, 'publish').mockResolvedValue(mockPublishResult);
 
       const result = await getAccountAiOverviewAction({
         workspaceId: mockWsId,
@@ -239,7 +247,7 @@ describe('CRM Agent Server Actions (Phase 9 Milestone 3)', () => {
     });
 
     it('getDealIntelligenceAction returns velocity and playbook for target deal', async () => {
-      const publishSpy = vi.spyOn(defaultEventBus, 'publish').mockResolvedValue();
+      const publishSpy = vi.spyOn(defaultEventBus, 'publish').mockResolvedValue(mockPublishResult);
 
       const result = await getDealIntelligenceAction({
         workspaceId: mockWsId,
@@ -265,7 +273,7 @@ describe('CRM Agent Server Actions (Phase 9 Milestone 3)', () => {
     });
 
     it('getMeetingBriefAction returns attendee dossiers and commitments', async () => {
-      const publishSpy = vi.spyOn(defaultEventBus, 'publish').mockResolvedValue();
+      const publishSpy = vi.spyOn(defaultEventBus, 'publish').mockResolvedValue(mockPublishResult);
 
       const result = await getMeetingBriefAction({
         workspaceId: mockWsId,

@@ -58,7 +58,8 @@ export function AccountKnowledgePanel({
   // Extract unique categories
   const categories = React.useMemo(() => {
     const set = new Set<string>();
-    for (const fact of knowledge.groundedFacts) {
+    const facts = knowledge.groundedFacts || [];
+    for (const fact of facts) {
       set.add(fact.category);
     }
     return ['ALL', ...Array.from(set)];
@@ -66,12 +67,14 @@ export function AccountKnowledgePanel({
 
   // Filtered facts
   const filteredFacts = React.useMemo(() => {
-    if (selectedCategory === 'ALL') return knowledge.groundedFacts;
-    return knowledge.groundedFacts.filter((f) => f.category === selectedCategory);
+    const facts = knowledge.groundedFacts || [];
+    if (selectedCategory === 'ALL') return facts;
+    return facts.filter((f) => f.category === selectedCategory);
   }, [knowledge.groundedFacts, selectedCategory]);
 
   const handleOpenCitation = (citationId: string) => {
-    const citation = knowledge.citations.find((c) => c.id === citationId) || knowledge.citations[0] || null;
+    const citations = knowledge.citations || [];
+    const citation = citations.find((c) => c.id === citationId) || citations[0] || null;
     setActiveCitation(citation);
     setIsCitationDrawerOpen(true);
   };

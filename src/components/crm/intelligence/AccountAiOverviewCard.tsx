@@ -131,7 +131,7 @@ export function AccountAiOverviewCard({
   };
 
   const statusBadge = getStatusBadge(overview.healthStatus);
-  const momentumDetails = getMomentumDetails(overview.activeMomentum);
+  const momentumDetails = getMomentumDetails(overview.activeMomentum || 'STEADY');
   const MomentumIcon = momentumDetails.icon;
 
   return (

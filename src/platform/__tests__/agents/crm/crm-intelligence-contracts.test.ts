@@ -313,6 +313,22 @@ describe('Canonical CRM Intelligence Contracts (Phase 9 Milestone 3)', () => {
       expect(result.success).toBe(true);
     });
 
+    it('validates GetDealIntelligenceInputSchema and GetMeetingBriefInputSchema', () => {
+      const dealInput = {
+        workspaceId: 'ws_demo',
+        entityId: 'ent_123',
+        dealId: 'deal_456',
+      };
+      expect(GetDealIntelligenceInputSchema.safeParse(dealInput).success).toBe(true);
+
+      const meetingInput = {
+        workspaceId: 'ws_demo',
+        entityId: 'ent_123',
+        meetingId: 'meet_789',
+      };
+      expect(GetMeetingBriefInputSchema.safeParse(meetingInput).success).toBe(true);
+    });
+
     it('rejects empty workspaceId in inputs', () => {
       const input = {
         workspaceId: '',

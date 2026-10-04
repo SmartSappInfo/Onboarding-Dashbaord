@@ -325,14 +325,14 @@ export class MigrationEngineImpl implements MigrationEngine {
       const batchRecords = batches[i];
       const firestoreBatch = writeBatch(this.firestore);
       let batchSucceeded = 0;
-      let batchSkipped = 0;
+      let _batchSkipped = 0;
 
       for (const enrichedRecord of batchRecords) {
         try {
           // Check if already migrated (idempotency)
           if (enrichedRecord.original.entityId) {
             result.skipped++;
-            batchSkipped++;
+            _batchSkipped++;
             continue;
           }
 

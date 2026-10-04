@@ -633,7 +633,6 @@ export class CrmIntelligenceService {
 
 // Global singleton preservation for HMR and cross-module use
 declare global {
-  // eslint-disable-next-line no-var
   var __smartsappCrmIntelligenceService: CrmIntelligenceService | undefined;
 }
 

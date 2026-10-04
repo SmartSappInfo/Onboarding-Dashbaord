@@ -60,9 +60,9 @@ export function DealIntelligenceCard({
     switch (category) {
       case 'STRONG':
         return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
-      case 'STABLE':
+      case 'MODERATE':
         return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
-      case 'AT_RISK':
+      case 'VULNERABLE':
         return 'bg-amber-500/10 text-amber-500 border-amber-500/20';
       case 'CRITICAL':
       default:

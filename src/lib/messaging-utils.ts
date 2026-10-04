@@ -1,5 +1,5 @@
 import type { MessageBlock, MessageBlockRule, MessageStyle } from './types';
-import { parseMarkdownLinksToHtml, parseMarkdownFormattingToHtml } from './utils/markdown-link-parser';
+import { parseMarkdownFormattingToHtml } from './utils/markdown-link-parser';
 import { getBaseUrl } from './utils/url-helpers';
 import { resolveTextWithMap } from './utils/variable-replacer';
 import { escapeHtml } from './template-utils';

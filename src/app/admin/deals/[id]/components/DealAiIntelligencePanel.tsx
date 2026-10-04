@@ -49,6 +49,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { generateDealAiInsightsAction, type DealAiInsightsResult } from '@/app/actions/deal-ai-actions';
+import { getDealIntelligenceAction, type CrmActionResult } from '@/app/actions/crm-agent-actions';
+import { DealIntelligenceCard } from '@/components/crm/intelligence';
+import type { DealIntelligence } from '@/platform/agents/crm/intelligence/crm-intelligence-types';
 import { createTaskAction } from '@/lib/task-server-actions';
 import type { Deal } from '@/lib/types';
 
@@ -64,6 +67,7 @@ export default function DealAiIntelligencePanel({ deal, onTaskCreated }: DealAiI
 
   const [isLoading, setIsLoading] = React.useState(false);
   const [insights, setInsights] = React.useState<DealAiInsightsResult['insights'] | null>(null);
+  const [phase9Intel, setPhase9Intel] = React.useState<DealIntelligence | null>(null);
   const [creatingTaskIndex, setCreatingTaskIndex] = React.useState<number | null>(null);
 
   const handleGenerateInsights = async () => {
@@ -71,14 +75,26 @@ export default function DealAiIntelligencePanel({ deal, onTaskCreated }: DealAiI
     setIsLoading(true);
 
     try {
-      const res = await generateDealAiInsightsAction(deal.id, activeWorkspaceId, user?.uid);
+      const p9Promise: Promise<CrmActionResult<DealIntelligence>> = deal.entityId
+        ? getDealIntelligenceAction({ workspaceId: activeWorkspaceId, entityId: deal.entityId, dealId: deal.id })
+        : Promise.resolve({ success: false, error: { code: 'NO_ENTITY_ID', message: 'No entity ID' } });
+
+      const [res, p9Res] = await Promise.all([
+        generateDealAiInsightsAction(deal.id, activeWorkspaceId, user?.uid),
+        p9Promise,
+      ]);
+
+      if (p9Res.success && p9Res.data) {
+        setPhase9Intel(p9Res.data);
+      }
+
       if (res.success && res.insights) {
         setInsights(res.insights);
         toast({
           title: 'Intelligence Generated',
           description: 'Deal analysis and recommended actions updated.',
         });
-      } else {
+      } else if (!p9Res.success) {
         throw new Error(res.error || 'Failed to generate intelligence');
       }
     } catch (e: unknown) {
@@ -220,7 +236,10 @@ export default function DealAiIntelligencePanel({ deal, onTaskCreated }: DealAiI
         </div>
       </CardHeader>
 
-      <CardContent className="p-6">
+      <CardContent className="p-6 space-y-6">
+        {phase9Intel && (
+          <DealIntelligenceCard dealIntelligence={phase9Intel} />
+        )}
         {insights ? (
           <div className="space-y-6">
             {/* Executive Summary */}
@@ -374,7 +393,7 @@ export default function DealAiIntelligencePanel({ deal, onTaskCreated }: DealAiI
               </div>
             </div>
           </div>
-        ) : (
+        ) : !phase9Intel ? (
           <div className="text-center py-10 bg-muted/10 rounded-2xl border border-dashed flex flex-col items-center justify-center gap-3">
             <Bot className="h-10 w-10 text-muted-foreground/30" />
             <div className="space-y-1">
@@ -384,7 +403,7 @@ export default function DealAiIntelligencePanel({ deal, onTaskCreated }: DealAiI
               </p>
             </div>
           </div>
-        )}
+        ) : null}
       </CardContent>
     </Card>
   );

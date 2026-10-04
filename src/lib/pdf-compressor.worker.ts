@@ -63,9 +63,9 @@ ctx.onmessage = async (event: MessageEvent<WorkerRequestPayload>) => {
           // Check transparency soft-mask
           const hasSMask = smask !== undefined;
           
-          let isJpeg = false;
+          let _isJpeg = false;
           if (filter === PDFName.of('DCTDecode')) {
-            isJpeg = true;
+            _isJpeg = true;
           }
           
           ctx.postMessage({

@@ -51,12 +51,12 @@ export interface CrmActionResult<T> {
  * Validates tenant boundaries and enforces Anti-IDOR security (Rule 8 & 47).
  */
 function assertTenantAccess(auth: AuthContext, requestedWorkspaceId: string): string {
-  const sessionOrgId = auth.organizationId || auth.user?.organizationId || auth.profile?.organizationId;
+  const sessionOrgId = auth.profile?.organizationId;
   if (!sessionOrgId) {
     throw new CrmIntelligenceError('Missing authenticated organization context.', 'IDOR_VIOLATION', 403);
   }
 
-  const sessionWsId = auth.workspaceId || auth.user?.activeWorkspaceId || auth.profile?.activeWorkspaceId;
+  const sessionWsId = auth.profile?.lastActiveWorkspaceId;
   if (!auth.isSystemAdmin && sessionWsId && sessionWsId !== requestedWorkspaceId) {
     throw new CrmIntelligenceError(
       `IDOR_VIOLATION: Authenticated principal in workspace '${sessionWsId}' cannot access requested workspace '${requestedWorkspaceId}'.`,
@@ -144,7 +144,7 @@ export async function getAccountAiOverviewAction(
         workspaceId: input.workspaceId,
         actor: {
           type: 'user',
-          id: auth.user?.uid || 'system',
+          id: auth.uid || 'system',
         },
         entity: {
           type: 'entity',
@@ -268,7 +268,7 @@ export async function getDealIntelligenceAction(
         workspaceId: input.workspaceId,
         actor: {
           type: 'user',
-          id: auth.user?.uid || 'system',
+          id: auth.uid || 'system',
         },
         entity: {
           type: 'deal',
@@ -333,7 +333,7 @@ export async function getMeetingBriefAction(
         workspaceId: input.workspaceId,
         actor: {
           type: 'user',
-          id: auth.user?.uid || 'system',
+          id: auth.uid || 'system',
         },
         entity: {
           type: 'meeting',

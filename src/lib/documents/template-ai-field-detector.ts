@@ -27,7 +27,6 @@ import {
 import type {
   ExtractedPageData,
   ExtractedTextItem,
-  ExtractedLineData,
 } from './client-pdf-text-extractor';
 
 export interface DetectTemplateFieldsOptions {
@@ -44,16 +43,6 @@ interface DetectedBlock {
   widthPct: number;
   baseTopPct: number;
   lines: Array<{ lineText: string; lineIndex: number }>;
-}
-
-interface MatchedFieldPrompt {
-  rawKeyword: string;
-  cleanLabel: string;
-  fieldType: AiFieldType;
-  confidence: number;
-  startIndex: number;
-  endIndex: number;
-  rowPrefix?: string;
 }
 
 /**
