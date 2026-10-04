@@ -308,7 +308,7 @@ export class CrmActionError extends Error {
   readonly httpStatus: number;
 
   constructor(code: CrmActionErrorCode, message: string) {
-    super(message);
+    super(`[${code}] ${message}`);
     this.name = 'CrmActionError';
     this.code = code;
     this.httpStatus = CrmActionError.mapCodeToHttpStatus(code);
