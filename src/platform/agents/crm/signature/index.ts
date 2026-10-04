@@ -3,3 +3,4 @@
  */
 
 export * from './crm-signature-types';
+export * from './crm-signature-orchestrator';
