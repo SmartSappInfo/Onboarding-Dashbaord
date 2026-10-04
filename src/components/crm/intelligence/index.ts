@@ -4,3 +4,6 @@
 
 export * from './AccountAiOverviewCard';
 export * from './AccountKnowledgePanel';
+export * from './AccountRecommendationsCard';
+export * from './DealIntelligenceCard';
+export * from './MeetingBriefDrawer';

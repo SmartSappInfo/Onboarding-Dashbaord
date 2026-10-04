@@ -728,3 +728,15 @@ export class AccountContextAssembler {
     }
   }
 }
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __smartsappAccountContextAssembler: AccountContextAssembler | undefined;
+}
+
+export function getAccountContextAssembler(): AccountContextAssembler {
+  if (!globalThis.__smartsappAccountContextAssembler) {
+    globalThis.__smartsappAccountContextAssembler = new AccountContextAssembler();
+  }
+  return globalThis.__smartsappAccountContextAssembler;
+}
