@@ -31,6 +31,7 @@ import { z } from 'zod/v4';
 import { AGENT_PERSONA_IDS, type AgentPersonaId } from '../identity/agent-persona-types';
 import { RISK_LEVELS, type RiskLevel } from '../capabilities/contracts/risk-levels';
 
+export { AGENT_PERSONA_IDS };
 export type { AgentPersonaId, RiskLevel };
 
 // ============================================================================
@@ -280,6 +281,10 @@ export const AgentStepSchema = z.object({
   spanId: z.string().optional(),
   actionProposalId: z.string().optional(),
   payloadHash: z.string().optional(),
+  what: z.string().optional(),
+  why: z.string().optional(),
+  expectedStateChange: z.string().optional(),
+  riskLevel: z.string().optional(),
   startedAt: z.string().datetime().optional(),
   completedAt: z.string().datetime().optional(),
   durationMs: z.number().int().min(0).optional(),
@@ -441,6 +446,10 @@ export const CreateStepInputSchema = z.object({
   spanId: z.string().optional(),
   actionProposalId: z.string().optional(),
   payloadHash: z.string().optional(),
+  what: z.string().optional(),
+  why: z.string().optional(),
+  expectedStateChange: z.string().optional(),
+  riskLevel: z.string().optional(),
   input: z.record(z.string(), z.unknown()).default({}),
   compensatingCapabilityId: z.string().optional(),
 });

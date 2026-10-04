@@ -1,25 +1,27 @@
 'use server';
 
 /**
- * @fileOverview Secure Agent Approval Server Actions (Phase 3 Milestone 3 & 4)
+ * @fileOverview Secure Agent Approval Server Actions (Strangler Fig Bridge - Rule 69)
  *
  * Implements Rule 4 (Zero any & Anti-IDOR), Rule 8 (Fail-Closed Architecture),
  * Rule 13 (Model Distrust & Anti-Self-Approval), Rule 47 (Multi-Tenant Isolation),
  * Rule 51 (Server Action Authentication via Session Cookie), and Rule 60 (Emergency Pause).
  *
+ * This file acts as a backward-compatible shim delegating to the canonical implementation
+ * in `approval-governance-actions.ts` while preserving exact legacy signatures.
+ *
  * Strict Typing Policy: Zero `any` or `any[]`.
  */
 
 import { requireAuth } from '@/lib/auth/require-auth';
-import { adminDb } from '@/lib/firebase-admin';
 import type { ActionProposal } from '@/platform/policy/approval-proposal-types';
-import { ActionProposalSchema } from '@/platform/policy/approval-proposal-types';
 import {
-  checkGovernanceDeadManSwitch,
-  updateEmergencyPauseStatus,
-} from '@/platform/policy/governance-dead-man';
-import { globalEventBus } from '@/platform/events/event-bus';
-import { createDomainEvent } from '@/platform/capabilities/events/domain-event';
+  listActionProposalsAction,
+  getActionProposalDetailsAction,
+  approveActionProposalAction,
+  rejectActionProposalAction,
+  setEmergencyPauseAction as setEmergencyPauseGovernanceAction,
+} from './approval-governance-actions';
 
 export interface ApprovalActionResult<T = void> {
   success: boolean;
@@ -39,32 +41,27 @@ export async function listPendingApprovalsAction(options?: {
     const auth = await requireAuth();
     const orgId = auth.isSystemAdmin && options?.organizationId
       ? options.organizationId
-      : auth.profile.organizationId;
+      : auth.profile?.organizationId;
+
     if (!orgId) {
       return { success: false, error: 'Missing organization context', code: 'TENANT_REQUIRED' };
     }
 
-    let queryRef = adminDb.collection('capability_approvals').where('organizationId', '==', orgId);
+    const res = await listActionProposalsAction({
+      organizationId: orgId,
+      workspaceId: options?.workspaceId,
+      status: 'pending',
+    });
 
-    if (options?.workspaceId) {
-      queryRef = queryRef.where('workspaceId', '==', options.workspaceId);
+    if (!res.success) {
+      return {
+        success: false,
+        error: res.error?.message ?? 'Failed to list pending proposals',
+        code: res.error?.code,
+      };
     }
 
-    const snap = await queryRef.where('status', '==', 'pending').limit(100).get();
-
-    const proposals: ActionProposal[] = [];
-    for (const doc of snap.docs) {
-      const data = doc.data();
-      const parsed = ActionProposalSchema.safeParse({
-        ...data,
-        proposalId: doc.id,
-      });
-      if (parsed.success) {
-        proposals.push(parsed.data);
-      }
-    }
-
-    return { success: true, data: proposals };
+    return { success: true, data: res.data ?? [] };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to list pending proposals';
     return { success: false, error: message };
@@ -79,35 +76,25 @@ export async function getApprovalDetailsAction(
 ): Promise<ApprovalActionResult<ActionProposal>> {
   try {
     const auth = await requireAuth();
-    if (!approvalId) {
-      return { success: false, error: 'Approval ID required', code: 'INVALID_ARGUMENT' };
+    const orgId = auth.profile?.organizationId;
+    if (!orgId) {
+      return { success: false, error: 'Missing organization context', code: 'TENANT_REQUIRED' };
     }
 
-    const doc = await adminDb.collection('capability_approvals').doc(approvalId).get();
-    if (!doc.exists) {
-      return { success: false, error: 'Proposal not found', code: 'PROPOSAL_NOT_FOUND' };
-    }
-
-    const data = doc.data();
-    if (!data) {
-      return { success: false, error: 'Proposal empty', code: 'PROPOSAL_CORRUPT' };
-    }
-
-    // Tenant isolation verification (Rule 47)
-    if (!auth.isSystemAdmin && data.organizationId !== auth.profile.organizationId) {
-      return { success: false, error: 'Access denied: Tenant mismatch', code: 'TENANT_MISMATCH' };
-    }
-
-    const parsed = ActionProposalSchema.safeParse({
-      ...data,
-      proposalId: doc.id,
+    const res = await getActionProposalDetailsAction({
+      organizationId: orgId,
+      proposalId: approvalId,
     });
 
-    if (!parsed.success) {
-      return { success: false, error: 'Invalid proposal record structure', code: 'PROPOSAL_CORRUPT' };
+    if (!res.success || !res.data) {
+      return {
+        success: false,
+        error: res.error?.message ?? 'Failed to retrieve proposal details',
+        code: res.error?.code,
+      };
     }
 
-    return { success: true, data: parsed.data };
+    return { success: true, data: res.data };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to retrieve proposal details';
     return { success: false, error: message };
@@ -124,98 +111,45 @@ export async function decideApprovalAction(input: {
   notes?: string;
 }): Promise<ApprovalActionResult<{ status: string }>> {
   try {
-    // 1. Check emergency dead-man pause (Rule 60)
-    await checkGovernanceDeadManSwitch();
-
-    // 2. Authenticate human operator (Rule 51)
     const auth = await requireAuth();
-
-    if (!input.approvalId) {
-      return { success: false, error: 'Missing approval ID', code: 'INVALID_ARGUMENT' };
+    const orgId = auth.profile?.organizationId;
+    if (!orgId) {
+      return { success: false, error: 'Missing organization context', code: 'TENANT_REQUIRED' };
     }
-
-    const docRef = adminDb.collection('capability_approvals').doc(input.approvalId);
-    const snap = await docRef.get();
-
-    if (!snap.exists) {
-      return { success: false, error: 'Proposal not found', code: 'PROPOSAL_NOT_FOUND' };
-    }
-
-    const data = snap.data();
-    if (!data) {
-      return { success: false, error: 'Corrupt proposal record', code: 'PROPOSAL_CORRUPT' };
-    }
-
-    // 3. Multi-tenant boundary check (Rule 47)
-    if (!auth.isSystemAdmin && data.organizationId !== auth.profile.organizationId) {
-      return { success: false, error: 'Tenant isolation violation', code: 'TENANT_MISMATCH' };
-    }
-
-    // 4. Anti-Self-Approval Enforcement (Rule 13)
-    const isProposer =
-      (data.who && typeof data.who === 'object' && (data.who as Record<string, unknown>).id === auth.uid) ||
-      data.authorizingUserId === auth.uid ||
-      (data.requestedBy && data.requestedBy === auth.uid);
-
-    // Proposing operators cannot self-approve critical/L4 privileged actions (dual-authorization required)
-    if (
-      isProposer &&
-      (data.blastRadius?.riskLevel === 'L4_PRIVILEGED_DESTRUCTIVE' || data.blastRadius === 'critical')
-    ) {
-      return {
-        success: false,
-        error: 'Dual-authorization required: Proposing operator cannot self-approve critical/L4 privileged actions (Rule 13).',
-        code: 'SELF_APPROVAL_FORBIDDEN',
-      };
-    }
-
-    if (data.status !== 'pending') {
-      return {
-        success: false,
-        error: `Proposal is already ${data.status}`,
-        code: 'PROPOSAL_ALREADY_DECIDED',
-      };
-    }
-
-    const now = new Date().toISOString();
-    const updateData: Record<string, unknown> = {
-      status: input.decision,
-      updatedAt: now,
-      decisionNotes: input.notes ?? null,
-    };
 
     if (input.decision === 'approved') {
-      updateData.approvedBy = auth.uid;
-      updateData.approvedAt = now;
-    } else {
-      updateData.rejectedBy = auth.uid;
-      updateData.rejectedAt = now;
-    }
-
-    await docRef.update(updateData);
-
-    // 5. Emit domain event via Platform Event Bus (Rule 40)
-    const eventType = input.decision === 'approved' ? 'policy.approval.granted' : 'policy.approval.rejected';
-    const domainEvent = createDomainEvent({
-      type: eventType,
-      organizationId: data.organizationId,
-      workspaceId: data.workspaceId,
-      actor: { type: 'user', id: auth.uid },
-      entity: { type: 'approval_proposal', id: input.approvalId },
-      payload: {
+      const res = await approveActionProposalAction({
+        organizationId: orgId,
         proposalId: input.approvalId,
-        decision: input.decision,
-        capabilityId: data.capabilityId,
-        notes: input.notes ?? null,
-        decidedBy: auth.uid,
-      },
-      correlationId: `appr-decide-${input.approvalId}`,
-      source: 'operator_approval_center',
-    });
+        decisionNotes: input.notes,
+      });
 
-    void globalEventBus.publish(domainEvent);
+      if (!res.success) {
+        return {
+          success: false,
+          error: res.error?.message ?? 'Failed to approve proposal',
+          code: res.error?.code,
+        };
+      }
 
-    return { success: true, data: { status: input.decision } };
+      return { success: true, data: { status: 'approved' } };
+    } else {
+      const res = await rejectActionProposalAction({
+        organizationId: orgId,
+        proposalId: input.approvalId,
+        decisionNotes: input.notes || 'Proposal rejected by operator',
+      });
+
+      if (!res.success) {
+        return {
+          success: false,
+          error: res.error?.message ?? 'Failed to reject proposal',
+          code: res.error?.code,
+        };
+      }
+
+      return { success: true, data: { status: 'rejected' } };
+    }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to decide proposal';
     return { success: false, error: message };
@@ -230,12 +164,19 @@ export async function setEmergencyPauseAction(
   reason?: string
 ): Promise<ApprovalActionResult> {
   try {
-    const auth = await requireAuth();
-    if (!auth.isSystemAdmin) {
-      return { success: false, error: 'Only system administrators can toggle emergency pause.', code: 'FORBIDDEN' };
-    }
+    await requireAuth();
+    const res = await setEmergencyPauseGovernanceAction({
+      paused,
+      reason,
+    });
 
-    await updateEmergencyPauseStatus(paused, reason, auth.uid);
+    if (!res.success) {
+      return {
+        success: false,
+        error: res.error?.message ?? 'Failed to update emergency pause status',
+        code: res.error?.code,
+      };
+    }
 
     return { success: true };
   } catch (err: unknown) {

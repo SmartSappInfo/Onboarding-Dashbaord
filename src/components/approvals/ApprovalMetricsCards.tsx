@@ -34,9 +34,9 @@ export function ApprovalMetricsCards({ metrics }: ApprovalMetricsCardsProps) {
         </div>
         <div className="flex items-baseline justify-between">
           <span className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-            {metrics.pendingCount}
+            {(metrics?.pendingCount ?? 0).toLocaleString()}
           </span>
-          {metrics.pendingCount > 0 && (
+          {(metrics?.pendingCount ?? 0) > 0 && (
             <span className="flex items-center gap-1 text-[11px] font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-500/20">
               <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
               Action Needed
@@ -55,7 +55,7 @@ export function ApprovalMetricsCards({ metrics }: ApprovalMetricsCardsProps) {
         </div>
         <div className="flex items-baseline justify-between">
           <span className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-            {metrics.approved24hCount}
+            {(metrics?.approved24hCount ?? 0).toLocaleString()}
           </span>
           <span className="text-[11px] text-muted-foreground">Executed Cleanly</span>
         </div>
@@ -71,7 +71,7 @@ export function ApprovalMetricsCards({ metrics }: ApprovalMetricsCardsProps) {
         </div>
         <div className="flex items-baseline justify-between">
           <span className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-            {metrics.rejectedCount}
+            {(metrics?.rejectedCount ?? 0).toLocaleString()}
           </span>
           <span className="text-[11px] text-muted-foreground">Replanned</span>
         </div>
@@ -87,7 +87,7 @@ export function ApprovalMetricsCards({ metrics }: ApprovalMetricsCardsProps) {
         </div>
         <div className="flex items-baseline justify-between">
           <span className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-            {metrics.highBlastRadiusCount}
+            {(metrics?.highBlastRadiusCount ?? 0).toLocaleString()}
           </span>
           <span className="text-[11px] text-muted-foreground">&gt; 100 entities</span>
         </div>

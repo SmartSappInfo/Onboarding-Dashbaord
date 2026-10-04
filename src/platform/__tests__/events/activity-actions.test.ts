@@ -8,13 +8,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   listActivitiesAction,
-  listDeadLetterEventsAction,
   replayDeadLetterEventAction,
   discardDeadLetterEventAction,
 } from '@/app/actions/activity-actions';
 import { defaultEventBus } from '@/platform/events/event-bus';
 import {
-  defaultActivityAggregationService,
   createInMemoryActivityStorage,
   createActivityAggregationService,
 } from '@/platform/events/activity/activity-aggregation-service';

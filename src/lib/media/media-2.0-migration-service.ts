@@ -9,7 +9,7 @@
  */
 
 import { 
-  collection, doc, getDocs, setDoc, writeBatch, type Firestore 
+  collection, doc, getDocs, writeBatch, type Firestore 
 } from 'firebase/firestore';
 import type { MediaVersion } from '../types/media-2.0';
 

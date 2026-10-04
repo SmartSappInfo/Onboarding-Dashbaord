@@ -15,6 +15,7 @@ import dynamic from 'next/dynamic';
 
 const QuickComposeButton = dynamic(() => import('@/components/messaging/QuickComposeButton'), { ssr: false });
 const FloatingNotesHUD = dynamic(() => import('@/components/shared/FloatingNotesHUD'), { ssr: false });
+import { ContextRailProvider, ContextRailTrigger, GlobalContextRail } from '@/components/context-rail';
 
 import {
     LogOut, 
@@ -292,6 +293,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
                 <ThemeToggle />
                 <QuickComposeButton />
                 <FloatingNotesTrigger />
+                <ContextRailTrigger />
               </div>
               <NotificationBell />
               <NotificationCenter />
@@ -377,6 +379,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
           {children}
         </main>
         <FloatingNotesHUD />
+        <GlobalContextRail />
       </SidebarInset>
     </SidebarProvider>
   );
@@ -391,7 +394,9 @@ export default function AdminLayoutClient({ children }: { children: ReactNode })
               <GlobalFilterProvider>
                 <IndustryProvider>
                   <FloatingNotesProvider>
-                    <AdminLayoutContent>{children}</AdminLayoutContent>
+                    <ContextRailProvider>
+                      <AdminLayoutContent>{children}</AdminLayoutContent>
+                    </ContextRailProvider>
                   </FloatingNotesProvider>
                 </IndustryProvider>
               </GlobalFilterProvider>

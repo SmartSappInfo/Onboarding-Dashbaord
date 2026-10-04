@@ -1,32 +1,36 @@
-import * as React from 'react';
-import type { Metadata } from 'next';
-import { ApprovalsClient } from './ApprovalsClient';
+import { redirect } from 'next/navigation';
 
 /**
- * @fileOverview Agent Approval Center Route (Phase 3 Milestone 4)
+ * @fileOverview Strangler Fig Redirect: /admin/approvals -> /admin/intelligence/approvals (Phase 8 Milestone 3)
  *
- * Implements UI #12 from `docs/agents_mcp/agents_mcp_ui.md`,
- * Rule 10 (Inline Architectural Docs), Rule 47 (Multi-Tenant Isolation),
- * Rule 51 (Server Action Integration), and Rule 61 (Operator Console Surface).
+ * Implements Rule 69 (Strangler Fig Pattern SSOT) to preserve backward-compatibility
+ * with legacy approval bookmarks and links while migrating to the unified Intelligence Mission Control.
  */
 
-export const metadata: Metadata = {
-  title: 'Agent Approval Center | SmartSapp',
-  description: 'Operator mission control for human-in-the-loop autonomous agent authorizations, blast radius inspection, and emergency controls.',
-};
+interface AdminApprovalsRedirectProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
 
-export const dynamic = 'force-dynamic';
+export default async function AdminApprovalsRedirectPage({
+  searchParams,
+}: AdminApprovalsRedirectProps) {
+  const resolvedParams = await searchParams;
+  const query = new URLSearchParams();
 
-export default function AgentApprovalsPage() {
-  return (
-    <React.Suspense
-      fallback={
-        <div className="h-full w-full flex items-center justify-center p-8 text-muted-foreground text-sm">
-          Loading Agent Approval Center...
-        </div>
+  for (const [key, value] of Object.entries(resolvedParams)) {
+    if (typeof value === 'string') {
+      query.set(key, value);
+    } else if (Array.isArray(value)) {
+      for (const item of value) {
+        query.append(key, item);
       }
-    >
-      <ApprovalsClient />
-    </React.Suspense>
-  );
+    }
+  }
+
+  const queryString = query.toString();
+  const target = queryString
+    ? `/admin/intelligence/approvals?${queryString}`
+    : '/admin/intelligence/approvals';
+
+  redirect(target);
 }

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { verifyCloudTasksOidcToken } from '../cloud-tasks-oidc';
 
 describe('verifyCloudTasksOidcToken (Rules 13 & 34)', () => {

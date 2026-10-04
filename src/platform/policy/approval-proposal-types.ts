@@ -68,13 +68,13 @@ export const ActionProposalSchema = z.object({
   expiresAt: z.string().datetime(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
-  decisionNotes: z.string().optional(),
-  approvedBy: z.string().optional(),
-  approvedAt: z.string().datetime().optional(),
-  rejectedBy: z.string().optional(),
-  rejectedAt: z.string().datetime().optional(),
-  boundToolInvocationId: z.string().optional(),
-  boundAt: z.string().datetime().optional(),
+  decisionNotes: z.string().nullable().optional(),
+  approvedBy: z.string().nullable().optional(),
+  approvedAt: z.string().datetime().nullable().optional(),
+  rejectedBy: z.string().nullable().optional(),
+  rejectedAt: z.string().datetime().nullable().optional(),
+  boundToolInvocationId: z.string().nullable().optional(),
+  boundAt: z.string().datetime().nullable().optional(),
 });
 
 export type ActionProposal = z.infer<typeof ActionProposalSchema>;

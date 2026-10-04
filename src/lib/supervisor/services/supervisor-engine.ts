@@ -65,7 +65,7 @@ export class SupervisorEngine {
 
     // 1. Gather initial context snapshot via ContextBuilderService (Phase 5)
     let contextSummary = '';
-    let citations: ContextSourceCitation[] = [];
+    let _citations: ContextSourceCitation[] = [];
     try {
       const contextPackage = await ContextBuilderService.buildContext({
         objective: request.objective,
@@ -82,7 +82,7 @@ export class SupervisorEngine {
       const factsText = (contextPackage?.structuredFacts || []).map((f) => `${f.label}: ${f.value}`).join('\n');
       const memoriesText = (contextPackage?.memories || []).map((m) => m.memory?.content || '').join('\n');
       contextSummary = [factsText, memoriesText].filter(Boolean).join('\n\n').slice(0, 1500);
-      citations = contextPackage?.sources || [];
+      _citations = contextPackage?.sources || [];
     } catch (ctxErr) {
       console.warn('[SupervisorEngine] Context compilation warning:', ctxErr);
     }

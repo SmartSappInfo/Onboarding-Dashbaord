@@ -17,7 +17,7 @@ import {
   type Firestore, type DocumentData 
 } from 'firebase/firestore';
 import type { 
-  MediaExperience, DynamicCtaRule, PersonalizationConfig, 
+  MediaExperience, PersonalizationConfig, 
   ContentRecommendation, ABExperimentConfig 
 } from '../types/media-2.0';
 

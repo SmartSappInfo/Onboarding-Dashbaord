@@ -103,7 +103,7 @@ describe('AdminSidebar accordion', () => {
     render(<AdminSidebar />);
 
     expect(isGroupOpen('Studios')).toBe(true);
-    expect(isGroupOpen('Operations')).toBe(false);
+    expect(isGroupOpen('Work')).toBe(false);
   });
 
   it('closes the other groups when one is opened', async () => {
@@ -113,22 +113,22 @@ describe('AdminSidebar accordion', () => {
 
     expect(isGroupOpen('Studios')).toBe(true);
 
-    await user.click(groupTrigger('Finance Hub'));
+    await user.click(groupTrigger('Transact'));
 
-    expect(isGroupOpen('Finance Hub')).toBe(true);
+    expect(isGroupOpen('Transact')).toBe(true);
     expect(isGroupOpen('Studios')).toBe(false);
-    expect(isGroupOpen('Operations')).toBe(false);
+    expect(isGroupOpen('Work')).toBe(false);
   });
 
   it('lets the open group be collapsed, leaving nothing open', async () => {
     const user = userEvent.setup();
     render(<AdminSidebar />);
 
-    expect(isGroupOpen('Operations')).toBe(true);
+    expect(isGroupOpen('Work')).toBe(true);
 
-    await user.click(groupTrigger('Operations'));
+    await user.click(groupTrigger('Work'));
 
-    expect(isGroupOpen('Operations')).toBe(false);
+    expect(isGroupOpen('Work')).toBe(false);
   });
 
   it('keeps the user\'s chosen group open while the route stays put', async () => {
@@ -136,20 +136,20 @@ describe('AdminSidebar accordion', () => {
     mockPathname = '/admin/surveys';
     const { rerender } = render(<AdminSidebar />);
 
-    await user.click(groupTrigger('Social Hub'));
-    expect(isGroupOpen('Social Hub')).toBe(true);
+    await user.click(groupTrigger('Automation'));
+    expect(isGroupOpen('Automation')).toBe(true);
 
     // A re-render on the same route must not snap back to the route's own group.
     rerender(<AdminSidebar />);
-    expect(isGroupOpen('Social Hub')).toBe(true);
+    expect(isGroupOpen('Automation')).toBe(true);
     expect(isGroupOpen('Studios')).toBe(false);
   });
 
-  it('falls back to Operations when the route matches no group', () => {
+  it('falls back to Work when the route matches no group', () => {
     mockPathname = '/admin/some-unlisted-page';
     render(<AdminSidebar />);
 
-    expect(isGroupOpen('Operations')).toBe(true);
+    expect(isGroupOpen('Work')).toBe(true);
   });
 });
 
@@ -177,21 +177,21 @@ describe('AdminSidebar search', () => {
     const user = userEvent.setup();
     render(<AdminSidebar />);
 
-    expect(screen.getAllByRole('button', { name: /Operations/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: /Work/i }).length).toBeGreaterThan(0);
 
     await user.type(field(), 'survey');
 
     // Group headers are gone: searching is its own mode, not a filter over the accordion.
-    expect(screen.queryByRole('button', { name: /^Operations$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Work$/i })).not.toBeInTheDocument();
   });
 
   it('matches on the group name too, so a group can be pulled up whole', async () => {
     const user = userEvent.setup();
     render(<AdminSidebar />);
 
-    await user.type(field(), 'finance');
+    await user.type(field(), 'transact');
 
-    // Finance Hub rows surface even though none of them contain the word "finance".
+    // Transact rows surface even though none of them contain the word "transact".
     const links = screen.getAllByRole('link');
     expect(links.length).toBeGreaterThan(0);
   });
@@ -215,11 +215,11 @@ describe('AdminSidebar search', () => {
     render(<AdminSidebar />);
 
     await user.type(field(), 'survey');
-    expect(screen.queryByRole('button', { name: /^Operations$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Work$/i })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /clear search/i }));
 
-    expect(isGroupOpen('Operations')).toBe(true);
+    expect(isGroupOpen('Work')).toBe(true);
   });
 
   it('clears on Escape, so the keyboard can back out', async () => {
@@ -230,6 +230,6 @@ describe('AdminSidebar search', () => {
     await user.type(field(), '{Escape}');
 
     expect(field()).toHaveValue('');
-    expect(isGroupOpen('Operations')).toBe(true);
+    expect(isGroupOpen('Work')).toBe(true);
   });
 });

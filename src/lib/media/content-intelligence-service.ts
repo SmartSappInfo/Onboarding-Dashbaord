@@ -11,11 +11,11 @@
  */
 
 import { 
-  collection, doc, getDoc, getDocs, query, where, 
+  collection, doc, getDocs, query, where, 
   setDoc, orderBy, type Firestore 
 } from 'firebase/firestore';
 import type { 
-  MediaTranscript, MediaChapter, MediaContentIntelligence, 
+  MediaTranscript, MediaChapter, 
   SemanticSearchHit, TranscriptCue 
 } from '../types/media-2.0';
 
