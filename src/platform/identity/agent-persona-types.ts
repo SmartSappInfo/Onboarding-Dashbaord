@@ -33,6 +33,12 @@ export const AGENT_PERSONA_IDS = [
   'portal_guide',
   'meeting_prep',
   'supervisor',
+  // Domain Specialist CRM Personas (Phase 9 Milestone 2)
+  'crm_assistant',
+  'lead_analyst',
+  'deal_strategist',
+  'task_coordinator',
+  'knowledge_analyst',
 ] as const;
 
 export type AgentPersonaId = (typeof AGENT_PERSONA_IDS)[number];

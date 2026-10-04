@@ -22,6 +22,7 @@ import {
   AgentPersonaDefinitionSchema,
   isAgentPersonaId,
 } from './agent-persona-types';
+import { CRM_PERSONA_DEFINITIONS } from '../agents/crm/personas/crm-persona-definitions';
 
 export type AgentPersona = AgentPersonaDefinition;
 
@@ -196,9 +197,15 @@ export const BUILT_IN_AGENT_PERSONAS: readonly AgentPersonaDefinition[] = [
     },
     systemPromptSnippet: 'You are the SmartSapp Supervisor Orchestrator Agent. You plan and delegate multi-step workflows to specialized domain agents, ensuring all actions strictly conform to tenant policies and human approval boundaries.',
   },
+  // Domain Specialist CRM Personas (Phase 9 Milestone 2)
+  CRM_PERSONA_DEFINITIONS.crm_assistant,
+  CRM_PERSONA_DEFINITIONS.lead_analyst,
+  CRM_PERSONA_DEFINITIONS.deal_strategist,
+  CRM_PERSONA_DEFINITIONS.task_coordinator,
+  CRM_PERSONA_DEFINITIONS.knowledge_analyst,
 ];
 
-/** Backward compatibility alias mapping for CompanyBrain 2.0 specialist prototypes */
+/** Backward compatibility alias mapping for CompanyBrain 2.0 specialist prototypes and CRM agents */
 const SPECIALIST_ALIAS_MAP: Readonly<Record<string, AgentPersonaId>> = {
   knowledge_specialist: 'crm_researcher',
   revenue_specialist: 'deal_coach',
@@ -206,6 +213,12 @@ const SPECIALIST_ALIAS_MAP: Readonly<Record<string, AgentPersonaId>> = {
   meeting_specialist: 'meeting_prep',
   operations_specialist: 'deal_coach',
   governance_specialist: 'supervisor',
+  crm_copilot: 'crm_assistant',
+  account_intelligence: 'crm_researcher',
+  qualification_analyst: 'lead_analyst',
+  pipeline_analyst: 'deal_strategist',
+  commitment_coordinator: 'task_coordinator',
+  memory_analyst: 'knowledge_analyst',
 };
 
 export interface RegisterPersonaOptions {
@@ -341,6 +354,10 @@ if (!globalRef.__smartsappAgentPersonaRegistry) {
 }
 
 export const globalAgentPersonaRegistry: AgentPersonaRegistryStore = globalRef.__smartsappAgentPersonaRegistry;
+
+export function getAgentPersonaRegistry(): AgentPersonaRegistryStore {
+  return globalAgentPersonaRegistry;
+}
 
 export function getPersona(personaId: string): AgentPersonaDefinition | null {
   return globalAgentPersonaRegistry.getPersona(personaId);
