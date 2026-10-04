@@ -3,3 +3,4 @@
  */
 
 export * from './crm-intelligence-types';
+export * from './crm-intelligence-service';
