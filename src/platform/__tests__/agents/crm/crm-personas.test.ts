@@ -10,7 +10,7 @@ import {
   AgentPersonaDefinitionSchema,
   isAgentPersonaId,
 } from '@/platform/identity/agent-persona-types';
-import { getAgentPersonaRegistry, BUILT_IN_AGENT_PERSONAS } from '@/platform/identity/agent-registry';
+import { getAgentPersonaRegistry } from '@/platform/identity/agent-registry';
 import {
   CRM_PERSONA_DEFINITIONS,
   CRM_PERSONA_IDS,
@@ -78,7 +78,7 @@ describe('Phase 9 Milestone 2: CRM Agent Personas', () => {
   });
 
   it('should declare deterministic resource budgets bounded by Rule 23', () => {
-    for (const [id, persona] of Object.entries(CRM_PERSONA_DEFINITIONS)) {
+    for (const [_id, persona] of Object.entries(CRM_PERSONA_DEFINITIONS)) {
       expect(persona.budgets.maxDurationMs).toBeGreaterThanOrEqual(10000);
       expect(persona.budgets.maxDurationMs).toBeLessThanOrEqual(300000);
       expect(persona.budgets.maxTokens).toBeGreaterThanOrEqual(5000);

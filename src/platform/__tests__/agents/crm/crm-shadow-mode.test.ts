@@ -4,7 +4,7 @@
  * Implements verification for Rules 1, 4, 8, 12, 19, 20, 26, 40, 42, 60, 67, 68, and 69.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   executeCrmAgentShadowMode,
   generateBlastRadiusReport,

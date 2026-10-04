@@ -22,7 +22,6 @@
 
 import {
   type AgentPersonaDefinition,
-  type AgentPersonaId,
 } from '@/platform/identity/agent-persona-types';
 
 /**

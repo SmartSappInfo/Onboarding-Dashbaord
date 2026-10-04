@@ -13,11 +13,9 @@
  */
 
 import { z } from 'zod/v4';
-import { type RiskLevel } from '@/platform/capabilities/contracts/risk-levels';
 import {
   type CrmPersonaId,
   isCrmPersonaId,
-  CRM_PERSONA_DEFINITIONS,
 } from './crm-persona-definitions';
 
 /**

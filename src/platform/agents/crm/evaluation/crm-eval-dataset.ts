@@ -15,7 +15,6 @@
  */
 
 import { z } from 'zod/v4';
-import { type CrmPersonaId } from '../personas/crm-persona-definitions';
 
 /**
  * 6 Canonical Evaluation Scenario Categories.

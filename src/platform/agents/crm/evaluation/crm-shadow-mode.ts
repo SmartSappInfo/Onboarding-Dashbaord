@@ -29,7 +29,6 @@ import {
 } from '../personas/crm-agent-matrix';
 import {
   isCrmPersonaId,
-  CRM_PERSONA_DEFINITIONS,
 } from '../personas/crm-persona-definitions';
 
 /**
@@ -228,7 +227,6 @@ export async function executeCrmAgentShadowMode(
   if (!isCrmPersonaId(options.personaId)) {
     throw new Error(`Unknown or unauthorized CRM persona: '${options.personaId}'`);
   }
-  const persona = CRM_PERSONA_DEFINITIONS[options.personaId];
   const personaTools = CRM_TOOL_MATRIX[options.personaId] ?? [];
 
   // Generate deterministic Run ID
