@@ -204,6 +204,7 @@ export type AccountMemoryFact = z.infer<typeof AccountMemoryFactSchema>;
 export type AccountTimelineItem = z.infer<typeof AccountTimelineItemSchema>;
 export type AccountContextMetadata = z.infer<typeof AccountContextMetadataSchema>;
 export type Account360Context = z.infer<typeof Account360ContextSchema>;
+export type AssembleAccountContextInput = z.input<typeof AssembleAccountContextOptionsSchema>;
 export type AssembleAccountContextOptions = z.infer<typeof AssembleAccountContextOptionsSchema>;
 
 // ============================================================================

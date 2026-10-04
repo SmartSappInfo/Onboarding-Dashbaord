@@ -8,16 +8,6 @@
 import { describe, it, expect } from 'vitest';
 import {
   Account360ContextSchema,
-  AccountTimelineItemSchema,
-  AccountEntitySummarySchema,
-  AccountWorkspaceEntitySummarySchema,
-  AccountContactSummarySchema,
-  AccountDealSummarySchema,
-  AccountMeetingSummarySchema,
-  AccountNoteSummarySchema,
-  AccountTaskSummarySchema,
-  AccountFinancialSummarySchema,
-  AccountMemoryFactSchema,
   AssembleAccountContextOptionsSchema,
   ACCOUNT_CONTEXT_ERROR_CODES,
   AccountContextError,

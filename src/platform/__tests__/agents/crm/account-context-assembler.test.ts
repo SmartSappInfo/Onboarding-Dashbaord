@@ -10,7 +10,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AccountContextAssembler } from '../../../agents/crm/context/account-context-assembler';
 import {
-  AccountContextError,
   ACCOUNT_CONTEXT_ERROR_CODES,
   type Account360Context,
 } from '../../../agents/crm/context/account-context-types';

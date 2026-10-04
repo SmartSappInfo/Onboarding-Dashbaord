@@ -32,7 +32,7 @@ import {
   AccountFinancialSummary,
   AccountMemoryFact,
   AccountTimelineItem,
-  AssembleAccountContextOptions,
+  AssembleAccountContextInput,
   AssembleAccountContextOptionsSchema,
   AccountContextError,
   ACCOUNT_CONTEXT_ERROR_CODES,
@@ -132,7 +132,7 @@ export class AccountContextAssembler {
   /**
    * Assembles the complete 360° Account Context package across all 8 multi-domain data stores.
    */
-  public async assembleContext(rawOptions: AssembleAccountContextOptions): Promise<Account360Context> {
+  public async assembleContext(rawOptions: AssembleAccountContextInput): Promise<Account360Context> {
     const startTime = Date.now();
     const options = AssembleAccountContextOptionsSchema.parse(rawOptions);
     const { organizationId, workspaceId, entityId, maxTokens, includeMemory, includeFinancials, signal } = options;
@@ -474,6 +474,7 @@ export class AccountContextAssembler {
     let isKnapsackCompressed = false;
     let candidateTimeline = [...timelineItems];
     let candidateNotes = [...notes];
+    let candidateMeetings = [...meetings];
     let candidateMemories = [...memories];
 
     const estimateTokens = (): number => {
@@ -482,7 +483,7 @@ export class AccountContextAssembler {
         workspaceEntity: workspaceEntitySummary,
         contacts,
         deals,
-        meetings,
+        meetings: candidateMeetings,
         notes: candidateNotes,
         tasks,
         finances,
@@ -503,27 +504,61 @@ export class AccountContextAssembler {
     if (currentEstimatedTokens > maxTokens) {
       isKnapsackCompressed = true;
 
-      // 1. Prune memories
-      if (candidateMemories.length > 3) {
-        candidateMemories = candidateMemories.slice(0, 3);
+      // 1. Prune memories first
+      while (currentEstimatedTokens > maxTokens && candidateMemories.length > 0) {
+        candidateMemories.pop();
         currentEstimatedTokens = estimateTokens();
       }
 
-      // 2. Prune timeline items beyond top 10
-      if (currentEstimatedTokens > maxTokens && candidateTimeline.length > 10) {
-        candidateTimeline = candidateTimeline.slice(0, 10);
+      // 2. Prune timeline items (keep newest)
+      while (currentEstimatedTokens > maxTokens && candidateTimeline.length > 5) {
+        candidateTimeline.pop();
         currentEstimatedTokens = estimateTokens();
       }
 
-      // 3. Prune notes beyond top 5
-      if (currentEstimatedTokens > maxTokens && candidateNotes.length > 5) {
-        candidateNotes = candidateNotes.slice(0, 5);
+      // 3. Prune notes (keep newest)
+      while (currentEstimatedTokens > maxTokens && candidateNotes.length > 3) {
+        candidateNotes.pop();
         currentEstimatedTokens = estimateTokens();
       }
 
-      // 4. Further timeline trimming if still over
-      if (currentEstimatedTokens > maxTokens && candidateTimeline.length > 5) {
-        candidateTimeline = candidateTimeline.slice(0, 5);
+      // 4. Prune meetings (keep newest)
+      while (currentEstimatedTokens > maxTokens && candidateMeetings.length > 2) {
+        candidateMeetings.pop();
+        currentEstimatedTokens = estimateTokens();
+      }
+
+      // 5. Truncate lengthy isolated content in remaining notes and meetings if still over
+      if (currentEstimatedTokens > maxTokens) {
+        candidateNotes = candidateNotes.map((n) => ({
+          ...n,
+          content: n.content.length > 250 ? `${n.content.slice(0, 250)}... [TRUNCATED]` : n.content,
+          isolatedContent: n.isolatedContent && n.isolatedContent.length > 350
+            ? `${n.isolatedContent.slice(0, 350)}...\n</untrusted_reference_data>`
+            : n.isolatedContent,
+        }));
+        candidateMeetings = candidateMeetings.map((m) => ({
+          ...m,
+          summary: m.summary && m.summary.length > 250 ? `${m.summary.slice(0, 250)}... [TRUNCATED]` : m.summary,
+          transcriptSnippet: m.transcriptSnippet && m.transcriptSnippet.length > 250 ? `${m.transcriptSnippet.slice(0, 250)}... [TRUNCATED]` : m.transcriptSnippet,
+          isolatedContent: m.isolatedContent && m.isolatedContent.length > 350
+            ? `${m.isolatedContent.slice(0, 350)}...\n</untrusted_reference_data>`
+            : m.isolatedContent,
+        }));
+        currentEstimatedTokens = estimateTokens();
+      }
+
+      // 6. Aggressive pruning of remaining items down to 1 if still over
+      while (currentEstimatedTokens > maxTokens && candidateTimeline.length > 1) {
+        candidateTimeline.pop();
+        currentEstimatedTokens = estimateTokens();
+      }
+      while (currentEstimatedTokens > maxTokens && candidateNotes.length > 1) {
+        candidateNotes.pop();
+        currentEstimatedTokens = estimateTokens();
+      }
+      while (currentEstimatedTokens > maxTokens && candidateMeetings.length > 1) {
+        candidateMeetings.pop();
         currentEstimatedTokens = estimateTokens();
       }
     }
@@ -539,7 +574,7 @@ export class AccountContextAssembler {
       workspaceEntity: workspaceEntitySummary,
       contacts,
       deals,
-      meetings,
+      meetings: candidateMeetings,
       notes: candidateNotes,
       tasks,
       finances,
@@ -677,15 +712,16 @@ export class AccountContextAssembler {
       const memories = await memoryService.queryMemory({
         organizationId: orgId,
         workspaceId: wsId,
+        query: entityId,
         limit: 10,
         includeExpired: false,
       });
       return memories.map((m) => ({
         id: m.id,
         content: m.content,
-        sourceType: m.provenance.sourceType ?? 'note',
-        confidence: m.verification.confidenceScore,
-        citationId: m.provenance.sourceEntityId ?? m.id,
+        sourceType: m.source.type ?? 'note',
+        confidence: m.confidence,
+        citationId: m.source.sourceId ?? m.id,
       }));
     } catch {
       return [];
