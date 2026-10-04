@@ -3,3 +3,4 @@
  */
 
 export * from './crm-eval-dataset';
+export * from './crm-shadow-mode';
