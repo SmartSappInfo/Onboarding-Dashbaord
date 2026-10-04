@@ -36,6 +36,12 @@ import type {
   AccountRecommendations,
   AccountRecommendationItem,
 } from '@/platform/agents/crm/intelligence/crm-intelligence-types';
+import {
+  type CrmProposedAction,
+  CRM_ROLLBACK_MATRIX,
+  computeCrmActionIdempotencyKey,
+} from '@/platform/agents/crm/actions';
+import { CrmProposalModal } from '@/components/crm/actions/CrmProposalModal';
 
 export interface AccountRecommendationsCardProps {
   recommendations: AccountRecommendations;
@@ -50,6 +56,64 @@ export function AccountRecommendationsCard({
   onActionClick,
   className,
 }: AccountRecommendationsCardProps) {
+  const [selectedAction, setSelectedAction] = React.useState<CrmProposedAction | null>(null);
+  const [isModalOpen, setIsModalOpen] = React.useState(false);
+
+  const handleActionClick = (item: AccountRecommendationItem) => {
+    if (onActionClick) {
+      onActionClick(item);
+      return;
+    }
+
+    const actionType: CrmProposedAction['actionType'] =
+      item.actionType === 'DRAFT_EMAIL'
+        ? 'DRAFT_OUTREACH'
+        : item.actionType === 'LAUNCH_RESEARCH'
+          ? 'ENRICH_LEAD'
+          : item.actionType === 'ADD_NOTE'
+            ? 'CREATE_TASK'
+            : item.actionType;
+
+    const riskLevel: CrmProposedAction['riskLevel'] =
+      actionType === 'UPDATE_STAGE' || actionType === 'CREATE_TASK' || actionType === 'ENRICH_LEAD'
+        ? 'L2_STATE_MUTATION'
+        : 'L1_INTERNAL_DRAFT';
+
+    const payload = item.payloadDelta ?? {
+      entityId: recommendations.entityId,
+      workspaceId: recommendations.workspaceId,
+      title: item.title,
+    };
+
+    const proposedAction: CrmProposedAction = {
+      id: `act_${item.id}`,
+      entityId: recommendations.entityId,
+      workspaceId: recommendations.workspaceId,
+      actionType,
+      priority: item.priority,
+      riskLevel,
+      explainability: {
+        what: item.explainability.what,
+        why: item.explainability.why,
+        impact: item.explainability.impact,
+        blastRadius: {
+          affectedRecordsCount: 1,
+          financialExposureUsd: 0,
+          isReversible: CRM_ROLLBACK_MATRIX[actionType]?.reversible ?? true,
+        },
+      },
+      idempotencyKey: computeCrmActionIdempotencyKey(recommendations.entityId, actionType, payload),
+      targetCapabilityId: item.targetCapabilityId ?? `crm.${actionType.toLowerCase()}`,
+      compensatingCapabilityId: CRM_ROLLBACK_MATRIX[actionType]?.compensatingCapabilityId,
+      payload,
+      requiresApproval: true,
+      createdAt: new Date().toISOString(),
+    };
+
+    setSelectedAction(proposedAction);
+    setIsModalOpen(true);
+  };
+
   const getPriorityBadge = (priority: AccountRecommendationItem['priority']) => {
     switch (priority) {
       case 'URGENT':
@@ -151,7 +215,7 @@ export function AccountRecommendationsCard({
                 <div className="flex items-center justify-end pt-1">
                   <Button
                     size="sm"
-                    onClick={() => onActionClick?.(item)}
+                    onClick={() => handleActionClick(item)}
                     disabled={isLoading}
                     className="min-h-[44px] sm:min-h-[36px] px-4 rounded-xl font-medium text-xs gap-1.5 active:scale-[0.97]"
                   >
@@ -165,6 +229,12 @@ export function AccountRecommendationsCard({
           })
         )}
       </CardContent>
+
+      <CrmProposalModal
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        action={selectedAction}
+      />
     </Card>
   );
 }
