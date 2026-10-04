@@ -35,6 +35,7 @@ import {
   type ContextRailActionResult,
 } from '@/app/actions/context-rail-actions';
 import type { AskEntityAiResult } from '@/platform/ui/context-rail';
+import { CrmSignatureDossierModal } from '@/components/crm/signature';
 
 export interface EntityAiPromptBarProps {
   entityId: string;
@@ -47,6 +48,7 @@ export interface EntityAiPromptBarProps {
 }
 
 const QUICK_PROMPT_CHIPS = [
+  "What's going on with this account?",
   'Summarize last interaction',
   'What was agreed in the last meeting?',
   'Open action items',
@@ -68,10 +70,19 @@ export function EntityAiPromptBar({
   const [result, setResult] = React.useState<AskEntityAiResult | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [copiedCitationId, setCopiedCitationId] = React.useState<string | null>(null);
+  const [isDossierOpen, setIsDossierOpen] = React.useState(false);
 
   const handleSubmit = async (promptQuery?: string) => {
     const textToSubmit = (promptQuery || query).trim();
     if (!textToSubmit || isLoading) return;
+
+    if (
+      textToSubmit.toLowerCase().includes("what's going on with") ||
+      textToSubmit.toLowerCase().includes("what is going on with")
+    ) {
+      setIsDossierOpen(true);
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
@@ -116,8 +127,9 @@ export function EntityAiPromptBar({
   };
 
   return (
-    <div
-      data-testid="entity-ai-prompt-bar"
+    <>
+      <div
+        data-testid="entity-ai-prompt-bar"
       className={`rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm p-4 space-y-3 ${
         className || ''
       }`}
@@ -265,8 +277,18 @@ export function EntityAiPromptBar({
               </div>
             </div>
           )}
-        </div>
-      )}
-    </div>
+      </div>
+    )}
+  </div>
+
+  {/* Flagship Signature Dossier Modal (Phase 9 Milestone 5) */}
+  <CrmSignatureDossierModal
+    open={isDossierOpen}
+    onOpenChange={setIsDossierOpen}
+    workspaceId={workspaceId || 'default'}
+    entityId={entityId}
+    initialQuery={`What's going on with ${entityName}?`}
+  />
+  </>
   );
 }

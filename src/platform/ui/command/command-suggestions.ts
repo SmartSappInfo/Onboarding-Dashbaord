@@ -22,6 +22,14 @@ export interface CommandSuggestionsOptions {
 
 const GLOBAL_DEFAULT_SUGGESTIONS: CommandSuggestion[] = [
   {
+    id: 'sug_whats_going_on_greenfield',
+    label: "What's going on with Greenfield School?",
+    prompt: "What's going on with Greenfield School?",
+    intent: 'ANALYZE',
+    icon: 'Sparkles',
+    badge: 'SIGNATURE',
+  },
+  {
     id: 'sug_find_deals_month',
     label: 'Find deals closing this month',
     prompt: 'Find all deals expected to close this month with value > $10,000',

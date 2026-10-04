@@ -65,6 +65,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { CrmSignatureDossierModal } from '@/components/crm/signature';
 
 export type ComposerState = 'empty' | 'suggesting' | 'planning' | 'executing' | 'completed';
 
@@ -117,6 +118,10 @@ export function GlobalCommandBar({
   const [executionResult, setExecutionResult] = useState<CommandExecutionResult | null>(null);
   const [executionError, setExecutionError] = useState<string | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
+
+  // Flagship Signature Dossier State (Phase 9 Milestone 5)
+  const [isDossierOpen, setIsDossierOpen] = useState(false);
+  const [dossierQuery, setDossierQuery] = useState('');
 
   const [isClassifying, setIsClassifying] = useState(false);
   const [isExecuting, startExecution] = useTransition();
@@ -238,6 +243,15 @@ export function GlobalCommandBar({
 
   // Run Selected Suggestion
   const handleSelectSuggestion = (suggestion: CommandSuggestion) => {
+    if (
+      suggestion.prompt.toLowerCase().includes("what's going on with") ||
+      suggestion.prompt.toLowerCase().includes("what is going on with")
+    ) {
+      setDossierQuery(suggestion.prompt);
+      setIsDossierOpen(true);
+      setIsOpen(false);
+      return;
+    }
     setPrompt(suggestion.prompt);
     setComposerState('suggesting');
     handleInputChange(suggestion.prompt);
@@ -246,6 +260,16 @@ export function GlobalCommandBar({
   // Execute Command Action
   const handleExecute = () => {
     if (!prompt.trim() || isExecuting) return;
+
+    if (
+      prompt.toLowerCase().includes("what's going on with") ||
+      prompt.toLowerCase().includes("what is going on with")
+    ) {
+      setDossierQuery(prompt);
+      setIsDossierOpen(true);
+      setIsOpen(false);
+      return;
+    }
 
     setComposerState('executing');
     setExecutionError(null);
@@ -381,7 +405,8 @@ export function GlobalCommandBar({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <>
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent
         className="max-w-2xl sm:max-w-3xl p-0 overflow-hidden border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl"
         showCloseButton={true}
@@ -734,5 +759,14 @@ export function GlobalCommandBar({
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Flagship Signature Dossier Modal (Phase 9 Milestone 5) */}
+    <CrmSignatureDossierModal
+      open={isDossierOpen}
+      onOpenChange={setIsDossierOpen}
+      workspaceId={workspaceId}
+      initialQuery={dossierQuery}
+    />
+    </>
   );
 }
