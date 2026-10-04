@@ -3,3 +3,4 @@
  */
 
 export * from './crm-action-types';
+export * from './crm-risk-detector';
