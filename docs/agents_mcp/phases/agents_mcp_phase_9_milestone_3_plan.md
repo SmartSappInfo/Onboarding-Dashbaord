@@ -372,7 +372,7 @@ export const CRM_INTELLIGENCE_ERROR_CODES = {
 - Create: `src/platform/agents/crm/intelligence/index.ts`
 - Test: `src/platform/__tests__/agents/crm/crm-intelligence-contracts.test.ts`
 
-- [ ] **Step 1: Write the failing contract tests**
+- [x] **Step 1: Write the failing contract tests**
 Author `src/platform/__tests__/agents/crm/crm-intelligence-contracts.test.ts` validating:
   - `AccountAiOverviewSchema` parses valid payload and rejects out-of-range health scores ($< 0$ or $> 100$).
   - `AccountKnowledgeSchema` validates grounded facts, meeting takeaways, and citations.
@@ -381,18 +381,18 @@ Author `src/platform/__tests__/agents/crm/crm-intelligence-contracts.test.ts` va
   - `MeetingBriefSchema` validates attendee briefings, open commitments, and suggested questions.
   - `CRM_INTELLIGENCE_ERROR_CODES` contains all canonical error keys.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 Run: `pnpm vitest run src/platform/__tests__/agents/crm/crm-intelligence-contracts.test.ts`
 Expected: FAIL ("Cannot find module '@/platform/agents/crm/intelligence/crm-intelligence-types'").
 
-- [ ] **Step 3: Implement `crm-intelligence-types.ts` and `index.ts`**
+- [x] **Step 3: Implement `crm-intelligence-types.ts` and `index.ts`**
 Author `crm-intelligence-types.ts` with strict Zod v4 schemas, type exports, error taxonomy, and `CrmIntelligenceError` class. Re-export via barrel `index.ts`. Ensure zero `any` or `any[]` (Rule 4).
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 Run: `pnpm vitest run src/platform/__tests__/agents/crm/crm-intelligence-contracts.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 ```bash
 git add src/platform/agents/crm/intelligence/ src/platform/__tests__/agents/crm/crm-intelligence-contracts.test.ts
 git commit -m "feat(crm-agent): add canonical CRM intelligence contracts and error taxonomy"
@@ -407,7 +407,7 @@ git commit -m "feat(crm-agent): add canonical CRM intelligence contracts and err
 - Modify: `src/platform/agents/crm/index.ts`
 - Test: `src/platform/__tests__/agents/crm/crm-intelligence-service.test.ts`
 
-- [ ] **Step 1: Write the failing service tests**
+- [x] **Step 1: Write the failing service tests**
 Author `src/platform/__tests__/agents/crm/crm-intelligence-service.test.ts` testing:
   - `synthesizeAccountAiOverview`: computes correct health score using weighted formula (recency, sentiment, overdue tasks, receivables aging) and status band.
   - `synthesizeAccountKnowledge`: compiles grounded facts and wraps raw notes/transcripts inside `<untrusted_reference_data id="...">` containers (Rule 13 & 30).
@@ -416,11 +416,11 @@ Author `src/platform/__tests__/agents/crm/crm-intelligence-service.test.ts` test
   - `synthesizeMeetingBrief`: compiles attendee history and unresolved commitments.
   - Emergency dead-man switch evaluation (`checkGovernanceDeadManSwitch`) throwing `CRM_DEAD_MAN_PAUSED` when tripped (Rule 60).
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 Run: `pnpm vitest run src/platform/__tests__/agents/crm/crm-intelligence-service.test.ts`
 Expected: FAIL ("Cannot find module '@/platform/agents/crm/intelligence/crm-intelligence-service'").
 
-- [ ] **Step 3: Implement `crm-intelligence-service.ts`**
+- [x] **Step 3: Implement `crm-intelligence-service.ts`**
 Author pure synthesis methods:
   - Mathematical health score calculation:
     $$\text{HealthScore} = \text{clamp}(0, 100, S_{\text{recency}} \times 0.30 + S_{\text{sentiment}} \times 0.25 + S_{\text{tasks}} \times 0.20 + S_{\text{finances}} \times 0.25)$$
@@ -429,11 +429,11 @@ Author pure synthesis methods:
   - Stage velocity and deal risk synthesis.
   - Export service class `CrmIntelligenceService` and singleton `getCrmIntelligenceService()`.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 Run: `pnpm vitest run src/platform/__tests__/agents/crm/crm-intelligence-service.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 ```bash
 git add src/platform/agents/crm/intelligence/ src/platform/agents/crm/index.ts src/platform/__tests__/agents/crm/crm-intelligence-service.test.ts
 git commit -m "feat(crm-agent): implement CRM intelligence synthesis service"
@@ -446,7 +446,7 @@ git commit -m "feat(crm-agent): implement CRM intelligence synthesis service"
 - Create: `src/app/actions/crm-agent-actions.ts`
 - Test: `src/platform/__tests__/agents/crm/crm-agent-actions.test.ts`
 
-- [ ] **Step 1: Write the failing server action tests**
+- [x] **Step 1: Write the failing server action tests**
 Author `src/platform/__tests__/agents/crm/crm-agent-actions.test.ts` testing:
   - Next.js Server Actions convention (`'use server'`).
   - Clerk session authentication via `requireAuth()` (rejects unauthenticated callers with `AUTHENTICATION_REQUIRED`).
@@ -455,11 +455,11 @@ Author `src/platform/__tests__/agents/crm/crm-agent-actions.test.ts` testing:
   - Integrates with `getAccount360Context` and `getCrmIntelligenceService()`.
   - Publishes domain events via `defaultEventBus.publish` (`crm.intelligence.overview_viewed`, `crm.intelligence.deal_analyzed`, `crm.intelligence.meeting_briefed`) (Rule 40).
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 Run: `pnpm vitest run src/platform/__tests__/agents/crm/crm-agent-actions.test.ts`
 Expected: FAIL ("Cannot find module '@/app/actions/crm-agent-actions'").
 
-- [ ] **Step 3: Implement `crm-agent-actions.ts`**
+- [x] **Step 3: Implement `crm-agent-actions.ts`**
 Author 5 typed server actions:
   - `getAccountAiOverviewAction({ workspaceId, entityId })`
   - `getAccountKnowledgeAction({ workspaceId, entityId })`
@@ -467,11 +467,11 @@ Author 5 typed server actions:
   - `getDealIntelligenceAction({ workspaceId, entityId, dealId })`
   - `getMeetingBriefAction({ workspaceId, entityId, meetingId })`
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 Run: `pnpm vitest run src/platform/__tests__/agents/crm/crm-agent-actions.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 ```bash
 git add src/app/actions/crm-agent-actions.ts src/platform/__tests__/agents/crm/crm-agent-actions.test.ts
 git commit -m "feat(crm-agent): implement secure CRM intelligence server actions"
@@ -486,17 +486,17 @@ git commit -m "feat(crm-agent): implement secure CRM intelligence server actions
 - Create: `src/components/crm/intelligence/index.ts`
 - Test: `src/platform/__tests__/ui/crm-ai-overview.test.tsx`
 
-- [ ] **Step 1: Write the failing UI tests**
+- [x] **Step 1: Write the failing UI tests**
 Author `src/platform/__tests__/ui/crm-ai-overview.test.tsx` verifying:
   - `AccountAiOverviewCard`: renders health status badge (`HEALTHY`, `ATTENTION_NEEDED`, `AT_RISK`, `DORMANT`), circular/score meter, executive narrative summary, stakeholder pills, recent signal carousel, and single-circle info tooltip at `z-[10050]`.
   - `AccountKnowledgePanel`: renders grounded facts with source chips, category filtering, and Citation Drawer adhering to `theme.md` §8 with `<UntrustedReferenceData>`.
   - Touch targets $\ge 44\text{px}$ (`min-h-[44px]`) and tactile buttons (`active:scale-[0.97]`).
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 Run: `pnpm vitest run src/platform/__tests__/ui/crm-ai-overview.test.tsx`
 Expected: FAIL ("Cannot find module '@/components/crm/intelligence/AccountAiOverviewCard'").
 
-- [ ] **Step 3: Implement `AccountAiOverviewCard.tsx` and `AccountKnowledgePanel.tsx`**
+- [x] **Step 3: Implement `AccountAiOverviewCard.tsx` and `AccountKnowledgePanel.tsx`**
 - Strict adherence to `theme.md` §8:
   - Geometry: `border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl`.
   - Demarcated header: `<DialogHeader demarcated>`.
@@ -505,11 +505,11 @@ Expected: FAIL ("Cannot find module '@/components/crm/intelligence/AccountAiOver
   - Demarcated footer with tactile buttons (`rounded-xl active:scale-[0.97]`).
 - Untrusted text wrapped inside `<UntrustedReferenceData>`.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 Run: `pnpm vitest run src/platform/__tests__/ui/crm-ai-overview.test.tsx`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 ```bash
 git add src/components/crm/intelligence/ src/platform/__tests__/ui/crm-ai-overview.test.tsx
 git commit -m "feat(crm-ui): add Account AI Overview card and Knowledge panel components"
@@ -525,26 +525,26 @@ git commit -m "feat(crm-ui): add Account AI Overview card and Knowledge panel co
 - Modify: `src/components/crm/intelligence/index.ts`
 - Test: `src/platform/__tests__/ui/deal-intelligence.test.tsx`
 
-- [ ] **Step 1: Write the failing UI tests**
+- [x] **Step 1: Write the failing UI tests**
 Author `src/platform/__tests__/ui/deal-intelligence.test.tsx` testing:
   - `AccountRecommendationsCard`: renders priority-badged recommendations (`URGENT`, `HIGH`, `MEDIUM`), Rule 41 explainability grid (WHAT, WHY, IMPACT), and tactile execution trigger buttons.
   - `DealIntelligenceCard`: renders stage velocity meter, win probability gauge, competitor objections breakdown, and recommended tactical playbooks.
   - `MeetingBriefDrawer`: renders pre-meeting briefing drawer conforming to `theme.md` §8 (attendee dossiers, open commitments checklist, suggested questions, recommended strategy).
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 Run: `pnpm vitest run src/platform/__tests__/ui/deal-intelligence.test.tsx`
 Expected: FAIL ("Cannot find module '@/components/crm/intelligence/AccountRecommendationsCard'").
 
-- [ ] **Step 3: Implement `AccountRecommendationsCard.tsx`, `DealIntelligenceCard.tsx`, and `MeetingBriefDrawer.tsx`**
+- [x] **Step 3: Implement `AccountRecommendationsCard.tsx`, `DealIntelligenceCard.tsx`, and `MeetingBriefDrawer.tsx`**
 - Strictly typed props.
 - Emil Kowalski mechanical feedback (`active:scale-[0.97]`).
 - Modal/Drawer adherence to `theme.md` §8.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 Run: `pnpm vitest run src/platform/__tests__/ui/deal-intelligence.test.tsx`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 ```bash
 git add src/components/crm/intelligence/ src/platform/__tests__/ui/deal-intelligence.test.tsx
 git commit -m "feat(crm-ui): add Account Recommendations, Deal Intelligence, and Meeting Brief components"
@@ -560,26 +560,26 @@ git commit -m "feat(crm-ui): add Account Recommendations, Deal Intelligence, and
 - Modify: `src/app/admin/deals/[id]/page.tsx`
 - Test: `src/platform/__tests__/ui/crm-page-integration.test.tsx`
 
-- [ ] **Step 1: Write the failing page integration tests**
+- [x] **Step 1: Write the failing page integration tests**
 Author `src/platform/__tests__/ui/crm-page-integration.test.tsx` validating:
   - `EntityAiOverviewSection` loads overview, knowledge, and recommendations.
   - Existing entity tabs (`overview`, `deals`, `meetings`, `tasks`, etc.) remain 100% functional.
   - Deal intelligence card renders seamlessly inside deal workspace without displacing legacy components.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 Run: `pnpm vitest run src/platform/__tests__/ui/crm-page-integration.test.tsx`
 Expected: FAIL ("Cannot find module '@/app/admin/entities/components/EntityAiOverviewSection'").
 
-- [ ] **Step 3: Implement `EntityAiOverviewSection.tsx` and embed into pages**
+- [x] **Step 3: Implement `EntityAiOverviewSection.tsx` and embed into pages**
 - In `src/app/admin/entities/[id]/page.tsx`, mount `EntityAiOverviewSection` at the top of the entity page or inside the `overview` and `ai-context` tab flows.
 - In `src/app/admin/deals/[id]/components/DealAiIntelligencePanel.tsx`, enhance the panel to render `DealIntelligenceCard`.
 - Verify zero regressions on legacy functionality.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 Run: `pnpm vitest run src/platform/__tests__/ui/crm-page-integration.test.tsx`
 Expected: PASS.
 
-- [ ] **Step 5: Full verification gates**
+- [x] **Step 5: Full verification gates**
 Run:
 ```bash
 # 1. CRM Platform test suites
@@ -598,7 +598,7 @@ NODE_OPTIONS='--max-old-space-size=8192' pnpm typecheck
 NODE_OPTIONS='--max-old-space-size=8192' pnpm lint
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 ```bash
 git add src/app/admin/entities/ src/app/admin/deals/ src/platform/__tests__/ui/crm-page-integration.test.tsx
 git commit -m "feat(crm-page): embed CRM AI intelligence surfaces into entity and deal pages"
@@ -609,30 +609,30 @@ git commit -m "feat(crm-page): embed CRM AI intelligence surfaces into entity an
 ## 7. Verification Checklists & Acceptance Criteria
 
 ### 7.1 Strict Typing & Quality (Rule 4 & 10)
-- [ ] 100% strict TypeScript types across all schemas, server actions, and UI components.
-- [ ] Zero `any` or `any[]` throughout codebase.
-- [ ] All contracts validated with Zod v4 (`zod/v4`).
-- [ ] Clean typecheck: `NODE_OPTIONS='--max-old-space-size=8192' pnpm typecheck` exits with code 0.
-- [ ] Clean linter: `NODE_OPTIONS='--max-old-space-size=8192' pnpm lint` exits with code 0.
+- [x] 100% strict TypeScript types across all schemas, server actions, and UI components.
+- [x] Zero `any` or `any[]` throughout codebase.
+- [x] All contracts validated with Zod v4 (`zod/v4`).
+- [x] Clean typecheck: `NODE_OPTIONS='--max-old-space-size=8192' pnpm typecheck` exits with code 0.
+- [x] Clean linter: `NODE_OPTIONS='--max-old-space-size=8192' pnpm lint` exits with code 0.
 
 ### 7.2 Security & Authority (Rule 67)
-- [ ] Anti-IDOR validation enforced on all 5 Server Actions.
-- [ ] Emergency dead-man switch evaluation (`checkGovernanceDeadManSwitch`) returns `CRM_DEAD_MAN_PAUSED` when active.
-- [ ] Untrusted customer notes, transcripts, and citations wrapped in `<untrusted_reference_data id="...">` containers.
-- [ ] Sensitive tokens (credentials, API keys, PII) redacted via `[REDACTED_SECRET:<type>]`.
-- [ ] All recommendation items provide Rule 41 explainability grids (`what`, `why`, `impact`).
+- [x] Anti-IDOR validation enforced on all 5 Server Actions.
+- [x] Emergency dead-man switch evaluation (`checkGovernanceDeadManSwitch`) returns `CRM_DEAD_MAN_PAUSED` when active.
+- [x] Untrusted customer notes, transcripts, and citations wrapped in `<untrusted_reference_data id="...">` containers.
+- [x] Sensitive tokens (credentials, API keys, PII) redacted via `[REDACTED_SECRET:<type>]`.
+- [x] All recommendation items provide Rule 41 explainability grids (`what`, `why`, `impact`).
 
 ### 7.3 Modal Architecture SSOT (`theme.md` §8)
-- [ ] All drawers and modals use semantic token binding (`border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl`).
-- [ ] Demarcated header (`<DialogHeader demarcated>`) with baseline dividing border.
-- [ ] Single-circle info tooltip button with `<CardInfoTooltip text="..." />` elevated at `z-[10050]`.
-- [ ] Zero raw descriptions visible under title; screen-reader accessible via `<DialogDescription className="sr-only">`.
-- [ ] Demarcated footer with tactile buttons (`rounded-xl active:scale-[0.97]`).
-- [ ] Touch targets $\ge 44\text{px}$ (`min-h-[44px]`).
+- [x] All drawers and modals use semantic token binding (`border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl`).
+- [x] Demarcated header (`<DialogHeader demarcated>`) with baseline dividing border.
+- [x] Single-circle info tooltip button with `<CardInfoTooltip text="..." />` elevated at `z-[10050]`.
+- [x] Zero raw descriptions visible under title; screen-reader accessible via `<DialogDescription className="sr-only">`.
+- [x] Demarcated footer with tactile buttons (`rounded-xl active:scale-[0.97]`).
+- [x] Touch targets $\ge 44\text{px}$ (`min-h-[44px]`).
 
 ### 7.4 Dual-Tier CRM Data Model & Strangler Fig (Rule 69)
-- [ ] Global corporate master identity in `/entities/{entityId}` remains immutable.
-- [ ] All operational state mutations target `/workspace_entities/${workspaceId}_${entityId}`.
-- [ ] Pre-existing tabs and widgets on `/admin/entities/[id]` and `/admin/deals/[id]` remain 100% functional.
-- [ ] 100% pass on platform baseline regression test suites (43/43 tests passing).
-- [ ] Senior Principal Systems & AI Agentic Architecture Reviewer code review completed and approved.
+- [x] Global corporate master identity in `/entities/{entityId}` remains immutable.
+- [x] All operational state mutations target `/workspace_entities/${workspaceId}_${entityId}`.
+- [x] Pre-existing tabs and widgets on `/admin/entities/[id]` and `/admin/deals/[id]` remain 100% functional.
+- [x] 100% pass on platform baseline regression test suites (43/43 tests passing).
+- [x] Senior Principal Systems & AI Agentic Architecture Reviewer code review completed and approved.
