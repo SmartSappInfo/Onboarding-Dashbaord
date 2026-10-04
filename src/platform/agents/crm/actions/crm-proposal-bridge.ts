@@ -36,6 +36,7 @@ import {
 import { sha256Hex } from '@/platform/capabilities/contracts/canonical-json';
 import { checkGovernanceDeadManSwitch } from '@/platform/policy/governance-dead-man';
 import { defaultEventBus } from '@/platform/events/event-bus';
+import { createDomainEvent } from '@/platform/capabilities/events/domain-event';
 
 export interface ProposeCrmActionInput {
   organizationId: string;
@@ -141,23 +142,33 @@ export class CrmProposalBridge {
     const proposal = await this.approvalStore.createProposal(proposalInput);
 
     // 2. Publish domain event crm.action.proposed (Rule 40)
-    await defaultEventBus.publish({
-      id: `evt_prop_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      type: 'crm.action.proposed',
-      organizationId: input.organizationId,
-      payload: {
-        proposalId: proposal.proposalId,
-        actionId: input.action.id,
-        entityId: input.action.entityId,
+    await defaultEventBus.publish(
+      createDomainEvent({
+        type: 'crm.action.proposed',
+        organizationId: input.organizationId,
         workspaceId: input.action.workspaceId,
-        actionType: input.action.actionType,
-        targetCapabilityId: input.action.targetCapabilityId,
-        payloadHash,
-        proposedAt: nowIso,
-      },
-      timestamp: nowIso,
-      version: 1,
-    });
+        actor: {
+          type: 'agent',
+          id: 'crm_proposal_bridge',
+        },
+        entity: {
+          type: 'crm_proposal',
+          id: proposal.proposalId,
+        },
+        source: 'crm_proposal_bridge',
+        correlationId: `corr_prop_${proposal.proposalId}`,
+        payload: {
+          proposalId: proposal.proposalId,
+          actionId: input.action.id,
+          entityId: input.action.entityId,
+          workspaceId: input.action.workspaceId,
+          actionType: input.action.actionType,
+          targetCapabilityId: input.action.targetCapabilityId,
+          payloadHash,
+          proposedAt: nowIso,
+        },
+      })
+    );
 
     return proposal;
   }
@@ -247,21 +258,31 @@ export class CrmProposalBridge {
     const executionTimestamp = new Date().toISOString();
 
     // 7. Publish domain event crm.action.executed (Rule 40)
-    await defaultEventBus.publish({
-      id: `evt_exec_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      type: 'crm.action.executed',
-      organizationId: input.organizationId,
-      payload: {
-        proposalId: proposal.proposalId,
-        capabilityId: proposal.capabilityId,
-        executorId: input.callerId,
-        targetPath,
-        payloadHash: computedHash,
-        executedAt: executionTimestamp,
-      },
-      timestamp: executionTimestamp,
-      version: 1,
-    });
+    await defaultEventBus.publish(
+      createDomainEvent({
+        type: 'crm.action.executed',
+        organizationId: input.organizationId,
+        workspaceId: proposal.workspaceId,
+        actor: {
+          type: 'user',
+          id: input.callerId,
+        },
+        entity: {
+          type: 'crm_proposal',
+          id: proposal.proposalId,
+        },
+        source: 'crm_proposal_bridge',
+        correlationId: `corr_exec_${proposal.proposalId}`,
+        payload: {
+          proposalId: proposal.proposalId,
+          capabilityId: proposal.capabilityId,
+          executorId: input.callerId,
+          targetPath,
+          payloadHash: computedHash,
+          executedAt: executionTimestamp,
+        },
+      })
+    );
 
     return {
       proposalId: proposal.proposalId,
@@ -331,20 +352,30 @@ export class CrmProposalBridge {
     const revertedAt = new Date().toISOString();
 
     // 5. Publish domain event crm.action.reverted (Rule 40)
-    await defaultEventBus.publish({
-      id: `evt_rev_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      type: 'crm.action.reverted',
-      organizationId: input.organizationId,
-      payload: {
-        proposalId: proposal.proposalId,
-        compensatingCapabilityId,
-        revertedBy: input.callerId,
-        reason: input.reason,
-        revertedAt,
-      },
-      timestamp: revertedAt,
-      version: 1,
-    });
+    await defaultEventBus.publish(
+      createDomainEvent({
+        type: 'crm.action.reverted',
+        organizationId: input.organizationId,
+        workspaceId: proposal.workspaceId,
+        actor: {
+          type: 'user',
+          id: input.callerId,
+        },
+        entity: {
+          type: 'crm_proposal',
+          id: proposal.proposalId,
+        },
+        source: 'crm_proposal_bridge',
+        correlationId: `corr_rev_${proposal.proposalId}`,
+        payload: {
+          proposalId: proposal.proposalId,
+          compensatingCapabilityId,
+          revertedBy: input.callerId,
+          reason: input.reason,
+          revertedAt,
+        },
+      })
+    );
 
     return {
       proposalId: proposal.proposalId,
@@ -358,7 +389,6 @@ export class CrmProposalBridge {
 
 // Global HMR singleton preservation
 declare global {
-  // eslint-disable-next-line no-var
   var __smartsappCrmProposalBridge: CrmProposalBridge | undefined;
 }
 

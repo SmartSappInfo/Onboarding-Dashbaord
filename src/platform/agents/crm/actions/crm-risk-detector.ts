@@ -31,6 +31,7 @@ import {
   type CrmRiskLevel,
 } from './crm-action-types';
 import { defaultEventBus } from '@/platform/events/event-bus';
+import { createDomainEvent } from '@/platform/capabilities/events/domain-event';
 
 export interface EvaluateRisksOptions {
   now?: Date;
@@ -363,23 +364,33 @@ export class CrmRiskDetector {
 
     // Publish domain event if not in dry-run mode (Rule 40)
     if (!dryRun) {
-      await defaultEventBus.publish({
-        id: `evt_risk_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-        type: 'crm.account.risk_detected',
-        organizationId: context.organizationId,
-        payload: {
-          entityId: context.entityId,
+      await defaultEventBus.publish(
+        createDomainEvent({
+          type: 'crm.account.risk_detected',
+          organizationId: context.organizationId,
           workspaceId: context.workspaceId,
-          overallScore,
-          riskLevel,
-          factorsCount: factors.length,
-          stalledDealsCount: stalledDeals.length,
-          isDark,
-          evaluatedAt: nowIso,
-        },
-        timestamp: nowIso,
-        version: 1,
-      });
+          actor: {
+            type: 'agent',
+            id: 'crm_risk_detector',
+          },
+          entity: {
+            type: 'account',
+            id: context.entityId,
+          },
+          source: 'crm_risk_detector',
+          correlationId: options?.correlationId ?? `corr_risk_${Date.now()}`,
+          payload: {
+            entityId: context.entityId,
+            workspaceId: context.workspaceId,
+            overallScore,
+            riskLevel,
+            factorsCount: factors.length,
+            stalledDealsCount: stalledDeals.length,
+            isDark,
+            evaluatedAt: nowIso,
+          },
+        })
+      );
     }
 
     return assessment;
@@ -408,7 +419,6 @@ export class CrmRiskDetector {
 
 // Global HMR singleton preservation
 declare global {
-  // eslint-disable-next-line no-var
   var __smartsappCrmRiskDetector: CrmRiskDetector | undefined;
 }
 

@@ -11,7 +11,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   CrmProposalBridge,
-  getCrmProposalBridge,
 } from '@/platform/agents/crm/actions/crm-proposal-bridge';
 import {
   CrmProposedActionSchema,

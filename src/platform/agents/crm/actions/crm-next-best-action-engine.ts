@@ -27,6 +27,7 @@ import {
 } from './crm-action-types';
 import { getCrmRiskDetector } from './crm-risk-detector';
 import { defaultEventBus } from '@/platform/events/event-bus';
+import { createDomainEvent } from '@/platform/capabilities/events/domain-event';
 
 export interface GenerateNbaOptions {
   now?: Date;
@@ -394,24 +395,34 @@ export class CrmNextBestActionEngine {
     // 5. Publish domain event if not in dry-run mode (Rule 40)
     if (!dryRun) {
       for (const action of finalActions) {
-        await defaultEventBus.publish({
-          id: `evt_action_prop_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-          type: 'crm.action.proposed',
-          organizationId: context.organizationId,
-          payload: {
-            actionId: action.id,
-            entityId: action.entityId,
-            workspaceId: action.workspaceId,
-            actionType: action.actionType,
-            priority: action.priority,
-            riskLevel: action.riskLevel,
-            requiresApproval: action.requiresApproval,
-            idempotencyKey: action.idempotencyKey,
-            proposedAt: nowIso,
-          },
-          timestamp: nowIso,
-          version: 1,
-        });
+        await defaultEventBus.publish(
+          createDomainEvent({
+            type: 'crm.action.proposed',
+            organizationId: context.organizationId,
+            workspaceId: context.workspaceId,
+            actor: {
+              type: 'agent',
+              id: 'crm_nba_engine',
+            },
+            entity: {
+              type: 'crm_action',
+              id: action.id,
+            },
+            source: 'crm_nba_engine',
+            correlationId: options?.correlationId ?? `corr_nba_${Date.now()}`,
+            payload: {
+              actionId: action.id,
+              entityId: action.entityId,
+              workspaceId: action.workspaceId,
+              actionType: action.actionType,
+              priority: action.priority,
+              riskLevel: action.riskLevel,
+              requiresApproval: action.requiresApproval,
+              idempotencyKey: action.idempotencyKey,
+              proposedAt: nowIso,
+            },
+          })
+        );
       }
     }
 
@@ -454,7 +465,6 @@ export class CrmNextBestActionEngine {
 
 // Global HMR singleton preservation
 declare global {
-  // eslint-disable-next-line no-var
   var __smartsappCrmNextBestActionEngine: CrmNextBestActionEngine | undefined;
 }
 

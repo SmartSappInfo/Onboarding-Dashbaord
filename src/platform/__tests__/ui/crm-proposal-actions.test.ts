@@ -140,19 +140,18 @@ describe('CRM Proposal Server Actions', () => {
 
     vi.spyOn(authModule, 'requireAuth').mockResolvedValue({
       uid: mockUserId,
-      email: 'alice@smartsapp.com',
       isSystemAdmin: false,
       profile: {
         organizationId: mockOrgId,
         lastActiveWorkspaceId: mockWsId,
-      } as any,
+      } as unknown as authModule.AuthContext['profile'],
     });
 
     vi.spyOn(deadManModule, 'checkGovernanceDeadManSwitch').mockResolvedValue();
 
     vi.spyOn(assemblerModule, 'getAccountContextAssembler').mockReturnValue({
-      assembleAccount360Context: vi.fn().mockResolvedValue(mockContext),
-    } as any);
+      assembleContext: vi.fn().mockResolvedValue(mockContext),
+    } as unknown as assemblerModule.AccountContextAssembler);
   });
 
   it('evaluates account risks via evaluateAccountRisksAction', async () => {
@@ -225,5 +224,29 @@ describe('CRM Proposal Server Actions', () => {
 
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('CRM_DEAD_MAN_PAUSED');
+  });
+
+  it('executes approved proposal via executeApprovedCrmProposalAction', async () => {
+    const res = await executeApprovedCrmProposalAction({
+      workspaceId: mockWsId,
+      proposalId: 'prop_test_123',
+      targetEntityId: mockEntityId,
+      actualPayload: { dealId: 'deal_123', stage: 'negotiation' },
+    });
+
+    // In-memory proposal bridge returns error PROPOSAL_NOT_FOUND if not present
+    expect(res.success).toBe(false);
+    expect(res.error?.code).toBe('PROPOSAL_NOT_FOUND');
+  });
+
+  it('rolls back crm proposal via rollbackCrmActionAction', async () => {
+    const res = await rollbackCrmActionAction({
+      workspaceId: mockWsId,
+      proposalId: 'prop_test_123',
+      reason: 'Testing reverse-LIFO rollback',
+    });
+
+    expect(res.success).toBe(false);
+    expect(res.error?.code).toBe('PROPOSAL_NOT_FOUND');
   });
 });

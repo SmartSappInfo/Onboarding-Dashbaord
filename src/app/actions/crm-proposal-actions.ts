@@ -131,7 +131,7 @@ export async function evaluateAccountRisksAction(input: {
     await checkGovernanceDeadManSwitch(organizationId);
 
     const assembler = getAccountContextAssembler();
-    const context = await assembler.assembleAccount360Context({
+    const context = await assembler.assembleContext({
       organizationId,
       workspaceId: input.workspaceId,
       entityId: input.entityId,
@@ -169,7 +169,7 @@ export async function generateNextBestActionsAction(input: {
     await checkGovernanceDeadManSwitch(organizationId);
 
     const assembler = getAccountContextAssembler();
-    const context = await assembler.assembleAccount360Context({
+    const context = await assembler.assembleContext({
       organizationId,
       workspaceId: input.workspaceId,
       entityId: input.entityId,

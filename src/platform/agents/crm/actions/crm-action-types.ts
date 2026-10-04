@@ -231,7 +231,7 @@ export interface CrmRollbackDefinition {
   reversible: boolean;
 }
 
-export const CRM_ROLLBACK_MATRIX: Record<CrmActionType, CrmRollbackDefinition> = {
+export const CRM_ACTION_ROLLBACK_MATRIX: Record<CrmActionType, CrmRollbackDefinition> = {
   DRAFT_OUTREACH: {
     compensatingCapabilityId: 'crm.outreach.discard_draft',
     description: 'Discards un-sent outreach draft',
@@ -278,6 +278,8 @@ export const CRM_ROLLBACK_MATRIX: Record<CrmActionType, CrmRollbackDefinition> =
     reversible: true,
   },
 };
+
+export const CRM_ROLLBACK_MATRIX = CRM_ACTION_ROLLBACK_MATRIX;
 
 // ============================================================================
 // 5. Canonical Error Taxonomy (Rule 48)
