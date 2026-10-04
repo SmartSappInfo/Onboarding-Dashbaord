@@ -4,3 +4,4 @@
 
 export * from './crm-signature-types';
 export * from './crm-signature-orchestrator';
+export * from './crm-multi-turn-session';
