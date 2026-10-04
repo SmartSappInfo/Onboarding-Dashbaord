@@ -110,6 +110,13 @@ const LEGACY_PERMISSION_MAP: ReadonlyMap<string, ParsedPermissionRef> = new Map<
   ['workspace:read', { kind: 'rbac', section: 'operations', feature: 'dashboard', action: 'view' }],
   ['app:portal_view', { kind: 'app', id: 'portals_view' }],
   ['test.execute', { kind: 'rbac', section: 'operations', feature: 'tasks', action: 'view' }],
+
+  // Workflows & Automations (Phase 7)
+  ['app:automations_manage', { kind: 'rbac', section: 'operations', feature: 'tasks', action: 'create' }],
+  ['app:automations_view', { kind: 'rbac', section: 'operations', feature: 'tasks', action: 'view' }],
+  ['rbac:workflows.run.create', { kind: 'rbac', section: 'operations', feature: 'tasks', action: 'create' }],
+  ['rbac:workflows.run.read', { kind: 'rbac', section: 'operations', feature: 'tasks', action: 'view' }],
+  ['rbac:workflows.run.cancel', { kind: 'rbac', section: 'operations', feature: 'tasks', action: 'delete' }],
 ]);
 
 export function parsePermissionRef(ref: string): ParsedPermissionRef | null {

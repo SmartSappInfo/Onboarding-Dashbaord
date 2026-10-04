@@ -7,14 +7,14 @@
 import type { Entity, WorkspaceEntity, EntityType } from '@/lib/types';
 
 let entityCounter = 0;
-let workspaceEntityCounter = 0;
+let _workspaceEntityCounter = 0;
 
 /**
  * Reset counters (call in beforeEach)
  */
 export function resetEntityCounters() {
   entityCounter = 0;
-  workspaceEntityCounter = 0;
+  _workspaceEntityCounter = 0;
 }
 
 /**
