@@ -228,10 +228,10 @@ describe('CRM Proposal Server Actions', () => {
 
   it('executes approved proposal via executeApprovedCrmProposalAction', async () => {
     const res = await executeApprovedCrmProposalAction({
+      organizationId: mockOrgId,
       workspaceId: mockWsId,
       proposalId: 'prop_test_123',
-      targetEntityId: mockEntityId,
-      actualPayload: { dealId: 'deal_123', stage: 'negotiation' },
+      executionPayload: { dealId: 'deal_123', stage: 'negotiation' },
     });
 
     // In-memory proposal bridge returns error PROPOSAL_NOT_FOUND if not present
@@ -241,6 +241,7 @@ describe('CRM Proposal Server Actions', () => {
 
   it('rolls back crm proposal via rollbackCrmActionAction', async () => {
     const res = await rollbackCrmActionAction({
+      organizationId: mockOrgId,
       workspaceId: mockWsId,
       proposalId: 'prop_test_123',
       reason: 'Testing reverse-LIFO rollback',
