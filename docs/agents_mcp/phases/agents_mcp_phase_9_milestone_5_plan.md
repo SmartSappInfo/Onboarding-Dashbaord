@@ -1,6 +1,6 @@
 # SmartSapp Agentic & MCP Transformation: Phase 9 Milestone 5 Implementation Plan
 ## Signature Autonomous Experience ("What's going on with X?"), Multi-Turn Copilot & Full Platform QA
-### Deeply Integrated with `docs/agents_mcp/`, `docs/agentic/`, `theme.md` §8 & The 69 Agentic Development Rules
+### Deeply Integrated with `docs/agents_mcp/agents_mcp_rules.md`, `theme.md` §8 & The 69 Agentic Development Rules
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -21,19 +21,19 @@ In `docs/agents_mcp/agents_mcp_roadmap.md` (§ Phase 9, lines 1516–1581), the 
 >  
 > **Agent autonomously executes the 14-Step Signature Pipeline:**  
 > 1. Retrieve entity master (`/entities/{entityId}`) & workspace operational record (`/workspace_entities/{workspaceId}_{entityId}`) (Rule 69)  
-> 2. Retrieve related contacts  
-> 3. Retrieve open & historical deals  
-> 4. Retrieve meetings & audio/transcript summaries  
-> 5. Retrieve notes & call logs  
-> 6. Retrieve payment & invoice context  
-> 7. Retrieve previous communications  
-> 8. Retrieve tasks & commitments  
-> 9. Retrieve relevant semantic knowledge facts via `CanonicalMemoryService`  
-> 10. Construct unified chronological timeline  
+> 2. Retrieve related contacts (`crm.workspace_entity.get_contacts`)  
+> 3. Retrieve open & historical deals (`crm.deal.search`)  
+> 4. Retrieve meetings & audio/transcript summaries (`crm.meeting.get_dossier`)  
+> 5. Retrieve notes & call logs (`crm.workspace_entity.get_notes`)  
+> 6. Retrieve payment & invoice context (`billing.invoice.list`)  
+> 7. Retrieve previous communications (`crm.communication.search`)  
+> 8. Retrieve tasks & commitments (`crm.task.search`)  
+> 9. Retrieve relevant semantic knowledge facts via `CanonicalMemoryService` (Rule 29)  
+> 10. Construct unified chronological timeline via `AccountTimelineService`  
 > 11. Identify unresolved issues & risks via `CrmRiskDetector`  
-> 12. Identify commitments & promises from recent meetings/notes  
-> 13. Produce grounded narrative answer with citations in `<untrusted_reference_data>`  
-> 14. Offer executable next actions via `CrmNextBestActionEngine` & `CrmProposalBridge`  
+> 12. Identify commitments & promises from recent touchpoints  
+> 13. Produce grounded narrative answer with citations in `<untrusted_reference_data id="...">` (Rules 12, 13, 30)  
+> 14. Offer executable next actions via `CrmNextBestActionEngine` & `CrmProposalBridge` (Rules 21, 22, 27)  
 
 This represents the defining realization of **"AI uses the app better than humans"** — not because of a larger model, but because of **complete structured access to SmartSapp**.
 
@@ -52,14 +52,14 @@ This represents the defining realization of **"AI uses the app better than human
 │  ├── Active Risks & Unresolved Issues (Stalls, Dormancy, Overdue)                      │
 │  ├── Commitments & Follow-up Promises                                                  │
 │  ├── Grounded Citations (Untrusted Reference Data Containers)                          │
-│  ├── Executable Next-Best-Action Cards ──► CrmProposalModal (Rule 21 & 22)             │
+│  ├── Executable Next-Best-Action Cards ──► CrmProposalModal (Rules 21 & 22)           │
 │  └── Multi-Turn Follow-up Input Bar ("Why did the deal stall last week?")             │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
 │                         SECURE NEXT.JS 15 SERVER ACTIONS                               │
 │                       (src/app/actions/crm-signature-actions.ts)                       │
 │  ├── executeCrmSignatureInquiryAction     ├── getCrmSignatureSessionAction             │
 │  ├── sendCrmFollowupMessageAction         └── getCrmSignatureMetricsAction             │
-│  ├── requireAuth() [Clerk Session Authentication]                                      │
+│  ├── requireAuth() [Clerk Session Authentication] (Rule 51)                            │
 │  ├── assertTenantAccess() [Anti-IDOR Multi-Tenant Lock] (Rules 8 & 47)                 │
 │  └── checkGovernanceDeadManSwitch() [Emergency Pause Evaluation] (Rule 60)             │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
@@ -78,9 +78,41 @@ This represents the defining realization of **"AI uses the app better than human
 
 ---
 
-## 2. Invariant Architecture: Dual-Tier CRM Data Model Preservation (Rule 69)
+## 2. Invariant Architecture: The Governed Capability Layer & Dual-Tier CRM Data Model (Rule 69)
 
-In accordance with `docs/agents_mcp/agents_mcp_rules.md` (Rule 69) and `docs/agents_mcp/agents_mcp_tools.md`:
+In accordance with `docs/agents_mcp/agents_mcp_rules.md` (Rule 69):
+
+> **"Do not build an 'AI layer' beside SmartSapp. Build a governed capability layer underneath SmartSapp that both humans and agents use."**
+
+```text
+                 USER (Admin / Rep)
+                   │
+                 AGENT (CRM Signature Orchestrator / Swarm)
+                   │
+              MCP / AI UX (⌘K Omni-bar, Context Rail, Dossier Modal)
+                   │
+          ┌────────▼────────┐
+          │ POLICY + TRUST  │ (Rules 11-18, 51, 60, Anti-IDOR, Dead-Man)
+          └────────┬────────┘
+                   │
+          CAPABILITY REGISTRY
+                   │
+        ┌──────────┼──────────┐
+        │          │          │
+      CRM       FINANCE    CAMPAIGN
+        │          │          │
+        └──────────┼──────────┘
+                   │
+              DOMAIN SERVICES (AccountContextAssembler, CrmRiskDetector, CrmNextBestActionEngine)
+                   │
+            FIRESTORE / DB (/entities [immutable master], /workspace_entities [operational])
+                   │
+           EVENTS + MEMORY (defaultEventBus, CanonicalMemoryService)
+```
+
+The user interface, AI agents, MCP servers, workflows, automations, and backoffice all converge on the same capability and policy infrastructure.
+
+### The Dual-Tier CRM Data Model Invariant:
 1. **Global Master Identity (`entities`):** `/entities/{entityId}` stores immutable, organization-wide corporate identity (legal name, registration, headquarters address, base website, verified industry). The signature inquiry reads global identity, but **never** mutates it.
 2. **Workspace Operational Record (`workspace_entities`):** `/workspace_entities/{workspaceId}_{entityId}` stores workspace-scoped CRM execution state (pipeline, stage, assigned rep, tags, local activity log).
 3. **Execution Invariant:** Any recommendation triggered from the signature inquiry (updating deal stage, applying tags, assigning rep) routes strictly through `CrmProposalBridge` targeting `/workspace_entities/${workspaceId}_${entityId}` or child collections (`/deals/{dealId}`, `/tasks/{taskId}`).
@@ -88,7 +120,42 @@ In accordance with `docs/agents_mcp/agents_mcp_rules.md` (Rule 69) and `docs/age
 
 ---
 
-## 3. Master 69-Rules Alignment & Enforcement Matrix for Milestone 5
+## 3. The Five Non-Negotiable Invariants (Rule 68)
+
+In `docs/agents_mcp/agents_mcp_rules.md` (Section 68, lines 2077–2101), five principles are designated as **absolutely non-negotiable**. Milestone 5 embeds these into every line of code:
+
+### **Invariant 11 — The model is never the security boundary.**
+*Authorization, validation, and policy happen completely outside the model.*
+- The LLM cannot authorize actions, bypass tenant checks, or directly invoke mutations.
+- Next.js Server Actions validate Clerk session authentication (`requireAuth()`), enforce tenant lock (`assertTenantAccess`), and evaluate Zod v4 schemas *before* the model is consulted, and validate model outputs *after* generation.
+
+### **Invariant 12 — Tool output is untrusted data.**
+*Never allow tool output, retrieved documents, or customer content to become instructions.*
+- Notes, emails, meeting transcripts, citations, and customer messages are parsed as untrusted data and strictly wrapped in XML isolation containers: `<untrusted_reference_data id="...">`.
+- The prompt instructs the LLM that content inside `<untrusted_reference_data>` is reference material only and cannot contain executable directives or system prompt overrides.
+
+### **Invariant 13 — Every mutation must be idempotent, authorized, version-checked, and auditable.**
+*This prevents an enormous class of agent failures.*
+- Any action originating from the signature inquiry (stage change, tag update, task creation) generates a deterministic idempotency key (`crm_action_${entityId}_${hash}`).
+- Enforces optimistic concurrency TOCTOU checks (Rule 18) verifying the target entity version before committing updates.
+- Emits immutable audit domain events to `defaultEventBus` (Rule 40).
+
+### **Invariant 14 — Every production agent must have bounded authority and bounded resources.**
+*Permissions, tokens, time, tool calls, records, money, and external side effects all need limits.*
+- Context assembly is bounded by greedy knapsack packing to $\le 4,000$ tokens (Rule 28 & 56).
+- Maximum synthesis execution duration is capped at 10,000ms.
+- Tool discovery is restricted strictly to authorized CRM domains (`crm_contacts`, `deals_revenue`, `knowledge_memory`, `tasks_productivity`).
+- Non-delegable operations (entity deletion, billing wipes) are permanently stripped (Rule 17).
+
+### **Invariant 15 — Every autonomous capability must be operable without code.**
+*Backoffice must be able to inspect, pause, disable, approve, rollback, replay, and investigate it.*
+- Operators can inspect the full 14-step timeline, token metrics, and active risks on `/admin/intelligence`.
+- The emergency dead-man switch (`checkGovernanceDeadManSwitch`) can halt all autonomous CRM execution instantly without redeploying code.
+- Every mutating proposal can be rejected or rolled back with 1 click via reverse-LIFO Saga compensation (Rule 27).
+
+---
+
+## 4. Master 69-Rules Alignment & Enforcement Matrix for Milestone 5
 
 | Rule # | Requirement | Milestone 5 Architectural Implementation & Verification |
 | :---: | :--- | :--- |
@@ -106,7 +173,7 @@ In accordance with `docs/agents_mcp/agents_mcp_rules.md` (Rule 69) and `docs/age
 | **Rule 12** | Risk Ceilings & Weighted Rank | Actions classified by canonical 5-tier risk levels: `L0_READ` (diagnostics), `L1_INTERNAL_DRAFT` (drafts), `L2_STATE_MUTATION` (stage/tags/tasks), `L3_EXTERNAL_COMMUNICATION_FINANCE` (email send, invoice trigger), `L4_PRIVILEGED_DESTRUCTIVE` (merge records). |
 | **Rule 13** | Formal Trust Boundary Matrix & Anti-Self-Approval | Customer notes, meeting transcripts, emails, and citations wrapped in `<untrusted_reference_data id="...">` containers. Requesters cannot approve their own high-risk proposals (`SELF_APPROVAL_FORBIDDEN`). |
 | **Rule 14** | Tool Poisoning / Rug-Pull Defense | Action triggers verify cryptographic composite SHA-256 fingerprints before executing bound capabilities. |
-| **Rule 15** | Server Allowlisting & Supply-Chain Security | External enrichment links and citation URLs validated against allowlists with SSRF prevention. |
+| **Rule 15** | Server Allowlisting & Supply-Chain Hardening | External enrichment links and citation URLs validated against allowlists with SSRF prevention. |
 | **Rule 16** | Agent Identity as Security Principal | Actions execute under authenticated caller identity with explicit RBAC scopes (`operations:campuses:view`, `crm:entities:read`); no wildcard (`*`) permissions. |
 | **Rule 17** | Non-Delegable Actions | Entity deletion, workspace destruction, and billing clearing stripped from autonomous execution affordances. |
 | **Rule 18** | TOCTOU Live Principal / Record Check | Record versions verified before applying recommendation stage updates or owner assignments. If version is stale, aborts with `VERSION_MISMATCH`. |
@@ -120,11 +187,11 @@ In accordance with `docs/agents_mcp/agents_mcp_rules.md` (Rule 69) and `docs/age
 | **Rule 26** | True Cooperative Cancellation | Actions and fetch requests support native `AbortSignal` cooperative cancellation. |
 | **Rule 27** | Formal Saga / Compensation Model | Mutating recommendations bind compensating capabilities for 1-click rollback via `CRM_ROLLBACK_MATRIX`. |
 | **Rule 28** | Context Budgeting | Greedy knapsack packing bounds account context strictly $\le 4,000$ tokens. |
-| **Rule 29** | Memory Governance | Multi-turn sessions enforce 30-minute automatic TTL expiration; rolling window retained at $\le 10$ turns. |
+| **Rule 29** | Memory Governance | Multi-turn sessions enforce 30-minute automatic TTL expiration; rolling window retained at $\le 10$ turns; semantic facts track temporal validity. |
 | **Rule 30** | Knowledge Poisoning Defense | Prompts and UI renderers distrust instructions inside `<untrusted_reference_data>` XML containers. |
 | **Rule 31** | Output Validation Between Agent & Tool | Zod schema validation on all action and proposal outputs via `safeParse`. |
-| **Rule 32** | Cross-Domain Exfiltration Detection | Synthesis queries restricted strictly to CRM domain scopes (`crm_contacts`, `deals_revenue`, `knowledge_memory`). |
-| **Rule 33** | Egress Control & Redaction | Redacts sensitive credentials, API keys, and PII from UI summaries (`[REDACTED_SECRET:<type>]`). |
+| **Rule 32** | Cross-Domain Exfiltration Defense | Synthesis queries restricted strictly to CRM domain scopes (`crm_contacts`, `deals_revenue`, `knowledge_memory`). |
+| **Rule 33** | Outbound Egress Control & Redaction | Redacts sensitive credentials, API keys, and PII from UI summaries (`[REDACTED_SECRET:<type>]`). |
 | **Rule 34** | SSRF & Network Boundary Controls | Outbound company URLs and citations validated via `validateSafeEgressUrl` blocking loopback, GCP metadata, and private subnets. |
 | **Rule 35** | MCP Discovery Caching | Deterministic ETag HTTP 304 caching for action schemas. |
 | **Rule 36** | Capability Version Compatibility | Declares exact SemVer contracts for signature outputs. |
@@ -158,72 +225,154 @@ In accordance with `docs/agents_mcp/agents_mcp_rules.md` (Rule 69) and `docs/age
 | **Rule 64** | Zero Raw HTML/CSS Leakage & Feature Flags | Synthesized narratives rendered through sanitized markdown components; features gated by `FF_CRM_AGENT_WAVE` and `FF_CRM_SIGNATURE_BEHAVIOR`. |
 | **Rule 65** | Canary Releases | Staged release supporting dark launches and tenant-specific beta access. |
 | **Rule 66** | Phased Roadmap Alignment | Fully aligned with Phase 9 roadmap requirements and prepares the foundation for Phase 10 (Sales & Growth Agent System). |
-| **Rule 67** | The Agent Implementation Gate | Mandatory 9-point pre-flight checklist verified before marking Milestone 5 complete (see Section 4 below). |
-| **Rule 68** | The Five Non-Negotiable Invariants | 1. Identity is not the user. 2. Never trust the model. 3. Never trust untrusted data. 4. High-risk actions require two phases. 5. No dead ends in user experience. |
-| **Rule 69** | Strangler Fig Pattern SSOT | Preserves dual-tier data model (`entities` vs `workspace_entities`); zero regressions across existing CRM tests, tabs, and routes. |
+| **Rule 67** | The Agent Implementation Gate | Mandatory 10-dimension pre-flight checklist verified before marking Milestone 5 complete (see Section 5 below). |
+| **Rule 68** | The Five Non-Negotiable Invariants | Invariant 11 (Model != security boundary), 12 (Tool output = untrusted data), 13 (Idempotent/authorized/versioned/audited mutations), 14 (Bounded authority & resources), 15 (Operable without code). |
+| **Rule 69** | Governed Capability Layer Underneath SmartSapp | Dual-tier data model (`entities` vs `workspace_entities`); zero regressions across existing CRM tests, tabs, and routes. |
 
 ---
 
-## 4. The Agent Implementation Gate Verification (Rule 67)
+## 5. The Agent Implementation Gate Verification (Rule 67)
 
-In accordance with Rule 67 (`agents_mcp_rules.md` lines 1980–2050), Milestone 5 completes the Universal CRM Agent wave by fulfilling all 9 dimensions:
+In accordance with Rule 67 (`agents_mcp_rules.md` lines 1980–2075), Milestone 5 completes the Universal CRM Agent wave by fulfilling all 10 mandatory dimensions:
 
 ```text
 1. ARCHITECTURE
-   □ Canonical capabilities used: crm.workspace_entity.get, crm.deal.search, crm.meeting.get_dossier,
+   □ What canonical capability does this use?
+     crm.workspace_entity.get, crm.deal.search, crm.meeting.get_dossier,
      crm.task.search, memory.search_semantic, crm.timeline.get_events.
-   □ No duplication of existing services: wraps AccountContextAssembler, CrmRiskDetector, CrmNextBestActionEngine.
-   □ Source of truth: Firestore (/entities, /workspace_entities, /deals, /meetings, /notes, /tasks, /invoices).
-   □ Events emitted: crm.signature.inquiry_executed, crm.signature.followup_sent.
+   □ Is this duplicating an existing service?
+     No. It orchestrates AccountContextAssembler, CrmRiskDetector, and CrmNextBestActionEngine.
+   □ What is the source of truth?
+     Firestore (/entities master [immutable], /workspace_entities [operational], /deals, /meetings, /notes, /tasks, /invoices).
+   □ What events are emitted?
+     crm.signature.inquiry_executed, crm.signature.followup_sent.
 
 2. AUTHORITY
-   □ Who is allowed to use it: Authenticated workspace members with 'operations:campuses:view' or 'crm:entities:read'.
-   □ What may the agent do: Autonomous L0 context aggregation, L0 risk analysis, and L1 narrative dossier generation.
-   □ What may the agent never do: Autonomous external messaging or direct record mutation without two-phase human review.
-   □ Sub-agent delegation: Scope attenuates downward (P_child = P_parent ∩ P_specialist); non-delegables stripped.
+   □ Who is allowed to use it?
+     Authenticated workspace members with 'operations:campuses:view' or 'crm:entities:read'.
+   □ What may the agent do?
+     Autonomous L0 context aggregation, L0 risk analysis, L1 narrative dossier generation, and proposal staging.
+   □ What may the agent never do?
+     Autonomous external messaging, direct record mutation without two-phase approval, or master entity modification.
+   □ Can a sub-agent inherit this authority?
+     Yes, via monotonic downward attenuation: P_child = P_parent ∩ P_specialist ∩ P_requested; non-delegables stripped.
 
 3. DATA
-   □ Data entering agent: 360° Account Context (deals, meetings, transcripts, notes, tasks, balances).
-   □ Data leaving system: Zero external data exfiltration. Output remains within authenticated tenant UI.
-   □ Trusted data: Verified Firestore records, system timestamps, schema-validated metadata.
-   □ Untrusted data: Customer emails, meeting audio transcripts, user notes (wrapped in XML isolation tags).
-   □ Sensitive data: Credit cards, bank details, API keys (masked with [REDACTED_SECRET:<type>]).
+   □ What data enters the agent?
+     360° Account Context (deals, meetings, transcripts, notes, tasks, balances, semantic memory facts).
+   □ What data leaves the system?
+     Zero external data exfiltration. Output remains within authenticated tenant UI.
+   □ What is trusted?
+     Verified Firestore records, system timestamps, schema-validated metadata.
+   □ What is untrusted?
+     Customer emails, meeting audio transcripts, user notes (wrapped in <untrusted_reference_data id="...">).
+   □ What is sensitive?
+     Credit cards, bank details, API keys, credentials (masked with [REDACTED_SECRET:<type>]).
 
 4. EXECUTION
-   □ Idempotency: All mutating proposals generated from next-best-actions use deterministic idempotency keys.
-   □ Retries: Read queries retry with exponential jitter; mutating actions fail closed.
-   □ Cancellation: Cooperative cancellation via native AbortSignal on all promises.
-   □ Record modification: TOCTOU concurrency check validates record version before committing updates.
+   □ Is it idempotent?
+     Yes. All mutating proposals generated from next-best-actions use deterministic idempotency keys.
+   □ Can it be retried?
+     Read queries retry with exponential backoff and jitter; mutating actions fail closed.
+   □ Can it be cancelled?
+     Yes. Cooperative cancellation via native AbortSignal across all promises.
+   □ Can it be duplicated?
+     No. Session manager enforces unique session IDs; server actions enforce tenant deduplication.
+   □ What if the underlying record changes?
+     TOCTOU optimistic concurrency check validates record version before committing updates, failing with VERSION_MISMATCH.
+   □ What if the response is lost?
+     Session history retains conversation turn; idempotent re-fetch retrieves cached snapshot.
 
 5. MCP
-   □ Protocol: Streamable HTTP Protocol Spec 2026-07-28.
-   □ SDK: @modelcontextprotocol/server 2.1.0 with Genkit in-process adapter.
-   □ Capabilities: Domain-partitioned CRM capabilities with cryptographic SHA-256 fingerprints.
+   □ What protocol version?
+     Streamable HTTP Protocol Spec 2026-07-28.
+   □ What SDK version?
+     @modelcontextprotocol/server 2.1.0 with Genkit in-process adapter.
+   □ What capabilities?
+     Domain-partitioned CRM capabilities with cryptographic SHA-256 fingerprints.
+   □ What annotations?
+     Annotated with riskLevel, isReadOnly, isDestructive, and compensatingCapabilityId.
+   □ What server identity?
+     smart-sapp-crm-orchestrator-v1 with tenant-bound JWT context.
+   □ What schema version?
+     v1.0.0 SemVer.
+   □ What happens if the tool definition changes?
+     Runtime fingerprint verification detects drift and trips circuit breaker (Rule 14).
 
 6. FAILURE
-   □ Timeout: 5,000ms context retrieval ceiling; 10,000ms overall synthesis budget.
-   □ 429/500: Circuit breaker trips after 3 consecutive failures, falling back to Flash or cached state.
-   □ Stale session: Sessions expire after 30 minutes; active TOCTOU validation catches intermediate modifications.
+   □ Timeout?
+     5,000ms context retrieval ceiling; 10,000ms overall synthesis budget.
+   □ 429?
+     Circuit breaker trips after 3 consecutive failures, falling back to Flash or cached state.
+   □ 500?
+     Graceful degradation: displays raw structured timeline and deterministic highlights with a toast warning.
+   □ Partial execution?
+     Recorded in session history; incomplete steps flagged with status 'failed'.
+   □ Provider unavailable?
+     Circuit breaker routes to TieredModelRouter Flash tier or returns cached highlights.
+   □ Stale approval?
+     Action proposals expire after 24 hours; cannot be approved once expired.
+   □ Concurrent modification?
+     Detected via version check; triggers re-fetch and alerts operator.
 
 7. SECURITY
-   □ Prompt injection: Pre-retrieval regex scanning and <untrusted_reference_data id="..."> isolation container.
-   □ Tool poisoning: Runtime cryptographic SHA-256 fingerprint verification fails closed on schema drift.
-   □ Tenant isolation: Strict anti-IDOR checks immutable to authenticated session organizationId.
+   □ Prompt injection?
+     Pre-retrieval regex scanning and <untrusted_reference_data id="..."> isolation container.
+   □ Tool poisoning?
+     Runtime cryptographic SHA-256 fingerprint verification fails closed on schema drift.
+   □ Confused deputy?
+     Caller session identity strictly propagated as security principal; no elevation.
+   □ SSRF?
+     All outbound citation links validated via validateSafeEgressUrl blocking loopback/metadata IPs.
+   □ Exfiltration?
+     Strict domain boundary guards restrict capabilities to crm_contacts, deals_revenue, knowledge_memory.
+   □ Privilege escalation?
+     Enforces RBAC permissions at every boundary; users cannot run actions above their assigned role.
+   □ Cross-tenant leakage?
+     Strict anti-IDOR checks immutable to authenticated session organizationId.
 
 8. OPERATIONS
-   □ Backoffice disable: Dead-man pause switch immediately stops all reasoning without redeploying code.
-   □ Backoffice inspection: Live inquiry timeline, correlation IDs, and token gauges on /admin/intelligence.
-   □ Backoffice rollback: One-click reverse-LIFO Saga compensation for any executed proposal.
+   □ Can Backoffice disable it?
+     Yes. Dead-man pause switch immediately halts all autonomous reasoning without redeploying code.
+   □ Can Backoffice inspect it?
+     Yes. Live inquiry timeline, correlation IDs, and token gauges on /admin/intelligence.
+   □ Can Backoffice replay it?
+     Yes. Signature session snapshots capture full conversation turns allowing deterministic replay.
+   □ Can Backoffice rollback it?
+     Yes. One-click reverse-LIFO Saga compensation for any executed proposal.
+   □ Can Backoffice change policy without code?
+     Yes. Via /admin/governance dead-man switches, risk ceilings, and approval thresholds.
 
 9. TESTING
-   □ Unit tests: Hermetic test suites for signature orchestrator, session manager, and server actions.
-   □ Integration tests: End-to-end 14-step signature inquiry simulation on Greenfield School scenario.
-   □ Adversarial tests: Prompt injection in notes, cross-tenant IDOR probing, and unapproved mutation bypass.
+   □ Unit: Hermetic test suites for signature orchestrator, session manager, and server actions.
+   □ Integration: End-to-end 14-step signature inquiry simulation on Greenfield School scenario.
+   □ Contract: Strict Zod v4 validation across all input/output schemas.
+   □ E2E: Full user journey from ⌘K prompt to dossier modal, follow-up, and proposal action.
+   □ Security: Anti-IDOR tenant boundary validation on all Server Actions.
+   □ Tenant isolation: Cross-tenant unauthorized access attempts fail closed.
+   □ Adversarial: 5-vector red-team suite (prompt injection in notes, IDOR probing, payload tampering, dead-man bypass, token overflow).
+   □ Load: 50-item query bounds; payload sizes < 2KB; sub-100ms knapsack context compression.
+   □ Chaos: Missing notes, empty deals, zero meetings, or corrupt timestamps handled gracefully.
+   □ Evaluation: 24 gold-standard evaluation scenarios verified.
+
+10. MIGRATION
+   □ Existing behavior preserved?
+     Yes. 100% backward compatibility for all existing CRM features, search, and navigation.
+   □ Existing routes preserved?
+     Yes. All existing pages (/admin/crm, /crm, /admin/intelligence) remain functional.
+   □ Existing data preserved?
+     Yes. Master /entities records remain untouched; operational records in /workspace_entities preserved.
+   □ Backfill needed?
+     No backfill needed; operational records are created on first access or migration.
+   □ Restore procedure documented?
+     Documented in Section 8 (Rollback Plan & Safety Invariants).
+   □ Rollback documented?
+     Documented in Section 8; 1-click reverse-LIFO Sagas for proposal executions.
 ```
 
 ---
 
-## 5. Granular Task Breakdown
+## 6. Granular Task Breakdown
 
 ### Task 1: Canonical Signature Contracts, Citations & Multi-Turn Types
 **Target Files:**
@@ -259,7 +408,7 @@ In accordance with Rule 67 (`agents_mcp_rules.md` lines 1980–2050), Milestone 
 - [ ] **Step 1: Write the failing orchestrator tests**
   Author `src/platform/__tests__/agents/crm/crm-signature-orchestrator.test.ts` testing:
   - Executes full 14-step autonomous pipeline:
-    1. Retrieve entity master (`/entities/{entityId}`) & operational state (`/workspace_entities/{workspaceId}_{entityId}`)
+    1. Retrieve entity master (`/entities/{entityId}`) & operational state (`/workspace_entities/{workspaceId}_{entityId}`) (Rule 69)
     2. Retrieve related contacts
     3. Retrieve deals
     4. Retrieve meetings & audio transcripts
@@ -267,14 +416,14 @@ In accordance with Rule 67 (`agents_mcp_rules.md` lines 1980–2050), Milestone 
     6. Retrieve payment & invoice context
     7. Retrieve previous communications
     8. Retrieve tasks & commitments
-    9. Retrieve semantic memory facts via `CanonicalMemoryService`
+    9. Retrieve semantic memory facts via `CanonicalMemoryService` (Rule 29)
     10. Construct chronological timeline via `AccountTimelineService`
     11. Identify active risks via `CrmRiskDetector`
-    12. Identify commitments & promises from recent meetings
-    13. Produce grounded narrative answer with citations in `<untrusted_reference_data>` (Rule 13 & 30)
-    14. Offer executable next actions via `CrmNextBestActionEngine`
+    12. Identify commitments & promises from recent touchpoints
+    13. Produce grounded narrative answer with citations in `<untrusted_reference_data id="...">` (Rules 12, 13, 30, 47)
+    14. Offer executable next actions via `CrmNextBestActionEngine` & `CrmProposalBridge` (Rules 21, 22, 27)
   - Enforces Knapsack context budgeting ($\le 4,000$ tokens) (Rule 28 & 56).
-  - Routes synthesis to Pro tier model via `TieredModelRouter` with circuit breaker fallback (Rule 24 & 58).
+  - Routes synthesis to Pro tier model via `TieredModelRouter` with circuit breaker fallback to Flash (Rule 24 & 58).
   - Enforces Rule 60 emergency dead-man pause check, rejecting with `CRM_DEAD_MAN_PAUSED`.
   - Publishes `crm.signature.inquiry_executed` domain event via `defaultEventBus` using `createDomainEvent` (Rule 40).
   - Shadow Mode dry-run support (`dryRun: true`) producing a Blast Radius Report without database writes (Rule 42).
@@ -298,7 +447,7 @@ In accordance with Rule 67 (`agents_mcp_rules.md` lines 1980–2050), Milestone 
 - [ ] **Step 1: Write the failing multi-turn session tests**
   Author `src/platform/__tests__/agents/crm/crm-multi-turn-session.test.ts` testing:
   - Creates and manages multi-turn sessions with 30-minute automatic TTL expiration (Rule 29).
-  - Bounded conversational window: retains last $\le 10$ turns with knapsack context budgeting $\le 4,000$ tokens.
+  - Bounded conversational window: retains last $\le 10$ turns with knapsack context budgeting $\le 4,000$ tokens (Rule 28 & 56).
   - Multi-tenant boundary assertion (Rules 8 & 47).
   - Scans follow-up questions for prompt injection directives (`ADVERSARIAL_DIRECTIVE_PATTERNS`, Rule 30).
   - Emits `crm.signature.followup_sent` domain event via `defaultEventBus` using `createDomainEvent` (Rule 40).
@@ -322,7 +471,7 @@ In accordance with Rule 67 (`agents_mcp_rules.md` lines 1980–2050), Milestone 
 
 - [ ] **Step 1: Write the failing server action tests**
   Author `src/platform/__tests__/ui/crm-signature-actions.test.ts` testing:
-  - Next.js Server Actions convention (`'use server'`).
+  - Next.js Server Actions convention (`'use server'`) (Rule 51).
   - Clerk session authentication via `requireAuth()` (rejects unauthenticated callers with `AUTHENTICATION_REQUIRED`).
   - Anti-IDOR validation: verifies caller's session `organizationId` matches requested tenant boundary, returning `IDOR_VIOLATION` on mismatch (Rule 8 & 47).
   - Emergency dead-man pause check: returns `CRM_DEAD_MAN_PAUSED` when dead-man switch is active (Rule 60).
@@ -360,7 +509,7 @@ In accordance with Rule 67 (`agents_mcp_rules.md` lines 1980–2050), Milestone 
     * Demarcated footer: `px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-between gap-2.5` with tactile buttons (`rounded-xl active:scale-[0.97] min-h-[44px]`).
   - Renders Executive Narrative, Health Score, 14-Step Timeline Feed, Active Risks, Commitments, and Citations.
   - Interactive Follow-up chat composer bar with tactile send button and debounced typing.
-  - Actionable recommendation triggers opening `CrmProposalModal` with zero dead ends.
+  - Actionable recommendation triggers opening `CrmProposalModal` with zero dead ends (Rule 21 & 22).
   - Global ⌘K Omni-Bar integration: typing "What's going on with [entity]?" triggers the signature dossier modal.
 - [ ] **Step 2: Run test to verify it fails**
   `pnpm vitest run src/platform/__tests__/ui/crm-signature-ui.test.tsx`
@@ -416,7 +565,7 @@ In accordance with Rule 67 (`agents_mcp_rules.md` lines 1980–2050), Milestone 
 
 ---
 
-## 6. Verification Gates & Completion Protocol
+## 7. Verification Gates & Completion Protocol
 
 Before declaring Phase 9 Milestone 5 complete and graduating Phase 9, all 6 verification gates must pass:
 1. **Compilation Gate:** `NODE_OPTIONS='--max-old-space-size=8192' pnpm typecheck` exits with 0 errors.
@@ -428,7 +577,7 @@ Before declaring Phase 9 Milestone 5 complete and graduating Phase 9, all 6 veri
 
 ---
 
-## 7. Rollback Plan & Safety Invariants
+## 8. Rollback Plan & Safety Invariants
 
 1. **Feature Flag Isolation:** Gated behind `FF_CRM_AGENT_WAVE` and `FF_CRM_SIGNATURE_BEHAVIOR`. If disabled, omni-bar reverts to standard search.
 2. **Zero In-Place Destruction:** Master `/entities` identity records are immutable. All mutations target `/workspace_entities`.
