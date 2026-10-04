@@ -274,7 +274,7 @@ Per `agents_mcp_rules.md` lines 1940–1953, Milestone 4 incorporates the mandat
 - `src/platform/agents/crm/actions/index.ts`
 - `src/platform/__tests__/agents/crm/crm-action-contracts.test.ts`
 
-- [ ] **Step 1: Write the failing contract tests**
+- [x] **Step 1: Write the failing contract tests**
   Author `src/platform/__tests__/agents/crm/crm-action-contracts.test.ts` validating:
   - `CrmRiskAssessmentSchema` validates multi-factor risk scores, risk levels (`LOW`, `MODERATE`, `ELEVATED`, `CRITICAL`), and individual risk factors.
   - `CrmProposedActionSchema` validates action types, priority enums, 5-tier risk levels (`L0` to `L4`), explainability grids (`what`, `why`, `impact`, `blastRadius`), idempotency keys (`crm_action_${entityId}_${hash}`), and execution payloads.
@@ -282,13 +282,13 @@ Per `agents_mcp_rules.md` lines 1940–1953, Milestone 4 incorporates the mandat
   - `CrmHygieneDefectSchema` validates contact role gaps, unverified emails, invalid phone formats, and duplicate candidate pairs.
   - `CrmLeadEnrichmentRequestSchema` and `CrmLeadEnrichmentResultSchema` validate firmographic/technographic outputs.
   - `CRM_ACTION_ERROR_CODES` covers all canonical error strings.
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   `pnpm vitest run src/platform/__tests__/agents/crm/crm-action-contracts.test.ts`
-- [ ] **Step 3: Implement `crm-action-types.ts` and barrel `index.ts`**
+- [x] **Step 3: Implement `crm-action-types.ts` and barrel `index.ts`**
   Author strict Zod v4 schemas, type exports, error taxonomy, and `CrmActionError` class. Re-export via barrel `index.ts`. Ensure zero `any` or `any[]` (Rule 4).
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
   `pnpm vitest run src/platform/__tests__/agents/crm/crm-action-contracts.test.ts`
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   `git commit -m "feat(crm-agent): add canonical CRM action, risk, and hygiene contracts"`
 
 ---
@@ -298,7 +298,7 @@ Per `agents_mcp_rules.md` lines 1940–1953, Milestone 4 incorporates the mandat
 - `src/platform/agents/crm/actions/crm-risk-detector.ts`
 - `src/platform/__tests__/agents/crm/crm-risk-detector.test.ts`
 
-- [ ] **Step 1: Write the failing risk detector tests**
+- [x] **Step 1: Write the failing risk detector tests**
   Author `src/platform/__tests__/agents/crm/crm-risk-detector.test.ts` testing:
   - Stalled Deals: Flags deals exceeding 14d warning / 30d critical stage thresholds or past close dates.
   - Dark / Dormant Accounts: Flags accounts with $> 45$d ($> 60$d critical) since last touchpoint.
@@ -309,13 +309,13 @@ Per `agents_mcp_rules.md` lines 1940–1953, Milestone 4 incorporates the mandat
   - Multi-factor weighted composite score formula (0–100) and risk level assignment (`LOW`, `MODERATE`, `ELEVATED`, `CRITICAL`).
   - Publishes `crm.account.risk_detected` domain event via `defaultEventBus` (Rule 40) when `dryRun: false`.
   - Shadow Mode dry-run support (`dryRun: true`) producing a Blast Radius Report without database writes (Rule 42).
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   `pnpm vitest run src/platform/__tests__/agents/crm/crm-risk-detector.test.ts`
-- [ ] **Step 3: Implement `crm-risk-detector.ts`**
+- [x] **Step 3: Implement `crm-risk-detector.ts`**
   Author `CrmRiskDetector` class with pure evaluation algorithms and singleton `getCrmRiskDetector()`.
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
   `pnpm vitest run src/platform/__tests__/agents/crm/crm-risk-detector.test.ts`
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   `git commit -m "feat(crm-agent): implement hybrid account risk detector"`
 
 ---
@@ -325,7 +325,7 @@ Per `agents_mcp_rules.md` lines 1940–1953, Milestone 4 incorporates the mandat
 - `src/platform/agents/crm/actions/crm-next-best-action-engine.ts`
 - `src/platform/__tests__/agents/crm/crm-next-best-action.test.ts`
 
-- [ ] **Step 1: Write the failing NBA engine tests**
+- [x] **Step 1: Write the failing NBA engine tests**
   Author `src/platform/__tests__/agents/crm/crm-next-best-action.test.ts` testing:
   - Synthesizes prioritized, high-impact actions from detected risks and relationship goals.
   - Generates deal re-acceleration strategy for stalled deals (`UPDATE_STAGE`, `SCHEDULE_MEETING`).
@@ -337,13 +337,13 @@ Per `agents_mcp_rules.md` lines 1940–1953, Milestone 4 incorporates the mandat
   - Injects Rule 41 explainability grids (WHAT, WHY, IMPACT, BLAST RADIUS).
   - Computes deterministic idempotency keys (`crm_action_${entityId}_${hash}`) (Rule 19).
   - Binds compensating capability specifications from `CRM_ROLLBACK_MATRIX` (Rule 27).
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   `pnpm vitest run src/platform/__tests__/agents/crm/crm-next-best-action.test.ts`
-- [ ] **Step 3: Implement `crm-next-best-action-engine.ts`**
+- [x] **Step 3: Implement `crm-next-best-action-engine.ts`**
   Author `CrmNextBestActionEngine` with ranking heuristics, prompt generation, and singleton `getCrmNextBestActionEngine()`.
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
   `pnpm vitest run src/platform/__tests__/agents/crm/crm-next-best-action.test.ts`
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   `git commit -m "feat(crm-agent): implement autonomous next-best-action engine"`
 
 ---
@@ -353,7 +353,7 @@ Per `agents_mcp_rules.md` lines 1940–1953, Milestone 4 incorporates the mandat
 - `src/platform/agents/crm/actions/crm-proposal-bridge.ts`
 - `src/platform/__tests__/agents/crm/crm-proposal-bridge.test.ts`
 
-- [ ] **Step 1: Write the failing proposal bridge tests**
+- [x] **Step 1: Write the failing proposal bridge tests**
   Author `src/platform/__tests__/agents/crm/crm-proposal-bridge.test.ts` testing:
   - `proposeAction`: creates an `ActionProposal` in `ApprovalStore` with canonical key-sorted SHA-256 `payloadHash` (Rule 22) and status `'pending'`.
   - Enforces Anti-IDOR validation (`organizationId`, `workspaceId`) (Rule 8 & 47).
@@ -368,13 +368,13 @@ Per `agents_mcp_rules.md` lines 1940–1953, Milestone 4 incorporates the mandat
     * Never mutates corporate master `/entities/{entityId}`.
   - Publishes domain events: `crm.action.proposed`, `crm.action.executed`, `crm.action.reverted`, `crm.action.rejected` (Rule 40).
   - `rollbackAction`: executes reverse-LIFO Saga compensation and publishes `crm.action.reverted` (Rule 27 & 63).
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   `pnpm vitest run src/platform/__tests__/agents/crm/crm-proposal-bridge.test.ts`
-- [ ] **Step 3: Implement `crm-proposal-bridge.ts`**
+- [x] **Step 3: Implement `crm-proposal-bridge.ts`**
   Author `CrmProposalBridge` class and singleton `getCrmProposalBridge()`.
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
   `pnpm vitest run src/platform/__tests__/agents/crm/crm-proposal-bridge.test.ts`
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   `git commit -m "feat(crm-agent): implement two-phase CRM proposal bridge with SHA-256 binding"`
 
 ---
@@ -384,7 +384,7 @@ Per `agents_mcp_rules.md` lines 1940–1953, Milestone 4 incorporates the mandat
 - `src/app/actions/crm-proposal-actions.ts`
 - `src/platform/__tests__/ui/crm-proposal-actions.test.ts`
 
-- [ ] **Step 1: Write the failing server action tests**
+- [x] **Step 1: Write the failing server action tests**
   Author `src/platform/__tests__/ui/crm-proposal-actions.test.ts` testing:
   - Next.js Server Actions convention (`'use server'`).
   - Clerk session authentication via `requireAuth()` (rejects unauthenticated callers with `AUTHENTICATION_REQUIRED`).
@@ -396,13 +396,13 @@ Per `agents_mcp_rules.md` lines 1940–1953, Milestone 4 incorporates the mandat
     * `proposeCrmActionAction({ workspaceId, entityId, actionData })`
     * `executeApprovedCrmProposalAction({ organizationId, proposalId, executionPayload })`
     * `rollbackCrmActionAction({ organizationId, proposalId, reason })`
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   `pnpm vitest run src/platform/__tests__/ui/crm-proposal-actions.test.ts`
-- [ ] **Step 3: Implement `crm-proposal-actions.ts`**
+- [x] **Step 3: Implement `crm-proposal-actions.ts`**
   Author the 5 server actions adhering strictly to Rule 51, Anti-IDOR, dead-man check, and sanitized error mapping.
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
   `pnpm vitest run src/platform/__tests__/ui/crm-proposal-actions.test.ts`
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   `git commit -m "feat(crm-agent): implement secure CRM proposal server actions"`
 
 ---
@@ -414,7 +414,7 @@ Per `agents_mcp_rules.md` lines 1940–1953, Milestone 4 incorporates the mandat
 - `src/components/crm/intelligence/AccountRecommendationsCard.tsx`
 - `src/platform/__tests__/ui/crm-proposal-modal.test.tsx`
 
-- [ ] **Step 1: Write the failing UI modal tests**
+- [x] **Step 1: Write the failing UI modal tests**
   Author `src/platform/__tests__/ui/crm-proposal-modal.test.tsx` testing:
   - `CrmProposalModal` strictly adheres to `theme.md` §8:
     * Surface: `border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl`.
@@ -428,16 +428,16 @@ Per `agents_mcp_rules.md` lines 1940–1953, Milestone 4 incorporates the mandat
   - Dual-Tier Target Confirmation (`/workspace_entities/{workspaceId}_{entityId}`).
   - Reversible Saga indicator showing compensating capability.
   - Actionable toast navigation with relative paths (`actionConfig: { path: '/admin/intelligence/approvals', label: 'Review Approvals' }`).
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   `pnpm vitest run src/platform/__tests__/ui/crm-proposal-modal.test.tsx`
-- [ ] **Step 3: Implement `CrmProposalModal.tsx` and wire up `AccountRecommendationsCard.tsx`**
+- [x] **Step 3: Implement `CrmProposalModal.tsx` and wire up `AccountRecommendationsCard.tsx`**
   - Implement `CrmProposalModal.tsx` adhering strictly to `theme.md` §8.
   - In `AccountRecommendationsCard.tsx`, wire `onActionClick` callback to open `CrmProposalModal` with pre-filled proposal payload, explainability details, and confirmation controls.
   - Provide one-click execution trigger for low-risk actions or submission to `/admin/intelligence/approvals` for high-risk actions.
   - Verify zero regressions on legacy CRM tabs and deal views.
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
   `pnpm vitest run src/platform/__tests__/ui/crm-proposal-modal.test.tsx`
-- [ ] **Step 5: Full verification gates**
+- [x] **Step 5: Full verification gates**
   Run:
   ```bash
   # 1. CRM Platform test suites
@@ -455,7 +455,7 @@ Per `agents_mcp_rules.md` lines 1940–1953, Milestone 4 incorporates the mandat
   # 5. ESLint static analysis
   NODE_OPTIONS='--max-old-space-size=8192' pnpm lint
   ```
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
   `git commit -m "feat(crm-ui): add standardized CRM proposal modal and wire recommendations triggers"`
 
 ---
