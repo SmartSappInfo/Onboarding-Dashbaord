@@ -108,16 +108,55 @@ export async function bulkUpdateTasksAction(taskIds: string[], updates: Partial<
       return { success: false, error: 'Some tasks are not in this workspace.' };
     }
 
-    const batch = adminDb.batch();
     const timestamp = new Date().toISOString();
     // Tenant fields and system links are never bulk-editable (see NON_EDITABLE_TASK_FIELDS).
     const safeUpdates = editableTaskFields(updates);
-    taskIds.forEach(id => {
-      const data: Record<string, unknown> = { ...safeUpdates, updatedAt: timestamp };
-      if (updates.status === 'done') data.completedAt = timestamp;
-      batch.update(adminDb.collection('tasks').doc(id), data);
-    });
-    await batch.commit();
+
+    // Batch chunking: Firestore limits batches to 500 writes
+    const CHUNK_SIZE = 450;
+    for (let i = 0; i < taskIds.length; i += CHUNK_SIZE) {
+      const chunk = taskIds.slice(i, i + CHUNK_SIZE);
+      const batch = adminDb.batch();
+      chunk.forEach(id => {
+        const data: Record<string, unknown> = { ...safeUpdates, updatedAt: timestamp };
+        if (updates.status === 'done') data.completedAt = timestamp;
+        batch.update(adminDb.collection('tasks').doc(id), data);
+      });
+      await batch.commit();
+    }
+
+    // Bi-directional Reverse Hook: Fulfill contractual obligations if bulk-completed tasks are linked (P4.1 & P4.2)
+    if (updates.status === 'done') {
+      try {
+        const snaps = await Promise.all(
+          taskIds.map(id => adminDb.collection('tasks').doc(id).get())
+        );
+        const linkedTasks = snaps
+          .filter(s => s.exists)
+          .map(s => ({ id: s.id, ...(s.data() as Partial<Task>) }))
+          .filter(t => t.relatedParentId && t.relatedEntityId);
+
+        if (linkedTasks.length > 0) {
+          const { syncTaskCompletionToObligation } = await import(
+            '@/lib/documents/crm-deal-sync-service'
+          );
+          await Promise.allSettled(
+            linkedTasks.map(t =>
+              syncTaskCompletionToObligation({
+                workspaceId,
+                taskId: t.id,
+                contractId: t.relatedParentId!,
+                obligationId: t.relatedEntityId!,
+                actorUserId: uid,
+              })
+            )
+          );
+        }
+      } catch (syncErr: unknown) {
+        console.warn('[TASK] Failed to sync obligations on bulk task completion:', syncErr);
+      }
+    }
+
     return { success: true };
   } catch (error: unknown) {
     console.error('[TASK] Bulk Update Error:', error);
@@ -135,9 +174,14 @@ export async function bulkDeleteTasksAction(taskIds: string[], workspaceId: stri
       return { success: false, error: 'Some tasks are not in this workspace.' };
     }
 
-    const batch = adminDb.batch();
-    taskIds.forEach(id => batch.delete(adminDb.collection('tasks').doc(id)));
-    await batch.commit();
+    // Batch chunking: Firestore limits batches to 500 writes
+    const CHUNK_SIZE = 450;
+    for (let i = 0; i < taskIds.length; i += CHUNK_SIZE) {
+      const chunk = taskIds.slice(i, i + CHUNK_SIZE);
+      const batch = adminDb.batch();
+      chunk.forEach(id => batch.delete(adminDb.collection('tasks').doc(id)));
+      await batch.commit();
+    }
     return { success: true };
   } catch (error: unknown) {
     console.error('[TASK] Bulk Delete Error:', error);

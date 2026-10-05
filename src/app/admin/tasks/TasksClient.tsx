@@ -747,7 +747,15 @@ export default function TasksClient() {
                 setSelectedIds([]);
                 setIsSelectionMode(false);
             } else {
-                toast({ variant: 'destructive', title: 'Bulk Action Failed', description: res.error });
+                toast({
+                    variant: 'destructive',
+                    title: 'Bulk Action Failed',
+                    description: res.error || 'Failed to resolve tasks.',
+                    actionConfig: {
+                        path: '/admin/settings/permissions',
+                        label: 'Check Permissions',
+                    },
+                });
             }
         } catch (e: unknown) {
             toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
@@ -767,7 +775,15 @@ export default function TasksClient() {
                 setSelectedIds([]);
                 setIsSelectionMode(false);
             } else {
-                toast({ variant: 'destructive', title: 'Bulk Action Failed', description: res.error });
+                toast({
+                    variant: 'destructive',
+                    title: 'Bulk Action Failed',
+                    description: res.error || 'Failed to delete tasks.',
+                    actionConfig: {
+                        path: '/admin/settings/permissions',
+                        label: 'Check Permissions',
+                    },
+                });
             }
         } catch (e: unknown) {
             toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
@@ -778,23 +794,25 @@ export default function TasksClient() {
     };
 
     const handleBulkAssign = async (userId: string) => {
-        if (!currentUser || selectedIds.length === 0 || !allTasks) return;
+        if (!currentUser || selectedIds.length === 0) return;
         setIsBulkProcessing(true);
         try {
             const userObj = workspaceUsers?.find(u => u.id === userId);
-            const promises = selectedIds.map(id => {
-                const task = allTasks.find(t => t.id === id);
-                if (!task) return Promise.resolve({ success: true });
-                return updateTaskAction(id, { ...task, assignedTo: [userId] });
-            });
-            const results = await Promise.all(promises);
-            const failures = results.filter(r => !r.success);
-            if (failures.length === 0) {
+            const res = await bulkUpdateTasksAction(selectedIds, { assignedTo: [userId] }, activeWorkspaceId);
+            if (res.success) {
                 toast({ title: 'Bulk Assignment Success', description: `${selectedIds.length} tasks assigned to ${userObj?.name || 'user'}.` });
                 setSelectedIds([]);
                 setIsSelectionMode(false);
             } else {
-                toast({ variant: 'destructive', title: 'Bulk Assignment Failed', description: `${failures.length} tasks failed to assign.` });
+                toast({
+                    variant: 'destructive',
+                    title: 'Bulk Assignment Failed',
+                    description: res.error || 'Failed to assign tasks.',
+                    actionConfig: {
+                        path: '/admin/settings/permissions',
+                        label: 'Check Permissions',
+                    },
+                });
             }
         } catch (e: unknown) {
             toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
@@ -804,22 +822,24 @@ export default function TasksClient() {
     };
 
     const handleBulkChangeStatus = async (status: TaskStatus) => {
-        if (!currentUser || selectedIds.length === 0 || !allTasks) return;
+        if (!currentUser || selectedIds.length === 0) return;
         setIsBulkProcessing(true);
         try {
-            const promises = selectedIds.map(id => {
-                const task = allTasks.find(t => t.id === id);
-                if (!task) return Promise.resolve({ success: true });
-                return updateTaskAction(id, { ...task, status });
-            });
-            const results = await Promise.all(promises);
-            const failures = results.filter(r => !r.success);
-            if (failures.length === 0) {
+            const res = await bulkUpdateTasksAction(selectedIds, { status }, activeWorkspaceId);
+            if (res.success) {
                 toast({ title: 'Bulk Status Update Success', description: `${selectedIds.length} tasks updated to ${STATUS_LABELS[status]}.` });
                 setSelectedIds([]);
                 setIsSelectionMode(false);
             } else {
-                toast({ variant: 'destructive', title: 'Bulk Status Update Failed', description: `${failures.length} tasks failed to update.` });
+                toast({
+                    variant: 'destructive',
+                    title: 'Bulk Status Update Failed',
+                    description: res.error || 'Failed to update task status.',
+                    actionConfig: {
+                        path: '/admin/settings/permissions',
+                        label: 'Check Permissions',
+                    },
+                });
             }
         } catch (e: unknown) {
             toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
