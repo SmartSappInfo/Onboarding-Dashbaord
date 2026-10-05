@@ -16,9 +16,13 @@ vi.mock('@/lib/auth/require-auth', () => ({
   requireAuth: vi.fn(),
 }));
 
-vi.mock('@/platform/policy/governance-dead-man', () => ({
-  checkGovernanceDeadManSwitch: vi.fn(),
-}));
+vi.mock('@/platform/policy/governance-dead-man', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/platform/policy/governance-dead-man')>();
+  return {
+    ...actual,
+    checkGovernanceDeadManSwitch: vi.fn(),
+  };
+});
 
 vi.mock('@/platform/events/event-bus', () => ({
   defaultEventBus: {
@@ -38,21 +42,24 @@ describe('Sales Agent Server Actions', () => {
       uid: 'user_123',
       profile: {
         id: 'user_123',
+        name: 'Test Sales Agent',
         email: 'agent@smartsapp.com',
         role: 'admin',
         organizationId: 'org_123',
+        workspaceIds: ['ws_456', 'ws_test'],
         createdAt: '2026-01-01',
         updatedAt: '2026-01-01',
       },
       isSystemAdmin: false,
     }));
 
-    const { checkGovernanceDeadManSwitch } = await import('@/platform/policy/governance-dead-man');
-    vi.mocked(checkGovernanceDeadManSwitch).mockImplementation(async (orgId: string) => {
+    const { checkGovernanceDeadManSwitch, AgentGovernanceEmergencyPausedError } = await import(
+      '@/platform/policy/governance-dead-man'
+    );
+    vi.mocked(checkGovernanceDeadManSwitch).mockImplementation(async (orgId?: string) => {
       if (orgId === 'org_paused') {
-        return { isPaused: true, reason: 'Emergency maintenance active: SALES_DEAD_MAN_PAUSED' };
+        throw new AgentGovernanceEmergencyPausedError('Emergency maintenance active: SALES_DEAD_MAN_PAUSED');
       }
-      return { isPaused: false, reason: '' };
     });
   });
 
@@ -75,9 +82,11 @@ describe('Sales Agent Server Actions', () => {
       uid: 'user_paused',
       profile: {
         id: 'user_paused',
+        name: 'Paused Agent',
         email: 'paused@smartsapp.com',
         role: 'admin',
         organizationId: 'org_paused',
+        workspaceIds: ['ws_paused'],
         createdAt: '2026-01-01',
         updatedAt: '2026-01-01',
       },

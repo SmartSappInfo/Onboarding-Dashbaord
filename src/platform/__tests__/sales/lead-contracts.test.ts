@@ -112,6 +112,75 @@ describe('Sales Intelligence Contracts & Zod v4 Schemas', () => {
     expect(LeadObjectionHandlerSchema.safeParse(objection).success).toBe(true);
   });
 
+  it('validates auxiliary lead context schemas', () => {
+    expect(
+      LeadEntitySummarySchema.safeParse({
+        id: 'entity_1',
+        organizationId: 'org_1',
+        workspaceId: 'ws_1',
+        name: 'Cyberdyne',
+        domain: 'cyberdyne.com',
+        syncStatus: 'synced',
+        syncedEntityId: 'sync_1',
+      }).success
+    ).toBe(true);
+
+    expect(
+      LeadEnrichmentDataSchema.safeParse({
+        prospectId: 'lead_1',
+        scannedAt: new Date().toISOString(),
+        technologies: ['React'],
+        sslValid: true,
+        verifiedEmailsCount: 1,
+      }).success
+    ).toBe(true);
+
+    expect(
+      LeadScoreBreakdownSchema.safeParse({
+        overallScore: 85,
+        priorityTier: 'high',
+        icpFitPoints: 25,
+        needPoints: 20,
+        intentPoints: 20,
+        engagementPoints: 10,
+        similarityPoints: 10,
+        topPositiveDrivers: ['Great Fit'],
+        topNegativeDrivers: [],
+      }).success
+    ).toBe(true);
+
+    expect(
+      LeadBuyingSignalSchema.safeParse({
+        id: 'sig_1',
+        type: 'tech_adoption',
+        title: 'Adopting AI',
+        strength: 'high',
+        detectedAt: new Date().toISOString(),
+      }).success
+    ).toBe(true);
+
+    expect(
+      AssembleLeadContextInputSchema.safeParse({
+        organizationId: 'org_1',
+        workspaceId: 'ws_1',
+        prospectId: 'prospect_1',
+      }).success
+    ).toBe(true);
+
+    expect(
+      LeadSearchResultSchema.safeParse({
+        id: 'lead_1',
+        name: 'Cyberdyne',
+        domain: 'cyberdyne.com',
+        score: 90,
+        priorityTier: 'critical',
+        contactsCount: 2,
+        verifiedContactsCount: 1,
+        syncStatus: 'synced',
+      }).success
+    ).toBe(true);
+  });
+
   it('throws structured SalesIntelligenceError with code and status', () => {
     const err = new SalesIntelligenceError(
       'Lead not found in tenant workspace',

@@ -8,7 +8,7 @@
  * 4. Untrusted Content Defense: Scraped text & meta tags isolated in XML containers (Rule 13, 30).
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   leadSearchCapability,
   leadEnrichCapability,
@@ -75,7 +75,7 @@ describe('Sales Canonical Capabilities (lead.*)', () => {
 
   it('executes lead.search and returns typed result structure', async () => {
     const input = { queryText: 'Technology', limit: 10 };
-    const result = await leadSearchCapability.execute(input, mockContext);
+    const result = await leadSearchCapability.handler(input, mockContext);
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data).toHaveProperty('leads');
@@ -86,7 +86,7 @@ describe('Sales Canonical Capabilities (lead.*)', () => {
 
   it('executes lead.score and returns explainable score breakdown', async () => {
     const input = { prospectId: 'lead_test_01', domain: 'example.com', industry: 'EdTech' };
-    const result = await leadScoreCapability.execute(input, mockContext);
+    const result = await leadScoreCapability.handler(input, mockContext);
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.overallScore).toBeGreaterThanOrEqual(0);
@@ -97,7 +97,7 @@ describe('Sales Canonical Capabilities (lead.*)', () => {
 
   it('executes lead.get_decision_makers and returns verified contact list', async () => {
     const input = { prospectId: 'lead_test_01' };
-    const result = await leadGetDecisionMakersCapability.execute(input, mockContext);
+    const result = await leadGetDecisionMakersCapability.handler(input, mockContext);
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data).toHaveProperty('contacts');
@@ -107,7 +107,7 @@ describe('Sales Canonical Capabilities (lead.*)', () => {
 
   it('executes lead.get_buying_signals and returns signals array', async () => {
     const input = { prospectId: 'lead_test_01' };
-    const result = await leadGetBuyingSignalsCapability.execute(input, mockContext);
+    const result = await leadGetBuyingSignalsCapability.handler(input, mockContext);
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data).toHaveProperty('signals');
@@ -117,7 +117,7 @@ describe('Sales Canonical Capabilities (lead.*)', () => {
 
   it('executes lead.get_recommended_pitch and returns grounded pitch text', async () => {
     const input = { prospectId: 'lead_test_01' };
-    const result = await leadGetRecommendedPitchCapability.execute(input, mockContext);
+    const result = await leadGetRecommendedPitchCapability.handler(input, mockContext);
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data).toHaveProperty('pitchText');
@@ -128,7 +128,7 @@ describe('Sales Canonical Capabilities (lead.*)', () => {
 
   it('executes lead.get_objection_handlers and returns counterpoints', async () => {
     const input = { prospectId: 'lead_test_01' };
-    const result = await leadGetObjectionHandlersCapability.execute(input, mockContext);
+    const result = await leadGetObjectionHandlersCapability.handler(input, mockContext);
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data).toHaveProperty('objections');

@@ -125,10 +125,19 @@ export function saveMemoryProspect(prospect: Prospect): void {
 // ============================================================================
 // 1. lead.search (L0_READ)
 // ============================================================================
-export const leadSearchCapability: CapabilityDefinition<
-  { queryText?: string; industry?: string; scoreMin?: number; limit?: number },
-  { leads: z.infer<typeof LeadSearchResultSchema>[]; totalCount: number }
-> = {
+export interface LeadSearchInput {
+  queryText?: string;
+  industry?: string;
+  scoreMin?: number;
+  limit?: number;
+}
+
+export interface LeadSearchOutput {
+  leads: z.infer<typeof LeadSearchResultSchema>[];
+  totalCount: number;
+}
+
+export const leadSearchCapability: CapabilityDefinition<LeadSearchInput, LeadSearchOutput> = {
   id: 'lead.search',
   version: '1.0.0',
   name: 'Search Leads',
@@ -164,7 +173,16 @@ export const leadSearchCapability: CapabilityDefinition<
     supportsCompensation: false,
     maxPayloadSizeBytes: 1048576,
   },
-  async execute(input, context: CapabilityExecutionContext) {
+  policies: {
+    requiresIdempotencyKey: false,
+    requiresExpectedVersion: false,
+    auditRequired: false,
+    defaultEnabled: true,
+  },
+  async handler(
+    input: LeadSearchInput,
+    context: CapabilityExecutionContext
+  ): Promise<CapabilityExecutionResult<LeadSearchOutput>> {
     const startTime = Date.now();
     let prospects: Prospect[] = [];
 
@@ -180,9 +198,9 @@ export const leadSearchCapability: CapabilityDefinition<
       return matchQuery && matchInd && matchScore;
     });
 
-    prospects = matchingMocks.slice(0, input.limit ?? 20).map((m, idx) => ({
+    prospects = matchingMocks.map((m) => ({
       ...m,
-      id: `lead_mock_${idx + 1}`,
+      id: `lead_${m.domain.replace(/[^a-z0-9]/g, '_')}`,
       organizationId: context.principal.organizationId,
       workspaceId: context.principal.workspaceId,
       createdAt: new Date().toISOString(),
@@ -222,10 +240,15 @@ registerCapability(leadSearchCapability);
 // ============================================================================
 // 2. lead.score (L0_READ)
 // ============================================================================
-export const leadScoreCapability: CapabilityDefinition<
-  { prospectId: string; domain?: string; industry?: string },
-  z.infer<typeof LeadScoreBreakdownSchema>
-> = {
+export interface LeadScoreInput {
+  prospectId: string;
+  domain?: string;
+  industry?: string;
+}
+
+export type LeadScoreOutput = z.infer<typeof LeadScoreBreakdownSchema>;
+
+export const leadScoreCapability: CapabilityDefinition<LeadScoreInput, LeadScoreOutput> = {
   id: 'lead.score',
   version: '1.0.0',
   name: 'Calculate Explainable Lead Score',
@@ -257,7 +280,16 @@ export const leadScoreCapability: CapabilityDefinition<
     supportsCompensation: false,
     maxPayloadSizeBytes: 1048576,
   },
-  async execute(input, context: CapabilityExecutionContext) {
+  policies: {
+    requiresIdempotencyKey: false,
+    requiresExpectedVersion: false,
+    auditRequired: false,
+    defaultEnabled: true,
+  },
+  async handler(
+    input: LeadScoreInput,
+    context: CapabilityExecutionContext
+  ): Promise<CapabilityExecutionResult<LeadScoreOutput>> {
     const startTime = Date.now();
     const prospect = await getProspectRecord(input.prospectId, context.principal.workspaceId);
     if (input.domain) prospect.domain = input.domain;
@@ -290,10 +322,20 @@ registerCapability(leadScoreCapability);
 // ============================================================================
 // 3. lead.enrich (L1_INTERNAL_DRAFT)
 // ============================================================================
-export const leadEnrichCapability: CapabilityDefinition<
-  { prospectId: string; domain: string; runWebScan?: boolean },
-  { prospectId: string; enriched: boolean; contactsFound: number; technologiesFound: string[] }
-> = {
+export interface LeadEnrichInput {
+  prospectId: string;
+  domain: string;
+  runWebScan?: boolean;
+}
+
+export interface LeadEnrichOutput {
+  prospectId: string;
+  enriched: boolean;
+  contactsFound: number;
+  technologiesFound: string[];
+}
+
+export const leadEnrichCapability: CapabilityDefinition<LeadEnrichInput, LeadEnrichOutput> = {
   id: 'lead.enrich',
   version: '1.0.0',
   name: 'Enrich Prospect',
@@ -330,28 +372,30 @@ export const leadEnrichCapability: CapabilityDefinition<
     supportsCompensation: false,
     maxPayloadSizeBytes: 1048576,
   },
-  async execute(input, context: CapabilityExecutionContext) {
+  policies: {
+    requiresIdempotencyKey: true,
+    requiresExpectedVersion: false,
+    auditRequired: true,
+    defaultEnabled: true,
+  },
+  async handler(
+    input: LeadEnrichInput,
+    context: CapabilityExecutionContext
+  ): Promise<CapabilityExecutionResult<LeadEnrichOutput>> {
     const startTime = Date.now();
     const prospect = await getProspectRecord(input.prospectId, context.principal.workspaceId);
     prospect.domain = input.domain;
 
-    const mockSettings: LeadIntelligenceSettings = {
-      workspaceId: context.principal.workspaceId,
-      organizationId: context.principal.organizationId,
+    const settings: LeadIntelligenceSettings = {
+      waterfallEnabled: true,
       googlePlacesApiKey: '',
       hunterApiKey: '',
       apolloApiKey: '',
-      builtWithApiKey: '',
-      enableEmailVerification: true,
-      enableWebsiteScraping: input.runWebScan ?? true,
-      enableSocialScraping: true,
-      minLeadScore: 60,
-      updatedAt: new Date().toISOString(),
     };
 
     let enrichedProspect = prospect;
     try {
-      enrichedProspect = await LeadIntelligenceEngine.enrichProspect(prospect, mockSettings);
+      enrichedProspect = await LeadIntelligenceEngine.enrichProspect(prospect, settings);
     } catch {
       // Graceful fallback if external AI flows are unconfigured in test
       enrichedProspect.websiteScan = {
@@ -386,9 +430,15 @@ registerCapability(leadEnrichCapability);
 // ============================================================================
 // 4. lead.get_intelligence (L0_READ)
 // ============================================================================
+export interface LeadGetIntelligenceInput {
+  prospectId: string;
+}
+
+export type LeadGetIntelligenceOutput = z.infer<typeof LeadIntelligenceDossierSchema>;
+
 export const leadGetIntelligenceCapability: CapabilityDefinition<
-  { prospectId: string },
-  z.infer<typeof LeadIntelligenceDossierSchema>
+  LeadGetIntelligenceInput,
+  LeadGetIntelligenceOutput
 > = {
   id: 'lead.get_intelligence',
   version: '1.0.0',
@@ -419,7 +469,16 @@ export const leadGetIntelligenceCapability: CapabilityDefinition<
     supportsCompensation: false,
     maxPayloadSizeBytes: 1048576,
   },
-  async execute(input, context: CapabilityExecutionContext) {
+  policies: {
+    requiresIdempotencyKey: false,
+    requiresExpectedVersion: false,
+    auditRequired: false,
+    defaultEnabled: true,
+  },
+  async handler(
+    input: LeadGetIntelligenceInput,
+    context: CapabilityExecutionContext
+  ): Promise<CapabilityExecutionResult<LeadGetIntelligenceOutput>> {
     const startTime = Date.now();
     const prospect = await getProspectRecord(input.prospectId, context.principal.workspaceId);
     const breakdown = ExplainableScoringEngine.calculateExplainableScore(prospect);
@@ -472,9 +531,18 @@ registerCapability(leadGetIntelligenceCapability);
 // ============================================================================
 // 5. lead.get_decision_makers (L0_READ)
 // ============================================================================
+export interface LeadGetDecisionMakersInput {
+  prospectId: string;
+}
+
+export interface LeadGetDecisionMakersOutput {
+  contacts: z.infer<typeof LeadContactSchema>[];
+  totalCount: number;
+}
+
 export const leadGetDecisionMakersCapability: CapabilityDefinition<
-  { prospectId: string },
-  { contacts: z.infer<typeof LeadContactSchema>[]; totalCount: number }
+  LeadGetDecisionMakersInput,
+  LeadGetDecisionMakersOutput
 > = {
   id: 'lead.get_decision_makers',
   version: '1.0.0',
@@ -508,7 +576,16 @@ export const leadGetDecisionMakersCapability: CapabilityDefinition<
     supportsCompensation: false,
     maxPayloadSizeBytes: 1048576,
   },
-  async execute(input, context: CapabilityExecutionContext) {
+  policies: {
+    requiresIdempotencyKey: false,
+    requiresExpectedVersion: false,
+    auditRequired: false,
+    defaultEnabled: true,
+  },
+  async handler(
+    input: LeadGetDecisionMakersInput,
+    context: CapabilityExecutionContext
+  ): Promise<CapabilityExecutionResult<LeadGetDecisionMakersOutput>> {
     const startTime = Date.now();
     const prospect = await getProspectRecord(input.prospectId, context.principal.workspaceId);
     const contacts = (prospect?.contacts ?? []).map((c) => ({
@@ -537,9 +614,18 @@ registerCapability(leadGetDecisionMakersCapability);
 // ============================================================================
 // 6. lead.get_buying_signals (L0_READ)
 // ============================================================================
+export interface LeadGetBuyingSignalsInput {
+  prospectId: string;
+}
+
+export interface LeadGetBuyingSignalsOutput {
+  signals: z.infer<typeof LeadBuyingSignalSchema>[];
+  totalCount: number;
+}
+
 export const leadGetBuyingSignalsCapability: CapabilityDefinition<
-  { prospectId: string },
-  { signals: z.infer<typeof LeadBuyingSignalSchema>[]; totalCount: number }
+  LeadGetBuyingSignalsInput,
+  LeadGetBuyingSignalsOutput
 > = {
   id: 'lead.get_buying_signals',
   version: '1.0.0',
@@ -573,7 +659,16 @@ export const leadGetBuyingSignalsCapability: CapabilityDefinition<
     supportsCompensation: false,
     maxPayloadSizeBytes: 1048576,
   },
-  async execute(input, context: CapabilityExecutionContext) {
+  policies: {
+    requiresIdempotencyKey: false,
+    requiresExpectedVersion: false,
+    auditRequired: false,
+    defaultEnabled: true,
+  },
+  async handler(
+    input: LeadGetBuyingSignalsInput,
+    context: CapabilityExecutionContext
+  ): Promise<CapabilityExecutionResult<LeadGetBuyingSignalsOutput>> {
     const startTime = Date.now();
     const prospect = await getProspectRecord(input.prospectId, context.principal.workspaceId);
     const signals: z.infer<typeof LeadBuyingSignalSchema>[] = [];
@@ -604,9 +699,16 @@ registerCapability(leadGetBuyingSignalsCapability);
 // ============================================================================
 // 7. lead.get_recommended_pitch (L1_INTERNAL_DRAFT)
 // ============================================================================
+export interface LeadGetRecommendedPitchInput {
+  prospectId: string;
+  targetPersona?: string;
+}
+
+export type LeadGetRecommendedPitchOutput = z.infer<typeof LeadPitchRecommendationSchema>;
+
 export const leadGetRecommendedPitchCapability: CapabilityDefinition<
-  { prospectId: string },
-  z.infer<typeof LeadPitchRecommendationSchema>
+  LeadGetRecommendedPitchInput,
+  LeadGetRecommendedPitchOutput
 > = {
   id: 'lead.get_recommended_pitch',
   version: '1.0.0',
@@ -616,6 +718,7 @@ export const leadGetRecommendedPitchCapability: CapabilityDefinition<
   operation: 'draft',
   inputSchema: z.object({
     prospectId: z.string(),
+    targetPersona: z.string().optional(),
   }),
   outputSchema: LeadPitchRecommendationSchema,
   permissions: ['crm:entities:read'],
@@ -637,7 +740,16 @@ export const leadGetRecommendedPitchCapability: CapabilityDefinition<
     supportsCompensation: false,
     maxPayloadSizeBytes: 1048576,
   },
-  async execute(input, context: CapabilityExecutionContext) {
+  policies: {
+    requiresIdempotencyKey: false,
+    requiresExpectedVersion: false,
+    auditRequired: false,
+    defaultEnabled: true,
+  },
+  async handler(
+    input: LeadGetRecommendedPitchInput,
+    context: CapabilityExecutionContext
+  ): Promise<CapabilityExecutionResult<LeadGetRecommendedPitchOutput>> {
     const startTime = Date.now();
     const prospect = await getProspectRecord(input.prospectId, context.principal.workspaceId);
     const company = prospect?.name || 'Your Company';
@@ -649,7 +761,7 @@ export const leadGetRecommendedPitchCapability: CapabilityDefinition<
       data: {
         prospectId: input.prospectId,
         pitchText,
-        targetPersona: 'Decision Maker',
+        targetPersona: input.targetPersona ?? 'Decision Maker',
         valuePropositions: ['10x lead response time', 'Automated enrichment and scoring', 'Zero code governance'],
         groundingPoints: ['Verified tech stack', 'Industry alignment', 'Digital maturity signals'],
         confidence: 88,
@@ -665,9 +777,18 @@ registerCapability(leadGetRecommendedPitchCapability);
 // ============================================================================
 // 8. lead.get_objection_handlers (L1_INTERNAL_DRAFT)
 // ============================================================================
+export interface LeadGetObjectionHandlersInput {
+  prospectId: string;
+  objection?: string;
+}
+
+export interface LeadGetObjectionHandlersOutput {
+  objections: z.infer<typeof LeadObjectionHandlerSchema>[];
+}
+
 export const leadGetObjectionHandlersCapability: CapabilityDefinition<
-  { prospectId: string; objection?: string },
-  { objections: z.infer<typeof LeadObjectionHandlerSchema>[] }
+  LeadGetObjectionHandlersInput,
+  LeadGetObjectionHandlersOutput
 > = {
   id: 'lead.get_objection_handlers',
   version: '1.0.0',
@@ -701,7 +822,16 @@ export const leadGetObjectionHandlersCapability: CapabilityDefinition<
     supportsCompensation: false,
     maxPayloadSizeBytes: 1048576,
   },
-  async execute(input, context: CapabilityExecutionContext) {
+  policies: {
+    requiresIdempotencyKey: false,
+    requiresExpectedVersion: false,
+    auditRequired: false,
+    defaultEnabled: true,
+  },
+  async handler(
+    input: LeadGetObjectionHandlersInput,
+    context: CapabilityExecutionContext
+  ): Promise<CapabilityExecutionResult<LeadGetObjectionHandlersOutput>> {
     const startTime = Date.now();
     const prospect = await getProspectRecord(input.prospectId, context.principal.workspaceId);
     const customAnswers = prospect?.aiInsights?.objectionsAnswered;

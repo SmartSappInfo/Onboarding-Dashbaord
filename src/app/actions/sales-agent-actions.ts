@@ -12,7 +12,10 @@
  */
 
 import { requireAuth, type AuthContext } from '@/lib/auth/require-auth';
-import { checkGovernanceDeadManSwitch } from '@/platform/policy/governance-dead-man';
+import {
+  checkGovernanceDeadManSwitch,
+  AgentGovernanceEmergencyPausedError,
+} from '@/platform/policy/governance-dead-man';
 import {
   leadSearchCapability,
   leadScoreCapability,
@@ -91,15 +94,11 @@ export async function searchLeadsAction(params: {
     }
 
     assertTenantContext(auth, params.organizationId);
-
-    const deadMan = await checkGovernanceDeadManSwitch(params.organizationId);
-    if (deadMan.isPaused) {
-      return { success: false, error: deadMan.reason, code: 'SALES_DEAD_MAN_PAUSED' };
-    }
+    await checkGovernanceDeadManSwitch(params.organizationId);
 
     const context = buildExecutionContext(auth, params.organizationId, params.workspaceId);
 
-    const result = await leadSearchCapability.execute(
+    const result = await leadSearchCapability.handler(
       {
         queryText: params.queryText ?? '',
         industry: params.industry,
@@ -114,6 +113,9 @@ export async function searchLeadsAction(params: {
 
     return { success: true, data: result.data };
   } catch (err: unknown) {
+    if (err instanceof AgentGovernanceEmergencyPausedError) {
+      return { success: false, error: err.message, code: 'SALES_DEAD_MAN_PAUSED' };
+    }
     const msg = err instanceof Error ? err.message : 'Unknown lead search error';
     const isIdor = msg.includes('IDOR_VIOLATION');
     return { success: false, error: msg, code: isIdor ? 'IDOR_VIOLATION' : 'SEARCH_FAILED' };
@@ -137,15 +139,11 @@ export async function scoreLeadAction(params: {
     }
 
     assertTenantContext(auth, params.organizationId);
-
-    const deadMan = await checkGovernanceDeadManSwitch(params.organizationId);
-    if (deadMan.isPaused) {
-      return { success: false, error: deadMan.reason, code: 'SALES_DEAD_MAN_PAUSED' };
-    }
+    await checkGovernanceDeadManSwitch(params.organizationId);
 
     const context = buildExecutionContext(auth, params.organizationId, params.workspaceId);
 
-    const result = await leadScoreCapability.execute(
+    const result = await leadScoreCapability.handler(
       {
         prospectId: params.prospectId,
         domain: params.domain,
@@ -160,6 +158,9 @@ export async function scoreLeadAction(params: {
 
     return { success: true, data: result.data };
   } catch (err: unknown) {
+    if (err instanceof AgentGovernanceEmergencyPausedError) {
+      return { success: false, error: err.message, code: 'SALES_DEAD_MAN_PAUSED' };
+    }
     const msg = err instanceof Error ? err.message : 'Score calculation failed';
     const isIdor = msg.includes('IDOR_VIOLATION');
     return { success: false, error: msg, code: isIdor ? 'IDOR_VIOLATION' : 'SCORING_FAILED' };
@@ -182,11 +183,7 @@ export async function getLeadDossierAction(params: {
     }
 
     assertTenantContext(auth, params.organizationId);
-
-    const deadMan = await checkGovernanceDeadManSwitch(params.organizationId);
-    if (deadMan.isPaused) {
-      return { success: false, error: deadMan.reason, code: 'SALES_DEAD_MAN_PAUSED' };
-    }
+    await checkGovernanceDeadManSwitch(params.organizationId);
 
     const assembler = new LeadContextAssembler();
     const result = await assembler.assemble({
@@ -200,6 +197,9 @@ export async function getLeadDossierAction(params: {
 
     return { success: true, data: result };
   } catch (err: unknown) {
+    if (err instanceof AgentGovernanceEmergencyPausedError) {
+      return { success: false, error: err.message, code: 'SALES_DEAD_MAN_PAUSED' };
+    }
     const msg = err instanceof Error ? err.message : 'Failed to retrieve lead dossier';
     const isIdor = msg.includes('IDOR_VIOLATION');
     return { success: false, error: msg, code: isIdor ? 'IDOR_VIOLATION' : 'DOSSIER_RETRIEVAL_FAILED' };
@@ -221,15 +221,11 @@ export async function getDecisionMakersAction(params: {
     }
 
     assertTenantContext(auth, params.organizationId);
-
-    const deadMan = await checkGovernanceDeadManSwitch(params.organizationId);
-    if (deadMan.isPaused) {
-      return { success: false, error: deadMan.reason, code: 'SALES_DEAD_MAN_PAUSED' };
-    }
+    await checkGovernanceDeadManSwitch(params.organizationId);
 
     const context = buildExecutionContext(auth, params.organizationId, params.workspaceId);
 
-    const result = await leadGetDecisionMakersCapability.execute(
+    const result = await leadGetDecisionMakersCapability.handler(
       { prospectId: params.prospectId },
       context
     );
@@ -240,6 +236,9 @@ export async function getDecisionMakersAction(params: {
 
     return { success: true, data: result.data };
   } catch (err: unknown) {
+    if (err instanceof AgentGovernanceEmergencyPausedError) {
+      return { success: false, error: err.message, code: 'SALES_DEAD_MAN_PAUSED' };
+    }
     const msg = err instanceof Error ? err.message : 'Failed to retrieve decision makers';
     const isIdor = msg.includes('IDOR_VIOLATION');
     return { success: false, error: msg, code: isIdor ? 'IDOR_VIOLATION' : 'DECISION_MAKERS_FAILED' };
@@ -262,15 +261,11 @@ export async function getPitchRecommendationAction(params: {
     }
 
     assertTenantContext(auth, params.organizationId);
-
-    const deadMan = await checkGovernanceDeadManSwitch(params.organizationId);
-    if (deadMan.isPaused) {
-      return { success: false, error: deadMan.reason, code: 'SALES_DEAD_MAN_PAUSED' };
-    }
+    await checkGovernanceDeadManSwitch(params.organizationId);
 
     const context = buildExecutionContext(auth, params.organizationId, params.workspaceId);
 
-    const result = await leadGetRecommendedPitchCapability.execute(
+    const result = await leadGetRecommendedPitchCapability.handler(
       { prospectId: params.prospectId, targetPersona: params.targetPersona },
       context
     );
@@ -281,6 +276,9 @@ export async function getPitchRecommendationAction(params: {
 
     return { success: true, data: result.data };
   } catch (err: unknown) {
+    if (err instanceof AgentGovernanceEmergencyPausedError) {
+      return { success: false, error: err.message, code: 'SALES_DEAD_MAN_PAUSED' };
+    }
     const msg = err instanceof Error ? err.message : 'Failed to generate pitch recommendation';
     const isIdor = msg.includes('IDOR_VIOLATION');
     return { success: false, error: msg, code: isIdor ? 'IDOR_VIOLATION' : 'PITCH_GENERATION_FAILED' };
@@ -302,15 +300,11 @@ export async function getObjectionHandlersAction(params: {
     }
 
     assertTenantContext(auth, params.organizationId);
-
-    const deadMan = await checkGovernanceDeadManSwitch(params.organizationId);
-    if (deadMan.isPaused) {
-      return { success: false, error: deadMan.reason, code: 'SALES_DEAD_MAN_PAUSED' };
-    }
+    await checkGovernanceDeadManSwitch(params.organizationId);
 
     const context = buildExecutionContext(auth, params.organizationId, params.workspaceId);
 
-    const result = await leadGetObjectionHandlersCapability.execute(
+    const result = await leadGetObjectionHandlersCapability.handler(
       { prospectId: params.prospectId },
       context
     );
@@ -321,6 +315,9 @@ export async function getObjectionHandlersAction(params: {
 
     return { success: true, data: result.data };
   } catch (err: unknown) {
+    if (err instanceof AgentGovernanceEmergencyPausedError) {
+      return { success: false, error: err.message, code: 'SALES_DEAD_MAN_PAUSED' };
+    }
     const msg = err instanceof Error ? err.message : 'Failed to retrieve objection handlers';
     const isIdor = msg.includes('IDOR_VIOLATION');
     return { success: false, error: msg, code: isIdor ? 'IDOR_VIOLATION' : 'OBJECTION_HANDLERS_FAILED' };
