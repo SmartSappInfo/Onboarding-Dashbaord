@@ -7,16 +7,12 @@ import { SdrOutboundEngine } from '@/platform/agents/sales/outbound/sdr-outbound
 import type { Prospect } from '@/lib/lead-intelligence/types';
 
 // Mock FieldsVariablesService to verify workspace rule SSOT delegation
-vi.mock('@/lib/services/fields-variables-service', () => ({
+vi.mock('@/lib/services/fields-variables-service-impl', () => ({
   FieldsVariablesService: {
     resolveTemplateVariables: vi.fn(async (text: string, _ctx: unknown) => {
       return text.replace('{{prospect.name}}', 'Accra Grammar School');
     }),
   },
-  resolveTemplateVariablesAction: vi.fn(),
-  getVariablesAction: vi.fn(),
-  getVariableValuesMapAction: vi.fn(),
-  resolveEntityContextFromParamsAction: vi.fn(),
 }));
 
 const mockProspect: Prospect = {
@@ -54,7 +50,7 @@ const mockProspect: Prospect = {
     painPoints: ['Manual Mobile Money fee reconciliation delays'],
     techGaps: ['No direct parent communication or online portal'],
   },
-};
+} as unknown as Prospect;
 
 describe('SdrOutboundEngine', () => {
   it('sanitizes Ghana local phone numbers to E.164 for WhatsApp Web launcher URLs', () => {
@@ -132,7 +128,7 @@ describe('SdrOutboundEngine', () => {
   });
 
   it('delegates template token interpolation to FieldsVariablesService (Workspace SSOT)', async () => {
-    const { FieldsVariablesService } = await import('@/lib/services/fields-variables-service');
+    const { FieldsVariablesService } = await import('@/lib/services/fields-variables-service-impl');
 
     const result = await SdrOutboundEngine.draftOutreach(
       {

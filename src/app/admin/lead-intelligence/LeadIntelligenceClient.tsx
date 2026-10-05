@@ -1040,6 +1040,8 @@ export default function LeadIntelligenceClient() {
                   isRefreshing={isPending}
                   streamStatus={streamStatus}
                   realtimeEventCount={realtimeEventCount}
+                  organizationId={organizationId}
+                  workspaceId={activeWorkspaceId || ''}
                 />
               </TabsContent>
             </motion.div>

@@ -157,6 +157,19 @@ describe('SDR Outbound Contracts & Zod v4 Schemas', () => {
     };
     const parsedPrep = PrepareSequenceParamsSchema.parse(validPrep);
     expect(parsedPrep.leadIds).toHaveLength(2);
+
+    const validResult = {
+      sequenceId: 'seq_1',
+      totalDraftsGenerated: 2,
+      drafts: [],
+      cadenceSchedule: [],
+      payloadHash: 'a'.repeat(64),
+      actionProposalId: 'prop_seq_1',
+      status: 'staged',
+    };
+    const parsedResult = PrepareSequenceResultSchema.parse(validResult);
+    expect(parsedResult.sequenceId).toBe('seq_1');
+    expect(parsedResult.status).toBe('staged');
   });
 
   it('validates DispatchOutreachParamsSchema and DispatchOutreachResultSchema', () => {

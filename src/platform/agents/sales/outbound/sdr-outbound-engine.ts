@@ -11,14 +11,13 @@
 
 import { createHash } from 'crypto';
 import type { Prospect, ProspectContact } from '@/lib/lead-intelligence/types';
-import { FieldsVariablesService } from '@/lib/services/fields-variables-service';
+import { FieldsVariablesService } from '@/lib/services/fields-variables-service-impl';
 import type {
   DraftOutreachParams,
   DraftOutreachResult,
   PrepareSequenceParams,
   PrepareSequenceResult,
   OutreachMessageDraft,
-  OutreachChannel,
 } from './sdr-outbound-types';
 
 export class SdrOutboundEngine {

@@ -18,7 +18,8 @@ import {
   Sparkles, 
   CheckCircle2, 
   Flame, 
-  Zap 
+  Zap,
+  MessageSquare,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +33,7 @@ interface ProspectCardGridProps {
   onSelectProspect: (p: Prospect) => void;
   onEnrichProspect: (p: Prospect) => void;
   onSyncToCRM: (p: Prospect) => void;
+  onOpenWhatsApp?: (p: Prospect) => void;
 }
 
 export const ProspectCardGrid: React.FC<ProspectCardGridProps> = ({
@@ -41,6 +43,7 @@ export const ProspectCardGrid: React.FC<ProspectCardGridProps> = ({
   onSelectProspect,
   onEnrichProspect,
   onSyncToCRM,
+  onOpenWhatsApp,
 }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -141,6 +144,17 @@ export const ProspectCardGrid: React.FC<ProspectCardGridProps> = ({
 
             {/* Card Action Buttons */}
             <div className="flex items-center gap-1.5 pt-1" onClick={(e) => e.stopPropagation()}>
+              {onOpenWhatsApp && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => onOpenWhatsApp(p)}
+                  className="h-7 px-2 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 active:scale-[0.97]"
+                  title="Direct WhatsApp Outreach"
+                >
+                  <MessageSquare className="w-3 h-3 text-emerald-500" />
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant="outline"

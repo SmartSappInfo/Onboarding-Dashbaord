@@ -28,7 +28,8 @@ import {
   Grid3X3,
   LayoutGrid,
   Columns3,
-  SlidersHorizontal
+  SlidersHorizontal,
+  MessageSquare,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -52,6 +53,13 @@ import { ProspectCardGrid } from './ProspectCardGrid';
 import { ColumnCustomizerModal } from './ColumnCustomizerModal';
 import { MorningRepBriefingCard } from './MorningRepBriefingCard';
 import { ProspectFinderHud } from '@/components/sales/ProspectFinderHud';
+import { OutreachReviewDrawer, WhatsAppLauncherModal } from '@/components/sales';
+import type { OutreachMessageDraft } from '@/platform/agents/sales/outbound/sdr-outbound-types';
+import { SdrOutboundEngine } from '@/platform/agents/sales/outbound/sdr-outbound-engine';
+import {
+  stageSequenceApprovalAction,
+  dispatchApprovedOutreachAction,
+} from '@/app/actions/sdr-outbound-actions';
 import type { 
   Prospect, 
   SearchFilters, 
@@ -91,6 +99,9 @@ interface ProspectFinderTabProps {
   isRefreshing?: boolean;
   streamStatus?: 'connecting' | 'connected' | 'disconnected';
   realtimeEventCount?: number;
+  organizationId?: string;
+  workspaceId?: string;
+  onOpenOutreachReview?: () => void;
 }
 
 const DEFAULT_COLUMNS: ColumnVisibilityConfig = {
@@ -133,6 +144,9 @@ export const ProspectFinderTab: React.FC<ProspectFinderTabProps> = ({
   isRefreshing,
   streamStatus,
   realtimeEventCount,
+  organizationId,
+  workspaceId,
+  onOpenOutreachReview,
 }) => {
   const { toast } = useToast();
 
@@ -147,6 +161,134 @@ export const ProspectFinderTab: React.FC<ProspectFinderTabProps> = ({
   const [isCSVModalOpen, setIsCSVModalOpen] = useState(false);
   const [pastedCSV, setPastedCSV] = useState('');
   const [isImporting, setIsImporting] = useState(false);
+
+  // SDR Outbound Pipeline & Two-Phase Approval Desk (Phase 10 Milestone 4)
+  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
+  const [selectedWhatsAppDraft, setSelectedWhatsAppDraft] = useState<OutreachMessageDraft | null>(null);
+  const [isOutreachDrawerOpen, setIsOutreachDrawerOpen] = useState(false);
+  const [stagedDrafts, setStagedDrafts] = useState<OutreachMessageDraft[]>([]);
+  const [stagedProposalId, setStagedProposalId] = useState<string | undefined>(undefined);
+  const [stagedPayloadHash, setStagedPayloadHash] = useState<string | undefined>(undefined);
+
+  const handleOpenWhatsApp = (prospect: Prospect) => {
+    const contact = prospect.contacts?.[0];
+    const recipientName = contact?.name || prospect.name;
+    const rawPhone = contact?.phone || prospect.phone || '+233240001122';
+    const cleanPhone = rawPhone.replace(/[^\d+]/g, '');
+    const recipientPhone = cleanPhone.startsWith('+')
+      ? cleanPhone
+      : cleanPhone.startsWith('0')
+      ? `+233${cleanPhone.slice(1)}`
+      : `+${cleanPhone}`;
+    const body = `Hello ${recipientName}, I noticed ${prospect.name}'s impressive profile in ${prospect.industry || 'the institutional sector'}. SmartSapp helps leading institutions streamline administration and fee collection securely. Would you be open to a brief conversation this week?`;
+    const whatsappUrl = SdrOutboundEngine.formatWhatsAppLauncherUrl(recipientPhone, body);
+
+    const nowIso = new Date().toISOString();
+    const draft: OutreachMessageDraft = {
+      id: `draft_wa_${prospect.id}_${Date.now()}`,
+      prospectId: prospect.id,
+      recipientName,
+      recipientAddress: recipientPhone,
+      channel: 'whatsapp',
+      stepIndex: 1,
+      dayOffset: 0,
+      body,
+      whatsappUrl,
+      variablesUsed: ['contact.firstName', 'institution.name', 'institution.industry'],
+      groundingPoints: ['Automated fee collection opportunity'],
+      status: 'draft',
+      payloadHash: SdrOutboundEngine.computeOutreachPayloadHash({
+        recipientAddress: recipientPhone,
+        channel: 'whatsapp',
+        body,
+        stepIndex: 1,
+      }),
+      explainability: {
+        what: `Personalized WhatsApp outreach for ${recipientName}`,
+        why: `High ICP fit prospect (${prospect.scoring?.overallScore || 85}/100) identified by Lead SDR`,
+        expectedStateChange: 'Transition prospect from discovery to active engagement',
+      },
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    };
+
+    setSelectedWhatsAppDraft(draft);
+    setIsWhatsAppModalOpen(true);
+  };
+
+  const handleOpenOutreachReview = async () => {
+    const targetProspects = selectedRowIds.size > 0
+      ? prospects.filter((p) => selectedRowIds.has(p.id))
+      : prospects.slice(0, 3);
+
+    if (targetProspects.length === 0) {
+      toast({
+        variant: 'destructive',
+        title: 'No Prospects Selected',
+        description: 'Select one or more prospects to generate and review an SDR outreach sequence.',
+      });
+      return;
+    }
+
+    try {
+      const leadIds = targetProspects.map((p) => p.id);
+      const stageResult = await stageSequenceApprovalAction({
+        organizationId: organizationId || 'org_smartsapp_default',
+        workspaceId: workspaceId || 'ws_sales_default',
+        leadIds,
+        sequenceConfig: {
+          id: `seq_${Date.now()}`,
+          name: `${filters.industry || 'Target'} Outbound Cadence`,
+          steps: [
+            { stepIndex: 1, dayOffset: 0, channel: 'whatsapp', name: 'Executive Brief', condition: 'always' },
+            { stepIndex: 2, dayOffset: 3, channel: 'email', name: 'Institutional Case Study', condition: 'no_reply' },
+            { stepIndex: 3, dayOffset: 7, channel: 'phone_script', name: 'Follow-up Call', condition: 'no_reply' },
+          ],
+          dailySendingLimit: 25,
+        },
+        sdrPersonaId: 'lead_sdr',
+      });
+
+      if (stageResult.success && stageResult.data) {
+        setStagedDrafts(stageResult.data.drafts);
+        setStagedProposalId(stageResult.data.actionProposalId);
+        setStagedPayloadHash(stageResult.data.payloadHash);
+        setIsOutreachDrawerOpen(true);
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Sequence Staging Failed',
+          description: stageResult.error || 'Failed to stage SDR sequence for approval.',
+        });
+      }
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to initialize SDR sequence.',
+      });
+    }
+  };
+
+  const handleApproveAndDispatchOutreach = async (
+    draftId: string,
+    actionProposalId: string,
+    payloadHash: string
+  ) => {
+    const result = await dispatchApprovedOutreachAction({
+      organizationId: organizationId || 'org_smartsapp_default',
+      workspaceId: workspaceId || 'ws_sales_default',
+      draftId,
+      actionProposalId,
+      payloadHash,
+      dryRun: false,
+    });
+
+    if (!result.success) {
+      throw new Error(result.error || 'Dispatch authorization failed.');
+    }
+  };
 
   const allSelected = prospects.length > 0 && prospects.every((p) => selectedRowIds.has(p.id));
   const someSelected = prospects.some((p) => selectedRowIds.has(p.id)) && !allSelected;
@@ -183,6 +325,7 @@ export const ProspectFinderTab: React.FC<ProspectFinderTabProps> = ({
         <ProspectFinderHud
           onOpenMarketResearch={onOpenMarketResearch}
           onOpenSegmentToCampaign={onOpenSegmentToCampaign}
+          onOpenOutreachReview={onOpenOutreachReview || handleOpenOutreachReview}
           onRefresh={onRefreshIntelligence}
           isRefreshing={isRefreshing}
           streamStatus={streamStatus}
@@ -393,6 +536,7 @@ export const ProspectFinderTab: React.FC<ProspectFinderTabProps> = ({
               onSelectProspect={(p) => onSelectProspect(p)}
               onEnrichProspect={onEnrich}
               onSyncToCRM={onSync}
+              onOpenWhatsApp={handleOpenWhatsApp}
             />
           )}
 
@@ -567,6 +711,16 @@ export const ProspectFinderTab: React.FC<ProspectFinderTabProps> = ({
                                 <Button
                                   size="sm"
                                   variant="ghost"
+                                  onClick={() => handleOpenWhatsApp(p)}
+                                  className="h-7 px-2 text-[11px] text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 active:scale-[0.97]"
+                                  title="Direct WhatsApp Outreach"
+                                >
+                                  <MessageSquare className="w-3 h-3 text-emerald-500 mr-1" />
+                                  WhatsApp
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
                                   onClick={() => onEnrich(p)}
                                   className="h-7 px-2 text-[11px] hover:bg-muted active:scale-[0.97]"
                                 >
@@ -642,6 +796,36 @@ export const ProspectFinderTab: React.FC<ProspectFinderTabProps> = ({
         columns={columns}
         onColumnsChange={setColumns}
         onSaveAsCustomView={onSaveCustomView}
+      />
+
+      {/* WhatsApp Direct Dispatch Modal (Phase 10 Milestone 4) */}
+      {selectedWhatsAppDraft && (
+        <WhatsAppLauncherModal
+          isOpen={isWhatsAppModalOpen}
+          onClose={() => {
+            setIsWhatsAppModalOpen(false);
+            setSelectedWhatsAppDraft(null);
+          }}
+          draft={selectedWhatsAppDraft}
+          onMarkDispatched={(draftId) => {
+            toast({
+              title: 'Outreach Marked Dispatched',
+              description: `Draft ${draftId} logged as transmitted.`,
+            });
+          }}
+        />
+      )}
+
+      {/* Two-Phase SDR Outreach Review Drawer (Phase 10 Milestone 4) */}
+      <OutreachReviewDrawer
+        isOpen={isOutreachDrawerOpen}
+        onClose={() => setIsOutreachDrawerOpen(false)}
+        organizationId={organizationId || 'org_smartsapp_default'}
+        workspaceId={workspaceId || 'ws_sales_default'}
+        drafts={stagedDrafts}
+        actionProposalId={stagedProposalId}
+        payloadHash={stagedPayloadHash}
+        onApproveAndDispatch={handleApproveAndDispatchOutreach}
       />
     </div>
   );

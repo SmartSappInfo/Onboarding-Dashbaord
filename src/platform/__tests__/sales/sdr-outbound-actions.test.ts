@@ -64,7 +64,16 @@ describe('SDR Outbound Server Actions', () => {
     const { requireAuth } = await import('@/lib/auth/require-auth');
     vi.mocked(requireAuth).mockImplementationOnce(async () => ({
       uid: 'user_kwame',
-      profile: { organizationId: 'org_paused' },
+      profile: {
+        id: 'user_kwame',
+        organizationId: 'org_paused',
+        name: 'Kwame Mensah',
+        email: 'kwame@smartsapp.com',
+        role: 'admin',
+        workspaceIds: ['ws_test'],
+        createdAt: '2026-01-01',
+        updatedAt: '2026-01-01',
+      },
       isSystemAdmin: false,
     }));
 

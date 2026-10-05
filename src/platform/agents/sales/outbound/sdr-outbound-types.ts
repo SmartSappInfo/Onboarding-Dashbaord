@@ -45,6 +45,15 @@ export const OutreachMessageDraftSchema = z.object({
   status: OutreachStatusSchema.default('draft'),
   actionProposalId: z.string().optional(),
   payloadHash: z.string().min(1),
+  stepIndex: z.number().int().optional(),
+  dayOffset: z.number().int().optional(),
+  explainability: z
+    .object({
+      what: z.string(),
+      why: z.string(),
+      expectedStateChange: z.string(),
+    })
+    .optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });

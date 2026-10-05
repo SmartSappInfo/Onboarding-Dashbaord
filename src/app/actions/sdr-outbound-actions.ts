@@ -145,25 +145,23 @@ export async function stageSequenceApprovalAction(
     const now = new Date().toISOString();
 
     const proposal: ActionProposal = {
-      id: proposalId,
+      proposalId,
       organizationId: validated.organizationId,
       workspaceId: validated.workspaceId,
-      agentRunId: sequenceResult.sequenceRunId,
-      planStepId: 'step_outbound_dispatch',
       capabilityId: 'sdr.dispatch_whatsapp',
       capabilityVersion: '1.0.0',
-      riskLevel: 'L3_EXTERNAL_COMMUNICATION_FINANCE',
-      status: 'pending',
-      summary: `Outbound sales sequence for ${validated.leadIds.length} institutions (${sequenceResult.totalDrafts} messages)`,
-      rationale: `Targeted outreach cadence designed by ${validated.sdrPersonaId} awaiting human approval prior to live transmission.`,
-      proposedPayload: {
+      agentPersonaId: 'lead_sdr',
+      authorizingUserId: auth.uid,
+      what: `Outbound sales sequence for ${validated.leadIds.length} institutions (${sequenceResult.totalDrafts} messages)`,
+      why: `Targeted outreach cadence designed by ${validated.sdrPersonaId} awaiting human approval prior to live transmission.`,
+      payload: {
         sequenceConfigId: validated.sequenceConfig.id,
         recipientCount: sequenceResult.totalRecipients,
         draftCount: sequenceResult.totalDrafts,
         draftIds: sequenceResult.drafts.map((d) => d.id),
       },
       payloadHash: sequenceResult.payloadHash,
-      createdBy: auth.uid,
+      status: 'pending',
       createdAt: now,
       updatedAt: now,
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24h
@@ -280,7 +278,7 @@ export async function dispatchApprovedOutreachAction(
     }
 
     // Rule 13: Anti-Self-Approval
-    if (proposal.createdBy === auth.uid && proposal.approvedBy === auth.uid) {
+    if (proposal.authorizingUserId === auth.uid && proposal.approvedBy === auth.uid) {
       return {
         success: false,
         error: 'Anti-Self-Approval violation: Creator cannot approve their own outbound proposal (Rule 13).',
@@ -323,7 +321,7 @@ export async function dispatchApprovedOutreachAction(
  */
 export async function getOutreachMetricsAction(
   organizationId: string,
-  workspaceId: string
+  _workspaceId: string
 ): Promise<ActionResult<OutreachMetrics>> {
   try {
     const auth = await requireAuth();

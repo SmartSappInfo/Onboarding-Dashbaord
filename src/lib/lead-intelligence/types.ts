@@ -34,6 +34,7 @@ export interface WebsiteScanResults {
 export type EmailVerificationStatus = 'verified' | 'risky' | 'invalid' | 'unverified' | 'unknown';
 
 export interface ProspectContact {
+  id?: string;
   name: string;
   email: string;
   phone?: string;

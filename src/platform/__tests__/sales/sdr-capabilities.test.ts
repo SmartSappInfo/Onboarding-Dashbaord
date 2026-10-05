@@ -48,8 +48,10 @@ describe('SDR Capabilities (sdr.*)', () => {
     );
 
     expect(result.success).toBe(true);
-    expect(result.data).toBeDefined();
-    expect(result.data?.draft.channel).toBe('whatsapp');
+    if (!result.success) throw new Error('Expected success');
+    const data = result.data as { draft: { channel: string } };
+    expect(data).toBeDefined();
+    expect(data.draft.channel).toBe('whatsapp');
   });
 
   it('registers sdr.prepare_sequence with L1_INTERNAL_DRAFT and stages cadences', async () => {
@@ -76,8 +78,10 @@ describe('SDR Capabilities (sdr.*)', () => {
     );
 
     expect(result.success).toBe(true);
-    expect(result.data?.status).toBe('staged');
-    expect(result.data?.payloadHash).toHaveLength(64);
+    if (!result.success) throw new Error('Expected success');
+    const data = result.data as { status: string; payloadHash: string };
+    expect(data.status).toBe('staged');
+    expect(data.payloadHash).toHaveLength(64);
   });
 
   it('registers sdr.dispatch_whatsapp with L3_EXTERNAL_COMMUNICATION_FINANCE and dryRun support', async () => {
@@ -98,8 +102,10 @@ describe('SDR Capabilities (sdr.*)', () => {
     );
 
     expect(result.success).toBe(true);
-    expect(result.data?.simulated).toBe(true);
-    expect(result.data?.status).toBe('simulated');
+    if (!result.success) throw new Error('Expected success');
+    const data = result.data as { simulated: boolean; status: string };
+    expect(data.simulated).toBe(true);
+    expect(data.status).toBe('simulated');
   });
 
   it('halts with SALES_DEAD_MAN_PAUSED when emergency pause is engaged (Rule 60)', async () => {
@@ -125,7 +131,8 @@ describe('SDR Capabilities (sdr.*)', () => {
     );
 
     expect(result.success).toBe(false);
-    expect(result.error?.code).toBe('SALES_DEAD_MAN_PAUSED');
+    if (result.success) throw new Error('Expected failure');
+    expect(result.error.code).toBe('SALES_DEAD_MAN_PAUSED');
   });
 
   it('registers sdr.log_engagement with L2_STATE_MUTATION and records milestones', async () => {
@@ -146,6 +153,8 @@ describe('SDR Capabilities (sdr.*)', () => {
     );
 
     expect(result.success).toBe(true);
-    expect(result.data?.status).toBe('logged');
+    if (!result.success) throw new Error('Expected success');
+    const data = result.data as { status: string };
+    expect(data.status).toBe('logged');
   });
 });

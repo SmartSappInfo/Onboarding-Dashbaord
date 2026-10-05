@@ -20,12 +20,14 @@ import {
   RotateCw,
   Megaphone,
   Globe2,
+  Layers,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface ProspectFinderHudProps {
   onOpenMarketResearch: () => void;
   onOpenSegmentToCampaign: () => void;
+  onOpenOutreachReview?: () => void;
   onRefresh?: () => void;
   activePersona?: string;
   isRefreshing?: boolean;
@@ -37,6 +39,7 @@ export interface ProspectFinderHudProps {
 export function ProspectFinderHud({
   onOpenMarketResearch,
   onOpenSegmentToCampaign,
+  onOpenOutreachReview,
   onRefresh,
   activePersona = 'lead_sdr',
   isRefreshing = false,
@@ -137,6 +140,19 @@ export function ProspectFinderHud({
               className={cn('h-3.5 w-3.5 mr-1.5', isRefreshing && 'animate-spin text-primary')}
             />
             <span>Refresh</span>
+          </Button>
+        )}
+
+        {onOpenOutreachReview && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onOpenOutreachReview}
+            className="h-9 px-3 rounded-xl text-xs font-semibold text-foreground hover:bg-muted/30 active:scale-[0.97] transition-transform gap-1.5"
+          >
+            <Layers className="h-3.5 w-3.5 text-emerald-500" />
+            <span>Review SDR Cadence</span>
           </Button>
         )}
 
