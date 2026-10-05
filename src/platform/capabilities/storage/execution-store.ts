@@ -213,7 +213,7 @@ export class FirestoreIdempotencyStore implements ExtendedIdempotencyStore {
 // CAUTION (Phase 11 M0 · F1): memory only under test or explicit non-production opt-in; never an
 // implicit fallback. See src/platform/storage/storage-mode.ts.
 export const defaultIdempotencyStore: ExtendedIdempotencyStore =
-  selectPlatformStore(
+  selectPlatformStore<ExtendedIdempotencyStore>(
     () => createInMemoryIdempotencyStore(),
     () => new FirestoreIdempotencyStore()
   );

@@ -23,6 +23,12 @@ global.ResizeObserver = class ResizeObserver {
 };
 
 import { vi } from 'vitest';
+import { setGovernedGatewayDepsForTests } from '@/platform/capabilities/execution/governed-deps';
+
+// Phase 11 M0 · T1: the execution gateway now fills idempotency, approvals and live standing by
+// default in production. Unit suites keep their previous, explicit behaviour: no implicit
+// governed dependencies unless a test injects them (see governed-defaults.test.ts).
+setGovernedGatewayDepsForTests({});
 
 vi.mock('@/ai/genkit', () => ({
   ai: {

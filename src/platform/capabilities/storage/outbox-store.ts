@@ -182,7 +182,7 @@ export class FirestoreOutboxStore implements OutboxStore {
 // CAUTION (Phase 11 M0 · F1): memory only under test or explicit non-production opt-in; never an
 // implicit fallback. See src/platform/storage/storage-mode.ts.
 export const defaultOutboxStore: OutboxStore =
-  selectPlatformStore(
+  selectPlatformStore<OutboxStore>(
     () => createInMemoryOutboxStore(),
     () => new FirestoreOutboxStore()
   );

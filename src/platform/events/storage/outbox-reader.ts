@@ -305,7 +305,7 @@ export class FirestoreOutboxReader implements OutboxReader {
 // CAUTION (Phase 11 M0 · F1): memory only under test or explicit non-production opt-in; never an
 // implicit fallback. See src/platform/storage/storage-mode.ts.
 export const defaultOutboxReader: OutboxReader =
-  selectPlatformStore(
+  selectPlatformStore<OutboxReader>(
     () => createInMemoryOutboxReader(),
     () => new FirestoreOutboxReader()
   );

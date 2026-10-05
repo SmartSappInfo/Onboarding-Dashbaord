@@ -182,7 +182,7 @@ describe('Idempotency Store: Lease & Replay Protection (Rules 19 & 20)', () => {
       expect(handlerSpy).toHaveBeenCalledTimes(1);
 
       // Verify store state is now completed
-      const stored = await store.get('idem-test-1');
+      const stored = await store.get(buildExecutionKey('org-1', 'ws-1', 'crm.contact.create', 'idem-test-1'));
       expect(stored?.status).toBe('completed');
       expect(stored?.result).toEqual({ contactId: 'c-new', created: true });
 
@@ -206,7 +206,8 @@ describe('Idempotency Store: Lease & Replay Protection (Rules 19 & 20)', () => {
       const store = createInMemoryIdempotencyStore();
 
       // Pre-claim the key in 'running' state
-      await store.claim('idem-concurrent', { leaseMs: 60000, nowMs: Date.now() });
+      // The gateway namespaces keys by tenant + capability (M0 review R1).
+      await store.claim(buildExecutionKey('org-1', 'ws-1', 'crm.contact.create', 'idem-concurrent'), { leaseMs: 60000, nowMs: Date.now() });
 
       const cap = createMockMutatingCapability();
       const invocation: CapabilityInvocation = {

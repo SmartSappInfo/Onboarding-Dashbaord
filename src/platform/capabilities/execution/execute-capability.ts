@@ -47,7 +47,7 @@ import { toCapabilityError } from '../errors/error-mappers';
 import { defaultAuditSink } from '../storage/audit-store';
 import { defaultFlagChecker } from '../flags/flag-service';
 import { defaultOutboxSink } from '../storage/outbox-store';
-import type { ExtendedIdempotencyStore } from '../storage/execution-store';
+import { buildExecutionKey, type ExtendedIdempotencyStore } from '../storage/execution-store';
 import type {
   CapabilityInvocation,
   GatewayExecutionFailure,
@@ -75,6 +75,16 @@ import {
   type IdempotencyStore,
 } from './pipeline';
 import type { ApprovalVerifier } from '../policy/approval-verifier';
+import { resolveGatewayDeps } from './governed-deps';
+
+/** Type guard instead of a cast: only stores that can record outcomes get complete/fail calls. */
+function isExtendedIdempotencyStore(store: IdempotencyStore | undefined): store is ExtendedIdempotencyStore {
+  return (
+    store !== undefined &&
+    typeof (store as Partial<ExtendedIdempotencyStore>).complete === 'function' &&
+    typeof (store as Partial<ExtendedIdempotencyStore>).fail === 'function'
+  );
+}
 
 export interface ExecuteCapabilityDeps {
   registryLookup?: (id: string) => AnyCapabilityDefinition | undefined;
@@ -95,9 +105,12 @@ export interface ExecuteCapabilityDeps {
  */
 export async function executeCapability<TOutput = unknown>(
   invocation: CapabilityInvocation,
-  deps?: ExecuteCapabilityDeps
+  callerDeps?: ExecuteCapabilityDeps
 ): Promise<GatewayExecutionOutcome<TOutput>> {
-  const nowMs = deps?.nowMs ?? (() => Date.now());
+  // Phase 11 M0 · T1: governed dependencies (idempotency, approvals, live standing) are on by
+  // default; callers override by providing the key. See governed-deps.ts.
+  const deps = resolveGatewayDeps(callerDeps);
+  const nowMs = deps.nowMs ?? (() => Date.now());
   const startMs = nowMs();
   const executionId = randomUUID();
 
@@ -105,30 +118,33 @@ export async function executeCapability<TOutput = unknown>(
   let resolvedCapability: AnyCapabilityDefinition | undefined;
   let executionContext: CapabilityExecutionContext | undefined;
   let inputHash: string | undefined;
+  // Store key this invocation actually claimed. Only the claimant may complete or fail it: failing
+  // a lease another in-flight call holds would let a third call re-run the operation (Rule 20).
+  let claimedStoreKey: string | undefined;
 
-  const idempotencyStore = deps?.idempotencyStore;
-  const approvals = deps?.approvals;
-  const effectiveAuditSink = deps?.auditSink ?? defaultAuditSink;
-  const effectiveOutboxSink = deps?.outboxSink ?? defaultOutboxSink;
+  const idempotencyStore = deps.idempotencyStore;
+  const approvals = deps.approvals;
+  const effectiveAuditSink = deps.auditSink ?? defaultAuditSink;
+  const effectiveOutboxSink = deps.outboxSink ?? defaultOutboxSink;
 
   try {
     // 1. Resolve Principal
     resolvedPrincipal = await step01ResolvePrincipal(invocation, {
-      getPrincipal: deps?.getPrincipal,
+      getPrincipal: deps.getPrincipal,
     });
 
     // 2. Lookup Capability (SemVer check)
     resolvedCapability = step02LookupCapability(
       invocation.capabilityId,
       invocation.version,
-      deps?.registryLookup ?? getCapability
+      deps.registryLookup ?? getCapability
     );
 
     // 3. Check Flags & Kill Switches
     await step03CheckFlags(
       resolvedCapability,
       resolvedPrincipal,
-      deps?.flagChecker ?? defaultFlagChecker,
+      deps.flagChecker ?? defaultFlagChecker,
       invocation.surface
     );
 
@@ -164,7 +180,7 @@ export async function executeCapability<TOutput = unknown>(
     // 8. Authorize Principal (RBAC & non-delegable check)
     await step08AuthorizePrincipal(resolvedPrincipal, resolvedCapability, {
       nowMs: nowMs(),
-      verifyActorStanding: deps?.verifyActorStanding,
+      verifyActorStanding: deps.verifyActorStanding,
     });
 
     // 9. Verify Approval (Single-use binding; authority evaluated before this step)
@@ -180,18 +196,33 @@ export async function executeCapability<TOutput = unknown>(
     );
 
     // 10. Check Idempotency & Replay
+    // CAUTION (M0 review R1, Rules 8/19/50): the caller's key is namespaced by tenant and
+    // capability before it touches the store. Plans use deterministic keys (`mtg_task_{id}_…`), so a
+    // raw key could collide across workspaces and replay one tenant's result to another.
+    const storeKey = invocation.idempotencyKey
+      ? buildExecutionKey(
+          resolvedPrincipal.organizationId,
+          resolvedPrincipal.workspaceId,
+          resolvedCapability.id,
+          invocation.idempotencyKey
+        )
+      : undefined;
     const idempotencyOutcome = await step10CheckIdempotency(
       resolvedCapability,
-      invocation.idempotencyKey,
+      storeKey,
       idempotencyStore,
       nowMs()
     );
+    if (!idempotencyOutcome.isReplay && storeKey && idempotencyStore) {
+      claimedStoreKey = storeKey;
+    }
 
     if (idempotencyOutcome.isReplay) {
       const durationMs = Math.max(0, nowMs() - startMs);
       return {
         success: true,
-        data: idempotencyOutcome.cachedResult as TOutput,
+        // A replayed result is untrusted stored data: re-validate it like a fresh output (Rule 48).
+        data: step14ValidateOutput(idempotencyOutcome.cachedResult, resolvedCapability) as TOutput,
         executionId,
         correlationId: invocation.correlationId,
         durationMs,
@@ -232,7 +263,7 @@ export async function executeCapability<TOutput = unknown>(
       resolvedCapability,
       validatedInput,
       executionContext,
-      { surfaceBudgetMs: deps?.surfaceBudgetMs }
+      { surfaceBudgetMs: deps.surfaceBudgetMs }
     );
 
     // 14. Validate Output ("Never trust the tool either")
@@ -262,8 +293,8 @@ export async function executeCapability<TOutput = unknown>(
     );
 
     // Complete idempotency lease with cached result
-    if (invocation.idempotencyKey && idempotencyStore && 'complete' in idempotencyStore) {
-      await (idempotencyStore as ExtendedIdempotencyStore).complete(invocation.idempotencyKey, validatedOutput);
+    if (claimedStoreKey && isExtendedIdempotencyStore(idempotencyStore)) {
+      await idempotencyStore.complete(claimedStoreKey, validatedOutput);
     }
 
     // 16. Return Typed Result
@@ -301,8 +332,8 @@ export async function executeCapability<TOutput = unknown>(
     }
 
     // Fail idempotency lease if claimed
-    if (invocation.idempotencyKey && idempotencyStore && 'fail' in idempotencyStore) {
-      await (idempotencyStore as ExtendedIdempotencyStore).fail(invocation.idempotencyKey, capError);
+    if (claimedStoreKey && isExtendedIdempotencyStore(idempotencyStore)) {
+      await idempotencyStore.fail(claimedStoreKey, capError);
     }
 
     const failure: GatewayExecutionFailure = {

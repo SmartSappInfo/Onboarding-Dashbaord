@@ -99,6 +99,6 @@ describe('gate: no store keys its storage mode on FIREBASE_PROJECT_ID', () => {
   it.each(storeFiles)('%s selects its default through selectPlatformStore', (file) => {
     const source = readFileSync(join(root, file), 'utf8');
     expect(source).not.toMatch(/process\.env\.FIREBASE_PROJECT_ID/);
-    expect(source).toMatch(/selectPlatformStore\(/);
+    expect(source).toMatch(/selectPlatformStore(<\w+>)?\(/);
   });
 });
