@@ -2,7 +2,7 @@
 ## Meetings Capability Layer, Transcript Ingestion, Consent & Retention
 
 **Version:** 1.1.0 (full `agents_mcp_rules.md` conformance; no functionality removed)
-**Status:** PLANNING. Uses master default D1 (upload/paste + transcription of the workspace's own recordings; Meet/Zoom deferred). Decisions D10–D13 in §15.
+**Status:** EXECUTED locally 2026-10-05 (see [completion report](agents_mcp_phase_11_milestone_1_completion_report.md)). Originally: PLANNING. Uses master default D1 (upload/paste + transcription of the workspace's own recordings; Meet/Zoom deferred). Decisions D10–D13 in §15.
 **Date:** 2026-10-05
 **Parent:** [`agents_mcp_phase_11_master_plan.md`](agents_mcp_phase_11_master_plan.md) §2.2 (B1–B4, B12), §5.7, §13 (P11-M1-T1…T5).
 **Depends on:**
@@ -774,17 +774,17 @@ Nothing below happens without explicit approval:
 
 | ID | Task | Steps | Status | Evidence |
 | --- | --- | --- | --- | --- |
-| P11-M1-T0 | Security hotfixes | 0.1–0.4 | ☐ | |
-| P11-M1-T1 | Meeting capabilities & ownership | 1.1–1.5 | ☐ | |
-| P11-M1-T2 | Transcript storage v2 + rules | 2.1–2.5 | ☐ | |
-| P11-M1-T3 | Transcript ingestion | 3.1–3.6 | ☐ | |
-| P11-M1-T4 | Recording transcription (+ residency/modality) | 4.0–4.4 | ☐ | |
-| P11-M1-T5 | Per-meeting consent | 5.1–5.2 | ☐ | |
-| P11-M1-T6 | Retention (shadow first) + legal hold + policy capability | 6.1–6.4 | ☐ | |
-| P11-M1-T7 | Fail-closed intelligence + signed playback | 7.1–7.3 | ☐ | |
-| P11-M1-T8 | Minimal UI + boundary tests | 8.1–8.5 | ☐ | |
-| P11-M1-T9 | Backoffice & operations | 9.1–9.4 | ☐ | |
-| P11-M1-T10 | Verification & report | 10.1–10.5 | ☐ | |
+| P11-M1-T0 | Security hotfixes | 0.1–0.4 | ✅ | `795a1c41` |
+| P11-M1-T1 | Meeting capabilities & ownership | 1.1–1.5 | ✅ | `aed768a4` |
+| P11-M1-T2 | Transcript storage v2 + rules | 2.1–2.5 | ✅ | `ba64d86c` |
+| P11-M1-T3 | Transcript ingestion | 3.1–3.6 | ✅ | `79e7db0d` |
+| P11-M1-T4 | Recording transcription (+ residency/modality) | 4.0–4.4 | ✅ (inline ≤ 14 MB) | `4a060054` |
+| P11-M1-T5 | Per-meeting consent | 5.1–5.2 | ✅ | `79e7db0d` |
+| P11-M1-T6 | Retention (shadow first) + legal hold + policy capability | 6.1–6.4 | ✅ | `52740087` |
+| P11-M1-T7 | Fail-closed intelligence + signed playback | 7.1–7.3 | ✅ | `45a78397` |
+| P11-M1-T8 | Minimal UI + boundary tests | 8.1–8.5 | ✅ | `eaec957e` |
+| P11-M1-T9 | Backoffice & operations | 9.1–9.4 | ✅ | `1887a7fe` |
+| P11-M1-T10 | Verification & report | 10.1–10.5 | ◐ emulator E2E + browser pending | completion report |
 
 **Mapping to master §13:** P11-M1-T1 → T1 (+T0 IDOR) · P11-M1-T2 → T2, T3 · P11-M1-T3 → T4 · P11-M1-T4 → T5, T6 · P11-M1-T5 → T7 + T2.3. New: T0, T8, T9, T10.
 

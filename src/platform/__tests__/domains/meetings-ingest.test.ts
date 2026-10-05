@@ -125,6 +125,25 @@ describe('meeting.ingest_transcript', () => {
     expect(transcriptDocs()).toHaveLength(0);
   });
 
+  it('red team: a forged workspaceId in the input is refused before any write (tenant binding)', async () => {
+    const forged = await ingest({ workspaceId: 'ws-b', meetingId: 'm-b', text: VTT });
+    expect(!forged.success && forged.error.code).toBe('TENANT_SCOPE_VIOLATION');
+    expect(transcriptDocs()).toHaveLength(0);
+  });
+
+  it('red team: agents cannot record consent to unlock processing (non-delegable)', async () => {
+    const { meetingRecordConsentCapability } = await import('../../domains/meetings_conversations');
+    const consentCap = meetingRecordConsentCapability as AnyCapabilityDefinition;
+    const agent: AgentPrincipal = { ...editor, actorType: 'agent', agentId: 'meeting_assistant' };
+    const res = await executeCapability(
+      { capabilityId: consentCap.id, surface: 'agent', correlationId: 'c', principal: agent,
+        input: { workspaceId: 'ws-a', meetingId: 'm-1', type: 'transcription', granted: true, method: 'policy', expectedVersion: 0 } },
+      { registryLookup: (id) => (id === consentCap.id ? consentCap : undefined), auditSink: () => undefined, outboxSink: () => undefined }
+    );
+    expect(res.success).toBe(false);
+    expect(db.read('meeting_consents/m-1')).toBeUndefined();
+  });
+
   it('handles 100 concurrent distinct ingestions (load)', async () => {
     const results = await Promise.all(Array.from({ length: 100 }, (_, i) => ingest({ text: `Ama: Update number ${i}` })));
     expect(results.every((r) => r.success)).toBe(true);
