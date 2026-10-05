@@ -3,3 +3,4 @@
  */
 
 export * from './revenue-swarm-types';
+export * from './revenue-swarm-orchestrator';
