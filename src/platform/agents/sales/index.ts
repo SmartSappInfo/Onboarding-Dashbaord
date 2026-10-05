@@ -6,3 +6,4 @@ export * from './context';
 export * from './personas';
 export * from './evaluation';
 export * from './outbound';
+export * from './swarm';
