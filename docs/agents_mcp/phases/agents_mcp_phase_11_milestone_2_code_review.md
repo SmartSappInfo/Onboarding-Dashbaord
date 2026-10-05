@@ -223,3 +223,31 @@ Severity:
   - the brief's handling of time (R3).
 
   All three are small, well-bounded fixes. Once they're in, with R4 and R8, T3 can start on solid ground.
+
+---
+
+## 7. Resolution (2026-10-05)
+
+| Finding | Status | Commit | Proof |
+| --- | --- | --- | --- |
+| R8 · pin check | ✅ | `979fb6ee` | 4 tests. A pin differing in version, fingerprint, policies, execution or scoping → `CAPABILITY_VERSION_MISMATCH`, nothing runs |
+| R2 · saga compensation | ✅ | `78e1ce64` | 5 tests with **real permissions**. Runs as the run's delegated agent (authorizing user + persona permissions); input is exactly the compensation arguments; fails closed for a missing run, another workspace or an unknown persona |
+| R1 · legacy MCP | ✅ | `cd267f1c` | 6 tests, 5 of which fail on the old code. API keys refused (pointer to `/api/mcp/v2/{domain}`). Others run as the verified acting user via `invokeGoverned` on the `mcp` surface. Explicit-MCP flags enforced. Ratchet 3 → 2 |
+| R3 · brief deadlines | ✅ | `0d47b959` | 3 tests. A hanging model → `facts_only/timeout` and the signal is aborted. A hanging record context is skipped. Capability `1.1.0`; fingerprint baseline reviewed (one key) |
+| R4 · history lookup | ✅ | `0ea62e22` | 2 tests (30 newer unrelated meetings; no later meetings). Direct indexed query, plus a new composite index |
+
+**Decisions taken while fixing:**
+- **R8:** an id the registry doesn't hold may still be pinned. It impersonates nothing, every gateway check still runs, and the caller already holds the handler in process. This narrows §3 R8's "test deps only"; the protection that matters (a registered id can't be weakened) is in place.
+- **R1:**
+  - The scope logic was extracted to `principalFromProfile`, so sessions and the legacy bridge compute authority identically.
+  - Internal callers (supervisor, legacy workflows, specialists) keep working as the user they act for.
+  - API-key callers lose access to platform capabilities on v1 and must use the governed v2 endpoint, where key scopes are mapped. Legacy (non-platform) tools are unchanged.
+
+**Regression run:** platform + lib suites pass 6,822; 3 fail:
+- the known registry-unification failure (13 vs 12);
+- 2 in `automation-misc-actions` from another author's commit `6611dc97`, whose test mock lacks `.get`.
+
+**Deploy note:** the new `meetings (workspaceIds CONTAINS, entityId ASC, meetingTime DESC)` index ships with the other pending index changes. That still needs written approval.
+
+**Next:** R5 (idempotency bound to input) before T3, then T3. R6 stays a T5 gate. R7 and L1–L6 within M2.
+
