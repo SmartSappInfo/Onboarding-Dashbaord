@@ -3,7 +3,8 @@
  *
  * Supports exactly what the agent-step store and dispatcher use: nested collection/doc refs,
  * get/set/update/delete, batches, `runTransaction` with `getAll`/`get`/`set`/`update`/`delete`,
- * and queries with equality/`in` filters, orderBy (numbers compare numerically), startAfter, limit.
+ * and queries with equality/`in`/`array-contains`/range filters, orderBy (numbers compare
+ * numerically), startAfter, limit.
  * Transactions are serialized through a mutex, mirroring Firestore's guarantee that two
  * transactions touching the same documents cannot both commit on stale reads.
  */
@@ -43,7 +44,28 @@ export class FakeDocRef {
   }
 }
 
-type Filter = { field: string; op: '==' | 'in'; value: unknown };
+type FilterOp = '==' | 'in' | 'array-contains' | '<' | '<=' | '>' | '>=';
+type Filter = { field: string; op: FilterOp; value: unknown };
+
+function matches(data: Data, f: Filter): boolean {
+  const v = data[f.field];
+  switch (f.op) {
+    case '==':
+      return v === f.value;
+    case 'in':
+      return Array.isArray(f.value) && f.value.includes(v);
+    case 'array-contains':
+      return Array.isArray(v) && v.includes(f.value);
+    case '<':
+      return v !== undefined && compareValues(v, f.value) < 0;
+    case '<=':
+      return v !== undefined && compareValues(v, f.value) <= 0;
+    case '>':
+      return v !== undefined && compareValues(v, f.value) > 0;
+    case '>=':
+      return v !== undefined && compareValues(v, f.value) >= 0;
+  }
+}
 
 /** Query over the direct children of a collection: equality/`in` filters, orderBy, limit. */
 export class FakeQuery {
@@ -56,7 +78,7 @@ export class FakeQuery {
     private readonly cursor: unknown = undefined
   ) {}
 
-  where(field: string, op: '==' | 'in', value: unknown): FakeQuery {
+  where(field: string, op: FilterOp, value: unknown): FakeQuery {
     return new FakeQuery(this.store, this.path, [...this.filters, { field, op, value }], this.order, this.max, this.cursor);
   }
 
@@ -77,9 +99,7 @@ export class FakeQuery {
     const prefix = `${this.path}/`;
     let rows = [...this.store.entries()]
       .filter(([p]) => p.startsWith(prefix) && !p.slice(prefix.length).includes('/'))
-      .filter(([, data]) =>
-        this.filters.every((f) => (f.op === '==' ? data[f.field] === f.value : Array.isArray(f.value) && f.value.includes(data[f.field])))
-      );
+      .filter(([, data]) => this.filters.every((f) => matches(data, f)));
     if (this.order) {
       const { field, dir } = this.order;
       const sign = dir === 'asc' ? 1 : -1;
@@ -163,6 +183,9 @@ export class FakeFirestore {
       },
       update: (ref: FakeDocRef, data: Data) => {
         ops.push(() => applyUpdate(this.docs, ref.path, data));
+      },
+      delete: (ref: FakeDocRef) => {
+        ops.push(() => this.docs.delete(ref.path));
       },
       commit: async () => {
         ops.forEach((op) => op());

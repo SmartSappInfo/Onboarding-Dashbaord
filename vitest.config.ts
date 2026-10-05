@@ -21,6 +21,10 @@ export default defineConfig({
     ],
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // Mirrors Next.js's own server-side alias (next/dist/build/create-compiler-aliases.js): tests
+      // run server code, so `import 'server-only'` resolves to the empty module. Client bundles
+      // still get the throwing module from Next, which is what enforces the boundary (Rule 52).
+      'server-only': fileURLToPath(new URL('./node_modules/next/dist/compiled/server-only/empty.js', import.meta.url)),
     },
   },
 });

@@ -19,7 +19,7 @@ import 'server-only';
  */
 
 import type { Firestore } from 'firebase-admin/firestore';
-import { z } from 'zod';
+import { z } from 'zod/v4';
 import type { CompliancePolicy } from './types/compliance';
 
 const COLLECTION = 'meeting_compliance_policies';
@@ -43,7 +43,7 @@ export type CompliancePolicyUpdate = z.infer<typeof CompliancePolicyUpdateSchema
 export const CompliancePolicyRecordSchema = CompliancePolicyUpdateSchema.extend({
   updatedAt: z.string().catch(''),
   updatedBy: z.string().optional(),
-}).passthrough();
+}).loose();
 
 export function defaultCompliancePolicy(workspaceId: string, nowIso: string): CompliancePolicy {
   return {

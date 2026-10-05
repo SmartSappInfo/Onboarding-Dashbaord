@@ -16,7 +16,7 @@
  * - Zero 'any' policy strictly enforced.
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v4';
 import { adminDb } from '@/lib/firebase-admin';
 import type {
   MeetingIntelligence,
@@ -50,7 +50,7 @@ const ActionItemSchema = z.object({
   status: z.enum(['open', 'completed', 'converted_to_crm_task', 'dismissed']).catch('open'),
   crmTaskId: z.string().optional(),
   conversionClaimedAt: z.string().optional(),
-}).passthrough();
+}).loose();
 type MeetingActionItem = z.infer<typeof ActionItemSchema>;
 
 const IntelligenceActionItemsSchema = z.object({

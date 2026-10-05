@@ -27,7 +27,8 @@ const CATEGORY_SCOPES: Readonly<Record<McpCategory, readonly string[]>> = {
   crm: ['app:contacts_view', 'app:contacts_manage', 'tools:crm.*'],
   deal: ['app:deals_view', 'app:deals_manage', 'tools:deal.*'],
   task: ['app:tasks_view', 'app:tasks_manage', 'tools:task.*'],
-  meeting: ['app:meetings_view', 'app:meetings_manage', 'tools:meeting.*'],
+  // rbac coordinates are what the governed meeting.* capabilities declare (Phase 11 M1 · T1).
+  meeting: ['app:meetings_view', 'app:meetings_manage', 'rbac:operations.meetings.view', 'rbac:operations.meetings.edit', 'tools:meeting.*'],
   campaign: ['app:campaigns_view', 'app:campaigns_manage', 'tools:campaign.*'],
   governance: ['app:governance_view', 'app:governance_manage', 'tools:governance.*'],
 };

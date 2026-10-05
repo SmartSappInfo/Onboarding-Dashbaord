@@ -14,7 +14,7 @@
  * Tests: src/lib/__tests__/meetings/meeting-actions-security.test.ts
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v4';
 import type { MeetingRecording } from '../types/intelligence';
 
 export const ConferenceProviderSchema = z.enum([

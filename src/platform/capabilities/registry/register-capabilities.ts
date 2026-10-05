@@ -16,6 +16,7 @@ import { registerCrmContactsCapabilities } from '@/platform/domains/crm_contacts
 import { registerDealsRevenueCapabilities } from '@/platform/domains/deals_revenue';
 import { registerIdentityAccessCapabilities } from '@/platform/domains/identity_access';
 import { registerTasksProductivityCapabilities } from '@/platform/domains/tasks_productivity';
+import { registerMeetingsConversationsCapabilities } from '@/platform/domains/meetings_conversations';
 
 type Registrar = () => void;
 
@@ -26,6 +27,7 @@ export const DOMAIN_REGISTRARS: readonly Registrar[] = [
   registerDealsRevenueCapabilities,
   registerIdentityAccessCapabilities,
   registerTasksProductivityCapabilities,
+  registerMeetingsConversationsCapabilities,
 ];
 
 const globalRef = globalThis as { __smartsappCapabilitiesRegistered?: boolean };

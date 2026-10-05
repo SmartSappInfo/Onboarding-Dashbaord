@@ -23,7 +23,7 @@ describe('Domain Server Types & Mapping Contracts (Phase 5 Milestone 2)', () => 
         'deals_revenue',
         'tasks_productivity',
       ]);
-      expect(DOMAIN_CAPABILITY_MAP.knowledge).toEqual(['knowledge_memory']);
+      expect(DOMAIN_CAPABILITY_MAP.knowledge).toEqual(['knowledge_memory', 'meetings_conversations']);
       expect(DOMAIN_CAPABILITY_MAP.messaging).toEqual(['communication_messaging']);
       expect(DOMAIN_CAPABILITY_MAP.sales).toEqual([
         'lead_intelligence',

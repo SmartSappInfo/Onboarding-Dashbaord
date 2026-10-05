@@ -19,7 +19,6 @@ const h = vi.hoisted(() => ({
   audits: [] as unknown[],
 }));
 
-vi.mock('server-only', () => ({}));
 vi.mock('@/lib/auth/require-auth', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/auth/require-auth')>();
   return {

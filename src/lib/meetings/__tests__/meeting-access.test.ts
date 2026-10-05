@@ -3,10 +3,7 @@
  * @fileOverview Meeting ownership (Phase 11 M1 · T0.2, finding G12).
  * Both ownership shapes are honoured; missing and foreign meetings are indistinguishable.
  */
-import { describe, it, expect, vi } from 'vitest';
-
-vi.mock('server-only', () => ({}));
-
+import { describe, it, expect } from 'vitest';
 import { FakeFirestore } from '@/platform/__tests__/helpers/fake-firestore';
 import {
   assertMeetingInWorkspace,

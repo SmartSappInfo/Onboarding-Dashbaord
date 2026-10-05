@@ -111,6 +111,14 @@ export async function resolvePrincipalFromSession(
     }
   }
 
+  // 3b. Legacy flat `meetings_manage` implies the meetings RBAC coordinates (Phase 11 M1 · T1).
+  // Most roles still use the flat list, where managing meetings has always included viewing them.
+  // Without this, legacy-role users could not use the governed `meeting.*` capabilities at all.
+  if (scopesSet.has('meetings_manage') || scopesSet.has('app:meetings_manage')) {
+    scopesSet.add('rbac:operations.meetings.view');
+    scopesSet.add('rbac:operations.meetings.edit');
+  }
+
   // 4. Default self-identity and workspace discovery scopes granted to all verified workspace members
   scopesSet.add('identity:read');
   scopesSet.add('workspace:read');

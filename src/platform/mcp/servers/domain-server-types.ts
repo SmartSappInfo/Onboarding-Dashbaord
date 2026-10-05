@@ -25,7 +25,8 @@ import type { McpDomain } from '../transport/transport-types';
  */
 export const DOMAIN_CAPABILITY_MAP: Record<McpDomain, readonly CapabilityDomain[]> = {
   crm: ['crm_contacts', 'deals_revenue', 'tasks_productivity'] as const,
-  knowledge: ['knowledge_memory'] as const,
+  // Meetings are conversation knowledge (Phase 11 M1 · T1); no separate MCP domain is added.
+  knowledge: ['knowledge_memory', 'meetings_conversations'] as const,
   messaging: ['communication_messaging'] as const,
   sales: ['lead_intelligence', 'campaigns_marketing'] as const,
   portals: ['experience_portal', 'school_operations'] as const,
@@ -37,7 +38,7 @@ export const DOMAIN_CAPABILITY_MAP: Record<McpDomain, readonly CapabilityDomain[
  */
 export const DOMAIN_ID_PREFIXES: Record<McpDomain, readonly string[]> = {
   crm: ['crm.', 'deal.', 'task.', 'contact.', 'pipeline.', 'activity.'] as const,
-  knowledge: ['knowledge.', 'memory.', 'note.', 'context.', 'dossier.'] as const,
+  knowledge: ['knowledge.', 'memory.', 'note.', 'context.', 'dossier.', 'meeting.'] as const,
   messaging: ['messaging.', 'message.', 'template.', 'sms.', 'email.', 'whatsapp.'] as const,
   sales: ['sales.', 'lead.', 'campaign.', 'enrichment.'] as const,
   portals: ['portal.', 'membership.', 'course.', 'community.', 'credential.'] as const,

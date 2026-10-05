@@ -23,7 +23,7 @@ import 'server-only';
  */
 
 import type { Firestore } from 'firebase-admin/firestore';
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 export class MeetingNotFoundError extends Error {
   readonly status = 404;
