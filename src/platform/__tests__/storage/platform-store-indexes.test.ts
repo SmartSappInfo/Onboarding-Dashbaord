@@ -24,6 +24,12 @@ const indexes = (
 ).indexes;
 
 const required: Array<{ query: string; collectionGroup: string; fields: IndexField[] }> = [
+  // Phase 11 M1 · T6: retention sweep picks the least recently processed opted-in workspaces.
+  {
+    query: 'retention-service runRetentionSweep',
+    collectionGroup: 'meeting_compliance_policies',
+    fields: [{ fieldPath: 'retentionEnabled', order: 'ASCENDING' }, { fieldPath: 'retentionLastRunAt', order: 'ASCENDING' }],
+  },
   // Phase 11 M1 · T2: meeting transcript store queries.
   {
     query: 'transcript-store findLatestTranscriptId',

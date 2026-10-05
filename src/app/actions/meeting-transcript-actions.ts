@@ -34,6 +34,10 @@ import {
 } from '@/lib/meetings/transcript-upload';
 import { DocxRejectedError } from '@/lib/meetings/docx-guard';
 import { readMeetingConsents, type ConsentType, type MeetingConsents } from '@/lib/meetings/consent-store';
+import { deleteTranscriptCascade } from '@/lib/meetings/retention-service';
+import { randomUUID } from 'node:crypto';
+import { defaultAuditSink } from '@/platform/capabilities/storage/audit-store';
+import { sha256Hex } from '@/platform/capabilities/contracts/canonical-json';
 import type { MeetingGetTranscriptOutput, MeetingIngestTranscriptOutput, MeetingRecordConsentOutput } from '@/platform/domains/meetings_conversations';
 
 /** Paste limit: stays under the 2 MB Server Action body limit with room for JSON overhead. */
@@ -148,4 +152,46 @@ export async function recordMeetingConsentAction(
   return runAsUser<MeetingRecordConsentOutput>(ctx, workspaceId, 'meeting.record_consent', {
     workspaceId, meetingId, type: consent?.type, granted: consent?.granted, method: consent?.method, expectedVersion: consent?.expectedVersion,
   });
+}
+
+/**
+ * Deletes one transcript and everything derived from it (M1 · T6, plan §4.12). People only (a
+ * non-delegable action: no agent capability exists for it). Bound to the version the person saw,
+ * so a transcript that changed after the confirmation dialog is not deleted (Rules 18/22).
+ */
+export async function deleteMeetingTranscriptAction(
+  workspaceId: string,
+  meetingId: string,
+  transcriptId: string,
+  expectedVersion: number
+): Promise<ActionResult<{ deleted: boolean }>> {
+  const { ctx } = await requireMeetingAccess(workspaceId, meetingId, 'meetings_manage');
+  try {
+    const snap = await adminDb.collection('meeting_transcripts').doc(String(transcriptId ?? '')).get();
+    if (!snap.exists || snap.data()?.meetingId !== meetingId || snap.data()?.workspaceId !== workspaceId) {
+      return { success: false, error: 'Transcript not found.' };
+    }
+    const nowIso = new Date().toISOString();
+    const deleted = await deleteTranscriptCascade(adminDb, {
+      workspaceId, transcriptId, reason: 'manual', nowIso, expectedVersion: Number(expectedVersion),
+    });
+    await defaultAuditSink({
+      executionId: randomUUID(),
+      capabilityId: 'meeting.delete_transcript',
+      capabilityVersion: 'legacy-action',
+      userId: ctx.uid,
+      organizationId: ctx.profile.organizationId ?? '',
+      workspaceId,
+      correlationId: randomUUID(),
+      decision: 'allowed',
+      outcome: 'succeeded',
+      durationMs: 0,
+      stateChanged: deleted ? 'yes' : 'no',
+      timestamp: nowIso,
+      inputHash: sha256Hex({ meetingId, transcriptId, reason: 'manual' }),
+    }).catch((auditErr: unknown) => console.error('[deleteMeetingTranscriptAction] audit failed:', auditErr));
+    return { success: true, data: { deleted } };
+  } catch (err) {
+    return { success: false, error: err instanceof Error && err.message.includes('changed') ? 'The transcript changed. Reload and try again.' : 'Could not delete the transcript. Try again.' };
+  }
 }

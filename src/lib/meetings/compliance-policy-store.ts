@@ -36,6 +36,8 @@ export const CompliancePolicyUpdateSchema = z.object({
   autoPurgeRecordings: z.boolean().optional(),
   requireMeetingPasscode: z.boolean().optional(),
   enforceHostConsentForAI: z.boolean().optional(),
+  /** M1 · T6: 'shadow' previews deletions only; 'enforced' deletes (bound to a reviewed preview). */
+  retentionMode: z.enum(['shadow', 'enforced']).optional(),
 });
 export type CompliancePolicyUpdate = z.infer<typeof CompliancePolicyUpdateSchema>;
 
@@ -43,7 +45,31 @@ export type CompliancePolicyUpdate = z.infer<typeof CompliancePolicyUpdateSchema
 export const CompliancePolicyRecordSchema = CompliancePolicyUpdateSchema.extend({
   updatedAt: z.string().catch(''),
   updatedBy: z.string().optional(),
+  retentionEnabled: z.boolean().optional(),
+  retentionLastRunAt: z.string().optional(),
 }).loose();
+
+/** Derived: does the retention sweep need to look at this workspace at all? */
+export function isRetentionEnabled(p: { retentionPeriodDays?: unknown; autoPurgeTranscripts?: unknown; autoPurgeRecordings?: unknown }): boolean {
+  const days = typeof p.retentionPeriodDays === 'number' ? p.retentionPeriodDays : 0;
+  return days > 0 && (p.autoPurgeTranscripts === true || p.autoPurgeRecordings === true);
+}
+
+/**
+ * True when a change can delete MORE data than before: entering enforced mode, or (while enforced)
+ * shortening the period, turning on a purge type, or going from "forever" to a period.
+ * Such changes must be bound to a reviewed preview (Rules 21, 22).
+ */
+export function isRetentionTightening(before: Record<string, unknown> | null, after: Record<string, unknown>): boolean {
+  if (after.retentionMode !== 'enforced' || !isRetentionEnabled(after)) return false;
+  const b = before ?? {};
+  if (b.retentionMode !== 'enforced' || !isRetentionEnabled(b)) return true;
+  const bd = typeof b.retentionPeriodDays === 'number' ? b.retentionPeriodDays : 0;
+  const ad = typeof after.retentionPeriodDays === 'number' ? after.retentionPeriodDays : 0;
+  if (bd <= 0 || ad < bd) return true;
+  if (after.autoPurgeTranscripts === true && b.autoPurgeTranscripts !== true) return true;
+  return after.autoPurgeRecordings === true && b.autoPurgeRecordings !== true;
+}
 
 export function defaultCompliancePolicy(workspaceId: string, nowIso: string): CompliancePolicy {
   return {
@@ -78,6 +104,11 @@ export interface UpdateCompliancePolicyParams {
   nowIso: string;
   /** When given, the write is refused if the stored policy changed since it was read. */
   expectedUpdatedAt?: string;
+  /**
+   * Called (inside the transaction, before writing) when the change can delete more data. Must
+   * throw unless the person confirmed the exact current impact preview.
+   */
+  assertImpactConfirmed?: (after: Record<string, unknown>) => Promise<void>;
 }
 
 /** Merges the update and appends history atomically. Returns before/after for auditing. */
@@ -97,7 +128,17 @@ export async function updateCompliancePolicy(
       throw new StalePolicyError();
     }
 
-    const after: Record<string, unknown> = { ...(before ?? {}), ...update, updatedAt: nowIso, updatedBy: actorUid };
+    const merged: Record<string, unknown> = { ...(before ?? {}), ...update, updatedAt: nowIso, updatedBy: actorUid };
+    // Derived fields for the retention sweep query (retentionEnabled + retentionLastRunAt ordering;
+    // Firestore drops docs missing an orderBy field, so a first-time value is required).
+    const after: Record<string, unknown> = {
+      ...merged,
+      retentionEnabled: isRetentionEnabled(merged),
+      retentionLastRunAt: typeof merged.retentionLastRunAt === 'string' ? merged.retentionLastRunAt : '',
+    };
+    if (params.assertImpactConfirmed && isRetentionTightening(before, after)) {
+      await params.assertImpactConfirmed(after);
+    }
     tx.set(ref, after);
     tx.set(historyRef, { workspaceId: update.workspaceId, actorUid, at: nowIso, before, after });
     return { before, after };

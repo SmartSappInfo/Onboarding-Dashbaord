@@ -15,6 +15,8 @@ export interface CompliancePolicy {
   autoPurgeRecordings?: boolean;
   requireMeetingPasscode?: boolean;
   enforceHostConsentForAI?: boolean;
+  /** Phase 11 M1 · T6: 'shadow' (default) previews deletions; 'enforced' deletes. */
+  retentionMode?: 'shadow' | 'enforced';
   updatedAt: string;
 }
 

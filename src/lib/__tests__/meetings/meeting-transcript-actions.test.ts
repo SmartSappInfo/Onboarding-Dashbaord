@@ -28,6 +28,10 @@ vi.mock('@/lib/auth/require-auth', async (importOriginal) => {
     }),
   };
 });
+vi.mock('@/platform/capabilities/storage/audit-store', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/platform/capabilities/storage/audit-store')>();
+  return { ...actual, defaultAuditSink: vi.fn(async () => undefined) };
+});
 vi.mock('@/lib/workspace-permissions', () => ({
   checkWorkspacePermission: vi.fn(async () => (h.permissions.includes('meetings_manage') ? { granted: true } : { granted: false })),
 }));
@@ -57,6 +61,7 @@ import {
   ingestPastedTranscriptAction,
   ingestUploadedTranscriptAction,
   recordMeetingConsentAction,
+  deleteMeetingTranscriptAction,
 } from '@/app/actions/meeting-transcript-actions';
 
 let db: FakeFirestore;
@@ -128,5 +133,16 @@ describe('transcript actions', () => {
     const current = await getMeetingConsentsAction('ws-a', 'm-1');
     expect(current.success && current.data.current.transcription?.granted).toBe(true);
     expect((await ingestPastedTranscriptAction('ws-a', 'm-1', 'Ama: hi')).success).toBe(true);
+  });
+
+  it('deletes a transcript only at the version the person confirmed', async () => {
+    const res = await ingestPastedTranscriptAction('ws-a', 'm-1', 'Ama: delete me later');
+    expect(res.success).toBe(true);
+    if (!res.success) return;
+    const id = res.data.transcriptId;
+    expect(await deleteMeetingTranscriptAction('ws-a', 'm-1', id, 0)).toEqual({ success: false, error: 'The transcript changed. Reload and try again.' });
+    expect(await deleteMeetingTranscriptAction('ws-a', 'm-1', id, 1)).toEqual({ success: true, data: { deleted: true } });
+    expect(db.read(`meeting_transcripts/${id}`)).toBeUndefined();
+    expect(await getMeetingTranscriptAction('ws-a', 'm-1')).toEqual({ success: true, data: null });
   });
 });

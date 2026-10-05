@@ -2461,6 +2461,20 @@
       ]
     },
     {
+      "collectionGroup": "meeting_compliance_policies",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "retentionEnabled",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "retentionLastRunAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "meeting_intelligence",
       "queryScope": "COLLECTION",
       "fields": [
