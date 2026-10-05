@@ -15,6 +15,7 @@ import type {
   IdempotencyStore,
   StoredIdempotencyRecord,
 } from '../execution/pipeline/10-check-idempotency';
+import { selectPlatformStore } from '@/platform/storage/storage-mode';
 
 /**
  * Builds a deterministic, namespace-isolated execution key across multi-tenant boundaries.
@@ -209,7 +210,10 @@ export class FirestoreIdempotencyStore implements ExtendedIdempotencyStore {
  * Automatically chooses in-memory when running under Vitest/Node tests,
  * and FirestoreIdempotencyStore in production runtime.
  */
+// CAUTION (Phase 11 M0 · F1): memory only under test or explicit non-production opt-in; never an
+// implicit fallback. See src/platform/storage/storage-mode.ts.
 export const defaultIdempotencyStore: ExtendedIdempotencyStore =
-  process.env.NODE_ENV === 'test' || !process.env.FIREBASE_PROJECT_ID
-    ? createInMemoryIdempotencyStore()
-    : new FirestoreIdempotencyStore();
+  selectPlatformStore(
+    () => createInMemoryIdempotencyStore(),
+    () => new FirestoreIdempotencyStore()
+  );

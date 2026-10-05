@@ -22,6 +22,7 @@ import type {
   GlobalAutonomousControl,
 } from './capability-flags-types';
 import { evaluateCapabilityFlag } from './evaluate-capability-flag';
+import { selectPlatformStore } from '@/platform/storage/storage-mode';
 
 export interface FlagCheckContext {
   capability: AnyCapabilityDefinition;
@@ -271,7 +272,10 @@ export function createInMemoryFlagService(): InMemoryFlagService {
  * Uses InMemoryFlagService in test environments or when Firebase is not configured,
  * and FirestoreFlagService in production Cloud Run environments.
  */
+// CAUTION (Phase 11 M0 · F1): memory only under test or explicit non-production opt-in; never an
+// implicit fallback. See src/platform/storage/storage-mode.ts.
 export const defaultFlagChecker: FlagService =
-  process.env.NODE_ENV === 'test' || !process.env.FIREBASE_PROJECT_ID
-    ? new InMemoryFlagService()
-    : new FirestoreFlagService();
+  selectPlatformStore(
+    () => new InMemoryFlagService(),
+    () => new FirestoreFlagService()
+  );

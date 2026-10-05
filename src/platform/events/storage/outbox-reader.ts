@@ -19,6 +19,7 @@ import {
 } from '../../capabilities/events/domain-event';
 import type { EventDispatchOptions } from '../contracts/event-dispatcher.contract';
 import { DOMAIN_EVENTS_COLLECTION } from '../../capabilities/storage/outbox-store';
+import { selectPlatformStore } from '@/platform/storage/storage-mode';
 
 export interface OutboxLeaseRecord {
   id: string;
@@ -301,7 +302,10 @@ export class FirestoreOutboxReader implements OutboxReader {
 /**
  * Default process-wide outbox reader singleton.
  */
+// CAUTION (Phase 11 M0 · F1): memory only under test or explicit non-production opt-in; never an
+// implicit fallback. See src/platform/storage/storage-mode.ts.
 export const defaultOutboxReader: OutboxReader =
-  process.env.NODE_ENV === 'test' || !process.env.FIREBASE_PROJECT_ID
-    ? createInMemoryOutboxReader()
-    : new FirestoreOutboxReader();
+  selectPlatformStore(
+    () => createInMemoryOutboxReader(),
+    () => new FirestoreOutboxReader()
+  );

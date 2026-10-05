@@ -13,6 +13,7 @@
  */
 
 import type { DomainEvent } from '../../capabilities/events/domain-event';
+import { selectPlatformStore } from '@/platform/storage/storage-mode';
 
 export const DEAD_LETTER_EVENTS_COLLECTION = 'dead_letter_events';
 export const MAX_EVENT_ATTEMPTS = 3;
@@ -211,7 +212,10 @@ export class FirestoreDeadLetterStorage implements DeadLetterStorage {
 /**
  * Default process-wide DLQ singleton.
  */
+// CAUTION (Phase 11 M0 · F1): memory only under test or explicit non-production opt-in; never an
+// implicit fallback. See src/platform/storage/storage-mode.ts.
 export const defaultDeadLetterStorage: DeadLetterStorage =
-  process.env.NODE_ENV === 'test' || !process.env.FIREBASE_PROJECT_ID
-    ? createInMemoryDeadLetterStorage()
-    : new FirestoreDeadLetterStorage();
+  selectPlatformStore(
+    () => createInMemoryDeadLetterStorage(),
+    () => new FirestoreDeadLetterStorage()
+  );

@@ -22,6 +22,7 @@ import { randomUUID } from 'node:crypto';
 import { sha256Hex } from '../contracts/canonical-json';
 import type { StateChanged } from '../errors/capability-error';
 import type { ExecutionAuditEntry } from '../execution/pipeline/15-audit-and-events';
+import { selectPlatformStore } from '@/platform/storage/storage-mode';
 
 export const CAPABILITY_AUDIT_COLLECTION = 'capability_audit';
 export const CAPABILITY_AUDIT_HEADS_COLLECTION = 'capability_audit_heads';
@@ -330,10 +331,13 @@ export class FirestoreAuditStore implements AuditStore {
 /**
  * Default process-wide audit store singleton.
  */
+// CAUTION (Phase 11 M0 · F1): memory only under test or explicit non-production opt-in; never an
+// implicit fallback. See src/platform/storage/storage-mode.ts.
 export const defaultAuditStore: AuditStore =
-  process.env.NODE_ENV === 'test' || !process.env.FIREBASE_PROJECT_ID
-    ? createInMemoryAuditStore()
-    : new FirestoreAuditStore();
+  selectPlatformStore(
+    () => createInMemoryAuditStore(),
+    () => new FirestoreAuditStore()
+  );
 
 /**
  * Creates a standard audit sink function suitable for `executeCapability` or `step15AuditAndEvents`.

@@ -13,6 +13,7 @@
  */
 
 import { createHash } from 'node:crypto';
+import { selectPlatformStore } from '@/platform/storage/storage-mode';
 
 export const EVENT_EXECUTIONS_COLLECTION = 'event_executions';
 
@@ -226,7 +227,10 @@ export class FirestoreEventExecutionLedger implements EventExecutionLedger {
 /**
  * Default process-wide execution ledger singleton.
  */
+// CAUTION (Phase 11 M0 · F1): memory only under test or explicit non-production opt-in; never an
+// implicit fallback. See src/platform/storage/storage-mode.ts.
 export const defaultExecutionLedger: EventExecutionLedger =
-  process.env.NODE_ENV === 'test' || !process.env.FIREBASE_PROJECT_ID
-    ? createInMemoryExecutionLedger()
-    : new FirestoreEventExecutionLedger();
+  selectPlatformStore(
+    () => createInMemoryExecutionLedger(),
+    () => new FirestoreEventExecutionLedger()
+  );

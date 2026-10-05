@@ -20,6 +20,7 @@ import {
   DomainEventSchema,
   type DomainEvent,
 } from '../events/domain-event';
+import { selectPlatformStore } from '@/platform/storage/storage-mode';
 
 export const DOMAIN_EVENTS_COLLECTION = 'domain_events';
 
@@ -178,10 +179,13 @@ export class FirestoreOutboxStore implements OutboxStore {
 /**
  * Default process-wide outbox store singleton.
  */
+// CAUTION (Phase 11 M0 · F1): memory only under test or explicit non-production opt-in; never an
+// implicit fallback. See src/platform/storage/storage-mode.ts.
 export const defaultOutboxStore: OutboxStore =
-  process.env.NODE_ENV === 'test' || !process.env.FIREBASE_PROJECT_ID
-    ? createInMemoryOutboxStore()
-    : new FirestoreOutboxStore();
+  selectPlatformStore(
+    () => createInMemoryOutboxStore(),
+    () => new FirestoreOutboxStore()
+  );
 
 /**
  * Creates an outbox sink function suitable for `executeCapability` or `step15AuditAndEvents`.

@@ -26,6 +26,7 @@ import {
   type ApprovalVerifier,
   type CapabilityApprovalRecord,
 } from '../policy/approval-verifier';
+import { selectPlatformStore } from '@/platform/storage/storage-mode';
 
 export interface CreateApprovalRequestParams {
   approvalId?: string;
@@ -322,7 +323,10 @@ export class FirestoreApprovalStore implements ApprovalStore {
 /**
  * Process-wide default approval store.
  */
+// CAUTION (Phase 11 M0 · F1): memory only under test or explicit non-production opt-in; never an
+// implicit fallback. See src/platform/storage/storage-mode.ts.
 export const defaultApprovalStore: ApprovalStore =
-  process.env.NODE_ENV === 'test' || !process.env.FIREBASE_PROJECT_ID
-    ? createInMemoryApprovalStore()
-    : new FirestoreApprovalStore();
+  selectPlatformStore(
+    () => createInMemoryApprovalStore(),
+    () => new FirestoreApprovalStore()
+  );
