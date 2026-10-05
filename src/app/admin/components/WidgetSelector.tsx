@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import { useFeatures } from '@/hooks/use-features';
-import { getAllWidgets, filterWidgetsByFeatures } from '@/lib/widget-registry';
+import { usePermissions } from '@/hooks/use-permissions';
+import { getAllWidgets, filterWidgetsByFeatures, isWidgetPermitted } from '@/lib/widget-registry';
 import type { Pipeline, WidgetDefinition } from '@/lib/types';
 import {
   Dialog,
@@ -74,6 +75,7 @@ export default function WidgetSelector({
   terminology,
 }: WidgetSelectorProps) {
   const { isFeatureEnabled } = useFeatures();
+  const { can, isSystemAdmin } = usePermissions();
   const [searchTerm, setSearchTerm] = React.useState('');
 
   const allWidgets = React.useMemo(() => {
@@ -89,10 +91,11 @@ export default function WidgetSelector({
     }));
   }, [pipelines, terminology]);
 
-  // Filter by enabled features
+  // Filter by enabled features and user permissions (Rules 1-10)
   const availableWidgets = React.useMemo(() => {
-    return filterWidgetsByFeatures(allWidgets, isFeatureEnabled);
-  }, [allWidgets, isFeatureEnabled]);
+    const featureFiltered = filterWidgetsByFeatures(allWidgets, isFeatureEnabled);
+    return featureFiltered.filter(w => isWidgetPermitted(w, can, isSystemAdmin));
+  }, [allWidgets, isFeatureEnabled, can, isSystemAdmin]);
 
   // Filter by search
   const filteredWidgets = React.useMemo(() => {

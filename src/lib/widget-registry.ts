@@ -1,10 +1,10 @@
-import type { AppFeatureId, WidgetDefinition } from './types';
+import type { AppFeatureId, WidgetDefinition, PermissionsSchema, AppPermissionAction } from './types';
 
 /**
  * @fileOverview Dashboard Widget Registry.
  * Central source of truth for all available dashboard widgets.
  * Each widget maps to a feature. When widgets are filtered,
- * disabled features will hide their corresponding widgets.
+ * disabled features or unauthorized views will hide their corresponding widgets.
  */
 
 /**
@@ -161,6 +161,49 @@ export function filterWidgetsByFeatures(
     if (!w.featureId) return true;
     return isFeatureEnabled(w.featureId);
   });
+}
+
+/**
+ * Evaluates whether the current user has permission to view a specific widget.
+ * Conceals unaccessible dashboard widgets from unauthorized view.
+ */
+export function isWidgetPermitted(
+  widget: WidgetDefinition,
+  can: (section: keyof PermissionsSchema, feature: string, action?: AppPermissionAction) => boolean,
+  isSystemAdmin = false
+): boolean {
+  if (widget.id === 'executiveIntelligence') {
+    return can('operations', 'intelligence', 'view') || isSystemAdmin;
+  }
+  if (widget.id === 'userAssignments') {
+    return can('operations', 'campuses', 'view') || can('workforce', 'crmWorkload', 'view');
+  }
+  if (widget.id === 'taskWidget') {
+    return can('operations', 'tasks', 'view');
+  }
+  if (widget.id === 'messagingWidget') {
+    return can('studios', 'messaging', 'view');
+  }
+  if (widget.id === 'pipelinePieChart' || widget.type === 'pipeline' || widget.featureId === 'pipeline') {
+    return can('operations', 'pipeline', 'view');
+  }
+  if (widget.id === 'upcomingMeetings') {
+    return can('operations', 'meetings', 'view');
+  }
+  if (widget.id === 'recentActivity') {
+    return can('management', 'activities', 'view');
+  }
+  if (
+    widget.id === 'zoneDistribution' ||
+    widget.id === 'moduleRadarChart' ||
+    widget.id === 'monthlySchoolsChart'
+  ) {
+    return can('operations', 'campuses', 'view');
+  }
+  if (widget.id === 'latestSurveys') {
+    return can('studios', 'surveys', 'view');
+  }
+  return true;
 }
 
 /**

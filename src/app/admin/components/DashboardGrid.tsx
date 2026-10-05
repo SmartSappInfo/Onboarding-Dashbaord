@@ -31,7 +31,8 @@ import { DashboardSkeleton } from './DashboardSkeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFeatures } from '@/hooks/use-features';
 import { useTenant } from '@/context/TenantContext';
-import { filterWidgetsByFeatures, DEFAULT_WIDGET_IDS, getAllWidgets } from '@/lib/widget-registry';
+import { usePermissions } from '@/hooks/use-permissions';
+import { filterWidgetsByFeatures, isWidgetPermitted, DEFAULT_WIDGET_IDS, getAllWidgets } from '@/lib/widget-registry';
 import WidgetSelector from './WidgetSelector';
 
 
@@ -92,14 +93,17 @@ export default function DashboardGrid({
         return getAllWidgets(pipelines.map(p => ({ id: p.id, name: p.name })));
     }, [pipelines]);
 
-    // Filter by enabled features
-    const featureFilteredWidgets = React.useMemo(() => {
-        return filterWidgetsByFeatures(allWidgetDefinitions, isFeatureEnabled);
-    }, [allWidgetDefinitions, isFeatureEnabled]);
+    const { can, isSystemAdmin } = usePermissions();
+
+    // Filter by enabled features and user permissions (Rules 1-10)
+    const permittedWidgets = React.useMemo(() => {
+        const featureFiltered = filterWidgetsByFeatures(allWidgetDefinitions, isFeatureEnabled);
+        return featureFiltered.filter(w => isWidgetPermitted(w, can, isSystemAdmin));
+    }, [allWidgetDefinitions, isFeatureEnabled, can, isSystemAdmin]);
 
     const validWidgetIds = React.useMemo(() => {
-        return new Set(featureFilteredWidgets.map(w => w.id));
-    }, [featureFilteredWidgets]);
+        return new Set(permittedWidgets.map(w => w.id));
+    }, [permittedWidgets]);
 
     // Grid class lookup from widget definitions
     const gridClassMap = React.useMemo(() => {
