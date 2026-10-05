@@ -100,9 +100,12 @@ vi.mock('../crm/bulk-deal-core', () => ({
 }));
 
 const mockBulkCreateTasksAction = vi.fn();
+// The automation engine calls the bulk task core with a service actor, never the Server Action.
+vi.mock('@/lib/tasks/task-bulk-core', () => ({
+  bulkCreateTasksCore: (data: unknown, _actor: unknown) => mockBulkCreateTasksAction(data),
+}));
 vi.mock('../../app/actions/bulk-task-actions', () => ({
   bulkCreateTasksAction: (...args: unknown[]) => mockBulkCreateTasksAction(...args),
-  bulkCreateTasksActionCore: (...args: unknown[]) => mockBulkCreateTasksAction(...args),
 }));
 
 describe('executeMessageStatusAutomations', () => {

@@ -270,18 +270,21 @@ export async function executeMessageStatusAutomations(
                 { workspaceId, entityId, recipientContact: effectiveContactId }
               );
 
-              const { bulkCreateTasksActionCore: bulkCreateTasksAction } = await import('../../app/actions/bulk-task-actions');
+              const { bulkCreateTasksCore } = await import('@/lib/tasks/task-bulk-core');
               // CAUTION: organizationId MUST be forwarded here for multi-tenant isolation.
-              await bulkCreateTasksAction({
-                entityIds: [entityId],
-                workspaceId,
-                organizationId,
-                title: resolvedTitle,
-                description: resolvedDesc,
-                priority: 'high',
-                category: 'Automation Follow-up',
-                dueDaysOffset: 1,
-              });
+              await bulkCreateTasksCore(
+                {
+                  entityIds: [entityId],
+                  workspaceId,
+                  organizationId,
+                  title: resolvedTitle,
+                  description: resolvedDesc,
+                  priority: 'high',
+                  category: 'Automation Follow-up',
+                  dueDaysOffset: 1,
+                },
+                { kind: 'system', source: 'automation' }
+              );
               executedCount++;
             }
             break;

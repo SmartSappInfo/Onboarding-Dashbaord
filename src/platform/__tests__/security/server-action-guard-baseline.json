@@ -38,7 +38,6 @@
     "src/app/actions/booking-actions.ts#rescheduleBookingAction",
     "src/app/actions/brand-kit-actions.ts#saveBrandKitAction",
     "src/app/actions/bulk-meeting-actions.ts#bulkRegisterParticipantsActionCore",
-    "src/app/actions/bulk-task-actions.ts#bulkCreateTasksActionCore",
     "src/app/actions/conference-session-actions.ts#createOrUpdateConferenceSessionAction",
     "src/app/actions/creative-ai-actions.ts#executeAiCanvasCommandAction",
     "src/app/actions/creative-ai-actions.ts#generateCopyVariationsAction",
