@@ -153,7 +153,7 @@ export function CrmSignatureTimelineFeed({
                   <div className="mt-2 flex items-center gap-2 text-[10px] text-muted-foreground/80 font-mono">
                     <span>{new Date(item.timestamp).toLocaleDateString()}</span>
                     <span>•</span>
-                    <span className="capitalize">{item.sourceRef.type}</span>
+                    <span className="capitalize">{item.significance.toLowerCase()}</span>
                   </div>
                 </div>
               </div>
@@ -203,7 +203,7 @@ export function CrmSignatureTimelineFeed({
                       <span className="truncate">{cite.title}</span>
                     </span>
                     <Badge variant="outline" className="text-[10px] font-mono shrink-0 px-1 py-0">
-                      {Math.round(cite.confidence * 100)}% match
+                      {cite.confidence != null ? Math.round(cite.confidence * 100) : 100}% match
                     </Badge>
                   </div>
 

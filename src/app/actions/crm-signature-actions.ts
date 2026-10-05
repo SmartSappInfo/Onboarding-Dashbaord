@@ -112,8 +112,9 @@ export async function executeCrmSignatureInquiryAction(
     const orgId = assertTenantAccess(auth, input.workspaceId);
 
     // 3. Emergency Dead-Man Switch Evaluation (Rule 60)
-    const isPaused = await checkGovernanceDeadManSwitch(orgId);
-    if (isPaused) {
+    try {
+      await checkGovernanceDeadManSwitch(orgId);
+    } catch {
       return {
         success: false,
         error: {
@@ -130,7 +131,7 @@ export async function executeCrmSignatureInquiryAction(
       entityId: input.entityId,
       organizationId: orgId,
       workspaceId: input.workspaceId,
-      callerId: auth.userId,
+      callerId: auth.uid,
       options: {
         dryRun: input.dryRun ?? false,
         maxTokens: input.maxTokens ?? 4000,
@@ -141,13 +142,15 @@ export async function executeCrmSignatureInquiryAction(
     if (result.sessionId) {
       const sessionManager = getCrmSignatureSessionManager();
       try {
-        await sessionManager.createSession({
+        const session = await sessionManager.createSession({
+          sessionId: result.sessionId,
           entityId: result.entityId,
           workspaceId: input.workspaceId,
           organizationId: orgId,
           initialQuery: input.query || `Overview of ${result.entityName}`,
           initialNarrative: result.executiveNarrative,
         });
+        result.sessionId = session.sessionId;
       } catch {
         // Session already created or handled
       }
@@ -200,8 +203,9 @@ export async function sendCrmFollowupMessageAction(
 
     const orgId = assertTenantAccess(auth, input.workspaceId);
 
-    const isPaused = await checkGovernanceDeadManSwitch(orgId);
-    if (isPaused) {
+    try {
+      await checkGovernanceDeadManSwitch(orgId);
+    } catch {
       return {
         success: false,
         error: {
@@ -216,7 +220,7 @@ export async function sendCrmFollowupMessageAction(
       sessionId: input.sessionId,
       workspaceId: input.workspaceId,
       organizationId: orgId,
-      callerId: auth.userId,
+      callerId: auth.uid,
       message: input.message,
     });
 

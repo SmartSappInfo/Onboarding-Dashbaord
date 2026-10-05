@@ -31,6 +31,15 @@ import {
   type CrmOverdueCommitment,
 } from '@/platform/agents/crm/actions/crm-action-types';
 
+export {
+  CrmProposedActionSchema,
+  CrmRiskFactorSchema,
+  CrmOverdueCommitmentSchema,
+  type CrmProposedAction,
+  type CrmRiskFactor,
+  type CrmOverdueCommitment,
+};
+
 // ============================================================================
 // 1. Signature Inquiry Input Schema
 // ============================================================================
@@ -50,7 +59,7 @@ export const CrmSignatureQuerySchema = z
     organizationId: z.string().min(1),
     workspaceId: z.string().min(1),
     callerId: z.string().min(1),
-    options: CrmSignatureQueryOptionsSchema.default({
+    options: CrmSignatureQueryOptionsSchema.optional().default({
       dryRun: false,
       maxTokens: 4000,
     }),
@@ -63,6 +72,7 @@ export const CrmSignatureQuerySchema = z
     }
   );
 export type CrmSignatureQuery = z.infer<typeof CrmSignatureQuerySchema>;
+export type CrmSignatureQueryInput = z.input<typeof CrmSignatureQuerySchema>;
 
 // ============================================================================
 // 2. Citation & Source Grounding Schema (Rule 13 & 30)
@@ -120,6 +130,7 @@ export const CrmSignatureTimelineHighlightSchema = z.object({
   citationIds: z.array(z.string()).default([]),
 });
 export type CrmSignatureTimelineHighlight = z.infer<typeof CrmSignatureTimelineHighlightSchema>;
+export type CrmSignatureTimelineEvent = CrmSignatureTimelineHighlight;
 
 // ============================================================================
 // 4. Signature Inquiry Result Schema

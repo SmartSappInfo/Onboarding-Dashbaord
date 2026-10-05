@@ -1,9 +1,30 @@
 import { withSentryConfig } from '@sentry/nextjs';
 import type { NextConfig } from 'next';
+import os from 'os';
+
+function getLocalDevOrigins(): string[] {
+  const addresses = new Set<string>(['10.155.120.120', '10.250.74.5', 'localhost']);
+  try {
+    const interfaces = os.networkInterfaces();
+    for (const name of Object.keys(interfaces)) {
+      for (const iface of interfaces[name] || []) {
+        if (iface.family === 'IPv4' && !iface.internal) {
+          addresses.add(iface.address);
+        }
+      }
+    }
+  } catch {
+    // Fall back to static seeds on unexpected interface errors
+  }
+  if (process.env.DEV_ORIGIN) {
+    addresses.add(process.env.DEV_ORIGIN);
+  }
+  return Array.from(addresses);
+}
 
 const nextConfig: NextConfig = {
-  // Allow HMR from network IP in development
-  allowedDevOrigins: ['10.155.120.120'],
+  // Allow HMR and Server Actions from local network IPs in development
+  allowedDevOrigins: getLocalDevOrigins(),
 
   // Container builds emit a self-contained server; everything else is unchanged.
   //

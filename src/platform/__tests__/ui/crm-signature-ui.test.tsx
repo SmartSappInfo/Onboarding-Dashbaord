@@ -40,7 +40,7 @@ describe('CRM Signature UI & Dossier Modal (Phase 9 Milestone 5)', () => {
   const entityId = 'ent_greenfield_school';
 
   const mockResult: CrmSignatureResult = {
-    inquiryId: 'inq_greenfield_123',
+    workspaceId,
     sessionId: 'sess_greenfield_456',
     entityId,
     entityName: 'Greenfield School',
@@ -51,48 +51,60 @@ describe('CRM Signature UI & Dossier Modal (Phase 9 Milestone 5)', () => {
     timelineHighlights: [
       {
         id: 'ev_1',
-        category: 'COMMERCIAL',
+        category: 'DEAL',
         title: 'Expansion Proposal Delivered',
         summary: 'Submitted proposal for campus expansion.',
         timestamp: '2026-09-01T10:00:00Z',
-        sourceRef: { type: 'deal', id: 'deal_1' },
+        significance: 'HIGH',
+        citationIds: ['cite_meet_1'],
       },
     ],
     activeRisks: [
       {
         id: 'risk_stalled',
-        category: 'DEAL_STALLED',
+        category: 'STALLED_DEAL',
         title: 'Deal Stalled in Negotiation',
         description: 'Campus Enterprise Expansion has exceeded 30 days without stage change.',
         severity: 'HIGH',
-        confidence: 0.9,
+        scoreContribution: 25,
+        citationIds: ['cite_meet_1'],
       },
     ],
     commitments: [
       {
-        id: 'comm_1',
+        commitmentId: 'comm_1',
         title: 'Send Revised Tiered Pricing Schedule',
         dueDate: '2026-09-20T00:00:00Z',
         daysOverdue: 14,
         assignedTo: 'Sarah Jenkins',
-        sourceType: 'task',
       },
     ],
     proposedActions: [
       {
-        actionType: 'UPDATE_DEAL_STAGE',
-        title: 'Advance Deal to Contract Review',
-        description: 'Update stage to review following board alignment.',
-        rationale: 'Board meeting approved annual budget.',
+        id: 'act_1',
+        entityId,
+        workspaceId,
+        actionType: 'UPDATE_STAGE',
+        priority: 'HIGH',
         riskLevel: 'L2_STATE_MUTATION',
-        requiresApproval: true,
-        parameters: {
+        explainability: {
+          what: 'Advance Deal to Contract Review',
+          why: 'Board meeting approved annual budget.',
+          impact: 'Advances stalled deal towards closure.',
+          blastRadius: {
+            affectedRecordsCount: 1,
+            financialExposureUsd: 45000,
+            isReversible: true,
+          },
+        },
+        idempotencyKey: 'crm_action_deal_advance_1',
+        targetCapabilityId: 'crm.deal.update_stage',
+        payload: {
           dealId: 'deal_1',
           stage: 'contract_review',
         },
-        entityId,
-        workspaceId,
-        idempotencyKey: 'crm_action_deal_advance_1',
+        requiresApproval: true,
+        createdAt: '2026-10-04T12:00:00Z',
       },
     ],
     citations: [
@@ -106,10 +118,11 @@ describe('CRM Signature UI & Dossier Modal (Phase 9 Milestone 5)', () => {
         confidence: 0.92,
       },
     ],
-    metrics: {
-      durationMs: 142,
+    contextMetrics: {
+      totalRecordsAnalyzed: 14,
       tokensUsed: 890,
-      stepsExecuted: 14,
+      executionDurationMs: 142,
+      modelTier: 'pro',
     },
     generatedAt: '2026-10-04T12:00:00Z',
   };

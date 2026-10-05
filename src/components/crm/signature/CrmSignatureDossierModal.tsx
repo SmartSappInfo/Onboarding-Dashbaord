@@ -33,11 +33,8 @@ import {
   Clock,
   Send,
   Loader2,
-  CheckCircle2,
   ArrowRight,
-  TrendingUp,
   Brain,
-  MessageSquare,
   Bot,
   User,
   ShieldCheck,
@@ -333,7 +330,7 @@ export function CrmSignatureDossierModal({
                       <div className="space-y-2">
                         {result.commitments.map((comm) => (
                           <div
-                            key={comm.id}
+                            key={comm.commitmentId}
                             className="p-2.5 rounded-xl border border-amber-500/20 bg-amber-500/5 space-y-1"
                           >
                             <div className="flex items-center justify-between gap-1">
@@ -383,13 +380,15 @@ export function CrmSignatureDossierModal({
                           <div className="space-y-1.5 mb-3">
                             <div className="flex items-center justify-between gap-2">
                               <span className="text-xs font-semibold text-foreground line-clamp-1">
-                                {action.title}
+                                {action.explainability?.what || action.actionType}
                               </span>
                               {getRiskLevelBadge(action.riskLevel)}
                             </div>
-                            <p className="text-xs text-muted-foreground line-clamp-2">{action.description}</p>
+                            <p className="text-xs text-muted-foreground line-clamp-2">
+                              {action.explainability?.impact || action.explainability?.what}
+                            </p>
                             <p className="text-[11px] text-muted-foreground/80 italic font-mono">
-                              Rationale: {action.rationale}
+                              Rationale: {action.explainability?.why}
                             </p>
                           </div>
 
@@ -485,11 +484,11 @@ export function CrmSignatureDossierModal({
           {/* 3. Demarcated Footer (theme.md §8) */}
           <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-between gap-2.5 min-h-[56px]">
             <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono">
-              {result?.metrics && (
+              {result?.contextMetrics && (
                 <>
-                  <span>Knapsack: {result.metrics.tokensUsed} / 4,000 tokens</span>
+                  <span>Knapsack: {result.contextMetrics.tokensUsed} / 4,000 tokens</span>
                   <span>•</span>
-                  <span>Latency: {result.metrics.durationMs}ms</span>
+                  <span>Latency: {result.contextMetrics.executionDurationMs}ms</span>
                 </>
               )}
             </div>

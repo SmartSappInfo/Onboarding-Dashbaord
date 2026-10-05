@@ -17,6 +17,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useAuth, useFirestore } from '@/firebase';
 import { enforceSuperAdminProfileAction } from '@/app/actions/onboarding-actions';
 import { validateEncryptedInvitationAction } from '@/app/actions/invitation-crypto-actions';
+import { syncSessionCookie } from '@/firebase/session-sync';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -109,6 +110,11 @@ function LoginContent() {
 
       const userDocRef = doc(firestore, 'users', uid);
       const docSnap = await getDoc(userDocRef);
+
+      // Ensure session cookie is minted so proxy.ts does not bounce protected route navigation
+      if (auth.currentUser) {
+        await syncSessionCookie(auth.currentUser);
+      }
 
       // Check and enforce super admin server-side first. The server reads the uid and verified
       // email from the ID token; it no longer accepts them as parameters.
@@ -225,6 +231,9 @@ function LoginContent() {
       const user = userCredential.user;
       const userDocRef = doc(firestore, 'users', user.uid);
       const docSnap = await getDoc(userDocRef);
+
+      // Ensure session cookie is minted so proxy.ts does not bounce protected route navigation
+      await syncSessionCookie(user);
 
       // Check and enforce super admin server-side first (identity from the ID token only).
       if (user.email) {

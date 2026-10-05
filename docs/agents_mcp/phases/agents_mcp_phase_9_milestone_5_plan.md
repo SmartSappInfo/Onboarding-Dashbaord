@@ -380,7 +380,7 @@ In accordance with Rule 67 (`agents_mcp_rules.md` lines 1980–2075), Milestone 
 - `src/platform/agents/crm/signature/index.ts`
 - `src/platform/__tests__/agents/crm/crm-signature-contracts.test.ts`
 
-- [ ] **Step 1: Write the failing contract tests**
+- [x] **Step 1: Write the failing contract tests**
   Author `src/platform/__tests__/agents/crm/crm-signature-contracts.test.ts` validating:
   - `CrmSignatureQuerySchema`: validates natural language query string or explicit entity ID, organizationId, workspaceId, callerId, and options (`dryRun`, `maxTokens`, `signal`).
   - `CrmSignatureCitationSchema`: validates source types (`note`, `meeting`, `transcript`, `deal`, `invoice`, `task`, `memory`), title, snippet, timestamp, and deep link URL.
@@ -389,13 +389,13 @@ In accordance with Rule 67 (`agents_mcp_rules.md` lines 1980–2075), Milestone 
   - `CrmFollowupMessageSchema`: validates follow-up message input and response shape.
   - `CRM_SIGNATURE_ERROR_CODES` covers all canonical error strings with HTTP status mapping.
   - Strict Rule 4 adherence: Zero `any` or `any[]`.
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   `pnpm vitest run src/platform/__tests__/agents/crm/crm-signature-contracts.test.ts`
-- [ ] **Step 3: Implement `crm-signature-types.ts` and barrel `index.ts`**
+- [x] **Step 3: Implement `crm-signature-types.ts` and barrel `index.ts`**
   Author strict Zod v4 schemas, type exports, error taxonomy, and `CrmSignatureError` class.
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
   `pnpm vitest run src/platform/__tests__/agents/crm/crm-signature-contracts.test.ts`
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   `git commit -m "feat(crm-signature): add canonical CRM signature inquiry contracts and error taxonomy"`
 
 ---
@@ -405,7 +405,7 @@ In accordance with Rule 67 (`agents_mcp_rules.md` lines 1980–2075), Milestone 
 - `src/platform/agents/crm/signature/crm-signature-orchestrator.ts`
 - `src/platform/__tests__/agents/crm/crm-signature-orchestrator.test.ts`
 
-- [ ] **Step 1: Write the failing orchestrator tests**
+- [x] **Step 1: Write the failing orchestrator tests**
   Author `src/platform/__tests__/agents/crm/crm-signature-orchestrator.test.ts` testing:
   - Executes full 14-step autonomous pipeline:
     1. Retrieve entity master (`/entities/{entityId}`) & operational state (`/workspace_entities/{workspaceId}_{entityId}`) (Rule 69)
@@ -428,13 +428,13 @@ In accordance with Rule 67 (`agents_mcp_rules.md` lines 1980–2075), Milestone 
   - Publishes `crm.signature.inquiry_executed` domain event via `defaultEventBus` using `createDomainEvent` (Rule 40).
   - Shadow Mode dry-run support (`dryRun: true`) producing a Blast Radius Report without database writes (Rule 42).
   - HMR-safe singleton preservation via `getCrmSignatureOrchestrator()`.
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   `pnpm vitest run src/platform/__tests__/agents/crm/crm-signature-orchestrator.test.ts`
-- [ ] **Step 3: Implement `crm-signature-orchestrator.ts`**
+- [x] **Step 3: Implement `crm-signature-orchestrator.ts`**
   Author `CrmSignatureOrchestrator` coordinating all multi-domain subsystems with strict typing and error handling.
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
   `pnpm vitest run src/platform/__tests__/agents/crm/crm-signature-orchestrator.test.ts`
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   `git commit -m "feat(crm-signature): implement flagship 14-step autonomous signature orchestrator"`
 
 ---
@@ -444,7 +444,7 @@ In accordance with Rule 67 (`agents_mcp_rules.md` lines 1980–2075), Milestone 
 - `src/platform/agents/crm/signature/crm-multi-turn-session.ts`
 - `src/platform/__tests__/agents/crm/crm-multi-turn-session.test.ts`
 
-- [ ] **Step 1: Write the failing multi-turn session tests**
+- [x] **Step 1: Write the failing multi-turn session tests**
   Author `src/platform/__tests__/agents/crm/crm-multi-turn-session.test.ts` testing:
   - Creates and manages multi-turn sessions with 30-minute automatic TTL expiration (Rule 29).
   - Bounded conversational window: retains last $\le 10$ turns with knapsack context budgeting $\le 4,000$ tokens (Rule 28 & 56).
@@ -453,13 +453,13 @@ In accordance with Rule 67 (`agents_mcp_rules.md` lines 1980–2075), Milestone 
   - Emits `crm.signature.followup_sent` domain event via `defaultEventBus` using `createDomainEvent` (Rule 40).
   - Dead-man pause check returning `CRM_DEAD_MAN_PAUSED` (Rule 60).
   - HMR-safe singleton preservation via `getCrmSignatureSessionManager()`.
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   `pnpm vitest run src/platform/__tests__/agents/crm/crm-multi-turn-session.test.ts`
-- [ ] **Step 3: Implement `crm-multi-turn-session.ts`**
+- [x] **Step 3: Implement `crm-multi-turn-session.ts`**
   Author `CrmMultiTurnSessionManager` with in-memory adapter and Firestore session persistence.
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
   `pnpm vitest run src/platform/__tests__/agents/crm/crm-multi-turn-session.test.ts`
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   `git commit -m "feat(crm-signature): implement multi-turn conversational session manager with TTL governance"`
 
 ---
@@ -469,7 +469,7 @@ In accordance with Rule 67 (`agents_mcp_rules.md` lines 1980–2075), Milestone 
 - `src/app/actions/crm-signature-actions.ts`
 - `src/platform/__tests__/ui/crm-signature-actions.test.ts`
 
-- [ ] **Step 1: Write the failing server action tests**
+- [x] **Step 1: Write the failing server action tests**
   Author `src/platform/__tests__/ui/crm-signature-actions.test.ts` testing:
   - Next.js Server Actions convention (`'use server'`) (Rule 51).
   - Clerk session authentication via `requireAuth()` (rejects unauthenticated callers with `AUTHENTICATION_REQUIRED`).
@@ -480,13 +480,13 @@ In accordance with Rule 67 (`agents_mcp_rules.md` lines 1980–2075), Milestone 
     * `sendCrmFollowupMessageAction({ sessionId, workspaceId, message })`
     * `getCrmSignatureSessionAction({ sessionId, workspaceId })`
     * `getCrmSignatureMetricsAction({ workspaceId })`
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   `pnpm vitest run src/platform/__tests__/ui/crm-signature-actions.test.ts`
-- [ ] **Step 3: Implement `crm-signature-actions.ts`**
+- [x] **Step 3: Implement `crm-signature-actions.ts`**
   Author the 4 server actions adhering strictly to Rule 51, Anti-IDOR, dead-man check, and sanitized error mapping.
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
   `pnpm vitest run src/platform/__tests__/ui/crm-signature-actions.test.ts`
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   `git commit -m "feat(crm-signature): implement secure CRM signature inquiry server actions"`
 
 ---
@@ -499,7 +499,7 @@ In accordance with Rule 67 (`agents_mcp_rules.md` lines 1980–2075), Milestone 
 - `src/components/command/GlobalCommandBar.tsx`
 - `src/platform/__tests__/ui/crm-signature-ui.test.tsx`
 
-- [ ] **Step 1: Write the failing UI modal tests**
+- [x] **Step 1: Write the failing UI modal tests**
   Author `src/platform/__tests__/ui/crm-signature-ui.test.tsx` testing:
   - `CrmSignatureDossierModal` strictly adheres to `theme.md` §8:
     * Surface: `border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl`.
@@ -511,15 +511,15 @@ In accordance with Rule 67 (`agents_mcp_rules.md` lines 1980–2075), Milestone 
   - Interactive Follow-up chat composer bar with tactile send button and debounced typing.
   - Actionable recommendation triggers opening `CrmProposalModal` with zero dead ends (Rule 21 & 22).
   - Global ⌘K Omni-Bar integration: typing "What's going on with [entity]?" triggers the signature dossier modal.
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   `pnpm vitest run src/platform/__tests__/ui/crm-signature-ui.test.tsx`
-- [ ] **Step 3: Implement `CrmSignatureDossierModal.tsx` and wire up surfaces**
+- [x] **Step 3: Implement `CrmSignatureDossierModal.tsx` and wire up surfaces**
   - Implement `CrmSignatureDossierModal.tsx` and `CrmSignatureTimelineFeed.tsx` adhering strictly to `theme.md` §8.
   - Integrate signature inquiry shortcut into `GlobalCommandBar.tsx`.
   - Wire action triggers to `CrmProposalModal` for two-phase approval workflow.
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
   `pnpm vitest run src/platform/__tests__/ui/crm-signature-ui.test.tsx`
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   `git commit -m "feat(crm-ui): add standardized signature dossier modal and wire omni-bar integration"`
 
 ---
@@ -529,21 +529,21 @@ In accordance with Rule 67 (`agents_mcp_rules.md` lines 1980–2075), Milestone 
 - `src/platform/__tests__/agents/crm/crm-signature-e2e.test.ts`
 - `src/platform/__tests__/agents/crm/crm-adversarial-security.test.ts`
 
-- [ ] **Step 1: Author Greenfield School E2E Signature Inquiry Test Suite**
+- [x] **Step 1: Author Greenfield School E2E Signature Inquiry Test Suite**
   Author `src/platform/__tests__/agents/crm/crm-signature-e2e.test.ts` testing the complete 14-step pipeline:
   - Tests signature inquiry "What's going on with Greenfield School?" across the mock 360° context.
   - Validates that timeline is correctly constructed, stalled deal is detected, overdue commitment is flagged, citations are present, and actionable stage update / task proposals are offered.
   - Tests 2 turns of multi-turn conversational follow-up questions within the active session.
-- [ ] **Step 2: Author Adversarial Security Red-Team Test Suite (Rule 46)**
+- [x] **Step 2: Author Adversarial Security Red-Team Test Suite (Rule 46)**
   Author `src/platform/__tests__/agents/crm/crm-adversarial-security.test.ts` testing:
   - Vector 1: Prompt injection embedded in customer notes (attempts to override system instructions).
   - Vector 2: Cross-tenant IDOR attacks (attempting to retrieve or mutate data from another tenant).
   - Vector 3: Cryptographic SHA-256 payload tampering attacks on signature-proposed actions.
   - Vector 4: Emergency dead-man switch bypass attempts.
   - Vector 5: Context knapsack overflow attacks ($>4,000$ tokens).
-- [ ] **Step 3: Run E2E and adversarial tests**
+- [x] **Step 3: Run E2E and adversarial tests**
   `pnpm vitest run src/platform/__tests__/agents/crm/crm-signature-e2e.test.ts src/platform/__tests__/agents/crm/crm-adversarial-security.test.ts`
-- [ ] **Step 4: Run full 5-gate platform verification battery**
+- [x] **Step 4: Run full 5-gate platform verification battery**
   ```bash
   # 1. CRM Agent Platform vitest suites
   pnpm vitest run src/platform/__tests__/agents/crm/
@@ -560,7 +560,7 @@ In accordance with Rule 67 (`agents_mcp_rules.md` lines 1980–2075), Milestone 
   # 5. ESLint static analysis
   NODE_OPTIONS='--max-old-space-size=8192' pnpm lint
   ```
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   `git commit -m "test(crm-agent): add signature e2e and adversarial red-team security verification suites"`
 
 ---

@@ -50,6 +50,7 @@ const ADVERSARIAL_DIRECTIVE_PATTERNS: readonly RegExp[] = [
 ];
 
 export interface CreateSessionInput {
+  sessionId?: string;
   entityId: string;
   workspaceId: string;
   organizationId: string;
@@ -85,7 +86,7 @@ export class CrmMultiTurnSessionManager {
    */
   async createSession(input: CreateSessionInput): Promise<CrmSignatureSession> {
     const now = new Date();
-    const sessionId = `sess_${input.entityId}_${Date.now()}`;
+    const sessionId = input.sessionId ?? `sess_${input.entityId}_${Date.now()}`;
     const expiresAt = new Date(now.getTime() + CrmMultiTurnSessionManager.TTL_MS).toISOString();
 
     const messages = [
@@ -202,15 +203,13 @@ export class CrmMultiTurnSessionManager {
     }
 
     try {
-      const isPaused = await checkGovernanceDeadManSwitch(input.organizationId);
-      if (isPaused) {
-        throw new CrmSignatureError(
-          'CRM_DEAD_MAN_PAUSED',
-          'Follow-up messaging paused by emergency governance switch.'
-        );
-      }
+      await checkGovernanceDeadManSwitch(input.organizationId);
     } catch (err) {
       if (err instanceof CrmSignatureError) throw err;
+      throw new CrmSignatureError(
+        'CRM_DEAD_MAN_PAUSED',
+        'Follow-up messaging paused by emergency governance switch.'
+      );
     }
 
     // 2. Retrieve & Verify Session (Anti-IDOR & TTL)
@@ -224,18 +223,13 @@ export class CrmMultiTurnSessionManager {
     if (this.mockContext && this.mockContext.entityId === session.entityId) {
       context = this.mockContext;
     } else {
-      context = await this.assembler.assembleContext(
-        {
-          entityId: session.entityId,
-          workspaceId: input.workspaceId,
-          organizationId: input.organizationId,
-        },
-        {
-          callerId: input.callerId || 'system',
-          maxTokens: 4000,
-          signal: input.signal,
-        }
-      );
+      context = await this.assembler.assembleContext({
+        entityId: session.entityId,
+        workspaceId: input.workspaceId,
+        organizationId: input.organizationId,
+        maxTokens: 4000,
+        signal: input.signal,
+      });
     }
 
     // 5. Generate Grounded Answer & Citations

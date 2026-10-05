@@ -38,6 +38,7 @@ import {
   CrmSignatureQuerySchema,
   CrmSignatureResultSchema,
   type CrmSignatureQuery,
+  type CrmSignatureQueryInput,
   type CrmSignatureResult,
   type CrmSignatureCitation,
   type CrmSignatureTimelineHighlight,
@@ -90,10 +91,10 @@ export class CrmSignatureOrchestrator {
   /**
    * Executes the 14-step autonomous signature inquiry pipeline.
    */
-  async executeInquiry(input: CrmSignatureQuery): Promise<CrmSignatureResult> {
+  async executeInquiry(input: CrmSignatureQueryInput): Promise<CrmSignatureResult> {
     const startTime = Date.now();
     const parsedInput = CrmSignatureQuerySchema.parse(input);
-    const { organizationId, workspaceId, callerId, options } = parsedInput;
+    const { organizationId, workspaceId, callerId: _callerId, options } = parsedInput;
     const dryRun = options.dryRun ?? false;
     const maxTokens = options.maxTokens ?? 4000;
 
@@ -106,16 +107,13 @@ export class CrmSignatureOrchestrator {
     }
 
     try {
-      const isPaused = await checkGovernanceDeadManSwitch(organizationId);
-      if (isPaused) {
-        throw new CrmSignatureError(
-          'CRM_DEAD_MAN_PAUSED',
-          'Autonomous CRM signature inquiry is paused by the emergency governance dead-man switch.'
-        );
-      }
+      await checkGovernanceDeadManSwitch(organizationId);
     } catch (err) {
       if (err instanceof CrmSignatureError) throw err;
-      // In testing environments where Redis/DB may not be configured, default to healthy
+      throw new CrmSignatureError(
+        'CRM_DEAD_MAN_PAUSED',
+        'Autonomous CRM signature inquiry is paused by the emergency governance dead-man switch.'
+      );
     }
 
     // 2. Entity ID Resolution
@@ -132,20 +130,15 @@ export class CrmSignatureOrchestrator {
     if (this.mockContext && this.mockContext.entityId === resolvedEntityId) {
       context = this.mockContext;
     } else {
-      context = await this.assembler.assembleContext(
-        {
-          entityId: resolvedEntityId,
-          workspaceId,
-          organizationId,
-        },
-        {
-          callerId,
-          maxTokens,
-          includeTranscripts: true,
-          includeFinancials: true,
-          signal: options.signal,
-        }
-      );
+      context = await this.assembler.assembleContext({
+        entityId: resolvedEntityId,
+        workspaceId,
+        organizationId,
+        maxTokens,
+        includeFinancials: true,
+        signal: options.signal,
+        correlationId: options.correlationId,
+      });
     }
 
     // 4. Identify Unresolved Issues & Risks via CrmRiskDetector (Step 11)
@@ -178,7 +171,7 @@ export class CrmSignatureOrchestrator {
     }
 
     // 7. Extract Citations & Isolate Untrusted Content (Rule 12, 13, 30)
-    const citations: CrmSignatureCitation[] = [];
+    let citations: CrmSignatureCitation[] = [];
     const entityName = context.entity.name;
 
     // Citations from deals
@@ -198,8 +191,8 @@ export class CrmSignatureOrchestrator {
       }
     }
 
-    // Citations from meetings
-    for (const meeting of context.meetings) {
+    // Citations from meetings (capped to most recent 5)
+    for (const meeting of context.meetings.slice(0, 5)) {
       citations.push({
         id: `cite_meet_${meeting.id}`,
         sourceType: 'meeting',
@@ -212,8 +205,8 @@ export class CrmSignatureOrchestrator {
       });
     }
 
-    // Citations from notes
-    for (const note of context.notes) {
+    // Citations from notes (capped to most recent 5)
+    for (const note of context.notes.slice(0, 5)) {
       citations.push({
         id: `cite_note_${note.id}`,
         sourceType: 'note',
@@ -225,23 +218,21 @@ export class CrmSignatureOrchestrator {
       });
     }
 
-    // Citations from tasks
-    for (const task of context.tasks) {
-      if (task.isOverdue) {
-        citations.push({
-          id: `cite_task_${task.id}`,
-          sourceType: 'task',
-          sourceId: task.id,
-          title: `Task: ${task.title}`,
-          snippet: `Due: ${task.dueDate || 'N/A'} (Overdue). Assigned to ${task.assignedToName || 'Unassigned'}.`,
-          timestamp: task.dueDate || new Date().toISOString(),
-          confidence: 0.95,
-        });
-      }
+    // Citations from overdue tasks (capped to 5)
+    for (const task of context.tasks.filter((t) => t.isOverdue).slice(0, 5)) {
+      citations.push({
+        id: `cite_task_${task.id}`,
+        sourceType: 'task',
+        sourceId: task.id,
+        title: `Task: ${task.title}`,
+        snippet: `Due: ${task.dueDate || 'N/A'} (Overdue). Assigned to ${task.assignedToName || 'Unassigned'}.`,
+        timestamp: task.dueDate || new Date().toISOString(),
+        confidence: 0.95,
+      });
     }
 
-    // Citations from memory facts
-    const facts = context.memories || [];
+    // Citations from memory facts (capped to 5)
+    const facts = (context.memories || []).slice(0, 5);
     for (const fact of facts) {
       citations.push({
         id: `cite_mem_${fact.id}`,
@@ -253,6 +244,9 @@ export class CrmSignatureOrchestrator {
         confidence: fact.confidence,
       });
     }
+
+    // Enforce hard ceiling on total citations
+    citations = citations.slice(0, 15);
 
     // 8. Extract Timeline Highlights (Step 10 & 12)
     const timelineHighlights: CrmSignatureTimelineHighlight[] = [];
@@ -409,13 +403,13 @@ export class CrmSignatureOrchestrator {
           .get();
 
         for (const doc of wsSnapshot.docs) {
-          const data = doc.data();
+          const data = doc.data() as Record<string, unknown>;
           if (
-            data.name &&
             typeof data.name === 'string' &&
             data.name.toLowerCase().includes(candidateName.toLowerCase())
           ) {
-            return data.entityId || doc.id.replace(`${input.workspaceId}_`, '');
+            const rawEntityId = typeof data.entityId === 'string' ? data.entityId : undefined;
+            return rawEntityId || doc.id.replace(`${input.workspaceId}_`, '');
           }
         }
 
@@ -427,9 +421,8 @@ export class CrmSignatureOrchestrator {
           .get();
 
         for (const doc of entitySnapshot.docs) {
-          const data = doc.data();
+          const data = doc.data() as Record<string, unknown>;
           if (
-            data.name &&
             typeof data.name === 'string' &&
             data.name.toLowerCase().includes(candidateName.toLowerCase())
           ) {
