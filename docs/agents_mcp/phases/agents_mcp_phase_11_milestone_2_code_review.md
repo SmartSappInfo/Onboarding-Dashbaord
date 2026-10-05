@@ -235,6 +235,7 @@ Severity:
 | R1 · legacy MCP | ✅ | `cd267f1c` | 6 tests, 5 of which fail on the old code. API keys refused (pointer to `/api/mcp/v2/{domain}`). Others run as the verified acting user via `invokeGoverned` on the `mcp` surface. Explicit-MCP flags enforced. Ratchet 3 → 2 |
 | R3 · brief deadlines | ✅ | `0d47b959` | 3 tests. A hanging model → `facts_only/timeout` and the signal is aborted. A hanging record context is skipped. Capability `1.1.0`; fingerprint baseline reviewed (one key) |
 | R4 · history lookup | ✅ | `0ea62e22` | 2 tests (30 newer unrelated meetings; no later meetings). Direct indexed query, plus a new composite index |
+| R5 · idempotency bound to input | ✅ | `d9ba2723` | 6 tests. Same key + different input → `IDEMPOTENCY_KEY_REUSED` (409, not retried) whether the first call completed or is still running; nothing replayed or run. A failed attempt may be re-claimed. Records without a hash still replay |
 
 **Decisions taken while fixing:**
 - **R8:** an id the registry doesn't hold may still be pinned. It impersonates nothing, every gateway check still runs, and the caller already holds the handler in process. This narrows §3 R8's "test deps only"; the protection that matters (a registered id can't be weakened) is in place.
@@ -249,5 +250,5 @@ Severity:
 
 **Deploy note:** the new `meetings (workspaceIds CONTAINS, entityId ASC, meetingTime DESC)` index ships with the other pending index changes. That still needs written approval.
 
-**Next:** R5 (idempotency bound to input) before T3, then T3. R6 stays a T5 gate. R7 and L1–L6 within M2.
+**Next:** T3 (extraction pipeline). R6 stays a T5 gate. R7 and L1–L6 within M2.
 
