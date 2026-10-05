@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { Task, TaskPriority } from '@/lib/types';
+import type { Task, TaskPriority, UserProfile } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -15,7 +15,8 @@ import {
     Bell,
     ArrowRight,
     MessageSquare,
-    Paperclip
+    Paperclip,
+    type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, isToday, isPast } from 'date-fns';
@@ -23,7 +24,7 @@ import { getTaskInterlinkUrl } from '@/lib/task-actions';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
-const PRIORITY_CONFIG: Record<TaskPriority, { color: string, icon: any }> = {
+const PRIORITY_CONFIG: Record<TaskPriority, { color: string, icon: LucideIcon }> = {
     urgent: { color: 'text-rose-600 bg-rose-50 border-rose-200', icon: ShieldAlert },
     high: { color: 'text-orange-600 bg-orange-50 border-orange-200', icon: AlertTriangle },
     medium: { color: 'text-blue-600 bg-blue-50 border-blue-200', icon: Clock },
@@ -37,7 +38,7 @@ interface TaskCardProps {
     entityLogoUrl?: string;
     isOverlay?: boolean;
     onClick?: () => void;
-    userMap?: Map<string, any>;
+    userMap?: Map<string, UserProfile>;
 }
 
 const getInitials = (name?: string | null) =>
@@ -65,7 +66,9 @@ export default function TaskCard({ task, entityLogoUrl, isOverlay, onClick, user
 
     const P = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium;
     const isDone = task.status === 'done';
-    const isOverdue = isPast(new Date(task.dueDate)) && !isToday(new Date(task.dueDate)) && !isDone;
+    const dueDateObj = task.dueDate ? new Date(task.dueDate) : null;
+    const isValidDueDate = Boolean(dueDateObj && !isNaN(dueDateObj.getTime()));
+    const isOverdue = Boolean(isValidDueDate && dueDateObj && isPast(dueDateObj) && !isToday(dueDateObj) && !isDone);
     const interlinkUrl = getTaskInterlinkUrl(task);
 
     return (
@@ -169,13 +172,15 @@ export default function TaskCard({ task, entityLogoUrl, isOverlay, onClick, user
                                         <Paperclip className="h-3 w-3 opacity-60" />
                                         <span className="tabular-nums">{attachmentsCount}</span>
                                     </div>
-                                    <div className={cn(
-                                        "flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-tighter transition-colors ml-1",
-                                        isOverdue ? "text-rose-600 animate-pulse font-bold" : isToday(new Date(task.dueDate)) ? "text-orange-600 font-bold" : "text-muted-foreground/60"
-                                    )}>
-                                        <Clock className="h-3 w-3" />
-                                        {isToday(new Date(task.dueDate)) ? 'Today' : format(new Date(task.dueDate), 'MMM d')}
-                                    </div>
+                                    {isValidDueDate && dueDateObj && (
+                                        <div className={cn(
+                                            "flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-tighter transition-colors ml-1",
+                                            isOverdue ? "text-rose-600 animate-pulse font-bold" : isToday(dueDateObj) ? "text-orange-600 font-bold" : "text-muted-foreground/60"
+                                        )}>
+                                            <Clock className="h-3 w-3" />
+                                            {isToday(dueDateObj) ? 'Today' : format(dueDateObj, 'MMM d')}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         );

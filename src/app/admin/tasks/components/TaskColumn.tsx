@@ -4,15 +4,15 @@
 import * as React from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import type { Task, TaskStatus } from '@/lib/types';
+import type { Task, TaskStatus, UserProfile } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import TaskCard from './TaskCard';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { Layers, CheckCircle2, Clock, PlayCircle, Hourglass } from 'lucide-react';
+import { Layers, CheckCircle2, Clock, PlayCircle, Hourglass, type LucideIcon } from 'lucide-react';
 
-const STATUS_CONFIG: Record<TaskStatus, { label: string, color: string, icon: any }> = {
+const STATUS_CONFIG: Record<TaskStatus, { label: string, color: string, icon: LucideIcon }> = {
     todo: { label: 'Backlog', color: 'border-t-slate-400', icon: Layers },
     in_progress: { label: 'In Progress', color: 'border-t-blue-500', icon: PlayCircle },
     waiting: { label: 'Waiting', color: 'border-t-orange-400', icon: Hourglass },
@@ -25,7 +25,7 @@ interface TaskColumnProps {
     tasks: Task[];
     entityLogoMap?: Map<string, string | undefined>;
     onTaskClick: (task: Task) => void;
-    userMap?: Map<string, any>;
+    userMap?: Map<string, UserProfile>;
 }
 
 export default function TaskColumn({ status, tasks, entityLogoMap, onTaskClick, userMap }: TaskColumnProps) {

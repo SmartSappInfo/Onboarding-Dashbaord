@@ -12,12 +12,11 @@ import {
     type DragOverEvent,
     closestCorners,
 } from '@dnd-kit/core';
-import type { Task, TaskStatus } from '@/lib/types';
+import type { Task, TaskStatus, UserProfile } from '@/lib/types';
 import TaskColumn from './TaskColumn';
 import TaskCard from './TaskCard';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { useFirestore } from '@/firebase';
-import { updateTaskNonBlocking } from '@/lib/task-actions';
+import { updateTaskAction } from '@/lib/task-server-actions';
 import { useToast } from '@/hooks/use-toast';
 
 const TASK_STATUSES: TaskStatus[] = ['todo', 'in_progress', 'waiting', 'review', 'done'];
@@ -26,11 +25,10 @@ interface TaskBoardProps {
     tasks: Task[];
     entityLogoMap?: Map<string, string | undefined>;
     onTaskClick: (task: Task) => void;
-    userMap?: Map<string, any>;
+    userMap?: Map<string, UserProfile>;
 }
 
 export default function TaskBoard({ tasks, entityLogoMap, onTaskClick, userMap }: TaskBoardProps) {
-    const firestore = useFirestore();
     const { toast } = useToast();
     
     const [localTasks, setLocalTasks] = React.useState<Task[]>(tasks);
@@ -86,25 +84,59 @@ export default function TaskBoard({ tasks, entityLogoMap, onTaskClick, userMap }
         const { active, over } = event;
         setActiveTask(null);
 
-        if (!over || !firestore) return;
+        if (!over) {
+            setLocalTasks(tasks);
+            return;
+        }
 
         const activeId = active.id as string;
         const activeTaskItem = tasks.find(t => t.id === activeId);
         const currentLocalTask = localTasks.find(t => t.id === activeId);
 
         if (activeTaskItem && currentLocalTask && activeTaskItem.status !== currentLocalTask.status) {
-            // Commit to Firestore
+            const targetStatus = currentLocalTask.status;
+
             try {
-                updateTaskNonBlocking(firestore, activeId, { 
-                    status: currentLocalTask.status 
+                const result = await updateTaskAction(activeId, { 
+                    status: targetStatus 
                 });
+
+                if (!result.success) {
+                    setLocalTasks(tasks); // Rollback optimistic state
+                    toast({ 
+                        variant: 'destructive', 
+                        title: 'Status Update Failed',
+                        description: result.error || 'Failed to update task status in this workspace.',
+                        actionConfig: {
+                            path: '/admin/settings/permissions',
+                            label: 'Review Permissions',
+                        },
+                    });
+                    return;
+                }
+
+                if (targetStatus === 'done' && activeTaskItem.relatedParentId) {
+                    toast({ 
+                        title: 'Status Synchronized', 
+                        description: 'Moved task to done phase. Linked contractual obligation fulfilled.' 
+                    });
+                } else {
+                    toast({ 
+                        title: 'Status Synchronized', 
+                        description: `Moved task to ${targetStatus.replace('_', ' ')} phase.` 
+                    });
+                }
+            } catch (err: unknown) {
+                setLocalTasks(tasks); // Rollback optimistic state
                 toast({ 
-                    title: 'Status Synchronized', 
-                    description: `Moved task to ${currentLocalTask.status.replace('_', ' ')} phase.` 
+                    variant: 'destructive', 
+                    title: 'Sync Failure',
+                    description: err instanceof Error ? err.message : 'An unexpected error occurred.',
+                    actionConfig: {
+                        path: '/admin/settings/permissions',
+                        label: 'Review Permissions',
+                    },
                 });
-            } catch (_e) {
-                setLocalTasks(tasks); // Rollback
-                toast({ variant: 'destructive', title: 'Sync Failure' });
             }
         }
     };
