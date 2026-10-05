@@ -20,16 +20,18 @@ export function GlobalFilterProvider({ children }: { children: React.ReactNode }
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { user, isUserLoading } = useUser();
-  const { activeWorkspace, isSuperAdmin, isLoading: isTenantLoading } = useTenant();
+  const { activeWorkspace, isSuperAdmin, isWorkspaceAdmin, isLoading: isTenantLoading } = useTenant();
   
   const [assignedUserId, setAssignedUserIdState] = React.useState<string | null>(null);
   const [isInitialized, setIsInitialized] = React.useState(false);
 
+  const userIsAdmin = Boolean(isSuperAdmin || isWorkspaceAdmin);
+
   // Determine if this user is restricted to assigned entities only in the current workspace
   const isRestricted = React.useMemo(() => {
-    // Defaults to true (restricted) if not explicitly set to false
-    return activeWorkspace?.restrictVisibilityToAssigned !== false && !isSuperAdmin;
-  }, [activeWorkspace, isSuperAdmin]);
+    // Defaults to true (restricted) if not explicitly set to false, bypassed by admins
+    return activeWorkspace?.restrictVisibilityToAssigned !== false && !userIsAdmin;
+  }, [activeWorkspace, userIsAdmin]);
 
   // Compute the effective assigned user ID used for queries and filters
   const effectiveAssignedUserId = React.useMemo(() => {

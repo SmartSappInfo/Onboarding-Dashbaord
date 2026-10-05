@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useDoc, useFirestore, useUser, useMemoFirebase, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where, updateDoc } from 'firebase/firestore';
 import type { UserProfile, Workspace, Organization, AppPermissionId } from '@/lib/types';
+import { isUserWorkspaceAdmin } from '@/lib/workspace-admin-utils';
 
 /**
  * @fileOverview Tenant Context Provider (Sovereignty Layer).
@@ -29,6 +30,9 @@ type TenantContextType = {
   allAccessibleWorkspaces: Workspace[];
   allowedWorkspaces: Workspace[]; // Alias for backward compatibility
   isSuperAdmin: boolean;
+  /** Whether current user has administrator privileges within active workspace */
+  isWorkspaceAdmin: boolean;
+  currentUserProfile?: UserProfile;
   hasPermission: (perm: AppPermissionId) => boolean;
   permissionsSchema?: import('@/lib/types').PermissionsSchema;
   /** Get the permissions schema for any workspace (used by workspace switcher interception) */
@@ -455,6 +459,10 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     return wsSchema || profile?.permissionsSchema;
   }, [profile, activeWorkspaceId]);
 
+  const isWorkspaceAdmin = React.useMemo(() => {
+    return isUserWorkspaceAdmin(profile, activeWorkspaceId, effectivePermissionsSchema, isSuperAdmin);
+  }, [profile, activeWorkspaceId, effectivePermissionsSchema, isSuperAdmin]);
+
   const getPermissionsSchemaForWorkspace = React.useCallback((workspaceId: string) => {
     return profile?.workspacePermissionsSchemas?.[workspaceId] || profile?.permissionsSchema;
   }, [profile]);
@@ -475,6 +483,8 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     allAccessibleWorkspaces,
     allowedWorkspaces: accessibleWorkspaces,
     isSuperAdmin,
+    isWorkspaceAdmin,
+    currentUserProfile: profile,
     hasPermission,
     permissionsSchema: effectivePermissionsSchema,
     getPermissionsSchemaForWorkspace,
@@ -482,7 +492,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   }), [
     activeOrganizationId, activeOrganization, activeWorkspaceId, activeWorkspace, 
     setActiveOrganization, setActiveWorkspace, switchOrganizationAndWorkspace, organizations, accessibleWorkspaces, allAccessibleWorkspaces, 
-    isSuperAdmin, hasPermission, effectivePermissionsSchema, getPermissionsSchemaForWorkspace,
+    isSuperAdmin, isWorkspaceAdmin, profile, hasPermission, effectivePermissionsSchema, getPermissionsSchemaForWorkspace,
     isInitialized, isUserLoading, isProfileLoading, isOrgsLoading, isWorkspacesLoading
   ]);
 
@@ -509,6 +519,8 @@ export function useTenant() {
       allAccessibleWorkspaces: [],
       allowedWorkspaces: [],
       isSuperAdmin: true, // Superadmin controls inside shared tools should run freely in backoffice
+      isWorkspaceAdmin: true,
+      currentUserProfile: undefined,
       hasPermission: () => true, // Bypass local tenant restrictions in the global control plane
       getPermissionsSchemaForWorkspace: () => undefined,
       isLoading: false

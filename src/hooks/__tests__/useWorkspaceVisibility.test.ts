@@ -123,4 +123,87 @@ describe('useWorkspaceVisibility', () => {
     } as any;
     expect(result.current.canViewEntity(otherEntity)).toBe(true);
   });
+
+  it('does NOT restrict Workspace Admins even when all domains are restricted', () => {
+    vi.mocked(useTenant).mockReturnValue({
+      activeWorkspace: {
+        id: 'ws_1',
+        restrictVisibilityToAssigned: true,
+        restrictDealsVisibilityToAssigned: true,
+        restrictTasksVisibilityToAssigned: true,
+      },
+      isSuperAdmin: false,
+      isWorkspaceAdmin: true,
+    } as any);
+
+    const { result } = renderHook(() => useWorkspaceVisibility());
+
+    expect(result.current.isWorkspaceAdmin).toBe(true);
+    expect(result.current.restrictEntitiesToAssigned).toBe(false);
+    expect(result.current.restrictDealsToAssigned).toBe(false);
+    expect(result.current.restrictTasksToAssigned).toBe(false);
+
+    expect(result.current.canViewEntity({ assignedTo: { userId: 'other' } } as any)).toBe(true);
+    expect(result.current.canViewDeal({ assignedTo: { userId: 'other' } } as any)).toBe(true);
+    expect(result.current.canViewTask({ assignedTo: 'other' } as any)).toBe(true);
+  });
+
+  it('allows restricted users to view tasks and deals if they are the creator', () => {
+    vi.mocked(useTenant).mockReturnValue({
+      activeWorkspace: {
+        id: 'ws_1',
+        restrictVisibilityToAssigned: true,
+        restrictDealsVisibilityToAssigned: true,
+        restrictTasksVisibilityToAssigned: true,
+      },
+      isSuperAdmin: false,
+      isWorkspaceAdmin: false,
+    } as any);
+
+    const { result } = renderHook(() => useWorkspaceVisibility());
+
+    expect(result.current.restrictTasksToAssigned).toBe(true);
+    expect(result.current.restrictDealsToAssigned).toBe(true);
+
+    // Deal created by current user but assigned to colleague
+    const createdDeal = {
+      id: 'deal_1',
+      assignedTo: { userId: 'colleague_456' },
+      createdBy: 'user_123',
+    } as any;
+    expect(result.current.canViewDeal(createdDeal)).toBe(true);
+
+    // Deal neither created nor assigned
+    const unownedDeal = {
+      id: 'deal_2',
+      assignedTo: { userId: 'colleague_456' },
+      createdBy: 'colleague_789',
+    } as any;
+    expect(result.current.canViewDeal(unownedDeal)).toBe(false);
+
+    // Task created by current user
+    const createdTask = {
+      id: 'task_1',
+      assignedTo: 'colleague_456',
+      createdBy: 'user_123',
+    } as any;
+    expect(result.current.canViewTask(createdTask)).toBe(true);
+
+    // Task assigned to current user as an array
+    const arrayAssignedTask = {
+      id: 'task_2',
+      assignedTo: ['colleague_456', 'user_123'],
+      createdBy: 'colleague_789',
+    } as any;
+    expect(result.current.canViewTask(arrayAssignedTask)).toBe(true);
+
+    // Task neither created nor assigned
+    const unownedTask = {
+      id: 'task_3',
+      assignedTo: 'colleague_456',
+      createdBy: 'colleague_789',
+    } as any;
+    expect(result.current.canViewTask(unownedTask)).toBe(false);
+  });
 });
+
