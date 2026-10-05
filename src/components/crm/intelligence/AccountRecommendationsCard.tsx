@@ -25,7 +25,6 @@ import {
   Search,
   FileEdit,
   TrendingUp,
-  AlertCircle,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -36,11 +35,7 @@ import type {
   AccountRecommendations,
   AccountRecommendationItem,
 } from '@/platform/agents/crm/intelligence/crm-intelligence-types';
-import {
-  type CrmProposedAction,
-  CRM_ROLLBACK_MATRIX,
-  computeCrmActionIdempotencyKey,
-} from '@/platform/agents/crm/actions';
+import type { CrmProposedAction } from '@/platform/agents/crm/actions/crm-action-types';
 import { CrmProposalModal } from '@/components/crm/actions/CrmProposalModal';
 
 export interface AccountRecommendationsCardProps {
@@ -99,12 +94,11 @@ export function AccountRecommendationsCard({
         blastRadius: {
           affectedRecordsCount: 1,
           financialExposureUsd: 0,
-          isReversible: CRM_ROLLBACK_MATRIX[actionType]?.reversible ?? true,
+          isReversible: true,
         },
       },
-      idempotencyKey: computeCrmActionIdempotencyKey(recommendations.entityId, actionType, payload),
+      idempotencyKey: `crm_action_${recommendations.entityId}_${item.id}`,
       targetCapabilityId: item.targetCapabilityId ?? `crm.${actionType.toLowerCase()}`,
-      compensatingCapabilityId: CRM_ROLLBACK_MATRIX[actionType]?.compensatingCapabilityId,
       payload,
       requiresApproval: true,
       createdAt: new Date().toISOString(),
