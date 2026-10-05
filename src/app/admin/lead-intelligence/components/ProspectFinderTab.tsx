@@ -51,6 +51,7 @@ import { FilterBuilderPane } from './FilterBuilderPane';
 import { ProspectCardGrid } from './ProspectCardGrid';
 import { ColumnCustomizerModal } from './ColumnCustomizerModal';
 import { MorningRepBriefingCard } from './MorningRepBriefingCard';
+import { ProspectFinderHud } from '@/components/sales/ProspectFinderHud';
 import type { 
   Prospect, 
   SearchFilters, 
@@ -84,6 +85,12 @@ interface ProspectFinderTabProps {
   onSaveCustomView?: (viewName: string) => void;
   dailyBriefing?: DailyRepBriefing | null;
   onStartPriorityQueue?: () => void;
+  onOpenMarketResearch?: () => void;
+  onOpenSegmentToCampaign?: () => void;
+  onRefreshIntelligence?: () => void;
+  isRefreshing?: boolean;
+  streamStatus?: 'connecting' | 'connected' | 'disconnected';
+  realtimeEventCount?: number;
 }
 
 const DEFAULT_COLUMNS: ColumnVisibilityConfig = {
@@ -120,6 +127,12 @@ export const ProspectFinderTab: React.FC<ProspectFinderTabProps> = ({
   onSaveCustomView,
   dailyBriefing,
   onStartPriorityQueue,
+  onOpenMarketResearch,
+  onOpenSegmentToCampaign,
+  onRefreshIntelligence,
+  isRefreshing,
+  streamStatus,
+  realtimeEventCount,
 }) => {
   const { toast } = useToast();
 
@@ -165,6 +178,18 @@ export const ProspectFinderTab: React.FC<ProspectFinderTabProps> = ({
 
   return (
     <div className="space-y-4">
+      {/* Autonomous SDR & Lead Intelligence HUD (Phase 10 Milestone 3) */}
+      {onOpenMarketResearch && onOpenSegmentToCampaign && (
+        <ProspectFinderHud
+          onOpenMarketResearch={onOpenMarketResearch}
+          onOpenSegmentToCampaign={onOpenSegmentToCampaign}
+          onRefresh={onRefreshIntelligence}
+          isRefreshing={isRefreshing}
+          streamStatus={streamStatus}
+          realtimeEventCount={realtimeEventCount}
+        />
+      )}
+
       {/* 0. Daily Rep Morning Briefing Cockpit (UI Spec Section 53) */}
       {dailyBriefing && onStartPriorityQueue && (
         <MorningRepBriefingCard

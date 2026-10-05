@@ -79,6 +79,9 @@ import { ScoringModelConfigModal } from './components/ScoringModelConfigModal';
 import { PriorityQueueModal } from './components/PriorityQueueModal';
 import { CreditUsageCockpitPopover } from './components/CreditUsageCockpitPopover';
 import { DataImportWizardModal } from './components/DataImportWizardModal';
+import { MarketResearchCanvasModal } from '@/components/sales/MarketResearchCanvasModal';
+import { SegmentToCampaignModal } from '@/components/sales/SegmentToCampaignModal';
+import { useEventStream } from '@/hooks/useEventStream';
 
 // Lazy load tab components for optimal bundle performance
 const DashboardTab = dynamic(() => import('./components/DashboardTab'), {
@@ -171,6 +174,11 @@ export default function LeadIntelligenceClient() {
   // Phase 14 Enterprise Credit Ledger & Data Import Wizard
   const [creditLedger, setCreditLedger] = useState<CreditLedgerSummary | null>(null);
   const [isImportWizardOpen, setIsImportWizardOpen] = useState(false);
+
+  // Phase 10 Milestone 3 Market Research & Campaign Modal States
+  const [isMarketResearchOpen, setIsMarketResearchOpen] = useState(false);
+  const [isSegmentCampaignOpen, setIsSegmentCampaignOpen] = useState(false);
+  const [realtimeEventCount, setRealtimeEventCount] = useState(0);
 
   const handleSaveCustomView = async (viewName: string) => {
     if (!activeWorkspaceId) return;
@@ -308,6 +316,25 @@ export default function LeadIntelligenceClient() {
   useEffect(() => {
     loadInitialData();
   }, [loadInitialData]);
+
+  // Real-Time Event Streaming (Rule 62)
+  const { status: streamStatus } = useEventStream({
+    workspaceId: activeWorkspaceId,
+    onActivity: React.useCallback(
+      (activity: { data?: { eventType?: string } }) => {
+        const eventType = activity.data?.eventType || '';
+        if (
+          eventType.startsWith('sales.') ||
+          eventType.startsWith('lead.') ||
+          eventType.startsWith('campaign.')
+        ) {
+          setRealtimeEventCount((prev) => prev + 1);
+          loadInitialData();
+        }
+      },
+      [loadInitialData]
+    ),
+  });
 
   // Execute Prospect Search with Job Tracking
   const handleSearch = () => {
@@ -1006,6 +1033,12 @@ export default function LeadIntelligenceClient() {
                   onSaveCustomView={handleSaveCustomView}
                   dailyBriefing={dailyBriefing}
                   onStartPriorityQueue={() => setIsPriorityQueueOpen(true)}
+                  onOpenMarketResearch={() => setIsMarketResearchOpen(true)}
+                  onOpenSegmentToCampaign={() => setIsSegmentCampaignOpen(true)}
+                  onRefreshIntelligence={loadInitialData}
+                  isRefreshing={isPending}
+                  streamStatus={streamStatus}
+                  realtimeEventCount={realtimeEventCount}
                 />
               </TabsContent>
             </motion.div>
@@ -1216,6 +1249,29 @@ export default function LeadIntelligenceClient() {
         isOpen={isImportWizardOpen}
         onClose={() => setIsImportWizardOpen(false)}
         onImportComplete={() => {
+          loadInitialData();
+        }}
+      />
+
+      {/* Phase 10 Milestone 3: Market Research Canvas Modal */}
+      <MarketResearchCanvasModal
+        isOpen={isMarketResearchOpen}
+        onClose={() => setIsMarketResearchOpen(false)}
+        organizationId={organizationId}
+        workspaceId={activeWorkspaceId || ''}
+        initialIndustry={filters.industry}
+        initialRegion={filters.country || 'Ghana'}
+      />
+
+      {/* Phase 10 Milestone 3: Turn Segment into Campaign Modal */}
+      <SegmentToCampaignModal
+        isOpen={isSegmentCampaignOpen}
+        onClose={() => setIsSegmentCampaignOpen(false)}
+        organizationId={organizationId}
+        workspaceId={activeWorkspaceId || ''}
+        segmentCriteria={filters}
+        estimatedCount={prospects.length}
+        onSuccess={(_campaignId) => {
           loadInitialData();
         }}
       />
