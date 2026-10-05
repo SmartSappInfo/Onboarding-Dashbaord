@@ -87,6 +87,9 @@ export const TranscriptHeaderSchema = z.object({
   recordingVersion: z.string().optional(),
   /** Provider attempts so far (retry budget → dead letter, Rule 25). */
   attempts: z.number().int().min(0).optional(),
+  /** Quota minutes reserved at request time and settled/released later (M1 review R5). */
+  reservedMinutes: z.number().min(0).optional(),
+  reservationDay: z.string().optional(),
   source: TranscriptSourceSchema,
   status: z.enum(TRANSCRIPT_STATUSES),
   version: z.number().int().min(0),

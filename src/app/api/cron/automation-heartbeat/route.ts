@@ -7,6 +7,7 @@ import { defaultAuditStore, defaultAuditSink } from '@/platform/capabilities/sto
 import { sha256Hex } from '@/platform/capabilities/contracts/canonical-json';
 import { adminDb, adminStorage } from '@/lib/firebase-admin';
 import { runRetentionSweep } from '@/lib/meetings/retention-service';
+import { reapStaleTranscriptions } from '@/lib/meetings/transcription-service';
 
 /**
  * Cron endpoint for automation delay jobs, campaign-queued events, and SMS status sync.
@@ -19,6 +20,7 @@ import { runRetentionSweep } from '@/lib/meetings/retention-service';
  * - Phase 11 M1 · T6: meeting data retention. Opt-in workspaces only, ≤ 5 workspaces and ≤ 50
  *   meetings per run, SHADOW (preview only) unless the workspace switched to enforced after a bound
  *   preview. Failures are isolated per workspace and never block the other heartbeat jobs.
+ * - Phase 11 M2 · T0: stale transcription reaper (M1 review R5).
  * - Zero `any` or `any[]` typing.
  */
 export async function GET(request: Request) {
@@ -27,7 +29,7 @@ export async function GET(request: Request) {
     return auth.errorResponse || NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const [jobResult, syncResult, auditSealResult, retentionResult] = await Promise.all([
+  const [jobResult, syncResult, auditSealResult, retentionResult, staleTranscriptions] = await Promise.all([
     processScheduledJobsAction(),
     syncPendingSmsStatuses().catch((err: unknown) => ({
       processed: 0,
@@ -65,7 +67,11 @@ export async function GET(request: Request) {
       (runs) => ({ workspaces: runs.length, runs: runs.map((r) => ({ workspaceId: r.workspaceId, mode: r.mode, planned: r.planned, deleted: r.deleted, verified: r.verified })) }),
       (err: unknown) => ({ workspaces: 0, runs: [], error: err instanceof Error ? err.message : String(err) })
     ),
+    // M1 review R5: jobs stuck > 30 min stop being "in progress" (bounded 50 per run).
+    reapStaleTranscriptions(adminDb, Date.now()).catch((err: unknown) => ({
+      failed: 0, deadLettered: 0, error: err instanceof Error ? err.message : String(err),
+    })),
   ]);
 
-  return NextResponse.json({ jobResult, syncResult, auditSealResult, retentionResult });
+  return NextResponse.json({ jobResult, syncResult, auditSealResult, retentionResult, staleTranscriptions });
 }

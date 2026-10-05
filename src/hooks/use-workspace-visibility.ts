@@ -47,7 +47,7 @@ export function useWorkspaceVisibility() {
 
   // Evaluators
   const canViewEntity = React.useCallback(
-    (entity: WorkspaceEntity | null | undefined) => {
+    (entity: Partial<WorkspaceEntity> | null | undefined) => {
       if (!entity) return false;
       if (!restrictEntitiesToAssigned) return true;
       return entity.assignedTo?.userId === user?.uid || entity.createdBy === user?.uid;
@@ -71,11 +71,17 @@ export function useWorkspaceVisibility() {
       if (task.createdBy === user?.uid) return true;
       if (!task.assignedTo) return false;
       if (Array.isArray(task.assignedTo)) {
-        return task.assignedTo.includes(user?.uid || '');
+        return (
+          task.assignedTo.includes(user?.uid || '') ||
+          Boolean(user?.email && task.assignedTo.includes(user.email))
+        );
       }
-      return task.assignedTo === user?.uid;
+      return (
+        task.assignedTo === user?.uid ||
+        Boolean(user?.email && task.assignedTo === user.email)
+      );
     },
-    [restrictTasksToAssigned, user?.uid]
+    [restrictTasksToAssigned, user?.uid, user?.email]
   );
 
   return {

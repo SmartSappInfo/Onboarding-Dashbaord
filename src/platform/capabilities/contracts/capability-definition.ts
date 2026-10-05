@@ -209,6 +209,12 @@ export interface CapabilityDefinition<TInput = unknown, TOutput = unknown> {
     requiresExpectedVersion: boolean;
     auditRequired: boolean;
     defaultEnabled?: boolean;
+    /**
+     * Phase 11 M2 · T0 (M1 review R6): automated callers (agents, MCP, workflows) need an EXPLICIT
+     * agent/MCP enablement (`agentEnabled`/`mcpEnabled` true on the flag record or an override).
+     * Turning the capability on for a workspace ("enabled") then enables people only.
+     */
+    automatedRequiresExplicitFlag?: boolean;
   };
 
   /**

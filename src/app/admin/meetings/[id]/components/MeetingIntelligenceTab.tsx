@@ -45,7 +45,12 @@ import { MeetingTranscriptPanel } from './MeetingTranscriptPanel';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { analyzeConversationDynamics } from '@/lib/meetings/speech-coach-service';
 import type { MeetingGetTranscriptOutput } from '@/platform/domains/meetings_conversations';
-import { getWorkspaceCompliancePolicyAction } from '@/app/actions/meeting-compliance-actions';
+import {
+  getMeetingLegalHoldAction,
+  getWorkspaceCompliancePolicyAction,
+  setMeetingLegalHoldAction,
+} from '@/app/actions/meeting-compliance-actions';
+import { Switch } from '@/components/ui/switch';
 import {
   cancelTranscriptionAction,
   getTranscriptionStatusAction,
@@ -116,6 +121,8 @@ export function MeetingIntelligenceTab({
   const [recordingFile, setRecordingFile] = React.useState<File | null>(null);
   const [job, setJob] = React.useState<{ transcriptId: string; status: string } | null>(null);
   const [isStartingTranscription, setIsStartingTranscription] = React.useState(false);
+  const [legalHold, setLegalHold] = React.useState<{ on: boolean } | null>(null);
+  const [savingHold, setSavingHold] = React.useState(false);
 
   const handleSelectOutcome = (outcome: string) => {
     // Local selection only: saving outcomes to the CRM is not built yet, so we don't claim it.
@@ -131,6 +138,8 @@ export function MeetingIntelligenceTab({
         getWorkspaceCompliancePolicyAction(workspaceId).catch(() => null),
       ]);
       setConsentEnforced(Boolean(policyRes?.success && policyRes.policy?.enforceHostConsentForAI));
+      const holdRes = await getMeetingLegalHoldAction(workspaceId, meetingId).catch(() => null);
+      setLegalHold(holdRes?.success && holdRes.hold ? { on: holdRes.hold.on } : null);
 
       if (intelRes.success && intelRes.intelligence) {
         setIntelligence(intelRes.intelligence);
@@ -365,7 +374,7 @@ export function MeetingIntelligenceTab({
             className="rounded-xl min-h-[44px] text-xs gap-1.5 active:scale-[0.97]"
           >
             <FileText className="h-3.5 w-3.5" />
-            {transcript ? 'Replace transcript' : 'Add transcript'}
+            {transcript ? 'Add another transcript' : 'Add transcript'}
           </Button>
           <Button
             variant="outline"
@@ -427,6 +436,40 @@ export function MeetingIntelligenceTab({
                 <CardInfoTooltip text="Turns the recording into a transcript. Works for MP3, WAV, AAC, OGG, FLAC or AIFF files up to 14 MB." />
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Legal hold (M1 review R6b): held meetings are never removed by retention. */}
+      {legalHold && (
+        <Card className="rounded-2xl border shadow-sm">
+          <CardContent className="p-4 flex items-center justify-between gap-3 min-h-[56px]">
+            <div className="flex items-center gap-2 text-xs">
+              <ShieldAlert className="h-4 w-4 text-primary" />
+              <span className="font-semibold">Legal hold</span>
+              <CardInfoTooltip text="Keep this meeting's recordings and transcripts even when old data is removed automatically." />
+            </div>
+            <Switch
+              checked={legalHold.on}
+              disabled={savingHold}
+              aria-label="Legal hold"
+              onCheckedChange={async (on) => {
+                setSavingHold(true);
+                try {
+                  const res = await setMeetingLegalHoldAction(workspaceId, meetingId, { on });
+                  if (res.success) {
+                    setLegalHold({ on });
+                    toast({ title: on ? 'Legal hold on' : 'Legal hold off' });
+                  } else {
+                    toast({ variant: 'destructive', title: "Couldn't change legal hold", description: res.error });
+                  }
+                } catch (err) {
+                  toast({ variant: 'destructive', title: "Couldn't change legal hold", description: getErrorMessage(err) });
+                } finally {
+                  setSavingHold(false);
+                }
+              }}
+            />
           </CardContent>
         </Card>
       )}

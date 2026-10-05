@@ -121,7 +121,10 @@ function isRetryableProviderError(err: unknown): boolean {
 export function validateProviderTranscript(raw: unknown, durationSeconds: number): ReturnType<typeof buildParsedTranscript> & { language?: string } {
   const parsed = ProviderTranscriptSchema.safeParse(raw);
   if (!parsed.success) throw new Error('invalid_output');
-  const limitMs = Math.round((durationSeconds > 0 ? durationSeconds * 1.02 + 5 : MAX_AUDIO_SECONDS) * 1000);
+  // CAUTION (M1 review R3): the declared duration is user-entered (the UI defaulted it to 30 min),
+  // so it must not reject real transcripts. The hard bound is the product maximum.
+  void durationSeconds;
+  const limitMs = MAX_AUDIO_SECONDS * 1000;
   const cues: RawCue[] = [];
   for (const s of parsed.data.segments) {
     const text = s.text.replace(/\s+/g, ' ').trim();
@@ -145,6 +148,7 @@ async function loadHeader(db: Firestore, transcriptId: string): Promise<Transcri
 }
 
 async function terminal(db: Firestore, transcriptId: string, status: 'failed' | 'cancelled' | 'dead_lettered', code: string, message: string, nowIso: string): Promise<TranscriptionOutcome> {
+  await settleReservation(db, transcriptId, 0, nowIso);
   await markTranscriptTerminal(db, transcriptId, status, { code, message }, nowIso);
   if (status === 'dead_lettered') {
     await db.collection('meeting_transcription_dlq').doc(transcriptId).set({ transcriptId, code, message, at: nowIso, resolved: false });
@@ -270,8 +274,9 @@ export async function processTranscriptionTask(db: Firestore, deps: Transcriptio
 
   const speakers = await mapSpeakersToParticipants(db, header.meetingId, transcript.speakers);
   // Billed audio minutes: the recording's declared duration, or the transcript's end if longer.
+  // Billed from the transcript's actual end time, not the user-entered duration (M1 review R3).
   const lastEndSeconds = (transcript.segments[transcript.segments.length - 1]?.endMs ?? 0) / 1000;
-  const costUnits = Math.max(1, Math.ceil(Math.max(rec.data.durationSeconds, lastEndSeconds) / 60));
+  const costUnits = Math.max(1, Math.ceil(lastEndSeconds / 60));
   try {
     await completeTranscript(db, {
       transcriptId,
@@ -295,7 +300,7 @@ export async function processTranscriptionTask(db: Firestore, deps: Transcriptio
   }
 
   await db.collection('meetings').doc(header.meetingId).update({ hasTranscript: true, updatedAt: nowIso() }).catch(() => undefined);
-  await meterUsage(db, ws, deps.nowMs(), costUnits);
+  await settleReservation(db, transcriptId, costUnits, nowIso());
   await db.collection('meeting_transcription_dlq').doc(transcriptId).delete().catch(() => undefined);
   return { status: 'completed', transcriptId, segmentCount: transcript.segments.length, costUnits };
 }
@@ -313,4 +318,101 @@ export async function meterUsage(db: Firestore, workspaceId: string, nowMs: numb
 export async function readUsageMinutes(db: Firestore, workspaceId: string, nowMs: number): Promise<number> {
   const snap = await db.collection('meeting_transcription_usage').doc(usageDocId(workspaceId, nowMs)).get();
   return typeof snap.data()?.minutes === 'number' ? Number(snap.data()?.minutes) : 0;
+}
+
+const usageRef = (db: Firestore, workspaceId: string, day: string) =>
+  db.collection('meeting_transcription_usage').doc(`${workspaceId}_${day}`);
+
+function readUsage(data: Record<string, unknown> | undefined): { minutes: number; reservedMinutes: number } {
+  return {
+    minutes: typeof data?.minutes === 'number' ? data.minutes : 0,
+    reservedMinutes: typeof data?.reservedMinutes === 'number' ? data.reservedMinutes : 0,
+  };
+}
+
+export class QuotaExceededError extends Error {
+  constructor() {
+    super('Daily transcription limit reached. Try again tomorrow.');
+    this.name = 'QuotaExceededError';
+  }
+}
+
+/**
+ * Atomically checks the daily limit and reserves `minutes` for this transcript (M1 review R5).
+ * Used minutes + reserved minutes + this request must fit, so concurrent requests can't overshoot.
+ * Idempotent: a transcript that already holds a reservation is not reserved twice.
+ */
+export async function reserveUsage(
+  db: Firestore,
+  params: { workspaceId: string; transcriptId: string; minutes: number; limit: number; nowMs: number }
+): Promise<void> {
+  const day = new Date(params.nowMs).toISOString().slice(0, 10);
+  const uRef = usageRef(db, params.workspaceId, day);
+  const tRef = db.collection(TRANSCRIPTS).doc(params.transcriptId);
+  await db.runTransaction(async (tx) => {
+    const [uSnap, tSnap] = await Promise.all([tx.get(uRef), tx.get(tRef)]);
+    if ((tSnap.data()?.reservedMinutes ?? 0) > 0) return;
+    const usage = readUsage(uSnap.data());
+    if (usage.minutes + usage.reservedMinutes + params.minutes > params.limit) throw new QuotaExceededError();
+    tx.set(uRef, { workspaceId: params.workspaceId, day, ...usage, reservedMinutes: usage.reservedMinutes + params.minutes, updatedAt: new Date(params.nowMs).toISOString() });
+    tx.update(tRef, { reservedMinutes: params.minutes, reservationDay: day });
+  });
+}
+
+/**
+ * Releases the transcript's reservation and records `actualMinutes` as used (0 on failure/cancel).
+ * Idempotent: the reservation is zeroed on the transcript in the same transaction.
+ */
+export async function settleReservation(db: Firestore, transcriptId: string, actualMinutes: number, nowIso: string): Promise<void> {
+  const tRef = db.collection(TRANSCRIPTS).doc(transcriptId);
+  await db.runTransaction(async (tx) => {
+    const tSnap = await tx.get(tRef);
+    const t = tSnap.data();
+    if (!t) return;
+    const reserved = typeof t.reservedMinutes === 'number' ? t.reservedMinutes : 0;
+    const day = typeof t.reservationDay === 'string' ? t.reservationDay : nowIso.slice(0, 10);
+    const workspaceId = typeof t.workspaceId === 'string' ? t.workspaceId : '';
+    if (!workspaceId || (reserved === 0 && actualMinutes === 0)) return;
+    const uRef = usageRef(db, workspaceId, day);
+    const usage = readUsage((await tx.get(uRef)).data());
+    tx.set(uRef, {
+      workspaceId, day,
+      minutes: usage.minutes + actualMinutes,
+      reservedMinutes: Math.max(0, usage.reservedMinutes - reserved),
+      updatedAt: nowIso,
+    });
+    tx.update(tRef, { reservedMinutes: 0 });
+  });
+}
+
+export const STALE_JOB_MS = 30 * 60 * 1000;
+
+/**
+ * Heartbeat reaper (M1 review R5): jobs stuck in pending/processing for > 30 min stop being
+ * "in progress". A pending recording job never started (lost task) → failed (retryable by the
+ * person); a processing job died mid-run → dead-lettered for recovery. Bounded to 50 per run.
+ */
+export async function reapStaleTranscriptions(db: Firestore, nowMs: number): Promise<{ failed: number; deadLettered: number }> {
+  const cutoff = new Date(nowMs - STALE_JOB_MS).toISOString();
+  const snap = await db.collection(TRANSCRIPTS)
+    .where('status', 'in', ['pending', 'processing'])
+    .where('updatedAt', '<', cutoff)
+    .orderBy('updatedAt', 'desc')
+    .limit(50)
+    .get();
+  let failed = 0;
+  let deadLettered = 0;
+  const nowIso = new Date(nowMs).toISOString();
+  for (const d of snap.docs) {
+    const h = TranscriptHeaderSchema.safeParse(d.data());
+    if (!h.success) continue;
+    if (h.data.status === 'processing' && h.data.source === 'recording') {
+      await terminal(db, d.id, 'dead_lettered', 'stalled', 'Transcription stopped responding.', nowIso);
+      deadLettered += 1;
+    } else {
+      await terminal(db, d.id, 'failed', 'stalled', 'This did not finish. Try again.', nowIso);
+      failed += 1;
+    }
+  }
+  return { failed, deadLettered };
 }

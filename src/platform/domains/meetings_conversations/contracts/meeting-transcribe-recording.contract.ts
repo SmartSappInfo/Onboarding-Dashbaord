@@ -56,7 +56,8 @@ export const meetingTranscribeRecordingCapability: CapabilityDefinition<MeetingT
   tenantScoped: true,
   risk: { level: 'L1_INTERNAL_DRAFT', destructive: false, idempotent: true, openWorld: true, requiresHumanApproval: false, nonDelegable: false },
   execution: { synchronous: false, maxDurationMs: 15_000, supportsDryRun: true, supportsCancellation: true, supportsCompensation: true, maxPayloadSizeBytes: 2 * 1024 },
-  policies: { requiresIdempotencyKey: false, requiresExpectedVersion: false, auditRequired: true, defaultEnabled: false },
+  // Off by default; when a workspace enables it, agents/MCP still need explicit enablement (M1 review R6).
+  policies: { requiresIdempotencyKey: false, requiresExpectedVersion: false, auditRequired: true, defaultEnabled: false, automatedRequiresExplicitFlag: true },
   governance: { dataClassification: 'restricted', emitsEvents: ['recording.processing_started'], breakingChangePolicy: 'additive_only', implementationRef: 'src/lib/meetings/transcription-request.ts' },
   async resolveResourceScope(input, context) {
     try {
@@ -104,7 +105,11 @@ export const meetingTranscribeRecordingCapability: CapabilityDefinition<MeetingT
       };
     } catch (err) {
       if (err instanceof TranscriptionRequestError) {
-        throw new CapabilityError({ code: err.code, message: err.message, stateChanged: 'no', httpStatus: err.code === 'FORBIDDEN' ? 403 : 400, retryable: false });
+        throw new CapabilityError({
+          code: err.code, message: err.message, stateChanged: 'no',
+          httpStatus: err.code === 'FORBIDDEN' ? 403 : err.code === 'PROVIDER_ERROR' ? 503 : err.code === 'NOT_FOUND' ? 404 : 400,
+          retryable: err.code === 'PROVIDER_ERROR',
+        });
       }
       throw err;
     }

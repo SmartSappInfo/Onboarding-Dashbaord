@@ -10,6 +10,7 @@ import {
   MAX_ATTEMPTS,
   processTranscriptionTask,
   readUsageMinutes,
+  reapStaleTranscriptions,
   RetryableTranscriptionError,
   type TranscriptionDeps,
   type TranscriptionProvider,
@@ -110,17 +111,62 @@ describe('requesting transcription', () => {
   });
 });
 
+describe('M1 review fixes (R2a, R5)', () => {
+  it('R2a: a failed schedule fails the job and releases quota; asking again restarts it', async () => {
+    const failing = (over: Partial<Parameters<typeof requestRecordingTranscription>[2]> = {}) =>
+      requestRecordingTranscription(db.asFirestore(), {
+        storage: { size: async () => 1_000 },
+        schedule: async () => { throw new Error('Cloud Tasks unavailable'); },
+        nowMs: () => NOW,
+      }, { workspaceId: 'ws-a', organizationId: 'org-1', meetingId: 'm-1', recordingId: 'r-1', dryRun: false, provenance: { createdBy: 'u-1', principalKind: 'user' }, correlationId: 'c', ...over });
+    await expect(failing()).rejects.toThrow("Couldn't start transcription");
+    expect(db.read('meeting_transcription_usage/ws-a_2026-10-05')).toMatchObject({ reservedMinutes: 0 });
+    const retry = await request();
+    expect(retry).toMatchObject({ status: 'pending', replayed: false });
+    expect(scheduled).toHaveLength(1);
+  });
+
+  it('R2a: a job stuck in pending for > 10 min is restarted, not replayed', async () => {
+    const first = await request();
+    db.write(`meeting_transcripts/${first.transcriptId}`, { ...db.read(`meeting_transcripts/${first.transcriptId}`), updatedAt: new Date(NOW - 11 * 60_000).toISOString() });
+    const again = await request();
+    expect(again).toMatchObject({ replayed: false, status: 'pending' });
+    expect(scheduled).toHaveLength(2);
+    expect(db.read('meeting_transcription_usage/ws-a_2026-10-05')).toMatchObject({ reservedMinutes: 10 });
+  });
+
+  it('R5: concurrent requests reserve quota so they cannot exceed the daily limit', async () => {
+    db.write('meeting_transcription_quotas/ws-a', { dailyMinutes: 15 });
+    db.write('meeting_recordings/r-2', { ...db.read('meeting_recordings/r-1'), updatedAt: 'v1' });
+    const results = await Promise.allSettled([request(), request({ recordingId: 'r-2' })]);
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    expect(results.filter((r) => r.status === 'rejected')).toHaveLength(1);
+  });
+
+  it('R5: the reaper fails lost pending jobs and dead-letters stuck processing jobs, releasing quota', async () => {
+    const a = await request();
+    const old = new Date(NOW - 31 * 60_000).toISOString();
+    db.write(`meeting_transcripts/${a.transcriptId}`, { ...db.read(`meeting_transcripts/${a.transcriptId}`), status: 'processing', updatedAt: old });
+    const res = await reapStaleTranscriptions(db.asFirestore(), NOW);
+    expect(res).toEqual({ failed: 0, deadLettered: 1 });
+    expect(db.read(`meeting_transcripts/${a.transcriptId}`)).toMatchObject({ status: 'dead_lettered' });
+    expect(db.read(`meeting_transcription_dlq/${a.transcriptId}`)).toBeDefined();
+    expect(db.read('meeting_transcription_usage/ws-a_2026-10-05')).toMatchObject({ reservedMinutes: 0 });
+  });
+});
+
 describe('transcription worker', () => {
   it('transcribes, maps speakers, records provenance, meters usage; duplicate delivery is a no-op', async () => {
     const { transcriptId } = await request();
     const outcome = await processTranscriptionTask(db.asFirestore(), workerDeps(), transcriptId);
-    expect(outcome).toMatchObject({ status: 'completed', segmentCount: 2, costUnits: 10 });
+    expect(outcome).toMatchObject({ status: 'completed', segmentCount: 2, costUnits: 1 }); // billed from the real end (9 s)
     const header = db.read(`meeting_transcripts/${transcriptId}`);
-    expect(header).toMatchObject({ status: 'completed', source: 'recording', segmentCount: 2, costUnits: 10 });
+    expect(header).toMatchObject({ status: 'completed', source: 'recording', segmentCount: 2, costUnits: 1, reservedMinutes: 0 });
     expect((header?.provider as Record<string, string>).modelId).toBe('gemini-3-flash');
     expect((header?.provider as Record<string, string>).inputHash).toMatch(/^[0-9a-f]{64}$/);
     expect((header?.speakers as Array<Record<string, unknown>>)[0]).toMatchObject({ name: 'Ama Mensah', participantId: 'p-1' });
-    expect(await readUsageMinutes(db.asFirestore(), 'ws-a', NOW)).toBe(10);
+    expect(await readUsageMinutes(db.asFirestore(), 'ws-a', NOW)).toBe(1);
+    expect(db.read('meeting_transcription_usage/ws-a_2026-10-05')).toMatchObject({ minutes: 1, reservedMinutes: 0 });
     expect(db.read('meetings/m-1')).toMatchObject({ hasTranscript: true });
 
     expect(await processTranscriptionTask(db.asFirestore(), workerDeps(), transcriptId)).toEqual({ status: 'noop', reason: 'already_completed' });
@@ -139,9 +185,15 @@ describe('transcription worker', () => {
     expect(db.read(`meeting_transcripts/${transcriptId}`)).toMatchObject({ status: 'dead_lettered' });
   });
 
-  it('rejects invalid model output (times past the recording) and stores nothing', async () => {
+  it('accepts a real 60-minute transcript even when the person entered 30 minutes (M1 review R3)', async () => {
+    const { transcriptId } = await request(); // declared 600 s
+    providerImpl = async () => ({ segments: [{ speaker: 'A', startSeconds: 0, endSeconds: 3_600, text: 'A long meeting.' }] });
+    expect(await processTranscriptionTask(db.asFirestore(), workerDeps(), transcriptId)).toMatchObject({ status: 'completed', costUnits: 60 });
+  });
+
+  it('rejects invalid model output (times past the 4 h maximum) and stores nothing', async () => {
     const { transcriptId } = await request();
-    providerImpl = async () => ({ segments: [{ startSeconds: 0, endSeconds: 9_999, text: 'hallucinated' }] });
+    providerImpl = async () => ({ segments: [{ startSeconds: 0, endSeconds: 20_000, text: 'hallucinated' }] });
     expect(await processTranscriptionTask(db.asFirestore(), workerDeps(), transcriptId)).toMatchObject({ status: 'failed', code: 'invalid_output' });
     expect([...db.docs.keys()].some((k) => k.includes('/segments/'))).toBe(false);
   });

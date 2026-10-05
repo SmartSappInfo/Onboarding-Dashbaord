@@ -147,6 +147,52 @@ describe('retention run', () => {
   });
 });
 
+describe('M1 review fixes', () => {
+  it('R1: a workspace is processed at most once per 24 h', async () => {
+    policy();
+    const first = await runRetentionSweep(db.asFirestore(), deps());
+    expect(first.map((r) => r.workspaceId)).toEqual(['ws-a']);
+    const again = await runRetentionSweep(db.asFirestore(), { ...deps(), nowMs: NOW + 60_000 });
+    expect(again).toEqual([]);
+    const nextDay = await runRetentionSweep(db.asFirestore(), { ...deps(), nowMs: NOW + 25 * 3600_000 });
+    expect(nextDay.map((r) => r.workspaceId)).toEqual(['ws-a']);
+  });
+
+  it('R2b: the cursor walks past purged meetings to older ones, then restarts', async () => {
+    policy({ retentionMode: 'enforced' });
+    // 120 old meetings without data (newer), and one much older meeting that still has a transcript.
+    for (let i = 0; i < 120; i += 1) {
+      db.write(`meetings/empty-${i}`, { workspaceIds: ['ws-a'], meetingTime: `2026-06-${String(1 + (i % 28)).padStart(2, '0')}T0${i % 10}:00:00.000Z` });
+    }
+    db.write('meetings/ancient', { workspaceIds: ['ws-a'], meetingTime: '2025-01-01T00:00:00.000Z' });
+    transcript('t-ancient', 'ancient');
+    const seen: number[] = [];
+    for (let run = 0; run < 6 && db.read('meeting_transcripts/t-ancient'); run += 1) {
+      const r = await runWorkspaceRetention(db.asFirestore(), deps(), 'ws-a');
+      seen.push(r.deleted.transcripts);
+    }
+    expect(db.read('meeting_transcripts/t-ancient')).toBeUndefined();
+    expect(db.read('meetings/ancient')).toMatchObject({ hasTranscript: false });
+  });
+
+  it('R7: deleting a transcript removes the intelligence (and items/drafts) built from it', async () => {
+    db.write('meeting_intelligence/old', { workspaceId: 'ws-a', meetingId: 'old', transcriptId: 't-old' });
+    db.write('meeting_intelligence/old/items/i1', { type: 'decision' });
+    db.write('meeting_followup_drafts/d1', { workspaceId: 'ws-a', meetingId: 'old', transcriptId: 't-old' });
+    expect(await deleteTranscriptCascade(db.asFirestore(), { workspaceId: 'ws-a', transcriptId: 't-old', reason: 'manual', nowIso: 'x' })).toBe(true);
+    for (const gone of ['meeting_intelligence/old', 'meeting_intelligence/old/items/i1', 'meeting_followup_drafts/d1']) {
+      expect(db.read(gone), gone).toBeUndefined();
+    }
+  });
+
+  it('R7: intelligence from a different transcript of the same meeting is kept', async () => {
+    transcript('t-old-2', 'old');
+    db.write('meeting_intelligence/old', { workspaceId: 'ws-a', meetingId: 'old', transcriptId: 't-old-2' });
+    await deleteTranscriptCascade(db.asFirestore(), { workspaceId: 'ws-a', transcriptId: 't-old', reason: 'manual', nowIso: 'x' });
+    expect(db.read('meeting_intelligence/old')).toBeDefined();
+  });
+});
+
 describe('policy binding (Rules 21/22)', () => {
   it('detects changes that can delete more data', () => {
     const shadow = { retentionMode: 'shadow', retentionPeriodDays: 90, autoPurgeTranscripts: true };

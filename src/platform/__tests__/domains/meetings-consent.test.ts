@@ -47,7 +47,7 @@ describe('meeting.record_consent', () => {
   it('refuses agents even with the right scope (non-delegable)', async () => {
     const res = await record({}, agent);
     expect(res.success).toBe(false);
-    expect(db.read('meeting_consents/m-1')).toBeUndefined();
+    expect(db.read('meeting_consents/ws-a__m-1')).toBeUndefined();
   });
 
   it('refuses a stale version and foreign meetings', async () => {

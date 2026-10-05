@@ -152,6 +152,23 @@ export async function saveWorkspaceCompliancePolicyAction(
   }
 }
 
+/** Current legal hold for one meeting (M2 · T0, M1 review R6b). */
+export async function getMeetingLegalHoldAction(
+  workspaceId: string,
+  meetingId: string
+): Promise<{ success: boolean; hold?: { on: boolean; reason?: string; at?: string }; error?: string }> {
+  await requireMeetingAccess(workspaceId, meetingId, 'meetings_view');
+  try {
+    const raw = (await adminDb.collection('meetings').doc(meetingId).get()).data()?.legalHold;
+    const on = typeof raw === 'object' && raw !== null && (raw as Record<string, unknown>).on === true;
+    const reason = typeof raw === 'object' && raw !== null && typeof (raw as Record<string, unknown>).reason === 'string' ? String((raw as Record<string, unknown>).reason) : undefined;
+    const at = typeof raw === 'object' && raw !== null && typeof (raw as Record<string, unknown>).at === 'string' ? String((raw as Record<string, unknown>).at) : undefined;
+    return { success: true, hold: { on, ...(reason ? { reason } : {}), ...(at ? { at } : {}) } };
+  } catch (err) {
+    return { success: false, error: getErrorMessage(err) };
+  }
+}
+
 /**
  * Turns legal hold on or off for one meeting (M1 · T6). Held meetings are never purged. Records who
  * and why; audited. Non-delegable: this is a human Server Action only (no agent capability).

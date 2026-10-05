@@ -4,8 +4,11 @@ import 'server-only';
  * @fileOverview Per-meeting consent: append-only records + gate (Phase 11 M1 · T5, finding G9).
  *
  * MODEL (meetings PRD §98: four independently configurable consents)
- *   meeting_consents/{meetingId}                 { workspaceId, meetingId, version, current, updatedAt }
- *   meeting_consents/{meetingId}/records/{id}    append-only history, never updated or deleted (Rule 40)
+ *   meeting_consents/{workspaceId}__{meetingId}              { workspaceId, meetingId, version, current, updatedAt }
+ *   meeting_consents/{workspaceId}__{meetingId}/records/{id} append-only history, never updated or deleted (Rule 40)
+ *
+ * Keyed by workspace AND meeting (M1 review R4): meetings can be shared across workspaces, and each
+ * workspace records its own consent. Keying by meeting alone blocked the second workspace forever.
  *
  * GATE (only when the workspace policy `enforceHostConsentForAI` is ON; when OFF the behaviour is
  * exactly as before M1, so turning this feature on is a deliberate workspace decision):
@@ -15,7 +18,8 @@ import 'server-only';
  * Humans viewing a transcript in the UI need workspace permission only (consent governs processing).
  *
  * WITHDRAWAL: withdrawing `transcription` or `aiProcessing` marks the meeting's transcripts
- * `aiUse: 'restricted'` (bounded, ≤ 50 per meeting) so agents can no longer read them.
+ * `aiUse: 'restricted'` (bounded, ≤ 50 per meeting) so agents can no longer read them, and deletes
+ * the AI output already derived from them (intelligence, items, drafts; M1 review R7).
  *
  * CAUTION: recording consent is a NON-DELEGABLE human action (Rule 17); the capability enforces that.
  * This module assumes the caller already authorized the actor.
@@ -27,6 +31,7 @@ import type { Firestore } from 'firebase-admin/firestore';
 import { z } from 'zod/v4';
 import { readCompliancePolicy } from './compliance-policy-store';
 import { TRANSCRIPTS } from './transcript-store';
+import { deleteDerivedMeetingData } from './retention-service';
 
 export const CONSENT_TYPES = ['recording', 'transcription', 'aiProcessing', 'marketing'] as const;
 export type ConsentType = (typeof CONSENT_TYPES)[number];
@@ -80,10 +85,12 @@ export class ConsentConflictError extends Error {
   }
 }
 
-const consentRef = (db: Firestore, meetingId: string) => db.collection('meeting_consents').doc(meetingId);
+export const consentDocId = (workspaceId: string, meetingId: string): string => `${workspaceId}__${meetingId}`;
+const consentRef = (db: Firestore, workspaceId: string, meetingId: string) =>
+  db.collection('meeting_consents').doc(consentDocId(workspaceId, meetingId));
 
 export async function readMeetingConsents(db: Firestore, meetingId: string, workspaceId: string): Promise<MeetingConsents> {
-  const snap = await consentRef(db, meetingId).get();
+  const snap = await consentRef(db, workspaceId, meetingId).get();
   const parsed = snap.exists ? ConsentDocSchema.safeParse(snap.data()) : null;
   // CAUTION: a consent doc from another workspace (shared meeting) is NOT this workspace's consent.
   if (!parsed?.success || parsed.data.workspaceId !== workspaceId) {
@@ -127,7 +134,7 @@ export interface RecordConsentInput {
 
 /** Appends a consent record and updates the current state atomically. */
 export async function recordConsent(db: Firestore, input: RecordConsentInput): Promise<{ version: number; restrictedTranscripts: number }> {
-  const ref = consentRef(db, input.meetingId);
+  const ref = consentRef(db, input.workspaceId, input.meetingId);
   const recordRef = ref.collection('records').doc();
 
   const version = await db.runTransaction(async (tx) => {
@@ -154,6 +161,8 @@ export async function recordConsent(db: Firestore, input: RecordConsentInput): P
   let restrictedTranscripts = 0;
   if (!input.granted && (input.type === 'transcription' || input.type === 'aiProcessing')) {
     restrictedTranscripts = await restrictTranscriptsForMeeting(db, input.workspaceId, input.meetingId, input.nowIso);
+    // M1 review R7: AI output already produced for this meeting is removed with the consent.
+    await deleteDerivedMeetingData(db, { workspaceId: input.workspaceId, meetingId: input.meetingId });
   }
   return { version, restrictedTranscripts };
 }

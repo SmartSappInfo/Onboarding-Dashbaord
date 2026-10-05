@@ -26,15 +26,18 @@ import {
 } from '@/platform/policy/ai-data-policy';
 import { assertConsent, ConsentRequiredError } from './consent-store';
 import { MeetingRecordingRecordSchema, isRecordingPathForMeeting } from './schemas/recording-schemas';
-import { AUDIO_MIME_BY_EXT, MAX_AUDIO_SECONDS, MAX_INLINE_AUDIO_BYTES, readUsageMinutes } from './transcription-service';
-import { TRANSCRIPTS, TranscriptHeaderSchema, buildTranscriptHeader, type TranscriptHeader } from './transcript-store';
+import {
+  AUDIO_MIME_BY_EXT, MAX_AUDIO_SECONDS, MAX_INLINE_AUDIO_BYTES, QuotaExceededError, reserveUsage, settleReservation,
+} from './transcription-service';
+import { TRANSCRIPTS, TranscriptHeaderSchema, buildTranscriptHeader, markTranscriptTerminal, type TranscriptHeader } from './transcript-store';
 
 export const TRANSCRIPTION_QUEUE = 'meeting-transcription-queue';
 export const TRANSCRIPTION_ENDPOINT = '/api/tasks/meeting-transcription';
 export const DEFAULT_DAILY_MINUTES = 120;
+export const STALE_PENDING_MS = 10 * 60 * 1000;
 
 export class TranscriptionRequestError extends Error {
-  constructor(readonly code: 'VALIDATION' | 'FORBIDDEN' | 'NOT_FOUND', message: string) {
+  constructor(readonly code: 'VALIDATION' | 'FORBIDDEN' | 'NOT_FOUND' | 'PROVIDER_ERROR', message: string) {
     super(message);
     this.name = 'TranscriptionRequestError';
   }
@@ -110,10 +113,13 @@ export async function requestRecordingTranscription(
     throw err;
   }
 
-  // 4. Daily quota.
+  // 4. Daily quota. The declared duration is user-entered (M1 review R3), so the estimate also uses
+  // the file size (≈ 4 KB/s for compressed speech) and takes the larger of the two.
   const nowMs = deps.nowMs();
-  const estimatedMinutes = Math.max(1, Math.ceil(rec.data.durationSeconds / 60));
-  const [used, limit] = await Promise.all([readUsageMinutes(db, params.workspaceId, nowMs), dailyLimit(db, params.workspaceId)]);
+  const estimatedMinutes = Math.max(1, Math.ceil(Math.max(rec.data.durationSeconds / 60, size / 240_000)));
+  const limit = await dailyLimit(db, params.workspaceId);
+  const usageSnap = await db.collection('meeting_transcription_usage').doc(`${params.workspaceId}_${new Date(nowMs).toISOString().slice(0, 10)}`).get();
+  const used = Number(usageSnap.data()?.minutes ?? 0) + Number(usageSnap.data()?.reservedMinutes ?? 0);
   if (used + estimatedMinutes > limit) throw refuse('FORBIDDEN', 'Daily transcription limit reached. Try again tomorrow.');
 
   const transcriptId = recordingTranscriptIdFor(params.workspaceId, params.recordingId, rec.data.updatedAt);
@@ -125,8 +131,11 @@ export async function requestRecordingTranscription(
   const outcome = await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     const existing = snap.exists ? TranscriptHeaderSchema.safeParse(snap.data()) : null;
-    if (existing?.success && ['pending', 'processing', 'completed'].includes(existing.data.status)) {
-      return { started: false, status: existing.data.status as 'pending' | 'processing' | 'completed', version: existing.data.version };
+    // A job left 'pending' for > 10 min never reached the worker (lost task, M1 review R2a): restart it.
+    const stalePending = existing?.success && existing.data.status === 'pending'
+      && Date.parse(existing.data.updatedAt) < nowMs - STALE_PENDING_MS;
+    if (existing?.success && !stalePending && ['pending', 'processing', 'completed'].includes(existing.data.status)) {
+      return { started: false, status: existing.data.status as 'pending' | 'processing' | 'completed', version: existing.data.version, priorReservation: 0 };
     }
     if (existing?.success && existing.data.status === 'deleting') throw refuse('VALIDATION', 'This transcript is being deleted. Try again later.');
     const previousVersion = existing?.success ? existing.data.version : -1;
@@ -141,14 +150,40 @@ export async function requestRecordingTranscription(
       provenance: params.provenance,
       nowIso,
     });
-    tx.set(ref, { ...header, version: previousVersion + 1, attempts: 0 });
-    return { started: true, status: 'pending' as const, version: previousVersion + 1 };
+    // Carry an old reservation over so it is released below (restart of a stale job).
+    const priorReservation = existing?.success ? existing.data.reservedMinutes ?? 0 : 0;
+    tx.set(ref, {
+      ...header, version: previousVersion + 1, attempts: 0,
+      ...(priorReservation > 0 && existing?.success
+        ? { reservedMinutes: priorReservation, ...(existing.data.reservationDay ? { reservationDay: existing.data.reservationDay } : {}) }
+        : {}),
+    });
+    return { started: true, status: 'pending' as const, version: previousVersion + 1, priorReservation };
   });
 
   if (outcome.started) {
+    if (outcome.priorReservation > 0) await settleReservation(db, transcriptId, 0, nowIso);
+    // Reserve quota atomically so concurrent requests can't exceed the daily limit (M1 review R5).
+    try {
+      await reserveUsage(db, { workspaceId: params.workspaceId, transcriptId, minutes: estimatedMinutes, limit, nowMs });
+    } catch (err) {
+      if (err instanceof QuotaExceededError) {
+        await markTranscriptTerminal(db, transcriptId, 'failed', { code: 'quota', message: err.message }, nowIso);
+        throw refuse('FORBIDDEN', err.message);
+      }
+      throw err;
+    }
     const schedule = deps.schedule ?? scheduleTaskWithKey;
-    // A new task name per (re)start: Cloud Tasks refuses reused names for a while after deletion.
-    await schedule(`${transcriptId}-v${outcome.version}`, TRANSCRIPTION_QUEUE, TRANSCRIPTION_ENDPOINT, { transcriptId });
+    try {
+      // A new task name per (re)start: Cloud Tasks refuses reused names for a while after deletion.
+      await schedule(`${transcriptId}-v${outcome.version}`, TRANSCRIPTION_QUEUE, TRANSCRIPTION_ENDPOINT, { transcriptId });
+    } catch {
+      // CAUTION (M1 review R2a): without this the job stayed 'pending' forever and every retry
+      // replayed it without scheduling. Fail it (releasing the quota) so asking again restarts it.
+      await settleReservation(db, transcriptId, 0, nowIso);
+      await markTranscriptTerminal(db, transcriptId, 'failed', { code: 'schedule_failed', message: "Couldn't start transcription." }, nowIso);
+      throw refuse('PROVIDER_ERROR', "Couldn't start transcription. Try again in a moment.");
+    }
   }
   return { transcriptId, status: outcome.status, replayed: !outcome.started, estimatedMinutes };
 }

@@ -67,7 +67,33 @@ function resolveSurfaceValue(
 /**
  * Evaluates whether a capability is enabled according to the 6-tier hierarchy.
  */
+/**
+ * Public entry point: tiered evaluation, then the explicit-automation gate (M1 review R6).
+ * CAUTION: the gate can only turn an "enabled" result off, never on.
+ */
 export function evaluateCapabilityFlag(params: EvaluateFlagParams): FlagEvaluationResult {
+  const result = evaluateCapabilityFlagTiers(params);
+  const { capability, principal, surface, flagRecord } = params;
+  const isAutomated = isAutomatedPrincipal(principal) || (surface !== undefined && surface !== 'ui');
+  if (!result.enabled || !isAutomated || capability.policies?.automatedRequiresExplicitFlag !== true) return result;
+
+  const isMcp = surface === 'mcp';
+  const explicit = (o: { agentEnabled?: boolean; mcpEnabled?: boolean } | undefined) =>
+    o !== undefined && (isMcp ? o.mcpEnabled === true : o.agentEnabled === true);
+  const allowed =
+    explicit(principal.workspaceId ? flagRecord?.workspaceOverrides?.[principal.workspaceId] : undefined) ||
+    explicit(principal.organizationId ? flagRecord?.orgOverrides?.[principal.organizationId] : undefined) ||
+    explicit(flagRecord ?? undefined);
+  return allowed
+    ? result
+    : {
+        enabled: false,
+        reason: `Capability '${capability.id}' is enabled for people only; agents and MCP need explicit enablement.`,
+        tier: 'default',
+      };
+}
+
+function evaluateCapabilityFlagTiers(params: EvaluateFlagParams): FlagEvaluationResult {
   const {
     flagRecord,
     principal,

@@ -172,8 +172,11 @@ export function isWidgetPermitted(
   can: (section: keyof PermissionsSchema, feature: string, action?: AppPermissionAction) => boolean,
   isSystemAdmin = false
 ): boolean {
+  if (isSystemAdmin) {
+    return true;
+  }
   if (widget.id === 'executiveIntelligence') {
-    return can('operations', 'intelligence', 'view') || isSystemAdmin;
+    return can('operations', 'intelligence', 'view');
   }
   if (widget.id === 'userAssignments') {
     return can('operations', 'campuses', 'view') || can('workforce', 'crmWorkload', 'view');

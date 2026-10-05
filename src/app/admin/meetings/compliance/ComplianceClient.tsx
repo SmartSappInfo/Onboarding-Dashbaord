@@ -91,8 +91,9 @@ export function ComplianceClient() {
         setAutoPurgeTranscripts(Boolean(res.policy.autoPurgeTranscripts));
         setAutoPurgeRecordings(Boolean(res.policy.autoPurgeRecordings));
         setEnforceRetention(res.policy.retentionMode === 'enforced');
-        // A stored policy has a real updatedAt; the default (unsaved) policy does not need one.
-        setLoadedUpdatedAt(res.policy.updatedBy ? res.policy.updatedAt : undefined);
+        // Always send the loaded version (M1 review L4): policies saved before M1 have no updatedBy but
+        // still need stale-edit protection; for an unsaved default the server skips the check.
+        setLoadedUpdatedAt(res.policy.updatedAt);
       }
     } catch (err) {
       toast({

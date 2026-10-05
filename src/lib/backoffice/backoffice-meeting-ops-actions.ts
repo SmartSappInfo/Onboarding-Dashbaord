@@ -207,7 +207,7 @@ export async function runWorkspaceRetentionNowAction(idToken: string, workspaceI
           timestamp: new Date().toISOString(), inputHash: sha256Hex(entry),
         });
       },
-    }, ws);
+    }, ws, { useCursor: false });
     await logBackofficeAction(actor, 'meeting_retention.run_now', 'workspace', ws, { scope: 'workspace', scopeId: ws, after: { mode: run.mode, deleted: run.deleted, verified: run.verified } });
     return { success: true, data: { deleted: run.deleted, mode: run.mode } };
   } catch (err) {

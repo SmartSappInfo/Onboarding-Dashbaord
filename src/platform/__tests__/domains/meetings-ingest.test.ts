@@ -141,7 +141,7 @@ describe('meeting.ingest_transcript', () => {
       { registryLookup: (id) => (id === consentCap.id ? consentCap : undefined), auditSink: () => undefined, outboxSink: () => undefined }
     );
     expect(res.success).toBe(false);
-    expect(db.read('meeting_consents/m-1')).toBeUndefined();
+    expect(db.read('meeting_consents/ws-a__m-1')).toBeUndefined();
   });
 
   it('handles 100 concurrent distinct ingestions (load)', async () => {

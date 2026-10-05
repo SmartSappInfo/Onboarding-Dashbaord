@@ -89,6 +89,8 @@ export function AddTranscriptModal({ open, onOpenChange, meetingId, workspaceId,
 
   const submitPaste = async () => {
     if (!text.trim()) return;
+    // Mirrors the server's byte limit so people get the message before uploading (M1 review L1).
+    if (new TextEncoder().encode(text).length > 1_800_000) return fail('This text is too long to paste. Upload it as a file instead.');
     setBusy(true);
     try {
       const res = await ingestPastedTranscriptAction(workspaceId, meetingId, text);

@@ -149,7 +149,7 @@ describe('meeting.get_transcript', () => {
     const asAgent = await run(cap, { workspaceId: 'ws-a', meetingId: 'm-7' }, agent);
     expect(!asAgent.success && asAgent.error.message).toContain('AI processing consent');
     expect((await run(cap, { workspaceId: 'ws-a', meetingId: 'm-7' }, user)).success).toBe(true);
-    db.write('meeting_consents/m-7', { workspaceId: 'ws-a', meetingId: 'm-7', version: 1, updatedAt: 'x',
+    db.write('meeting_consents/ws-a__m-7', { workspaceId: 'ws-a', meetingId: 'm-7', version: 1, updatedAt: 'x',
       current: { aiProcessing: { granted: true, method: 'form', recordedBy: 'u-1', at: 'x' } } });
     expect((await run(cap, { workspaceId: 'ws-a', meetingId: 'm-7' }, agent)).success).toBe(true);
   });

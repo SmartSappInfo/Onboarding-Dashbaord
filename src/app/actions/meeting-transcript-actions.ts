@@ -41,8 +41,11 @@ import { sha256Hex } from '@/platform/capabilities/contracts/canonical-json';
 import type { MeetingGetTranscriptOutput, MeetingIngestTranscriptOutput, MeetingRecordConsentOutput, MeetingTranscribeRecordingOutput } from '@/platform/domains/meetings_conversations';
 import { TranscriptHeaderSchema } from '@/lib/meetings/transcript-store';
 
-/** Paste limit: stays under the 2 MB Server Action body limit with room for JSON overhead. */
-const MAX_PASTE_CHARS = 1_500_000;
+/**
+ * Paste limit in UTF-8 BYTES (M1 review L1): multi-byte text (e.g. accented or non-Latin) could pass a
+ * character cap yet exceed the 2 MB Server Action body. Leaves room for JSON overhead.
+ */
+const MAX_PASTE_BYTES = 1_800_000;
 
 type ActionResult<T> = { success: true; data: T } | { success: false; error: string };
 
@@ -111,7 +114,7 @@ export async function ingestPastedTranscriptAction(
   const { ctx } = await requireMeetingAccess(workspaceId, meetingId, 'meetings_manage');
   const value = typeof text === 'string' ? text : '';
   if (!value.trim()) return { success: false, error: 'Paste the transcript text first.' };
-  if (value.length > MAX_PASTE_CHARS) return { success: false, error: 'This text is too long to paste. Upload it as a file instead.' };
+  if (Buffer.byteLength(value, 'utf8') > MAX_PASTE_BYTES) return { success: false, error: 'This text is too long to paste. Upload it as a file instead.' };
   return runAsUser<MeetingIngestTranscriptOutput>(ctx, workspaceId, 'meeting.ingest_transcript', {
     workspaceId, meetingId, source: 'paste', text: value,
   });

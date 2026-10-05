@@ -46,7 +46,7 @@ describe('recording consent', () => {
   it('keeps an append-only history and versions the current state', async () => {
     await grant('transcription', 0);
     await grant('transcription', 1, false);
-    const records = [...db.docs.entries()].filter(([k]) => k.startsWith('meeting_consents/m-1/records/'));
+    const records = [...db.docs.entries()].filter(([k]) => k.startsWith('meeting_consents/ws-a__m-1/records/'));
     expect(records.map(([, v]) => v.granted)).toEqual([true, false]);
     const current = await readMeetingConsents(db.asFirestore(), 'm-1', 'ws-a');
     expect(current.version).toBe(2);
@@ -58,10 +58,12 @@ describe('recording consent', () => {
     await expect(grant('aiProcessing', 0)).rejects.toBeInstanceOf(ConsentConflictError);
   });
 
-  it('ignores and refuses to overwrite consent owned by another workspace (shared meeting)', async () => {
-    db.write('meeting_consents/m-1', { workspaceId: 'ws-b', meetingId: 'm-1', version: 3, current: { transcription: { granted: true, method: 'form', recordedBy: 'x', at: NOW } }, updatedAt: NOW });
+  it('each workspace sharing a meeting keeps its own consent (M1 review R4)', async () => {
+    await recordConsent(db.asFirestore(), { workspaceId: 'ws-b', meetingId: 'm-1', type: 'transcription', granted: true, method: 'form', actorUid: 'x', expectedVersion: 0, nowIso: NOW });
     expect((await readMeetingConsents(db.asFirestore(), 'm-1', 'ws-a')).current).toEqual({});
-    await expect(grant('transcription', 0)).rejects.toBeInstanceOf(ConsentConflictError);
+    await grant('transcription', 0);
+    expect((await readMeetingConsents(db.asFirestore(), 'm-1', 'ws-a')).current.transcription?.granted).toBe(true);
+    expect((await readMeetingConsents(db.asFirestore(), 'm-1', 'ws-b')).version).toBe(1);
   });
 
   it('withdrawing transcription or AI consent restricts the meeting\'s transcripts', async () => {
@@ -72,5 +74,16 @@ describe('recording consent', () => {
     expect(res.restrictedTranscripts).toBe(1);
     expect(db.read('meeting_transcripts/t-1')).toMatchObject({ aiUse: 'restricted', version: 2 });
     expect(db.read('meeting_transcripts/t-other')).toMatchObject({ aiUse: 'allowed' });
+  });
+
+  it('withdrawing AI consent deletes the AI output already made for the meeting', async () => {
+    db.write('meeting_intelligence/m-1', { workspaceId: 'ws-a', meetingId: 'm-1', transcriptId: 't-1' });
+    db.write('meeting_intelligence/m-1/items/i1', { type: 'decision' });
+    db.write('meeting_intelligence/m-2', { workspaceId: 'ws-a', meetingId: 'm-2' });
+    await grant('aiProcessing', 0);
+    await grant('aiProcessing', 1, false);
+    expect(db.read('meeting_intelligence/m-1')).toBeUndefined();
+    expect(db.read('meeting_intelligence/m-1/items/i1')).toBeUndefined();
+    expect(db.read('meeting_intelligence/m-2')).toBeDefined();
   });
 });

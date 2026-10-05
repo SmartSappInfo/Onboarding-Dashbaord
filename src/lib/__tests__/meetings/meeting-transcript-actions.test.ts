@@ -120,7 +120,8 @@ describe('transcript actions', () => {
   });
 
   it('tells people to upload when the pasted text is too long', async () => {
-    const res = await ingestPastedTranscriptAction('ws-a', 'm-1', 'a'.repeat(1_500_001));
+    // 700k three-byte characters = 2.1 MB: under a character cap, over the byte cap (M1 review L1).
+    const res = await ingestPastedTranscriptAction('ws-a', 'm-1', '€'.repeat(700_000));
     expect(res).toEqual({ success: false, error: 'This text is too long to paste. Upload it as a file instead.' });
   });
 
