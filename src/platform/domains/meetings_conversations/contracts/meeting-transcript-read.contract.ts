@@ -54,6 +54,8 @@ export const MeetingGetTranscriptOutputSchema = z.object({
   segmentCount: z.number().int(),
   durationMs: z.number().int(),
   injectionFlagged: z.boolean(),
+  /** Version token for delete confirmation (Rule 18). */
+  version: z.number().int(),
   segments: z.array(TranscriptSegmentSchema).max(500),
 });
 export type MeetingGetTranscriptInput = z.infer<typeof MeetingGetTranscriptInputSchema>;
@@ -144,6 +146,7 @@ export const meetingGetTranscriptCapability: CapabilityDefinition<MeetingGetTran
         segmentCount: page.header.segmentCount,
         durationMs: page.header.durationMs,
         injectionFlagged: page.header.injection.flagged,
+        version: page.header.version,
         segments: page.segments,
       },
       executionId: context.correlationId,

@@ -18,6 +18,7 @@ export interface CompliancePolicy {
   /** Phase 11 M1 · T6: 'shadow' (default) previews deletions; 'enforced' deletes. */
   retentionMode?: 'shadow' | 'enforced';
   updatedAt: string;
+  updatedBy?: string;
 }
 
 export interface AuditExportRecord {

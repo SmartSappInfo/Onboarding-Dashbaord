@@ -9,6 +9,9 @@
  * - Mobile touch targets >= 44px (or responsive sm:min-h-[36px]/[38px]).
  * - Rounded-2xl card surfaces with high-contrast border definition.
  * - Zero 'any' policy strictly enforced.
+ * - Phase 11 M1 · T8: auto-purge toggles + retention mode (preview only / delete on schedule).
+ *   Changes that can delete more data need a confirmation bound to the exact preview (Rules 21/22);
+ *   saves send the version the page loaded so concurrent edits are refused (Rule 18).
  */
 
 import * as React from 'react';
@@ -33,7 +36,12 @@ import {
   saveWorkspaceCompliancePolicyAction,
   exportMeetingAuditLogsAction,
   evaluateRetentionPurgeAction,
+  previewRetentionImpactAction,
 } from '@/app/actions/meeting-compliance-actions';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import type {
   CompliancePolicy,
   RetentionEvaluationResult,
@@ -55,6 +63,11 @@ export function ComplianceClient() {
   const [retentionDays, setRetentionDays] = React.useState('90');
   const [requirePasscode, setRequirePasscode] = React.useState(false);
   const [enforceConsent, setEnforceConsent] = React.useState(false);
+  const [autoPurgeTranscripts, setAutoPurgeTranscripts] = React.useState(false);
+  const [autoPurgeRecordings, setAutoPurgeRecordings] = React.useState(false);
+  const [enforceRetention, setEnforceRetention] = React.useState(false);
+  const [loadedUpdatedAt, setLoadedUpdatedAt] = React.useState<string | undefined>(undefined);
+  const [impact, setImpact] = React.useState<{ meetings: number; transcripts: number; recordings: number; truncated: boolean; candidateSetHash: string } | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
 
@@ -75,6 +88,11 @@ export function ComplianceClient() {
         setRetentionDays((res.policy.retentionPeriodDays || 0).toString());
         setRequirePasscode(Boolean(res.policy.requireMeetingPasscode));
         setEnforceConsent(Boolean(res.policy.enforceHostConsentForAI));
+        setAutoPurgeTranscripts(Boolean(res.policy.autoPurgeTranscripts));
+        setAutoPurgeRecordings(Boolean(res.policy.autoPurgeRecordings));
+        setEnforceRetention(res.policy.retentionMode === 'enforced');
+        // A stored policy has a real updatedAt; the default (unsaved) policy does not need one.
+        setLoadedUpdatedAt(res.policy.updatedBy ? res.policy.updatedAt : undefined);
       }
     } catch (err) {
       toast({
@@ -91,36 +109,37 @@ export function ComplianceClient() {
     fetchPolicy();
   }, [fetchPolicy]);
 
-  const handleSavePolicy = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!activeWorkspaceId) return;
+  const buildPolicy = (): CompliancePolicy => ({
+    workspaceId: activeWorkspaceId ?? '',
+    allowedEmailDomains: allowedDomainsInput.split(',').map(s => s.trim()).filter(Boolean),
+    blockedEmailDomains: blockedDomainsInput.split(',').map(s => s.trim()).filter(Boolean),
+    retentionPeriodDays: parseInt(retentionDays, 10) || 0,
+    autoPurgeTranscripts,
+    autoPurgeRecordings,
+    retentionMode: enforceRetention ? 'enforced' : 'shadow',
+    requireMeetingPasscode: requirePasscode,
+    enforceHostConsentForAI: enforceConsent,
+    updatedAt: new Date().toISOString(),
+  });
 
+  const save = async (confirmedImpactHash?: string) => {
+    if (!activeWorkspaceId) return;
     setIsSaving(true);
     try {
-      const allowedEmailDomains = allowedDomainsInput
-        .split(',')
-        .map(s => s.trim())
-        .filter(Boolean);
-
-      const blockedEmailDomains = blockedDomainsInput
-        .split(',')
-        .map(s => s.trim())
-        .filter(Boolean);
-
-      const updated: CompliancePolicy = {
-        workspaceId: activeWorkspaceId,
-        allowedEmailDomains,
-        blockedEmailDomains,
-        retentionPeriodDays: parseInt(retentionDays, 10) || 0,
-        requireMeetingPasscode: requirePasscode,
-        enforceHostConsentForAI: enforceConsent,
-        updatedAt: new Date().toISOString(),
-      };
-
-      const res = await saveWorkspaceCompliancePolicyAction(updated);
+      const res = await saveWorkspaceCompliancePolicyAction(buildPolicy(), { expectedUpdatedAt: loadedUpdatedAt, confirmedImpactHash });
       if (res.success) {
-        toast({ title: 'Compliance Policies Saved!' });
+        setImpact(null);
+        toast({ title: 'Settings saved' });
         fetchPolicy();
+      } else if (res.code === 'IMPACT_NOT_CONFIRMED') {
+        // Show exactly what would be removed; the save is bound to this preview.
+        const preview = await previewRetentionImpactAction(activeWorkspaceId, {
+          retentionPeriodDays: parseInt(retentionDays, 10) || 0,
+          autoPurgeTranscripts,
+          autoPurgeRecordings,
+        });
+        if (!preview.success || !preview.preview) throw new Error(preview.error || 'Could not prepare the preview.');
+        setImpact(preview.preview);
       } else {
         throw new Error(res.error);
       }
@@ -129,6 +148,11 @@ export function ComplianceClient() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleSavePolicy = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await save();
   };
 
   const handleExportCSV = async () => {
@@ -255,8 +279,8 @@ export function ComplianceClient() {
 
             <div className="flex items-center justify-between pt-2 border-t border-border/80">
               <div className="space-y-0.5">
-                <Label className="text-xs font-semibold text-foreground">Enforce Host Consent for AI Briefs</Label>
-                <p className="text-[10px] text-muted-foreground">Require host confirmation before AI intelligence generation</p>
+                <Label className="text-xs font-semibold text-foreground">Require meeting consent</Label>
+                <p className="text-[10px] text-muted-foreground">Record consent before transcription and AI analysis</p>
               </div>
               <Switch checked={enforceConsent} onCheckedChange={setEnforceConsent} />
             </div>
@@ -293,9 +317,27 @@ export function ComplianceClient() {
               </p>
             </div>
 
+            <div className="space-y-2.5 pt-1">
+              <div className="flex items-center justify-between min-h-[44px]">
+                <Label className="text-xs font-semibold text-foreground">Remove old transcripts</Label>
+                <Switch checked={autoPurgeTranscripts} onCheckedChange={setAutoPurgeTranscripts} />
+              </div>
+              <div className="flex items-center justify-between min-h-[44px]">
+                <Label className="text-xs font-semibold text-foreground">Remove old recordings</Label>
+                <Switch checked={autoPurgeRecordings} onCheckedChange={setAutoPurgeRecordings} />
+              </div>
+              <div className="flex items-center justify-between min-h-[44px] border-t border-border/80 pt-2">
+                <div className="space-y-0.5">
+                  <Label className="text-xs font-semibold text-foreground">Delete on schedule</Label>
+                  <p className="text-[10px] text-muted-foreground">Off: preview only, nothing is deleted. Legal holds are never removed.</p>
+                </div>
+                <Switch checked={enforceRetention} onCheckedChange={setEnforceRetention} />
+              </div>
+            </div>
+
             <div className="p-3.5 rounded-2xl bg-muted/30 border border-border/80 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-foreground">Dry-Run Retention Purge Simulator</span>
+                <span className="font-semibold text-foreground">Preview what would be removed</span>
                 <Button
                   type="button"
                   size="sm"
@@ -304,7 +346,7 @@ export function ComplianceClient() {
                   disabled={isEvaluating}
                   className="rounded-xl min-h-[36px] text-xs px-3 active:scale-[0.97]"
                 >
-                  {isEvaluating ? 'Evaluating...' : 'Simulate Purge'}
+                  {isEvaluating ? 'Checking...' : 'Preview'}
                 </Button>
               </div>
 
@@ -334,6 +376,29 @@ export function ComplianceClient() {
           </div>
         </Card>
       </form>
+
+      <AlertDialog open={impact !== null} onOpenChange={(open) => { if (!open) setImpact(null); }}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete old meeting data on schedule?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {impact
+                ? `The next run will remove ${impact.transcripts} transcript${impact.transcripts === 1 ? '' : 's'} and ${impact.recordings} recording${impact.recordings === 1 ? '' : 's'} from ${impact.meetings} meeting${impact.meetings === 1 ? '' : 's'}${impact.truncated ? ' (first batch; more later)' : ''}. This can't be undone.`
+                : ''}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl min-h-[44px]" disabled={isSaving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="rounded-xl min-h-[44px] bg-destructive text-destructive-foreground"
+              disabled={isSaving}
+              onClick={(e) => { e.preventDefault(); if (impact) void save(impact.candidateSetHash); }}
+            >
+              {isSaving ? 'Saving…' : 'Confirm'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
