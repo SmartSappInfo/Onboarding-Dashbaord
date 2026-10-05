@@ -14,14 +14,10 @@ import * as React from 'react';
 import { Badge } from '@/components/ui/badge';
 import {
   Target,
-  Flame,
-  Zap,
   TrendingUp,
   CheckCircle2,
   AlertCircle,
   HelpCircle,
-  ArrowRight,
-  ShieldAlert,
 } from 'lucide-react';
 import type { LeadScoreBreakdown } from '@/platform/agents/sales/context/lead-context-types';
 import { cn } from '@/lib/utils';

@@ -82,6 +82,7 @@ import { DataImportWizardModal } from './components/DataImportWizardModal';
 import { MarketResearchCanvasModal } from '@/components/sales/MarketResearchCanvasModal';
 import { SegmentToCampaignModal } from '@/components/sales/SegmentToCampaignModal';
 import { useEventStream } from '@/hooks/useEventStream';
+import type { ActivityRecordV2 } from '@/platform/events/contracts/activity-record.contract';
 
 // Lazy load tab components for optimal bundle performance
 const DashboardTab = dynamic(() => import('./components/DashboardTab'), {
@@ -321,8 +322,8 @@ export default function LeadIntelligenceClient() {
   const { status: streamStatus } = useEventStream({
     workspaceId: activeWorkspaceId,
     onActivity: React.useCallback(
-      (activity: { data?: { eventType?: string } }) => {
-        const eventType = activity.data?.eventType || '';
+      (activity: ActivityRecordV2) => {
+        const eventType = activity.eventType || '';
         if (
           eventType.startsWith('sales.') ||
           eventType.startsWith('lead.') ||
@@ -1269,9 +1270,10 @@ export default function LeadIntelligenceClient() {
         onClose={() => setIsSegmentCampaignOpen(false)}
         organizationId={organizationId}
         workspaceId={activeWorkspaceId || ''}
-        segmentCriteria={filters}
-        estimatedCount={prospects.length}
-        onSuccess={(_campaignId) => {
+        segmentName={filters.industry ? `${filters.industry} Campaign` : 'Discovered Leads Campaign'}
+        selectedLeadIds={selectedRowIds.size > 0 ? Array.from(selectedRowIds) : prospects.map((p) => p.id)}
+        totalAvailableCount={prospects.length}
+        onCampaignCreated={(_campaignId: string) => {
           loadInitialData();
         }}
       />

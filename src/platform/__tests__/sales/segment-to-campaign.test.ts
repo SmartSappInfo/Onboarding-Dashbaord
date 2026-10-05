@@ -4,9 +4,12 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createCampaignFromSegmentAction } from '@/app/actions/sales-agent-actions';
+import type { AuthContext } from '@/lib/auth/require-auth';
+import type { UserProfile } from '@/lib/types';
 
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuth: vi.fn(),
+  UnauthorizedError: class UnauthorizedError extends Error {},
 }));
 
 vi.mock('@/platform/policy/governance-dead-man', async (importOriginal) => {
@@ -34,13 +37,19 @@ describe('Segment To Campaign Bridge Action', () => {
     vi.mocked(requireAuth).mockResolvedValue({
       uid: 'user_sdr_lead',
       isSystemAdmin: false,
-      profile: { organizationId: 'org_test_123', role: 'admin' },
-    } as any);
+      profile: {
+        id: 'user_sdr_lead',
+        organizationId: 'org_test_123',
+        role: 'admin',
+        email: 'sdr@example.com',
+        displayName: 'SDR Lead',
+      } as unknown as UserProfile,
+    } as AuthContext);
   });
 
   it('rejects unauthenticated caller', async () => {
     const { requireAuth } = await import('@/lib/auth/require-auth');
-    vi.mocked(requireAuth).mockResolvedValue(null as any);
+    vi.mocked(requireAuth).mockRejectedValue(new Error('Unauthorized'));
 
     const result = await createCampaignFromSegmentAction({
       organizationId: 'org_test_123',
@@ -48,6 +57,8 @@ describe('Segment To Campaign Bridge Action', () => {
       segmentName: 'Hot Leads Q4',
       leadIds: ['lead_1', 'lead_2'],
       campaignGoal: 'Schedule 15 Demos',
+      sdrPersonaId: 'lead_sdr',
+      dailyBudget: 25,
       channels: ['email', 'whatsapp'],
     });
 
@@ -62,6 +73,8 @@ describe('Segment To Campaign Bridge Action', () => {
       segmentName: 'Empty Segment',
       leadIds: [],
       campaignGoal: 'Test Goal',
+      sdrPersonaId: 'lead_sdr',
+      dailyBudget: 25,
       channels: ['email'],
     });
 

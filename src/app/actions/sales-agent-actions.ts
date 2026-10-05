@@ -417,16 +417,18 @@ export async function researchMarketAction(
           region: validated.region,
           idempotencyKey,
         },
-      } as any)
+      } as unknown as Parameters<typeof createDomainEvent>[0])
     );
 
     return { success: true, data };
-  } catch (error: any) {
-    const isIdor = error?.message?.includes('IDOR_VIOLATION');
+  } catch (error: unknown) {
+    const err = error as { name?: string; message?: string; code?: string };
+    const isIdor = err?.message?.includes('IDOR_VIOLATION');
+    const isUnauthorized = err?.name === 'UnauthorizedError' || err?.message?.includes('Not signed in') || err?.message?.includes('Unauthorized');
     return {
       success: false,
-      error: error?.message || 'Failed to execute market research.',
-      code: isIdor ? 'IDOR_VIOLATION' : (error?.code || 'INTERNAL_ERROR'),
+      error: err?.message || 'Failed to execute market research.',
+      code: isIdor ? 'IDOR_VIOLATION' : isUnauthorized ? 'UNAUTHORIZED' : (err?.code || 'INTERNAL_ERROR'),
     };
   }
 }
@@ -504,17 +506,19 @@ export async function createCampaignFromSegmentAction(
           payloadHash,
           idempotencyKey,
         },
-      } as any)
+      } as unknown as Parameters<typeof createDomainEvent>[0])
     );
 
     return { success: true, data };
-  } catch (error: any) {
-    const isValidation = error?.name === 'ZodError';
-    const isIdor = error?.message?.includes('IDOR_VIOLATION');
+  } catch (error: unknown) {
+    const err = error as { name?: string; message?: string; code?: string };
+    const isValidation = err?.name === 'ZodError';
+    const isIdor = err?.message?.includes('IDOR_VIOLATION');
+    const isUnauthorized = err?.name === 'UnauthorizedError' || err?.message?.includes('Not signed in') || err?.message?.includes('Unauthorized');
     return {
       success: false,
-      error: error?.message || 'Failed to create campaign from segment.',
-      code: isValidation ? 'VALIDATION_ERROR' : isIdor ? 'IDOR_VIOLATION' : (error?.code || 'INTERNAL_ERROR'),
+      error: err?.message || 'Failed to create campaign from segment.',
+      code: isValidation ? 'VALIDATION_ERROR' : isUnauthorized ? 'UNAUTHORIZED' : isIdor ? 'IDOR_VIOLATION' : (err?.code || 'INTERNAL_ERROR'),
     };
   }
 }

@@ -15,15 +15,11 @@ import * as React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  Sparkles,
   Bot,
   Radio,
   RotateCw,
   Megaphone,
   Globe2,
-  TrendingUp,
-  Target,
-  Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

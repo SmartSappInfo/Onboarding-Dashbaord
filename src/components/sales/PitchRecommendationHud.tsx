@@ -290,7 +290,7 @@ export function PitchRecommendationHud({
                   <div className="font-semibold text-foreground flex items-center gap-1.5">
                     <span className="text-amber-500 font-bold">Objection:</span>
                     <UntrustedReferenceData id={`obj_text_${idx}`}>
-                      <span>"{obj.objection}"</span>
+                      <span>&ldquo;{obj.objection}&rdquo;</span>
                     </UntrustedReferenceData>
                   </div>
                   <Button

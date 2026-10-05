@@ -33,14 +33,12 @@ import {
   Send,
   Target,
   Users,
-  Calendar,
   MessageSquare,
   Mail,
   Phone,
   ShieldAlert,
   Loader2,
   CheckCircle2,
-  Sliders,
 } from 'lucide-react';
 import { createCampaignFromSegmentAction } from '@/app/actions/sales-agent-actions';
 import type { SalesPersonaId } from '@/platform/agents/sales/personas/sales-persona-types';
@@ -314,7 +312,6 @@ export function SegmentToCampaignModal({
             <TagSelector
               currentTagIds={selectedTagIds}
               onTagsChange={setSelectedTagIds}
-              placeholder="Tag contacts in this campaign..."
             />
           </div>
 

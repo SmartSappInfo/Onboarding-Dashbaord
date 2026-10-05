@@ -30,13 +30,11 @@ import { Badge } from '@/components/ui/badge';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import {
   Sparkles,
-  Search,
   Globe2,
   TrendingUp,
   Target,
   Zap,
   Loader2,
-  ExternalLink,
   ShieldCheck,
   Building,
   RotateCcw,
