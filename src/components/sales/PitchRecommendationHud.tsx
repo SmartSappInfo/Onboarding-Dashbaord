@@ -44,7 +44,7 @@ function UntrustedReferenceData({
   children: React.ReactNode;
   className?: string;
 }) {
-  return React.createElement('untrusted_reference_data', { id, className }, children);
+  return React.createElement('untrusted-reference-data', { id, className }, children);
 }
 
 export interface PitchRecommendationHudProps {

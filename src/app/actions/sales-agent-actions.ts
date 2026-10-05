@@ -407,9 +407,14 @@ export async function researchMarketAction(
     // Emit domain event for audit logging (Rule 40)
     await defaultEventBus.publish(
       createDomainEvent({
+        type: 'sales.market_research.completed',
+        source: 'sales.agent',
+        organizationId: validated.organizationId,
+        workspaceId: validated.workspaceId ?? null,
+        correlationId: `corr_mkt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        idempotencyKey,
         actor: { type: 'agent', id: 'prospecting_agent' },
         entity: { type: 'market_research', id: data.researchId },
-        source: 'sales.agent',
         payload: {
           organizationId: validated.organizationId,
           workspaceId: validated.workspaceId,
@@ -417,7 +422,7 @@ export async function researchMarketAction(
           region: validated.region,
           idempotencyKey,
         },
-      } as unknown as Parameters<typeof createDomainEvent>[0])
+      })
     );
 
     return { success: true, data };
@@ -494,9 +499,14 @@ export async function createCampaignFromSegmentAction(
     // Emit campaign launched domain event (Rule 40)
     await defaultEventBus.publish(
       createDomainEvent({
+        type: 'sales.campaign.launched',
+        source: 'sales.agent',
+        organizationId: validated.organizationId,
+        workspaceId: validated.workspaceId ?? null,
+        correlationId: `corr_camp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        idempotencyKey,
         actor: { type: 'agent', id: validated.sdrPersonaId },
         entity: { type: 'prospecting_campaign', id: campaignId },
-        source: 'sales.agent',
         payload: {
           organizationId: validated.organizationId,
           workspaceId: validated.workspaceId,
@@ -506,7 +516,7 @@ export async function createCampaignFromSegmentAction(
           payloadHash,
           idempotencyKey,
         },
-      } as unknown as Parameters<typeof createDomainEvent>[0])
+      })
     );
 
     return { success: true, data };
