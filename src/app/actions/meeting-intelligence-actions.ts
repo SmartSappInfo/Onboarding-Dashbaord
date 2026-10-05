@@ -22,7 +22,6 @@ import type {
   MeetingIntelligence,
   MeetingPrepBrief,
 } from '@/lib/meetings/types/intelligence';
-import type { MeetingParticipant } from '@/lib/meetings/types';
 import {
   buildIntelligenceExtractionPrompt,
   parseIntelligenceStructuredOutput,
@@ -32,6 +31,11 @@ import { requireMeetingAccess } from '@/lib/meetings/meeting-auth';
 import { createTaskCore } from '@/lib/tasks/task-core';
 import { findLatestTranscriptId, readTranscriptText } from '@/lib/meetings/transcript-store';
 import { assertConsent, ConsentRequiredError } from '@/lib/meetings/consent-store';
+import { executeCapability } from '@/platform/capabilities/execution/execute-capability';
+import { createServerActionInvocation } from '@/platform/capabilities/execution/invocation';
+import { ensureCapabilitiesRegistered } from '@/platform/capabilities/registry/register-capabilities';
+import { resolvePrincipalFromSession } from '@/platform/capabilities/policy/session-principal-resolver';
+import type { MeetingGeneratePrepBriefOutput } from '@/platform/domains/meetings_conversations';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -303,48 +307,17 @@ export async function generateMeetingPrepBriefAction(
   meetingId: string,
   workspaceId: string
 ): Promise<{ success: boolean; brief?: MeetingPrepBrief; error?: string }> {
-  await requireMeetingAccess(workspaceId, meetingId, 'meetings_view');
+  const { ctx } = await requireMeetingAccess(workspaceId, meetingId, 'meetings_view');
 
+  // Phase 11 M2 · T2 (F5): the template text is gone. The governed capability builds a brief whose
+  // every item cites workspace records, or a labelled facts-only brief when AI is unavailable.
   try {
-    const meetingDoc = await adminDb.collection('meetings').doc(meetingId).get();
-    if (!meetingDoc.exists) {
-      throw new Error('Meeting not found.');
-    }
-
-    const meetingData = meetingDoc.data()!;
-    const participantsSnap = await adminDb
-      .collection('participants')
-      .where('meetingId', '==', meetingId)
-      .get();
-
-    const participants = participantsSnap.docs.map(d => d.data() as MeetingParticipant);
-    const now = new Date().toISOString();
-
-    const brief: MeetingPrepBrief = {
-      id: `brief_${meetingId}`,
-      workspaceId,
-      meetingId,
-      attendeeSummary: `Meeting with ${participants.length} participant(s): ${participants.map(p => `${p.name} (${p.role})`).join(', ') || 'No registered participants yet'}.`,
-      previousInteractionNotes: [
-        'Checked previous bookings and registration history.',
-        'No blocking issues identified in contact timeline.',
-      ],
-      openDealsSummary: 'Active discussion aligned with workspace objectives.',
-      suggestedObjectives: [
-        `Understand primary requirements for ${meetingData.title || 'this session'}.`,
-        'Demonstrate value and address initial prospect questions.',
-        'Establish clear next steps and owner before closing.',
-      ],
-      recommendedTalkingPoints: [
-        'Welcome & agenda overview',
-        'Specific needs review',
-        'Proposed solution walkthrough',
-        'Q&A and follow-up timeline',
-      ],
-      generatedAt: now,
-    };
-
-    return { success: true, brief };
+    ensureCapabilitiesRegistered();
+    const principal = await resolvePrincipalFromSession(workspaceId, { authContext: ctx });
+    const result = await executeCapability<MeetingGeneratePrepBriefOutput>(
+      createServerActionInvocation({ capabilityId: 'meeting.generate_prep_brief', input: { workspaceId, meetingId }, principal })
+    );
+    return result.success ? { success: true, brief: result.data } : { success: false, error: result.error.message };
   } catch (err) {
     return { success: false, error: getErrorMessage(err) };
   }

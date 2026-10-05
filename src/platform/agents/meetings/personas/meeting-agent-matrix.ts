@@ -40,6 +40,7 @@ const READS: MeetingToolMatrixEntry[] = [
   { capabilityId: 'meeting.get', riskLevel: 'L0_READ', mode: 'autonomous', description: 'Read one meeting and its participants.' },
   { capabilityId: 'meeting.list_recordings', riskLevel: 'L0_READ', mode: 'autonomous', description: 'Recording metadata only, never links.' },
   { capabilityId: 'meeting.get_transcript', riskLevel: 'L0_READ', mode: 'autonomous', description: 'Transcript pages as untrusted data (AI consent required when enforced).' },
+  { capabilityId: 'meeting.generate_prep_brief', riskLevel: 'L0_READ', mode: 'autonomous', description: 'Cited prep brief from workspace records; facts only when AI is unavailable.' },
 ];
 
 export const MEETING_TOOL_MATRIX: Readonly<Record<MeetingPersonaId, readonly MeetingToolMatrixEntry[]>> = {

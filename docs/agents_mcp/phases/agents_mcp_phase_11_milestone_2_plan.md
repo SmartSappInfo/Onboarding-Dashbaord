@@ -104,8 +104,10 @@ If the model is unavailable, the brief shows **facts only, labelled as such**.
 | Prerequisite | Why | When |
 | --- | --- | --- |
 | M1 review R1–R7 | Derived data must die with its transcript (R7); stable transcription (R3); operations (R1/R2/R5) | **M2·T0** |
-| M0 T2 | Every pipeline step authorized, flagged, idempotent, audited | Before M2·T3 |
-| M0 T3, T4, T6 | Real execute + compensation; permissioned durable approvals; binding + append-only audit | Before M2·T4.3 (CRM proposals) |
+| M0 T3 (gateway for steps/sagas/adapter; master "T2") | Every pipeline step authorized, flagged, idempotent, audited | Before M2·T3 — **done for platform paths (052809b1)**; agent loop + lib/mcp tools remain |
+| M0 T4 (real proposal execute + compensation), T2 + T5 (unified, durable, permissioned approvals; binding + append-only audit) | Real execute + compensation; permissioned durable approvals | Before M2·T4.3 (CRM proposals) |
+
+> Numbering note (2026-10-05): this table first used the master-plan numbering. The rows above use the M0 plan's own task numbers.
 
 ---
 
@@ -671,10 +673,10 @@ Needs written approval:
 
 | ID | Task | Status | Evidence |
 | --- | --- | --- | --- |
-| P11-M2-T0 | M1 review fixes R1–R7 | ☐ | |
-| (M0) | T2 · T3 · T4 · T6 | ☐ | M0 plan |
-| P11-M2-T1 | Personas, identity, matrices | ☐ | |
-| P11-M2-T2 | Grounded prep brief | ☐ | |
+| P11-M2-T0 | M1 review fixes R1–R7 | ✔ | 7e468039 (content) + 099cf8a8 (provenance) |
+| (M0) | T3 ✔ platform paths (052809b1) · T2 · T4 · T5 ☐ | M0 plan |
+| P11-M2-T1 | Personas, identity, matrices | ✔ | bcda1853 |
+| P11-M2-T2 | Grounded prep brief | ✔ | prep-brief-service (18 tests), gateway contract (8 tests), fingerprint baseline +1 |
 | P11-M2-T3 | Extraction pipeline + v2 template | ☐ | |
 | P11-M2-T4 | Tasks · drafts · CRM proposals | ☐ | |
 | P11-M2-T5 | Evaluation + shadow | ☐ | |

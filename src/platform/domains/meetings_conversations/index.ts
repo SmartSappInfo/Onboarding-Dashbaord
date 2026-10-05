@@ -19,12 +19,14 @@ import { meetingGetTranscriptCapability } from './contracts/meeting-transcript-r
 import { meetingIngestTranscriptCapability } from './contracts/meeting-ingest-transcript.contract';
 import { meetingRecordConsentCapability } from './contracts/meeting-consent.contract';
 import { meetingTranscribeRecordingCapability } from './contracts/meeting-transcribe-recording.contract';
+import { meetingGeneratePrepBriefCapability } from './contracts/meeting-prep-brief.contract';
 
 export * from './contracts/meeting-read.contracts';
 export * from './contracts/meeting-transcript-read.contract';
 export * from './contracts/meeting-ingest-transcript.contract';
 export * from './contracts/meeting-consent.contract';
 export * from './contracts/meeting-transcribe-recording.contract';
+export * from './contracts/meeting-prep-brief.contract';
 
 export const MEETINGS_CONVERSATIONS_CAPABILITIES: AnyCapabilityDefinition[] = [
   meetingSearchCapability as AnyCapabilityDefinition,
@@ -34,6 +36,7 @@ export const MEETINGS_CONVERSATIONS_CAPABILITIES: AnyCapabilityDefinition[] = [
   meetingIngestTranscriptCapability as AnyCapabilityDefinition,
   meetingRecordConsentCapability as AnyCapabilityDefinition,
   meetingTranscribeRecordingCapability as AnyCapabilityDefinition,
+  meetingGeneratePrepBriefCapability as AnyCapabilityDefinition,
 ];
 
 export function registerMeetingsConversationsCapabilities(): void {

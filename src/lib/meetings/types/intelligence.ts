@@ -124,17 +124,11 @@ export interface MeetingIntelligence {
   updatedAt: string;
 }
 
-export interface MeetingPrepBrief {
-  id: string;
-  workspaceId: string;
-  meetingId: string;
-  attendeeSummary: string;
-  previousInteractionNotes: string[];
-  openDealsSummary?: string;
-  suggestedObjectives: string[];
-  recommendedTalkingPoints: string[];
-  generatedAt: string;
-}
+/**
+ * Grounded prep brief (Phase 11 M2 · T2): every item cites its sources, or the brief is labelled
+ * facts-only. Type-only re-export so client components never import server code.
+ */
+export type { PrepBrief as MeetingPrepBrief } from '@/lib/meetings/prep-brief-service';
 
 export type RecurrenceFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly';
 export type RecurringSeriesStatus = 'active' | 'paused' | 'cancelled';

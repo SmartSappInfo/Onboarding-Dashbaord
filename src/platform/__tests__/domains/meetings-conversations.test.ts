@@ -180,6 +180,7 @@ describe('meetings_conversations behaviour', () => {
       'meeting.ingest_transcript': { level: 'L1_INTERNAL_DRAFT', permission: 'rbac:operations.meetings.edit', nonDelegable: false },
       'meeting.record_consent': { level: 'L2_STATE_MUTATION', permission: 'rbac:operations.meetings.edit', nonDelegable: true },
       'meeting.transcribe_recording': { level: 'L1_INTERNAL_DRAFT', permission: 'rbac:operations.meetings.edit', nonDelegable: false },
+      'meeting.generate_prep_brief': { level: 'L0_READ', permission: 'rbac:operations.meetings.view', nonDelegable: false },
     };
     for (const cap of MEETINGS_CONVERSATIONS_CAPABILITIES) {
       const want = expected[cap.id];
