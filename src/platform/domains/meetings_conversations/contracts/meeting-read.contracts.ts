@@ -21,6 +21,7 @@
  */
 
 import { z } from 'zod/v4';
+import { adminDb } from '@/lib/firebase-admin';
 import type {
   CapabilityDefinition,
   CapabilityExecutionContext,
@@ -69,8 +70,8 @@ const READ_POLICIES = {
 const Id = z.string().trim().min(1).max(200).regex(/^[^/]+$/, 'Invalid id.');
 const IsoDateTime = z.iso.datetime({ offset: true });
 
+/** Same Admin SDK instance as every other contract (static import, like task/crm contracts). */
 async function db() {
-  const { adminDb } = await import('@/lib/firebase-admin');
   return adminDb;
 }
 

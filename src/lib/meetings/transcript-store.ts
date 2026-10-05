@@ -188,10 +188,9 @@ export interface NewTranscriptHeader {
   nowIso: string;
 }
 
-/** Creates the header (no segments yet). Returns the new transcript id. */
-export async function createTranscriptHeader(db: Firestore, input: NewTranscriptHeader, transcriptId?: string): Promise<string> {
-  const ref = transcriptId ? db.collection(TRANSCRIPTS).doc(transcriptId) : db.collection(TRANSCRIPTS).doc();
-  const header: TranscriptHeader = TranscriptHeaderSchema.parse({
+/** Builds a validated new header (no segments yet). Use inside a transaction to claim an id. */
+export function buildTranscriptHeader(input: NewTranscriptHeader): TranscriptHeader {
+  return TranscriptHeaderSchema.parse({
     workspaceId: input.workspaceId,
     ...(input.organizationId ? { organizationId: input.organizationId } : {}),
     meetingId: input.meetingId,
@@ -207,7 +206,12 @@ export async function createTranscriptHeader(db: Firestore, input: NewTranscript
     createdAt: input.nowIso,
     updatedAt: input.nowIso,
   });
-  await ref.set(header);
+}
+
+/** Creates the header (no segments yet). Returns the new transcript id. */
+export async function createTranscriptHeader(db: Firestore, input: NewTranscriptHeader, transcriptId?: string): Promise<string> {
+  const ref = transcriptId ? db.collection(TRANSCRIPTS).doc(transcriptId) : db.collection(TRANSCRIPTS).doc();
+  await ref.set(buildTranscriptHeader(input));
   return ref.id;
 }
 

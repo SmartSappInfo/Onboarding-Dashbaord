@@ -4,7 +4,9 @@ exports[`meetings_conversations behaviour > tool definitions match the reviewed 
 {
   "meeting.get@1.0.0": "d6333de3aad7e29bf1d6a9b27591b65c7bbcedd041005e6e76b25709a4c9f9d7",
   "meeting.get_transcript@1.0.0": "a983e911a421e86dd5351b6c1d4bb10b71d9def9c2528221899c268e8ea9e242",
+  "meeting.ingest_transcript@1.0.0": "7acc472f1051ee88cdb16ae6ffc005adba33e942ae2fd8deb068a1fee4fa6b2f",
   "meeting.list_recordings@1.0.0": "b935bee6fc1460be1b2d0b45818f66d3734ebf5a753376b2ddadea4134ef0b5e",
+  "meeting.record_consent@1.0.0": "4ba0c6f78c74d0228510e311f62af70493398cad0646b69e9aa8f73e06004a9b",
   "meeting.search@1.0.0": "424f25dbb31576eb9e28c387a04824b3f0ff20df3e0449e5347edb7c0c5031a6",
 }
 `;

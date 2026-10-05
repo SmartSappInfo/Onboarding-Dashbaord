@@ -144,6 +144,16 @@ describe('meeting.get_transcript', () => {
     expect(asUser.success).toBe(true);
   });
 
+  it('when consent is enforced, agents need AI-processing consent; people do not', async () => {
+    db.write('meeting_compliance_policies/ws-a', { workspaceId: 'ws-a', enforceHostConsentForAI: true, updatedAt: 'v1' });
+    const asAgent = await run(cap, { workspaceId: 'ws-a', meetingId: 'm-7' }, agent);
+    expect(!asAgent.success && asAgent.error.message).toContain('AI processing consent');
+    expect((await run(cap, { workspaceId: 'ws-a', meetingId: 'm-7' }, user)).success).toBe(true);
+    db.write('meeting_consents/m-7', { workspaceId: 'ws-a', meetingId: 'm-7', version: 1, updatedAt: 'x',
+      current: { aiProcessing: { granted: true, method: 'form', recordedBy: 'u-1', at: 'x' } } });
+    expect((await run(cap, { workspaceId: 'ws-a', meetingId: 'm-7' }, agent)).success).toBe(true);
+  });
+
   it('is NOT_FOUND for another meeting\'s transcript, another workspace\'s transcript, or a missing page', async () => {
     for (const input of [
       { workspaceId: 'ws-a', meetingId: 'm-7', transcriptId: 't-other-meeting' },
@@ -161,12 +171,22 @@ describe('meeting.get_transcript', () => {
 describe('meetings_conversations behaviour', () => {
   beforeEach(seed);
 
-  it('declares only resolvable permission references and read-only risk', () => {
+  it('declares resolvable permissions and the planned risk per capability (plan §4.2)', () => {
+    const expected: Record<string, { level: string; permission: string; nonDelegable: boolean }> = {
+      'meeting.search': { level: 'L0_READ', permission: 'rbac:operations.meetings.view', nonDelegable: false },
+      'meeting.get': { level: 'L0_READ', permission: 'rbac:operations.meetings.view', nonDelegable: false },
+      'meeting.list_recordings': { level: 'L0_READ', permission: 'rbac:operations.meetings.view', nonDelegable: false },
+      'meeting.get_transcript': { level: 'L0_READ', permission: 'rbac:operations.meetings.view', nonDelegable: false },
+      'meeting.ingest_transcript': { level: 'L1_INTERNAL_DRAFT', permission: 'rbac:operations.meetings.edit', nonDelegable: false },
+      'meeting.record_consent': { level: 'L2_STATE_MUTATION', permission: 'rbac:operations.meetings.edit', nonDelegable: true },
+    };
     for (const cap of MEETINGS_CONVERSATIONS_CAPABILITIES) {
-      expect(cap.permissions.length).toBe(1);
+      const want = expected[cap.id];
+      expect(want, `unplanned capability ${cap.id}`).toBeDefined();
+      expect(cap.permissions).toEqual([want.permission]);
       for (const ref of cap.permissions) expect(parsePermissionRef(ref), ref).not.toBeNull();
-      expect(cap.risk.level).toBe('L0_READ');
-      expect(cap.risk.nonDelegable).toBe(false);
+      expect(cap.risk.level).toBe(want.level);
+      expect(cap.risk.nonDelegable).toBe(want.nonDelegable);
     }
   });
 

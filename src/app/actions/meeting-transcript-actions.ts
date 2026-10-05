@@ -1,0 +1,151 @@
+'use server';
+
+/**
+ * @fileoverview Server Actions for meeting transcripts and consent (Phase 11 M1 · T3/T5).
+ *
+ * Every action is a public endpoint (Rule 51): it authorizes FIRST (`requireMeetingAccess`), then
+ * runs the governed capability through `executeCapability` with the verified session principal, so
+ * the UI gets the same scoping, consent gate, audit, idempotency and events as agents (Rule 69).
+ *
+ * UPLOAD FLOW (files up to 5 MB; Server Actions are capped at 2 MB):
+ *   1. createTranscriptUploadAction → signed POST policy for one exact object (10 min).
+ *   2. Browser POSTs the file to Cloud Storage.
+ *   3. ingestUploadedTranscriptAction → read back strictly, ingest, delete the staging object.
+ *
+ * CAUTION: errors returned to the browser are plain, user-facing messages; never return stack
+ * traces or transcript content in errors.
+ *
+ * Tests: src/lib/__tests__/meetings/meeting-transcript-actions.test.ts
+ */
+
+import { adminDb, adminStorage } from '@/lib/firebase-admin';
+import { requireMeetingAccess } from '@/lib/meetings/meeting-auth';
+import { executeCapability } from '@/platform/capabilities/execution/execute-capability';
+import { createServerActionInvocation } from '@/platform/capabilities/execution/invocation';
+import { ensureCapabilitiesRegistered } from '@/platform/capabilities/registry/register-capabilities';
+import { resolvePrincipalFromSession } from '@/platform/capabilities/policy/session-principal-resolver';
+import type { AuthContext } from '@/lib/auth/require-auth';
+import {
+  createUploadPolicy,
+  deleteUploadedTranscript,
+  readUploadedTranscript,
+  TranscriptUploadError,
+  type UploadBucket,
+} from '@/lib/meetings/transcript-upload';
+import { DocxRejectedError } from '@/lib/meetings/docx-guard';
+import { readMeetingConsents, type ConsentType, type MeetingConsents } from '@/lib/meetings/consent-store';
+import type { MeetingGetTranscriptOutput, MeetingIngestTranscriptOutput, MeetingRecordConsentOutput } from '@/platform/domains/meetings_conversations';
+
+/** Paste limit: stays under the 2 MB Server Action body limit with room for JSON overhead. */
+const MAX_PASTE_CHARS = 1_500_000;
+
+type ActionResult<T> = { success: true; data: T } | { success: false; error: string };
+
+function errorMessage(err: unknown): string {
+  if (err instanceof TranscriptUploadError || err instanceof DocxRejectedError) return err.message;
+  return 'Something went wrong. Try again.';
+}
+
+async function runAsUser<T>(ctx: AuthContext, workspaceId: string, capabilityId: string, input: Record<string, unknown>): Promise<ActionResult<T>> {
+  ensureCapabilitiesRegistered();
+  const principal = await resolvePrincipalFromSession(workspaceId, { authContext: ctx });
+  const result = await executeCapability<T>(createServerActionInvocation({ capabilityId, input, principal }));
+  return result.success ? { success: true, data: result.data } : { success: false, error: result.error.message };
+}
+
+const bucket = (): UploadBucket => adminStorage;
+
+/** Step 1 of an upload: a signed POST policy for one exact object. */
+export async function createTranscriptUploadAction(
+  workspaceId: string,
+  meetingId: string,
+  file: { name: string; size: number }
+): Promise<ActionResult<{ url: string; fields: Record<string, string>; storagePath: string }>> {
+  await requireMeetingAccess(workspaceId, meetingId, 'meetings_manage');
+  try {
+    const policy = await createUploadPolicy(bucket(), {
+      workspaceId, meetingId, fileName: String(file?.name ?? ''), sizeBytes: Number(file?.size ?? 0), nowMs: Date.now(),
+    });
+    return { success: true, data: { url: policy.url, fields: policy.fields, storagePath: policy.storagePath } };
+  } catch (err) {
+    return { success: false, error: errorMessage(err) };
+  }
+}
+
+/** Step 3 of an upload: read the staged file, ingest it, remove the staging copy. */
+export async function ingestUploadedTranscriptAction(
+  workspaceId: string,
+  meetingId: string,
+  storagePath: string
+): Promise<ActionResult<MeetingIngestTranscriptOutput>> {
+  const { ctx } = await requireMeetingAccess(workspaceId, meetingId, 'meetings_manage');
+  let text: string;
+  let fileName: string;
+  try {
+    ({ text, fileName } = await readUploadedTranscript(bucket(), { storagePath: String(storagePath ?? ''), workspaceId, meetingId }));
+  } catch (err) {
+    if (err instanceof TranscriptUploadError && err.message.startsWith("This file isn't in")) return { success: false, error: err.message };
+    await deleteUploadedTranscript(bucket(), String(storagePath ?? ''));
+    return { success: false, error: errorMessage(err) };
+  }
+  try {
+    return await runAsUser<MeetingIngestTranscriptOutput>(ctx, workspaceId, 'meeting.ingest_transcript', {
+      workspaceId, meetingId, source: 'upload', text, fileName,
+    });
+  } finally {
+    await deleteUploadedTranscript(bucket(), storagePath);
+  }
+}
+
+/** Paste a transcript directly (up to ~1.5 million characters; larger → upload a file). */
+export async function ingestPastedTranscriptAction(
+  workspaceId: string,
+  meetingId: string,
+  text: string
+): Promise<ActionResult<MeetingIngestTranscriptOutput>> {
+  const { ctx } = await requireMeetingAccess(workspaceId, meetingId, 'meetings_manage');
+  const value = typeof text === 'string' ? text : '';
+  if (!value.trim()) return { success: false, error: 'Paste the transcript text first.' };
+  if (value.length > MAX_PASTE_CHARS) return { success: false, error: 'This text is too long to paste. Upload it as a file instead.' };
+  return runAsUser<MeetingIngestTranscriptOutput>(ctx, workspaceId, 'meeting.ingest_transcript', {
+    workspaceId, meetingId, source: 'paste', text: value,
+  });
+}
+
+/** One page of a meeting's transcript for the meeting page (people only). */
+export async function getMeetingTranscriptAction(
+  workspaceId: string,
+  meetingId: string,
+  page = 0,
+  transcriptId?: string
+): Promise<ActionResult<MeetingGetTranscriptOutput | null>> {
+  const { ctx } = await requireMeetingAccess(workspaceId, meetingId, 'meetings_view');
+  const res = await runAsUser<MeetingGetTranscriptOutput>(ctx, workspaceId, 'meeting.get_transcript', {
+    workspaceId, meetingId, page: Number.isInteger(page) && page >= 0 ? page : 0, ...(transcriptId ? { transcriptId } : {}),
+  });
+  // "No transcript yet" is a normal state for the page, not an error.
+  if (!res.success && res.error === 'No transcript found for this meeting.') return { success: true, data: null };
+  return res;
+}
+
+/** Current consents for the meeting (for the consent row). */
+export async function getMeetingConsentsAction(workspaceId: string, meetingId: string): Promise<ActionResult<MeetingConsents>> {
+  await requireMeetingAccess(workspaceId, meetingId, 'meetings_view');
+  try {
+    return { success: true, data: await readMeetingConsents(adminDb, meetingId, workspaceId) };
+  } catch {
+    return { success: false, error: 'Could not load consent. Try again.' };
+  }
+}
+
+/** Records or withdraws one consent. */
+export async function recordMeetingConsentAction(
+  workspaceId: string,
+  meetingId: string,
+  consent: { type: ConsentType; granted: boolean; method: 'verbal' | 'written' | 'form' | 'policy'; expectedVersion: number }
+): Promise<ActionResult<MeetingRecordConsentOutput>> {
+  const { ctx } = await requireMeetingAccess(workspaceId, meetingId, 'meetings_manage');
+  return runAsUser<MeetingRecordConsentOutput>(ctx, workspaceId, 'meeting.record_consent', {
+    workspaceId, meetingId, type: consent?.type, granted: consent?.granted, method: consent?.method, expectedVersion: consent?.expectedVersion,
+  });
+}

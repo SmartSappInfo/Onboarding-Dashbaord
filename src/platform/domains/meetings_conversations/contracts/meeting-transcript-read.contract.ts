@@ -8,13 +8,14 @@
  * injection flag, so callers (agents, MCP clients) must treat it as data, never as instructions.
  *
  * AI USE (Rule 57, PRD §98): when consent is withdrawn the transcript is `aiUse: 'restricted'`;
- * automated principals are then refused. Humans can still read it in the UI. The per-meeting
- * consent gate (M1 · T5) is applied in `assertTranscriptReadableBy`.
+ * automated principals are then refused. Humans can still read it in the UI. When the workspace
+ * enforces consent, automated principals also need the meeting's `aiProcessing` consent (M1 · T5).
  *
  * Tests: src/platform/__tests__/domains/meetings-conversations.test.ts
  */
 
 import { z } from 'zod/v4';
+import { adminDb } from '@/lib/firebase-admin';
 import type {
   CapabilityDefinition,
   CapabilityExecutionContext,
@@ -31,6 +32,7 @@ import {
   type TranscriptPage,
 } from '@/lib/meetings/transcript-store';
 import { MEETINGS_VIEW_PERMISSION } from './meeting-read.contracts';
+import { assertConsent, ConsentRequiredError } from '@/lib/meetings/consent-store';
 
 const Id = z.string().trim().min(1).max(200).regex(/^[^/]+$/, 'Invalid id.');
 
@@ -57,27 +59,31 @@ export const MeetingGetTranscriptOutputSchema = z.object({
 export type MeetingGetTranscriptInput = z.infer<typeof MeetingGetTranscriptInputSchema>;
 export type MeetingGetTranscriptOutput = z.infer<typeof MeetingGetTranscriptOutputSchema>;
 
+/** Same Admin SDK instance as every other contract (static import, like task/crm contracts). */
 async function db() {
-  const { adminDb } = await import('@/lib/firebase-admin');
   return adminDb;
 }
 
 /**
- * Policy check applied after the page is loaded (M1 · T5 adds the per-meeting consent check here).
+ * Policy check applied after the page is loaded. Humans: workspace permission is enough.
+ * Automated principals: transcript not restricted AND (when enforced) `aiProcessing` consent.
  * CAUTION: refusals must not reveal transcript content.
  */
 export async function assertTranscriptReadableBy(
   page: TranscriptPage,
   context: CapabilityExecutionContext
 ): Promise<void> {
-  if (isAutomatedPrincipal(context.principal) && page.header.aiUse === 'restricted') {
-    throw new CapabilityError({
-      code: 'FORBIDDEN',
-      message: 'AI use of this transcript is restricted because consent was withdrawn.',
-      stateChanged: 'no',
-      httpStatus: 403,
-      retryable: false,
-    });
+  if (!isAutomatedPrincipal(context.principal)) return;
+  const forbidden = (message: string) =>
+    new CapabilityError({ code: 'FORBIDDEN', message, stateChanged: 'no', httpStatus: 403, retryable: false });
+  if (page.header.aiUse === 'restricted') {
+    throw forbidden('AI use of this transcript is restricted because consent was withdrawn.');
+  }
+  try {
+    await assertConsent(await db(), { workspaceId: page.header.workspaceId, meetingId: page.header.meetingId, operation: 'ai_read' });
+  } catch (err) {
+    if (err instanceof ConsentRequiredError) throw forbidden(err.message);
+    throw err;
   }
 }
 
