@@ -26,6 +26,7 @@ export type CapabilityErrorCode =
   | 'FORBIDDEN'
   | 'APPROVAL_REQUIRED'
   | 'DUPLICATE_IN_PROGRESS'
+  | 'IDEMPOTENCY_KEY_REUSED'
   | 'VERSION_CONFLICT'
   | 'TIMEOUT'
   | 'PROVIDER_ERROR'
@@ -160,6 +161,17 @@ export class CapabilityError extends Error {
     });
   }
 
+  /** The key was already used with different input (Rules 19, 20; M2 review R5). Never retried. */
+  static idempotencyKeyReused(): CapabilityError {
+    return new CapabilityError({
+      code: 'IDEMPOTENCY_KEY_REUSED',
+      message: 'This idempotency key was already used for a different request. Use a new key for new input.',
+      stateChanged: 'no',
+      httpStatus: 409,
+      retryable: false,
+    });
+  }
+
   static versionConflict(currentVersion?: string | number): CapabilityError {
     return new CapabilityError({
       code: 'VERSION_CONFLICT',
@@ -231,6 +243,7 @@ export function defaultHttpStatus(code: CapabilityErrorCode): number {
     case 'INVALID_INPUT':
       return 400;
     case 'DUPLICATE_IN_PROGRESS':
+    case 'IDEMPOTENCY_KEY_REUSED':
     case 'VERSION_CONFLICT':
       return 409;
     case 'TIMEOUT':

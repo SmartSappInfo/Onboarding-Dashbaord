@@ -48,7 +48,7 @@ export function createInMemoryIdempotencyStore(): ExtendedIdempotencyStore {
 
     async claim(
       key: string,
-      options: { leaseMs: number; nowMs: number }
+      options: { leaseMs: number; nowMs: number; inputHash?: string }
     ): Promise<{ claimed: boolean; leaseExpiresAt: string }> {
       const existing = store.get(key);
       const leaseExpiresAt = new Date(options.nowMs + options.leaseMs).toISOString();
@@ -69,6 +69,7 @@ export function createInMemoryIdempotencyStore(): ExtendedIdempotencyStore {
       store.set(key, {
         status: 'running',
         leaseExpiresAt,
+        ...(options.inputHash ? { inputHash: options.inputHash } : {}),
       });
 
       return { claimed: true, leaseExpiresAt };
@@ -117,6 +118,7 @@ export class FirestoreIdempotencyStore implements ExtendedIdempotencyStore {
         status: data.status as 'running' | 'completed' | 'failed',
         leaseExpiresAt: data.leaseExpiresAt as string | undefined,
         result: data.result,
+        ...(typeof data.inputHash === 'string' ? { inputHash: data.inputHash } : {}),
       };
     } catch {
       return null;
@@ -125,7 +127,7 @@ export class FirestoreIdempotencyStore implements ExtendedIdempotencyStore {
 
   public async claim(
     key: string,
-    options: { leaseMs: number; nowMs: number }
+    options: { leaseMs: number; nowMs: number; inputHash?: string }
   ): Promise<{ claimed: boolean; leaseExpiresAt: string }> {
     const { adminDb } = await import('@/lib/firebase-admin');
     const docRef = adminDb.collection(FirestoreIdempotencyStore.COLLECTION).doc(key);
@@ -157,6 +159,7 @@ export class FirestoreIdempotencyStore implements ExtendedIdempotencyStore {
           leaseExpiresAt,
           updatedAt: new Date(options.nowMs).toISOString(),
           expiresAt,
+          ...(options.inputHash ? { inputHash: options.inputHash } : {}),
         });
 
         return { claimed: true, leaseExpiresAt };
@@ -169,6 +172,7 @@ export class FirestoreIdempotencyStore implements ExtendedIdempotencyStore {
         leaseExpiresAt,
         createdAt: new Date(options.nowMs).toISOString(),
         expiresAt,
+        ...(options.inputHash ? { inputHash: options.inputHash } : {}),
       });
 
       return { claimed: true, leaseExpiresAt };

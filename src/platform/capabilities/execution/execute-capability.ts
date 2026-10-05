@@ -211,7 +211,8 @@ export async function executeCapability<TOutput = unknown>(
       resolvedCapability,
       storeKey,
       idempotencyStore,
-      nowMs()
+      nowMs(),
+      inputHash
     );
     if (!idempotencyOutcome.isReplay && storeKey && idempotencyStore) {
       claimedStoreKey = storeKey;

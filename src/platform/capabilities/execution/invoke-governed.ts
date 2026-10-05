@@ -57,7 +57,7 @@ const AUTHORITY_CODES = new Set([
   'NOT_FOUND', 'DISABLED', 'APPROVAL_REQUIRED', 'APPROVAL_MISMATCH', 'CAPABILITY_NOT_REGISTERED', 'CAPABILITY_VERSION_MISMATCH',
   'VERSION_CONFLICT',
 ]);
-const INVALID_CODES = new Set(['VALIDATION', 'INVALID_INPUT', 'INVALID_OUTPUT']);
+const INVALID_CODES = new Set(['VALIDATION', 'INVALID_INPUT', 'INVALID_OUTPUT', 'IDEMPOTENCY_KEY_REUSED']);
 
 export function classifyRefusal(code: string, retryable: boolean | undefined): RefusalClass {
   if (AUTHORITY_CODES.has(code)) return 'authority';

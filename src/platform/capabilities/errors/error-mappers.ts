@@ -141,6 +141,8 @@ export function toUserFacingMessage(error: CapabilityError): string {
       return error.message || 'Please check your input and try again.';
     case 'DUPLICATE_IN_PROGRESS':
       return 'This action is already being processed. Please wait a moment.';
+    case 'IDEMPOTENCY_KEY_REUSED':
+      return 'This request reused an earlier request ID with different details. Start a new request.';
     case 'VERSION_CONFLICT':
       return 'This record was modified by another user. Please refresh and try again.';
     case 'TIMEOUT':
