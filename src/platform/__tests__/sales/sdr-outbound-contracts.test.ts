@@ -15,6 +15,7 @@ import {
   DispatchOutreachParamsSchema,
   DispatchOutreachResultSchema,
   OutreachApprovalBindingSchema,
+  OutreachMetricsSchema,
   SDR_OUTBOUND_ERROR_CODES,
   SdrOutboundError,
 } from '@/platform/agents/sales/outbound/sdr-outbound-types';
@@ -159,17 +160,33 @@ describe('SDR Outbound Contracts & Zod v4 Schemas', () => {
     expect(parsedPrep.leadIds).toHaveLength(2);
 
     const validResult = {
-      sequenceId: 'seq_1',
-      totalDraftsGenerated: 2,
+      sequenceRunId: 'seq_1',
+      totalRecipients: 2,
+      totalDrafts: 2,
       drafts: [],
-      cadenceSchedule: [],
       payloadHash: 'a'.repeat(64),
-      actionProposalId: 'prop_seq_1',
-      status: 'staged',
+      status: 'staged' as const,
     };
     const parsedResult = PrepareSequenceResultSchema.parse(validResult);
-    expect(parsedResult.sequenceId).toBe('seq_1');
+    expect(parsedResult.sequenceRunId).toBe('seq_1');
     expect(parsedResult.status).toBe('staged');
+  });
+
+  it('validates OutreachMetricsSchema', () => {
+    const validMetrics = {
+      totalDrafts: 14,
+      pendingApprovals: 3,
+      dispatched: 8,
+      simulated: 4,
+      channels: {
+        whatsapp: 9,
+        email: 4,
+        phone: 1,
+      },
+    };
+    const parsed = OutreachMetricsSchema.parse(validMetrics);
+    expect(parsed.totalDrafts).toBe(14);
+    expect(parsed.channels.whatsapp).toBe(9);
   });
 
   it('validates DispatchOutreachParamsSchema and DispatchOutreachResultSchema', () => {

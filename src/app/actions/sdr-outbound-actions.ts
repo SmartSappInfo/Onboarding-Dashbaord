@@ -34,6 +34,7 @@ import {
   type DispatchOutreachParams,
   type DispatchOutreachResult,
   type OutreachMessageDraft,
+  type OutreachMetrics,
 } from '@/platform/agents/sales/outbound/sdr-outbound-types';
 import type { ActionProposal } from '@/platform/policy/approval-proposal-types';
 
@@ -44,17 +45,7 @@ export interface ActionResult<T> {
   code?: string;
 }
 
-export interface OutreachMetrics {
-  totalDrafts: number;
-  pendingApprovals: number;
-  dispatched: number;
-  simulated: number;
-  channels: {
-    whatsapp: number;
-    email: number;
-    phone: number;
-  };
-}
+export type { OutreachMetrics };
 
 // In-memory proposal and draft storage for hermetic test environments
 const memoryProposals = new Map<string, ActionProposal>();
@@ -278,7 +269,10 @@ export async function dispatchApprovedOutreachAction(
     }
 
     // Rule 13: Anti-Self-Approval
-    if (proposal.authorizingUserId === auth.uid && proposal.approvedBy === auth.uid) {
+    if (
+      (proposal.authorizingUserId === auth.uid && proposal.approvedBy === auth.uid) ||
+      (Boolean(proposal.approvedBy) && proposal.authorizingUserId === proposal.approvedBy)
+    ) {
       return {
         success: false,
         error: 'Anti-Self-Approval violation: Creator cannot approve their own outbound proposal (Rule 13).',

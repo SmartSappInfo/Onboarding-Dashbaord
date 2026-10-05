@@ -212,6 +212,8 @@ export class SdrOutboundEngine {
           prospect,
           contactPerson
         );
+        draftResult.draft.stepIndex = step.stepIndex;
+        draftResult.draft.dayOffset = step.dayOffset;
         drafts.push(draftResult.draft);
       }
     }

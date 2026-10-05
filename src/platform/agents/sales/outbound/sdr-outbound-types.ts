@@ -157,6 +157,19 @@ export const OutreachApprovalBindingSchema = z.object({
 });
 export type OutreachApprovalBinding = z.infer<typeof OutreachApprovalBindingSchema>;
 
+export const OutreachMetricsSchema = z.object({
+  totalDrafts: z.number().int().min(0),
+  pendingApprovals: z.number().int().min(0),
+  dispatched: z.number().int().min(0),
+  simulated: z.number().int().min(0),
+  channels: z.object({
+    whatsapp: z.number().int().min(0),
+    email: z.number().int().min(0),
+    phone: z.number().int().min(0),
+  }),
+});
+export type OutreachMetrics = z.infer<typeof OutreachMetricsSchema>;
+
 // ============================================================================
 // 5. Error Taxonomy & Typed SdrOutboundError Class
 // ============================================================================
