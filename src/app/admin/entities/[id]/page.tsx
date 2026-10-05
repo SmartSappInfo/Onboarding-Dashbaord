@@ -72,7 +72,6 @@ import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { completeTaskNonBlocking } from '@/lib/task-actions';
 import { useToast } from '@/hooks/use-toast';
 import { serializeEntityToImportRow } from '@/lib/import-export/export-service';
 import EntityBillingTab from '../components/EntityBillingTab';
@@ -108,7 +107,7 @@ import EntityAiOverviewSection from '../components/EntityAiOverviewSection';
 import EntityHeaderCard from './components/EntityHeaderCard';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import TaskEditor from '../../tasks/components/TaskEditor';
-import { createTaskAction } from '@/lib/task-server-actions';
+import { createTaskAction, updateTaskAction } from '@/lib/task-server-actions';
 import { linkEntityToWorkspaceAction } from '@/lib/workspace-entity-actions';
 import { getErrorMessage } from '@/lib/errors/report-error';
 
@@ -425,10 +424,28 @@ export default function EntityDetailPage() {
         );
     }
 
-    const handleTaskComplete = (taskId: string) => {
-        if (firestore) {
-            completeTaskNonBlocking(firestore, taskId);
-            toast({ title: 'Task Completed' });
+    const handleTaskComplete = async (taskId: string) => {
+        try {
+            const res = await updateTaskAction(taskId, { status: 'done' });
+            if (res.success) {
+                toast({ title: 'Task Completed', description: 'Task marked as resolved.' });
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Update Failed',
+                    description: res.error || 'Failed to complete task in this workspace.',
+                    actionConfig: {
+                        path: '/admin/settings/permissions',
+                        label: 'Check Permissions',
+                    },
+                });
+            }
+        } catch (err: unknown) {
+            toast({
+                variant: 'destructive',
+                title: 'Update Failed',
+                description: err instanceof Error ? err.message : 'An unexpected error occurred.',
+            });
         }
     };
 

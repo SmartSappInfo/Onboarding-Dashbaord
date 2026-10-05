@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { format, isToday, isPast } from 'date-fns';
 import { CheckCircle2, Circle, Clock, ArrowRight, Zap } from 'lucide-react';
-import { completeTaskNonBlocking } from '@/lib/task-actions';
+import { updateTaskAction } from '@/lib/task-server-actions';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useTenant } from '@/context/TenantContext';
@@ -27,6 +28,7 @@ export function TaskWidget({
 }) {
     const firestore = useFirestore();
     const { activeWorkspaceId } = useTenant();
+    const { toast } = useToast();
 
     // Query for unresolved tasks strictly within this workspace
     const tasksQuery = useMemoFirebase(() => {
@@ -49,19 +51,45 @@ export function TaskWidget({
     const tasks = React.useMemo(() => {
         if (!rawTasks) return null;
         return rawTasks.map(task => {
-            const dueDateObj = new Date(task.dueDate);
+            const dueDateObj = task.dueDate ? new Date(task.dueDate) : null;
+            const isValidDueDate = Boolean(dueDateObj && !isNaN(dueDateObj.getTime()));
             return {
                 ...task,
                 dueDateObj,
-                isOverdue: isPast(dueDateObj) && !isToday(dueDateObj),
-                isTodayDue: isToday(dueDateObj),
+                isValidDueDate,
+                isOverdue: Boolean(isValidDueDate && dueDateObj && isPast(dueDateObj) && !isToday(dueDateObj)),
+                isTodayDue: Boolean(isValidDueDate && dueDateObj && isToday(dueDateObj)),
                 isUrgent: task.priority === 'urgent' || task.priority === 'high'
             };
         });
     }, [rawTasks]);
 
-    const handleComplete = (id: string) => {
-        if (firestore) completeTaskNonBlocking(firestore, id);
+    const handleComplete = async (id: string) => {
+        try {
+            const res = await updateTaskAction(id, { status: 'done' });
+            if (res.success) {
+                toast({
+                    title: 'Task Completed',
+                    description: 'Task marked as resolved.',
+                });
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Update Failed',
+                    description: res.error || 'Failed to complete task in this workspace.',
+                    actionConfig: {
+                        path: '/admin/settings/permissions',
+                        label: 'Check Permissions',
+                    },
+                });
+            }
+        } catch (err: unknown) {
+            toast({
+                variant: 'destructive',
+                title: 'Update Failed',
+                description: err instanceof Error ? err.message : 'An unexpected error occurred.',
+            });
+        }
     };
 
     return (
@@ -84,7 +112,8 @@ export function TaskWidget({
                                 )}>
                                     <button 
                                         onClick={() => handleComplete(task.id)}
-                                        className="shrink-0 text-muted-foreground hover:text-emerald-500 transition-colors"
+                                        aria-label={`Complete task: ${task.title}`}
+                                        className="shrink-0 flex items-center justify-center min-h-[44px] min-w-[44px] text-muted-foreground hover:text-emerald-500 active:scale-[0.97] transition-all"
                                     >
                                         <Circle className="h-5 w-5" />
                                     </button>
@@ -96,13 +125,15 @@ export function TaskWidget({
                                         </div>
                                         
                                         <div className="flex items-center gap-3">
-                                            <div className={cn(
-                                                "flex items-center gap-1 text-[9px] font-medium tracking-tighter transition-colors",
-                                                task.isOverdue ? "text-rose-600" : task.isTodayDue ? "text-orange-600" : "text-muted-foreground opacity-60"
-                                            )}>
-                                                <Clock className="h-2.5 w-2.5" />
-                                                {task.isTodayDue ? 'Today' : task.isOverdue ? 'Overdue' : format(task.dueDateObj, 'MMM d')}
-                                            </div>
+                                            {task.isValidDueDate && task.dueDateObj && (
+                                                <div className={cn(
+                                                    "flex items-center gap-1 text-[9px] font-medium tracking-tighter transition-colors",
+                                                    task.isOverdue ? "text-rose-600 font-bold" : task.isTodayDue ? "text-orange-600 font-bold" : "text-muted-foreground opacity-60"
+                                                )}>
+                                                    <Clock className="h-2.5 w-2.5" />
+                                                    {task.isTodayDue ? 'Today' : task.isOverdue ? 'Overdue' : format(task.dueDateObj, 'MMM d')}
+                                                </div>
+                                            )}
                                             {task.entityName && (
                                                 <span className="text-[9px] font-medium text-muted-foreground opacity-40 truncate">
                                                     {task.entityName}

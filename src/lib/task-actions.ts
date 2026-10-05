@@ -141,12 +141,13 @@ export function createTaskNonBlocking(db: Firestore, task: Omit<Task, 'id' | 'cr
 
 /**
  * Updates an existing task. (Non-blocking)
+ * @deprecated Use canonical `updateTaskAction` from `@/lib/task-server-actions` or `updateTaskCore` from `@/lib/tasks/task-core` to guarantee workspace tenant validation, server-side activity logging, and contract obligation fulfillment hooks.
  */
 export function updateTaskNonBlocking(db: Firestore, taskId: string, updates: Partial<Task>) {
     const taskRef = doc(db, 'tasks', taskId);
     const timestamp = new Date().toISOString();
 
-    const data: any = {
+    const data: Record<string, unknown> = {
         ...updates,
         updatedAt: timestamp,
     };
@@ -184,6 +185,7 @@ export function updateTaskNonBlocking(db: Firestore, taskId: string, updates: Pa
 
 /**
  * Marks a task as complete. (Non-blocking)
+ * @deprecated Use canonical `updateTaskAction(taskId, { status: 'done' })` from `@/lib/task-server-actions`.
  */
 export function completeTaskNonBlocking(db: Firestore, taskId: string) {
     updateTaskNonBlocking(db, taskId, {
@@ -193,13 +195,14 @@ export function completeTaskNonBlocking(db: Firestore, taskId: string) {
 
 /**
  * Bulk updates multiple tasks with shared properties.
+ * @deprecated Use canonical `bulkUpdateTasksAction` from `@/lib/task-server-actions`.
  */
 export async function bulkUpdateTasks(db: Firestore, taskIds: string[], updates: Partial<Task>) {
     const batch = writeBatch(db);
     const timestamp = new Date().toISOString();
     
     taskIds.forEach(id => {
-        const data: any = { ...updates, updatedAt: timestamp };
+        const data: Record<string, unknown> = { ...updates, updatedAt: timestamp };
         if (updates.status === 'done') data.completedAt = timestamp;
         batch.update(doc(db, 'tasks', id), data);
     });
@@ -208,6 +211,7 @@ export async function bulkUpdateTasks(db: Firestore, taskIds: string[], updates:
 
 /**
  * Bulk deletes multiple tasks.
+ * @deprecated Use canonical `bulkDeleteTasksAction` from `@/app/actions/bulk-task-actions`.
  */
 export async function bulkDeleteTasks(db: Firestore, taskIds: string[]) {
     const batch = writeBatch(db);
@@ -219,6 +223,7 @@ export async function bulkDeleteTasks(db: Firestore, taskIds: string[]) {
 
 /**
  * Bulk marks multiple tasks as complete.
+ * @deprecated Use canonical `bulkUpdateTasksAction` from `@/lib/task-server-actions`.
  */
 export async function bulkCompleteTasks(db: Firestore, taskIds: string[]) {
     return bulkUpdateTasks(db, taskIds, { status: 'done' });
