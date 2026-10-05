@@ -1,8 +1,8 @@
 import { addDays } from 'date-fns';
 import { adminDb } from '../../firebase-admin';
 // Automation engine runs session-less: it uses the task core directly (system actor).
-import { createTaskFromAutomation } from '../../tasks/task-core';
-import type { TaskCategory, TaskPriority, TaskStatus } from '../../types';
+import { createTaskFromAutomation, updateTaskCore } from '../../tasks/task-core';
+import type { Task, TaskCategory, TaskPriority, TaskStatus } from '../../types';
 import type { ExecutionContext } from '../execution-types';
 
 export async function handleCreateTask(
@@ -53,10 +53,22 @@ export async function handleUpdateTask(
     (config.useTriggerTaskId ? (context.payload.taskId as string) : undefined);
   if (!taskId) throw new Error('Update task action missing taskId.');
 
-  const updates: Record<string, unknown> = { updatedAt: new Date().toISOString() };
-  if (config.status) updates.status = config.status;
-  if (config.assignedTo) updates.assignedTo = config.assignedTo;
-  if (config.priority) updates.priority = config.priority;
+  const updates: Partial<Task> = {};
+  if (config.status) updates.status = config.status as TaskStatus;
+  if (config.assignedTo) updates.assignedTo = config.assignedTo as string;
+  if (config.priority) updates.priority = config.priority as TaskPriority;
+  if (config.title) updates.title = config.title as string;
+  if (config.description) updates.description = config.description as string;
+  if (config.dueDate) updates.dueDate = config.dueDate as string;
 
-  await adminDb.collection('tasks').doc(taskId).update(updates);
+  const result = await updateTaskCore(
+    taskId,
+    updates,
+    { kind: 'system', source: 'automation' },
+    context.workspaceId
+  );
+
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to update task via automation.');
+  }
 }

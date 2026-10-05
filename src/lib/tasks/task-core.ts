@@ -196,11 +196,19 @@ export async function createTaskFromAutomation(taskData: NewTaskInput, organizat
 }
 
 /** Updates a task. The permission check uses the task's STORED workspace, never the caller's. */
-export async function updateTaskCore(taskId: string, updates: Partial<Task>, actor: TaskActor): Promise<TaskResult> {
+export async function updateTaskCore(
+  taskId: string,
+  updates: Partial<Task>,
+  actor: TaskActor,
+  expectedWorkspaceId?: string
+): Promise<TaskResult> {
   try {
     const stored = await loadStoredTaskRef(taskId);
     if (!stored) return { success: false, error: 'Task not found.' };
     const { workspaceId } = stored;
+    if (expectedWorkspaceId && workspaceId !== expectedWorkspaceId) {
+      return { success: false, error: 'Task does not belong to the specified workspace.' };
+    }
     const permission = await checkPermission(actor, 'edit', workspaceId);
     if (!permission.granted) return { success: false, error: permission.reason };
 
