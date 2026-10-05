@@ -27,6 +27,7 @@ import {
   LeadContextAssembler,
   type AssembledLeadContextResult,
 } from '@/platform/agents/sales/context/lead-context-assembler';
+import { createHash } from 'crypto';
 import type {
   LeadSearchResult,
   LeadScoreBreakdown,
@@ -35,8 +36,13 @@ import type {
   LeadObjectionHandler,
   MarketResearchParams,
   MarketResearchResult,
+  SegmentToCampaignParams,
+  SegmentToCampaignResult,
 } from '@/platform/agents/sales/context/lead-context-types';
-import { MarketResearchParamsSchema } from '@/platform/agents/sales/context/lead-context-types';
+import {
+  MarketResearchParamsSchema,
+  SegmentToCampaignParamsSchema,
+} from '@/platform/agents/sales/context/lead-context-types';
 import type { CapabilityExecutionContext } from '@/platform/capabilities/contracts/capability-definition';
 import { defaultEventBus } from '@/platform/events/event-bus';
 import { createDomainEvent } from '@/platform/capabilities/events/domain-event';
@@ -421,6 +427,94 @@ export async function researchMarketAction(
       success: false,
       error: error?.message || 'Failed to execute market research.',
       code: isIdor ? 'IDOR_VIOLATION' : (error?.code || 'INTERNAL_ERROR'),
+    };
+  }
+}
+
+/**
+ * Bridges a filtered segment or selection of leads directly into an SDR campaign.
+ * Computes canonical SHA-256 payloadHash and enforces dead-man pause (Rules 1, 19, 21, 22, 60).
+ */
+export async function createCampaignFromSegmentAction(
+  params: SegmentToCampaignParams
+): Promise<ActionResult<SegmentToCampaignResult>> {
+  try {
+    const auth = await requireAuth();
+    if (!auth || !auth.uid) {
+      return { success: false, error: 'Authentication required', code: 'UNAUTHORIZED' };
+    }
+
+    assertTenantContext(auth, params.organizationId);
+
+    try {
+      await checkGovernanceDeadManSwitch(params.organizationId);
+    } catch {
+      return {
+        success: false,
+        error: 'Sales operations are currently suspended by the platform administrator.',
+        code: 'SALES_DEAD_MAN_PAUSED',
+      };
+    }
+
+    const validated = SegmentToCampaignParamsSchema.parse(params);
+
+    // Compute canonical SHA-256 payloadHash (Rule 22)
+    const payloadHash = createHash('sha256')
+      .update(
+        JSON.stringify({
+          segmentName: validated.segmentName,
+          leadIds: [...validated.leadIds].sort(),
+          sdrPersonaId: validated.sdrPersonaId,
+          dailyBudget: validated.dailyBudget,
+          channels: [...validated.channels].sort(),
+        })
+      )
+      .digest('hex');
+
+    const idempotencyKey =
+      validated.idempotencyKey ||
+      `camp_seg_${validated.organizationId}_${payloadHash.slice(0, 16)}`;
+
+    const campaignId = `camp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const data: SegmentToCampaignResult = {
+      campaignId,
+      segmentName: validated.segmentName,
+      prospectCount: validated.leadIds.length,
+      sdrPersonaId: validated.sdrPersonaId,
+      dailyBudget: validated.dailyBudget,
+      channels: validated.channels,
+      status: 'active',
+      createdAt: new Date().toISOString(),
+      payloadHash,
+      idempotencyKey,
+    };
+
+    // Emit campaign launched domain event (Rule 40)
+    await defaultEventBus.publish(
+      createDomainEvent({
+        actor: { type: 'agent', id: validated.sdrPersonaId },
+        entity: { type: 'prospecting_campaign', id: campaignId },
+        source: 'sales.agent',
+        payload: {
+          organizationId: validated.organizationId,
+          workspaceId: validated.workspaceId,
+          segmentName: validated.segmentName,
+          leadCount: validated.leadIds.length,
+          dailyBudget: validated.dailyBudget,
+          payloadHash,
+          idempotencyKey,
+        },
+      } as any)
+    );
+
+    return { success: true, data };
+  } catch (error: any) {
+    const isValidation = error?.name === 'ZodError';
+    const isIdor = error?.message?.includes('IDOR_VIOLATION');
+    return {
+      success: false,
+      error: error?.message || 'Failed to create campaign from segment.',
+      code: isValidation ? 'VALIDATION_ERROR' : isIdor ? 'IDOR_VIOLATION' : (error?.code || 'INTERNAL_ERROR'),
     };
   }
 }

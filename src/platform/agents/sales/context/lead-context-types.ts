@@ -195,3 +195,31 @@ export const MarketResearchResultSchema = z.object({
   idempotencyKey: z.string(),
 });
 export type MarketResearchResult = z.infer<typeof MarketResearchResultSchema>;
+
+export const SegmentToCampaignParamsSchema = z.object({
+  organizationId: z.string().min(1),
+  workspaceId: z.string().min(1),
+  segmentName: z.string().min(1),
+  leadIds: z.array(z.string().min(1)).min(1).max(50),
+  campaignGoal: z.string().min(1),
+  sdrPersonaId: z.string().default('lead_sdr'),
+  dailyBudget: z.number().int().min(1).max(100).default(25),
+  channels: z.array(z.enum(['email', 'whatsapp', 'call'])).min(1),
+  tagIds: z.array(z.string()).optional(),
+  idempotencyKey: z.string().optional(),
+});
+export type SegmentToCampaignParams = z.infer<typeof SegmentToCampaignParamsSchema>;
+
+export const SegmentToCampaignResultSchema = z.object({
+  campaignId: z.string().min(1),
+  segmentName: z.string(),
+  prospectCount: z.number().int().min(1),
+  sdrPersonaId: z.string(),
+  dailyBudget: z.number().int(),
+  channels: z.array(z.string()),
+  status: z.enum(['draft', 'active', 'scheduled']),
+  createdAt: z.string(),
+  payloadHash: z.string(),
+  idempotencyKey: z.string(),
+});
+export type SegmentToCampaignResult = z.infer<typeof SegmentToCampaignResultSchema>;
