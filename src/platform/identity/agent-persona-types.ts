@@ -39,6 +39,11 @@ export const AGENT_PERSONA_IDS = [
   'deal_strategist',
   'task_coordinator',
   'knowledge_analyst',
+  // Domain Specialist Sales Personas (Phase 10 Milestone 2)
+  'prospecting_agent',
+  'enrichment_agent',
+  'qualification_agent',
+  'sales_coach',
 ] as const;
 
 export type AgentPersonaId = (typeof AGENT_PERSONA_IDS)[number];

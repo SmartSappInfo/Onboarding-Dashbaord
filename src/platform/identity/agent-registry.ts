@@ -23,6 +23,7 @@ import {
   isAgentPersonaId,
 } from './agent-persona-types';
 import { CRM_PERSONA_DEFINITIONS } from '../agents/crm/personas/crm-persona-definitions';
+import { SALES_PERSONA_DEFINITIONS } from '../agents/sales/personas/sales-persona-definitions';
 
 export type AgentPersona = AgentPersonaDefinition;
 
@@ -203,6 +204,11 @@ export const BUILT_IN_AGENT_PERSONAS: readonly AgentPersonaDefinition[] = [
   CRM_PERSONA_DEFINITIONS.deal_strategist,
   CRM_PERSONA_DEFINITIONS.task_coordinator,
   CRM_PERSONA_DEFINITIONS.knowledge_analyst,
+  // Domain Specialist Sales Personas (Phase 10 Milestone 2)
+  SALES_PERSONA_DEFINITIONS.prospecting_agent,
+  SALES_PERSONA_DEFINITIONS.enrichment_agent,
+  SALES_PERSONA_DEFINITIONS.qualification_agent,
+  SALES_PERSONA_DEFINITIONS.sales_coach,
 ];
 
 /** Backward compatibility alias mapping for CompanyBrain 2.0 specialist prototypes and CRM agents */
@@ -219,6 +225,11 @@ const SPECIALIST_ALIAS_MAP: Readonly<Record<string, AgentPersonaId>> = {
   pipeline_analyst: 'deal_strategist',
   commitment_coordinator: 'task_coordinator',
   memory_analyst: 'knowledge_analyst',
+  // Sales specialist aliases
+  prospector: 'prospecting_agent',
+  enricher: 'enrichment_agent',
+  lead_qualifier: 'qualification_agent',
+  pitch_coach: 'sales_coach',
 };
 
 export interface RegisterPersonaOptions {
