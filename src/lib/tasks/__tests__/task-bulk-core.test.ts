@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { Task, WorkspaceEntity } from '@/lib/types';
+import type { Task } from '@/lib/types';
 
 type Doc = Record<string, unknown>;
 
@@ -58,7 +58,7 @@ vi.mock('@/lib/firebase-admin', () => ({
 }));
 
 vi.mock('@/lib/workspace-permissions', () => ({
-  canUser: vi.fn(async (uid: string, _res: string, _mod: string, action: string, workspaceId: string) => {
+  canUser: vi.fn(async (uid: string, _res: string, _mod: string, _action: string, _workspaceId: string) => {
     if (uid === 'unauthorized-user') {
       return { granted: false, reason: 'User lacks operations:tasks:create permission.' };
     }
@@ -147,7 +147,7 @@ describe('Bulk Task Creation Domain Core (task-bulk-core.ts)', () => {
     expect(h.batchCommitCount).toBe(1);
     expect(h.batchSets).toHaveLength(2);
 
-    const firstTask = h.batchSets[0].data as Task;
+    const firstTask = h.batchSets[0].data as unknown as Task;
     expect(firstTask.workspaceId).toBe('ws-1');
     expect(firstTask.organizationId).toBe('org-1');
     expect(firstTask.entityId).toBe('ent-1');
