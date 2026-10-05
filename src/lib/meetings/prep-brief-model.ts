@@ -35,7 +35,7 @@ const OutputSchema = z.object({
 export function createPrepBriefModel(db: Firestore): PrepBriefModel {
   return {
     breakerKey: 'reasoning',
-    async generate({ prompt, workspaceId, organizationId }) {
+    async generate({ prompt, workspaceId, organizationId, signal }) {
       const policy = await resolveAiDataPolicy(db, { workspaceId, ...(organizationId ? { organizationId } : {}) });
       const allowed = providersAllowedFor(policy, 'personal');
       const provider = allowed.includes('googleai') ? 'googleai' : allowed[0];
@@ -46,6 +46,8 @@ export function createPrepBriefModel(db: Firestore): PrepBriefModel {
         prompt,
         output: { schema: OutputSchema },
         config: { temperature: 0.2, maxOutputTokens: 4096 },
+        // Genkit 1.42 GenerateOptions.abortSignal: a call past the deadline stops (review R3).
+        ...(signal ? { abortSignal: signal } : {}),
       });
       return { output: response.output ?? null, modelId: modelString };
     },

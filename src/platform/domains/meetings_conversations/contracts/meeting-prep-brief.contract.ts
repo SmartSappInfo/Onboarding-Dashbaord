@@ -48,7 +48,7 @@ function productionDeps(db: typeof adminDb): PrepBriefDeps {
 
 export const meetingGeneratePrepBriefCapability: CapabilityDefinition<MeetingGeneratePrepBriefInput, MeetingGeneratePrepBriefOutput> = {
   id: 'meeting.generate_prep_brief',
-  version: '1.0.0',
+  version: '1.1.0', // 1.1.0: additive `factsOnlyReason: 'timeout'` (M2 review R3)
   name: 'Generate meeting prep brief',
   description:
     'Builds a brief for an upcoming meeting from this workspace\'s records (the meeting, linked record, open deals and tasks, earlier meetings). Every item cites its sources; when AI is unavailable the brief is facts only.',

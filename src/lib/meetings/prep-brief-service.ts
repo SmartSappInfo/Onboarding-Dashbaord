@@ -14,6 +14,11 @@
  *      the data policy refuses, or the output is unusable, a deterministic brief is built from the
  *      same sources and labelled. Nothing is invented in that mode.
  *
+ * DEADLINES (review R3; Rules 23, 24): the gateway stops the capability at 20 s. Waiting that long
+ * would turn a slow model (the most common failure) into an error. So the service has its own
+ * deadlines: 3 s for the record context (skipped if late) and 12 s for the model (aborted if late →
+ * facts-only `timeout`). The abort signal reaches Genkit so a late call stops being billed.
+ *
  * TRUST (Rules 13, 30, 48): source text is customer data. It goes into the prompt inside a
  * delimited block marked as data; it never changes what the model is asked to do.
  *
@@ -47,6 +52,32 @@ export const PREP_BRIEF_LIMITS = {
   maxSourceChars: 600,
   briefsPerUserPerHour: 60,
 } as const;
+
+/** Must fit inside the capability's 20 s `maxDurationMs` with room for reads and validation. */
+export const PREP_BRIEF_DEADLINES = { contextMs: 3_000, modelMs: 12_000 } as const;
+
+export class PrepBriefDeadlineError extends Error {
+  constructor(readonly stage: 'context' | 'model', readonly ms: number) {
+    super(`Prep brief ${stage} took longer than ${ms} ms.`);
+    this.name = 'PrepBriefDeadlineError';
+  }
+}
+
+/** Resolves `work`, or rejects with `PrepBriefDeadlineError` (aborting `controller`) after `ms`. */
+async function withDeadline<T>(work: Promise<T>, ms: number, stage: 'context' | 'model', controller?: AbortController): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      controller?.abort();
+      reject(new PrepBriefDeadlineError(stage, ms));
+    }, ms);
+  });
+  try {
+    return await Promise.race([work, late]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 // ── Sources ────────────────────────────────────────────────────────────────────
 
@@ -105,7 +136,7 @@ const LooseModelOutputSchema = z.object({
   questions: z.array(z.unknown()).optional(),
 });
 
-export const FactsOnlyReasonSchema = z.enum(['model_unavailable', 'breaker_open', 'quota', 'policy', 'invalid_output']);
+export const FactsOnlyReasonSchema = z.enum(['model_unavailable', 'breaker_open', 'quota', 'policy', 'invalid_output', 'timeout']);
 export type FactsOnlyReason = z.infer<typeof FactsOnlyReasonSchema>;
 
 export const PrepBriefSchema = z.object({
@@ -150,6 +181,8 @@ export interface PrepBriefModelRequest {
   prompt: string;
   workspaceId: string;
   organizationId?: string;
+  /** Aborted when the model deadline passes; pass it to Genkit `generate` (`abortSignal`). */
+  signal?: AbortSignal;
 }
 
 export interface PrepBriefModel {
@@ -165,6 +198,8 @@ export interface PrepBriefDeps {
   loadAccountContext?: (params: { organizationId?: string; workspaceId: string; entityId: string }) => Promise<Account360Context | null>;
   breaker?: CircuitBreaker;
   nowMs: () => number;
+  /** Defaults to `PREP_BRIEF_DEADLINES`; tests use short ones. */
+  deadlines?: { contextMs: number; modelMs: number };
 }
 
 export interface PrepBriefParams {
@@ -419,13 +454,19 @@ export async function consumeBriefQuota(db: Firestore, actorId: string, nowMs: n
 /** Throws `MeetingNotFoundError` (from the read service) when the meeting isn't in the workspace. */
 export async function generatePrepBrief(db: Firestore, deps: PrepBriefDeps, params: PrepBriefParams): Promise<PrepBrief> {
   const nowMs = deps.nowMs();
+  const deadlines = deps.deadlines ?? PREP_BRIEF_DEADLINES;
   const detail = await getMeetingDetail(db, params.meetingId, params.workspaceId);
 
   const gathered: PrepSource[] = meetingSources(detail, params.workspaceId);
   const entityId = detail.entityId;
   if (entityId) {
+    // A late or failing record context is skipped: the brief uses the remaining sources.
     const ctx = deps.loadAccountContext
-      ? await deps.loadAccountContext({ ...(params.organizationId ? { organizationId: params.organizationId } : {}), workspaceId: params.workspaceId, entityId }).catch(() => null)
+      ? await withDeadline(
+          deps.loadAccountContext({ ...(params.organizationId ? { organizationId: params.organizationId } : {}), workspaceId: params.workspaceId, entityId }),
+          deadlines.contextMs,
+          'context'
+        ).catch(() => null)
       : null;
     // Fail closed: a context assembled for any other workspace or record is ignored entirely.
     if (ctx && ctx.workspaceId === params.workspaceId && ctx.entityId === entityId) gathered.push(...accountSources(ctx, params.workspaceId, nowMs));
@@ -447,9 +488,21 @@ export async function generatePrepBrief(db: Firestore, deps: PrepBriefDeps, para
     factsOnlyReason = 'quota';
   } else {
     const model = deps.model;
+    const controller = new AbortController();
     try {
+      // The deadline sits inside the breaker so repeated timeouts open it (Rule 24).
       const res = await (deps.breaker ?? defaultBreaker).execute(`prep_brief:${model.breakerKey}`, () =>
-        model.generate({ prompt: buildPrepBriefPrompt(detail, selected), workspaceId: params.workspaceId, ...(params.organizationId ? { organizationId: params.organizationId } : {}) })
+        withDeadline(
+          model.generate({
+            prompt: buildPrepBriefPrompt(detail, selected),
+            workspaceId: params.workspaceId,
+            ...(params.organizationId ? { organizationId: params.organizationId } : {}),
+            signal: controller.signal,
+          }),
+          deadlines.modelMs,
+          'model',
+          controller
+        )
       );
       modelId = res.modelId;
       const validated = res.output == null ? null : validateBriefOutput(res.output, selected);
@@ -461,7 +514,11 @@ export async function generatePrepBrief(db: Firestore, deps: PrepBriefDeps, para
         factsOnlyReason = 'invalid_output';
       }
     } catch (err) {
-      factsOnlyReason = err instanceof PrepBriefPolicyError ? 'policy' : err instanceof CircuitBreakerOpenError ? 'breaker_open' : 'model_unavailable';
+      factsOnlyReason =
+        err instanceof PrepBriefPolicyError ? 'policy'
+          : err instanceof CircuitBreakerOpenError ? 'breaker_open'
+            : err instanceof PrepBriefDeadlineError ? 'timeout'
+              : 'model_unavailable';
     }
   }
 

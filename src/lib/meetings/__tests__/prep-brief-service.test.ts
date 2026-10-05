@@ -10,6 +10,7 @@ import { CircuitBreaker, CircuitBreakerOpenError } from '@/platform/events/resil
 import type { Account360Context } from '@/platform/agents/crm/context/account-context-types';
 import {
   BRIEF_SECTIONS,
+  PREP_BRIEF_DEADLINES,
   PREP_BRIEF_LIMITS,
   PrepBriefPolicyError,
   buildPrepBriefPrompt,
@@ -244,5 +245,41 @@ describe('buildPrepBriefPrompt', () => {
   it('lists every source id in brackets', () => {
     const p = buildPrepBriefPrompt({ title: 'T', meetingTime: '2026-10-06T10:00:00Z' }, [{ id: 'deal:1', type: 'deal', label: 'D', text: 'D text', workspaceId: 'ws-a' }]);
     expect(p).toContain('[deal:1] (deal) D text');
+  });
+});
+
+describe('generatePrepBrief: deadlines inside the gateway budget (review R3)', () => {
+  const hanging = (signals: AbortSignal[]): PrepBriefModel => ({
+    breakerKey: 'googleai:reasoning',
+    generate: (req) => {
+      if (req.signal) signals.push(req.signal);
+      return new Promise(() => undefined);
+    },
+  });
+  const fast = { contextMs: 30, modelMs: 40 };
+
+  it('a model that never answers gives a facts-only brief labelled timeout, and is aborted', async () => {
+    const signals: AbortSignal[] = [];
+    const started = Date.now();
+    const brief = await generatePrepBrief(fs(), { ...deps(hanging(signals)), deadlines: fast }, params);
+    expect(Date.now() - started).toBeLessThan(2_000);
+    expect(brief.mode).toBe('facts_only');
+    expect(brief.factsOnlyReason).toBe('timeout');
+    expect(brief.openDeals[0]?.sourceIds).toEqual(['deal:d-1']);
+    expect(signals[0]?.aborted).toBe(true);
+  });
+
+  it('a record context that never loads is skipped; the brief still returns', async () => {
+    const brief = await generatePrepBrief(fs(), {
+      model: null, loadAccountContext: () => new Promise(() => undefined), nowMs: () => NOW, deadlines: fast,
+    }, params);
+    expect(brief.mode).toBe('facts_only');
+    expect(brief.openDeals).toEqual([]);
+    // Earlier meetings (Firestore) are still used.
+    expect(brief.history.some((h) => h.sourceIds.includes('meeting:m-prev'))).toBe(true);
+  });
+
+  it('default deadlines fit inside the capability budget (20 s)', () => {
+    expect(PREP_BRIEF_DEADLINES.contextMs + PREP_BRIEF_DEADLINES.modelMs).toBeLessThan(20_000 - 3_000);
   });
 });
