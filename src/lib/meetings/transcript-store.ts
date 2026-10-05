@@ -83,6 +83,10 @@ export const TranscriptHeaderSchema = z.object({
   organizationId: z.string().optional(),
   meetingId: z.string(),
   recordingId: z.string().optional(),
+  /** Recording `updatedAt` the transcription was requested for (TOCTOU, M1 · T4). */
+  recordingVersion: z.string().optional(),
+  /** Provider attempts so far (retry budget → dead letter, Rule 25). */
+  attempts: z.number().int().min(0).optional(),
   source: TranscriptSourceSchema,
   status: z.enum(TRANSCRIPT_STATUSES),
   version: z.number().int().min(0),
@@ -180,6 +184,7 @@ export interface NewTranscriptHeader {
   organizationId?: string;
   meetingId: string;
   recordingId?: string;
+  recordingVersion?: string;
   source: z.infer<typeof TranscriptSourceSchema>;
   status: 'pending' | 'processing';
   language?: string;
@@ -195,6 +200,7 @@ export function buildTranscriptHeader(input: NewTranscriptHeader): TranscriptHea
     ...(input.organizationId ? { organizationId: input.organizationId } : {}),
     meetingId: input.meetingId,
     ...(input.recordingId ? { recordingId: input.recordingId } : {}),
+    ...(input.recordingVersion !== undefined ? { recordingVersion: input.recordingVersion } : {}),
     source: input.source,
     status: input.status,
     version: 0,

@@ -38,7 +38,8 @@ import { deleteTranscriptCascade } from '@/lib/meetings/retention-service';
 import { randomUUID } from 'node:crypto';
 import { defaultAuditSink } from '@/platform/capabilities/storage/audit-store';
 import { sha256Hex } from '@/platform/capabilities/contracts/canonical-json';
-import type { MeetingGetTranscriptOutput, MeetingIngestTranscriptOutput, MeetingRecordConsentOutput } from '@/platform/domains/meetings_conversations';
+import type { MeetingGetTranscriptOutput, MeetingIngestTranscriptOutput, MeetingRecordConsentOutput, MeetingTranscribeRecordingOutput } from '@/platform/domains/meetings_conversations';
+import { TranscriptHeaderSchema } from '@/lib/meetings/transcript-store';
 
 /** Paste limit: stays under the 2 MB Server Action body limit with room for JSON overhead. */
 const MAX_PASTE_CHARS = 1_500_000;
@@ -194,4 +195,52 @@ export async function deleteMeetingTranscriptAction(
   } catch (err) {
     return { success: false, error: err instanceof Error && err.message.includes('changed') ? 'The transcript changed. Reload and try again.' : 'Could not delete the transcript. Try again.' };
   }
+}
+
+/** Starts (or checks) transcription of an uploaded recording. Off until enabled for the workspace. */
+export async function transcribeRecordingAction(
+  workspaceId: string,
+  meetingId: string,
+  recordingId: string,
+  options?: { dryRun?: boolean }
+): Promise<ActionResult<MeetingTranscribeRecordingOutput>> {
+  const { ctx } = await requireMeetingAccess(workspaceId, meetingId, 'meetings_manage');
+  return runAsUser<MeetingTranscribeRecordingOutput>(ctx, workspaceId, 'meeting.transcribe_recording', {
+    workspaceId, meetingId, recordingId: String(recordingId ?? ''), ...(options?.dryRun ? { dryRun: true } : {}),
+  });
+}
+
+/** Status of the meeting's latest transcription job (for the progress chip). */
+export async function getTranscriptionStatusAction(
+  workspaceId: string,
+  meetingId: string,
+  transcriptId: string
+): Promise<ActionResult<{ status: string; error?: string }>> {
+  await requireMeetingAccess(workspaceId, meetingId, 'meetings_view');
+  const snap = await adminDb.collection('meeting_transcripts').doc(String(transcriptId ?? '')).get();
+  const header = snap.exists ? TranscriptHeaderSchema.safeParse(snap.data()) : null;
+  if (!header?.success || header.data.workspaceId !== workspaceId || header.data.meetingId !== meetingId) {
+    return { success: false, error: 'Transcript not found.' };
+  }
+  return { success: true, data: { status: header.data.status, ...(header.data.error ? { error: header.data.error.message } : {}) } };
+}
+
+/** Requests cancellation; the worker stops before the provider call or before storing (Rule 26). */
+export async function cancelTranscriptionAction(
+  workspaceId: string,
+  meetingId: string,
+  transcriptId: string
+): Promise<ActionResult<{ cancelRequested: boolean }>> {
+  await requireMeetingAccess(workspaceId, meetingId, 'meetings_manage');
+  const ref = adminDb.collection('meeting_transcripts').doc(String(transcriptId ?? ''));
+  const result = await adminDb.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const header = snap.exists ? TranscriptHeaderSchema.safeParse(snap.data()) : null;
+    if (!header?.success || header.data.workspaceId !== workspaceId || header.data.meetingId !== meetingId) return null;
+    if (header.data.status !== 'pending' && header.data.status !== 'processing') return false;
+    tx.update(ref, { cancelRequested: true, updatedAt: new Date().toISOString() });
+    return true;
+  });
+  if (result === null) return { success: false, error: 'Transcript not found.' };
+  return { success: true, data: { cancelRequested: result } };
 }

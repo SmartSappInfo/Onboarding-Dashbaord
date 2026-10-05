@@ -25,6 +25,12 @@ export interface AiModelCapabilities {
   vision: boolean;
   codeExecution: boolean;
   maxContextTokens: number;
+  /**
+   * Accepts audio input (Phase 11 M1 · T4, Rule 58: route by modality). Optional so existing
+   * definitions stay valid; when unset, Gemini models count as audio-capable (Gemini audio
+   * understanding, Context7 2026-10-05) and other providers do not.
+   */
+  audioInput?: boolean;
 }
 
 export interface AiModelDefinition {
@@ -440,6 +446,23 @@ export const AiModelRegistry = {
     if (tierMatch) return tierMatch;
 
     return this.getFlagshipModel();
+  },
+
+  /** True when the model can take audio input (see `AiModelCapabilities.audioInput`). */
+  supportsAudio(model: AiModelDefinition): boolean {
+    return model.capabilities.audioInput ?? model.provider === 'googleai';
+  },
+
+  /**
+   * Audio-capable, non-deprecated models from the allowed providers, best first: default tier,
+   * then fast, then others (Rule 58: modality + cost routing). Empty when none is allowed.
+   */
+  getAudioCapableModels(allowedProviders?: readonly AiProviderId[]): AiModelDefinition[] {
+    const rank: Record<AiModelTier, number> = { default: 0, fast: 1, multimodal: 2, reasoning: 3, coding: 4 };
+    return ACTIVE_AI_MODELS
+      .filter((m) => !m.isDeprecated && this.supportsAudio(m) && (!allowedProviders || allowedProviders.includes(m.provider)))
+      .slice()
+      .sort((a, b) => rank[a.tier] - rank[b.tier]);
   },
 
   /**

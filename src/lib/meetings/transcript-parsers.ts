@@ -43,7 +43,8 @@ export class TranscriptParseError extends Error {
 const UNKNOWN_SPEAKER = 'Speaker 1';
 const WORDS_PER_MINUTE = 150;
 
-interface RawCue {
+/** A cue before normalization (shared with model-produced transcripts, M1 · T4). */
+export interface RawCue {
   startMs: number | null;
   endMs: number | null;
   speaker: string | null;
@@ -178,7 +179,11 @@ function splitLong(text: string, max: number): string[] {
   return parts;
 }
 
-function buildResult(format: TranscriptFormat, cues: RawCue[], warnings: string[]): ParsedTranscript {
+/**
+ * Normalizes cues into sorted, sized, speaker-mapped segments. Shared by file parsing and by
+ * transcription output so both obey the same invariants (one implementation, Rule 7).
+ */
+export function buildParsedTranscript(format: TranscriptFormat, cues: RawCue[], warnings: string[]): ParsedTranscript {
   if (cues.length === 0) throw new TranscriptParseError('This file has no transcript text.');
 
   const timed = cues.every((c) => c.startMs !== null);
@@ -233,5 +238,5 @@ export function parseTranscriptText(raw: string, options?: { fileName?: string; 
   const format = options?.format ?? detectTranscriptFormat(text, options?.fileName);
   const warnings: string[] = [];
   const cues = format === 'txt' ? parseTxt(text) : parseCueBlocks(text, format, warnings);
-  return buildResult(format, cues, warnings.slice(0, 20));
+  return buildParsedTranscript(format, cues, warnings.slice(0, 20));
 }

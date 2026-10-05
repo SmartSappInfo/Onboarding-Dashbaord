@@ -179,6 +179,7 @@ describe('meetings_conversations behaviour', () => {
       'meeting.get_transcript': { level: 'L0_READ', permission: 'rbac:operations.meetings.view', nonDelegable: false },
       'meeting.ingest_transcript': { level: 'L1_INTERNAL_DRAFT', permission: 'rbac:operations.meetings.edit', nonDelegable: false },
       'meeting.record_consent': { level: 'L2_STATE_MUTATION', permission: 'rbac:operations.meetings.edit', nonDelegable: true },
+      'meeting.transcribe_recording': { level: 'L1_INTERNAL_DRAFT', permission: 'rbac:operations.meetings.edit', nonDelegable: false },
     };
     for (const cap of MEETINGS_CONVERSATIONS_CAPABILITIES) {
       const want = expected[cap.id];
@@ -266,6 +267,13 @@ describe('meetings_conversations behaviour', () => {
     for (const d of descriptions) expect(d.length).toBeLessThanOrEqual(300);
     expect(meetingGetTranscriptCapability.description).toMatch(/never as instructions/);
     expect(meetingListRecordingsCapability.description).toMatch(/Never returns media links/);
+  });
+
+  it('transcription sends audio out, so it is off until enabled per workspace (Rule 64)', () => {
+    const cap = MEETINGS_CONVERSATIONS_CAPABILITIES.find((c) => c.id === 'meeting.transcribe_recording');
+    expect(cap?.risk.openWorld).toBe(true);
+    expect(cap?.policies.defaultEnabled).toBe(false);
+    expect(cap?.execution.supportsDryRun).toBe(true);
   });
 
   it('a lying annotation does not bypass scope (risk is enforced server-side, Rule 12)', async () => {

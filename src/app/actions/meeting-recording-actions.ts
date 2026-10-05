@@ -27,8 +27,10 @@ import { defaultAuditSink } from '@/platform/capabilities/storage/audit-store';
 import type { MeetingRecording } from '@/lib/meetings/types/intelligence';
 import { logMeetingActivity } from '@/lib/meetings/activity-logger';
 import { requireMeetingAccess, requireMeetingsPermission } from '@/lib/meetings/meeting-auth';
+import { randomUUID as newObjectId } from 'node:crypto';
 import {
   AttachRecordingInputSchema,
+  recordingStoragePrefix,
   isRecordingPathForMeeting,
   isSafeExternalMediaUrl,
   MeetingRecordingRecordSchema,
@@ -231,6 +233,43 @@ export async function generateRecordingPlaybackUrlAction(
       return { success: true, playbackUrl: recording.mediaUrl, kind: 'external_link' };
     }
     throw new Error('This recording link is not secure, so it cannot be played here.');
+  } catch (err) {
+    return { success: false, error: getErrorMessage(err) };
+  }
+}
+
+/** Recording upload types (audio for transcription; video/audio for playback). */
+const RECORDING_UPLOAD_TYPES: Readonly<Record<string, string>> = {
+  mp3: 'audio/mp3', wav: 'audio/wav', aac: 'audio/aac', ogg: 'audio/ogg', flac: 'audio/flac', aiff: 'audio/aiff',
+  m4a: 'audio/mp4', mp4: 'video/mp4', webm: 'video/webm',
+};
+const MAX_RECORDING_UPLOAD_BYTES = 500 * 1024 * 1024;
+
+/**
+ * Signed POST policy for uploading a recording into the meeting's own folder (M1 · T4/T8).
+ * Bound to one exact key, content type, 1 B–500 MB and 10 minutes; after upload the page calls
+ * `attachMeetingRecordingAction` with the returned `storagePath` (prefix re-validated there).
+ * Transcription additionally requires an audio type ≤ 14 MB (checked when requested).
+ */
+export async function createRecordingUploadAction(
+  workspaceId: string,
+  meetingId: string,
+  file: { name: string; size: number }
+): Promise<{ success: boolean; url?: string; fields?: Record<string, string>; storagePath?: string; error?: string }> {
+  await requireMeetingAccess(workspaceId, meetingId, 'meetings_manage');
+  const ext = String(file?.name ?? '').toLowerCase().split('.').pop() ?? '';
+  const contentType = RECORDING_UPLOAD_TYPES[ext];
+  const size = Number(file?.size ?? 0);
+  if (!contentType) return { success: false, error: 'Use an MP3, WAV, AAC, OGG, FLAC, AIFF, M4A, MP4 or WebM file.' };
+  if (!(size > 0) || size > MAX_RECORDING_UPLOAD_BYTES) return { success: false, error: 'Recordings must be smaller than 500 MB.' };
+  try {
+    const storagePath = `${recordingStoragePrefix(workspaceId, meetingId)}${newObjectId()}.${ext}`;
+    const [policy] = await adminStorage.file(storagePath).generateSignedPostPolicyV4({
+      expires: Date.now() + 10 * 60 * 1000,
+      conditions: [['eq', '$Content-Type', contentType], ['content-length-range', 1, MAX_RECORDING_UPLOAD_BYTES]],
+      fields: { 'Content-Type': contentType },
+    });
+    return { success: true, url: policy.url, fields: policy.fields, storagePath };
   } catch (err) {
     return { success: false, error: getErrorMessage(err) };
   }

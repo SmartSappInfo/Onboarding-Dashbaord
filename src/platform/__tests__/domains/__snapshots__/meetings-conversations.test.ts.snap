@@ -8,5 +8,6 @@ exports[`meetings_conversations behaviour > tool definitions match the reviewed 
   "meeting.list_recordings@1.0.0": "b935bee6fc1460be1b2d0b45818f66d3734ebf5a753376b2ddadea4134ef0b5e",
   "meeting.record_consent@1.0.0": "4ba0c6f78c74d0228510e311f62af70493398cad0646b69e9aa8f73e06004a9b",
   "meeting.search@1.0.0": "424f25dbb31576eb9e28c387a04824b3f0ff20df3e0449e5347edb7c0c5031a6",
+  "meeting.transcribe_recording@1.0.0": "9a13cd0e79d5278b57c536b392e8caa89fc683f17723973e5553f102c2c207fd",
 }
 `;
