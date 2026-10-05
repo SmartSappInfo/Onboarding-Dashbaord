@@ -186,7 +186,7 @@ export class SalesShadowRunner {
       }
 
       // Check tool matrix entry for domain
-      const toolEntry = SALES_TOOL_MATRIX.find((t) => t.capabilityId === step.capabilityId);
+      const toolEntry: SalesToolMatrixEntry | undefined = SALES_TOOL_MATRIX.find((t) => t.capabilityId === step.capabilityId);
       const domain = toolEntry?.domain ?? 'lead_intelligence';
       targetedDomainsSet.add(domain);
 
@@ -256,7 +256,16 @@ export class SalesShadowRunner {
         type: 'sales.agent.simulated',
         organizationId: options.organizationId,
         workspaceId: options.workspaceId,
-        actorId: options.personaId,
+        actor: {
+          type: 'agent',
+          id: options.personaId,
+        },
+        entity: {
+          type: 'sales_agent_simulation',
+          id: runId,
+        },
+        source: 'sales_shadow_mode',
+        correlationId: runId,
         payload: {
           runId,
           goalPrompt: options.goalPrompt,
