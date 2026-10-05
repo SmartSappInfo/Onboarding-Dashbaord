@@ -45,6 +45,8 @@ export const VERIFIED_IDENTITY_GUARDS: ReadonlyMap<string, string> = new Map([
   ['checkMediaPermissionAction', 'src/lib/media/rbac-service.ts (requireWorkspace)'],
   ['checkDocumentPermissionAction', 'src/lib/documents/enterprise-security-actions.ts (requireWorkspace)'],
   ['requireDocSigningPermission', 'src/lib/documents/docsigning-authz.ts (requireWorkspace + canUser RBAC)'],
+  ['requireMeetingsPermission', 'src/lib/meetings/meeting-auth.ts (requireWorkspace + meetings_manage)'],
+  ['requireMeetingAccess', 'src/lib/meetings/meeting-auth.ts (requireWorkspace + permission + meeting ownership)'],
   ['verifyRecipientToken', 'src/lib/documents/signing-token-service.ts (hashed capability token + expiry + revocation; public signing links)'],
 ]);
 

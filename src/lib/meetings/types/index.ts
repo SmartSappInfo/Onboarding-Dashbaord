@@ -352,7 +352,11 @@ export type MeetingActivityType =
   | 'meeting_started'
   | 'meeting_completed'
   | 'meeting_cancelled'
-  | 'recording_uploaded';
+  | 'recording_uploaded'
+  // Phase 11 M1: explicit types instead of reusing 'meeting_created' for AI/recording events.
+  | 'recording_deleted'
+  | 'intelligence_generated'
+  | 'action_item_converted';
 
 export interface MeetingActivity {
   id: string;

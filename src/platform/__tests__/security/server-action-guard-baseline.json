@@ -94,8 +94,6 @@
     "src/app/actions/meeting-poll-actions.ts#getMeetingPollBySlugAction",
     "src/app/actions/meeting-poll-actions.ts#submitPollVoteAction",
     "src/app/actions/meeting-post-event-action.ts#endMeetingAction",
-    "src/app/actions/meeting-recording-actions.ts#attachMeetingRecordingAction",
-    "src/app/actions/meeting-recording-actions.ts#getMeetingRecordingsAction",
     "src/app/actions/meeting-registrants-actions.ts#adminRegisterParticipantAction",
     "src/app/actions/meeting-registrants-actions.ts#deleteRegistrantAction",
     "src/app/actions/meeting-registrants-actions.ts#manuallyUpdateGuestStatusAction",

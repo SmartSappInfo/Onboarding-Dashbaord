@@ -3,13 +3,28 @@
 /**
  * @fileoverview Server Actions for Enterprise Compliance, Domain Whitelists & Audit Exports.
  *
+ * SECURITY (Phase 11 M1 · T0, finding G2): saving a policy only checked `requireAuth()`, so any
+ * signed-in user of any organization could overwrite any workspace's consent/retention settings.
+ * Saving now needs `meetings_manage` in that workspace, merges only page-editable fields, can refuse
+ * stale edits and records an append-only before/after history plus a hash-chained audit entry.
+ *
  * CAUTION FOR FUTURE MAINTAINERS:
  * - Zero 'any' policy strictly enforced.
  * - Queries are scoped strictly to active workspaceId.
+ * - Never widen `CompliancePolicyUpdateSchema` with fields the page does not own.
  */
 
+import { randomUUID } from 'node:crypto';
 import { adminDb } from '@/lib/firebase-admin';
-import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+import { requireWorkspace } from '@/lib/auth/require-auth';
+import { requireMeetingsPermission } from '@/lib/meetings/meeting-auth';
+import {
+  CompliancePolicyUpdateSchema,
+  readCompliancePolicy,
+  updateCompliancePolicy,
+} from '@/lib/meetings/compliance-policy-store';
+import { sha256Hex } from '@/platform/capabilities/contracts/canonical-json';
+import { defaultAuditSink } from '@/platform/capabilities/storage/audit-store';
 import type {
   CompliancePolicy,
   AuditExportRecord,
@@ -36,21 +51,8 @@ export async function getWorkspaceCompliancePolicyAction(
   await requireWorkspace(workspaceId);
 
   try {
-    const docRef = adminDb.collection('meeting_compliance_policies').doc(workspaceId);
-    const snap = await docRef.get();
-
-    if (!snap.exists) {
-      const defaultPolicy: CompliancePolicy = {
-        workspaceId,
-        retentionPeriodDays: 0, // Indefinite by default
-        requireMeetingPasscode: false,
-        enforceHostConsentForAI: false,
-        updatedAt: new Date().toISOString(),
-      };
-      return { success: true, policy: defaultPolicy };
-    }
-
-    return { success: true, policy: snap.data() as CompliancePolicy };
+    const policy = await readCompliancePolicy(adminDb, workspaceId, new Date().toISOString());
+    return { success: true, policy };
   } catch (err) {
     return { success: false, error: getErrorMessage(err) };
   }
@@ -60,17 +62,45 @@ export async function getWorkspaceCompliancePolicyAction(
  * Saves workspace compliance policy.
  */
 export async function saveWorkspaceCompliancePolicyAction(
-  policy: CompliancePolicy
+  policy: CompliancePolicy,
+  options?: { expectedUpdatedAt?: string }
 ): Promise<{ success: boolean; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
+  const parsed = CompliancePolicyUpdateSchema.safeParse(policy);
+  if (!parsed.success) {
+    return { success: false, error: 'Please check the settings and try again.' };
+  }
+  const ctx = await requireMeetingsPermission(parsed.data.workspaceId, 'meetings_manage');
 
   try {
-    const docRef = adminDb.collection('meeting_compliance_policies').doc(policy.workspaceId);
-    await docRef.set({
-      ...policy,
-      updatedAt: new Date().toISOString(),
+    const startMs = Date.now();
+    const nowIso = new Date(startMs).toISOString();
+    const { before, after } = await updateCompliancePolicy(adminDb, {
+      update: parsed.data,
+      actorUid: ctx.uid,
+      nowIso,
+      expectedUpdatedAt: options?.expectedUpdatedAt,
     });
+
+    // Hash-chained audit entry (Rule 40). Content lives in the history doc; the chain stores hashes.
+    await defaultAuditSink({
+      executionId: randomUUID(),
+      capabilityId: 'meeting.update_compliance_policy',
+      capabilityVersion: 'legacy-action',
+      userId: ctx.uid,
+      organizationId: ctx.profile.organizationId ?? '',
+      workspaceId: parsed.data.workspaceId,
+      correlationId: randomUUID(),
+      decision: 'allowed',
+      outcome: 'succeeded',
+      durationMs: Math.max(0, Date.now() - startMs),
+      stateChanged: 'yes',
+      timestamp: nowIso,
+      inputHash: sha256Hex({ before, after }),
+    }).catch((auditErr: unknown) => {
+      // CAUTION: the history doc already holds before/after; a chain write failure is logged loudly.
+      console.error('[saveWorkspaceCompliancePolicyAction] audit write failed:', auditErr);
+    });
+
     return { success: true };
   } catch (err) {
     return { success: false, error: getErrorMessage(err) };

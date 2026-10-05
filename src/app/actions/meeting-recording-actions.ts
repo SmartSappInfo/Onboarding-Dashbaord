@@ -4,16 +4,32 @@
  * @fileoverview Server Actions for Meeting Recordings management.
  * Handles recording registration, retrieval, short-lived playback signing, and deletion.
  *
+ * SECURITY (Phase 11 M1 · T0, finding G1): `getMeetingRecordingsAction` and
+ * `attachMeetingRecordingAction` were unauthenticated public endpoints. Every action now proves
+ * sign-in + workspace membership + meetings permission + meeting ownership BEFORE touching data
+ * (`requireMeetingAccess`), and auth failures throw (they are not swallowed into `{ success }`).
+ *
  * CAUTION FOR FUTURE MAINTAINERS:
- * - All playback URLs are ephemeral signed URLs generated server-side.
- * - Zero 'any' policy strictly enforced.
+ * - Organization ids come from the verified session, never from the caller.
+ * - New external links must pass `isSafeExternalMediaUrl` (https only). Existing docs are untouched.
+ * - Playback signing is replaced by real Storage v4 signed URLs in M1 · T7.
+ * - Zero 'any' policy strictly enforced; Firestore reads are parsed (recording-schemas.ts).
+ *
+ * Tests: src/lib/__tests__/meetings/meeting-actions-security.test.ts
  */
 
 import { adminDb } from '@/lib/firebase-admin';
 import type { MeetingRecording } from '@/lib/meetings/types/intelligence';
 import { generateRecordingShareToken } from '@/lib/meetings/recording-service';
 import { logMeetingActivity } from '@/lib/meetings/activity-logger';
-import { requireWorkspace } from '@/lib/auth/require-auth';
+import { requireMeetingAccess, requireMeetingsPermission } from '@/lib/meetings/meeting-auth';
+import {
+  AttachRecordingInputSchema,
+  isRecordingPathForMeeting,
+  isSafeExternalMediaUrl,
+  MeetingRecordingRecordSchema,
+  toClientRecording,
+} from '@/lib/meetings/schemas/recording-schemas';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -36,31 +52,40 @@ export async function attachMeetingRecordingAction(payload: {
   fileSizeBytes?: number;
   format?: string;
 }): Promise<{ success: boolean; recordingId?: string; error?: string }> {
-  try {
-    const { workspaceId, organizationId, meetingId, provider, externalRecordingId, mediaUrl, storagePath, durationSeconds, fileSizeBytes, format } = payload;
-    const now = new Date().toISOString();
+  const parsed = AttachRecordingInputSchema.safeParse(payload);
+  if (!parsed.success) {
+    return { success: false, error: 'Please check the recording details and try again.' };
+  }
+  const input = parsed.data;
+  const { ctx, meeting } = await requireMeetingAccess(input.workspaceId, input.meetingId, 'meetings_manage');
 
-    if (!mediaUrl) {
-      throw new Error('Media URL is required to attach a recording.');
+  try {
+    if (input.storagePath) {
+      if (!isRecordingPathForMeeting(input.storagePath, input.workspaceId, input.meetingId)) {
+        throw new Error('This file is not in this meeting\'s recordings folder.');
+      }
+    } else if (!isSafeExternalMediaUrl(input.mediaUrl)) {
+      throw new Error('Use a secure link that starts with https://.');
     }
 
+    const now = new Date().toISOString();
     const docRef = adminDb.collection('meeting_recordings').doc();
-    const shareToken = generateRecordingShareToken();
+    const organizationId = meeting.organizationId ?? ctx.profile.organizationId;
 
     const recording: MeetingRecording = {
       id: docRef.id,
-      workspaceId,
-      organizationId,
-      meetingId,
-      provider,
-      externalRecordingId,
-      mediaUrl,
-      storagePath,
-      durationSeconds: Math.max(0, durationSeconds || 0),
-      fileSizeBytes: fileSizeBytes || 0,
-      format: format || 'mp4',
+      workspaceId: input.workspaceId,
+      ...(organizationId ? { organizationId } : {}),
+      meetingId: input.meetingId,
+      provider: input.provider,
+      ...(input.externalRecordingId ? { externalRecordingId: input.externalRecordingId } : {}),
+      mediaUrl: input.mediaUrl,
+      ...(input.storagePath ? { storagePath: input.storagePath } : {}),
+      durationSeconds: Math.max(0, input.durationSeconds || 0),
+      fileSizeBytes: input.fileSizeBytes || 0,
+      format: input.format || 'mp4',
       status: 'available',
-      shareToken,
+      shareToken: generateRecordingShareToken(),
       createdAt: now,
       updatedAt: now,
     };
@@ -68,20 +93,20 @@ export async function attachMeetingRecordingAction(payload: {
     await docRef.set(recording);
 
     // Update meeting doc hasRecording flag
-    await adminDb.collection('meetings').doc(meetingId).update({
+    await adminDb.collection('meetings').doc(input.meetingId).update({
       hasRecording: true,
       updatedAt: now,
     }).catch(err => {
       console.warn('[attachMeetingRecordingAction] Failed to update meeting flag:', err);
     });
 
-    // Log activity
     await logMeetingActivity({
-      workspaceId,
-      meetingId,
-      actorType: 'system',
+      workspaceId: input.workspaceId,
+      meetingId: input.meetingId,
+      actorType: 'user',
+      actorId: ctx.uid,
       type: 'recording_uploaded',
-      description: `Recording attached via ${provider} (${Math.round(durationSeconds / 60)} min)`,
+      description: `Recording attached via ${input.provider} (${Math.round(input.durationSeconds / 60)} min)`,
     });
 
     return { success: true, recordingId: docRef.id };
@@ -97,17 +122,19 @@ export async function getMeetingRecordingsAction(
   meetingId: string,
   workspaceId: string
 ): Promise<{ success: boolean; recordings?: MeetingRecording[]; error?: string }> {
+  await requireMeetingAccess(workspaceId, meetingId, 'meetings_view');
+
   try {
     const snap = await adminDb
       .collection('meeting_recordings')
       .where('meetingId', '==', meetingId)
       .where('workspaceId', '==', workspaceId)
+      .limit(100)
       .get();
 
-    const recordings: MeetingRecording[] = snap.docs.map(doc => ({
-      ...(doc.data() as MeetingRecording),
-      id: doc.id,
-    }));
+    const recordings = snap.docs
+      .map(doc => toClientRecording(doc.id, doc.data()))
+      .filter((r): r is MeetingRecording => r !== null);
 
     return { success: true, recordings };
   } catch (err) {
@@ -122,23 +149,27 @@ export async function deleteMeetingRecordingAction(
   recordingId: string,
   workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireWorkspace(workspaceId);
+  const ctx = await requireMeetingsPermission(workspaceId, 'meetings_manage');
 
   try {
     const docRef = adminDb.collection('meeting_recordings').doc(recordingId);
     const snap = await docRef.get();
+    const recording = snap.exists ? MeetingRecordingRecordSchema.safeParse(snap.data()) : null;
 
-    if (!snap.exists) {
+    // Missing and foreign recordings look the same (no cross-tenant probing).
+    if (!recording?.success || recording.data.workspaceId !== workspaceId) {
       throw new Error('Recording not found.');
     }
 
-    const data = snap.data() as MeetingRecording;
-    if (data.workspaceId !== workspaceId) {
-      throw new Error('Unauthorized workspace access.');
-    }
-
     await docRef.delete();
+    await logMeetingActivity({
+      workspaceId,
+      meetingId: recording.data.meetingId,
+      actorType: 'user',
+      actorId: ctx.uid,
+      type: 'recording_deleted',
+      description: 'Recording removed',
+    });
     return { success: true };
   } catch (err) {
     return { success: false, error: getErrorMessage(err) };
@@ -152,22 +183,18 @@ export async function generateRecordingPlaybackUrlAction(
   recordingId: string,
   workspaceId: string
 ): Promise<{ success: boolean; playbackUrl?: string; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireWorkspace(workspaceId);
+  await requireMeetingsPermission(workspaceId, 'meetings_view');
 
   try {
     const snap = await adminDb.collection('meeting_recordings').doc(recordingId).get();
-    if (!snap.exists) {
+    const parsed = snap.exists ? MeetingRecordingRecordSchema.safeParse(snap.data()) : null;
+    if (!parsed?.success || parsed.data.workspaceId !== workspaceId) {
       throw new Error('Recording not found.');
     }
+    const recording = parsed.data;
 
-    const recording = snap.data() as MeetingRecording;
-    if (recording.workspaceId !== workspaceId) {
-      throw new Error('Unauthorized workspace access.');
-    }
-
-    // Return the mediaUrl with token parameter
-    const token = recording.shareToken || generateRecordingShareToken();
+    // Return the mediaUrl with token parameter (replaced by real signed URLs in M1 · T7).
+    const token = generateRecordingShareToken();
     const separator = recording.mediaUrl.includes('?') ? '&' : '?';
     const playbackUrl = `${recording.mediaUrl}${separator}token=${token}&expires=${Date.now() + 15 * 60 * 1000}`;
 

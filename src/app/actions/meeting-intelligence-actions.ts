@@ -4,12 +4,19 @@
  * @fileoverview Server Actions for AI Meeting Intelligence, Action Item Execution, and Pre-Meeting Briefs.
  * Uses Gemini API with structured JSON output and provides full CRM integration.
  *
+ * SECURITY (Phase 11 M1 · T0, findings G3/G4): every action now proves meetings permission AND that
+ * the meeting belongs to the caller's workspace (`requireMeetingAccess`). Before, a member of one
+ * workspace could generate, read or convert another workspace's meeting data by id.
+ *
  * CAUTION FOR FUTURE MAINTAINERS:
  * - All AI mutations are stored in `meeting_intelligence/{meetingId}`.
- * - Action item conversion to CRM tasks is idempotent.
+ * - Action item conversion is idempotent: a claim on the action item (transaction) guarantees one
+ *   task per item even on double-clicks or retries; the task is written by the task domain core
+ *   (`createTaskCore`), never by a direct `tasks` write (Rule 69).
  * - Zero 'any' policy strictly enforced.
  */
 
+import { z } from 'zod';
 import { adminDb } from '@/lib/firebase-admin';
 import type {
   MeetingIntelligence,
@@ -22,13 +29,35 @@ import {
   parseIntelligenceStructuredOutput,
 } from '@/lib/meetings/ai-intelligence-service';
 import { logMeetingActivity } from '@/lib/meetings/activity-logger';
-import { requireWorkspace } from '@/lib/auth/require-auth';
+import { requireMeetingAccess } from '@/lib/meetings/meeting-auth';
+import { createTaskCore } from '@/lib/tasks/task-core';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   if (typeof error === 'string') return error;
   return 'An unexpected error occurred.';
 }
+
+/** Boundary schema for the parts of `meeting_intelligence` this file mutates (Rule 4). */
+const ActionItemSchema = z.object({
+  id: z.string(),
+  text: z.string(),
+  assigneeName: z.string().optional(),
+  assigneeEmail: z.string().optional(),
+  assigneeUserId: z.string().optional(),
+  dueDate: z.string().optional(),
+  priority: z.enum(['low', 'medium', 'high']).catch('medium'),
+  status: z.enum(['open', 'completed', 'converted_to_crm_task', 'dismissed']).catch('open'),
+  crmTaskId: z.string().optional(),
+  conversionClaimedAt: z.string().optional(),
+}).passthrough();
+type MeetingActionItem = z.infer<typeof ActionItemSchema>;
+
+const IntelligenceActionItemsSchema = z.object({
+  workspaceId: z.string(),
+  organizationId: z.string().optional(),
+  actionItems: z.array(ActionItemSchema).default([]),
+});
 
 const GEMINI_MODEL = 'gemini-3.6-flash';
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
@@ -40,8 +69,7 @@ export async function generateMeetingIntelligenceAction(
   meetingId: string,
   workspaceId: string
 ): Promise<{ success: boolean; intelligence?: MeetingIntelligence; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireWorkspace(workspaceId);
+  await requireMeetingAccess(workspaceId, meetingId, 'meetings_manage');
 
   try {
     const now = new Date().toISOString();
@@ -152,7 +180,7 @@ export async function generateMeetingIntelligenceAction(
       workspaceId,
       meetingId,
       actorType: 'ai',
-      type: 'meeting_created',
+      type: 'intelligence_generated',
       description: 'AI Meeting Intelligence & Executive Summary generated',
     });
 
@@ -169,8 +197,7 @@ export async function getMeetingIntelligenceAction(
   meetingId: string,
   workspaceId: string
 ): Promise<{ success: boolean; intelligence?: MeetingIntelligence; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireWorkspace(workspaceId);
+  await requireMeetingAccess(workspaceId, meetingId, 'meetings_view');
 
   try {
     const doc = await adminDb.collection('meeting_intelligence').doc(meetingId).get();
@@ -191,74 +218,108 @@ export async function getMeetingIntelligenceAction(
 
 /**
  * Converts a meeting action item into a workspace CRM Task.
+ *
+ * Idempotency (Rules 19/20): the action item is claimed in a transaction (`converting` +
+ * `conversionClaimedAt`). A second click while converting is refused; a click after success returns
+ * the same task id; a stale claim (> 2 min, e.g. a crashed request) can be re-claimed.
  */
+const CONVERSION_CLAIM_MS = 2 * 60 * 1000;
+
+type ConversionClaim =
+  | { kind: 'done'; crmTaskId: string }
+  | { kind: 'claimed'; item: MeetingActionItem; organizationId?: string };
+
 export async function convertActionItemToCrmTaskAction(
   meetingId: string,
   workspaceId: string,
   actionItemId: string
 ): Promise<{ success: boolean; crmTaskId?: string; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireWorkspace(workspaceId);
+  const { ctx, meeting } = await requireMeetingAccess(workspaceId, meetingId, 'meetings_manage');
+  const docRef = adminDb.collection('meeting_intelligence').doc(meetingId);
 
+  let claim: ConversionClaim;
   try {
-    const docRef = adminDb.collection('meeting_intelligence').doc(meetingId);
-    const snap = await docRef.get();
+    claim = await adminDb.runTransaction(async (tx): Promise<ConversionClaim> => {
+      const snap = await tx.get(docRef);
+      const parsed = snap.exists ? IntelligenceActionItemsSchema.safeParse(snap.data()) : null;
+      // Missing and foreign records look the same (no cross-tenant probing).
+      if (!parsed?.success || parsed.data.workspaceId !== workspaceId) {
+        throw new Error('Meeting intelligence not found.');
+      }
+      const items = parsed.data.actionItems;
+      const index = items.findIndex(i => i.id === actionItemId);
+      if (index === -1) throw new Error('Action item not found in intelligence record.');
+      const item = items[index];
 
-    if (!snap.exists) {
-      throw new Error('Meeting intelligence not found.');
-    }
+      if (item.crmTaskId) return { kind: 'done', crmTaskId: item.crmTaskId };
+      const claimedAt = item.conversionClaimedAt ? Date.parse(item.conversionClaimedAt) : Number.NaN;
+      if (!Number.isNaN(claimedAt) && Date.now() - claimedAt < CONVERSION_CLAIM_MS) {
+        throw new Error('This action item is already being converted. Try again in a moment.');
+      }
 
-    const intel = snap.data() as MeetingIntelligence;
-    const itemIndex = intel.actionItems?.findIndex(i => i.id === actionItemId);
-
-    if (itemIndex === -1 || itemIndex === undefined) {
-      throw new Error('Action item not found in intelligence record.');
-    }
-
-    const item = intel.actionItems[itemIndex];
-    const now = new Date().toISOString();
-
-    // Create CRM Task
-    const taskRef = adminDb.collection('tasks').doc();
-    const crmTask = {
-      id: taskRef.id,
-      workspaceId,
-      title: item.text,
-      description: `Action item from meeting ${meetingId}. Assignee: ${item.assigneeName || 'Unassigned'}`,
-      priority: item.priority || 'medium',
-      status: 'pending',
-      meetingId,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    await taskRef.set(crmTask);
-
-    // Update action item in meeting_intelligence
-    const updatedActionItems = [...intel.actionItems];
-    updatedActionItems[itemIndex] = {
-      ...item,
-      status: 'converted_to_crm_task',
-      crmTaskId: taskRef.id,
-    };
-
-    await docRef.update({
-      actionItems: updatedActionItems,
-      updatedAt: now,
+      const next = [...items];
+      next[index] = { ...item, conversionClaimedAt: new Date().toISOString() };
+      tx.update(docRef, { actionItems: next });
+      return { kind: 'claimed', item, organizationId: parsed.data.organizationId };
     });
-
-    await logMeetingActivity({
-      workspaceId,
-      meetingId,
-      actorType: 'user',
-      type: 'meeting_created',
-      description: `Converted action item "${item.text.slice(0, 40)}..." into CRM Task`,
-    });
-
-    return { success: true, crmTaskId: taskRef.id };
   } catch (err) {
     return { success: false, error: getErrorMessage(err) };
   }
+
+  if (claim.kind === 'done') return { success: true, crmTaskId: claim.crmTaskId };
+
+  const { item } = claim;
+  const now = new Date().toISOString();
+  const result = await createTaskCore(
+    {
+      workspaceId,
+      organizationId: claim.organizationId ?? meeting.organizationId ?? ctx.profile.organizationId,
+      title: item.text,
+      description: `Action item from meeting ${meeting.title ?? meetingId}. Assignee: ${item.assigneeName || 'Unassigned'}`,
+      priority: item.priority || 'medium',
+      status: 'todo',
+      category: 'follow_up',
+      assignedTo: item.assigneeUserId || ctx.uid,
+      dueDate: item.dueDate || now,
+      reminders: [],
+      reminderSent: false,
+      source: 'system',
+      relatedEntityType: 'Meeting',
+      relatedEntityId: meetingId,
+      relatedParentId: actionItemId,
+    },
+    { kind: 'user', uid: ctx.uid }
+  );
+
+  // Record the outcome on the item (release the claim on failure so the user can retry).
+  await adminDb.runTransaction(async (tx) => {
+    const snap = await tx.get(docRef);
+    const parsed = IntelligenceActionItemsSchema.safeParse(snap.data());
+    if (!parsed.success) return;
+    const next = parsed.data.actionItems.map(i => {
+      if (i.id !== actionItemId) return i;
+      const { conversionClaimedAt: _released, ...rest } = i;
+      return result.success && result.id
+        ? { ...rest, status: 'converted_to_crm_task' as const, crmTaskId: result.id }
+        : rest;
+    });
+    tx.update(docRef, { actionItems: next, updatedAt: now });
+  });
+
+  if (!result.success || !result.id) {
+    return { success: false, error: result.error || 'Could not create the task. Try again.' };
+  }
+
+  await logMeetingActivity({
+    workspaceId,
+    meetingId,
+    actorType: 'user',
+    actorId: ctx.uid,
+    type: 'action_item_converted',
+    description: `Converted action item "${item.text.slice(0, 40)}..." into CRM Task`,
+  });
+
+  return { success: true, crmTaskId: result.id };
 }
 
 /**
@@ -268,8 +329,7 @@ export async function generateMeetingPrepBriefAction(
   meetingId: string,
   workspaceId: string
 ): Promise<{ success: boolean; brief?: MeetingPrepBrief; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireWorkspace(workspaceId);
+  await requireMeetingAccess(workspaceId, meetingId, 'meetings_view');
 
   try {
     const meetingDoc = await adminDb.collection('meetings').doc(meetingId).get();
