@@ -13,6 +13,13 @@
  *   `retryable` (timeouts, provider errors, in-flight duplicates), `authority` (never retried),
  *   `invalid` (input/output contract violations, never retried).
  *
+ * PINNED DEFINITIONS (review R8, Rules 12/14): a caller may pass the definition it already resolved,
+ * but when the registry holds that id the pin must be the same object or govern identically (same
+ * version, fingerprint, policies, execution limits and scoping). Otherwise the call is refused with
+ * CAPABILITY_VERSION_MISMATCH and nothing runs, so a stale or edited copy can never weaken the
+ * reviewed definition. An id the registry doesn't hold may be pinned: it impersonates nothing, and
+ * every gateway check still runs against it (callers with in-process handlers gain no authority).
+ *
  * CAUTION: never add a bypass flag here. Tests needing a fake gateway inject `deps`.
  *
  * Tests: src/platform/__tests__/gates/invoke-governed.test.ts
@@ -20,6 +27,8 @@
 
 import type { AgentPrincipal, AnyCapabilityDefinition } from '../contracts/capability-definition';
 import { getCapability } from '../registry/capability-registry';
+import { sha256Hex } from '../contracts/canonical-json';
+import { computeToolFingerprint } from '../../mcp/security/tool-fingerprint-types';
 import { executeCapability, type ExecuteCapabilityDeps } from './execute-capability';
 import type { GatewayExecutionOutcome, InvocationSurface } from './invocation';
 
@@ -57,10 +66,45 @@ export function classifyRefusal(code: string, retryable: boolean | undefined): R
   return 'retryable';
 }
 
+/** Everything the gateway decides with: identity, fingerprint (schemas, description, permissions, risk) and policy. */
+export function governanceDigest(def: AnyCapabilityDefinition): string {
+  const fingerprint = computeToolFingerprint(def, { organizationId: 'digest', workspaceId: 'digest' }, 'digest', '1970-01-01T00:00:00.000Z').compositeHash;
+  return sha256Hex({
+    fingerprint,
+    version: def.version,
+    domain: def.domain,
+    operation: def.operation,
+    workspaceScoped: def.workspaceScoped,
+    tenantScoped: def.tenantScoped,
+    policies: def.policies,
+    execution: def.execution,
+  });
+}
+
 export async function invokeGoverned<TOutput = unknown>(
   invocation: GovernedInvocation,
   deps?: ExecuteCapabilityDeps
 ): Promise<GatewayExecutionOutcome<TOutput>> {
+  const pinned = invocation.capability;
+  if (pinned && pinned.id === invocation.capabilityId) {
+    const registered = (deps?.registryLookup ?? getCapability)(pinned.id);
+    if (registered && registered !== pinned && governanceDigest(registered) !== governanceDigest(pinned)) {
+      return {
+        success: false,
+        error: {
+          code: 'CAPABILITY_VERSION_MISMATCH',
+          message: `The definition supplied for '${pinned.id}' differs from the registered one. Reload it from the registry.`,
+          stateChanged: 'no',
+          retryable: false,
+          httpStatus: 409,
+          details: { registeredVersion: registered.version, pinnedVersion: pinned.version },
+        },
+        executionId: `refused_${invocation.correlationId}`,
+        correlationId: invocation.correlationId,
+        durationMs: 0,
+      };
+    }
+  }
   return executeCapability<TOutput>(
     {
       capabilityId: invocation.capabilityId,

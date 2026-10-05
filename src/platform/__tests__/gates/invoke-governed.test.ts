@@ -50,4 +50,36 @@ describe('invokeGoverned', () => {
     const res = await run({ capabilityId: 'test.other' });
     expect(!res.success && res.error.code).toBe('CAPABILITY_NOT_REGISTERED');
   });
+
+  describe('pinned definition must match the registered one (review R8, Rules 12/14)', () => {
+    const registered = (def: AnyCapabilityDefinition | undefined) => ({ ...deps, registryLookup: (id: string) => (id === cap.id ? def : undefined) });
+
+    it('runs when the pin is the registered object', async () => {
+      calls = 0;
+      expect((await run({}, registered(cap))).success).toBe(true);
+      expect(calls).toBe(1);
+    });
+
+    it('runs when the pin is an equivalent copy (same version and fingerprint)', async () => {
+      calls = 0;
+      expect((await run({}, registered({ ...cap }))).success).toBe(true);
+      expect(calls).toBe(1);
+    });
+
+    it('refuses a pin whose governed fields differ from the registered definition', async () => {
+      calls = 0;
+      const reviewed: AnyCapabilityDefinition = { ...cap, permissions: ['rbac:operations.tasks.edit'], risk: { ...cap.risk, level: 'L2_STATE_MUTATION' } };
+      const res = await run({}, registered(reviewed));
+      expect(res.success).toBe(false);
+      expect(!res.success && res.error.code).toBe('CAPABILITY_VERSION_MISMATCH');
+      expect(calls).toBe(0);
+    });
+
+    it('refuses a pin with a different version than the registered definition', async () => {
+      calls = 0;
+      const res = await run({}, registered({ ...cap, version: '2.0.0' }));
+      expect(!res.success && res.error.code).toBe('CAPABILITY_VERSION_MISMATCH');
+      expect(calls).toBe(0);
+    });
+  });
 });
