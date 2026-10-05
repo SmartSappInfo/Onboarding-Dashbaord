@@ -28,9 +28,10 @@ describe('Phase 3 Milestone 1: Agent Identity, Persona Profiles & Ephemeral Sess
   });
 
   describe('Agent Persona Registry (SSOT - Rules 1, 11, 12)', () => {
-    it('pre-registers all 6 canonical built-in personas with valid SemVer and budgets', () => {
+    it('pre-registers all canonical built-in personas with valid SemVer and budgets', () => {
       const personas = globalAgentPersonaRegistry.listPersonas();
-      expect(personas.length).toBe(6);
+      // 6 original Phase 3 personas + 5 specialized Phase 9 CRM personas
+      expect(personas.length).toBe(11);
 
       const personaIds = personas.map((p) => p.id);
       expect(personaIds).toContain('crm_researcher');
@@ -66,7 +67,7 @@ describe('Phase 3 Milestone 1: Agent Identity, Persona Profiles & Ephemeral Sess
 
     it('creates an isolated registry without polluting the global instance', () => {
       const isolated = createAgentPersonaRegistry();
-      expect(isolated.listPersonas()).toHaveLength(6);
+      expect(isolated.listPersonas()).toHaveLength(11);
       expect(isolated.hasPersona('crm_researcher')).toBe(true);
     });
 
