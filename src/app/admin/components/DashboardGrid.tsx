@@ -14,17 +14,6 @@ import {
 } from '@dnd-kit/sortable';
 import { doc, setDoc } from 'firebase/firestore';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { LatestSurveys } from "@/components/dashboard/LatestSurveys";
-import { UpcomingMeetings } from "@/components/dashboard/UpcomingMeetings";
-import { PipelinePieChart } from "@/components/dashboard/PipelinePieChart";
-import { UserAssignments } from "@/components/dashboard/UserAssignments";
-import { MonthlySchoolsChart } from "@/components/dashboard/MonthlySchoolsChart";
-import { ModuleRadarChart } from "@/components/dashboard/ModuleRadarChart";
-import { RecentActivity } from "@/components/dashboard/RecentActivity";
-import { ZoneDistribution } from "@/components/dashboard/ZoneDistribution";
-import { MessagingWidget } from "@/components/dashboard/MessagingWidget";
-import { TaskWidget } from "@/components/dashboard/TaskWidget";
-import { ExecutiveIntelligenceWidget } from "@/components/dashboard/ExecutiveIntelligenceWidget";
 import { DraggableCard } from './DraggableCard';
 import type { DashboardLayout, Pipeline } from '@/lib/types';
 import { DashboardSkeleton } from './DashboardSkeleton';
@@ -34,21 +23,6 @@ import { useTenant } from '@/context/TenantContext';
 import { usePermissions } from '@/hooks/use-permissions';
 import { filterWidgetsByFeatures, isWidgetPermitted, DEFAULT_WIDGET_IDS, getAllWidgets } from '@/lib/widget-registry';
 import WidgetSelector from './WidgetSelector';
-
-
-const _staticComponentMap: Record<string, React.FC<any>> = {
-  executiveIntelligence: ExecutiveIntelligenceWidget,
-  taskWidget: TaskWidget,
-  pipelinePieChart: PipelinePieChart,
-  latestSurveys: LatestSurveys,
-  upcomingMeetings: UpcomingMeetings,
-  userAssignments: UserAssignments,
-  monthlySchoolsChart: MonthlySchoolsChart,
-  moduleRadarChart: ModuleRadarChart,
-  recentActivity: RecentActivity,
-  zoneDistribution: ZoneDistribution,
-  messagingWidget: MessagingWidget,
-};
 
 export default function DashboardGrid({ 
     widgets,

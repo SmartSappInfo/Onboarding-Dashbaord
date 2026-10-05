@@ -14,10 +14,6 @@ import {
     Clock, 
     AlertTriangle, 
     ShieldAlert, 
-    Phone, 
-    MapPin, 
-    FileText, 
-    GraduationCap,
     MoreVertical,
     Trash2,
     Calendar,
@@ -101,20 +97,11 @@ import type { TaskCreateInput, TaskCreateOutput } from '@/platform/domains/tasks
 import type { TaskCompleteInput, TaskCompleteOutput } from '@/platform/domains/tasks_productivity/contracts/task-complete.contract';
 import type { TaskUpdateInput, TaskUpdateOutput } from '@/platform/domains/tasks_productivity/contracts/task-update.contract';
 
-const PRIORITY_CONFIG: Record<TaskPriority, { label: string, color: string, icon: any }> = {
+const PRIORITY_CONFIG: Record<TaskPriority, { label: string, color: string, icon: React.ComponentType<{ className?: string }> }> = {
     urgent: { label: 'Urgent', color: 'text-rose-600 bg-rose-500/10 border-rose-200/20', icon: ShieldAlert },
     high: { label: 'High', color: 'text-orange-600 bg-orange-500/10 border-orange-200/20', icon: AlertTriangle },
     medium: { label: 'Medium', color: 'text-blue-600 bg-blue-500/10 border-blue-200/20', icon: Clock },
     low: { label: 'Low', color: 'text-slate-500 bg-muted/100/10 border-slate-200/20', icon: Circle }
-};
-
-const _CATEGORY_MAP: Record<TaskCategory, { label: string, icon: any, color: string }> = {
-    call: { label: 'Phone Call', icon: Phone, color: 'text-orange-500 bg-orange-500/10' },
-    visit: { label: 'Site Visit', icon: MapPin, color: 'text-blue-500 bg-blue-500/10' },
-    document: { label: 'Documentation', icon: FileText, color: 'text-emerald-500 bg-emerald-500/10' },
-    training: { label: 'Training', icon: GraduationCap, color: 'text-purple-500 bg-purple-500/10' },
-    follow_up: { label: 'Follow Up', icon: Clock, color: 'text-indigo-500 bg-indigo-500/10' },
-    general: { label: 'General Task', icon: CheckCircle2, color: 'text-slate-500 bg-muted/100/10' }
 };
 
 const STATUS_LABELS: Record<TaskStatus, string> = {
@@ -692,10 +679,11 @@ export default function TasksClient() {
             assignedTo: currentUser?.uid || '',
             dueDate: new Date().toISOString(),
             createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
             reminderSent: false,
             reminders: [],
             source: 'manual'
-        } as any);
+        });
         setEditorOpen(true);
     };
 
@@ -972,7 +960,7 @@ export default function TasksClient() {
                         )}
  
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="h-10 w-[140px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
+                            <SelectTrigger className="h-11 min-h-[44px] w-[140px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
                                 <SelectValue placeholder="All Statuses" />
                             </SelectTrigger>
                             <SelectContent className="rounded-xl border-border bg-card text-foreground">
@@ -986,7 +974,7 @@ export default function TasksClient() {
                         </Select>
  
                         <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                            <SelectTrigger className="h-10 w-[140px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
+                            <SelectTrigger className="h-11 min-h-[44px] w-[140px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
                                 <SelectValue placeholder="All Priorities" />
                             </SelectTrigger>
                             <SelectContent className="rounded-xl border-border bg-card text-foreground">
@@ -999,8 +987,8 @@ export default function TasksClient() {
                         </Select>
  
                         {/* Date Filter Select */}
-                        <Select value={dateFilterType} onValueChange={(val: any) => setDateFilterType(val)}>
-                            <SelectTrigger className="h-10 w-[140px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
+                        <Select value={dateFilterType} onValueChange={(val: 'all' | 'range' | 'month' | 'week' | 'day') => setDateFilterType(val)}>
+                            <SelectTrigger className="h-11 min-h-[44px] w-[140px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
                                 <SelectValue placeholder="All Time" />
                             </SelectTrigger>
                             <SelectContent className="rounded-xl border-border bg-card text-foreground">
@@ -1018,13 +1006,13 @@ export default function TasksClient() {
                                 <DateTimePicker 
                                     value={dateRange.start || undefined} 
                                     onChange={(d) => setDateRange(prev => ({ ...prev, start: d || null }))} 
-                                    className="h-10 rounded-xl bg-background border border-border text-foreground font-semibold text-xs w-[180px]"
+                                    className="h-11 min-h-[44px] rounded-xl bg-background border border-border text-foreground font-semibold text-xs w-[180px]"
                                 />
                                 <span className="text-muted-foreground text-xs font-semibold">to</span>
                                 <DateTimePicker 
                                     value={dateRange.end || undefined} 
                                     onChange={(d) => setDateRange(prev => ({ ...prev, end: d || null }))} 
-                                    className="h-10 rounded-xl bg-background border border-border text-foreground font-semibold text-xs w-[180px]"
+                                    className="h-11 min-h-[44px] rounded-xl bg-background border border-border text-foreground font-semibold text-xs w-[180px]"
                                 />
                             </div>
                         )}
@@ -1037,17 +1025,17 @@ export default function TasksClient() {
                                     size="icon"
                                     onClick={() => navigateMonth(-1)}
                                     aria-label="Previous month"
-                                    className="h-10 w-10 rounded-xl bg-background border-border text-foreground hover:bg-muted/50 shrink-0"
+                                    className="h-11 w-11 min-h-[44px] min-w-[44px] active:scale-[0.97] rounded-xl bg-background border-border text-foreground hover:bg-muted/50 shrink-0"
                                 >
                                     <ChevronLeft className="h-4 w-4" />
                                 </Button>
                                 <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                                    <SelectTrigger className="h-10 w-[160px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
+                                    <SelectTrigger className="h-11 min-h-[44px] w-[160px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
                                         <SelectValue placeholder="Select Month" />
                                     </SelectTrigger>
                                     <SelectContent className="rounded-xl border-border bg-card text-foreground">
                                         {monthOptions.map((opt) => (
-                                            <SelectItem key={opt.value} value={opt.value}>
+                                             <SelectItem key={opt.value} value={opt.value}>
                                                 {opt.label}
                                             </SelectItem>
                                         ))}
@@ -1058,7 +1046,7 @@ export default function TasksClient() {
                                     size="icon"
                                     onClick={() => navigateMonth(1)}
                                     aria-label="Next month"
-                                    className="h-10 w-10 rounded-xl bg-background border-border text-foreground hover:bg-muted/50 shrink-0"
+                                    className="h-11 w-11 min-h-[44px] min-w-[44px] active:scale-[0.97] rounded-xl bg-background border-border text-foreground hover:bg-muted/50 shrink-0"
                                 >
                                     <ChevronRight className="h-4 w-4" />
                                 </Button>
@@ -1073,12 +1061,12 @@ export default function TasksClient() {
                                     size="icon"
                                     onClick={() => navigateWeek(-1)}
                                     aria-label="Previous week"
-                                    className="h-10 w-10 rounded-xl bg-background border-border text-foreground hover:bg-muted/50 shrink-0"
+                                    className="h-11 w-11 min-h-[44px] min-w-[44px] active:scale-[0.97] rounded-xl bg-background border-border text-foreground hover:bg-muted/50 shrink-0"
                                 >
                                     <ChevronLeft className="h-4 w-4" />
                                 </Button>
                                 <Select value={selectedWeek} onValueChange={setSelectedWeek}>
-                                    <SelectTrigger className="h-10 w-[240px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
+                                    <SelectTrigger className="h-11 min-h-[44px] w-[240px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
                                         <SelectValue placeholder="Select Week" />
                                     </SelectTrigger>
                                     <SelectContent className="rounded-xl border-border bg-card text-foreground">
@@ -1094,7 +1082,7 @@ export default function TasksClient() {
                                     size="icon"
                                     onClick={() => navigateWeek(1)}
                                     aria-label="Next week"
-                                    className="h-10 w-10 rounded-xl bg-background border-border text-foreground hover:bg-muted/50 shrink-0"
+                                    className="h-11 w-11 min-h-[44px] min-w-[44px] active:scale-[0.97] rounded-xl bg-background border-border text-foreground hover:bg-muted/50 shrink-0"
                                 >
                                     <ChevronRight className="h-4 w-4" />
                                 </Button>
@@ -1109,12 +1097,12 @@ export default function TasksClient() {
                                     size="icon"
                                     onClick={() => navigateDay(-1)}
                                     aria-label="Previous day"
-                                    className="h-10 w-10 rounded-xl bg-background border-border text-foreground hover:bg-muted/50 shrink-0"
+                                    className="h-11 w-11 min-h-[44px] min-w-[44px] active:scale-[0.97] rounded-xl bg-background border-border text-foreground hover:bg-muted/50 shrink-0"
                                 >
                                     <ChevronLeft className="h-4 w-4" />
                                 </Button>
-                                <Select value={selectedDayType} onValueChange={(val: any) => setSelectedDayType(val)}>
-                                    <SelectTrigger className="h-10 w-[150px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
+                                <Select value={selectedDayType} onValueChange={(val: 'today' | 'yesterday' | 'tomorrow' | 'custom') => setSelectedDayType(val)}>
+                                    <SelectTrigger className="h-11 min-h-[44px] w-[150px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
                                         <SelectValue placeholder="Select Day" />
                                     </SelectTrigger>
                                     <SelectContent className="rounded-xl border-border bg-card text-foreground">
@@ -1129,7 +1117,7 @@ export default function TasksClient() {
                                     <DateTimePicker
                                         value={selectedCustomDay || undefined}
                                         onChange={(d) => setSelectedCustomDay(d || null)}
-                                        className="h-10 rounded-xl bg-background border border-border text-foreground font-semibold text-xs w-[180px]"
+                                        className="h-11 min-h-[44px] rounded-xl bg-background border border-border text-foreground font-semibold text-xs w-[180px]"
                                     />
                                 )}
                                 <Button
@@ -1137,7 +1125,7 @@ export default function TasksClient() {
                                     size="icon"
                                     onClick={() => navigateDay(1)}
                                     aria-label="Next day"
-                                    className="h-10 w-10 rounded-xl bg-background border-border text-foreground hover:bg-muted/50 shrink-0"
+                                    className="h-11 w-11 min-h-[44px] min-w-[44px] active:scale-[0.97] rounded-xl bg-background border-border text-foreground hover:bg-muted/50 shrink-0"
                                 >
                                     <ChevronRight className="h-4 w-4" />
                                 </Button>
@@ -1150,7 +1138,7 @@ export default function TasksClient() {
                                 placeholder="Search tasks..." 
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
-                                className="h-10 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground/45 focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary font-semibold pl-10 text-xs"
+                                className="h-11 min-h-[44px] rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground/45 focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary font-semibold pl-10 text-xs"
                             />
                         </div>
 
@@ -1167,7 +1155,7 @@ export default function TasksClient() {
                                     });
                                 }}
                                 className={cn(
-                                    "h-10 rounded-xl px-4 gap-2 font-bold text-xs transition-all border-none ring-1 shrink-0",
+                                    "h-11 min-h-[44px] rounded-xl px-4 gap-2 font-bold text-xs transition-all border-none ring-1 shrink-0 active:scale-[0.97]",
                                     isSimpleView 
                                         ? "bg-blue-500/10 text-blue-600 ring-blue-500/30 hover:bg-blue-500/15" 
                                         : "bg-background text-foreground ring-border hover:bg-muted/50"
@@ -1181,7 +1169,7 @@ export default function TasksClient() {
                         {canCreate && (
                             <Button 
                                 onClick={() => setEditorOpen(true)} 
-                                className="rounded-xl font-bold h-10 px-6 shadow-md bg-blue-600 text-white hover:bg-blue-700 active:scale-95 text-xs"
+                                className="rounded-xl font-bold h-11 min-h-[44px] px-6 shadow-md bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.97] text-xs"
                             >
                                 + Add Task
                             </Button>
@@ -1746,6 +1734,8 @@ export default function TasksClient() {
                             onTaskUpdate={handleCalendarTaskUpdate}
                             onDateClick={(date) => {
                                 setEditingTask({
+                                    id: '',
+                                    workspaceId: activeWorkspaceId,
                                     title: '',
                                     description: '',
                                     priority: 'medium',
@@ -1753,8 +1743,13 @@ export default function TasksClient() {
                                     status: 'todo',
                                     assignedTo: currentUser?.uid ? [currentUser.uid] : [],
                                     startDate: date.toISOString(),
-                                    dueDate: new Date(date.getTime() + 60 * 60 * 1000).toISOString()
-                                } as any);
+                                    dueDate: new Date(date.getTime() + 60 * 60 * 1000).toISOString(),
+                                    createdAt: new Date().toISOString(),
+                                    updatedAt: new Date().toISOString(),
+                                    reminders: [],
+                                    reminderSent: false,
+                                    source: 'manual'
+                                });
                                 setEditorOpen(true);
                             }}
                         />
@@ -1889,7 +1884,7 @@ export default function TasksClient() {
     );
 }
 
-function StatCard({ label, value, icon: Icon, color, bg }: { label: string, value: string | number, sub?: string, icon: any, color: string, bg: string }) {
+function StatCard({ label, value, icon: Icon, color, bg }: { label: string, value: string | number, sub?: string, icon: React.ComponentType<{ className?: string }>, color: string, bg: string }) {
     return (
         <div className="p-5 rounded-2xl border-none ring-1 ring-border shadow-sm bg-card hover:ring-primary/20 hover:shadow-md transition-all duration-200 flex items-center gap-3 group">
             <div className={cn("p-2.5 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105", bg, color)}>
