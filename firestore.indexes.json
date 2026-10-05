@@ -2475,6 +2475,34 @@
       ]
     },
     {
+      "collectionGroup": "meeting_transcripts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "meeting_transcription_usage",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "day",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "minutes",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "meeting_intelligence",
       "queryScope": "COLLECTION",
       "fields": [

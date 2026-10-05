@@ -24,6 +24,17 @@ const indexes = (
 ).indexes;
 
 const required: Array<{ query: string; collectionGroup: string; fields: IndexField[] }> = [
+  // Phase 11 M1 · T9: Backoffice transcription queue + usage.
+  {
+    query: 'backoffice meeting ops: transcription queue',
+    collectionGroup: 'meeting_transcripts',
+    fields: [{ fieldPath: 'status', order: 'ASCENDING' }, { fieldPath: 'updatedAt', order: 'DESCENDING' }],
+  },
+  {
+    query: 'backoffice meeting ops: usage today',
+    collectionGroup: 'meeting_transcription_usage',
+    fields: [{ fieldPath: 'day', order: 'ASCENDING' }, { fieldPath: 'minutes', order: 'DESCENDING' }],
+  },
   // Phase 11 M1 · T6: retention sweep picks the least recently processed opted-in workspaces.
   {
     query: 'retention-service runRetentionSweep',
