@@ -12,13 +12,17 @@ import {
   GitMerge,
   ToggleRight,
   ShieldCheck,
-  Code
+  Code,
+  Lock,
+  Eye,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { getWorkspaceDiagnostics } from '@/lib/backoffice/backoffice-workspace-actions';
+import { getWorkspaceDiagnostics, updateWorkspaceVisibilityScopes } from '@/lib/backoffice/backoffice-workspace-actions';
 import { useBackofficeToken } from '@/hooks/use-backoffice-token';
+import { useToast } from '@/hooks/use-toast';
 
 type WorkspaceDiagnostics = NonNullable<Awaited<ReturnType<typeof getWorkspaceDiagnostics>>['data']>;
 
@@ -60,8 +64,52 @@ function StatPill({
 
 export default function WorkspaceDetailClient({ workspaceId }: { workspaceId: string }) {
   const getToken = useBackofficeToken();
+  const { toast } = useToast();
   const [diag, setDiag] = React.useState<WorkspaceDiagnostics | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [isUpdatingScope, setIsUpdatingScope] = React.useState<string | null>(null);
+
+  const handleScopeToggle = React.useCallback(
+    async (
+      key: 'restrictVisibilityToAssigned' | 'restrictDealsVisibilityToAssigned' | 'restrictTasksVisibilityToAssigned',
+      currentVal: boolean
+    ) => {
+      setIsUpdatingScope(key);
+      try {
+        const idToken = await getToken();
+        const newVal = !currentVal;
+        const res = await updateWorkspaceVisibilityScopes(workspaceId, { [key]: newVal }, idToken);
+        if (res.success) {
+          setDiag((prev) => (prev ? { ...prev, [key]: newVal } : null));
+          toast({
+            title: 'Visibility Scope Updated',
+            description: `Workspace visibility policy for ${
+              key === 'restrictVisibilityToAssigned'
+                ? 'Entities & Leads'
+                : key === 'restrictDealsVisibilityToAssigned'
+                ? 'Deals & Opportunities'
+                : 'Tasks'
+            } has been set to ${newVal ? 'Assigned Only (Default)' : 'All Items'}.`,
+          });
+        } else {
+          toast({
+            variant: 'destructive',
+            title: 'Scope Update Failed',
+            description: res.error ?? 'Could not update visibility scope.',
+          });
+        }
+      } catch (err: unknown) {
+        toast({
+          variant: 'destructive',
+          title: 'Scope Update Error',
+          description: err instanceof Error ? err.message : 'An unexpected error occurred.',
+        });
+      } finally {
+        setIsUpdatingScope(null);
+      }
+    },
+    [getToken, workspaceId, toast]
+  );
 
   React.useEffect(() => {
     async function load() {
@@ -177,6 +225,12 @@ export default function WorkspaceDetailClient({ workspaceId }: { workspaceId: st
             className="rounded-lg text-xs font-semibold data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-400 cursor-pointer flex-1 sm:flex-none"
           >
             Capabilities
+          </TabsTrigger>
+          <TabsTrigger
+            value="governance"
+            className="rounded-lg text-xs font-semibold data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-400 cursor-pointer flex-1 sm:flex-none"
+          >
+            Governance
           </TabsTrigger>
         </TabsList>
 
@@ -295,6 +349,136 @@ export default function WorkspaceDetailClient({ workspaceId }: { workspaceId: st
                    </div>
                 )}
             </div>
+        </TabsContent>
+
+        {/* Governance Tab */}
+        <TabsContent value="governance" className="space-y-4">
+          <div className="rounded-2xl border border-border bg-muted/50 p-6">
+            <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-emerald-400" />
+              Workspace Tri-Domain Visibility Scoping
+            </h3>
+            <p className="text-xs text-muted-foreground mb-6">
+              Configure baseline visibility boundaries for non-admin teammates across Entities, Deals, and Tasks.
+              Admins and Backoffice operators always retain unrestricted access.
+            </p>
+
+            <div className="space-y-4">
+              {/* Entities Scope Card */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-accent/30 border border-border/30">
+                <div className="space-y-1 max-w-xl">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-foreground">Entity & Lead Visibility</span>
+                    <Badge
+                      variant="outline"
+                      className={`text-[9px] uppercase font-bold px-2 h-5 ${
+                        diag.restrictVisibilityToAssigned
+                          ? 'text-amber-400 border-amber-500/20 bg-amber-500/10'
+                          : 'text-emerald-400 border-emerald-500/20 bg-emerald-500/10'
+                      }`}
+                    >
+                      {diag.restrictVisibilityToAssigned ? 'Assigned Only (Default)' : 'All Entities'}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    When restricted, standard users can only view leads/contacts assigned to them or created by them.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isUpdatingScope === 'restrictVisibilityToAssigned'}
+                  onClick={() => handleScopeToggle('restrictVisibilityToAssigned', diag.restrictVisibilityToAssigned)}
+                  className="min-h-[44px] px-4 rounded-xl border-border/60 hover:bg-accent active:scale-[0.97] transition-all text-xs font-medium cursor-pointer shrink-0"
+                >
+                  {isUpdatingScope === 'restrictVisibilityToAssigned' ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin text-muted-foreground" />
+                  ) : diag.restrictVisibilityToAssigned ? (
+                    <Eye className="h-4 w-4 mr-2 text-muted-foreground" />
+                  ) : (
+                    <Lock className="h-4 w-4 mr-2 text-amber-400" />
+                  )}
+                  {diag.restrictVisibilityToAssigned ? 'Allow "All Entities"' : 'Restrict to "Assigned Only"'}
+                </Button>
+              </div>
+
+              {/* Deals Scope Card */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-accent/30 border border-border/30">
+                <div className="space-y-1 max-w-xl">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-foreground">Deals & Opportunities Visibility</span>
+                    <Badge
+                      variant="outline"
+                      className={`text-[9px] uppercase font-bold px-2 h-5 ${
+                        diag.restrictDealsVisibilityToAssigned
+                          ? 'text-amber-400 border-amber-500/20 bg-amber-500/10'
+                          : 'text-emerald-400 border-emerald-500/20 bg-emerald-500/10'
+                      }`}
+                    >
+                      {diag.restrictDealsVisibilityToAssigned ? 'Assigned Only (Default)' : 'All Deals'}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    When restricted, standard users can only view pipeline deals where they are designated as assignee or creator.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isUpdatingScope === 'restrictDealsVisibilityToAssigned'}
+                  onClick={() => handleScopeToggle('restrictDealsVisibilityToAssigned', diag.restrictDealsVisibilityToAssigned)}
+                  className="min-h-[44px] px-4 rounded-xl border-border/60 hover:bg-accent active:scale-[0.97] transition-all text-xs font-medium cursor-pointer shrink-0"
+                >
+                  {isUpdatingScope === 'restrictDealsVisibilityToAssigned' ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin text-muted-foreground" />
+                  ) : diag.restrictDealsVisibilityToAssigned ? (
+                    <Eye className="h-4 w-4 mr-2 text-muted-foreground" />
+                  ) : (
+                    <Lock className="h-4 w-4 mr-2 text-amber-400" />
+                  )}
+                  {diag.restrictDealsVisibilityToAssigned ? 'Allow "All Deals"' : 'Restrict to "Assigned Only"'}
+                </Button>
+              </div>
+
+              {/* Tasks Scope Card */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-accent/30 border border-border/30">
+                <div className="space-y-1 max-w-xl">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-foreground">Tasks Visibility</span>
+                    <Badge
+                      variant="outline"
+                      className={`text-[9px] uppercase font-bold px-2 h-5 ${
+                        diag.restrictTasksVisibilityToAssigned
+                          ? 'text-amber-400 border-amber-500/20 bg-amber-500/10'
+                          : 'text-emerald-400 border-emerald-500/20 bg-emerald-500/10'
+                      }`}
+                    >
+                      {diag.restrictTasksVisibilityToAssigned ? 'Assigned Only (Default)' : 'All Tasks'}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    When restricted, standard users can only view workspace tasks assigned to their account or created by them.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isUpdatingScope === 'restrictTasksVisibilityToAssigned'}
+                  onClick={() => handleScopeToggle('restrictTasksVisibilityToAssigned', diag.restrictTasksVisibilityToAssigned)}
+                  className="min-h-[44px] px-4 rounded-xl border-border/60 hover:bg-accent active:scale-[0.97] transition-all text-xs font-medium cursor-pointer shrink-0"
+                >
+                  {isUpdatingScope === 'restrictTasksVisibilityToAssigned' ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin text-muted-foreground" />
+                  ) : diag.restrictTasksVisibilityToAssigned ? (
+                    <Eye className="h-4 w-4 mr-2 text-muted-foreground" />
+                  ) : (
+                    <Lock className="h-4 w-4 mr-2 text-amber-400" />
+                  )}
+                  {diag.restrictTasksVisibilityToAssigned ? 'Allow "All Tasks"' : 'Restrict to "Assigned Only"'}
+                </Button>
+              </div>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

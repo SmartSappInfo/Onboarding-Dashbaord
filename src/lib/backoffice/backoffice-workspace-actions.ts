@@ -85,6 +85,9 @@ export async function getWorkspaceDiagnostics(workspaceId: string, idToken: stri
     pipelineCount: number;
     featureOverrides: Record<string, boolean>;
     capabilities: Record<string, boolean>;
+    restrictVisibilityToAssigned: boolean;
+    restrictDealsVisibilityToAssigned: boolean;
+    restrictTasksVisibilityToAssigned: boolean;
     createdAt: string;
   };
   error?: string;
@@ -122,11 +125,60 @@ export async function getWorkspaceDiagnostics(workspaceId: string, idToken: stri
         pipelineCount: pipelinesSnap.size,
         featureOverrides: wsData.enabledFeatures || {},
         capabilities: (wsData.capabilities || {}) as Record<string, boolean>,
+        restrictVisibilityToAssigned: wsData.restrictVisibilityToAssigned !== false,
+        restrictDealsVisibilityToAssigned: wsData.restrictDealsVisibilityToAssigned !== false,
+        restrictTasksVisibilityToAssigned: wsData.restrictTasksVisibilityToAssigned !== false,
         createdAt: wsData.createdAt,
       },
     };
   } catch (error: unknown) {
     console.error('[BACKOFFICE_WORKSPACE] getWorkspaceDiagnostics failed:', error);
+    return { success: false, error: getErrorMessage(error) };
+  }
+}
+
+/**
+ * Updates the tri-domain visibility scopes for a workspace from the backoffice.
+ */
+export async function updateWorkspaceVisibilityScopes(
+  workspaceId: string,
+  scopes: {
+    restrictVisibilityToAssigned?: boolean;
+    restrictDealsVisibilityToAssigned?: boolean;
+    restrictTasksVisibilityToAssigned?: boolean;
+  },
+  idToken: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const actor = await authorizeBackoffice(idToken, 'workspaces', 'edit');
+
+    const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
+    if (!wsSnap.exists) {
+      return { success: false, error: 'Workspace not found' };
+    }
+
+    const before = createAuditSnapshot(wsSnap.data() as Record<string, unknown>);
+
+    const updates: Partial<Workspace> & { updatedAt: string } = {
+      ...scopes,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await adminDb.collection('workspaces').doc(workspaceId).update(updates);
+
+    const afterSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
+    const after = createAuditSnapshot(afterSnap.data() as Record<string, unknown>);
+
+    await logBackofficeAction(actor, 'workspace.update_visibility_scopes', 'workspace', workspaceId, {
+      scope: 'workspace',
+      scopeId: workspaceId,
+      before,
+      after,
+    });
+
+    return { success: true };
+  } catch (error: unknown) {
+    console.error('[BACKOFFICE_WORKSPACE] updateWorkspaceVisibilityScopes failed:', error);
     return { success: false, error: getErrorMessage(error) };
   }
 }
