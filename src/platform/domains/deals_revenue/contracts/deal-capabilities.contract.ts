@@ -34,6 +34,9 @@ interface RawDealDoc {
   status?: string;
   createdAt?: string;
   workspaceId?: string;
+  ownerId?: string;
+  assignedTo?: string;
+  createdBy?: string;
 }
 
 // ============================================================================
@@ -57,6 +60,9 @@ export const DealSummarySchema = z.object({
   value: z.number(),
   status: z.string(),
   createdAt: z.string(),
+  ownerId: z.string().optional(),
+  assignedTo: z.string().optional(),
+  createdBy: z.string().optional(),
 });
 
 export const DealSearchOutputSchema = z.object({
@@ -133,6 +139,9 @@ export const dealSearchCapability: CapabilityDefinition<
           value: typeof data?.value === 'number' ? data.value : 0,
           status: data?.status || 'open',
           createdAt: data?.createdAt || new Date().toISOString(),
+          ownerId: data?.ownerId,
+          assignedTo: data?.assignedTo,
+          createdBy: data?.createdBy,
         };
       });
 
@@ -244,6 +253,9 @@ export const dealGetCapability: CapabilityDefinition<
             value: typeof data?.value === 'number' ? data.value : 0,
             status: data?.status || 'open',
             createdAt: data?.createdAt || new Date().toISOString(),
+            ownerId: data?.ownerId,
+            assignedTo: data?.assignedTo,
+            createdBy: data?.createdBy,
           },
           executionId: context.correlationId,
           emittedEvents: [],

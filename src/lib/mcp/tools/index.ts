@@ -13,7 +13,7 @@ import {
 } from './memory-tools';
 import { contextBuildTool, contextGetDossierTool } from './context-tools';
 import { crmGetEntityTool, crmSearchEntitiesTool } from './crm-tools';
-import { dealGetTool, dealUpdateStageTool } from './deal-tools';
+import { dealGetTool, dealListTool, dealUpdateStageTool } from './deal-tools';
 import { taskListTool, taskCreateTool } from './task-tools';
 
 export const ALL_CORE_MCP_TOOLS = [
@@ -26,6 +26,7 @@ export const ALL_CORE_MCP_TOOLS = [
   crmGetEntityTool,
   crmSearchEntitiesTool,
   dealGetTool,
+  dealListTool,
   dealUpdateStageTool,
   taskListTool,
   taskCreateTool,

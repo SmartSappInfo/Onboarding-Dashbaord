@@ -19,6 +19,7 @@ export const TaskSearchInputSchema = z.object({
   workspaceId: z.string().min(1),
   entityId: z.string().optional(),
   status: z.enum(['todo', 'in_progress', 'completed', 'blocked']).optional(),
+  assignedTo: z.string().optional(),
   limit: z.number().int().min(1).max(100).default(20).optional(),
 });
 
@@ -30,6 +31,9 @@ export const TaskSummarySchema = z.object({
   priority: z.string(),
   dueDate: z.string().nullable(),
   entityId: z.string().nullable(),
+  assignedTo: z.string().optional(),
+  assignedToEmail: z.string().optional(),
+  createdBy: z.string().optional(),
 });
 
 export const TaskSearchOutputSchema = z.object({
@@ -92,6 +96,9 @@ export const taskSearchCapability: CapabilityDefinition<
       if (input.status) {
         queryRef = queryRef.where('status', '==', input.status);
       }
+      if (input.assignedTo) {
+        queryRef = queryRef.where('assignedTo', '==', input.assignedTo);
+      }
 
       const limit = Math.min(Math.max(1, input.limit ?? 20), 100);
       const snapshot = await queryRef.limit(limit).get();
@@ -106,6 +113,9 @@ export const taskSearchCapability: CapabilityDefinition<
           priority: typeof data?.priority === 'string' ? data.priority : 'medium',
           dueDate: typeof data?.dueDate === 'string' ? data.dueDate : null,
           entityId: typeof data?.entityId === 'string' ? data.entityId : null,
+          assignedTo: typeof data?.assignedTo === 'string' ? data.assignedTo : undefined,
+          assignedToEmail: typeof data?.assignedToEmail === 'string' ? data.assignedToEmail : undefined,
+          createdBy: typeof data?.createdBy === 'string' ? data.createdBy : undefined,
         };
       });
 

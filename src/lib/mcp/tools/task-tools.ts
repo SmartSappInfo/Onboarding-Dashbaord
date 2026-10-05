@@ -15,6 +15,9 @@
 
 import { z } from 'zod';
 import { McpToolDefinition } from '../types';
+import type { UserProfile } from '@/lib/types';
+import { isUserWorkspaceAdmin } from '@/lib/workspace-admin-utils';
+import { adminDb } from '@/lib/firebase-admin';
 import { registerCapability } from '@/platform/capabilities/registry/capability-registry';
 import {
   taskCreateCapability,
@@ -44,6 +47,8 @@ const listTasksOutputSchema = z.object({
       priority: z.string(),
       dueDate: z.string().nullable(),
       entityId: z.string().nullable(),
+      assignedTo: z.string().optional(),
+      createdBy: z.string().optional(),
     })
   ),
 });
@@ -62,6 +67,36 @@ export const taskListTool: McpToolDefinition<
   responseSchema: listTasksOutputSchema,
   handler: async (params, context) => {
     const callerUserId = context.callerType === 'agent' ? `system-${context.callerId}` : context.callerId;
+
+    // Fetch workspace to determine visibility restrictions (fail-closed default)
+    let isTasksRestricted = true;
+    try {
+      const wsSnap = await adminDb.collection('workspaces').doc(context.workspaceId).get();
+      if (wsSnap.exists) {
+        isTasksRestricted = wsSnap.data()?.restrictTasksVisibilityToAssigned !== false;
+      }
+    } catch {
+      // In offline or testing mode without Firestore, keep fail-closed default
+    }
+
+    let isCallerAdmin = false;
+    if (context.callerType === 'user') {
+      try {
+        const userSnap = await adminDb.collection('users').doc(context.callerId).get();
+        if (userSnap.exists) {
+          const userData = userSnap.data() as UserProfile | undefined;
+          isCallerAdmin = isUserWorkspaceAdmin(userData || null, context.workspaceId);
+        }
+      } catch {
+        // Fallback
+      }
+    } else {
+      // Agents are system/service principals
+      isCallerAdmin = true;
+    }
+
+    const enforceCallerFilter = !isCallerAdmin && isTasksRestricted;
+
     const result = await taskSearchCapability.handler(
       {
         workspaceId: context.workspaceId,
@@ -88,7 +123,17 @@ export const taskListTool: McpToolDefinition<
       throw new Error(result.error.message || 'Failed to list tasks via MCP.');
     }
 
-    return result.data;
+    let tasks = result.data.tasks;
+    if (enforceCallerFilter) {
+      tasks = tasks.filter(
+        (t) => t.assignedTo === context.callerId || t.createdBy === context.callerId
+      );
+    }
+
+    return {
+      totalFound: tasks.length,
+      tasks,
+    };
   },
 };
 
