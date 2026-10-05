@@ -37,6 +37,11 @@ vi.mock('@/lib/firebase-admin', () => ({
   get adminDb() {
     return h.db;
   },
+  adminStorage: {
+    file: (path: string) => ({
+      getSignedUrl: async (o: { version: string; action: string; expires: number }) => [`https://signed.example/${path}?v=${o.version}&a=${o.action}&exp=${o.expires}`],
+    }),
+  },
 }));
 vi.mock('@/lib/meetings/activity-logger', () => ({ logMeetingActivity: vi.fn(async () => ({ success: true })) }));
 vi.mock('@/lib/tasks/task-core', () => ({
@@ -56,9 +61,11 @@ import {
   attachMeetingRecordingAction,
   getMeetingRecordingsAction,
   deleteMeetingRecordingAction,
+  generateRecordingPlaybackUrlAction,
 } from '@/app/actions/meeting-recording-actions';
 import { saveWorkspaceCompliancePolicyAction } from '@/app/actions/meeting-compliance-actions';
 import {
+  generateMeetingIntelligenceAction,
   convertActionItemToCrmTaskAction,
   getMeetingIntelligenceAction,
   generateMeetingPrepBriefAction,
@@ -223,5 +230,89 @@ describe('intelligence (G3, G4)', () => {
     h.taskCoreOk = true;
     const retried = await convertActionItemToCrmTaskAction('m-a', 'ws-a', 'ai-1');
     expect(retried.success).toBe(true);
+  });
+});
+
+describe('fail-closed intelligence (B1, T7)', () => {
+  const seedTranscript = (over: Record<string, unknown> = {}) => {
+    db.write('meeting_transcripts/t-1', {
+      workspaceId: 'ws-a', meetingId: 'm-a', source: 'paste', status: 'completed', version: 1, schemaVersion: 2,
+      language: 'en', speakers: [], wordCount: 4, segmentCount: 1, chunkCount: 1, durationMs: 1000, contentHash: 'h',
+      dataClass: 'personal', aiUse: 'allowed', injection: { flagged: false, patterns: [] },
+      provenance: { createdBy: 'user-1', principalKind: 'user' }, createdAt: '2026-10-01T00:00:00.000Z', updatedAt: 'x', ...over,
+    });
+    db.write('meeting_transcripts/t-1/segments/0000', { index: 0, segments: [
+      { id: 's0', speakerId: 'sp1', speakerName: 'Ama', startMs: 0, endMs: 1000, text: 'Send the proposal Friday' },
+    ] });
+  };
+
+  beforeEach(() => {
+    db.docs.delete('meeting_intelligence/m-a');
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it('with no transcript: no model call, nothing stored, a clear state for the UI', async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+    vi.stubEnv('GEMINI_API_KEY', 'k');
+    const res = await generateMeetingIntelligenceAction('m-a', 'ws-a');
+    expect(res).toMatchObject({ success: false, code: 'NO_TRANSCRIPT' });
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(db.read('meeting_intelligence/m-a')).toBeUndefined();
+  });
+
+  it('when the model is unavailable: no invented intelligence is stored', async () => {
+    seedTranscript();
+    vi.stubEnv('GEMINI_API_KEY', '');
+    vi.stubEnv('GOOGLE_API_KEY', '');
+    expect(await generateMeetingIntelligenceAction('m-a', 'ws-a')).toMatchObject({ success: false, code: 'AI_UNAVAILABLE' });
+    vi.stubEnv('GEMINI_API_KEY', 'k');
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, json: async () => ({}) })));
+    expect(await generateMeetingIntelligenceAction('m-a', 'ws-a')).toMatchObject({ success: false, code: 'AI_UNAVAILABLE' });
+    expect(db.read('meeting_intelligence/m-a')).toBeUndefined();
+  });
+
+  it('refuses when AI use is restricted', async () => {
+    seedTranscript({ aiUse: 'restricted' });
+    expect(await generateMeetingIntelligenceAction('m-a', 'ws-a')).toMatchObject({ success: false, code: 'NOT_ALLOWED' });
+  });
+
+  it('analyses the real transcript, keeps the key out of the URL and links the transcript', async () => {
+    seedTranscript();
+    vi.stubEnv('GEMINI_API_KEY', 'secret-key');
+    const fetchSpy = vi.fn(async (_url: string, init: { headers: Record<string, string>; body: string }) => {
+      expect(init.body).toContain('Send the proposal Friday');
+      return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify({ executiveSummary: 'Proposal due Friday', keyTopics: [], keyDecisions: [], actionItems: [], buyingSignals: [], objections: [], dealRisks: [], sentiment: { category: 'neutral', score: 0, explanation: '' }, recommendedFollowUp: '' }) }] } }] }) };
+    });
+    vi.stubGlobal('fetch', fetchSpy);
+    const res = await generateMeetingIntelligenceAction('m-a', 'ws-a');
+    expect(res.success).toBe(true);
+    const [url, init] = fetchSpy.mock.calls[0] as unknown as [string, { headers: Record<string, string> }];
+    expect(url).not.toContain('secret-key');
+    expect(init.headers['x-goog-api-key']).toBe('secret-key');
+    expect(db.read('meeting_intelligence/m-a')).toMatchObject({ transcriptId: 't-1', workspaceId: 'ws-a' });
+  });
+});
+
+describe('recording playback (G8, T7)', () => {
+  it('signs uploaded files for 15 minutes and audits the access', async () => {
+    db.write('meeting_recordings/r-up', { workspaceId: 'ws-a', meetingId: 'm-a', mediaUrl: '', storagePath: 'workspaces/ws-a/meetings/m-a/recordings/a.mp4', durationSeconds: 1, status: 'available', createdAt: 'x', updatedAt: 'x' });
+    const res = await generateRecordingPlaybackUrlAction('r-up', 'ws-a');
+    expect(res).toMatchObject({ success: true, kind: 'signed' });
+    expect(res.playbackUrl).toContain('v=v4&a=read');
+    expect(h.audits).toHaveLength(1);
+    expect(JSON.stringify(h.audits)).not.toContain('signed.example');
+  });
+
+  it('returns safe external links as-is and refuses unsafe stored links', async () => {
+    expect(await generateRecordingPlaybackUrlAction('r-a', 'ws-a')).toMatchObject({ success: true, kind: 'external_link', playbackUrl: 'https://cdn.example.com/a.mp4' });
+    db.write('meeting_recordings/r-js', { workspaceId: 'ws-a', meetingId: 'm-a', mediaUrl: 'javascript:alert(1)', durationSeconds: 1, status: 'available', createdAt: 'x', updatedAt: 'x' });
+    expect((await generateRecordingPlaybackUrlAction('r-js', 'ws-a')).success).toBe(false);
+  });
+
+  it('does not return share tokens or store new ones', async () => {
+    const res = await attach();
+    expect(db.read(`meeting_recordings/${res.recordingId}`)).not.toHaveProperty('shareToken');
   });
 });

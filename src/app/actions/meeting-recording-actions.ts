@@ -12,15 +12,19 @@
  * CAUTION FOR FUTURE MAINTAINERS:
  * - Organization ids come from the verified session, never from the caller.
  * - New external links must pass `isSafeExternalMediaUrl` (https only). Existing docs are untouched.
- * - Playback signing is replaced by real Storage v4 signed URLs in M1 · T7.
+ * - Playback (M1 · T7, finding G8): files in the meeting's own Storage folder get a real 15-minute
+ *   V4 signed URL (and each access is audited); external links are returned as-is, labelled, and
+ *   only when they are https. The old "?token=…&expires=…" suffix signed nothing and is gone, as is
+ *   share-token generation (no consumer existed).
  * - Zero 'any' policy strictly enforced; Firestore reads are parsed (recording-schemas.ts).
  *
  * Tests: src/lib/__tests__/meetings/meeting-actions-security.test.ts
  */
 
-import { adminDb } from '@/lib/firebase-admin';
+import { randomUUID } from 'node:crypto';
+import { adminDb, adminStorage } from '@/lib/firebase-admin';
+import { defaultAuditSink } from '@/platform/capabilities/storage/audit-store';
 import type { MeetingRecording } from '@/lib/meetings/types/intelligence';
-import { generateRecordingShareToken } from '@/lib/meetings/recording-service';
 import { logMeetingActivity } from '@/lib/meetings/activity-logger';
 import { requireMeetingAccess, requireMeetingsPermission } from '@/lib/meetings/meeting-auth';
 import {
@@ -85,7 +89,6 @@ export async function attachMeetingRecordingAction(payload: {
       fileSizeBytes: input.fileSizeBytes || 0,
       format: input.format || 'mp4',
       status: 'available',
-      shareToken: generateRecordingShareToken(),
       createdAt: now,
       updatedAt: now,
     };
@@ -176,29 +179,58 @@ export async function deleteMeetingRecordingAction(
   }
 }
 
+/** Signed playback links live for 15 minutes (meetings PRD §96: short expiry). */
+const PLAYBACK_TTL_MS = 15 * 60 * 1000;
+
 /**
- * Generates an authorized playback URL with a 15-minute expiration token.
+ * Returns a playback link for one recording.
+ * - Uploaded file in this meeting's folder → V4 signed URL, 15 minutes, access audited.
+ * - External https link → returned as-is with `kind: 'external_link'` (we never sign or fetch it).
  */
 export async function generateRecordingPlaybackUrlAction(
   recordingId: string,
   workspaceId: string
-): Promise<{ success: boolean; playbackUrl?: string; error?: string }> {
-  await requireMeetingsPermission(workspaceId, 'meetings_view');
+): Promise<{ success: boolean; playbackUrl?: string; kind?: 'signed' | 'external_link'; expiresAt?: string; error?: string }> {
+  const ctx = await requireMeetingsPermission(workspaceId, 'meetings_view');
 
   try {
     const snap = await adminDb.collection('meeting_recordings').doc(recordingId).get();
     const parsed = snap.exists ? MeetingRecordingRecordSchema.safeParse(snap.data()) : null;
-    if (!parsed?.success || parsed.data.workspaceId !== workspaceId) {
+    if (!parsed?.success || parsed.data.workspaceId !== workspaceId || parsed.data.status === 'deleted') {
       throw new Error('Recording not found.');
     }
     const recording = parsed.data;
 
-    // Return the mediaUrl with token parameter (replaced by real signed URLs in M1 · T7).
-    const token = generateRecordingShareToken();
-    const separator = recording.mediaUrl.includes('?') ? '&' : '?';
-    const playbackUrl = `${recording.mediaUrl}${separator}token=${token}&expires=${Date.now() + 15 * 60 * 1000}`;
+    if (recording.storagePath && isRecordingPathForMeeting(recording.storagePath, workspaceId, recording.meetingId)) {
+      const nowMs = Date.now();
+      const [playbackUrl] = await adminStorage.file(recording.storagePath).getSignedUrl({
+        version: 'v4',
+        action: 'read',
+        expires: nowMs + PLAYBACK_TTL_MS,
+      });
+      // Access audit (PRD §96). The URL itself is never logged or stored (Rule 32).
+      await defaultAuditSink({
+        executionId: randomUUID(),
+        capabilityId: 'meeting.recording.playback',
+        capabilityVersion: 'legacy-action',
+        userId: ctx.uid,
+        organizationId: ctx.profile.organizationId ?? '',
+        workspaceId,
+        correlationId: randomUUID(),
+        decision: 'allowed',
+        outcome: 'succeeded',
+        durationMs: Math.max(0, Date.now() - nowMs),
+        stateChanged: 'no',
+        timestamp: new Date(nowMs).toISOString(),
+        inputHash: recordingId,
+      }).catch((auditErr: unknown) => console.error('[generateRecordingPlaybackUrlAction] audit failed:', auditErr));
+      return { success: true, playbackUrl, kind: 'signed', expiresAt: new Date(nowMs + PLAYBACK_TTL_MS).toISOString() };
+    }
 
-    return { success: true, playbackUrl };
+    if (isSafeExternalMediaUrl(recording.mediaUrl)) {
+      return { success: true, playbackUrl: recording.mediaUrl, kind: 'external_link' };
+    }
+    throw new Error('This recording link is not secure, so it cannot be played here.');
   } catch (err) {
     return { success: false, error: getErrorMessage(err) };
   }

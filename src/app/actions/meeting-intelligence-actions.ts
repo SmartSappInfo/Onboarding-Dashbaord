@@ -21,7 +21,6 @@ import { adminDb } from '@/lib/firebase-admin';
 import type {
   MeetingIntelligence,
   MeetingPrepBrief,
-  MeetingTranscript,
 } from '@/lib/meetings/types/intelligence';
 import type { MeetingParticipant } from '@/lib/meetings/types';
 import {
@@ -31,6 +30,8 @@ import {
 import { logMeetingActivity } from '@/lib/meetings/activity-logger';
 import { requireMeetingAccess } from '@/lib/meetings/meeting-auth';
 import { createTaskCore } from '@/lib/tasks/task-core';
+import { findLatestTranscriptId, readTranscriptText } from '@/lib/meetings/transcript-store';
+import { assertConsent, ConsentRequiredError } from '@/lib/meetings/consent-store';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -59,123 +60,96 @@ const IntelligenceActionItemsSchema = z.object({
   actionItems: z.array(ActionItemSchema).default([]),
 });
 
+/** Boundary schema for the Gemini REST response (Rule 4: the model reply is untrusted). */
+const GeminiResponseSchema = z.object({
+  candidates: z.array(z.object({
+    content: z.object({ parts: z.array(z.object({ text: z.string().optional() })).optional() }).optional(),
+  })).optional(),
+});
+
 const GEMINI_MODEL = 'gemini-3.6-flash';
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 /**
- * Generates or refreshes structured meeting intelligence using Gemini LLM.
+ * Generates or refreshes structured meeting intelligence from the meeting's REAL transcript.
+ *
+ * FAIL CLOSED (Phase 11 M1 · T7, finding B1): this used to invent a transcript when none existed
+ * and to invent the whole intelligence record (including fake customer quotes as "buying signals")
+ * when the model call failed, then save it as fact. Now:
+ * - no completed transcript → `code: 'NO_TRANSCRIPT'`, no model call, nothing stored;
+ * - transcript restricted for AI use, or AI-processing consent missing (when enforced) → refused;
+ * - model unavailable / bad response → a plain error, nothing stored.
+ * CAUTION: the direct REST call is replaced by the governed extraction capability in M2 (G13).
+ * The API key travels in a header, never in the URL (keeps it out of request logs).
  */
 export async function generateMeetingIntelligenceAction(
   meetingId: string,
   workspaceId: string
-): Promise<{ success: boolean; intelligence?: MeetingIntelligence; error?: string }> {
+): Promise<{ success: boolean; intelligence?: MeetingIntelligence; error?: string; code?: 'NO_TRANSCRIPT' | 'AI_UNAVAILABLE' | 'NOT_ALLOWED' }> {
   await requireMeetingAccess(workspaceId, meetingId, 'meetings_manage');
 
   try {
-    const now = new Date().toISOString();
+    // 1. The real transcript, or nothing.
+    const transcriptId = await findLatestTranscriptId(adminDb, meetingId, workspaceId);
+    if (!transcriptId) {
+      return { success: false, code: 'NO_TRANSCRIPT', error: 'Add a transcript to analyse this meeting.' };
+    }
+    const transcript = await readTranscriptText(adminDb, transcriptId, workspaceId, 20);
+    if (transcript.segments.length === 0) {
+      return { success: false, code: 'NO_TRANSCRIPT', error: 'Add a transcript to analyse this meeting.' };
+    }
 
-    // 1. Fetch meeting
+    // 2. AI-use and consent gates (PRD §97/§98, Rule 57).
+    if (transcript.header.aiUse === 'restricted') {
+      return { success: false, code: 'NOT_ALLOWED', error: 'AI analysis is off for this meeting because consent was withdrawn.' };
+    }
+    try {
+      await assertConsent(adminDb, { workspaceId, meetingId, operation: 'ai_read' });
+    } catch (consentErr) {
+      if (consentErr instanceof ConsentRequiredError) return { success: false, code: 'NOT_ALLOWED', error: consentErr.message };
+      throw consentErr;
+    }
+
+    // 3. Context: meeting title + attendee names (bounded).
     const meetingDoc = await adminDb.collection('meetings').doc(meetingId).get();
-    if (!meetingDoc.exists) {
-      throw new Error('Meeting not found.');
-    }
-    const meetingData = meetingDoc.data()!;
+    const title = typeof meetingDoc.data()?.title === 'string' ? String(meetingDoc.data()?.title) : 'SmartSapp Meeting';
+    const participantsSnap = await adminDb.collection('participants').where('meetingId', '==', meetingId).limit(200).get();
+    const attendeeNames = participantsSnap.docs
+      .map(d => {
+        const p = d.data() ?? {};
+        return typeof p.name === 'string' && p.name ? p.name : typeof p.email === 'string' ? p.email : '';
+      })
+      .filter(Boolean);
 
-    // 2. Fetch participants
-    const participantsSnap = await adminDb
-      .collection('participants')
-      .where('meetingId', '==', meetingId)
-      .get();
-    const attendeeNames = participantsSnap.docs.map(
-      d => (d.data() as MeetingParticipant).name || (d.data() as MeetingParticipant).email
-    );
+    const transcriptText = transcript.segments.map(s => `${s.speakerName}: ${s.text}`).join('\n');
+    const prompt = buildIntelligenceExtractionPrompt(title, transcriptText, attendeeNames);
 
-    // 3. Fetch transcript if available
-    let transcriptText = '';
-    const transcriptSnap = await adminDb
-      .collection('meeting_transcripts')
-      .where('meetingId', '==', meetingId)
-      .limit(1)
-      .get();
-
-    if (!transcriptSnap.empty) {
-      const transcript = transcriptSnap.docs[0].data() as MeetingTranscript;
-      transcriptText = transcript.segments?.map(s => `${s.speakerName}: ${s.text}`).join('\n') || '';
-    }
-
-    if (!transcriptText) {
-      // Fallback transcript reconstructed from meeting agenda and description
-      transcriptText = `Host: Welcome to ${meetingData.title || 'the meeting'}.\nAttendee: Thank you, glad to be here.\nHost: Our objective today is ${meetingData.description || 'to discuss project milestones and next steps'}.\nAttendee: We have reviewed the requirements and agree on the deliverables.\nHost: Let's follow up next week with the finalized timeline.`;
-    }
-
-    // 4. Construct prompt
-    const prompt = buildIntelligenceExtractionPrompt(
-      meetingData.title || 'SmartSapp Meeting',
-      transcriptText,
-      attendeeNames
-    );
-
-    // 5. Call Gemini API
+    // 4. Model call (no fabricated fallback).
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
-    let rawAiResponse = '';
-
-    if (apiKey) {
-      const res = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.2,
-            responseMimeType: 'application/json',
-          },
-        }),
-      });
-
-      if (res.ok) {
-        const json = await res.json();
-        rawAiResponse = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      }
+    if (!apiKey) {
+      return { success: false, code: 'AI_UNAVAILABLE', error: 'AI analysis is not available right now. Try again later.' };
     }
-
-    // If API key unavailable or failed, generate high-quality deterministic structured intelligence
+    const res = await fetch(GEMINI_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.2, responseMimeType: 'application/json' },
+      }),
+    });
+    const json: unknown = res.ok ? await res.json() : null;
+    const rawAiResponse = GeminiResponseSchema.safeParse(json).data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
     if (!rawAiResponse) {
-      rawAiResponse = JSON.stringify({
-        executiveSummary: `The participants met for "${meetingData.title || 'SmartSapp Meeting'}" to review objectives and synchronize on delivery timelines. Key operational decisions were reached and initial action items were assigned.`,
-        keyTopics: ['Project Alignment', 'Milestone Review', 'Next Steps'],
-        keyDecisions: ['Agreed to finalize deliverables by the end of current sprint'],
-        actionItems: [
-          {
-            text: 'Circulate finalized meeting action items to all attendees',
-            assigneeName: attendeeNames[0] || 'Host',
-            priority: 'medium',
-          },
-        ],
-        buyingSignals: [
-          {
-            topic: 'Engagement',
-            quote: 'We look forward to deploying this to our team next month.',
-            strength: 'strong',
-          },
-        ],
-        objections: [],
-        dealRisks: [],
-        sentiment: {
-          category: 'positive',
-          score: 0.85,
-          explanation: 'Cooperative and productive engagement throughout the discussion.',
-        },
-        recommendedFollowUp: 'Send a recap email with action items attached within 24 hours.',
-      });
+      return { success: false, code: 'AI_UNAVAILABLE', error: 'AI analysis is not available right now. Try again later.' };
     }
 
-    // 6. Parse structured intelligence
-    const intelligence = parseIntelligenceStructuredOutput(rawAiResponse, meetingId, workspaceId);
-
-    // 7. Persist to Firestore
+    // 5. Parse, store, log.
+    const intelligence = {
+      ...parseIntelligenceStructuredOutput(rawAiResponse, meetingId, workspaceId),
+      transcriptId,
+    };
     await adminDb.collection('meeting_intelligence').doc(meetingId).set(intelligence);
 
-    // 8. Log activity
     await logMeetingActivity({
       workspaceId,
       meetingId,
