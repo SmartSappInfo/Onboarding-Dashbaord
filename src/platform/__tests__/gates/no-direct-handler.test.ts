@@ -20,7 +20,7 @@ const ALLOWLIST: Record<string, { count: number; reason: 'gateway' | 'not-a-capa
   'platform/mcp/bridge/strangler-bridge.ts': { count: 1, reason: 'not-a-capability' },
   // Debt (M0 T3.6/T3.7): migrate when the concurrent assignment-scoping work in lib/mcp settles.
   'app/actions/sales-agent-actions.ts': { count: 5, reason: 'debt' },
-  'lib/mcp/registry.ts': { count: 3, reason: 'debt' },
+  'lib/mcp/registry.ts': { count: 2, reason: 'debt' }, // legacy (non-platform) tool handlers only; platform capabilities go through the gateway (M2 review R1)
   'lib/mcp/tools/task-tools.ts': { count: 2, reason: 'debt' },
   'lib/mcp/tools/deal-tools.ts': { count: 4, reason: 'debt' },
   'lib/mcp/tools/crm-tools.ts': { count: 2, reason: 'debt' },

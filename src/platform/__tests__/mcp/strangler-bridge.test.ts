@@ -5,7 +5,7 @@
  * Validates bi-directional synchronization between legacy McpRegistry and canonical capability registry.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { z } from 'zod/v4';
 import { createCapabilityRegistryStore } from '@/platform/capabilities/registry/capability-registry';
 import { McpRegistry } from '@/lib/mcp/registry';
@@ -14,6 +14,22 @@ import {
   isLegacyCompatibilityCapability,
 } from '@/platform/mcp/bridge/strangler-bridge';
 import type { AgentPrincipal } from '@/platform/capabilities/contracts/capability-definition';
+import { FakeFirestore } from '@/platform/__tests__/helpers/fake-firestore';
+
+// M2 review R1: platform capabilities reached through the legacy registry run through the gateway
+// as a VERIFIED user, so the acting user must exist (approved, workspace member, with the permission).
+const h = vi.hoisted(() => ({ db: undefined as unknown }));
+vi.mock('@/lib/firebase-admin', () => ({
+  get adminDb() {
+    return h.db;
+  },
+}));
+function seedUser(uid: string, organizationId: string, workspaceId: string, permissions: string[]): void {
+  const db = new FakeFirestore();
+  db.write(`users/${uid}`, { organizationId, workspaceIds: [workspaceId], isAuthorized: true, permissions });
+  h.db = db;
+}
+
 
 describe('Strangler Fig Bi-Directional Bridge & Registry Harmonization', () => {
   let platformStore: ReturnType<typeof createCapabilityRegistryStore>;
@@ -133,7 +149,8 @@ describe('Strangler Fig Bi-Directional Bridge & Registry Harmonization', () => {
     expect(legacyTool?.category).toBe('crm');
     expect(legacyTool?.riskLevel).toBe('read_only');
 
-    // 3. Execute through legacy tool handler
+    // 3. Execute through legacy tool handler (governed: the acting user is verified, M2 review R1)
+    seedUser(testPrincipal.userId, testPrincipal.organizationId, testPrincipal.workspaceId, ['contacts_view']);
     const legacyOutput = await legacyTool!.handler(
       { query: 'Enterprise Corp' },
       {

@@ -7,7 +7,7 @@
  * and in-place upgrade capabilities ({ allowOverride: true }).
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { z } from 'zod';
 import { z as z4 } from 'zod/v4';
 import {
@@ -30,6 +30,22 @@ import {
 import { ALL_CORE_MCP_TOOLS, registerAllCoreTools } from '@/lib/mcp/tools';
 import type { CapabilityDefinition } from '@/platform/capabilities/contracts/capability-definition';
 import type { McpToolDefinition, McpExecutionContext } from '@/lib/mcp/types';
+import { FakeFirestore } from '@/platform/__tests__/helpers/fake-firestore';
+
+// M2 review R1: platform capabilities reached through the legacy registry run through the gateway
+// as a VERIFIED user, so the acting user must exist (approved, workspace member, with the permission).
+const h = vi.hoisted(() => ({ db: undefined as unknown }));
+vi.mock('@/lib/firebase-admin', () => ({
+  get adminDb() {
+    return h.db;
+  },
+}));
+function seedUser(uid: string, organizationId: string, workspaceId: string, permissions: string[]): void {
+  const db = new FakeFirestore();
+  db.write(`users/${uid}`, { organizationId, workspaceIds: [workspaceId], isAuthorized: true, permissions });
+  h.db = db;
+}
+
 
 describe('Canonical Registry Unification (PR-5 / Decision D1 / Rule 69 SSOT)', () => {
   beforeEach(() => {
@@ -175,8 +191,12 @@ describe('Canonical Registry Unification (PR-5 / Decision D1 / Rule 69 SSOT)', (
         timestamp: new Date().toISOString(),
       };
 
+      seedUser('user_1', 'org_test', 'ws_test', ['portals_view']);
       const result = await mcpTool?.handler({ memberId: 'member_42' }, mockCtx);
       expect(result).toEqual({ greeting: 'Welcome member_42!' });
+
+      // An unverified caller is refused by the gateway (no invented authority).
+      await expect(mcpTool?.handler({ memberId: 'member_42' }, { ...mockCtx, callerId: 'ghost' })).rejects.toThrow();
     });
   });
 

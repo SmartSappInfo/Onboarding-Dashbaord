@@ -37,6 +37,8 @@ import type {
   CapabilityOperation,
 } from '@/platform/capabilities/contracts/capability-definition';
 import type { RiskLevel } from '@/platform/capabilities/contracts/risk-levels';
+import { invokeGoverned } from '@/platform/capabilities/execution/invoke-governed';
+import { resolveLegacyMcpPrincipal } from './legacy-mcp-principal';
 import {
   canonicalCapabilityRegistryStore,
   createCapabilityRegistryStore,
@@ -363,22 +365,23 @@ export class McpRegistry {
       requiresApproval: cap.risk.requiresHumanApproval,
       parameters: cap.inputSchema as unknown as z.ZodType<Record<string, McpPayloadValue>>,
       responseSchema: cap.outputSchema as unknown as z.ZodType<Record<string, McpPayloadValue>>,
+      // CAUTION (Phase 11 M2 review R1): platform capabilities run through the governed gateway on
+      // the `mcp` surface as the verified acting user (or as an agent for that user), never via
+      // `cap.handler()` with invented authority. API-key callers are refused (see legacy-mcp-principal).
       handler: async (params, ctx) => {
-        const capCtx: CapabilityExecutionContext = {
-          principal: {
-            actorType: ctx.callerType === 'user' ? 'user' : 'agent',
-            userId: ctx.userId || ctx.callerId,
-            organizationId: ctx.organizationId,
-            workspaceId: ctx.workspaceId,
-            agentId: ctx.callerType === 'agent' ? ctx.callerId : undefined,
-            grantedScopes: [`tools:${cap.id}`],
-            effectiveRole: 'mcp_caller',
-          },
+        const { adminDb } = await import('@/lib/firebase-admin');
+        const authority = await resolveLegacyMcpPrincipal(ctx, adminDb);
+        if ('refusal' in authority) {
+          throw new Error(`[Capability ${cap.id}] ${authority.refusal}`);
+        }
+        const result = await invokeGoverned({
+          capability: cap,
+          capabilityId: cap.id,
+          surface: 'mcp',
+          input: params,
+          principal: authority.principal,
           correlationId: ctx.requestId,
-          timestamp: ctx.timestamp,
-        };
-
-        const result = await cap.handler(params, capCtx);
+        });
         if (!result.success) {
           throw new Error(`[Capability ${cap.id}] ${result.error.message}`);
         }

@@ -61,49 +61,55 @@ export function extractHierarchicalScopes(schema: PermissionsSchema): string[] {
   return scopes;
 }
 
+/** The profile fields authority is computed from (a `UserProfile` satisfies this). */
+export interface PrincipalProfile {
+  organizationId: string;
+  permissions?: readonly string[];
+  /** Raw stored schema; normalized before use. */
+  permissionsSchema?: unknown;
+  role?: string;
+  roles?: readonly string[];
+}
+
 /**
- * Resolves the authenticated caller's session into an interactive human `AgentPrincipal`.
- *
- * @param workspaceId The target workspace to verify access against.
- * @param options Optional pre-resolved auth context.
- * @returns Fully populated, verified `AgentPrincipal`.
+ * Computes the interactive human principal for a verified user in a workspace. Single source of
+ * truth for scopes: session callers and the legacy MCP bridge (M2 review R1) both use it.
+ * CAUTION: callers must have verified identity and workspace membership first.
  */
-export async function resolvePrincipalFromSession(
-  workspaceId: string,
-  options?: ResolveSessionPrincipalOptions
-): Promise<AgentPrincipal> {
-  const auth = options?.authContext ?? (await requireWorkspace(workspaceId));
-  const profile = auth.profile;
+export function principalFromProfile(params: {
+  uid: string;
+  workspaceId: string;
+  isSystemAdmin: boolean;
+  profile: PrincipalProfile;
+}): AgentPrincipal {
+  const { profile } = params;
   const scopesSet = new Set<string>();
 
   // 1. System Admin gets wildcard scope for interactive user operations
-  if (auth.isSystemAdmin) {
+  if (params.isSystemAdmin) {
     scopesSet.add('*');
     scopesSet.add('app:system_admin');
     scopesSet.add('system_admin');
   }
 
   // 2. Collect flat permissions (e.g. 'contacts_view' -> 'app:contacts_view')
-  if (Array.isArray(profile.permissions)) {
-    for (const perm of profile.permissions) {
-      if (typeof perm === 'string' && perm.trim() !== '') {
-        scopesSet.add(perm);
-        if (!perm.startsWith('app:') && !perm.startsWith('rbac:')) {
-          scopesSet.add(`app:${perm}`);
-        }
+  for (const perm of profile.permissions ?? []) {
+    // Session profiles come from stored data; a non-string entry is ignored, never trusted.
+    if (typeof perm === 'string' && perm.trim() !== '') {
+      scopesSet.add(perm);
+      if (!perm.startsWith('app:') && !perm.startsWith('rbac:')) {
+        scopesSet.add(`app:${perm}`);
       }
     }
   }
 
   // 3. Collect hierarchical coordinates and flattened schemas
   if (profile.permissionsSchema) {
-    const hierarchical = extractHierarchicalScopes(profile.permissionsSchema);
-    for (const scope of hierarchical) {
+    const schema = normalizePermissionsSchema(profile.permissionsSchema);
+    for (const scope of extractHierarchicalScopes(schema)) {
       scopesSet.add(scope);
     }
-
-    const flattened = flattenPermissionsSchema(profile.permissionsSchema);
-    for (const perm of flattened) {
+    for (const perm of flattenPermissionsSchema(schema)) {
       scopesSet.add(perm);
       if (!perm.startsWith('app:')) {
         scopesSet.add(`app:${perm}`);
@@ -126,16 +132,31 @@ export async function resolvePrincipalFromSession(
   scopesSet.add('identity:access:list');
 
   const effectiveRole =
-    auth.isSystemAdmin
+    params.isSystemAdmin
       ? 'system_admin'
-      : profile.role || (Array.isArray(profile.roles) && profile.roles[0]) || 'member';
+      : profile.role || profile.roles?.[0] || 'member';
 
   return {
     actorType: 'user',
-    userId: auth.uid,
+    userId: params.uid,
     organizationId: profile.organizationId,
-    workspaceId,
+    workspaceId: params.workspaceId,
     grantedScopes: Array.from(scopesSet),
     effectiveRole,
   };
+}
+
+/**
+ * Resolves the authenticated caller's session into an interactive human `AgentPrincipal`.
+ *
+ * @param workspaceId The target workspace to verify access against.
+ * @param options Optional pre-resolved auth context.
+ * @returns Fully populated, verified `AgentPrincipal`.
+ */
+export async function resolvePrincipalFromSession(
+  workspaceId: string,
+  options?: ResolveSessionPrincipalOptions
+): Promise<AgentPrincipal> {
+  const auth = options?.authContext ?? (await requireWorkspace(workspaceId));
+  return principalFromProfile({ uid: auth.uid, workspaceId, isSystemAdmin: auth.isSystemAdmin, profile: auth.profile });
 }
