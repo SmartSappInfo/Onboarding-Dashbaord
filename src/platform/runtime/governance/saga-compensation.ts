@@ -14,6 +14,13 @@
  * - Rule 42: Shadow simulation & dry-run support
  * - Rule 60: Emergency dead-man switch enforcement
  * - Rule 63: Human-in-the-loop operator intervention flags on partial compensation failures
+ *
+ * AUTHORITY (Phase 11 M2 review R2; Rules 16, 17): compensation runs through the gateway AS THE RUN'S
+ * OWN DELEGATED AGENT: the run's authorizing user, its agent id and workspace, and the persona's
+ * permissions (the same scopes an agent session gets). It never invents authority (no 'admin' role,
+ * no capability id as a scope, no wildcard). No run, an unknown persona or a rollback request for
+ * another workspace → the step fails closed and an operator is asked to step in.
+ * The input is exactly the compensation arguments; context travels separately.
  */
 
 import { invokeGoverned } from '@/platform/capabilities/execution/invoke-governed';
@@ -31,10 +38,9 @@ import {
 } from '@/platform/events/event-bus';
 import { createDomainEvent } from '@/platform/capabilities/events/domain-event';
 import { checkGovernanceDeadManSwitch } from '@/platform/policy/governance-dead-man';
-import {
-  type CapabilityExecutionContext,
-  type AgentPrincipal,
-} from '@/platform/capabilities/contracts/capability-definition';
+import type { AgentPrincipal } from '@/platform/capabilities/contracts/capability-definition';
+import { globalAgentPersonaRegistry } from '@/platform/identity/agent-registry';
+import type { AgentRun } from '@/platform/runtime/agent-run-types';
 import {
   GovernanceError,
   type CompensationStep,
@@ -55,6 +61,31 @@ export interface RollbackRunInput {
   reason: string;
   dryRun?: boolean;
   correlationId?: string;
+}
+
+/** The run's delegated agent principal, or why it can't be resolved (fail closed). */
+export function resolveCompensationPrincipal(
+  run: AgentRun | null | undefined,
+  input: { organizationId: string; workspaceId?: string }
+): { principal: AgentPrincipal } | { error: string } {
+  if (!run) return { error: 'The run was not found, so the authority to undo its steps cannot be confirmed.' };
+  if (run.organizationId !== input.organizationId) return { error: 'The run belongs to another organization.' };
+  if (input.workspaceId && input.workspaceId !== run.workspaceId) return { error: 'The rollback request names a different workspace than the run.' };
+  const persona = globalAgentPersonaRegistry.getPersona(run.agentPersonaId);
+  if (!persona) return { error: `Unknown agent persona '${run.agentPersonaId}'.` };
+  const grantedScopes = persona.allowedPermissions.filter((scope) => !scope.includes('*'));
+  return {
+    principal: {
+      actorType: 'agent',
+      userId: run.authorizingUserId,
+      organizationId: run.organizationId,
+      workspaceId: run.workspaceId,
+      agentId: run.principalId,
+      runId: run.runId,
+      grantedScopes,
+      effectiveRole: persona.role,
+    },
+  };
 }
 
 export class SagaCompensationEngine {
@@ -96,8 +127,7 @@ export class SagaCompensationEngine {
     }
 
     const run = await this.runStore.getRun(input.organizationId, input.runId);
-    const effectiveWorkspaceId =
-      input.workspaceId || run?.workspaceId || undefined;
+    const authority = resolveCompensationPrincipal(run, input);
 
     // 2. Retrieve all steps for this run
     const steps = await this.runStore.listSteps(input.organizationId, input.runId);
@@ -169,11 +199,13 @@ export class SagaCompensationEngine {
         continue;
       }
 
-      // Check if compensating capability exists in registry
+      // Check if compensating capability exists in registry, and that the run's authority resolves.
       const capability = this.capabilityRegistry.get(compCapId);
-      if (!capability) {
+      if (!capability || 'error' in authority) {
         compStep.status = 'failed';
-        compStep.error = `Compensating capability '${compCapId}' is not registered in capability registry.`;
+        compStep.error = !capability
+          ? `Compensating capability '${compCapId}' is not registered in capability registry.`
+          : 'error' in authority ? authority.error : 'Authority could not be resolved.';
         failedCount++;
         compensationSteps.push(compStep);
 
@@ -195,43 +227,17 @@ export class SagaCompensationEngine {
       compStep.status = 'running';
 
       try {
-        const principal: AgentPrincipal = {
-          actorType: 'agent',
-          userId: run?.authorizingUserId || 'system',
-          organizationId: input.organizationId,
-          workspaceId: effectiveWorkspaceId || '',
-          agentId: run?.principalId || 'saga_engine',
-          runId: input.runId,
-          grantedScopes: [compCapId],
-          effectiveRole: 'admin',
-        };
-
-        const execContext: CapabilityExecutionContext = {
-          principal,
-          correlationId: input.correlationId || step.correlationId || `corr_${input.runId}`,
-          causationId: step.stepId,
-          idempotencyKey,
-          dryRun: false,
-          timestamp: new Date().toISOString(),
-        };
-
-        // Prepare execution argument payload supporting both handler(input, ctx) and handler(ctx)
-        const executionPayload = {
-          ...compArgs,
-          input: compArgs,
-          ...execContext,
-        };
-
-        // CAUTION (Phase 11 M0 · T3, F3/B6): executes through the governed gateway, never capability.handler().
+        // CAUTION (Phase 11 M0 · T3 + M2 review R2): executes through the governed gateway as the run's
+        // delegated agent; never capability.handler(), never invented authority.
         const compensation = await invokeGoverned({
           capability,
           capabilityId: capability.id,
           surface: 'task_worker',
-          input: executionPayload,
-          principal: execContext.principal,
-          correlationId: execContext.correlationId,
-          ...(execContext.causationId ? { causationId: execContext.causationId } : {}),
-          ...(execContext.idempotencyKey ? { idempotencyKey: execContext.idempotencyKey } : {}),
+          input: compArgs,
+          principal: authority.principal,
+          correlationId: input.correlationId || step.correlationId || `corr_${input.runId}`,
+          causationId: step.stepId,
+          idempotencyKey,
         });
         if (!compensation.success) {
           throw new Error(`Compensation refused (${compensation.error.code}): ${compensation.error.message}`);
@@ -296,7 +302,7 @@ export class SagaCompensationEngine {
           type: isSuccess ? 'agent.run.compensated' : 'agent.run.compensation_failed',
           source: 'agent-saga-engine',
           organizationId: input.organizationId,
-          workspaceId: effectiveWorkspaceId,
+          workspaceId: run?.workspaceId ?? input.workspaceId,
           actor: { type: 'agent', id: run?.principalId || 'saga_engine' },
           entity: { type: 'agent_run', id: input.runId },
           correlationId: input.correlationId || `corr_${input.runId}`,
