@@ -53,7 +53,7 @@ import { ProspectCardGrid } from './ProspectCardGrid';
 import { ColumnCustomizerModal } from './ColumnCustomizerModal';
 import { MorningRepBriefingCard } from './MorningRepBriefingCard';
 import { ProspectFinderHud } from '@/components/sales/ProspectFinderHud';
-import { OutreachReviewDrawer, WhatsAppLauncherModal } from '@/components/sales';
+import { OutreachReviewDrawer, WhatsAppLauncherModal, RevenueSwarmModal } from '@/components/sales';
 import type { OutreachMessageDraft } from '@/platform/agents/sales/outbound/sdr-outbound-types';
 import { SdrOutboundEngine } from '@/platform/agents/sales/outbound/sdr-outbound-engine';
 import {
@@ -102,6 +102,7 @@ interface ProspectFinderTabProps {
   organizationId?: string;
   workspaceId?: string;
   onOpenOutreachReview?: () => void;
+  onOpenRevenueSwarm?: () => void;
 }
 
 const DEFAULT_COLUMNS: ColumnVisibilityConfig = {
@@ -147,6 +148,7 @@ export const ProspectFinderTab: React.FC<ProspectFinderTabProps> = ({
   organizationId,
   workspaceId,
   onOpenOutreachReview,
+  onOpenRevenueSwarm,
 }) => {
   const { toast } = useToast();
 
@@ -156,6 +158,7 @@ export const ProspectFinderTab: React.FC<ProspectFinderTabProps> = ({
   const [isFilterPaneOpen, setIsFilterPaneOpen] = useState(false);
   const [isColumnModalOpen, setIsColumnModalOpen] = useState(false);
   const [columns, setColumns] = useState<ColumnVisibilityConfig>(DEFAULT_COLUMNS);
+  const [isRevenueSwarmOpen, setIsRevenueSwarmOpen] = useState(false);
 
   // CSV Modal State
   const [isCSVModalOpen, setIsCSVModalOpen] = useState(false);
@@ -325,6 +328,7 @@ export const ProspectFinderTab: React.FC<ProspectFinderTabProps> = ({
         <ProspectFinderHud
           onOpenMarketResearch={onOpenMarketResearch}
           onOpenSegmentToCampaign={onOpenSegmentToCampaign}
+          onOpenRevenueSwarm={onOpenRevenueSwarm || (() => setIsRevenueSwarmOpen(true))}
           onOpenOutreachReview={onOpenOutreachReview || handleOpenOutreachReview}
           onRefresh={onRefreshIntelligence}
           isRefreshing={isRefreshing}
@@ -826,6 +830,15 @@ export const ProspectFinderTab: React.FC<ProspectFinderTabProps> = ({
         actionProposalId={stagedProposalId}
         payloadHash={stagedPayloadHash}
         onApproveAndDispatch={handleApproveAndDispatchOutreach}
+      />
+
+      {/* Autonomous Revenue Swarm Modal (Phase 10 Milestone 5) */}
+      <RevenueSwarmModal
+        open={isRevenueSwarmOpen}
+        onOpenChange={setIsRevenueSwarmOpen}
+        organizationId={organizationId || 'org_smartsapp_default'}
+        workspaceId={workspaceId || 'ws_sales_default'}
+        defaultQuery={queryText || 'Find 20 qualified leads in edtech and prepare outreach'}
       />
     </div>
   );

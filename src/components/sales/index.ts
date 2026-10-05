@@ -9,3 +9,4 @@ export * from './PitchRecommendationHud';
 export * from './ProspectFinderHud';
 export * from './OutreachReviewDrawer';
 export * from './WhatsAppLauncherModal';
+export * from './RevenueSwarmModal';

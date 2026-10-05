@@ -21,12 +21,14 @@ import {
   Megaphone,
   Globe2,
   Layers,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface ProspectFinderHudProps {
   onOpenMarketResearch: () => void;
   onOpenSegmentToCampaign: () => void;
+  onOpenRevenueSwarm?: () => void;
   onOpenOutreachReview?: () => void;
   onRefresh?: () => void;
   activePersona?: string;
@@ -39,6 +41,7 @@ export interface ProspectFinderHudProps {
 export function ProspectFinderHud({
   onOpenMarketResearch,
   onOpenSegmentToCampaign,
+  onOpenRevenueSwarm,
   onOpenOutreachReview,
   onRefresh,
   activePersona = 'lead_sdr',
@@ -166,6 +169,18 @@ export function ProspectFinderHud({
           <Globe2 className="h-3.5 w-3.5 text-sky-500" />
           <span>Research Market</span>
         </Button>
+
+        {onOpenRevenueSwarm && (
+          <Button
+            type="button"
+            size="sm"
+            onClick={onOpenRevenueSwarm}
+            className="h-9 px-3.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-teal-600 to-emerald-600 text-white hover:from-teal-700 hover:to-emerald-700 active:scale-[0.97] transition-all gap-1.5 shadow-sm"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-amber-200" />
+            <span>Launch Revenue Swarm</span>
+          </Button>
+        )}
 
         <Button
           type="button"

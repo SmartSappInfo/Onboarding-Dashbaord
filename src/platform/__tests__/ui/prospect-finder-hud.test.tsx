@@ -75,4 +75,19 @@ describe('ProspectFinderHud Component', () => {
     fireEvent.click(button);
     expect(handleRefresh).toHaveBeenCalledTimes(1);
   });
+
+  it('triggers onOpenRevenueSwarm when Launch Revenue Swarm button is clicked', () => {
+    const handleRevenueSwarm = vi.fn();
+    render(
+      <ProspectFinderHud
+        onOpenMarketResearch={vi.fn()}
+        onOpenSegmentToCampaign={vi.fn()}
+        onOpenRevenueSwarm={handleRevenueSwarm}
+      />
+    );
+
+    const button = screen.getByRole('button', { name: /Launch Revenue Swarm/i });
+    fireEvent.click(button);
+    expect(handleRevenueSwarm).toHaveBeenCalledTimes(1);
+  });
 });
