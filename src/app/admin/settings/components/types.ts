@@ -8,6 +8,8 @@ export interface WorkspaceFormState {
     contactScope: ContactScope;
     contactPolicy: ContactIdentifierPolicy;
     restrictVisibilityToAssigned: boolean;
+    restrictDealsVisibilityToAssigned: boolean;
+    restrictTasksVisibilityToAssigned: boolean;
     statuses: WorkspaceStatus[];
 }
 
@@ -19,6 +21,8 @@ export const INITIAL_FORM_STATE: WorkspaceFormState = {
     contactScope: 'institution',
     contactPolicy: 'phone_or_email',
     restrictVisibilityToAssigned: true,
+    restrictDealsVisibilityToAssigned: true,
+    restrictTasksVisibilityToAssigned: true,
     statuses: [
         { value: 'Onboarding', label: 'Onboarding', color: '#3B5FFF' },
         { value: 'Active', label: 'Active', color: '#10b981' },

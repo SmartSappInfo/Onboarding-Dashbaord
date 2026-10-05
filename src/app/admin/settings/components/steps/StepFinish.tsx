@@ -35,7 +35,18 @@ export function StepFinish({
     onRemoveStatus,
     getIndustryDisplayName
 }: StepFinishProps) {
-    const { name, color, description, industry, contactScope, contactPolicy, restrictVisibilityToAssigned, statuses } = formState;
+    const { 
+        name, 
+        color, 
+        description, 
+        industry, 
+        contactScope, 
+        contactPolicy, 
+        restrictVisibilityToAssigned, 
+        restrictDealsVisibilityToAssigned,
+        restrictTasksVisibilityToAssigned,
+        statuses 
+    } = formState;
 
     return (
         <div className="space-y-8 animate-in fade-in-50 slide-in-from-bottom-2 duration-200 ease-out">
@@ -95,7 +106,7 @@ export function StepFinish({
                                     onChange={e => onUpdateStatus(idx, { description: e.target.value })} 
                                     placeholder="Short behavioral description..."
                                     className="h-9 bg-background font-medium text-[10px]" 
-                                />
+                                </div>
                             </div>
                             <Button 
                                 type="button" 
@@ -160,7 +171,7 @@ export function StepFinish({
                                 </span>
                             </div>
                             <div>
-                                <span className="font-bold text-muted-foreground block mb-0.5">Visibility</span>
+                                <span className="font-bold text-muted-foreground block mb-0.5">Entity Visibility</span>
                                 <span className="font-semibold text-foreground flex items-center gap-1.5">
                                     {restrictVisibilityToAssigned ? (
                                         <>
@@ -171,6 +182,41 @@ export function StepFinish({
                                         <>
                                             <Eye size={12} className="text-primary" />
                                             All Entities
+                                        </>
+                                    )}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border/50">
+                            <div>
+                                <span className="font-bold text-muted-foreground block mb-0.5">Deals Visibility</span>
+                                <span className="font-semibold text-foreground flex items-center gap-1.5">
+                                    {restrictDealsVisibilityToAssigned ? (
+                                        <>
+                                            <Lock size={12} className="text-primary" />
+                                            Assigned Only
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Eye size={12} className="text-primary" />
+                                            All Deals
+                                        </>
+                                    )}
+                                </span>
+                            </div>
+                            <div>
+                                <span className="font-bold text-muted-foreground block mb-0.5">Tasks Visibility</span>
+                                <span className="font-semibold text-foreground flex items-center gap-1.5">
+                                    {restrictTasksVisibilityToAssigned ? (
+                                        <>
+                                            <Lock size={12} className="text-primary" />
+                                            Assigned Only
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Eye size={12} className="text-primary" />
+                                            All Tasks
                                         </>
                                     )}
                                 </span>

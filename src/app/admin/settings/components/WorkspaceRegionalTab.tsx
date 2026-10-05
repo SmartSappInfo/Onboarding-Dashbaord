@@ -23,7 +23,9 @@ import {
   Plus, 
   X, 
   Info,
-  Check
+  Check,
+  Briefcase,
+  CheckSquare
 } from 'lucide-react';
 import {
   Select,
@@ -88,6 +90,12 @@ export default function WorkspaceRegionalTab({ workspace, onSaveSuccess }: Works
   const [restrictVisibilityToAssigned, setRestrictVisibilityToAssigned] = React.useState(
     workspace.restrictVisibilityToAssigned !== false
   );
+  const [restrictDealsVisibilityToAssigned, setRestrictDealsVisibilityToAssigned] = React.useState(
+    workspace.restrictDealsVisibilityToAssigned !== false
+  );
+  const [restrictTasksVisibilityToAssigned, setRestrictTasksVisibilityToAssigned] = React.useState(
+    workspace.restrictTasksVisibilityToAssigned !== false
+  );
 
   // Load defaults from state
   const [entityDefaults, setEntityDefaults] = React.useState<Record<string, string>>(() => {
@@ -101,6 +109,8 @@ export default function WorkspaceRegionalTab({ workspace, onSaveSuccess }: Works
   React.useEffect(() => {
     setContactPolicySetting(workspace.contactPolicy || 'phone_or_email');
     setRestrictVisibilityToAssigned(workspace.restrictVisibilityToAssigned !== false);
+    setRestrictDealsVisibilityToAssigned(workspace.restrictDealsVisibilityToAssigned !== false);
+    setRestrictTasksVisibilityToAssigned(workspace.restrictTasksVisibilityToAssigned !== false);
     const rawDefaults = (workspace.entityDefaults || {}) as Record<string, Record<string, string>>;
     setEntityDefaults(rawDefaults[scope] || {});
   }, [workspace, scope]);
@@ -143,6 +153,8 @@ export default function WorkspaceRegionalTab({ workspace, onSaveSuccess }: Works
         {
           contactPolicy: contactPolicySetting,
           restrictVisibilityToAssigned,
+          restrictDealsVisibilityToAssigned,
+          restrictTasksVisibilityToAssigned,
           entityDefaults: updatedEntityDefaults
         },
         user.uid
@@ -255,7 +267,7 @@ export default function WorkspaceRegionalTab({ workspace, onSaveSuccess }: Works
                 type="button"
                 onClick={() => setRestrictVisibilityToAssigned(true)}
                 className={cn(
-                  "p-4 rounded-2xl border-2 transition-all text-left hover:shadow-md active:scale-[0.97]",
+                  "p-4 rounded-2xl border-2 transition-all text-left hover:shadow-md active:scale-[0.97] min-h-[44px]",
                   restrictVisibilityToAssigned
                     ? "bg-primary/5 border-primary shadow-sm"
                     : "bg-background border-border hover:border-primary/30"
@@ -286,7 +298,7 @@ export default function WorkspaceRegionalTab({ workspace, onSaveSuccess }: Works
                 type="button"
                 onClick={() => setRestrictVisibilityToAssigned(false)}
                 className={cn(
-                  "p-4 rounded-2xl border-2 transition-all text-left hover:shadow-md active:scale-[0.97]",
+                  "p-4 rounded-2xl border-2 transition-all text-left hover:shadow-md active:scale-[0.97] min-h-[44px]",
                   !restrictVisibilityToAssigned
                     ? "bg-primary/5 border-primary shadow-sm"
                     : "bg-background border-border hover:border-primary/30"
@@ -308,6 +320,162 @@ export default function WorkspaceRegionalTab({ workspace, onSaveSuccess }: Works
                     <h5 className="text-xs font-semibold text-foreground">All Entities</h5>
                     <p className="text-[8.5px] font-medium text-muted-foreground leading-relaxed">
                       Users can view and interact with all entities in the workspace.
+                    </p>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <Separator className="opacity-50" />
+
+          {/* Section 2b: Deals Visibility Scope */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 px-1">
+              <Briefcase className="h-4 w-4 text-primary" />
+              <h4 className="text-xs font-semibold">Deals Visibility Scope</h4>
+            </div>
+
+            <p className="text-[10px] font-medium text-muted-foreground leading-relaxed px-1">
+              Determine whether users in this workspace can see all deals or only deals assigned to or created by them.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => setRestrictDealsVisibilityToAssigned(true)}
+                className={cn(
+                  "p-4 rounded-2xl border-2 transition-all text-left hover:shadow-md active:scale-[0.97] min-h-[44px]",
+                  restrictDealsVisibilityToAssigned
+                    ? "bg-primary/5 border-primary shadow-sm"
+                    : "bg-background border-border hover:border-primary/30"
+                )}
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className={cn(
+                      "p-1.5 rounded-lg transition-colors",
+                      restrictDealsVisibilityToAssigned ? "bg-primary/10" : "bg-muted"
+                    )}>
+                      <Lock className="h-4 w-4 text-primary" style={{ color: restrictDealsVisibilityToAssigned ? 'var(--primary)' : 'var(--muted-foreground)' }} />
+                    </div>
+                    {restrictDealsVisibilityToAssigned && (
+                      <Check className="h-4 w-4 text-primary" />
+                    )}
+                  </div>
+                  <div className="space-y-0.5">
+                    <h5 className="text-xs font-semibold text-foreground">Assigned Only (Default)</h5>
+                    <p className="text-[8.5px] font-medium text-muted-foreground leading-relaxed">
+                      Users can only view and interact with deals specifically assigned to them or created by them.
+                    </p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setRestrictDealsVisibilityToAssigned(false)}
+                className={cn(
+                  "p-4 rounded-2xl border-2 transition-all text-left hover:shadow-md active:scale-[0.97] min-h-[44px]",
+                  !restrictDealsVisibilityToAssigned
+                    ? "bg-primary/5 border-primary shadow-sm"
+                    : "bg-background border-border hover:border-primary/30"
+                )}
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className={cn(
+                      "p-1.5 rounded-lg transition-colors",
+                      !restrictDealsVisibilityToAssigned ? "bg-primary/10" : "bg-muted"
+                    )}>
+                      <Eye className="h-4 w-4 text-primary" style={{ color: !restrictDealsVisibilityToAssigned ? 'var(--primary)' : 'var(--muted-foreground)' }} />
+                    </div>
+                    {!restrictDealsVisibilityToAssigned && (
+                      <Check className="h-4 w-4 text-primary" />
+                    )}
+                  </div>
+                  <div className="space-y-0.5">
+                    <h5 className="text-xs font-semibold text-foreground">All Deals</h5>
+                    <p className="text-[8.5px] font-medium text-muted-foreground leading-relaxed">
+                      Users can view and interact with all deals in the workspace.
+                    </p>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <Separator className="opacity-50" />
+
+          {/* Section 2c: Tasks Visibility Scope */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 px-1">
+              <CheckSquare className="h-4 w-4 text-primary" />
+              <h4 className="text-xs font-semibold">Tasks Visibility Scope</h4>
+            </div>
+
+            <p className="text-[10px] font-medium text-muted-foreground leading-relaxed px-1">
+              Determine whether users in this workspace can see all tasks or only tasks assigned to or created by them.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => setRestrictTasksVisibilityToAssigned(true)}
+                className={cn(
+                  "p-4 rounded-2xl border-2 transition-all text-left hover:shadow-md active:scale-[0.97] min-h-[44px]",
+                  restrictTasksVisibilityToAssigned
+                    ? "bg-primary/5 border-primary shadow-sm"
+                    : "bg-background border-border hover:border-primary/30"
+                )}
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className={cn(
+                      "p-1.5 rounded-lg transition-colors",
+                      restrictTasksVisibilityToAssigned ? "bg-primary/10" : "bg-muted"
+                    )}>
+                      <Lock className="h-4 w-4 text-primary" style={{ color: restrictTasksVisibilityToAssigned ? 'var(--primary)' : 'var(--muted-foreground)' }} />
+                    </div>
+                    {restrictTasksVisibilityToAssigned && (
+                      <Check className="h-4 w-4 text-primary" />
+                    )}
+                  </div>
+                  <div className="space-y-0.5">
+                    <h5 className="text-xs font-semibold text-foreground">Assigned Only (Default)</h5>
+                    <p className="text-[8.5px] font-medium text-muted-foreground leading-relaxed">
+                      Users can only view and interact with tasks specifically assigned to them or created by them.
+                    </p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setRestrictTasksVisibilityToAssigned(false)}
+                className={cn(
+                  "p-4 rounded-2xl border-2 transition-all text-left hover:shadow-md active:scale-[0.97] min-h-[44px]",
+                  !restrictTasksVisibilityToAssigned
+                    ? "bg-primary/5 border-primary shadow-sm"
+                    : "bg-background border-border hover:border-primary/30"
+                )}
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className={cn(
+                      "p-1.5 rounded-lg transition-colors",
+                      !restrictTasksVisibilityToAssigned ? "bg-primary/10" : "bg-muted"
+                    )}>
+                      <Eye className="h-4 w-4 text-primary" style={{ color: !restrictTasksVisibilityToAssigned ? 'var(--primary)' : 'var(--muted-foreground)' }} />
+                    </div>
+                    {!restrictTasksVisibilityToAssigned && (
+                      <Check className="h-4 w-4 text-primary" />
+                    )}
+                  </div>
+                  <div className="space-y-0.5">
+                    <h5 className="text-xs font-semibold text-foreground">All Tasks</h5>
+                    <p className="text-[8.5px] font-medium text-muted-foreground leading-relaxed">
+                      Users can view and interact with all tasks in the workspace.
                     </p>
                   </div>
                 </div>

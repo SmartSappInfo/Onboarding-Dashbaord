@@ -85,6 +85,8 @@ export default function WorkspaceEditor({ workspaces, selectedScope: _selectedSc
     const [color, setColor] = React.useState('#3B5FFF');
     const [contactPolicy, setContactPolicy] = React.useState<ContactIdentifierPolicy>('phone_or_email');
     const [restrictVisibilityToAssigned, setRestrictVisibilityToAssigned] = React.useState(true);
+    const [restrictDealsVisibilityToAssigned, setRestrictDealsVisibilityToAssigned] = React.useState(true);
+    const [restrictTasksVisibilityToAssigned, setRestrictTasksVisibilityToAssigned] = React.useState(true);
     const [statuses, setStatuses] = React.useState<WorkspaceStatus[]>([
         { value: 'Onboarding', label: 'Onboarding', color: '#3B5FFF' },
         { value: 'Active', label: 'Active', color: '#10b981' },
@@ -158,6 +160,8 @@ export default function WorkspaceEditor({ workspaces, selectedScope: _selectedSc
         setColor('#3B5FFF');
         setContactPolicy('phone_or_email');
         setRestrictVisibilityToAssigned(true);
+        setRestrictDealsVisibilityToAssigned(true);
+        setRestrictTasksVisibilityToAssigned(true);
         setStatuses(getWorkspaceStatusDefaults('SaaS', dbDefaults));
         setStatusesModified(false);
         setPendingIndustryChange(null);
@@ -192,6 +196,8 @@ export default function WorkspaceEditor({ workspaces, selectedScope: _selectedSc
                 contactPolicy,
                 entityDefaults: {},
                 restrictVisibilityToAssigned,
+                restrictDealsVisibilityToAssigned,
+                restrictTasksVisibilityToAssigned,
                 defaultSmsSenderId: 'SmartSapp',
             },
             user.uid
@@ -536,9 +542,13 @@ export default function WorkspaceEditor({ workspaces, selectedScope: _selectedSc
                                         <StepGovernance 
                                             contactPolicy={contactPolicy}
                                             restrictVisibilityToAssigned={restrictVisibilityToAssigned}
-                                            onChange={({ contactPolicy: cp, restrictVisibilityToAssigned: rva }) => {
+                                            restrictDealsVisibilityToAssigned={restrictDealsVisibilityToAssigned}
+                                            restrictTasksVisibilityToAssigned={restrictTasksVisibilityToAssigned}
+                                            onChange={({ contactPolicy: cp, restrictVisibilityToAssigned: rva, restrictDealsVisibilityToAssigned: rdva, restrictTasksVisibilityToAssigned: rtva }) => {
                                                 if (cp !== undefined) setContactPolicy(cp);
                                                 if (rva !== undefined) setRestrictVisibilityToAssigned(rva);
+                                                if (rdva !== undefined) setRestrictDealsVisibilityToAssigned(rdva);
+                                                if (rtva !== undefined) setRestrictTasksVisibilityToAssigned(rtva);
                                             }}
                                         />
                                     )}
@@ -553,6 +563,8 @@ export default function WorkspaceEditor({ workspaces, selectedScope: _selectedSc
                                                 contactScope,
                                                 contactPolicy,
                                                 restrictVisibilityToAssigned,
+                                                restrictDealsVisibilityToAssigned,
+                                                restrictTasksVisibilityToAssigned,
                                                 statuses
                                             }}
                                             onAddStatus={handleAddStatus}
