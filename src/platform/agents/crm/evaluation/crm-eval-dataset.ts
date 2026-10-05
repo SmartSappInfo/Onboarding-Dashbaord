@@ -104,7 +104,7 @@ export const CRM_EVAL_DATASET: readonly CrmEvalScenario[] = [
     ],
     expectedPersona: 'crm_researcher',
     expectedRiskLevel: 'L0_READ',
-    expectedActions: ['crm.account.get_context', 'knowledge.memory.query', 'meetings.transcript.get'],
+    expectedActions: ['crm.account.get_context', 'knowledge.memory.query', 'meeting.get_transcript'],
   },
   {
     id: 'eval_flagship_03_beacon_hill',

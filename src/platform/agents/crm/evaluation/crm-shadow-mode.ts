@@ -337,7 +337,8 @@ function inferDomainFromCapability(capabilityId: string): string {
   if (capabilityId.startsWith('deal.') || capabilityId.startsWith('billing.')) return 'deals_revenue';
   if (capabilityId.startsWith('task.')) return 'tasks_productivity';
   if (capabilityId.startsWith('knowledge.')) return 'knowledge_memory';
-  if (capabilityId.startsWith('meetings.')) return 'meetings_conversations';
+  // 'meeting.' is the canonical prefix (Phase 11 M1); 'meetings.' kept for older matrix ids.
+  if (capabilityId.startsWith('meeting.') || capabilityId.startsWith('meetings.')) return 'meetings_conversations';
   return 'crm_contacts';
 }
 

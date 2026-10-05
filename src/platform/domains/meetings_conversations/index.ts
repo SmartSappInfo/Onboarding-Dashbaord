@@ -15,13 +15,16 @@ import {
   meetingListRecordingsCapability,
   meetingSearchCapability,
 } from './contracts/meeting-read.contracts';
+import { meetingGetTranscriptCapability } from './contracts/meeting-transcript-read.contract';
 
 export * from './contracts/meeting-read.contracts';
+export * from './contracts/meeting-transcript-read.contract';
 
 export const MEETINGS_CONVERSATIONS_CAPABILITIES: AnyCapabilityDefinition[] = [
   meetingSearchCapability as AnyCapabilityDefinition,
   meetingGetCapability as AnyCapabilityDefinition,
   meetingListRecordingsCapability as AnyCapabilityDefinition,
+  meetingGetTranscriptCapability as AnyCapabilityDefinition,
 ];
 
 export function registerMeetingsConversationsCapabilities(): void {

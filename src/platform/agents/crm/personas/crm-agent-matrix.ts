@@ -161,7 +161,7 @@ export const CRM_TOOL_MATRIX: Readonly<Record<CrmPersonaId, readonly CrmToolMatr
       description: 'Search semantic memory for grounded entity facts and past interactions.',
     },
     {
-      capabilityId: 'meetings.transcript.get',
+      capabilityId: 'meeting.get_transcript',
       domain: 'meetings_conversations',
       riskLevel: 'L0_READ',
       description: 'Read past meeting transcripts and customer conversation recordings.',

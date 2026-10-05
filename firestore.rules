@@ -752,19 +752,37 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ── Meeting knowledge: SERVER-WRITE-ONLY (Phase 11 M1 · T2, findings B3/G5) ──────────────
+    // Transcripts, intelligence, recordings and consents are written only by server code (Admin
+    // SDK bypasses these rules) after auth, ownership, consent and audit. A client write here would
+    // skip all of that (forged transcripts, poisoned AI input, fake consent). Verified 2026-10-05:
+    // no client code writes these collections. Reads stay with workspace members, as before.
+    // Tests: src/lib/__tests__/meeting-knowledge.rules.test.ts
     match /meeting_recordings/{recId} {
       allow list, get: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
-      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow write: if false;
     }
 
     match /meeting_transcripts/{transcriptId} {
       allow list, get: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
-      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow write: if false;
+
+      // Chunks carry no workspaceId; content is served through server actions only.
+      match /segments/{chunkId} {
+        allow read, write: if false;
+      }
     }
 
     match /meeting_intelligence/{intelId} {
       allow list, get: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
-      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow write: if false;
+    }
+
+    match /meeting_consents/{meetingId} {
+      allow read, write: if false;
+      match /records/{recordId} {
+        allow read, write: if false;
+      }
     }
 
     match /recurring_series/{seriesId} {
@@ -844,9 +862,14 @@ service cloud.firestore {
       allow write: if false; // Server-side writes only via Admin SDK & Server Actions
     }
 
+    // Compliance policy (Phase 11 M1 · T2, G2): was PUBLICLY readable and client-writable by any
+    // member, which bypassed the server's meetings_manage check, merge and history. The page reads
+    // and writes through server actions only (verified 2026-10-05), so clients get nothing here.
     match /meeting_compliance_policies/{policyId} {
-      allow read: if true;
-      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow read, write: if false;
+      match /history/{entryId} {
+        allow read, write: if false;
+      }
     }
 
     match /meeting_action_items/{itemId} {

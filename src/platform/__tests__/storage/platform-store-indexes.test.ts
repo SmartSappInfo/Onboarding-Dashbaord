@@ -24,6 +24,26 @@ const indexes = (
 ).indexes;
 
 const required: Array<{ query: string; collectionGroup: string; fields: IndexField[] }> = [
+  // Phase 11 M1 · T2: meeting transcript store queries.
+  {
+    query: 'transcript-store findLatestTranscriptId',
+    collectionGroup: 'meeting_transcripts',
+    fields: [
+      { fieldPath: 'workspaceId', order: 'ASCENDING' },
+      { fieldPath: 'meetingId', order: 'ASCENDING' },
+      { fieldPath: 'status', order: 'ASCENDING' },
+      { fieldPath: 'createdAt', order: 'DESCENDING' },
+    ],
+  },
+  {
+    query: 'transcription backlog / stale processing sweep (Backoffice, T9)',
+    collectionGroup: 'meeting_transcripts',
+    fields: [
+      { fieldPath: 'workspaceId', order: 'ASCENDING' },
+      { fieldPath: 'status', order: 'ASCENDING' },
+      { fieldPath: 'updatedAt', order: 'ASCENDING' },
+    ],
+  },
   {
     query: 'audit-store listByWorkspace',
     collectionGroup: 'capability_audit',

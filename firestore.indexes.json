@@ -2421,6 +2421,46 @@
       ]
     },
     {
+      "collectionGroup": "meeting_transcripts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "workspaceId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "meetingId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "meeting_transcripts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "workspaceId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "meeting_intelligence",
       "queryScope": "COLLECTION",
       "fields": [
