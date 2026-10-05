@@ -129,6 +129,16 @@ export const RevenueSwarmOutcomeSchema = z.object({
 });
 export type RevenueSwarmOutcome = z.infer<typeof RevenueSwarmOutcomeSchema>;
 
+export const RevenueSwarmMetricsSchema = z.object({
+  totalMissions: z.number().int().min(0),
+  completedMissions: z.number().int().min(0),
+  totalQualifiedLeads: z.number().int().min(0),
+  totalDraftsGenerated: z.number().int().min(0),
+  totalStagedProposals: z.number().int().min(0),
+  lastRunTimestamp: z.string().datetime().nullable(),
+});
+export type RevenueSwarmMetrics = z.infer<typeof RevenueSwarmMetricsSchema>;
+
 // ============================================================================
 // 3. ERROR TAXONOMY & TYPED ERROR CLASS (Rule 48)
 // ============================================================================
