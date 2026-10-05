@@ -4,6 +4,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { SdrOutboundEngine } from '@/platform/agents/sales/outbound/sdr-outbound-engine';
+import { computeOutreachPayloadHashInBrowser } from '@/platform/agents/sales/outbound/sdr-outbound-format';
 import type { Prospect } from '@/lib/lead-intelligence/types';
 
 // Mock FieldsVariablesService to verify workspace rule SSOT delegation
@@ -78,6 +79,18 @@ describe('SdrOutboundEngine', () => {
     });
     expect(hash1).toBe(hash2);
     expect(hash1).toHaveLength(64);
+  });
+
+  it('browser Web Crypto payloadHash matches the server node:crypto hash', async () => {
+    const payload = {
+      stepIndex: 1,
+      body: 'Hello Sarah — fees made simple',
+      channel: 'whatsapp',
+      recipientAddress: '+233249876543',
+    };
+    expect(await computeOutreachPayloadHashInBrowser(payload)).toBe(
+      SdrOutboundEngine.computeOutreachPayloadHash(payload)
+    );
   });
 
   it('drafts personalized WhatsApp message with E.164 phone and grounding points', async () => {

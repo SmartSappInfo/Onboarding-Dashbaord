@@ -55,7 +55,10 @@ import { MorningRepBriefingCard } from './MorningRepBriefingCard';
 import { ProspectFinderHud } from '@/components/sales/ProspectFinderHud';
 import { OutreachReviewDrawer, WhatsAppLauncherModal, RevenueSwarmModal } from '@/components/sales';
 import type { OutreachMessageDraft } from '@/platform/agents/sales/outbound/sdr-outbound-types';
-import { SdrOutboundEngine } from '@/platform/agents/sales/outbound/sdr-outbound-engine';
+import {
+  computeOutreachPayloadHashInBrowser,
+  formatWhatsAppLauncherUrl,
+} from '@/platform/agents/sales/outbound/sdr-outbound-format';
 import {
   stageSequenceApprovalAction,
   dispatchApprovedOutreachAction,
@@ -173,7 +176,7 @@ export const ProspectFinderTab: React.FC<ProspectFinderTabProps> = ({
   const [stagedProposalId, setStagedProposalId] = useState<string | undefined>(undefined);
   const [stagedPayloadHash, setStagedPayloadHash] = useState<string | undefined>(undefined);
 
-  const handleOpenWhatsApp = (prospect: Prospect) => {
+  const handleOpenWhatsApp = async (prospect: Prospect) => {
     const contact = prospect.contacts?.[0];
     const recipientName = contact?.name || prospect.name;
     const rawPhone = contact?.phone || prospect.phone || '+233240001122';
@@ -184,7 +187,13 @@ export const ProspectFinderTab: React.FC<ProspectFinderTabProps> = ({
       ? `+233${cleanPhone.slice(1)}`
       : `+${cleanPhone}`;
     const body = `Hello ${recipientName}, I noticed ${prospect.name}'s impressive profile in ${prospect.industry || 'the institutional sector'}. SmartSapp helps leading institutions streamline administration and fee collection securely. Would you be open to a brief conversation this week?`;
-    const whatsappUrl = SdrOutboundEngine.formatWhatsAppLauncherUrl(recipientPhone, body);
+    const whatsappUrl = formatWhatsAppLauncherUrl(recipientPhone, body);
+    const payloadHash = await computeOutreachPayloadHashInBrowser({
+      recipientAddress: recipientPhone,
+      channel: 'whatsapp',
+      body,
+      stepIndex: 1,
+    });
 
     const nowIso = new Date().toISOString();
     const draft: OutreachMessageDraft = {
@@ -200,12 +209,7 @@ export const ProspectFinderTab: React.FC<ProspectFinderTabProps> = ({
       variablesUsed: ['contact.firstName', 'institution.name', 'institution.industry'],
       groundingPoints: ['Automated fee collection opportunity'],
       status: 'draft',
-      payloadHash: SdrOutboundEngine.computeOutreachPayloadHash({
-        recipientAddress: recipientPhone,
-        channel: 'whatsapp',
-        body,
-        stepIndex: 1,
-      }),
+      payloadHash,
       explainability: {
         what: `Personalized WhatsApp outreach for ${recipientName}`,
         why: `High ICP fit prospect (${prospect.scoring?.overallScore || 85}/100) identified by Lead SDR`,
@@ -715,7 +719,7 @@ export const ProspectFinderTab: React.FC<ProspectFinderTabProps> = ({
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  onClick={() => handleOpenWhatsApp(p)}
+                                  onClick={() => void handleOpenWhatsApp(p)}
                                   className="h-7 px-2 text-[11px] text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 active:scale-[0.97]"
                                   title="Direct WhatsApp Outreach"
                                 >

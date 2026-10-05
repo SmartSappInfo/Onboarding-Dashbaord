@@ -19,6 +19,11 @@ import type {
   PrepareSequenceResult,
   OutreachMessageDraft,
 } from './sdr-outbound-types';
+import {
+  canonicalizeOutreachPayload,
+  formatWhatsAppLauncherUrl,
+  normalizeSdrPhoneNumber,
+} from './sdr-outbound-format';
 
 export class SdrOutboundEngine {
   /**
@@ -26,37 +31,14 @@ export class SdrOutboundEngine {
    * Special handling for West Africa / Ghana (+233) formats.
    */
   public static normalizePhoneNumber(phone?: string): string {
-    if (!phone) return '';
-    let digits = phone.replace(/\D/g, '');
-
-    // Handle leading 2330 -> 233
-    if (digits.startsWith('2330')) {
-      digits = '233' + digits.substring(4);
-    } else if (digits.startsWith('0') && digits.length === 10) {
-      digits = '233' + digits.substring(1);
-    } else if (digits.length === 9) {
-      digits = '233' + digits;
-    }
-
-    return digits ? `+${digits}` : '';
+    return normalizeSdrPhoneNumber(phone);
   }
 
   /**
    * Sanitizes phone number and returns a direct WhatsApp Web click-to-chat URL.
    */
   public static formatWhatsAppLauncherUrl(phone: string, message: string): string {
-    if (!phone) return '';
-    let digits = phone.replace(/\D/g, '');
-
-    if (digits.startsWith('2330')) {
-      digits = '233' + digits.substring(4);
-    } else if (digits.startsWith('0') && digits.length === 10) {
-      digits = '233' + digits.substring(1);
-    } else if (digits.length === 9) {
-      digits = '233' + digits;
-    }
-
-    return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
+    return formatWhatsAppLauncherUrl(phone, message);
   }
 
   /**
@@ -64,19 +46,7 @@ export class SdrOutboundEngine {
    * Implements Rule 22 Cryptographic Approval Binding.
    */
   public static computeOutreachPayloadHash(payload: Record<string, unknown>): string {
-    const sortObject = (obj: unknown): unknown => {
-      if (obj === null || typeof obj !== 'object') return obj;
-      if (Array.isArray(obj)) return obj.map(sortObject);
-      const sortedKeys = Object.keys(obj as Record<string, unknown>).sort();
-      const result: Record<string, unknown> = {};
-      for (const key of sortedKeys) {
-        result[key] = sortObject((obj as Record<string, unknown>)[key]);
-      }
-      return result;
-    };
-
-    const canonicalJson = JSON.stringify(sortObject(payload));
-    return createHash('sha256').update(canonicalJson).digest('hex');
+    return createHash('sha256').update(canonicalizeOutreachPayload(payload)).digest('hex');
   }
 
   /**
