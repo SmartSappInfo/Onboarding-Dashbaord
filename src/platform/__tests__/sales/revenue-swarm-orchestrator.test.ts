@@ -38,14 +38,19 @@ vi.mock('@/lib/services/fields-variables-service-impl', () => ({
 }));
 
 describe('RevenueSwarmOrchestrator (Phase 10 Milestone 5)', () => {
+  const nowIso = '2026-01-01T00:00:00Z';
   const mockProspects: Prospect[] = [
     {
       id: 'prosp_accra_grammar',
+      organizationId: 'org_test_school',
+      workspaceId: 'ws_sales_demo',
+      domain: 'accragrammar.edu.gh',
+      syncStatus: 'unregistered',
+      createdAt: nowIso,
+      updatedAt: nowIso,
       name: 'Accra Grammar School',
       address: 'East Legon, Accra, Ghana',
       phone: '020 123 4567',
-      website: 'https://accragrammar.edu.gh',
-      status: 'new',
       contacts: [
         {
           id: 'con_sarah',
@@ -53,24 +58,31 @@ describe('RevenueSwarmOrchestrator (Phase 10 Milestone 5)', () => {
           role: 'Head of Admissions',
           email: 'sarah@accragrammar.edu.gh',
           phone: '024 987 6543',
+          confidence: 90,
           verificationStatus: 'verified',
         },
       ],
       scoring: {
         overallScore: 85,
-        icpFit: 35,
-        needIntensity: 25,
-        buyingIntent: 15,
-        engagementVelocity: 10,
+        needScore: 35,
+        digitalMaturity: 30,
+        buyingIntent: 25,
+        budgetProbability: 20,
+        decisionMakerFound: 20,
+        engagement: 15,
       },
     },
     {
       id: 'prosp_ridge_church',
+      organizationId: 'org_test_school',
+      workspaceId: 'ws_sales_demo',
+      domain: 'ridgechurch.edu.gh',
+      syncStatus: 'unregistered',
+      createdAt: nowIso,
+      updatedAt: nowIso,
       name: 'Ridge Church School',
       address: 'Ridge, Accra, Ghana',
       phone: '030 222 3344',
-      website: 'https://ridgechurch.edu.gh',
-      status: 'new',
       contacts: [
         {
           id: 'con_kwame',
@@ -78,15 +90,18 @@ describe('RevenueSwarmOrchestrator (Phase 10 Milestone 5)', () => {
           role: 'Bursar & Finance Lead',
           email: 'kwame@ridgechurch.edu.gh',
           phone: '050 555 6677',
+          confidence: 88,
           verificationStatus: 'verified',
         },
       ],
       scoring: {
         overallScore: 78,
-        icpFit: 30,
-        needIntensity: 22,
-        buyingIntent: 16,
-        engagementVelocity: 10,
+        needScore: 30,
+        digitalMaturity: 25,
+        buyingIntent: 22,
+        budgetProbability: 18,
+        decisionMakerFound: 18,
+        engagement: 16,
       },
     },
   ];
@@ -186,16 +201,32 @@ describe('RevenueSwarmOrchestrator (Phase 10 Milestone 5)', () => {
       ...mockProspects,
       {
         id: 'prosp_low_score',
+        organizationId: 'org_test_school',
+        workspaceId: 'ws_sales_demo',
+        domain: 'unqualified.edu.gh',
+        syncStatus: 'unregistered',
+        createdAt: nowIso,
+        updatedAt: nowIso,
         name: 'Unqualified Academy',
         address: 'Accra',
         phone: '020 000 0000',
-        status: 'new',
+        contacts: [
+          {
+            id: 'con_unqual',
+            name: 'Reception',
+            email: 'info@unqualified.edu.gh',
+            confidence: 50,
+            verificationStatus: 'unverified',
+          },
+        ],
         scoring: {
           overallScore: 45, // Below 70 threshold
-          icpFit: 15,
-          needIntensity: 10,
+          needScore: 15,
+          digitalMaturity: 10,
           buyingIntent: 10,
-          engagementVelocity: 10,
+          budgetProbability: 10,
+          decisionMakerFound: 5,
+          engagement: 5,
         },
       },
     ];

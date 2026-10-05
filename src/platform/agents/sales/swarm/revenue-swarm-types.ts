@@ -16,7 +16,11 @@
 
 import { z } from 'zod/v4';
 import { OutreachChannelSchema } from '@/platform/agents/sales/outbound/sdr-outbound-types';
+import type { OutreachChannel } from '@/platform/agents/sales/outbound/sdr-outbound-types';
 import { SALES_PERSONA_IDS } from '@/platform/agents/sales/personas/sales-persona-types';
+
+export { OutreachChannelSchema };
+export type { OutreachChannel };
 
 // ============================================================================
 // 1. SWARM STAGE & STATUS ENUMS
@@ -70,6 +74,7 @@ export const RevenueSwarmCriteriaSchema = z.object({
   dryRun: z.boolean().default(true),
 });
 export type RevenueSwarmCriteria = z.infer<typeof RevenueSwarmCriteriaSchema>;
+export type RevenueSwarmCriteriaInput = z.input<typeof RevenueSwarmCriteriaSchema>;
 
 export const RevenueSwarmStageResultSchema = z.object({
   stage: RevenueSwarmStageNameSchema,
@@ -90,6 +95,7 @@ export const RevenueSwarmMissionInputSchema = z.object({
   now: z.string().datetime().optional(),
 });
 export type RevenueSwarmMissionInput = z.infer<typeof RevenueSwarmMissionInputSchema>;
+export type RevenueSwarmMissionInputRaw = z.input<typeof RevenueSwarmMissionInputSchema>;
 
 export const RevenueSwarmBlastRadiusSchema = z.object({
   simulated: z.boolean(),

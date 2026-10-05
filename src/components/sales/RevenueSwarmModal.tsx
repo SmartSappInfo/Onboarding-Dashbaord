@@ -37,10 +37,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Sparkles,
-  Bot,
   ShieldCheck,
   CheckCircle2,
-  Clock,
   Layers,
   Search,
   Zap,
@@ -58,7 +56,6 @@ import { cn } from '@/lib/utils';
 import type {
   RevenueSwarmOutcome,
   RevenueSwarmStageName,
-  RevenueSwarmStageResult,
   OutreachChannel,
 } from '@/platform/agents/sales/swarm/revenue-swarm-types';
 import { launchRevenueSwarmAction, cancelRevenueSwarmAction } from '@/app/actions/revenue-swarm-actions';
@@ -540,7 +537,7 @@ export function RevenueSwarmModal({
                   <div>
                     <span className="font-semibold text-muted-foreground">WHY: </span>
                     <span className="text-foreground">
-                      Swarm query: '{query}' in {targetIndustry}.
+                      Swarm query: &apos;{query}&apos; in {targetIndustry}.
                     </span>
                   </div>
                   <div>

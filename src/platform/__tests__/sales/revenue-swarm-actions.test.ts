@@ -23,7 +23,16 @@ import {
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuth: vi.fn(async () => ({
     uid: 'user_kwame',
-    profile: { organizationId: 'org_test' },
+    profile: {
+      id: 'user_kwame',
+      name: 'Kwame',
+      email: 'kwame@test.com',
+      organizationId: 'org_test',
+      role: 'admin',
+      workspaceIds: ['ws_test'],
+      createdAt: '2026-01-01',
+      updatedAt: '2026-01-01',
+    },
     isSystemAdmin: false,
   })),
 }));
@@ -87,7 +96,16 @@ describe('Revenue Swarm Server Actions (Phase 10 Milestone 5)', () => {
       const { requireAuth } = await import('@/lib/auth/require-auth');
       vi.mocked(requireAuth).mockImplementationOnce(async () => ({
         uid: 'user_kwame',
-        profile: { organizationId: 'org_paused' },
+        profile: {
+          id: 'user_kwame',
+          name: 'Kwame',
+          email: 'kwame@test.com',
+          organizationId: 'org_paused',
+          role: 'admin',
+          workspaceIds: ['ws_test'],
+          createdAt: '2026-01-01',
+          updatedAt: '2026-01-01',
+        },
         isSystemAdmin: false,
       }));
 

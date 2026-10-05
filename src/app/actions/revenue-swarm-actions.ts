@@ -21,7 +21,7 @@ import { checkGovernanceDeadManSwitch } from '@/platform/policy/governance-dead-
 import { defaultEventBus } from '@/platform/events/event-bus';
 import { createDomainEvent } from '@/platform/capabilities/events/domain-event';
 import {
-  type RevenueSwarmMissionInput,
+  type RevenueSwarmMissionInputRaw,
   type RevenueSwarmOutcome,
   type RevenueSwarmMetrics,
   RevenueSwarmMissionInputSchema,
@@ -41,7 +41,6 @@ const activeControllers = new Map<string, AbortController>();
 
 // In-memory tenant-partitioned history store with HMR preservation
 declare global {
-  // eslint-disable-next-line no-var
   var __smartsappRevenueSwarmHistory: Map<string, RevenueSwarmOutcome[]> | undefined;
 }
 
@@ -68,7 +67,7 @@ function assertTenantContext(auth: AuthContext, requestedOrgId: string): void {
  * 1. Launches an autonomous revenue operations swarm mission across 6 stages.
  */
 export async function launchRevenueSwarmAction(
-  rawInput: RevenueSwarmMissionInput
+  rawInput: RevenueSwarmMissionInputRaw
 ): Promise<ActionResult<RevenueSwarmOutcome>> {
   // 1. Authenticate caller session
   let auth: AuthContext;

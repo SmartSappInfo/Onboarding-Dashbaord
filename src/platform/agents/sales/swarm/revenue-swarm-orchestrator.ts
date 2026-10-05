@@ -23,6 +23,7 @@ import { checkGovernanceDeadManSwitch } from '@/platform/policy/governance-dead-
 import { defaultEventBus } from '@/platform/events/event-bus';
 import { createDomainEvent } from '@/platform/capabilities/events/domain-event';
 import { SdrOutboundEngine } from '@/platform/agents/sales/outbound/sdr-outbound-engine';
+import type { OutreachMessageDraft } from '@/platform/agents/sales/outbound/sdr-outbound-types';
 import {
   type ApprovalStore,
   createMemoryApprovalStore,
@@ -310,14 +311,19 @@ export class RevenueSwarmOrchestrator {
     }
 
     // Default seeded realistic institutional prospects for Ghana/West Africa
+    const nowIso = new Date().toISOString();
     const defaultProspects: Prospect[] = [
       {
         id: 'prosp_ghana_intl',
+        organizationId: 'org_master',
+        workspaceId: 'ws_master',
+        domain: 'gis.edu.gh',
+        syncStatus: 'unregistered',
+        createdAt: nowIso,
+        updatedAt: nowIso,
         name: 'Ghana International School',
         address: 'Cantonments, Accra, Ghana',
         phone: '030 277 7163',
-        website: 'https://gis.edu.gh',
-        status: 'new',
         contacts: [
           {
             id: 'con_gis_adm',
@@ -325,24 +331,31 @@ export class RevenueSwarmOrchestrator {
             role: 'Director of Admissions',
             email: 'admissions@gis.edu.gh',
             phone: '024 411 2233',
+            confidence: 95,
             verificationStatus: 'verified',
           },
         ],
         scoring: {
           overallScore: 92,
-          icpFit: 38,
-          needIntensity: 28,
-          buyingIntent: 16,
-          engagementVelocity: 10,
+          needScore: 38,
+          digitalMaturity: 30,
+          buyingIntent: 28,
+          budgetProbability: 20,
+          decisionMakerFound: 20,
+          engagement: 16,
         },
       },
       {
         id: 'prosp_lincoln_comm',
+        organizationId: 'org_master',
+        workspaceId: 'ws_master',
+        domain: 'lincoln.edu.gh',
+        syncStatus: 'unregistered',
+        createdAt: nowIso,
+        updatedAt: nowIso,
         name: 'Lincoln Community School',
         address: 'Abelemkpe, Accra, Ghana',
         phone: '030 221 8100',
-        website: 'https://lincoln.edu.gh',
-        status: 'new',
         contacts: [
           {
             id: 'con_lcs_finance',
@@ -350,15 +363,18 @@ export class RevenueSwarmOrchestrator {
             role: 'Chief Financial Officer',
             email: 'finance@lincoln.edu.gh',
             phone: '020 899 0011',
+            confidence: 90,
             verificationStatus: 'verified',
           },
         ],
         scoring: {
           overallScore: 88,
-          icpFit: 36,
-          needIntensity: 26,
-          buyingIntent: 16,
-          engagementVelocity: 10,
+          needScore: 36,
+          digitalMaturity: 28,
+          buyingIntent: 26,
+          budgetProbability: 18,
+          decisionMakerFound: 18,
+          engagement: 16,
         },
       },
     ];
@@ -381,6 +397,7 @@ export class RevenueSwarmOrchestrator {
             ? p.contacts?.map((c) => ({
                 ...c,
                 phone: SdrOutboundEngine.normalizePhoneNumber(c.phone) || c.phone,
+                confidence: c.confidence ?? 85,
                 verificationStatus: (c.verificationStatus ?? 'verified') as 'verified' | 'unverified' | 'risky',
               }))
             : [
@@ -388,8 +405,9 @@ export class RevenueSwarmOrchestrator {
                   id: `con_${p.id}_lead`,
                   name: 'Head of Administration',
                   role: 'School Administrator',
-                  email: `admin@${p.website ? new URL(p.website).hostname.replace('www.', '') : 'school.edu.gh'}`,
+                  email: `admin@${p.domain ? p.domain.replace('www.', '') : 'school.edu.gh'}`,
                   phone: normalizedPhone,
+                  confidence: 85,
                   verificationStatus: 'verified' as const,
                 },
               ],
@@ -403,7 +421,7 @@ export class RevenueSwarmOrchestrator {
   private async executeResearchStage(prospects: Prospect[]): Promise<Prospect[]> {
     // Containerize untrusted reference data (Rules 13 & 30)
     return prospects.map((p) => {
-      const researchNotes = `Institutional Profile: ${p.name}. Location: ${p.address || 'Ghana'}. Website: ${p.website || 'N/A'}. Key administrative priority: modernizing tuition collection and automated reconciliation.`;
+      const researchNotes = `Institutional Profile: ${p.name}. Location: ${p.address || 'Ghana'}. Domain: ${p.domain || 'N/A'}. Key administrative priority: modernizing tuition collection and automated reconciliation.`;
       const untrustedContainer = `<untrusted-reference-data id="research_${p.id}" source="web_crawl">${researchNotes}</untrusted-reference-data>`;
 
       return {
@@ -431,8 +449,8 @@ export class RevenueSwarmOrchestrator {
     organizationId: string,
     workspaceId: string,
     criteria: RevenueSwarmCriteria
-  ): Promise<ReturnType<typeof SdrOutboundEngine.draftOutreach> extends Promise<infer U> ? U['draft'][] : never> {
-    const allDrafts: ReturnType<typeof SdrOutboundEngine.draftOutreach> extends Promise<infer U> ? U['draft'][] : never = [];
+  ): Promise<OutreachMessageDraft[]> {
+    const allDrafts: OutreachMessageDraft[] = [];
 
     for (const prospect of prospects) {
       const contact = prospect.contacts?.[0];

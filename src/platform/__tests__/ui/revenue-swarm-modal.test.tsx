@@ -88,7 +88,7 @@ describe('RevenueSwarmModal Component (theme.md §8 Compliance)', () => {
   });
 
   it('hides long description clutter behind screen-reader only class (theme.md §8.2)', () => {
-    const { container } = render(
+    render(
       <RevenueSwarmModal
         open={true}
         onOpenChange={vi.fn()}
