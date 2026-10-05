@@ -556,6 +556,10 @@ export interface Workspace {
   capabilities?: WorkspaceCapabilities; // Feature flags for workspace modules
   /** Determines if users see only their assigned entities in this workspace (governance) */
   restrictVisibilityToAssigned?: boolean;
+  /** Determines if users see only their assigned deals in this workspace (governance) */
+  restrictDealsVisibilityToAssigned?: boolean;
+  /** Determines if users see only their assigned tasks in this workspace (governance) */
+  restrictTasksVisibilityToAssigned?: boolean;
   /** Features enabled for this workspace. Can only enable features that are enabled at org level. */
   enabledFeatures?: FeatureToggleMap;
   terminology?: {
