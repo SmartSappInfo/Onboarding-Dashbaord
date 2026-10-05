@@ -14,18 +14,18 @@
 
 ## 1. Executive Summary & The Flagship Revenue Workflow
 
-In `docs/agents_mcp/agents_mcp_roadmap.md` (§ Phase 10, lines 1583–1668) and `docs/agents_mcp/phases/agents_mcp_phase_10_master_plan.md` (§1.3, lines 51–100), the signature revenue operations workflow of the Second Agent Wave is defined:
+In [`docs/agents_mcp/agents_mcp_roadmap.md`](file:///Users/josephaidoo/Desktop/Codes/vibe%20Coding/Onboarding-Dashbaord-main/docs/agents_mcp/agents_mcp_roadmap.md) (§ Phase 10, lines 1583–1668) and [`docs/agents_mcp/phases/agents_mcp_phase_10_master_plan.md`](file:///Users/josephaidoo/Desktop/Codes/vibe%20Coding/Onboarding-Dashbaord-main/docs/agents_mcp/phases/agents_mcp_phase_10_master_plan.md) (§1.3, lines 51–100), the signature revenue operations workflow of the Second Agent Wave is defined:
 
 > **User or Rep prompts:**  
 > *“Find 20 qualified leads in edtech and prepare outreach”*  
-> (or clicks "Launch Revenue Swarm" from the Prospect Finder HUD)
+> (or clicks **"Launch Revenue Swarm"** from the Prospect Finder HUD)
 >  
-> **The Autonomous Revenue Swarm executes the 6-Stage Pipeline:**  
+> **The Autonomous Revenue Swarm executes the 6-Stage Coordinated Pipeline:**  
 > 1. **Discovery (`prospecting_agent`):** Discovers high-intent educational institutions and deduplicates against workspace CRM entities (`/workspace_entities`) and known contacts.  
 > 2. **Enrichment (`enrichment_agent`):** Runs waterfall lookups, verifies domain validity, and performs email deliverability checks (DNS/MX/syntax).  
 > 3. **Research (`lead_researcher`):** Scrapes public web data, detects fee collection pain points, technographic footprints, and decision-maker roles. Untrusted content is containerized inside `<untrusted-reference-data id="...">` (Rules 13 & 30).  
 > 4. **Qualification (`qualification_agent`):** Calculates harmonic explainable qualification scores across Fit, Need, Intent, Budget, Authority, and Recency, filtering the top qualified prospects.  
-> 5. **Personalization (`lead_sdr`):** Formulates tailored value proposition pitches across WhatsApp and Email with grounded objection handlers, E.164 phone normalization, and variable interpolation delegated to `FieldsVariablesService.resolveTemplateVariables` (Workspace SSOT).  
+> 5. **Personalization (`lead_sdr`):** Formulates tailored value proposition pitches across WhatsApp and Email with grounded objection handlers, E.164 phone normalization (`+233...` / `wa.me`), and variable interpolation delegated to `FieldsVariablesService.resolveTemplateVariables` (Workspace SSOT).  
 > 6. **Governance & Staging (`outbound_agent` / `sdr`):** Stages cadences as formal governance proposals in `ApprovalStore` (Rules 21 & 22) with canonical sorted SHA-256 `payloadHash`, presenting staged drafts for operator review in `OutreachReviewDrawer`.
 
 ```text
@@ -67,9 +67,9 @@ In `docs/agents_mcp/agents_mcp_roadmap.md` (§ Phase 10, lines 1583–1668) and 
 
 ---
 
-## 2. Invariant Architecture: The Governed Capability Layer & Dual-Tier CRM Data Model (Rule 69)
+## 2. Invariant Architecture: Dual-Tier CRM Data Model & Governed Capability Layer (Rule 69)
 
-In accordance with `docs/agents_mcp/agents_mcp_rules.md` (Rule 69):
+In accordance with [`docs/agents_mcp/agents_mcp_rules.md`](file:///Users/josephaidoo/Desktop/Codes/vibe%20Coding/Onboarding-Dashbaord-main/docs/agents_mcp/agents_mcp_rules.md) (Rule 69):
 
 > **"Do not build an 'AI layer' beside SmartSapp. Build a governed capability layer underneath SmartSapp that both humans and agents use."**
 
@@ -106,7 +106,41 @@ In accordance with `docs/agents_mcp/agents_mcp_rules.md` (Rule 69):
 
 ---
 
-## 3. The Five Non-Negotiable Invariants (Rule 68)
+## 3. Failure Mode & Edge Case Mitigation Matrix (Rule 2)
+
+In accordance with Rule 2 of `agents_mcp_rules.md`:
+
+| Failure Mode / Edge Case | Risk | Architectural Defense & Mitigation Strategy |
+| :--- | :--- | :--- |
+| **Discovery Deduplication Collision** | Duplicate lead creation or CRM record pollution | `LeadContextAssembler` queries existing `/workspace_entities` by domain and normalized name before inserting new prospects. Duplicates are tagged rather than duplicated. |
+| **Enrichment Provider Outage / 429** | Swarm pipeline blocks or hangs | 4-tier waterfall fallback (Clearbit $\rightarrow$ Apollo $\rightarrow$ Hunter $\rightarrow$ BuiltWith) protected by 5-state circuit breakers (Rule 24). Returns partial enrichment diagnostics rather than crashing. |
+| **Malformed Scraped Web HTML / Injection** | Cross-Site Scripting or prompt injection | Web crawler responses parsed through HTML entity sanitization; dynamic text wrapped inside `<untrusted-reference-data id="...">` containers (Rules 13 & 30). |
+| **Incomplete Technographic Footprint** | NaN or unhandled score calculation exception | `ExplainableScoringEngine` applies defensive fallback defaults (0 score for missing criteria) with explicit confidence discount. |
+| **WhatsApp Phone Format Anomaly** | Invalid URL or broken click-to-chat links | `SdrOutboundEngine.normalizePhoneNumber` sanitizes Ghana/regional prefixes (`020...`, `024...`, `2330...` $\rightarrow$ `+233...`). If unresolvable, WhatsApp channel is flagged unavailable with diagnostic reason. |
+| **Two-Phase Payload Tampering** | Unauthorized mutation of staged sequence parameters | Live cryptographic check in `dispatchApprovedOutreachAction` asserts `proposal.payloadHash === computeOutreachPayloadHash(payload)`. Rejects mismatched execution with `PAYLOAD_TAMPERED` (Rule 22). |
+| **Anti-Self-Approval Bypass Attempt** | Operator approves their own outbound outreach | Server Actions enforce `authorizingUserId !== approvedBy` (Rule 13), failing closed with `SELF_APPROVAL_FORBIDDEN`. |
+| **Emergency Dead-Man Switch Trip** | Operator halts operations during active swarm run | `checkGovernanceDeadManSwitch` evaluated before every stage; immediately aborts with HTTP 503 / `SALES_DEAD_MAN_PAUSED` (Rule 60). |
+| **High Concurrency / Resource Overload** | Cloud Run memory exhaustion or rate limits | Bounded concurrency ($\le 4$ parallel operations, Rule 9 & 23); greedy knapsack compression ($\le 4,000$ tokens, Rule 28 & 56). |
+
+---
+
+## 4. Backoffice Observability & No-Code Operator Governance (Rule 3 & 68)
+
+In accordance with Rule 3 and Rule 68 (Invariant 15: "Operable without code"):
+
+1. **Backoffice Observability (`/admin/intelligence/runs` & `/admin/lead-intelligence`):**
+   - Operators can inspect the 6-stage swarm execution timeline, latency metrics, token consumption, and staged action proposals.
+   - Real-time Server-Sent Events (`useEventStream`) stream swarm progression without polling (Rule 62).
+2. **Backoffice Two-Phase Approval Desk (`/admin/intelligence/approvals`):**
+   - Outbound sequences staged by the swarm surface immediately in the operator approval center with Rule 41 explainability grids (**WHAT**, **WHY**, **EXPECTED STATE CHANGE**) and SHA-256 payload hashes.
+3. **Emergency Kill-Switch Control:**
+   - Operators can trip the global or sales dead-man switch from the Backoffice governance console, immediately terminating active swarm runs and dispatches without code deployment.
+4. **No-Code Persona & Policy Management (`/admin/intelligence/agents`):**
+   - Sales Managers can adjust SDR persona instructions, allowed domains, and daily sending limits through the Visual Agent Studio without modifying TypeScript files.
+
+---
+
+## 5. The Five Non-Negotiable Invariants (Rule 68)
 
 In `docs/agents_mcp/agents_mcp_rules.md` (Section 68, lines 2077–2101), five principles are designated as **absolutely non-negotiable**. Milestone 5 embeds these into every task:
 
@@ -141,12 +175,12 @@ In `docs/agents_mcp/agents_mcp_rules.md` (Section 68, lines 2077–2101), five p
 
 ---
 
-## 4. Master 69-Rules Alignment & Enforcement Matrix for Milestone 5
+## 6. Master 69-Rules Alignment & Enforcement Matrix for Milestone 5
 
 | Rule # | Requirement | Milestone 5 Architectural Implementation & Verification |
 | :---: | :--- | :--- |
 | **Rule 1** | Skill Conformance & Standards | Conforms strictly to Next.js 15 App Router, React 19, Tailwind CSS, TypeScript strict mode, and modular decomposition. All legacy features preserved. |
-| **Rule 2** | Failure Mode Planning & Cleanliness | Graceful fallback when enrichment providers fail, websites are down, or records are missing. Degrades gracefully to partial results with clear diagnostics. |
+| **Rule 2** | Failure Mode Planning & Cleanliness | Detailed failure matrix covering provider 429s, DNS timeouts, malformed HTML, prompt injection, and dead-man pause. |
 | **Rule 3** | Backoffice Enhancement & Non-Breaking | Embeds directly into `/admin/lead-intelligence` and Prospect Finder HUD without breaking existing tabs, search, or filters. |
 | **Rule 4** | Zero `any` / Zero `any[]` Typing Policy | 100% strictly typed props, state, actions, and schema returns. `unknown` permitted only at raw boundaries, validated immediately with Zod v4. |
 | **Rule 5** | Staged Deployment & Security Verification | All contracts, orchestrators, actions, and UI modals verified with isolated tests before production integration. |
@@ -211,13 +245,99 @@ In `docs/agents_mcp/agents_mcp_rules.md` (Section 68, lines 2077–2101), five p
 | **Rule 64** | Zero Raw HTML/CSS Leakage & Feature Flags | Synthesized copy rendered through sanitized components; features gated by `FF_SALES_AGENT_WAVE`. |
 | **Rule 65** | Canary Releases | Staged release supporting dark launches and tenant-specific beta access. |
 | **Rule 66** | Phased Roadmap Alignment | Fully aligned with Phase 10 roadmap requirements and completes the Second Agent Wave. |
-| **Rule 67** | The Agent Implementation Gate | Mandatory 10-dimension pre-flight checklist verified before marking Milestone 5 complete. |
+| **Rule 67** | The Agent Implementation Gate | Mandatory 10-dimension pre-flight checklist verified before marking Milestone 5 complete (see Section 7 below). |
 | **Rule 68** | The Five Non-Negotiable Invariants | Invariant 11 (Model != security boundary), 12 (Tool output = untrusted data), 13 (Idempotent/authorized/versioned/audited mutations), 14 (Bounded authority & resources), 15 (Operable without code). |
 | **Rule 69** | Governed Capability Layer Underneath SmartSapp | Dual-tier data model (`entities` vs `workspace_entities`); zero regressions across existing sales tests, tabs, and routes. |
 
 ---
 
-## 5. Bite-Sized Task Breakdown (Tasks 1–6)
+## 7. The Agent Implementation Gate Verification (Rule 67)
+
+In accordance with Rule 67 (`agents_mcp_rules.md` lines 1980–2075), Milestone 5 completes the Sales & Growth Agent Wave by fulfilling all 10 mandatory dimensions:
+
+```text
+1. ARCHITECTURE
+   □ What canonical capabilities does this use?
+     lead.search, lead.enrich, lead.get_intelligence, lead.score, sdr.draft_outreach, sdr.prepare_sequence.
+   □ Is this duplicating an existing service?
+     No. It orchestrates LeadContextAssembler, ExplainableScoringEngine, and SdrOutboundEngine.
+   □ What is the source of truth?
+     Firestore (/entities master [immutable], /workspace_entities [operational], /sdr_drafts, /capability_approvals).
+   □ What events are emitted?
+     sales.swarm.started, sales.swarm.stage_completed, sales.swarm.completed, sales.swarm.approval_required.
+
+2. AUTHORITY
+   □ Who is allowed to use it: Authenticated sales managers, SDRs, and platform admins.
+   □ What may the agent do: Search, enrich, score, crawl websites, formulate drafts, stage approval proposals.
+   □ What may the agent never do: Send live unsolicited outbound emails/messages without human approval.
+   □ Can a sub-agent inherit this authority: Yes, strictly monotonically attenuated (P_child = P_parent ∩ P_specialist).
+
+3. DATA
+   □ What data enters the agent: Prospect names, company domains, public websites, technographics, ICP criteria.
+   □ What data leaves the system: Outbound drafts, WhatsApp links, staged approval proposals.
+   □ What is trusted: Verified tenant configuration, system prompt templates, canonical CRM records.
+   □ What is untrusted: Scraped website HTML, meta tags, external provider responses (isolated in <untrusted-reference-data>).
+   □ What is sensitive: Personal contact emails, phone numbers, executive revenue numbers (redacted in logs).
+
+4. EXECUTION
+   □ Is it idempotent: Yes, deterministic idempotency keys for all swarm runs (sales_swarm_${orgId}_${hash}).
+   □ Can it be retried: Yes, exponential backoff with jitter up to maxAttempts = 3.
+   □ Can it be cancelled: Yes, cooperative cancellation via AbortSignal.
+   □ Can it be duplicated: No, deduplication keys prevent concurrent identical runs.
+   □ What if underlying record changes: TOCTOU version check aborts with optimistic lock error.
+   □ What if response is lost: Checkpoint hash chain allows exact replay from last verified state.
+
+5. MCP
+   □ What protocol version: Spec 2026-07-28.
+   □ What SDK version: @modelcontextprotocol/server v2.x.
+   □ What capabilities: Tools, Prompts, Resources, Tasks.
+   □ What annotations: Readonly, destructive, high_risk hints (server-verified, Rule 12).
+   □ What server identity: sales-intelligence-mcp-server.
+   □ What schema version: Zod v4 canonical contracts.
+   □ What if tool definition changes: Pre-execution cryptographic SHA-256 fingerprint verification fails closed.
+
+6. FAILURE
+   □ Timeout: 60s max duration ceiling per swarm run; 5,000ms ceiling for web crawlers.
+   □ 429: Circuit breaker trips to 'open', backpressure backoff kicks in.
+   □ 500: Caught, sanitized, mapped to structured error codes (REVENUE_SWARM_ERROR_CODES).
+   □ Partial execution: Uncompleted stages marked failed, partial drafts preserved for operator inspection.
+   □ Provider unavailable: Waterfall fallback across secondary providers.
+   □ Stale approval: Action proposal expires after 24h; requires re-proposal.
+   □ Concurrent modification: Optimistic concurrency version mismatch triggers replan.
+
+7. SECURITY
+   □ Prompt injection: Neutralized via regex pattern scanning and <untrusted-reference-data id="..."> isolation.
+   □ Tool poisoning: SHA-256 capability fingerprint verification.
+   □ Confused deputy: Agent identity immutably bound to caller's tenant context.
+   □ SSRF: validateSafeEgressUrl blocks loopback, private subnets, and GCP metadata IPs.
+   □ Exfiltration: Outbound domain whitelist enforced by capability registry.
+   □ Privilege escalation: Monotonic downward scope attenuation prevents privilege elevation.
+   □ Cross-tenant leakage: Strict Anti-IDOR validation on every query and action.
+
+8. OPERATIONS
+   □ Can Backoffice disable it: Yes, emergency dead-man pause switch (Rule 60).
+   □ Can Backoffice inspect it: Yes, live execution timeline on /admin/intelligence/runs.
+   □ Can Backoffice replay it: Yes, deterministic replay from execution traces.
+   □ Can Backoffice rollback it: Yes, reverse-LIFO saga compensation button.
+   □ Can Backoffice change policy without code: Yes, dynamic persona policy editor (/admin/intelligence/agents).
+
+9. TESTING
+   □ Unit: Contract validation, score calculation, URL parameter encoding, SSRF prober.
+   □ Integration: Multi-provider waterfall fallback, CRM dual-tier linking, Server Actions.
+   □ Security: Adversarial prompt injection in web HTML, IDOR cross-tenant probing, unapproved outbound send bypass.
+   □ Evaluation: 24 real-world sales scenarios evaluated on golden benchmark dataset.
+   □ Chaos: Provider 500/429 simulation, DNS resolution timeouts, malformed HTML responses.
+
+10. MIGRATION
+   □ Existing behavior preserved: 100% of existing Lead Intelligence UI tabs and routes remain intact.
+   □ Existing routes preserved: /admin/lead-intelligence continues to operate seamlessly.
+   □ Existing data preserved: Dual-tier CRM data model (/entities vs /workspace_entities) preserved without data migration.
+   □ Rollback documented: Feature flag FF_SALES_AGENT_WAVE allows instant rollback to classic mode.
+```
+
+---
+
+## 8. Bite-Sized Task Breakdown (Tasks 1–6)
 
 ### Task 1: Revenue Swarm Contracts, Zod v4 Schemas & Error Taxonomy
 **Target Files:**
@@ -381,7 +501,7 @@ In `docs/agents_mcp/agents_mcp_rules.md` (Section 68, lines 2077–2101), five p
 
 ---
 
-## 6. Verification Gates & Completion Protocol
+## 9. Verification Gates & Completion Protocol
 
 Before declaring Phase 10 Milestone 5 complete and graduating Phase 10, all 6 verification gates must pass:
 1. **Compilation Gate:** `NODE_OPTIONS='--max-old-space-size=8192' pnpm typecheck` exits with 0 errors.
@@ -393,7 +513,7 @@ Before declaring Phase 10 Milestone 5 complete and graduating Phase 10, all 6 ve
 
 ---
 
-## 7. Rollback Plan & Safety Invariants
+## 10. Rollback Plan & Safety Invariants
 
 1. **Feature Flag Isolation:** Gated behind `FF_SALES_AGENT_WAVE`. If disabled, UI surfaces revert to standard Prospect Finder without swarm action buttons.
 2. **Zero In-Place Destruction:** Master `/entities` identity records are immutable. All mutations target `/workspace_entities`.
