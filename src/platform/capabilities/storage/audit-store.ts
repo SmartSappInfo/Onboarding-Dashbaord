@@ -568,7 +568,7 @@ export class FirestoreAuditStore implements AuditStore {
       .get();
 
     const shardIds = heads.docs
-      .map((doc) => doc.data().shard)
+      .map((doc) => (doc.data() as Record<string, unknown>).shard)
       .filter((shard): shard is number => typeof shard === 'number')
       .sort((a, b) => a - b);
 
