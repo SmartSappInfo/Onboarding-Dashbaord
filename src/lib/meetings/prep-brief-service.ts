@@ -35,7 +35,7 @@ import type { Firestore } from 'firebase-admin/firestore';
 import { z } from 'zod/v4';
 import { CircuitBreaker, CircuitBreakerOpenError } from '@/platform/events/resilience/circuit-breaker';
 import type { Account360Context } from '@/platform/agents/crm/context/account-context-types';
-import { getMeetingDetail, searchMeetings, type MeetingDetail } from './meeting-read-service';
+import { getMeetingDetail, listMeetingsWithRecord, type MeetingDetail } from './meeting-read-service';
 
 export const PREP_BRIEF_PROMPT_VERSION = 'prep_brief_v1';
 
@@ -270,13 +270,13 @@ async function priorMeetingSources(
   db: Firestore,
   params: { workspaceId: string; entityId: string; meetingId: string; before: string }
 ): Promise<PrepSource[]> {
-  const { meetings } = await searchMeetings(db, {
+  // Strictly earlier meetings with this record (never later ones, never this one).
+  const prior = (await listMeetingsWithRecord(db, {
     workspaceId: params.workspaceId,
     entityId: params.entityId,
-    ...(params.before ? { to: params.before } : {}),
+    ...(params.before ? { before: params.before } : {}),
     limit: PREP_BRIEF_LIMITS.priorMeetings + 1,
-  });
-  const prior = meetings.filter((m) => m.meetingId !== params.meetingId).slice(0, PREP_BRIEF_LIMITS.priorMeetings);
+  })).filter((m) => m.meetingId !== params.meetingId).slice(0, PREP_BRIEF_LIMITS.priorMeetings);
   const out: PrepSource[] = [];
   for (const m of prior) {
     out.push({ id: `meeting:${m.meetingId}`, type: 'prior_meeting', label: m.title, text: clip(m.title), workspaceId: params.workspaceId, ...(m.meetingTime ? { at: m.meetingTime } : {}) });

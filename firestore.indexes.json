@@ -6579,6 +6579,24 @@
       ]
     },
     {
+      "collectionGroup": "meetings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "workspaceIds",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "entityId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "meetingTime",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "message_audiences",
       "queryScope": "COLLECTION",
       "fields": [

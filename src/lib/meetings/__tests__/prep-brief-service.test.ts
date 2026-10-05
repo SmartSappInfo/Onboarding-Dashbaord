@@ -283,3 +283,23 @@ describe('generatePrepBrief: deadlines inside the gateway budget (review R3)', (
     expect(PREP_BRIEF_DEADLINES.contextMs + PREP_BRIEF_DEADLINES.modelMs).toBeLessThan(20_000 - 3_000);
   });
 });
+
+describe('generatePrepBrief: history lookup (review R4)', () => {
+  it('finds earlier meetings with the record even when 30 newer unrelated meetings exist', async () => {
+    for (let i = 0; i < 30; i += 1) {
+      const day = String(21 + (i % 10)).padStart(2, '0');
+      db.write(`meetings/busy-${i}`, { workspaceIds: ['ws-a'], title: `Other ${i}`, meetingTime: `2026-09-${day}T${String(8 + (i % 9)).padStart(2, '0')}:00:00.000Z`, entityId: `other-${i}` });
+    }
+    const brief = await generatePrepBrief(fs(), deps(null), params);
+    expect(brief.history.some((h) => h.sourceIds.includes('meeting:m-prev'))).toBe(true);
+    expect(brief.openCommitments.some((c) => c.sourceIds.includes('meeting_item:m-prev:i-1'))).toBe(true);
+  });
+
+  it('never includes meetings after the one being prepared, nor the meeting itself', async () => {
+    db.write('meetings/m-later', { workspaceIds: ['ws-a'], title: 'Later review', meetingTime: '2026-11-01T10:00:00.000Z', entityId: 'ent-1' });
+    const brief = await generatePrepBrief(fs(), deps(null), params);
+    const ids = brief.citations.map((c) => c.id);
+    expect(ids).not.toContain('meeting:m-later');
+    expect(brief.citations.filter((c) => c.id === 'meeting:m-next' && c.type === 'prior_meeting')).toHaveLength(0);
+  });
+});

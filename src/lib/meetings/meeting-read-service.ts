@@ -144,6 +144,27 @@ export async function searchMeetings(db: Firestore, params: MeetingSearchParams)
   return { meetings: all.slice(0, limit), truncated: all.length > limit || snap.docs.length === scan };
 }
 
+/**
+ * The newest meetings with one record, strictly before `before` (ISO), in this workspace only.
+ * A direct indexed query (workspaceIds CONTAINS + entityId + meetingTime DESC), so older meetings
+ * with the record are found however busy the workspace is (M2 review R4: the search path scanned
+ * only the newest 24 workspace meetings and filtered by record in memory).
+ */
+export async function listMeetingsWithRecord(
+  db: Firestore,
+  params: { workspaceId: string; entityId: string; before?: string; limit: number }
+): Promise<MeetingSummary[]> {
+  const limit = Math.min(Math.max(params.limit, 1), MEETING_SEARCH_MAX);
+  let q = db.collection('meetings')
+    .where('workspaceIds', 'array-contains', params.workspaceId)
+    .where('entityId', '==', params.entityId);
+  if (params.before) q = q.where('meetingTime', '<', params.before);
+  const snap = await q.orderBy('meetingTime', 'desc').limit(limit).get();
+  return snap.docs
+    .map((d) => toSummary(d.id, d.data()))
+    .filter((m): m is MeetingSummary => m !== null && m.entityId === params.entityId);
+}
+
 /** One meeting with its participants. Ownership is proven here (NOT_FOUND when foreign). */
 export async function getMeetingDetail(db: Firestore, meetingId: string, workspaceId: string): Promise<MeetingDetail> {
   const scope = await assertMeetingInWorkspace(meetingId, workspaceId, db);
