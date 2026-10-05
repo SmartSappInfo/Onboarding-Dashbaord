@@ -2543,6 +2543,7 @@ export interface WorkspaceEntity {
   phoneVerificationScore?: number;
   lastPhoneVerifiedAt?: string;
   phoneVerificationDetails?: Record<string, unknown>;
+  createdBy?: string;
 }
 
 export interface DealContact {
@@ -2647,6 +2648,7 @@ export interface Deal {
   slaBreachedAt?: string | null;
   isSlaBreached?: boolean;
   metadata?: Record<string, unknown>;
+  createdBy?: string;
 
   createdAt: string;
   updatedAt: string;
@@ -4776,6 +4778,7 @@ export interface Task {
   relatedParentId?: string | null; // e.g. Survey ID or PDF ID
   relatedEntityId?: string | null; // e.g. Response ID
   dealId?: string | null;
+  createdBy?: string;
 }
 
 export interface TaskNote {

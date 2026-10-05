@@ -17,8 +17,9 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { collection, query, where, orderBy } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { Deal, OnboardingStage, UserProfile } from '@/lib/types';
+import { useWorkspaceVisibility } from '@/hooks/use-workspace-visibility';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 import { useEntityResolver } from '@/context/EntityCacheContext';
@@ -117,9 +118,11 @@ export default function DealsListView({
 }: DealsListViewProps) {
   const firestore = useFirestore();
   const router = useRouter();
+  const { user } = useUser();
   const { toast } = useToast();
   const confirm = useConfirm();
   const { activeWorkspaceId } = useWorkspace();
+  const { restrictDealsToAssigned, isWorkspaceAdmin } = useWorkspaceVisibility();
   const { assignedUserId } = useGlobalFilter();
   const { entitiesById, resolveIds } = useEntityResolver();
   const { singular } = useTerminology();
@@ -181,8 +184,11 @@ export default function DealsListView({
   );
 
   const filteredDeals = React.useMemo(
-    () => applyDealFilters(deals || [], filters, assignedUserId, getEntityTags),
-    [deals, filters, assignedUserId, getEntityTags]
+    () => applyDealFilters(deals || [], filters, assignedUserId, getEntityTags, {
+      isRestricted: restrictDealsToAssigned && !isWorkspaceAdmin,
+      currentUserId: user?.uid,
+    }),
+    [deals, filters, assignedUserId, getEntityTags, restrictDealsToAssigned, isWorkspaceAdmin, user?.uid]
   );
 
   const sortedDeals = React.useMemo(() => {

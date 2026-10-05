@@ -50,6 +50,7 @@ import {
     bulkDeleteTasksAction 
 } from '@/lib/task-server-actions';
 import { usePermissions } from '@/hooks/use-permissions';
+import { useWorkspaceVisibility } from '@/hooks/use-workspace-visibility';
 import { cn, toTitleCase } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -133,6 +134,7 @@ export default function TasksClient() {
     const { toast } = useToast();
     const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
     const { activeWorkspaceId, activeOrganizationId } = useTenant();
+    const { restrictTasksToAssigned, isWorkspaceAdmin } = useWorkspaceVisibility();
 
     const { can } = usePermissions();
     const canCreate = can('operations', 'tasks', 'create');
@@ -164,8 +166,8 @@ export default function TasksClient() {
         workspaceId: activeWorkspaceId,
     });
 
-    // Date Interval Filter States
-    const [dateFilterType, setDateFilterType] = React.useState<'all' | 'range' | 'month' | 'week' | 'day'>('all');
+    // Date Interval Filter States - Defaults to 'day' (Today) per business rules
+    const [dateFilterType, setDateFilterType] = React.useState<'all' | 'range' | 'month' | 'week' | 'day'>('day');
     const [dateRange, setDateRange] = React.useState<{ start: Date | null, end: Date | null }>({ start: null, end: null });
     const [selectedMonth, setSelectedMonth] = React.useState<string>('');
     const [selectedWeek, setSelectedWeek] = React.useState<string>('');
@@ -363,13 +365,23 @@ export default function TasksClient() {
     // Shared matchers reused by the list, the stat cards, and the period grouping
     // so that scoping logic stays in one place.
     const matchesAssignee = React.useCallback((task: Task) => {
+        // Enforce fail-closed restriction for standard users
+        if (restrictTasksToAssigned && !isWorkspaceAdmin && currentUser?.uid) {
+            const isAssigned = Array.isArray(task.assignedTo)
+                ? task.assignedTo.includes(currentUser.uid)
+                : task.assignedTo === currentUser.uid;
+            const isCreator = task.createdBy === currentUser.uid;
+            return isAssigned || isCreator;
+        }
+
+        // Standard filtering for admins or workspaces with "All Tasks" enabled
         if (!assignedUserId) return true;
         if (assignedUserId === 'unassigned') {
             return !task.assignedTo || (Array.isArray(task.assignedTo) && task.assignedTo.length === 0);
         }
         if (Array.isArray(task.assignedTo)) return task.assignedTo.includes(assignedUserId);
         return task.assignedTo === assignedUserId;
-    }, [assignedUserId]);
+    }, [assignedUserId, restrictTasksToAssigned, isWorkspaceAdmin, currentUser?.uid]);
 
     const matchesDateFilter = React.useCallback((task: Task) => {
         if (dateFilterType === 'range') {

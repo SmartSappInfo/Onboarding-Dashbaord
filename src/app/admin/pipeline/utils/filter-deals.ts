@@ -8,6 +8,11 @@ import type { Deal } from '@/lib/types';
 import type { KanbanFilters } from '../pipeline-types';
 import { evaluateDealFilterTree } from '@/lib/deals/deal-filter-engine';
 
+export interface DealScopingOptions {
+  isRestricted?: boolean;
+  currentUserId?: string | null;
+}
+
 /**
  * Applies all filter dimensions to a list of deals.
  *
@@ -18,14 +23,22 @@ import { evaluateDealFilterTree } from '@/lib/deals/deal-filter-engine';
  * @param getEntityTags     Resolver returning the tag IDs on a deal's linked
  *                          entity. Required only when `filters.tagIds` is set
  *                          (deals have no native tags). Defaults to none.
+ * @param scoping           Optional security scoping enforcing creator/assignee isolation.
  */
 export function applyDealFilters(
   deals: Deal[],
   filters: KanbanFilters,
   globalAssigneeId: string | null,
-  getEntityTags: (entityId: string) => string[] = () => []
+  getEntityTags: (entityId: string) => string[] = () => [],
+  scoping?: DealScopingOptions
 ): Deal[] {
   let temp = deals;
+
+  // 0. Security Visibility Scoping: Fail-closed assignment & creator restriction for standard users
+  if (scoping?.isRestricted && scoping?.currentUserId) {
+    const uid = scoping.currentUserId;
+    temp = temp.filter(d => d.assignedTo?.userId === uid || d.createdBy === uid);
+  }
 
   // A. Assignee — local filter overrides the workspace GlobalFilter.
   // When assignedToId is 'all', show all deals (assigned & unassigned) without filtering.

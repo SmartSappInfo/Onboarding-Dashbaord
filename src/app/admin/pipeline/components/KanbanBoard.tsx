@@ -23,8 +23,9 @@ import {
   where,
 } from 'firebase/firestore';
 
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { Deal, OnboardingStage, Task, Automation } from '@/lib/types';
+import { useWorkspaceVisibility } from '@/hooks/use-workspace-visibility';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -78,9 +79,11 @@ interface KanbanBoardProps {
  */
 export default function KanbanBoard({ pipelineId, pipelineName, customWidth, filters, automations, showDealTotals = false }: KanbanBoardProps) {
   const firestore = useFirestore();
+  const { user } = useUser();
   const { toast } = useToast();
   const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
   const { activeWorkspaceId } = useWorkspace();
+  const { restrictDealsToAssigned, isWorkspaceAdmin } = useWorkspaceVisibility();
   // Resolve only the entities referenced by the visible deals (for tag filtering)
   // instead of loading the entire workspace into memory (Phase 5).
   const { entitiesById, resolveIds } = useEntityResolver();
@@ -214,8 +217,11 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
 
   // 4. Apply Multi-Layer Filtering (shared with the list view)
   const filteredDeals = React.useMemo(
-    () => applyDealFilters(allDeals, filters, assignedUserId, getEntityTags),
-    [allDeals, assignedUserId, filters, getEntityTags]
+    () => applyDealFilters(allDeals, filters, assignedUserId, getEntityTags, {
+      isRestricted: restrictDealsToAssigned && !isWorkspaceAdmin,
+      currentUserId: user?.uid,
+    }),
+    [allDeals, filters, assignedUserId, getEntityTags, restrictDealsToAssigned, isWorkspaceAdmin, user?.uid]
   );
 
   // 5. Grouping Logic

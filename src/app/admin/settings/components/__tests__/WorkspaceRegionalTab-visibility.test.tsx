@@ -22,7 +22,6 @@ describe('WorkspaceRegionalTab Tri-Domain Visibility', () => {
     id: 'ws_test',
     organizationId: 'org_1',
     name: 'Test WS',
-    slug: 'test-ws',
     description: 'Test WS Description',
     status: 'active',
     statuses: [{ value: 'Active', label: 'Active', color: '#10b981' }],

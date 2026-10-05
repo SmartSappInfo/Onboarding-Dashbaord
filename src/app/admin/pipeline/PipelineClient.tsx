@@ -48,6 +48,7 @@ import {
     TooltipTrigger
 } from '@/components/ui/tooltip';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useWorkspaceVisibility } from '@/hooks/use-workspace-visibility';
 import { useToast } from '@/hooks/use-toast';
 import { clonePipelineAction, setPipelineAsDefaultAction } from '@/lib/pipeline-actions';
 import { PageContainerFluid } from '@/components/ui/page-container';
@@ -69,6 +70,7 @@ export default function PipelineClient() {
   const { activeWorkspaceId, allowedWorkspaces } = useWorkspace();
   const { user } = useUser();
   const { toast } = useToast();
+  const { restrictDealsToAssigned, isWorkspaceAdmin } = useWorkspaceVisibility();
   
   const [activeView, setActiveView] = React.useState<'overview' | 'board' | 'actions' | 'list' | 'forecast' | 'analytics' | 'config'>('board');
   const [isCreateDealOpen, setIsCreateDealOpen] = React.useState(false);
@@ -116,7 +118,16 @@ export default function PipelineClient() {
       updatedAt: '2026-01-01T00:00:00.000Z',
     }));
   });
-  const [activeViewId, setActiveViewId] = React.useState<string>('preset_all_deals');
+  const [activeViewId, setActiveViewId] = React.useState<string>(() => {
+    return restrictDealsToAssigned && !isWorkspaceAdmin ? 'preset_my_deals' : 'preset_all_deals';
+  });
+
+  // Keep activeViewId synchronized with governance scoping if standard restricted user
+  React.useEffect(() => {
+    if (restrictDealsToAssigned && !isWorkspaceAdmin && activeViewId === 'preset_all_deals') {
+      setActiveViewId('preset_my_deals');
+    }
+  }, [restrictDealsToAssigned, isWorkspaceAdmin, activeViewId]);
   const [visibleColumns, setVisibleColumns] = React.useState<DealColumnKey[]>(DEFAULT_DEAL_COLUMNS);
   const [density, setDensity] = React.useState<TableDensity>('standard');
   const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = React.useState(false);
@@ -293,11 +304,19 @@ export default function PipelineClient() {
   [firestore, activeWorkspaceId, currentPipelineId]);
   const { data: pipelineDeals } = useCollection<import('@/lib/types').Deal>(pipelineDealsQuery);
 
+  // Scoped deals adhering to security visibility rules
+  const scopedPipelineDeals = React.useMemo(() => {
+    if (!pipelineDeals) return [];
+    if (restrictDealsToAssigned && !isWorkspaceAdmin && user?.uid) {
+      return pipelineDeals.filter(d => d.assignedTo?.userId === user.uid || d.createdBy === user.uid);
+    }
+    return pipelineDeals;
+  }, [pipelineDeals, restrictDealsToAssigned, isWorkspaceAdmin, user?.uid]);
+
   // Active (non-archived) deals for Overview KPIs and Forecasting calculations
   const activePipelineDeals = React.useMemo(() => {
-    if (!pipelineDeals) return [];
-    return pipelineDeals.filter(d => !d.isArchived);
-  }, [pipelineDeals]);
+    return scopedPipelineDeals.filter(d => !d.isArchived);
+  }, [scopedPipelineDeals]);
 
   const handleNavigateToBoardWithFilter = React.useCallback((preset?: string) => {
     if (preset === 'sla_breached') {
@@ -699,7 +718,7 @@ export default function PipelineClient() {
                 savedViews={savedViews}
                 activeViewId={activeViewId}
                 onSelectView={handleSelectSavedView}
-                deals={pipelineDeals || []}
+                deals={scopedPipelineDeals}
                 currentColumns={visibleColumns}
                 currentDensity={density}
                 onRefreshViews={loadSavedViews}

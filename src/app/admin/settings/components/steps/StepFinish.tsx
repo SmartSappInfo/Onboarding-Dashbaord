@@ -106,7 +106,7 @@ export function StepFinish({
                                     onChange={e => onUpdateStatus(idx, { description: e.target.value })} 
                                     placeholder="Short behavioral description..."
                                     className="h-9 bg-background font-medium text-[10px]" 
-                                </div>
+                                />
                             </div>
                             <Button 
                                 type="button" 

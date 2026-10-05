@@ -484,7 +484,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     allowedWorkspaces: accessibleWorkspaces,
     isSuperAdmin,
     isWorkspaceAdmin,
-    currentUserProfile: profile,
+    currentUserProfile: profile || undefined,
     hasPermission,
     permissionsSchema: effectivePermissionsSchema,
     getPermissionsSchemaForWorkspace,

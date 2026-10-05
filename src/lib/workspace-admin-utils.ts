@@ -51,11 +51,13 @@ export function isUserWorkspaceAdmin(
     }
   }
 
-  // 4. Hierarchical permission check
-  if (
-    permissionsSchema?.management?.systemSettings?.edit === true ||
-    permissionsSchema?.management?.users?.edit === true
-  ) {
+  // 4. Hierarchical permission check (supports normalized schema with `features` as well as direct map)
+  const mgmt = permissionsSchema?.management as unknown as Record<string, unknown> | undefined;
+  const mgmtFeatures = (mgmt?.features as Record<string, unknown> | undefined) || mgmt;
+  const sysSettings = mgmtFeatures?.systemSettings as { edit?: boolean } | undefined;
+  const usersPerm = mgmtFeatures?.users as { edit?: boolean } | undefined;
+
+  if (sysSettings?.edit === true || usersPerm?.edit === true) {
     return true;
   }
 
