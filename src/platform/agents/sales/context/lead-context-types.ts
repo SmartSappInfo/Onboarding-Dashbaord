@@ -169,3 +169,29 @@ export const LeadObjectionHandlerSchema = z.object({
   evidence: z.array(z.string()).default([]),
 });
 export type LeadObjectionHandler = z.infer<typeof LeadObjectionHandlerSchema>;
+
+export const MarketResearchParamsSchema = z.object({
+  organizationId: z.string().min(1),
+  workspaceId: z.string().min(1),
+  industry: z.string().min(1),
+  region: z.string().min(1),
+  targetAudience: z.string().optional(),
+  competitors: z.array(z.string()).optional(),
+  idempotencyKey: z.string().optional(),
+});
+export type MarketResearchParams = z.infer<typeof MarketResearchParamsSchema>;
+
+export const MarketResearchResultSchema = z.object({
+  researchId: z.string().min(1),
+  industry: z.string(),
+  region: z.string(),
+  tamSamEstimate: z.string(),
+  marketTrends: z.array(z.string()),
+  highIntentTriggers: z.array(z.string()),
+  recommendedAngles: z.array(z.string()),
+  icpRecommendations: z.array(z.string()),
+  sourcesCount: z.number().int().min(0),
+  researchedAt: z.string(),
+  idempotencyKey: z.string(),
+});
+export type MarketResearchResult = z.infer<typeof MarketResearchResultSchema>;
