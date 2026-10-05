@@ -3,3 +3,4 @@
  */
 
 export * from './lead-capabilities';
+export * from './sdr-capabilities';
