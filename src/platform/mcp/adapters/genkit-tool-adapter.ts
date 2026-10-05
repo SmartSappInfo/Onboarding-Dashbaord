@@ -30,6 +30,7 @@
  *    errors with sanitized codes from `GENKIT_ADAPTER_ERROR_CODES`.
  */
 
+import { invokeGoverned } from '@/platform/capabilities/execution/invoke-governed';
 import crypto from 'node:crypto';
 import { tool, z as genkitZ, type ToolAction } from 'genkit';
 import { z } from 'zod/v4';
@@ -252,7 +253,19 @@ export function createGenkitToolFromCapability(
       let outputData: unknown = undefined;
 
       try {
-        const result = await capability.handler(validatedInput, executionContext);
+        // CAUTION (Phase 11 M0 · T3, F3/B6): executes through the governed gateway, never capability.handler().
+        const result = await invokeGoverned({
+          capability,
+          capabilityId: capability.id,
+          surface: 'agent',
+          input: validatedInput,
+          principal: executionContext.principal,
+          correlationId: executionContext.correlationId,
+          ...(executionContext.causationId ? { causationId: executionContext.causationId } : {}),
+          ...(executionContext.idempotencyKey ? { idempotencyKey: executionContext.idempotencyKey } : {}),
+          ...(executionContext.expectedVersion !== undefined ? { expectedVersion: executionContext.expectedVersion } : {}),
+          ...(executionContext.dryRun ? { dryRun: true } : {}),
+        });
         const durationMs = Math.round(performance.now() - startTime);
 
         if (!result.success) {

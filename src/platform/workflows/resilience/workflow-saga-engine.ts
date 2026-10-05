@@ -16,6 +16,7 @@
  * 7. HMR PRESERVATION (Rule 69): Global singleton preserved on globalThis.__smartsappWorkflowSagaEngine.
  */
 
+import { invokeGoverned } from '@/platform/capabilities/execution/invoke-governed';
 import { defaultEventBus, type EventBus } from '@/platform/events/event-bus';
 import { createDomainEvent } from '@/platform/capabilities/events/domain-event';
 import { checkGovernanceDeadManSwitch } from '@/platform/policy/governance-dead-man';
@@ -234,7 +235,17 @@ export class WorkflowSagaEngine {
       };
 
       try {
-        const executionResult = await capability.handler(compArgs, ctx);
+        // CAUTION (Phase 11 M0 · T3, F3/B6): executes through the governed gateway, never capability.handler().
+        const executionResult = await invokeGoverned({
+          capability,
+          capabilityId: capability.id,
+          surface: 'task_worker',
+          input: compArgs,
+          principal: ctx.principal,
+          correlationId: ctx.correlationId,
+          ...(ctx.causationId ? { causationId: ctx.causationId } : {}),
+          ...(ctx.idempotencyKey ? { idempotencyKey: ctx.idempotencyKey } : {}),
+        });
         const durationMs = Date.now() - startTime;
 
         if (executionResult.success) {

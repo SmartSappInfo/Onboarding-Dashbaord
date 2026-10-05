@@ -36,7 +36,9 @@ describe('Distributed Workflow Saga Compensation Engine (Phase 7 Milestone 4)', 
     userId: 'user_saga_001',
     organizationId: orgId,
     workspaceId,
-    grantedScopes: ['crm.write', 'billing.write'],
+    // Compensations now run through the gateway (Phase 11 M0 · T3), which enforces the declared
+    // permission; the stored principal must actually hold it.
+    grantedScopes: ['crm.write', 'billing.write', 'app:automations_manage'],
     effectiveRole: 'admin',
   };
 

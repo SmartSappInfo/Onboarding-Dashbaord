@@ -16,6 +16,7 @@
  * - Rule 63: Human-in-the-loop operator intervention flags on partial compensation failures
  */
 
+import { invokeGoverned } from '@/platform/capabilities/execution/invoke-governed';
 import {
   type AgentRunStore,
   getAgentRunStore,
@@ -221,7 +222,20 @@ export class SagaCompensationEngine {
           ...execContext,
         };
 
-        await capability.handler(executionPayload, execContext);
+        // CAUTION (Phase 11 M0 · T3, F3/B6): executes through the governed gateway, never capability.handler().
+        const compensation = await invokeGoverned({
+          capability,
+          capabilityId: capability.id,
+          surface: 'task_worker',
+          input: executionPayload,
+          principal: execContext.principal,
+          correlationId: execContext.correlationId,
+          ...(execContext.causationId ? { causationId: execContext.causationId } : {}),
+          ...(execContext.idempotencyKey ? { idempotencyKey: execContext.idempotencyKey } : {}),
+        });
+        if (!compensation.success) {
+          throw new Error(`Compensation refused (${compensation.error.code}): ${compensation.error.message}`);
+        }
 
         compStep.status = 'completed';
         compStep.completedAt = new Date().toISOString();

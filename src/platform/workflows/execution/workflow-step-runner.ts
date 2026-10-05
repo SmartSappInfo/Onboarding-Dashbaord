@@ -21,7 +21,9 @@ import { evaluateMemoryContentRisk } from '@/platform/memory/governance/anti-poi
 import { createDomainEvent } from '@/platform/capabilities/events/domain-event';
 import { getCapability } from '@/platform/capabilities/registry/capability-registry';
 import { evaluatePrincipalAuthority } from '@/platform/capabilities/policy/principal-evaluator';
-import type { AgentPrincipal, CapabilityExecutionContext } from '@/platform/capabilities/contracts/capability-definition';
+import type { AgentPrincipal } from '@/platform/capabilities/contracts/capability-definition';
+import { classifyRefusal, invokeGoverned } from '@/platform/capabilities/execution/invoke-governed';
+import type { ExecuteCapabilityDeps } from '@/platform/capabilities/execution/execute-capability';
 import {
   type ToolFingerprintService,
   getToolFingerprintService,
@@ -72,6 +74,8 @@ export interface StepRunnerOptions {
   dlqService?: WorkflowDlqService;
   sagaEngine?: WorkflowSagaEngine;
   signal?: AbortSignal;
+  /** Gateway dependencies (tests inject fakes; production uses the governed defaults). */
+  gatewayDeps?: ExecuteCapabilityDeps;
 }
 
 export interface WorkflowStepRunner {
@@ -383,19 +387,27 @@ export function createWorkflowStepRunner(): WorkflowStepRunner {
             );
           }
 
-          const ctx: CapabilityExecutionContext = {
-            principal,
-            correlationId: payload.workflowId,
-            causationId: payload.stepId,
-            idempotencyKey: payload.idempotencyKey,
-            dryRun: false,
-            timestamp: new Date().toISOString(),
-          };
-          const executionResult = await capability.handler(stepInput, ctx);
+          // CAUTION (Phase 11 M0 · T3, F3/B6): steps execute through the governed gateway, never by
+          // calling `capability.handler()`. The gateway re-checks flags, tenant, resource scope, live
+          // standing, approvals, idempotency, audit and outbox. The step key is deterministic, so a
+          // retry after a lost response replays the stored result instead of acting twice (Rule 20).
+          const executionResult = await invokeGoverned(
+            {
+              capabilityId: step.capabilityId,
+              surface: 'task_worker',
+              input: stepInput,
+              principal,
+              correlationId: payload.workflowId,
+              causationId: payload.stepId,
+              idempotencyKey: `wf_${payload.workflowId}_${payload.stepId}`,
+            },
+            options?.gatewayDeps
+          );
           if (!executionResult.success) {
+            const refusal = classifyRefusal(executionResult.error.code, executionResult.error.retryable);
             throw new WorkflowExecutionError(
-              'EXECUTION_FAILED',
-              `Capability execution failed: ${executionResult.error.message}`
+              refusal === 'authority' ? 'AUTHORIZATION_DENIED' : refusal === 'invalid' ? 'INPUT_VALIDATION_FAILED' : 'EXECUTION_FAILED',
+              `Capability execution refused (${executionResult.error.code}): ${executionResult.error.message}`
             );
           }
 

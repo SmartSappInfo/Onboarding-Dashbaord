@@ -263,10 +263,10 @@ describe('Native In-Process Genkit Tool Adapter', () => {
       email: 'frank@example.com',
     });
 
-    expect(result).toEqual({
-      contactId: 'dry_run_id',
-      status: 'simulated',
-    });
+    // Since Phase 11 M0 · T3 the adapter executes through the gateway, whose dry run (Rule 42) returns
+    // a preview and never runs handler code, so nothing can have side effects in shadow mode.
+    expect(result).toMatchObject({ dryRun: true });
+    expect(JSON.stringify(result)).not.toContain('dry_run_id');
   });
 
   it('blocks sensitive data exfiltration to external channel (Rule 32 & 33)', async () => {
