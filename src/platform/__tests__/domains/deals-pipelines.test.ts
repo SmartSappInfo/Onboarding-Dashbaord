@@ -7,8 +7,28 @@
  * Strict Typing Policy: Zero `any` or `any[]`.
  */
 
+import { describe, it, expect, vi } from 'vitest';
+import { FakeFirestore } from '../helpers/fake-firestore';
+
+// deal.get / deal.advance_stage fail closed (M2 · T4.3): they need a real deal in this workspace.
+const h = vi.hoisted(() => ({ db: undefined as unknown }));
+vi.mock('@/lib/firebase-admin', () => ({
+  get adminDb() {
+    return h.db;
+  },
+}));
+vi.mock('@/lib/crm/deal-core', () => ({
+  createDealCore: vi.fn(async () => ({ id: 'deal_new_001' })),
+  updateDealStageCore: vi.fn(async () => ({ success: true })),
+  updateDealOwnerCore: vi.fn(async () => ({ success: true })),
+  updateDealValueCore: vi.fn(async () => ({ success: true })),
+}));
+const fakeDb = new FakeFirestore();
+fakeDb.write('deals/deal_sample_001', { workspaceId: 'ws_deal_test', name: 'Sample', entityId: 'entity_sample_001', stageId: 'stage_discovery', value: 1000, status: 'open', createdAt: '2026-10-01T00:00:00.000Z' });
+h.db = fakeDb.asFirestore();
+
 import { defineContractSuite } from '../contract/define-contract-suite';
-import type { AgentPrincipal } from '../../capabilities/contracts/capability-definition';
+import type { AgentPrincipal, AnyCapabilityDefinition } from '../../capabilities/contracts/capability-definition';
 import {
   dealSearchCapability,
   dealGetCapability,
@@ -155,4 +175,16 @@ defineContractSuite({
   authorizedPrincipal,
   unauthorizedPrincipal,
   foreignWorkspacePrincipal,
+});
+
+describe('deal.get fails closed (Phase 11 M2 · T4.3)', () => {
+  it('a missing deal is NOT_FOUND, never an invented deal', async () => {
+    const { executeCapability } = await import('../../capabilities/execution/execute-capability');
+    const res = await executeCapability(
+      { capabilityId: 'deal.get', surface: 'agent', input: { workspaceId: 'ws_deal_test', dealId: 'deal_missing' }, correlationId: 'c-get', principal: authorizedPrincipal },
+      { registryLookup: (id) => (id === 'deal.get' ? (dealGetCapability as AnyCapabilityDefinition) : undefined), auditSink: () => undefined, outboxSink: () => undefined }
+    );
+    expect(res.success).toBe(false);
+    if (!res.success) expect(res.error.code).toBe('NOT_FOUND');
+  });
 });

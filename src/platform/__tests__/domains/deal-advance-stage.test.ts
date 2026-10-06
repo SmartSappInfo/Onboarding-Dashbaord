@@ -9,6 +9,23 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { FakeFirestore } from '../helpers/fake-firestore';
+
+const h = vi.hoisted(() => ({ db: undefined as unknown, stageCalls: [] as string[] }));
+vi.mock('@/lib/firebase-admin', () => ({
+  get adminDb() {
+    return h.db;
+  },
+}));
+vi.mock('@/lib/crm/deal-core', () => ({
+  createDealCore: vi.fn(async () => ({ id: 'deal_new' })),
+  updateDealStageCore: vi.fn(async (_actor: unknown, dealId: string) => {
+    h.stageCalls.push(dealId);
+    return { success: true };
+  }),
+  updateDealOwnerCore: vi.fn(async () => ({ success: true })),
+  updateDealValueCore: vi.fn(async () => ({ success: true })),
+}));
 import {
   dealAdvanceStageCapability,
   DealAdvanceStageInputSchema,
@@ -44,6 +61,27 @@ describe('deal.advance_stage Capability Contract & Pipeline Execution', () => {
     vi.clearAllMocks();
     resetCapabilityRegistryForTests();
     registerCapability(dealAdvanceStageCapability);
+    const db = new FakeFirestore();
+    db.write('deals/deal_101', { workspaceId: 'ws_sales_test', name: 'Renewal', stageId: 'stage_negotiation' });
+    db.write('deals/deal_foreign', { workspaceId: 'ws_other', name: 'Other', stageId: 'stage_negotiation' });
+    h.db = db.asFirestore();
+    h.stageCalls = [];
+  });
+
+  it('fails closed: a missing or foreign deal is NOT_FOUND, never a success (M2 · T4.3)', async () => {
+    for (const dealId of ['deal_missing', 'deal_foreign']) {
+      const result = await executeCapability(createServerActionInvocation({
+        capabilityId: 'deal.advance_stage',
+        input: { workspaceId: 'ws_sales_test', dealId, stageId: 'stage_won' },
+        principal: mockPrincipal,
+      }), testDeps);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.code).toBe('NOT_FOUND');
+        expect(result.error.stateChanged).toBe('no');
+      }
+    }
+    expect(h.stageCalls).toEqual([]);
   });
 
   it('validates capability definition metadata and risk classification', () => {

@@ -225,58 +225,38 @@ export const dealGetCapability: CapabilityDefinition<
     input: DealGetInput,
     context: CapabilityExecutionContext
   ): Promise<CapabilityExecutionResult<DealGetOutput>> {
-    try {
-      const docSnap = await adminDb.collection('deals').doc(input.dealId).get();
-      if (docSnap.exists) {
-        const data = docSnap.data() as RawDealDoc | undefined;
-        if (data?.workspaceId && data.workspaceId !== input.workspaceId) {
-          return {
-            success: false,
-            error: {
-              code: 'NOT_FOUND', // Anti-IDOR masking (Rule 47/49)
-              message: `Deal "${input.dealId}" not found in workspace.`,
-              stateChanged: 'no',
-              retryable: false,
-            },
-            executionId: context.correlationId,
-          };
-        }
-
-        return {
-          success: true,
-          data: {
-            id: docSnap.id,
-            name: data?.name || 'Untitled Deal',
-            entityId: data?.entityId || '',
-            stageId: data?.stageId || '',
-            stageName: data?.stageName || data?.stageId || 'Unknown Stage',
-            value: typeof data?.value === 'number' ? data.value : 0,
-            status: data?.status || 'open',
-            createdAt: data?.createdAt || new Date().toISOString(),
-            ownerId: data?.ownerId,
-            assignedTo: data?.assignedTo,
-            createdBy: data?.createdBy,
-          },
-          executionId: context.correlationId,
-          emittedEvents: [],
-          durationMs: 0,
-        };
-      }
-    } catch {
-      // Offline fallback
+    // FAIL CLOSED (Phase 11 M2 · T4.3, Rules 13/31/48): a missing or foreign deal is NOT_FOUND and a
+    // read failure is an error. This used to return an invented "Target Deal" so agents and the
+    // CRM proposal bridge (conflict check, postcondition) could act on data that doesn't exist.
+    const docSnap = await adminDb.collection('deals').doc(input.dealId).get();
+    const data = docSnap.exists ? (docSnap.data() as RawDealDoc | undefined) : undefined;
+    if (!data || (data.workspaceId && data.workspaceId !== input.workspaceId)) {
+      return {
+        success: false,
+        error: {
+          code: 'NOT_FOUND', // Anti-IDOR masking (Rule 47/49): missing and foreign look the same
+          message: `Deal "${input.dealId}" not found in workspace.`,
+          stateChanged: 'no',
+          retryable: false,
+        },
+        executionId: context.correlationId,
+      };
     }
 
     return {
       success: true,
       data: {
-        id: input.dealId,
-        name: 'Target Deal',
-        entityId: 'entity_sample_001',
-        stageId: 'stage_negotiation',
-        stageName: 'Negotiation',
-        value: 50000,
-        status: 'open',
-        createdAt: new Date().toISOString(),
+        id: docSnap.id,
+        name: data.name || 'Untitled Deal',
+        entityId: data.entityId || '',
+        stageId: data.stageId || '',
+        stageName: data.stageName || data.stageId || 'Unknown Stage',
+        value: typeof data.value === 'number' ? data.value : 0,
+        status: data.status || 'open',
+        createdAt: data.createdAt || new Date().toISOString(),
+        ownerId: data.ownerId,
+        assignedTo: data.assignedTo,
+        createdBy: data.createdBy,
       },
       executionId: context.correlationId,
       emittedEvents: [],
@@ -588,49 +568,45 @@ export const dealAdvanceStageCapability: CapabilityDefinition<
     const updatedAt = new Date().toISOString();
     let stageName = input.stageId;
 
-    try {
-      const dealSnap = await adminDb.collection('deals').doc(input.dealId).get();
-      if (dealSnap.exists) {
-        const dealData = dealSnap.data();
-        if (dealData?.workspaceId && dealData.workspaceId !== input.workspaceId) {
-          return {
-            success: false,
-            error: {
-              code: 'NOT_FOUND', // Anti-IDOR masking (Rule 47/49)
-              message: `Deal "${input.dealId}" not found in workspace.`,
-              stateChanged: 'no',
-              retryable: false,
-            },
-            executionId: context.correlationId,
-          };
-        }
+    // FAIL CLOSED (Phase 11 M2 · T4.3, Rules 31/48): a missing deal is NOT_FOUND and a failure is an
+    // error. This used to report success (and emit deal.stage_advanced) when nothing changed.
+    const dealSnap = await adminDb.collection('deals').doc(input.dealId).get();
+    const dealData = dealSnap.exists ? dealSnap.data() : undefined;
+    if (!dealData || (dealData.workspaceId && dealData.workspaceId !== input.workspaceId)) {
+      return {
+        success: false,
+        error: {
+          code: 'NOT_FOUND', // Anti-IDOR masking (Rule 47/49)
+          message: `Deal "${input.dealId}" not found in workspace.`,
+          stateChanged: 'no',
+          retryable: false,
+        },
+        executionId: context.correlationId,
+      };
+    }
 
-        const coreResult = await updateDealStageCore(actor, input.dealId, input.stageId, {
-          reason: input.reason,
-          bypassValidation: input.bypassValidation,
-        });
+    const coreResult = await updateDealStageCore(actor, input.dealId, input.stageId, {
+      reason: input.reason,
+      bypassValidation: input.bypassValidation,
+    });
 
-        if (!coreResult.success) {
-          return {
-            success: false,
-            error: {
-              code: 'VALIDATION',
-              message: coreResult.error || 'Failed to advance stage.',
-              stateChanged: 'no',
-              retryable: false,
-            },
-            executionId: context.correlationId,
-          };
-        }
+    if (!coreResult.success) {
+      return {
+        success: false,
+        error: {
+          code: 'VALIDATION',
+          message: coreResult.error || 'Failed to advance stage.',
+          stateChanged: 'no',
+          retryable: false,
+        },
+        executionId: context.correlationId,
+      };
+    }
 
-        const stageSnap = await adminDb.collection('onboardingStages').doc(input.stageId).get();
-        if (stageSnap.exists) {
-          const stageData = stageSnap.data() as { name?: string } | undefined;
-          stageName = stageData?.name || input.stageId;
-        }
-      }
-    } catch {
-      // Offline fallback
+    const stageSnap = await adminDb.collection('onboardingStages').doc(input.stageId).get();
+    if (stageSnap.exists) {
+      const stageData = stageSnap.data() as { name?: string } | undefined;
+      stageName = stageData?.name || input.stageId;
     }
 
     const domainEvent = createDomainEvent({
