@@ -172,23 +172,25 @@ describe('meetings_conversations behaviour', () => {
   beforeEach(seed);
 
   it('declares resolvable permissions and the planned risk per capability (plan §4.2)', () => {
-    const expected: Record<string, { level: string; permission: string; nonDelegable: boolean }> = {
-      'meeting.search': { level: 'L0_READ', permission: 'rbac:operations.meetings.view', nonDelegable: false },
-      'meeting.get': { level: 'L0_READ', permission: 'rbac:operations.meetings.view', nonDelegable: false },
-      'meeting.list_recordings': { level: 'L0_READ', permission: 'rbac:operations.meetings.view', nonDelegable: false },
-      'meeting.get_transcript': { level: 'L0_READ', permission: 'rbac:operations.meetings.view', nonDelegable: false },
-      'meeting.ingest_transcript': { level: 'L1_INTERNAL_DRAFT', permission: 'rbac:operations.meetings.edit', nonDelegable: false },
-      'meeting.record_consent': { level: 'L2_STATE_MUTATION', permission: 'rbac:operations.meetings.edit', nonDelegable: true },
-      'meeting.transcribe_recording': { level: 'L1_INTERNAL_DRAFT', permission: 'rbac:operations.meetings.edit', nonDelegable: false },
-      'meeting.generate_prep_brief': { level: 'L0_READ', permission: 'rbac:operations.meetings.view', nonDelegable: false },
-      'meeting.extract_intelligence': { level: 'L1_INTERNAL_DRAFT', permission: 'rbac:operations.meetings.edit', nonDelegable: false },
-      'meeting.summarize': { level: 'L1_INTERNAL_DRAFT', permission: 'rbac:operations.meetings.edit', nonDelegable: false },
-      'meeting.get_intelligence': { level: 'L0_READ', permission: 'rbac:operations.meetings.view', nonDelegable: false },
+    const expected: Record<string, { level: string; permissions: string[]; nonDelegable: boolean }> = {
+      'meeting.search': { level: 'L0_READ', permissions: ['rbac:operations.meetings.view'], nonDelegable: false },
+      'meeting.get': { level: 'L0_READ', permissions: ['rbac:operations.meetings.view'], nonDelegable: false },
+      'meeting.list_recordings': { level: 'L0_READ', permissions: ['rbac:operations.meetings.view'], nonDelegable: false },
+      'meeting.get_transcript': { level: 'L0_READ', permissions: ['rbac:operations.meetings.view'], nonDelegable: false },
+      'meeting.ingest_transcript': { level: 'L1_INTERNAL_DRAFT', permissions: ['rbac:operations.meetings.edit'], nonDelegable: false },
+      'meeting.record_consent': { level: 'L2_STATE_MUTATION', permissions: ['rbac:operations.meetings.edit'], nonDelegable: true },
+      'meeting.transcribe_recording': { level: 'L1_INTERNAL_DRAFT', permissions: ['rbac:operations.meetings.edit'], nonDelegable: false },
+      'meeting.generate_prep_brief': { level: 'L0_READ', permissions: ['rbac:operations.meetings.view'], nonDelegable: false },
+      'meeting.extract_intelligence': { level: 'L1_INTERNAL_DRAFT', permissions: ['rbac:operations.meetings.edit'], nonDelegable: false },
+      'meeting.summarize': { level: 'L1_INTERNAL_DRAFT', permissions: ['rbac:operations.meetings.edit'], nonDelegable: false },
+      'meeting.get_intelligence': { level: 'L0_READ', permissions: ['rbac:operations.meetings.view'], nonDelegable: false },
+      'meeting.create_followup_tasks': { level: 'L1_INTERNAL_DRAFT', permissions: ['rbac:operations.meetings.edit', 'rbac:operations.tasks.create'], nonDelegable: false },
+      'meeting.undo_followup_task': { level: 'L1_INTERNAL_DRAFT', permissions: ['rbac:operations.meetings.edit', 'rbac:operations.tasks.delete'], nonDelegable: false },
     };
     for (const cap of MEETINGS_CONVERSATIONS_CAPABILITIES) {
       const want = expected[cap.id];
       expect(want, `unplanned capability ${cap.id}`).toBeDefined();
-      expect(cap.permissions).toEqual([want.permission]);
+      expect(cap.permissions).toEqual(want.permissions);
       for (const ref of cap.permissions) expect(parsePermissionRef(ref), ref).not.toBeNull();
       expect(cap.risk.level).toBe(want.level);
       expect(cap.risk.nonDelegable).toBe(want.nonDelegable);

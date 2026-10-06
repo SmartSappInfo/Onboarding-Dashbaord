@@ -51,6 +51,7 @@ export const MEETING_TOOL_MATRIX: Readonly<Record<MeetingPersonaId, readonly Mee
     { capabilityId: 'meeting.ingest_transcript', riskLevel: 'L1_INTERNAL_DRAFT', mode: 'autonomous', description: 'Add a transcript from text (idempotent by content).', compensatingAction: 'delete transcript (person)' },
     { capabilityId: 'meeting.extract_intelligence', riskLevel: 'L1_INTERNAL_DRAFT', mode: 'autonomous', description: 'Start (or rejoin) the evidence-checked analysis of a transcript.', compensatingAction: 'delete the analysis; re-run is idempotent per prompt version' },
     { capabilityId: 'meeting.summarize', riskLevel: 'L1_INTERNAL_DRAFT', mode: 'autonomous', description: 'New summary from checked outcomes only (version-checked).' },
+    { capabilityId: 'meeting.create_followup_tasks', riskLevel: 'L1_INTERNAL_DRAFT', mode: 'autonomous', description: 'One task per checked commitment / action item; never duplicates (shared claim with "Convert to task").', compensatingAction: 'meeting.undo_followup_task (person): deletes only an unchanged task' },
   ],
 };
 

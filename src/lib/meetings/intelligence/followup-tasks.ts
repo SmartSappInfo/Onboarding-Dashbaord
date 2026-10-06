@@ -17,6 +17,7 @@
 
 import type { Firestore } from 'firebase-admin/firestore';
 import { z } from 'zod/v4';
+import type { NewTaskInput } from '@/lib/tasks/task-core';
 import { ACTIONABLE_ITEM_TYPES, type MeetingItem } from './intelligence-schemas';
 import { readIntelligenceV2 } from './intelligence-store';
 import { CONVERSIONS, ItemConversionError, conversionDocId, convertItemToTask, listConversions } from './item-conversion';
@@ -44,6 +45,34 @@ export interface FollowupTasksResult {
 export interface FollowupTaskDeps {
   createTask: (item: MeetingItem) => Promise<{ success: boolean; id?: string; error?: string }>;
   nowMs: () => number;
+}
+
+/**
+ * The task created from a meeting item: one mapping for the "Convert to task" button and the
+ * `meeting.create_followup_tasks` capability. Owner shown, never guessed (plan §4.6): a matched
+ * workspace user, else the person (or the person an agent acts for) creating it.
+ */
+export function taskFromItem(
+  item: MeetingItem,
+  ctx: { workspaceId: string; organizationId: string | undefined; meetingId: string; meetingTitle: string | undefined; fallbackAssignee: string }
+): NewTaskInput {
+  return {
+    workspaceId: ctx.workspaceId,
+    ...(ctx.organizationId ? { organizationId: ctx.organizationId } : {}),
+    title: item.text,
+    description: `From meeting ${ctx.meetingTitle ?? ctx.meetingId}. Owner: ${item.owner?.matched ? item.owner.name : 'Unassigned'}.`,
+    priority: 'medium',
+    status: 'todo',
+    category: 'follow_up',
+    assignedTo: item.owner?.matched && item.owner.userId ? item.owner.userId : ctx.fallbackAssignee,
+    dueDate: item.dueIso ?? new Date().toISOString(),
+    reminders: [],
+    reminderSent: false,
+    source: 'system',
+    relatedEntityType: 'Meeting',
+    relatedEntityId: ctx.meetingId,
+    relatedParentId: item.itemHash,
+  };
 }
 
 function skipReasonFor(item: MeetingItem | undefined): SkipReason | null {

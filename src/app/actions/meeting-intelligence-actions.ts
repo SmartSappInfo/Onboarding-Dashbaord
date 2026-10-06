@@ -37,6 +37,7 @@ import { readMeetingAnalysis, type RunProgress } from '@/lib/meetings/intelligen
 import type { AuthContext } from '@/lib/auth/require-auth';
 import { toLegacyIntelligence } from '@/lib/meetings/intelligence/legacy-adapter';
 import { convertItemToTask, findV2Item, ItemConversionError, listConversions } from '@/lib/meetings/intelligence/item-conversion';
+import { taskFromItem } from '@/lib/meetings/intelligence/followup-tasks';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -241,24 +242,13 @@ export async function convertActionItemToCrmTaskAction(
       const result = await convertItemToTask(adminDb, {
         nowMs: () => Date.now(),
         createTask: (item) => createTaskCore(
-          {
+          taskFromItem(item, {
             workspaceId,
             organizationId: meeting.organizationId ?? ctx.profile.organizationId,
-            title: item.text,
-            description: `From meeting ${meeting.title ?? meetingId}. Owner: ${item.owner?.matched ? item.owner.name : 'Unassigned'}.`,
-            priority: 'medium',
-            status: 'todo',
-            category: 'follow_up',
-            // Owner shown, never guessed (plan §4.6): a matched user, else the person converting it.
-            assignedTo: item.owner?.matched && item.owner.userId ? item.owner.userId : ctx.uid,
-            dueDate: item.dueIso ?? new Date().toISOString(),
-            reminders: [],
-            reminderSent: false,
-            source: 'system',
-            relatedEntityType: 'Meeting',
-            relatedEntityId: meetingId,
-            relatedParentId: item.itemHash,
-          },
+            meetingId,
+            meetingTitle: meeting.title,
+            fallbackAssignee: ctx.uid,
+          }),
           { kind: 'user', uid: ctx.uid }
         ),
       }, { workspaceId, meetingId, itemHash: actionItemId, actorUid: ctx.uid });
