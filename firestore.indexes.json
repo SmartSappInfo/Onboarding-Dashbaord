@@ -2489,6 +2489,20 @@
       ]
     },
     {
+      "collectionGroup": "meeting_intelligence_runs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "meeting_transcription_usage",
       "queryScope": "COLLECTION",
       "fields": [

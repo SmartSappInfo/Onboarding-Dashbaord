@@ -8,6 +8,7 @@ import { sha256Hex } from '@/platform/capabilities/contracts/canonical-json';
 import { adminDb, adminStorage } from '@/lib/firebase-admin';
 import { runRetentionSweep } from '@/lib/meetings/retention-service';
 import { reapStaleTranscriptions } from '@/lib/meetings/transcription-service';
+import { reapStaleIntelligenceRuns } from '@/lib/meetings/intelligence/pipeline';
 
 /**
  * Cron endpoint for automation delay jobs, campaign-queued events, and SMS status sync.
@@ -29,7 +30,7 @@ export async function GET(request: Request) {
     return auth.errorResponse || NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const [jobResult, syncResult, auditSealResult, retentionResult, staleTranscriptions] = await Promise.all([
+  const [jobResult, syncResult, auditSealResult, retentionResult, staleTranscriptions, staleIntelligenceRuns] = await Promise.all([
     processScheduledJobsAction(),
     syncPendingSmsStatuses().catch((err: unknown) => ({
       processed: 0,
@@ -71,7 +72,11 @@ export async function GET(request: Request) {
     reapStaleTranscriptions(adminDb, Date.now()).catch((err: unknown) => ({
       failed: 0, deadLettered: 0, error: err instanceof Error ? err.message : String(err),
     })),
+    // M2 · T3: meeting-intelligence runs stuck > 30 min (bounded 50 per run).
+    reapStaleIntelligenceRuns(adminDb, Date.now()).catch((err: unknown) => ({
+      failed: 0, deadLettered: 0, error: err instanceof Error ? err.message : String(err),
+    })),
   ]);
 
-  return NextResponse.json({ jobResult, syncResult, auditSealResult, retentionResult, staleTranscriptions });
+  return NextResponse.json({ jobResult, syncResult, auditSealResult, retentionResult, staleTranscriptions, staleIntelligenceRuns });
 }
