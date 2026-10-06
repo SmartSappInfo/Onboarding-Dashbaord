@@ -17,6 +17,7 @@
  *    tenant, invocation and exact payload hash. Principals cannot self-assert approvals.
  */
 
+import { canonicalPermissionKey } from '../contracts/permission-refs';
 import { isAutomatedPrincipal, type AgentPrincipal, type CapabilityDefinition, type CapabilityDomain, type VerifiedApproval } from '../contracts/capability-definition';
 import { isNonDelegableAction, requiresAgentApproval } from '../contracts/risk-levels';
 import { globalAgentPersonaRegistry } from '../../identity/agent-registry';
@@ -113,9 +114,15 @@ export function evaluatePrincipalAuthority(
     }
   }
 
-  // 4. Scope intersection (Rule 16); wildcard only for interactive humans
+  // 4. Scope intersection (Rule 16); wildcard only for interactive humans. A required permission is
+  // met by an exact grant or by a grant that is the SAME permission under the declared vocabulary
+  // (alias → canonical coordinate, Phase 11 M0 · T4). Equivalence never widens beyond declared synonyms.
+  const grantedCanonical = new Set(
+    principal.grantedScopes.map(canonicalPermissionKey).filter((k): k is string => k !== null)
+  );
   for (const permission of capability.permissions) {
-    const explicit = principal.grantedScopes.includes(permission);
+    const key = canonicalPermissionKey(permission);
+    const explicit = principal.grantedScopes.includes(permission) || (key !== null && grantedCanonical.has(key));
     const wildcard = !isAutomatedAgent && principal.grantedScopes.includes('*');
     if (!explicit && !wildcard) {
       deny('INSUFFICIENT_SCOPE', `Insufficient Scope: Missing required permission scope '${permission}'`);

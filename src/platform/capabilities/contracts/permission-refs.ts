@@ -155,3 +155,17 @@ export function parsePermissionRef(ref: string): ParsedPermissionRef | null {
 }
 
 export const isPermissionRef = (ref: string): boolean => parsePermissionRef(ref) !== null;
+
+/**
+ * Canonical key for permission EQUIVALENCE (Phase 11 M0 · T4): two refs are the same permission when
+ * their keys match. Only declared vocabulary counts (`rbac:` coordinates, `app:` ids and the
+ * LEGACY_PERMISSION_MAP synonyms); the loose `tools:` heuristic above never makes two refs equal,
+ * and unknown strings (e.g. `workspace:read`) have no key (exact match only).
+ */
+export function canonicalPermissionKey(ref: string): string | null {
+  const value = ref.trim();
+  if (value.startsWith('tools:')) return null;
+  const parsed = parsePermissionRef(value);
+  if (!parsed) return null;
+  return parsed.kind === 'rbac' ? `rbac:${parsed.section}.${parsed.feature}.${parsed.action}` : `app:${parsed.id}`;
+}
