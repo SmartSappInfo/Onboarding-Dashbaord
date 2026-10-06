@@ -3,9 +3,10 @@
 import * as React from 'react';
 import { collection, query, orderBy, where, limit } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { Task, UserProfile, TaskPriority, TaskCategory, TaskStatus } from '@/lib/types';
+import type { Task, UserProfile, TaskPriority, TaskCategory, TaskStatus, Tag } from '@/lib/types';
 import { useEntityResolver } from '@/context/EntityCacheContext';
 import { format, isToday, isPast, differenceInCalendarDays, addDays, startOfWeek, endOfWeek, endOfMonth, addMonths, addWeeks, startOfDay, endOfDay } from 'date-fns';
+import { safeParseDate, formatTaskDueDate, formatTaskDate } from '@/lib/utils/date-utils';
 import { Separator } from '@/components/ui/separator';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { 
@@ -32,12 +33,20 @@ import {
     ChevronLeft,
     ChevronRight,
     Target,
-    LayoutList
+    LayoutList,
+    Filter,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+    SheetDescription,
+} from '@/components/ui/sheet';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
     updateTaskAction, 
@@ -135,6 +144,9 @@ export default function TasksClient() {
     const [searchTerm, setSearchTerm] = React.useState('');
     const [smartFilter, _setSmartFilter] = React.useState<'none' | 'today' | 'overdue'>('none');
     const [isSimpleView, setIsSimpleView] = React.useState(true);
+    const [taskScope, setTaskScope] = React.useState<'my' | 'team' | 'all'>('all');
+    const [selectedTagId, setSelectedTagId] = React.useState<string>('all');
+    const [isMobileFilterOpen, setIsMobileFilterOpen] = React.useState(false);
 
     // Capability Governance & Error/Conflict Surfaces (Phase 1 / PR-9 / PR-11)
     const [capabilityError, setCapabilityError] = React.useState<ClientCapabilityError | null>(null);
@@ -319,10 +331,20 @@ export default function TasksClient() {
         );
     }, [firestore, activeOrganizationId]);
 
+    const tagsQuery = useMemoFirebase(() => {
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(
+            collection(firestore, 'tags'),
+            where('workspaceId', '==', activeWorkspaceId),
+            orderBy('name', 'asc')
+        );
+    }, [firestore, activeWorkspaceId]);
+
     const { entitiesById, resolveIds } = useEntityResolver();
 
     const { data: allTasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
     const { data: users } = useCollection<UserProfile>(usersQuery);
+    const { data: workspaceTags } = useCollection<Tag>(tagsQuery);
 
     // Resolve only the entities referenced by the loaded tasks (logo lookup),
     // instead of streaming the full workspace_entities set.
@@ -371,25 +393,25 @@ export default function TasksClient() {
     }, [assignedUserId, restrictTasksToAssigned, isWorkspaceAdmin, currentUser?.uid]);
 
     const matchesDateFilter = React.useCallback((task: Task) => {
+        if (dateFilterType === 'all') return true;
+        const taskDate = safeParseDate(task.dueDate);
+        if (!taskDate) return false;
+
         if (dateFilterType === 'range') {
-            const taskDate = new Date(task.dueDate);
             if (dateRange.start && startOfDay(taskDate) < startOfDay(dateRange.start)) return false;
             if (dateRange.end && endOfDay(taskDate) > endOfDay(dateRange.end)) return false;
             return true;
         }
         if (dateFilterType === 'month' && selectedMonth) {
-            const taskDate = new Date(task.dueDate);
             const [year, month] = selectedMonth.split('-').map(Number);
             return taskDate.getFullYear() === year && (taskDate.getMonth() + 1) === month;
         }
         if (dateFilterType === 'week' && selectedWeek) {
-            const taskDate = new Date(task.dueDate);
             const weekStart = startOfDay(new Date(selectedWeek));
             const weekEnd = endOfDay(addDays(weekStart, 6));
             return taskDate >= weekStart && taskDate <= weekEnd;
         }
         if (dateFilterType === 'day') {
-            const taskDate = new Date(task.dueDate);
             let targetDate = new Date();
             if (selectedDayType === 'yesterday') targetDate = addDays(new Date(), -1);
             else if (selectedDayType === 'tomorrow') targetDate = addDays(new Date(), 1);
@@ -402,6 +424,20 @@ export default function TasksClient() {
     const filteredTasks = React.useMemo(() => {
         if (!allTasks) return [];
         return allTasks.filter(task => {
+            let matchesScope = true;
+            if (taskScope === 'my') {
+                const uid = currentUser?.uid;
+                matchesScope = uid 
+                    ? (Array.isArray(task.assignedTo) ? task.assignedTo.includes(uid) : task.assignedTo === uid) 
+                    : true;
+            } else if (taskScope === 'team') {
+                matchesScope = Array.isArray(task.assignedTo) ? task.assignedTo.length > 0 : Boolean(task.assignedTo);
+            }
+
+            const matchesTag = selectedTagId === 'all'
+                ? true
+                : Boolean(task.tagIds && task.tagIds.includes(selectedTagId));
+
             const matchesStatus = statusFilter === 'all' ? true : task.status === statusFilter;
             const matchesPriority = priorityFilter === 'all' ? true : task.priority === priorityFilter;
 
@@ -411,20 +447,34 @@ export default function TasksClient() {
                 : true;
 
             let matchesSmart = true;
+            const parsedDue = safeParseDate(task.dueDate);
             if (smartFilter === 'today') {
-                matchesSmart = isToday(new Date(task.dueDate)) && task.status !== 'done';
+                matchesSmart = Boolean(parsedDue && isToday(parsedDue) && task.status !== 'done');
             } else if (smartFilter === 'overdue') {
-                const date = new Date(task.dueDate);
-                matchesSmart = isPast(date) && !isToday(date) && task.status !== 'done';
+                matchesSmart = Boolean(parsedDue && isPast(parsedDue) && !isToday(parsedDue) && task.status !== 'done');
             }
 
-            return matchesStatus && matchesPriority && matchesAssignee(task) && matchesSearch && matchesSmart && matchesDateFilter(task);
+            return matchesScope && matchesTag && matchesStatus && matchesPriority && matchesAssignee(task) && matchesSearch && matchesSmart && matchesDateFilter(task);
         });
-    }, [allTasks, statusFilter, priorityFilter, searchTerm, smartFilter, matchesAssignee, matchesDateFilter]);
+    }, [allTasks, taskScope, selectedTagId, statusFilter, priorityFilter, searchTerm, smartFilter, currentUser?.uid, matchesAssignee, matchesDateFilter]);
 
     const calendarFilteredTasks = React.useMemo(() => {
         if (!allTasks) return [];
         return allTasks.filter(task => {
+            let matchesScope = true;
+            if (taskScope === 'my') {
+                const uid = currentUser?.uid;
+                matchesScope = uid 
+                    ? (Array.isArray(task.assignedTo) ? task.assignedTo.includes(uid) : task.assignedTo === uid) 
+                    : true;
+            } else if (taskScope === 'team') {
+                matchesScope = Array.isArray(task.assignedTo) ? task.assignedTo.length > 0 : Boolean(task.assignedTo);
+            }
+
+            const matchesTag = selectedTagId === 'all'
+                ? true
+                : Boolean(task.tagIds && task.tagIds.includes(selectedTagId));
+
             const matchesStatus = statusFilter === 'all' ? true : task.status === statusFilter;
             const matchesPriority = priorityFilter === 'all' ? true : task.priority === priorityFilter;
             
@@ -447,16 +497,16 @@ export default function TasksClient() {
                 : true;
 
             let matchesSmart = true;
+            const parsedDue = safeParseDate(task.dueDate);
             if (smartFilter === 'today') {
-                matchesSmart = isToday(new Date(task.dueDate)) && task.status !== 'done';
+                matchesSmart = Boolean(parsedDue && isToday(parsedDue) && task.status !== 'done');
             } else if (smartFilter === 'overdue') {
-                const date = new Date(task.dueDate);
-                matchesSmart = isPast(date) && !isToday(date) && task.status !== 'done';
+                matchesSmart = Boolean(parsedDue && isPast(parsedDue) && !isToday(parsedDue) && task.status !== 'done');
             }
 
-            return matchesStatus && matchesPriority && matchesAssigned && matchesSearch && matchesSmart;
+            return matchesScope && matchesTag && matchesStatus && matchesPriority && matchesAssigned && matchesSearch && matchesSmart;
         });
-    }, [allTasks, statusFilter, priorityFilter, assignedUserId, searchTerm, smartFilter]);
+    }, [allTasks, taskScope, selectedTagId, statusFilter, priorityFilter, assignedUserId, searchTerm, smartFilter, currentUser?.uid]);
 
     // The first ("current period") accordion adapts to the active date filter.
     // All Time / Custom Range fall back to a monthly grouping.
@@ -512,8 +562,10 @@ export default function TasksClient() {
                 return;
             }
 
-            const dueDateObj = new Date(task.dueDate);
-            if (differenceInCalendarDays(dueDateObj, now) < 0) {
+            const dueDateObj = safeParseDate(task.dueDate);
+            if (!dueDateObj) {
+                upcoming.push(task);
+            } else if (differenceInCalendarDays(dueDateObj, now) < 0) {
                 // Past due (before today) is always Overdue, regardless of period.
                 overdue.push(task);
             } else if (dueDateObj <= periodEnd) {
@@ -527,24 +579,50 @@ export default function TasksClient() {
         return { overdue, current, upcoming, completed };
     }, [filteredTasks, periodGrouping]);
 
-    // Stat cards reflect the currently-selected date range (and assignee scope),
+    // Stat cards reflect the currently-selected date range, assignee scope, and tags,
     // independent of status/search/smart filters.
     const statsScopedTasks = React.useMemo(() => {
         if (!allTasks) return [];
-        return allTasks.filter(task => matchesAssignee(task) && matchesDateFilter(task));
-    }, [allTasks, matchesAssignee, matchesDateFilter]);
+        return allTasks.filter(task => {
+            let matchesScope = true;
+            if (taskScope === 'my') {
+                const uid = currentUser?.uid;
+                matchesScope = uid 
+                    ? (Array.isArray(task.assignedTo) ? task.assignedTo.includes(uid) : task.assignedTo === uid) 
+                    : true;
+            } else if (taskScope === 'team') {
+                matchesScope = Array.isArray(task.assignedTo) ? task.assignedTo.length > 0 : Boolean(task.assignedTo);
+            }
+
+            const matchesTag = selectedTagId === 'all'
+                ? true
+                : Boolean(task.tagIds && task.tagIds.includes(selectedTagId));
+
+            return matchesScope && matchesTag && matchesAssignee(task) && matchesDateFilter(task);
+        });
+    }, [allTasks, taskScope, selectedTagId, currentUser?.uid, matchesAssignee, matchesDateFilter]);
 
     const stats = React.useMemo(() => {
         const scoped = statsScopedTasks;
         const active = scoped.filter(t => t.status !== 'done').length;
         const resolved = scoped.filter(t => t.status === 'done').length;
         const overdue = scoped.filter(t => {
-            const date = new Date(t.dueDate);
-            return isPast(date) && !isToday(date) && t.status !== 'done';
+            const date = safeParseDate(t.dueDate);
+            return date ? isPast(date) && !isToday(date) && t.status !== 'done' : false;
         }).length;
         const efficiency = scoped.length > 0 ? Math.round((resolved / scoped.length) * 100) : 100;
         return { active, resolved, overdue, efficiency };
     }, [statsScopedTasks]);
+
+    const activeFilterCount = React.useMemo(() => {
+        let count = 0;
+        if (taskScope !== 'all') count++;
+        if (statusFilter !== 'all') count++;
+        if (priorityFilter !== 'all') count++;
+        if (selectedTagId !== 'all') count++;
+        if (dateFilterType !== 'day') count++;
+        return count;
+    }, [taskScope, statusFilter, priorityFilter, selectedTagId, dateFilterType]);
 
     const handleUpdateAssignee = async (task: Task, userId: string) => {
         if (!currentUser) return;
@@ -582,7 +660,7 @@ export default function TasksClient() {
     const handlePostponeTask = async (task: Task, days: number) => {
         if (!currentUser) return;
         try {
-            const currentDueDate = task.dueDate ? new Date(task.dueDate) : new Date();
+            const currentDueDate = safeParseDate(task.dueDate) || new Date();
             const newDueDate = addDays(currentDueDate, days).toISOString();
             const res = await updateTaskAction(task.id, { ...task, dueDate: newDueDate });
             if (res.success) {
@@ -855,7 +933,7 @@ export default function TasksClient() {
             const promises = selectedIds.map(id => {
                 const task = allTasks.find(t => t.id === id);
                 if (!task || !task.dueDate) return Promise.resolve({ success: true });
-                const currentDueDate = new Date(task.dueDate);
+                const currentDueDate = safeParseDate(task.dueDate) || new Date();
                 const newDueDate = new Date(currentDueDate.getTime() + days * 24 * 60 * 60 * 1000).toISOString();
                 return updateTaskAction(id, { ...task, dueDate: newDueDate });
             });
@@ -907,15 +985,15 @@ export default function TasksClient() {
                         </p>
                     </div>
                     {/* Header Tabs matching Reference Image */}
-                    <TabsList className="bg-transparent border border-border shadow-sm p-1 h-12 rounded-xl ring-1 ring-border shrink-0">
-                        <TabsTrigger value="list" className="rounded-lg font-semibold text-[10px] px-8 gap-2">
-                            <LayoutList className="h-4 w-4" /> List View ({filteredTasks.length})
+                    <TabsList className="bg-muted/40 border border-border/80 shadow-xs p-1 h-12 min-h-[44px] rounded-xl ring-1 ring-border/50 shrink-0">
+                        <TabsTrigger value="list" className="rounded-lg font-semibold text-xs px-5 py-2 min-h-[36px] gap-2 active:scale-[0.97] transition-all">
+                            <LayoutList className="h-4 w-4" /> List ({filteredTasks.length})
                         </TabsTrigger>
-                        <TabsTrigger value="board" className="rounded-lg font-semibold text-[10px] px-8 gap-2">
-                            <Layers className="h-4 w-4" /> Kanban Board
+                        <TabsTrigger value="board" className="rounded-lg font-semibold text-xs px-5 py-2 min-h-[36px] gap-2 active:scale-[0.97] transition-all">
+                            <Layers className="h-4 w-4" /> Board
                         </TabsTrigger>
-                        <TabsTrigger value="calendar" className="rounded-lg font-semibold text-[10px] px-8 gap-2">
-                            <Calendar className="h-4 w-4" /> Calendar View
+                        <TabsTrigger value="calendar" className="rounded-lg font-semibold text-xs px-5 py-2 min-h-[36px] gap-2 active:scale-[0.97] transition-all">
+                            <Calendar className="h-4 w-4" /> Calendar
                         </TabsTrigger>
                     </TabsList>
                 </div>
@@ -962,16 +1040,74 @@ export default function TasksClient() {
 
 
                 {/* Toolbar */}
-                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 bg-card border-none ring-1 ring-border shadow-sm p-5 rounded-2xl">
-                    <h2 className="text-xl font-bold text-foreground tracking-tight">Tasks</h2>
-                    <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-col gap-4 bg-card border-none ring-1 ring-border shadow-sm p-4 sm:p-5 rounded-2xl">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex flex-wrap items-center gap-3">
+                            <h2 className="text-xl font-bold text-foreground tracking-tight">Tasks</h2>
+                            {/* Scope Tabs (All Tasks | My Tasks | Team Tasks) */}
+                            <div className="inline-flex items-center p-1 bg-muted/40 rounded-xl border border-border">
+                                {(['all', 'my', 'team'] as const).map((scope) => (
+                                    <button
+                                        key={scope}
+                                        type="button"
+                                        onClick={() => setTaskScope(scope)}
+                                        className={cn(
+                                            "px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all active:scale-[0.97]",
+                                            taskScope === scope
+                                                ? "bg-card text-foreground shadow-sm"
+                                                : "text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        {scope === 'all' ? 'All Tasks' : scope === 'my' ? 'My Tasks' : 'Team Tasks'}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Mobile Search and Filter Button */}
+                        <div className="flex md:hidden items-center gap-2 w-full">
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-60" />
+                                <Input 
+                                    placeholder="Search tasks..." 
+                                    value={searchTerm}
+                                    onChange={e => setSearchTerm(e.target.value)}
+                                    className="h-11 min-h-[44px] rounded-xl bg-background border border-border text-foreground font-semibold pl-10 text-xs w-full"
+                                />
+                            </div>
+                            <Button
+                                variant="outline"
+                                onClick={() => setIsMobileFilterOpen(true)}
+                                className="h-11 min-h-[44px] px-3.5 rounded-xl border-border bg-background gap-2 text-xs font-semibold shrink-0 active:scale-[0.97]"
+                            >
+                                <Filter className="h-4 w-4" />
+                                <span>Filters</span>
+                                {activeFilterCount > 0 && (
+                                    <Badge variant="secondary" className="h-5 px-1.5 text-[10px] rounded-full">
+                                        {activeFilterCount}
+                                    </Badge>
+                                )}
+                            </Button>
+                            {canCreate && (
+                                <Button 
+                                    onClick={() => setEditorOpen(true)} 
+                                    className="rounded-xl font-bold h-11 min-h-[44px] px-4 shadow-md bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.97] text-xs shrink-0"
+                                >
+                                    + Add
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Desktop Toolbar Row (hidden on small screens) */}
+                    <div className="hidden md:flex flex-wrap items-center gap-3 pt-1 border-t border-border/40">
                         {activeTab === 'list' && (
                             <Button 
                                 variant="outline" 
                                 size="sm" 
                                 onClick={() => setIsSelectionMode(!isSelectionMode)} 
                                 className={cn(
-                                    "rounded-xl font-semibold text-xs gap-2 h-10 px-4 transition-all border-border bg-background text-foreground hover:bg-muted/30", 
+                                    "rounded-xl font-semibold text-xs gap-2 h-11 min-h-[44px] px-4 transition-all border-border bg-background text-foreground hover:bg-muted/30 active:scale-[0.97]", 
                                     isSelectionMode && "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
                                 )}
                             >
@@ -1003,6 +1139,26 @@ export default function TasksClient() {
                                 <SelectItem value="high">High</SelectItem>
                                 <SelectItem value="medium">Medium</SelectItem>
                                 <SelectItem value="low">Low</SelectItem>
+                            </SelectContent>
+                        </Select>
+
+                        {/* Tag Filter Dropdown */}
+                        <Select value={selectedTagId} onValueChange={setSelectedTagId}>
+                            <SelectTrigger className="h-11 min-h-[44px] w-[140px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
+                                <SelectValue placeholder="All Tags" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-border bg-card text-foreground">
+                                <SelectItem value="all">All Tags</SelectItem>
+                                {workspaceTags?.map((tag) => (
+                                    <SelectItem key={tag.id} value={tag.id}>
+                                        <div className="flex items-center gap-1.5">
+                                            {tag.color && (
+                                                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: tag.color }} />
+                                            )}
+                                            <span className="truncate">{tag.name}</span>
+                                        </div>
+                                    </SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
  
@@ -1196,6 +1352,136 @@ export default function TasksClient() {
                         )}
                     </div>
                 </div>
+
+                {/* Mobile Filter Sheet */}
+                <Sheet open={isMobileFilterOpen} onOpenChange={setIsMobileFilterOpen}>
+                    <SheetContent side="bottom" className="sm:max-w-md max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-border bg-card p-6">
+                        <SheetHeader className="pb-4 border-b border-border/60 text-left">
+                            <SheetTitle className="text-base font-bold text-foreground">Filter Tasks</SheetTitle>
+                            <SheetDescription className="sr-only">Filter tasks by scope, status, priority, tags, and date</SheetDescription>
+                        </SheetHeader>
+                        <div className="py-4 space-y-4">
+                            {/* Scope */}
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-muted-foreground">Scope</label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {(['all', 'my', 'team'] as const).map((scope) => (
+                                        <Button
+                                            key={scope}
+                                            type="button"
+                                            variant={taskScope === scope ? "default" : "outline"}
+                                            onClick={() => setTaskScope(scope)}
+                                            className="min-h-[44px] rounded-xl text-xs font-semibold capitalize active:scale-[0.97]"
+                                        >
+                                            {scope === 'all' ? 'All' : scope === 'my' ? 'My' : 'Team'}
+                                        </Button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Status */}
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-muted-foreground">Status</label>
+                                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                    <SelectTrigger className="h-11 min-h-[44px] w-full rounded-xl bg-background border-border text-foreground font-semibold text-xs">
+                                        <SelectValue placeholder="All Statuses" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl border-border bg-card text-foreground">
+                                        <SelectItem value="all">All Statuses</SelectItem>
+                                        <SelectItem value="todo">To Do</SelectItem>
+                                        <SelectItem value="in_progress">In Progress</SelectItem>
+                                        <SelectItem value="waiting">Waiting</SelectItem>
+                                        <SelectItem value="review">Review</SelectItem>
+                                        <SelectItem value="done">Done</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Priority */}
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-muted-foreground">Priority</label>
+                                <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                                    <SelectTrigger className="h-11 min-h-[44px] w-full rounded-xl bg-background border-border text-foreground font-semibold text-xs">
+                                        <SelectValue placeholder="All Priorities" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl border-border bg-card text-foreground">
+                                        <SelectItem value="all">All Priorities</SelectItem>
+                                        <SelectItem value="urgent">Urgent</SelectItem>
+                                        <SelectItem value="high">High</SelectItem>
+                                        <SelectItem value="medium">Medium</SelectItem>
+                                        <SelectItem value="low">Low</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Tags */}
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-muted-foreground">Tag</label>
+                                <Select value={selectedTagId} onValueChange={setSelectedTagId}>
+                                    <SelectTrigger className="h-11 min-h-[44px] w-full rounded-xl bg-background border-border text-foreground font-semibold text-xs">
+                                        <SelectValue placeholder="All Tags" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl border-border bg-card text-foreground">
+                                        <SelectItem value="all">All Tags</SelectItem>
+                                        {workspaceTags?.map((tag) => (
+                                            <SelectItem key={tag.id} value={tag.id}>
+                                                <div className="flex items-center gap-1.5">
+                                                    {tag.color && (
+                                                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: tag.color }} />
+                                                    )}
+                                                    <span className="truncate">{tag.name}</span>
+                                                </div>
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Date Filter */}
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-muted-foreground">Date Horizon</label>
+                                <Select value={dateFilterType} onValueChange={(val: 'all' | 'range' | 'month' | 'week' | 'day') => setDateFilterType(val)}>
+                                    <SelectTrigger className="h-11 min-h-[44px] w-full rounded-xl bg-background border-border text-foreground font-semibold text-xs">
+                                        <SelectValue placeholder="All Time" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl border-border bg-card text-foreground">
+                                        <SelectItem value="all">All Time</SelectItem>
+                                        <SelectItem value="range">Custom Range</SelectItem>
+                                        <SelectItem value="month">By Month</SelectItem>
+                                        <SelectItem value="week">By Week</SelectItem>
+                                        <SelectItem value="day">By Day</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Reset Filters button */}
+                            <div className="pt-2 flex items-center justify-between gap-3">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={() => {
+                                        setTaskScope('all');
+                                        setStatusFilter('all');
+                                        setPriorityFilter('all');
+                                        setSelectedTagId('all');
+                                        setDateFilterType('day');
+                                        setSearchTerm('');
+                                    }}
+                                    className="min-h-[44px] text-xs font-semibold text-muted-foreground hover:text-foreground active:scale-[0.97]"
+                                >
+                                    Reset Filters
+                                </Button>
+                                <Button
+                                    type="button"
+                                    onClick={() => setIsMobileFilterOpen(false)}
+                                    className="min-h-[44px] px-6 rounded-xl font-bold text-xs bg-primary text-primary-foreground active:scale-[0.97]"
+                                >
+                                    Done
+                                </Button>
+                            </div>
+                        </div>
+                    </SheetContent>
+                </Sheet>
  
                 <AnimatePresence>
                     {isSelectionMode && selectedIds.length > 0 && (
@@ -1394,8 +1680,9 @@ export default function TasksClient() {
                                                 ) : category.tasks.length > 0 ? (
                                                     category.tasks.map((task) => {
                                                         const P = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium;
-                                                        const daysLeft = differenceInCalendarDays(new Date(task.dueDate), new Date());
-                                                        const isOverdue = daysLeft < 0 && task.status !== 'done';
+                                                        const parsedDue = safeParseDate(task.dueDate);
+                                                        const daysLeft = parsedDue ? differenceInCalendarDays(parsedDue, new Date()) : null;
+                                                        const isOverdue = daysLeft !== null && daysLeft < 0 && task.status !== 'done';
                                                         const progress = getProgressValue(task.status);
 
                                                         return (
@@ -1471,15 +1758,17 @@ export default function TasksClient() {
                                                                             <span className={cn("text-[10px] font-semibold tracking-tighter", isOverdue ? "text-rose-600 animate-pulse" : "text-muted-foreground/60")}>
                                                                                 {task.status === 'done' 
                                                                                     ? 'Resolved' 
-                                                                                    : isOverdue 
-                                                                                        ? 'Overdue' 
-                                                                                        : daysLeft === 0 
-                                                                                            ? 'Today' 
-                                                                                            : daysLeft === 1 
-                                                                                                ? 'Tomorrow' 
-                                                                                                : daysLeft < 0 
-                                                                                                    ? `${Math.abs(daysLeft)}d overdue` 
-                                                                                                    : `${daysLeft}d left`
+                                                                                    : daysLeft === null
+                                                                                        ? 'No due date'
+                                                                                        : isOverdue 
+                                                                                            ? 'Overdue' 
+                                                                                            : daysLeft === 0 
+                                                                                                ? 'Today' 
+                                                                                                : daysLeft === 1 
+                                                                                                    ? 'Tomorrow' 
+                                                                                                    : daysLeft < 0 
+                                                                                                        ? `${Math.abs(daysLeft)}d overdue` 
+                                                                                                        : `${daysLeft}d left`
                                                                                 }
                                                                             </span>
                                                                         </div>
@@ -1504,7 +1793,7 @@ export default function TasksClient() {
                                                                                     </span>
                                                                                     <span className="text-muted-foreground/30 font-normal">·</span>
                                                                                     <span className="font-semibold text-muted-foreground/70 shrink-0">
-                                                                                        {format(new Date(task.dueDate), 'MMM d, yyyy h:mm a')}
+                                                                                        {formatTaskDueDate(task.dueDate, 'MMM d, yyyy h:mm a')}
                                                                                     </span>
                                                                                 </div>
                                                                             </div>
@@ -1532,15 +1821,17 @@ export default function TasksClient() {
                                                                             <span className={cn("text-[10px] font-semibold tracking-tighter", isOverdue ? "text-rose-600 animate-pulse" : "text-muted-foreground/60")}>
                                                                                 {task.status === 'done' 
                                                                                     ? 'Resolved' 
-                                                                                    : isOverdue 
-                                                                                        ? 'Overdue' 
-                                                                                        : daysLeft === 0 
-                                                                                            ? 'Due Today' 
-                                                                                            : daysLeft === 1 
-                                                                                                ? 'Due Tomorrow' 
-                                                                                                : daysLeft < 0 
-                                                                                                    ? `${Math.abs(daysLeft)} Days Overdue` 
-                                                                                                    : `${daysLeft} Days Left`
+                                                                                    : daysLeft === null
+                                                                                        ? 'No due date'
+                                                                                        : isOverdue 
+                                                                                            ? 'Overdue' 
+                                                                                            : daysLeft === 0 
+                                                                                                ? 'Due Today' 
+                                                                                                : daysLeft === 1 
+                                                                                                    ? 'Due Tomorrow' 
+                                                                                                    : daysLeft < 0 
+                                                                                                        ? `${Math.abs(daysLeft)} Days Overdue` 
+                                                                                                        : `${daysLeft} Days Left`
                                                                                 }
                                                                             </span>
                                                                         </div>
