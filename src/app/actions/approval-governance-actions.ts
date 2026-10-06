@@ -37,6 +37,7 @@ import { defaultEventBus } from '@/platform/events/event-bus';
 import { createDomainEvent } from '@/platform/capabilities/events/domain-event';
 import { getAgentRunStore } from '@/platform/runtime/agent-run-store';
 import { getSagaCompensationEngine } from '@/platform/runtime/governance/saga-compensation';
+import { getWorkflowDispatcher } from '@/platform/workflows/dispatcher/workflow-dispatcher';
 import { z } from 'zod/v4';
 
 // ============================================================================
@@ -357,6 +358,22 @@ async function decide(
       correlationId: `appr-${params.decision === 'approved' ? '' : 'rej-'}${record.approvalId}`,
       source: 'unified_approval_center',
     }));
+
+    // T5.3: a workflow step waiting on this approval runs again; the runner reads the decision
+    // (approved → executes with this approvalId, rejected → the step fails). One task per approval.
+    if (record.workflowRef) {
+      try {
+        await getWorkflowDispatcher().enqueueWorkflowStep({
+          workflowId: record.workflowRef.workflowId,
+          stepId: record.workflowRef.stepId,
+          tenant: { organizationId: record.organizationId, workspaceId: record.workspaceId },
+          idempotencyKey: `wf_resume_${record.approvalId}`,
+          correlationId: `appr-${record.approvalId}`,
+        });
+      } catch (resumeErr) {
+        console.warn('[ApprovalGovernance] Failed to resume the waiting workflow step:', resumeErr);
+      }
+    }
   }
 
   // Rule 27: a rejected step of an agent run triggers saga compensation for that run.

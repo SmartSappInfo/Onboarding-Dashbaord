@@ -48,7 +48,7 @@ const dealGet: AnyCapabilityDefinition = {
   handler: async (input) => {
     const { dealId } = DealGetInput.parse(input);
     const deal = db.read(`deals/${dealId}`);
-    if (!deal) return { success: false, error: { code: 'NOT_FOUND', message: 'Deal not found', stateChanged: 'no' }, executionId: 'e', emittedEvents: [], durationMs: 1 };
+    if (!deal) return { success: false, error: { code: 'NOT_FOUND', message: 'Deal not found', stateChanged: 'no', retryable: false }, executionId: 'e', emittedEvents: [], durationMs: 1 };
     return okResult({ id: dealId, stageId: String(deal.stageId) });
   },
 };
@@ -61,7 +61,7 @@ const dealAdvance: AnyCapabilityDefinition = {
   execution: exec(), policies,
   handler: async (input) => {
     const { dealId, stageId } = AdvanceInput.parse(input);
-    if (!STAGES.includes(stageId)) return { success: false, error: { code: 'VALIDATION', message: 'Stage is not in this pipeline', stateChanged: 'no' }, executionId: 'e', emittedEvents: [], durationMs: 1 };
+    if (!STAGES.includes(stageId)) return { success: false, error: { code: 'VALIDATION', message: 'Stage is not in this pipeline', stateChanged: 'no', retryable: false }, executionId: 'e', emittedEvents: [], durationMs: 1 };
     db.write(`deals/${dealId}`, { ...db.read(`deals/${dealId}`), stageId: breakPostcondition ? 'discovery' : stageId });
     return okResult({ dealId, stageId });
   },

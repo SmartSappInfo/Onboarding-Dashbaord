@@ -13,7 +13,12 @@ import { FakeFirestore } from '../helpers/fake-firestore';
 import type { AuthContext } from '@/lib/auth/require-auth';
 import type { UserProfile } from '@/lib/types';
 
-const h = vi.hoisted(() => ({ db: undefined as unknown, paused: false, events: [] as Array<{ type: string; payload: Record<string, unknown> }> }));
+const h = vi.hoisted(() => ({
+  db: undefined as unknown,
+  paused: false,
+  events: [] as Array<{ type: string; payload: Record<string, unknown> }>,
+  enqueued: [] as Array<Record<string, unknown>>,
+}));
 
 let mockAuthUser: AuthContext;
 vi.mock('@/lib/auth/require-auth', () => ({
@@ -41,6 +46,15 @@ vi.mock('@/platform/events/event-bus', () => {
   });
   return { globalEventBus: { publish }, defaultEventBus: { publish } };
 });
+
+vi.mock('@/platform/workflows/dispatcher/workflow-dispatcher', () => ({
+  getWorkflowDispatcher: () => ({
+    enqueueWorkflowStep: vi.fn(async (options: Record<string, unknown>) => {
+      h.enqueued.push(options);
+      return { taskKey: 'task', payload: {} };
+    }),
+  }),
+}));
 
 import {
   listActionProposalsAction,
@@ -88,6 +102,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   db.docs.clear();
   h.events.length = 0;
+  h.enqueued.length = 0;
   h.paused = false;
   mockAuthUser = auth();
   seed('prop_test_100');
@@ -221,6 +236,30 @@ describe('Approval Governance Server Actions (unified approvals)', () => {
       const result = await rejectActionProposalAction({ organizationId: 'org_acme_corp', proposalId: 'prop_test_100', decisionNotes: 'Discount too high for this tier' });
       expect(result.data).toMatchObject({ status: 'rejected', rejectedBy: 'user_operator_1' });
       expect(h.events.find((e) => e.type === 'policy.approval.rejected')?.payload.decision).toBe('rejected');
+    });
+  });
+
+  describe('4b. workflow steps resume on a complete decision (M0 · T5.3)', () => {
+    const workflowRef = { workflowId: 'wf_1', stepId: 'step_1' };
+    const resumeTask = { workflowId: 'wf_1', stepId: 'step_1', tenant: { organizationId: 'org_acme_corp', workspaceId: 'ws_sales_01' }, idempotencyKey: 'wf_resume_prop_wf' };
+
+    it('approving enqueues the waiting step once, keyed by the approval', async () => {
+      seed('prop_wf', { workflowRef });
+      await approveActionProposalAction({ organizationId: 'org_acme_corp', proposalId: 'prop_wf' });
+      expect(h.enqueued).toEqual([expect.objectContaining(resumeTask)]);
+    });
+
+    it('rejecting also enqueues it (the runner fails the step)', async () => {
+      seed('prop_wf', { workflowRef });
+      await rejectActionProposalAction({ organizationId: 'org_acme_corp', proposalId: 'prop_wf', decisionNotes: 'Not this quarter' });
+      expect(h.enqueued).toEqual([expect.objectContaining(resumeTask)]);
+    });
+
+    it('does nothing for requests without a workflow, or before an L4 decision is complete', async () => {
+      await approveActionProposalAction({ organizationId: 'org_acme_corp', proposalId: 'prop_test_100' });
+      seed('prop_wf_l4', { workflowRef, blastRadius: { entityCount: 1, entityType: 'workspace', riskLevel: 'L4_PRIVILEGED_DESTRUCTIVE' } });
+      await approveActionProposalAction({ organizationId: 'org_acme_corp', proposalId: 'prop_wf_l4' });
+      expect(h.enqueued).toEqual([]);
     });
   });
 

@@ -220,6 +220,11 @@ export function createWorkflowStepRunner(): WorkflowStepRunner {
             );
           }
           approvedApprovalId = waitingApprovalId;
+          // The approval is the resume signal: the workflow leaves WAITING the same way a webhook
+          // resume does (WAITING → RESUMED → RUNNING below).
+          if (instance.status === 'WAITING') {
+            instance = await store.updateInstanceStatus(payload.workflowId, 'RESUMED', tenant);
+          }
         }
 
         const alreadyResumed = Boolean(approvedApprovalId) || Boolean(
