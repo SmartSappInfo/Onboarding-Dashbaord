@@ -51,6 +51,7 @@ import {
   type PipelineStep,
 } from './intelligence-store';
 import { validateExtraction, validateSummary } from './validate-items';
+import { recordShadowRun } from './shadow';
 
 export const INTELLIGENCE_QUEUE = 'meeting-intelligence-queue';
 export const INTELLIGENCE_ENDPOINT = '/api/tasks/meeting-intelligence';
@@ -538,6 +539,17 @@ async function runClaimed(db: Firestore, deps: PipelineDeps, runId: string, run:
   }, validation.items);
   await patchRun(db, runId, { status: 'completed', completedAt: at, usage }, at);
   traceStep({ runId, step: 'store', durationMs: 0, outcome: 'completed' });
+  // Shadow comparison (T5.4): best-effort, never shown, never fails the run.
+  await recordShadowRun(db, {
+    runId,
+    workspaceId: run.workspaceId,
+    meetingId: run.meetingId,
+    promptVersion: run.promptVersion,
+    ...(modelId ? { modelId } : {}),
+    transcriptLines: transcript.segments.map((s) => `${s.speakerName}: ${s.text}`),
+    items: validation.items,
+    nowMs: deps.nowMs(),
+  });
   return { status: 'completed', runId, kept: validation.kept, needsReview: validation.needsReview };
 }
 

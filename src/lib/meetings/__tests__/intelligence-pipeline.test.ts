@@ -120,6 +120,9 @@ describe('meeting_postprocess_v2', () => {
     // The fake summary cites an unknown item → dropped → no summary (never invented).
     expect(intel?.header.summary).toBeNull();
     expect(scheduled).toHaveLength(1);
+    // Shadow comparison recorded for the completed run (M2 · T5.4): counts only, never shown.
+    const shadow = (await fs().collection('meeting_agent_shadow_runs').doc(req.runId).get()).data();
+    expect(shadow).toMatchObject({ workspaceId: 'ws-a', meetingId: 'm-1', comparison: { agent: { items: intel?.items.length } } });
   });
 
   it('traces every step and chunk without ever logging transcript content (Rule 39 stand-in)', async () => {
@@ -177,6 +180,7 @@ describe('meeting_postprocess_v2', () => {
     expect(outcome.status).toBe('dead_lettered');
     expect((await fs().collection('meeting_intelligence_dlq').doc(req.runId).get()).exists).toBe(true);
     expect(await readIntelligenceV2(fs(), 'm-1', 'ws-a')).toBeNull();
+    expect((await fs().collection('meeting_agent_shadow_runs').doc(req.runId).get()).exists).toBe(false);
   });
 
   it('breaker open → retry later without burning an attempt', async () => {
