@@ -37,6 +37,9 @@ import {
   type OutreachMetrics,
 } from '@/platform/agents/sales/outbound/sdr-outbound-types';
 import type { ActionProposal } from '@/platform/policy/approval-proposal-types';
+import { buildApprovalRecord, getApproval } from '@/platform/policy/unified-approval-store';
+import { getCapability } from '@/platform/capabilities/registry/capability-registry';
+import { proposalFromRecord } from '@/platform/runtime/execution/approval-interceptor';
 
 export interface ActionResult<T> {
   success: boolean;
@@ -131,38 +134,35 @@ export async function stageSequenceApprovalAction(
       memoryDrafts.set(draft.id, draft);
     }
 
-    // Rule 21: Two-Phase Action Proposal Creation with SHA-256 payloadHash binding (Rule 22)
+    // Rule 21: Two-Phase Action Proposal on the UNIFIED approval record (Phase 11 M0 · T2.6), so the
+    // approval centre's policy decides it. The sequence's own hash (what the client re-sends at
+    // dispatch, Rule 22) is kept in `evidence.sequencePayloadHash`.
     const proposalId = `prop_sdr_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    const now = new Date().toISOString();
-
-    const proposal: ActionProposal = {
-      proposalId,
+    const record = buildApprovalRecord({
+      capability: getCapability('sdr.dispatch_whatsapp') ?? null,
+      capabilityId: 'sdr.dispatch_whatsapp',
       organizationId: validated.organizationId,
       workspaceId: validated.workspaceId,
-      capabilityId: 'sdr.dispatch_whatsapp',
-      capabilityVersion: '1.0.0',
-      agentPersonaId: 'lead_sdr',
-      authorizingUserId: auth.uid,
-      what: `Outbound sales sequence for ${validated.leadIds.length} institutions (${sequenceResult.totalDrafts} messages)`,
-      why: `Targeted outreach cadence designed by ${validated.sdrPersonaId} awaiting human approval prior to live transmission.`,
       payload: {
         sequenceConfigId: validated.sequenceConfig.id,
         recipientCount: sequenceResult.totalRecipients,
         draftCount: sequenceResult.totalDrafts,
         draftIds: sequenceResult.drafts.map((d) => d.id),
       },
-      payloadHash: sequenceResult.payloadHash,
-      status: 'pending',
-      createdAt: now,
-      updatedAt: now,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24h
-    };
+      requestedBy: { kind: 'agent', userId: auth.uid, agentPersonaId: 'lead_sdr' },
+      what: `Outbound sales sequence for ${validated.leadIds.length} institutions (${sequenceResult.totalDrafts} messages)`,
+      why: `Targeted outreach cadence designed by ${validated.sdrPersonaId} awaiting human approval prior to live transmission.`,
+      evidence: { sequencePayloadHash: sequenceResult.payloadHash },
+      ttlSeconds: 24 * 60 * 60,
+    }, Date.now(), proposalId);
 
-    memoryProposals.set(proposalId, proposal);
+    const view = proposalFromRecord(record);
+    // Hermetic cache only (removed in M0 · T7); Firestore is the source of truth when available.
+    if (view) memoryProposals.set(proposalId, { ...view, payloadHash: sequenceResult.payloadHash });
 
     try {
       if (adminDb) {
-        await adminDb.collection('capability_approvals').doc(proposalId).set(proposal);
+        await adminDb.collection('capability_approvals').doc(proposalId).set(record);
       }
     } catch {
       // Hermetic fallback
@@ -229,18 +229,22 @@ export async function dispatchApprovedOutreachAction(
       };
     }
 
-    // Retrieve proposal
-    let proposal: ActionProposal | null = memoryProposals.get(validated.actionProposalId) || null;
-    if (!proposal && adminDb) {
+    // Retrieve proposal: the unified store first (it sees inbox decisions), the hermetic cache only
+    // when Firestore is unavailable. The dispatch hash binding uses the sequence's own hash (Rule 22).
+    let proposal: ActionProposal | null = null;
+    if (adminDb) {
       try {
-        const snap = await adminDb.collection('capability_approvals').doc(validated.actionProposalId).get();
-        if (snap.exists) {
-          proposal = snap.data() as ActionProposal;
+        const stored = await getApproval(adminDb, validated.actionProposalId, validated.organizationId);
+        if (stored?.kind === 'v2') {
+          const view = proposalFromRecord(stored.record);
+          const sequenceHash = stored.record.evidence?.sequencePayloadHash;
+          if (view && typeof sequenceHash === 'string') proposal = { ...view, payloadHash: sequenceHash };
         }
       } catch {
-        // Fallback
+        // Fallback to the hermetic cache below
       }
     }
+    proposal = proposal ?? memoryProposals.get(validated.actionProposalId) ?? null;
 
     if (!proposal) {
       return {
