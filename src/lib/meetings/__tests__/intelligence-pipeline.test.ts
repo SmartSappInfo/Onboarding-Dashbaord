@@ -232,6 +232,17 @@ describe('meeting_postprocess_v2', () => {
     expect(scheduled).toHaveLength(1);
   });
 
+  it('an unexpected worker error releases the lease so the task retry can claim the run', async () => {
+    const req = await requestIntelligenceRun(fs(), deps(fakeModel()), params);
+    class ExplodingBreaker extends CircuitBreaker {
+      override execute<T>(): Promise<T> {
+        throw new TypeError('unexpected bug');
+      }
+    }
+    await expect(processIntelligenceRun(fs(), deps(fakeModel(), { breaker: new ExplodingBreaker() }), req.runId)).rejects.toThrow('unexpected bug');
+    expect((await loadRun(fs(), req.runId))?.status).toBe('pending');
+  });
+
   it('reaper ends stuck runs: running → dead-lettered, pending → failed; finished runs untouched', async () => {
     const req = await requestIntelligenceRun(fs(), deps(fakeModel()), params);
     await fs().collection('meeting_intelligence_runs').doc(req.runId).update({ status: 'running' });

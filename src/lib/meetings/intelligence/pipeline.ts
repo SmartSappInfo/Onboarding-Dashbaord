@@ -112,7 +112,7 @@ export interface PipelineDeps {
 
 const defaultBreaker = new CircuitBreaker();
 
-async function withDeadline<T>(work: (signal: AbortSignal) => Promise<T>, ms: number): Promise<T> {
+export async function withDeadline<T>(work: (signal: AbortSignal) => Promise<T>, ms: number): Promise<T> {
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
   const late = new Promise<never>((_, reject) => {
@@ -153,8 +153,8 @@ export interface IntelligenceRequestResult {
   replayed: boolean;
 }
 
-/** The checks shared by request time and every worker attempt (Rules 57, 58). */
-async function assertAnalysable(
+/** The checks shared by request time, every worker attempt and re-summarizing (Rules 57, 58). */
+export async function assertAnalysable(
   db: Firestore,
   params: { workspaceId: string; organizationId?: string; meetingId: string; transcriptId: string }
 ): Promise<void> {
@@ -336,8 +336,6 @@ async function resolveTimeZone(db: Firestore, meetingTz: string | undefined, wor
 
 export async function processIntelligenceRun(db: Firestore, deps: PipelineDeps, runId: string): Promise<RunOutcome> {
   const nowIso = () => new Date(deps.nowMs()).toISOString();
-  const deadlines = deps.deadlines ?? { chunkMs: CHUNK_DEADLINE_MS, summaryMs: SUMMARY_DEADLINE_MS };
-  const breaker = deps.breaker ?? defaultBreaker;
   const ref = db.collection(RUNS).doc(runId);
 
   // Claim (lease): only a pending run, or a `running` run whose worker stopped updating it.
@@ -353,7 +351,20 @@ export async function processIntelligenceRun(db: Firestore, deps: PipelineDeps, 
     return { kind: 'claimed' as const, run: next };
   });
   if (claimed.kind === 'noop') return { status: 'noop', reason: claimed.reason };
-  const run = claimed.run;
+  try {
+    return await runClaimed(db, deps, runId, claimed.run);
+  } catch (err) {
+    // Unexpected failure: release the lease so the task retry can claim the run again (the attempt
+    // counter still bounds retries), then let the worker answer 5xx.
+    await patchRun(db, runId, { status: 'pending' }, nowIso()).catch(() => undefined);
+    throw err;
+  }
+}
+
+async function runClaimed(db: Firestore, deps: PipelineDeps, runId: string, run: IntelligenceRun): Promise<RunOutcome> {
+  const nowIso = () => new Date(deps.nowMs()).toISOString();
+  const deadlines = deps.deadlines ?? { chunkMs: CHUNK_DEADLINE_MS, summaryMs: SUMMARY_DEADLINE_MS };
+  const breaker = deps.breaker ?? defaultBreaker;
   if (run.attempts > MAX_RUN_ATTEMPTS) return finish(db, runId, 'dead_lettered', 'attempts_exhausted', 'The analysis failed after several tries.', nowIso());
 
   const stop = await stopReason(db, runId, run);

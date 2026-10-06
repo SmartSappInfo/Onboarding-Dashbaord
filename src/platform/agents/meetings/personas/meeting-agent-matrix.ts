@@ -41,6 +41,7 @@ const READS: MeetingToolMatrixEntry[] = [
   { capabilityId: 'meeting.list_recordings', riskLevel: 'L0_READ', mode: 'autonomous', description: 'Recording metadata only, never links.' },
   { capabilityId: 'meeting.get_transcript', riskLevel: 'L0_READ', mode: 'autonomous', description: 'Transcript pages as untrusted data (AI consent required when enforced).' },
   { capabilityId: 'meeting.generate_prep_brief', riskLevel: 'L0_READ', mode: 'autonomous', description: 'Cited prep brief from workspace records; facts only when AI is unavailable.' },
+  { capabilityId: 'meeting.get_intelligence', riskLevel: 'L0_READ', mode: 'autonomous', description: 'Stored outcomes with evidence (untrusted data; AI consent required when enforced).' },
 ];
 
 export const MEETING_TOOL_MATRIX: Readonly<Record<MeetingPersonaId, readonly MeetingToolMatrixEntry[]>> = {
@@ -48,6 +49,8 @@ export const MEETING_TOOL_MATRIX: Readonly<Record<MeetingPersonaId, readonly Mee
   meeting_analyst: [
     ...READS,
     { capabilityId: 'meeting.ingest_transcript', riskLevel: 'L1_INTERNAL_DRAFT', mode: 'autonomous', description: 'Add a transcript from text (idempotent by content).', compensatingAction: 'delete transcript (person)' },
+    { capabilityId: 'meeting.extract_intelligence', riskLevel: 'L1_INTERNAL_DRAFT', mode: 'autonomous', description: 'Start (or rejoin) the evidence-checked analysis of a transcript.', compensatingAction: 'delete the analysis; re-run is idempotent per prompt version' },
+    { capabilityId: 'meeting.summarize', riskLevel: 'L1_INTERNAL_DRAFT', mode: 'autonomous', description: 'New summary from checked outcomes only (version-checked).' },
   ],
 };
 

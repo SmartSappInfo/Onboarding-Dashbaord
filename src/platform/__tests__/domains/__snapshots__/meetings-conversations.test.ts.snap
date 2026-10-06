@@ -2,13 +2,16 @@
 
 exports[`meetings_conversations behaviour > tool definitions match the reviewed fingerprint baseline (Rule 14: changes need review) 1`] = `
 {
+  "meeting.extract_intelligence@1.0.0": "e41f8898f6787d2b05b315506cd5eff23fad944fbbb62784015e299badc47966",
   "meeting.generate_prep_brief@1.1.0": "41d214fef17a56d6238b97e2ec408b8ce7eda9324e3b902db63c5cf90759eb8c",
   "meeting.get@1.0.0": "d6333de3aad7e29bf1d6a9b27591b65c7bbcedd041005e6e76b25709a4c9f9d7",
+  "meeting.get_intelligence@1.0.0": "f1e99dc192b28c721bbee0ca4084c18ce8c91644b7d42c2b0521e706625c11c2",
   "meeting.get_transcript@1.0.0": "914685b254b5a94547756ab8528db9de2938e7f76314d4ce346dcf37ab821583",
   "meeting.ingest_transcript@1.0.0": "7acc472f1051ee88cdb16ae6ffc005adba33e942ae2fd8deb068a1fee4fa6b2f",
   "meeting.list_recordings@1.0.0": "b935bee6fc1460be1b2d0b45818f66d3734ebf5a753376b2ddadea4134ef0b5e",
   "meeting.record_consent@1.0.0": "4ba0c6f78c74d0228510e311f62af70493398cad0646b69e9aa8f73e06004a9b",
   "meeting.search@1.0.0": "424f25dbb31576eb9e28c387a04824b3f0ff20df3e0449e5347edb7c0c5031a6",
+  "meeting.summarize@1.0.0": "b02f69c3cf5eb8b414d595b8693c04b61c7e2b56a686c89ddc797a60d629012e",
   "meeting.transcribe_recording@1.0.0": "9a13cd0e79d5278b57c536b392e8caa89fc683f17723973e5553f102c2c207fd",
 }
 `;
