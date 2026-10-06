@@ -503,10 +503,10 @@ Status: ☐ not started · ◐ in progress · ☑ done (evidence) · ⛔ blocked
 | --- | --- | --- | --- | --- |
 | P11-M0-T0 | Persistent storage + sharded audit | 0.1–0.8 | ☐ | |
 | P11-M0-T1 | Governed gateway defaults | 1.1–1.5 | ☐ | |
-| P11-M0-T2 | Unified approvals + approver policy | 2.1–2.8 | ☐ | |
+| P11-M0-T2 | Unified approvals + approver policy | 2.1–2.8 | ☑ | 942578ff, 76ccf938, a1b81be5 (+ canonical permission aliases 890fbc06) |
 | P11-M0-T3 | All executions through the gateway (checks preserved) | 3.0–3.8 | ☐ | |
-| P11-M0-T4 | Real proposal execution & compensation | 4.1–4.6 | ☐ | |
-| P11-M0-T5 | Durable workflow approvals | 5.1–5.5 | ☐ | |
+| P11-M0-T4 | Real proposal execution & compensation | 4.1–4.6 | ☑ | 194b7400. Behind `feature.crm_proposal_execution` (off). Deviations: 4.1 uses FakeFirestore (emulator needs Java 21); CREATE_TASK has no governed inverse until M2 T4; ASSIGN_OWNER stays a recommendation |
+| P11-M0-T5 | Durable workflow approvals | 5.1–5.5 | ☑ | c6db57fc, 911b0422. Deviations: 5.1 is `approval-resume.test.ts` (in-memory store + FakeFirestore, not emulator e2e); TTL policy on `workflow_resumption_tokens.expiresAt` awaits deploy approval |
 | P11-M0-T6 | Memory SSOT | 6.0–6.9 | ☐ | |
 | P11-M0-T7 | No hardcoded fallbacks / module state | 7.1–7.6 | ☐ | |
 | P11-M0-T8 | Verification, canary, runbooks, report | 8.1–8.6 | ☐ | |
