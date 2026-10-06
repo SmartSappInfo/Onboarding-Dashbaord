@@ -70,8 +70,8 @@ describe('AI Meeting Intelligence Service', () => {
     expect(intel.buyingSignals[0].strength).toBe('strong');
     expect(intel.objections).toHaveLength(1);
     expect(intel.objections[0].category).toBe('pricing');
-    expect(intel.sentiment.category).toBe('positive');
-    expect(intel.sentiment.score).toBe(0.8);
+    expect(intel.sentiment?.category).toBe('positive');
+    expect(intel.sentiment?.score).toBe(0.8);
   });
 
   it('handles markdown code fence wrapped AI JSON output safely', () => {

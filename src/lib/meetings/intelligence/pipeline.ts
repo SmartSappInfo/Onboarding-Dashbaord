@@ -128,6 +128,14 @@ export async function withDeadline<T>(work: (signal: AbortSignal) => Promise<T>,
   }
 }
 
+/**
+ * Structured, content-free timing record per step / chunk (Rule 39 stand-in: the project has no
+ * OpenTelemetry SDK yet; each record maps 1:1 to a span when it lands). Never logs transcript text.
+ */
+export function traceStep(record: { runId: string; step: PipelineStep; chunk?: number; durationMs: number; outcome: string }): void {
+  console.info(JSON.stringify({ pipeline: PIPELINE_ID, ...record }));
+}
+
 // ── Request ───────────────────────────────────────────────────────────────────────
 
 export class IntelligenceRequestError extends Error {
@@ -408,8 +416,9 @@ async function runClaimed(db: Firestore, deps: PipelineDeps, runId: string, run:
       if (between) return finish(db, runId, between, between, 'Stopped between chunks.', nowIso());
     }
     const batch = todo.slice(i, i + MAX_CONCURRENT_CHUNKS);
-    const results = await Promise.allSettled(batch.map((chunk: TranscriptChunk) =>
-      breaker.execute(`meeting_intelligence:${model.breakerKey}`, () =>
+    const results = await Promise.allSettled(batch.map((chunk: TranscriptChunk) => {
+      const chunkStart = deps.nowMs();
+      return breaker.execute(`meeting_intelligence:${model.breakerKey}`, () =>
         withDeadline((signal) => model.extract({
           prompt: buildExtractPrompt(chunk, { title, meetingIso, chunkCount: chunking.chunks.length }),
           workspaceId: run.workspaceId,
@@ -417,6 +426,7 @@ async function runClaimed(db: Firestore, deps: PipelineDeps, runId: string, run:
           signal,
         }), deadlines.chunkMs)
       ).then(async (res) => {
+        traceStep({ runId, step: 'extract', chunk: chunk.index, durationMs: deps.nowMs() - chunkStart, outcome: res.output == null ? 'empty_output' : 'ok' });
         const cp: ChunkCheckpoint = {
           index: chunk.index, rawOutput: res.output ?? null, modelId: res.modelId, promptHash: hash,
           ...(res.inputTokens !== undefined ? { inputTokens: res.inputTokens } : {}),
@@ -426,8 +436,11 @@ async function runClaimed(db: Firestore, deps: PipelineDeps, runId: string, run:
         await saveCheckpoint(db, runId, cp);
         checkpoints.set(chunk.index, cp);
         return cp;
-      })
-    ));
+      }, (err: unknown) => {
+        traceStep({ runId, step: 'extract', chunk: chunk.index, durationMs: deps.nowMs() - chunkStart, outcome: err instanceof Error ? err.name : 'error' });
+        throw err;
+      });
+    }));
     for (const r of results) {
       if (r.status === 'fulfilled') {
         usage = {
@@ -453,6 +466,7 @@ async function runClaimed(db: Firestore, deps: PipelineDeps, runId: string, run:
 
   // 3. validate (pure, re-runnable from checkpoints)
   await patchRun(db, runId, { step: 'validate' }, nowIso());
+  const validateStart = deps.nowMs();
   const validation = validateExtraction(
     chunking.chunks.map((chunk) => ({ chunk, rawOutput: checkpoints.get(chunk.index)?.rawOutput ?? null })),
     {
@@ -462,8 +476,11 @@ async function runClaimed(db: Firestore, deps: PipelineDeps, runId: string, run:
     }
   );
 
+  traceStep({ runId, step: 'validate', durationMs: deps.nowMs() - validateStart, outcome: `kept_${validation.kept}` });
+
   // 4. summarize (validated items only; optional)
   await patchRun(db, runId, { step: 'summarize' }, nowIso());
+  const summarizeStart = deps.nowMs();
   let summary: { sentences: { text: string; itemHashes: string[] }[]; promptVersion: string } | null = null;
   let modelId = [...checkpoints.values()][0]?.modelId;
   if (validation.items.length > 0) {
@@ -484,6 +501,8 @@ async function runClaimed(db: Firestore, deps: PipelineDeps, runId: string, run:
       summary = null; // Items are still useful without a summary (failure matrix: degrade).
     }
   }
+
+  traceStep({ runId, step: 'summarize', durationMs: deps.nowMs() - summarizeStart, outcome: summary ? 'ok' : 'none' });
 
   // 5. store (TOCTOU: re-check before writing)
   await patchRun(db, runId, { step: 'store', usage }, nowIso());
@@ -518,6 +537,7 @@ async function runClaimed(db: Firestore, deps: PipelineDeps, runId: string, run:
     updatedAt: at,
   }, validation.items);
   await patchRun(db, runId, { status: 'completed', completedAt: at, usage }, at);
+  traceStep({ runId, step: 'store', durationMs: 0, outcome: 'completed' });
   return { status: 'completed', runId, kept: validation.kept, needsReview: validation.needsReview };
 }
 

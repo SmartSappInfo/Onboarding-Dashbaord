@@ -22,20 +22,21 @@ import type {
   MeetingIntelligence,
   MeetingPrepBrief,
 } from '@/lib/meetings/types/intelligence';
-import {
-  buildIntelligenceExtractionPrompt,
-  parseIntelligenceStructuredOutput,
-} from '@/lib/meetings/ai-intelligence-service';
 import { logMeetingActivity } from '@/lib/meetings/activity-logger';
 import { requireMeetingAccess } from '@/lib/meetings/meeting-auth';
 import { createTaskCore } from '@/lib/tasks/task-core';
-import { findLatestTranscriptId, readTranscriptText } from '@/lib/meetings/transcript-store';
-import { assertConsent, ConsentRequiredError } from '@/lib/meetings/consent-store';
 import { executeCapability } from '@/platform/capabilities/execution/execute-capability';
 import { createServerActionInvocation } from '@/platform/capabilities/execution/invocation';
 import { ensureCapabilitiesRegistered } from '@/platform/capabilities/registry/register-capabilities';
 import { resolvePrincipalFromSession } from '@/platform/capabilities/policy/session-principal-resolver';
-import type { MeetingGeneratePrepBriefOutput } from '@/platform/domains/meetings_conversations';
+import type {
+  MeetingExtractIntelligenceOutput,
+  MeetingGeneratePrepBriefOutput,
+} from '@/platform/domains/meetings_conversations';
+import { readMeetingAnalysis, type RunProgress } from '@/lib/meetings/intelligence/intelligence-read';
+import type { AuthContext } from '@/lib/auth/require-auth';
+import { toLegacyIntelligence } from '@/lib/meetings/intelligence/legacy-adapter';
+import { convertItemToTask, findV2Item, ItemConversionError, listConversions } from '@/lib/meetings/intelligence/item-conversion';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -64,131 +65,150 @@ const IntelligenceActionItemsSchema = z.object({
   actionItems: z.array(ActionItemSchema).default([]),
 });
 
-/** Boundary schema for the Gemini REST response (Rule 4: the model reply is untrusted). */
-const GeminiResponseSchema = z.object({
-  candidates: z.array(z.object({
-    content: z.object({ parts: z.array(z.object({ text: z.string().optional() })).optional() }).optional(),
-  })).optional(),
-});
 
-const GEMINI_MODEL = 'gemini-3.6-flash';
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+/** Progress of the analysis for the latest transcript (for the UI's "Analysing…" state). */
+export type IntelligenceProgress = RunProgress;
+
+type IntelligenceErrorCode = 'NO_TRANSCRIPT' | 'AI_UNAVAILABLE' | 'NOT_ALLOWED';
+
+async function runAsMember<T>(ctx: AuthContext, workspaceId: string, capabilityId: string, input: Record<string, unknown>) {
+  ensureCapabilitiesRegistered();
+  const principal = await resolvePrincipalFromSession(workspaceId, { authContext: ctx });
+  return executeCapability<T>(createServerActionInvocation({ capabilityId, input, principal }));
+}
 
 /**
- * Generates or refreshes structured meeting intelligence from the meeting's REAL transcript.
+ * Reads v2 analysis (adapted to the v1 shape the UI renders) plus run progress, through the shared
+ * read service. People are authorised by `requireMeetingAccess` before this runs; legacy roles have
+ * no gateway view scope (M1 · T1 decision), so UI reads don't go through the gateway.
+ */
+async function readAnalysis(workspaceId: string, meetingId: string) {
+  const { stored, run } = await readMeetingAnalysis(adminDb, workspaceId, meetingId);
+  const intelligence = stored ? toLegacyIntelligence(stored.header, stored.items, await listConversions(adminDb, workspaceId, meetingId)) : undefined;
+  return { ok: true as const, intelligence, progress: run ?? undefined };
+}
+
+/**
+ * Starts (or rejoins) the evidence-checked analysis of the meeting's latest transcript.
  *
- * FAIL CLOSED (Phase 11 M1 · T7, finding B1): this used to invent a transcript when none existed
- * and to invent the whole intelligence record (including fake customer quotes as "buying signals")
- * when the model call failed, then save it as fact. Now:
- * - no completed transcript → `code: 'NO_TRANSCRIPT'`, no model call, nothing stored;
- * - transcript restricted for AI use, or AI-processing consent missing (when enforced) → refused;
- * - model unavailable / bad response → a plain error, nothing stored.
- * CAUTION: the direct REST call is replaced by the governed extraction capability in M2 (G13).
- * The API key travels in a header, never in the URL (keeps it out of request logs).
+ * Phase 11 M2 · T3.5 (G13): the direct model call is gone. This runs the governed
+ * `meeting.extract_intelligence` capability (consent, AI use, data policy, quota, audit), which
+ * queues `meeting_postprocess_v2`. Analysis is asynchronous: the result is `pending` until the run
+ * completes; `getMeetingIntelligenceAction` reports progress. When this transcript was already
+ * analysed, the stored analysis is returned immediately.
+ * FAIL CLOSED (M1 · T7): nothing is invented and nothing is stored when anything is refused.
  */
 export async function generateMeetingIntelligenceAction(
   meetingId: string,
   workspaceId: string
-): Promise<{ success: boolean; intelligence?: MeetingIntelligence; error?: string; code?: 'NO_TRANSCRIPT' | 'AI_UNAVAILABLE' | 'NOT_ALLOWED' }> {
-  await requireMeetingAccess(workspaceId, meetingId, 'meetings_manage');
-
+): Promise<{
+  success: boolean;
+  intelligence?: MeetingIntelligence;
+  progress?: IntelligenceProgress;
+  status?: MeetingExtractIntelligenceOutput['status'];
+  error?: string;
+  code?: IntelligenceErrorCode;
+}> {
+  const { ctx } = await requireMeetingAccess(workspaceId, meetingId, 'meetings_manage');
   try {
-    // 1. The real transcript, or nothing.
-    const transcriptId = await findLatestTranscriptId(adminDb, meetingId, workspaceId);
-    if (!transcriptId) {
-      return { success: false, code: 'NO_TRANSCRIPT', error: 'Add a transcript to analyse this meeting.' };
+    const res = await runAsMember<MeetingExtractIntelligenceOutput>(ctx, workspaceId, 'meeting.extract_intelligence', { workspaceId, meetingId });
+    if (!res.success) {
+      const code: IntelligenceErrorCode | undefined =
+        res.error.code === 'NOT_FOUND' ? 'NO_TRANSCRIPT'
+          : res.error.code === 'FORBIDDEN' ? 'NOT_ALLOWED'
+            : res.error.code === 'PROVIDER_ERROR' ? 'AI_UNAVAILABLE' : undefined;
+      return { success: false, error: res.error.message, ...(code ? { code } : {}) };
     }
-    const transcript = await readTranscriptText(adminDb, transcriptId, workspaceId, 20);
-    if (transcript.segments.length === 0) {
-      return { success: false, code: 'NO_TRANSCRIPT', error: 'Add a transcript to analyse this meeting.' };
+    if (!res.data.replayed) {
+      await logMeetingActivity({
+        workspaceId,
+        meetingId,
+        actorType: 'user',
+        actorId: ctx.uid,
+        type: 'intelligence_generated',
+        description: 'Meeting analysis started',
+      });
     }
-
-    // 2. AI-use and consent gates (PRD §97/§98, Rule 57).
-    if (transcript.header.aiUse === 'restricted') {
-      return { success: false, code: 'NOT_ALLOWED', error: 'AI analysis is off for this meeting because consent was withdrawn.' };
-    }
-    try {
-      await assertConsent(adminDb, { workspaceId, meetingId, operation: 'ai_read' });
-    } catch (consentErr) {
-      if (consentErr instanceof ConsentRequiredError) return { success: false, code: 'NOT_ALLOWED', error: consentErr.message };
-      throw consentErr;
-    }
-
-    // 3. Context: meeting title + attendee names (bounded).
-    const meetingDoc = await adminDb.collection('meetings').doc(meetingId).get();
-    const title = typeof meetingDoc.data()?.title === 'string' ? String(meetingDoc.data()?.title) : 'SmartSapp Meeting';
-    const participantsSnap = await adminDb.collection('participants').where('meetingId', '==', meetingId).limit(200).get();
-    const attendeeNames = participantsSnap.docs
-      .map(d => {
-        const p = d.data() ?? {};
-        return typeof p.name === 'string' && p.name ? p.name : typeof p.email === 'string' ? p.email : '';
-      })
-      .filter(Boolean);
-
-    const transcriptText = transcript.segments.map(s => `${s.speakerName}: ${s.text}`).join('\n');
-    const prompt = buildIntelligenceExtractionPrompt(title, transcriptText, attendeeNames);
-
-    // 4. Model call (no fabricated fallback).
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
-    if (!apiKey) {
-      return { success: false, code: 'AI_UNAVAILABLE', error: 'AI analysis is not available right now. Try again later.' };
-    }
-    const res = await fetch(GEMINI_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.2, responseMimeType: 'application/json' },
-      }),
-    });
-    const json: unknown = res.ok ? await res.json() : null;
-    const rawAiResponse = GeminiResponseSchema.safeParse(json).data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-    if (!rawAiResponse) {
-      return { success: false, code: 'AI_UNAVAILABLE', error: 'AI analysis is not available right now. Try again later.' };
-    }
-
-    // 5. Parse, store, log.
-    const intelligence = {
-      ...parseIntelligenceStructuredOutput(rawAiResponse, meetingId, workspaceId),
-      transcriptId,
+    const analysis = await readAnalysis(workspaceId, meetingId);
+    const done = res.data.status === 'completed' && analysis.intelligence;
+    return {
+      success: true,
+      status: res.data.status,
+      ...(done && analysis.intelligence ? { intelligence: analysis.intelligence } : {}),
+      ...(analysis.progress ? { progress: analysis.progress } : {}),
     };
-    await adminDb.collection('meeting_intelligence').doc(meetingId).set(intelligence);
-
-    await logMeetingActivity({
-      workspaceId,
-      meetingId,
-      actorType: 'ai',
-      type: 'intelligence_generated',
-      description: 'AI Meeting Intelligence & Executive Summary generated',
-    });
-
-    return { success: true, intelligence };
   } catch (err) {
     return { success: false, error: getErrorMessage(err) };
   }
 }
 
+/** Boundary schema for a v1 (pre-M2) intelligence document, shown until it is re-analysed. */
+const LegacyIntelligenceSchema = z.object({
+  workspaceId: z.string(),
+  meetingId: z.string(),
+  executiveSummary: z.string().catch(''),
+  keyTopics: z.array(z.string()).catch([]),
+  keyDecisions: z.array(z.string()).catch([]),
+  actionItems: z.array(ActionItemSchema).catch([]),
+  buyingSignals: z.array(z.object({ topic: z.string(), quote: z.string(), strength: z.enum(['weak', 'moderate', 'strong']).catch('weak') })).catch([]),
+  objections: z.array(z.object({
+    category: z.enum(['pricing', 'timing', 'feature', 'competitor', 'authority', 'other']).catch('other'),
+    statement: z.string(),
+    severity: z.enum(['low', 'medium', 'high']).catch('medium'),
+    suggestedResponse: z.string().optional(),
+  })).catch([]),
+  dealRisks: z.array(z.string()).catch([]),
+  sentiment: z.object({
+    category: z.enum(['positive', 'neutral', 'negative', 'mixed']),
+    score: z.number(),
+    explanation: z.string(),
+  }).optional().catch(undefined),
+  modelUsed: z.string().optional(),
+  recommendedFollowUp: z.string().catch(''),
+  generatedAt: z.string().catch(''),
+  updatedAt: z.string().catch(''),
+  transcriptId: z.string().optional(),
+}).loose();
+
 /**
- * Retrieves the stored intelligence report for a meeting.
+ * The stored analysis for a meeting: v2 (adapted) when present, else a validated v1 document.
+ * Also returns the progress of any analysis in flight.
  */
 export async function getMeetingIntelligenceAction(
   meetingId: string,
   workspaceId: string
-): Promise<{ success: boolean; intelligence?: MeetingIntelligence; error?: string }> {
+): Promise<{ success: boolean; intelligence?: MeetingIntelligence; progress?: IntelligenceProgress; error?: string }> {
   await requireMeetingAccess(workspaceId, meetingId, 'meetings_view');
-
   try {
+    const analysis = await readAnalysis(workspaceId, meetingId);
+    if (analysis.intelligence) return { success: true, intelligence: analysis.intelligence, ...(analysis.progress ? { progress: analysis.progress } : {}) };
+
     const doc = await adminDb.collection('meeting_intelligence').doc(meetingId).get();
-    if (!doc.exists) {
-      return { success: true, intelligence: undefined };
+    const legacy = doc.exists ? LegacyIntelligenceSchema.safeParse(doc.data()) : null;
+    if (!legacy?.success || legacy.data.workspaceId !== workspaceId) {
+      return { success: true, ...(analysis.progress ? { progress: analysis.progress } : {}) };
     }
-
-    const data = doc.data() as MeetingIntelligence;
-    if (data.workspaceId !== workspaceId) {
-      throw new Error('Unauthorized workspace access.');
-    }
-
-    return { success: true, intelligence: data };
+    const v1 = legacy.data;
+    const intelligence: MeetingIntelligence = {
+      id: meetingId,
+      workspaceId,
+      meetingId,
+      ...(v1.transcriptId ? { transcriptId: v1.transcriptId } : {}),
+      executiveSummary: v1.executiveSummary,
+      keyTopics: v1.keyTopics,
+      keyDecisions: v1.keyDecisions,
+      actionItems: v1.actionItems.map(({ conversionClaimedAt: _claim, ...item }) => item),
+      buyingSignals: v1.buyingSignals,
+      objections: v1.objections,
+      dealRisks: v1.dealRisks,
+      ...(v1.sentiment ? { sentiment: v1.sentiment } : {}),
+      recommendedFollowUp: v1.recommendedFollowUp,
+      ...(v1.modelUsed ? { modelUsed: v1.modelUsed } : {}),
+      status: 'completed',
+      generatedAt: v1.generatedAt,
+      updatedAt: v1.updatedAt,
+    };
+    return { success: true, intelligence, ...(analysis.progress ? { progress: analysis.progress } : {}) };
   } catch (err) {
     return { success: false, error: getErrorMessage(err) };
   }
@@ -213,6 +233,47 @@ export async function convertActionItemToCrmTaskAction(
   actionItemId: string
 ): Promise<{ success: boolean; crmTaskId?: string; error?: string }> {
   const { ctx, meeting } = await requireMeetingAccess(workspaceId, meetingId, 'meetings_manage');
+
+  // v2 analysis (M2 · T3.5): items live in a subcollection; the claim is a separate record keyed by
+  // the item hash, so it survives re-analysis (see item-conversion.ts).
+  if (await findV2Item(adminDb, workspaceId, meetingId, actionItemId)) {
+    try {
+      const result = await convertItemToTask(adminDb, {
+        nowMs: () => Date.now(),
+        createTask: (item) => createTaskCore(
+          {
+            workspaceId,
+            organizationId: meeting.organizationId ?? ctx.profile.organizationId,
+            title: item.text,
+            description: `From meeting ${meeting.title ?? meetingId}. Owner: ${item.owner?.matched ? item.owner.name : 'Unassigned'}.`,
+            priority: 'medium',
+            status: 'todo',
+            category: 'follow_up',
+            // Owner shown, never guessed (plan §4.6): a matched user, else the person converting it.
+            assignedTo: item.owner?.matched && item.owner.userId ? item.owner.userId : ctx.uid,
+            dueDate: item.dueIso ?? new Date().toISOString(),
+            reminders: [],
+            reminderSent: false,
+            source: 'system',
+            relatedEntityType: 'Meeting',
+            relatedEntityId: meetingId,
+            relatedParentId: item.itemHash,
+          },
+          { kind: 'user', uid: ctx.uid }
+        ),
+      }, { workspaceId, meetingId, itemHash: actionItemId, actorUid: ctx.uid });
+      if (!result.replayed) {
+        await logMeetingActivity({
+          workspaceId, meetingId, actorType: 'user', actorId: ctx.uid, type: 'action_item_converted',
+          description: 'Converted a meeting action item into a task',
+        });
+      }
+      return { success: true, crmTaskId: result.taskId };
+    } catch (err) {
+      return { success: false, error: err instanceof ItemConversionError ? err.message : getErrorMessage(err) };
+    }
+  }
+
   const docRef = adminDb.collection('meeting_intelligence').doc(meetingId);
 
   let claim: ConversionClaim;

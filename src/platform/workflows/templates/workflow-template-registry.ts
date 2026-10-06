@@ -27,7 +27,6 @@ import {
 import type { WorkflowInstance, WorkflowStep } from '../workflow-types';
 import { LeadOnboardingWorkflow } from './lead-onboarding-template';
 import { DealReviewWorkflow } from './deal-review-template';
-import { MeetingFollowUpWorkflow } from './meeting-followup-template';
 
 export interface WorkflowTemplateRegistryOptions {
   store?: WorkflowStore;
@@ -204,7 +203,9 @@ export function getWorkflowTemplateRegistry(): WorkflowTemplateRegistry {
 
     registry.registerTemplate(LeadOnboardingWorkflow);
     registry.registerTemplate(DealReviewWorkflow);
-    registry.registerTemplate(MeetingFollowUpWorkflow);
+    // `meeting_followup_v1` is RETIRED (Phase 11 M2 · T3.3): it had no production starter (zero
+    // instances), called capabilities that don't exist and sent an ungoverned recap email.
+    // Post-meeting work is `meeting_postprocess_v2` (src/lib/meetings/intelligence/pipeline.ts).
 
     globalThis.__smartsappWorkflowTemplateRegistry = registry;
   }

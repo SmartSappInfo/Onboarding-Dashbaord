@@ -20,6 +20,7 @@ import {
 import { LeadOnboardingWorkflow } from '@/platform/workflows/templates/lead-onboarding-template';
 import { DealReviewWorkflow } from '@/platform/workflows/templates/deal-review-template';
 import { MeetingFollowUpWorkflow } from '@/platform/workflows/templates/meeting-followup-template';
+import { getWorkflowTemplateRegistry, setWorkflowTemplateRegistryForTests } from '@/platform/workflows/templates/workflow-template-registry';
 import {
   WorkflowTemplateRegistry,
 } from '@/platform/workflows/templates/workflow-template-registry';
@@ -208,6 +209,13 @@ describe('Deterministic Business Workflow Templates (Phase 7 Milestone 5)', () =
 
       const approvalStep = DealReviewWorkflow.steps.find((s) => s.id === 'vp_approval_gate');
       expect(approvalStep?.waitCondition?.type).toBe('approval');
+    });
+
+    it('meeting_followup_v1 is retired: not registered in the production template registry (M2 · T3.3)', () => {
+      setWorkflowTemplateRegistryForTests(undefined);
+      const ids = getWorkflowTemplateRegistry().listTemplates().map((t) => t.id);
+      expect(ids).not.toContain('meeting_followup_v1');
+      setWorkflowTemplateRegistryForTests(undefined);
     });
 
     it('validates MeetingFollowUpWorkflow definition and episodic memory integration', () => {

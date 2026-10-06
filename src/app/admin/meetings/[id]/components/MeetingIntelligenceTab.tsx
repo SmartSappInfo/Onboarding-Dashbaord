@@ -62,6 +62,7 @@ import {
   convertActionItemToCrmTaskAction,
   generateMeetingPrepBriefAction,
 } from '@/app/actions/meeting-intelligence-actions';
+import type { IntelligenceProgress } from '@/app/actions/meeting-intelligence-actions';
 import {
   attachMeetingRecordingAction,
   createRecordingUploadAction,
@@ -103,6 +104,8 @@ export function MeetingIntelligenceTab({
 
   const [isLoading, setIsLoading] = React.useState(true);
   const [isGenerating, setIsGenerating] = React.useState(false);
+  // M2 · T3.5: analysis runs in the background; this is its progress.
+  const [analysisRun, setAnalysisRun] = React.useState<IntelligenceProgress | null>(null);
   const [convertingTaskId, setConvertingTaskId] = React.useState<string | null>(null);
 
   const [recordingModalOpen, setRecordingModalOpen] = React.useState(false);
@@ -144,6 +147,7 @@ export function MeetingIntelligenceTab({
       if (intelRes.success && intelRes.intelligence) {
         setIntelligence(intelRes.intelligence);
       }
+      setAnalysisRun(intelRes.success ? intelRes.progress ?? null : null);
       if (recRes.success && recRes.recordings) {
         setRecordings(recRes.recordings);
         const first = recRes.recordings[0];
@@ -175,25 +179,46 @@ export function MeetingIntelligenceTab({
       const res = await generateMeetingIntelligenceAction(meetingId, workspaceId);
       if (res.success && res.intelligence) {
         setIntelligence(res.intelligence);
-        toast({
-          title: 'AI Intelligence Generated',
-          description: 'Executive summary, action items, and buying signals extracted successfully.',
-        });
+        setAnalysisRun(res.progress ?? null);
+        toast({ title: 'Analysis ready', description: 'Outcomes from this transcript are shown below.' });
+      } else if (res.success) {
+        setAnalysisRun(res.progress ?? null);
+        toast({ title: 'Analysing…', description: "We'll show the outcomes when they're ready. You can leave this page." });
       } else if (res.code === 'NO_TRANSCRIPT') {
         setAddTranscriptOpen(true);
       } else {
-        throw new Error(res.error || 'Failed to generate intelligence');
+        throw new Error(res.error || "Couldn't start the analysis.");
       }
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: 'Generation Failed',
+        title: "Couldn't analyse this meeting",
         description: getErrorMessage(err),
       });
     } finally {
       setIsGenerating(false);
     }
   };
+
+  const analysisActive = analysisRun?.status === 'pending' || analysisRun?.status === 'running';
+
+  // Poll the analysis every 5 s while it runs (bounded: stops on any final state or unmount).
+  React.useEffect(() => {
+    if (!analysisActive) return;
+    const timer = setInterval(async () => {
+      const res = await getMeetingIntelligenceAction(meetingId, workspaceId);
+      if (!res.success) return;
+      setAnalysisRun(res.progress ?? null);
+      if (res.progress?.status === 'completed' && res.intelligence) {
+        setIntelligence(res.intelligence);
+        toast({ title: 'Analysis ready', description: 'Outcomes from this transcript are shown below.' });
+      }
+      if (res.progress && ['failed', 'dead_lettered', 'cancelled', 'superseded'].includes(res.progress.status)) {
+        toast({ variant: 'destructive', title: "Couldn't finish the analysis", description: res.progress.error?.message ?? 'Try again.' });
+      }
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [analysisActive, meetingId, workspaceId, toast]);
 
   const handleConvertToCrmTask = async (item: MeetingActionItem) => {
     setConvertingTaskId(item.id);
@@ -388,11 +413,13 @@ export function MeetingIntelligenceTab({
           <Button
             size="sm"
             onClick={handleGenerateIntelligence}
-            disabled={isGenerating}
+            disabled={isGenerating || analysisActive}
             className="rounded-xl min-h-[40px] text-xs gap-2 font-semibold shadow-sm active:scale-[0.97]"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${isGenerating ? 'animate-spin' : ''}`} />
-            {intelligence ? 'Regenerate AI Digest' : 'Generate AI Digest'}
+            <RefreshCw className={`h-3.5 w-3.5 ${isGenerating || analysisActive ? 'animate-spin' : ''}`} />
+            {analysisActive
+              ? `Analysing… ${analysisRun && analysisRun.chunkCount > 0 ? `${analysisRun.chunksDone}/${analysisRun.chunkCount}` : ''}`.trim()
+              : intelligence ? 'Analyse again' : 'Analyse meeting'}
           </Button>
         </div>
       </div>
@@ -490,9 +517,9 @@ export function MeetingIntelligenceTab({
             <>
               <h4 className="text-base font-semibold text-foreground">Ready to analyse</h4>
               <p className="text-xs text-muted-foreground max-w-md mx-auto">Get a summary, action items and signals from this meeting&apos;s transcript.</p>
-              <Button onClick={handleGenerateIntelligence} disabled={isGenerating} className="rounded-xl min-h-[44px] text-xs gap-2 active:scale-[0.97]">
+              <Button onClick={handleGenerateIntelligence} disabled={isGenerating || analysisActive} className="rounded-xl min-h-[44px] text-xs gap-2 active:scale-[0.97]">
                 <Sparkles className="h-4 w-4" />
-                {isGenerating ? 'Analysing…' : 'Analyse meeting'}
+                {isGenerating || analysisActive ? 'Analysing…' : 'Analyse meeting'}
               </Button>
             </>
           ) : (
@@ -603,6 +630,11 @@ export function MeetingIntelligenceTab({
                           <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 gap-1 text-[10px]">
                             <Check className="h-3 w-3" />
                             CRM Task Created
+                          </Badge>
+                        ) : item.needsReview ? (
+                          // Plan §4.4: an item that needs review gets no one-click action.
+                          <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500/40">
+                            Needs review
                           </Badge>
                         ) : (
                           <Button

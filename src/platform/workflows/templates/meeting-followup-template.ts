@@ -6,6 +6,11 @@
  * 2. save_episodic_memory: Commits conversation takeaways to Platform Memory
  * 3. create_crm_note: Logs meeting summary under related CRM contact/deal
  * 4. send_attendee_recap: Dispatches executive recap email with action items
+ *
+ * @deprecated RETIRED in Phase 11 M2 · T3.3 and no longer registered in production. Zero-instance
+ * evidence: nothing in production starts platform workflows (no dispatcher caller), and its steps
+ * reference capabilities that don't exist (`meetings.get_transcript`, `messaging.send_email`).
+ * Kept ONLY as a workflow-engine test fixture. Post-meeting work runs as `meeting_postprocess_v2`.
  */
 
 import type { WorkflowTemplateDefinition } from './workflow-template-types';

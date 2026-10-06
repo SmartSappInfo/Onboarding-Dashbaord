@@ -6,7 +6,7 @@
  * transcript; duplicate trigger; quota refusal; consent withdrawn mid-run; breaker open → retry
  * without burning an attempt; schedule failure; reaper.
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { FakeFirestore } from '@/platform/__tests__/helpers/fake-firestore';
 import { CircuitBreaker, CircuitBreakerOpenError } from '@/platform/events/resilience/circuit-breaker';
 import {
@@ -120,6 +120,21 @@ describe('meeting_postprocess_v2', () => {
     // The fake summary cites an unknown item → dropped → no summary (never invented).
     expect(intel?.header.summary).toBeNull();
     expect(scheduled).toHaveLength(1);
+  });
+
+  it('traces every step and chunk without ever logging transcript content (Rule 39 stand-in)', async () => {
+    const lines: string[] = [];
+    const spy = vi.spyOn(console, 'info').mockImplementation((line: unknown) => { lines.push(String(line)); });
+    try {
+      const { req } = await startAndRun();
+      const records = lines.map((l) => JSON.parse(l) as { runId: string; step: string; chunk?: number });
+      expect(records.every((r) => r.runId === req.runId)).toBe(true);
+      expect(new Set(records.map((r) => r.step))).toEqual(new Set(['extract', 'validate', 'summarize', 'store']));
+      expect(records.filter((r) => r.step === 'extract').length).toBe((await loadRun(fs(), req.runId))?.chunkCount);
+      expect(lines.join('\n')).not.toMatch(/revised quote|rollout plan/);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it('drops a fabricated quote and a foreign segment id, and counts them', async () => {

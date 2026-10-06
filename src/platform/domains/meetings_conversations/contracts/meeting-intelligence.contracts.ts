@@ -20,17 +20,9 @@ import type { CapabilityDefinition, CapabilityExecutionContext } from '../../../
 import { isAutomatedPrincipal } from '../../../capabilities/contracts/capability-definition';
 import { CapabilityError } from '../../../capabilities/errors/capability-error';
 import { assertMeetingInWorkspace, MeetingNotFoundError } from '@/lib/meetings/meeting-access';
-import { findLatestTranscriptId } from '@/lib/meetings/transcript-store';
 import { MeetingItemSchema } from '@/lib/meetings/intelligence/intelligence-schemas';
-import {
-  IntelligenceHeaderV2Schema,
-  RUN_STATUSES,
-  PIPELINE_STEPS,
-  loadRun,
-  readIntelligenceV2,
-  runIdFor,
-} from '@/lib/meetings/intelligence/intelligence-store';
-import { EXTRACT_PROMPT_VERSION } from '@/lib/meetings/intelligence/prompts';
+import { IntelligenceHeaderV2Schema, RUN_STATUSES, PIPELINE_STEPS } from '@/lib/meetings/intelligence/intelligence-store';
+import { readMeetingAnalysis } from '@/lib/meetings/intelligence/intelligence-read';
 import {
   IntelligenceRequestError,
   assertAnalysable,
@@ -231,11 +223,10 @@ export const meetingGetIntelligenceCapability: CapabilityDefinition<MeetingGetIn
   async handler(input, context) {
     const startMs = Date.now();
     const workspaceId = context.principal.workspaceId;
-    const stored = await readIntelligenceV2(adminDb, input.meetingId, workspaceId);
-    const latestTranscript = await findLatestTranscriptId(adminDb, input.meetingId, workspaceId);
+    const { stored, run, latestTranscriptId } = await readMeetingAnalysis(adminDb, workspaceId, input.meetingId);
 
     // Agents read analysis only when AI use is allowed and consent covers it (Rule 57).
-    const transcriptId = stored?.header.transcriptId ?? latestTranscript;
+    const transcriptId = stored?.header.transcriptId ?? latestTranscriptId;
     if (isAutomatedPrincipal(context.principal) && transcriptId) {
       try {
         await assertAnalysable(adminDb, { workspaceId, organizationId: context.principal.organizationId, meetingId: input.meetingId, transcriptId });
@@ -247,17 +238,6 @@ export const meetingGetIntelligenceCapability: CapabilityDefinition<MeetingGetIn
       }
     }
 
-    let run: MeetingGetIntelligenceOutput['run'] = null;
-    if (latestTranscript) {
-      const runId = runIdFor(workspaceId, latestTranscript, EXTRACT_PROMPT_VERSION);
-      const r = await loadRun(adminDb, runId);
-      if (r && r.workspaceId === workspaceId) {
-        run = {
-          runId, transcriptId: r.transcriptId, status: r.status, step: r.step, chunksDone: r.chunksDone, chunkCount: r.chunkCount,
-          ...(r.error ? { error: r.error } : {}),
-        };
-      }
-    }
     return ok({
       trust: 'model_generated_from_customer_content' as const,
       available: stored !== null,

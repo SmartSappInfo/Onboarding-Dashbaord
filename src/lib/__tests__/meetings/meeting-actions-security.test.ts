@@ -8,6 +8,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { FakeFirestore } from '@/platform/__tests__/helpers/fake-firestore';
+import { PIPELINE_ID, writeIntelligenceV2 } from '@/lib/meetings/intelligence/intelligence-store';
 
 const h = vi.hoisted(() => ({
   signedIn: true,
@@ -17,6 +18,7 @@ const h = vi.hoisted(() => ({
   tasksCreated: 0,
   taskCoreOk: true,
   audits: [] as unknown[],
+  scheduled: [] as string[],
 }));
 
 vi.mock('@/lib/auth/require-auth', async (importOriginal) => {
@@ -26,7 +28,8 @@ vi.mock('@/lib/auth/require-auth', async (importOriginal) => {
     requireWorkspace: vi.fn(async (workspaceId: string) => {
       if (!h.signedIn) throw new actual.UnauthorizedError('Not signed in.');
       if (!h.workspaces.includes(workspaceId)) throw new actual.ForbiddenError('No access to this workspace.');
-      return { uid: 'user-1', isSystemAdmin: false, profile: { organizationId: 'org-1', workspaceIds: h.workspaces } };
+      // Flat legacy permissions, as real profiles carry them (`meetings_manage` → meetings scopes).
+      return { uid: 'user-1', isSystemAdmin: false, profile: { organizationId: 'org-1', workspaceIds: h.workspaces, permissions: h.canManage ? ['meetings_manage'] : [] } };
     }),
   };
 });
@@ -43,6 +46,12 @@ vi.mock('@/lib/firebase-admin', () => ({
     }),
   },
 }));
+vi.mock('@/lib/gcp-tasks-client', () => ({
+  scheduleTaskWithKey: vi.fn(async (key: string) => {
+    h.scheduled.push(key);
+  }),
+}));
+vi.mock('@/lib/meetings/intelligence/intelligence-model', () => ({ createIntelligenceModel: () => null }));
 vi.mock('@/lib/meetings/activity-logger', () => ({ logMeetingActivity: vi.fn(async () => ({ success: true })) }));
 vi.mock('@/lib/tasks/task-core', () => ({
   createTaskCore: vi.fn(async () => {
@@ -252,25 +261,25 @@ describe('fail-closed intelligence (B1, T7)', () => {
     vi.unstubAllGlobals();
   });
 
-  it('with no transcript: no model call, nothing stored, a clear state for the UI', async () => {
-    const fetchSpy = vi.fn();
-    vi.stubGlobal('fetch', fetchSpy);
-    vi.stubEnv('GEMINI_API_KEY', 'k');
+  it('with no transcript: nothing queued, nothing stored, a clear state for the UI', async () => {
     const res = await generateMeetingIntelligenceAction('m-a', 'ws-a');
     expect(res).toMatchObject({ success: false, code: 'NO_TRANSCRIPT' });
-    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(h.scheduled).toHaveLength(0);
     expect(db.read('meeting_intelligence/m-a')).toBeUndefined();
   });
 
-  it('when the model is unavailable: no invented intelligence is stored', async () => {
+  it('starting analysis queues the governed pipeline and stores nothing until it has validated results (M2 · T3.5)', async () => {
     seedTranscript();
-    vi.stubEnv('GEMINI_API_KEY', '');
-    vi.stubEnv('GOOGLE_API_KEY', '');
-    expect(await generateMeetingIntelligenceAction('m-a', 'ws-a')).toMatchObject({ success: false, code: 'AI_UNAVAILABLE' });
-    vi.stubEnv('GEMINI_API_KEY', 'k');
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, json: async () => ({}) })));
-    expect(await generateMeetingIntelligenceAction('m-a', 'ws-a')).toMatchObject({ success: false, code: 'AI_UNAVAILABLE' });
+    h.scheduled.length = 0;
+    const res = await generateMeetingIntelligenceAction('m-a', 'ws-a');
+    expect(res).toMatchObject({ success: true, status: 'pending' });
+    expect(res.intelligence).toBeUndefined();
+    expect(res.progress).toMatchObject({ transcriptId: 't-1', status: 'pending' });
+    expect(h.scheduled).toHaveLength(1);
     expect(db.read('meeting_intelligence/m-a')).toBeUndefined();
+    // Asking again rejoins the same run (no second job).
+    expect(await generateMeetingIntelligenceAction('m-a', 'ws-a')).toMatchObject({ success: true, status: 'pending' });
+    expect(h.scheduled).toHaveLength(1);
   });
 
   it('refuses when AI use is restricted', async () => {
@@ -278,20 +287,46 @@ describe('fail-closed intelligence (B1, T7)', () => {
     expect(await generateMeetingIntelligenceAction('m-a', 'ws-a')).toMatchObject({ success: false, code: 'NOT_ALLOWED' });
   });
 
-  it('analyses the real transcript, keeps the key out of the URL and links the transcript', async () => {
+  it('needs meetings_manage to start analysis; members can still read', async () => {
     seedTranscript();
-    vi.stubEnv('GEMINI_API_KEY', 'secret-key');
-    const fetchSpy = vi.fn(async (_url: string, init: { headers: Record<string, string>; body: string }) => {
-      expect(init.body).toContain('Send the proposal Friday');
-      return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify({ executiveSummary: 'Proposal due Friday', keyTopics: [], keyDecisions: [], actionItems: [], buyingSignals: [], objections: [], dealRisks: [], sentiment: { category: 'neutral', score: 0, explanation: '' }, recommendedFollowUp: '' }) }] } }] }) };
+    h.canManage = false;
+    await expect(generateMeetingIntelligenceAction('m-a', 'ws-a')).rejects.toThrow('permission to manage meetings');
+    expect((await getMeetingIntelligenceAction('m-a', 'ws-a')).success).toBe(true);
+  });
+
+  it('v2 analysis: read in the v1 shape; an item converts to exactly one task; review items are refused', async () => {
+    seedTranscript();
+    await writeIntelligenceV2(db.asFirestore(), {
+      schemaVersion: 2, workspaceId: 'ws-a', meetingId: 'm-a', transcriptId: 't-1', runId: 'mir_1', pipelineId: PIPELINE_ID,
+      promptVersion: 'v', promptHash: 'h', summary: { sentences: [{ text: 'Ama sends the proposal.', itemHashes: ['it_ok'] }], promptVersion: 's' },
+      counts: { kept: 2, needsReview: 1, dropped: { schema: 0, unknown_segment: 0, quote_not_found: 0, quote_too_short: 0, duplicate: 0, over_limit: 0 } },
+      coverage: 1, truncated: false, version: 0, generatedAt: 'g', updatedAt: 'u',
+    }, [
+      { workspaceId: 'ws-a', meetingId: 'm-a', transcriptId: 't-1', itemHash: 'it_ok', type: 'action_item', text: 'Send the proposal', confidence: 0.9,
+        evidence: [{ segmentIds: ['s0'], quote: 'send the proposal friday' }], contradicts: [], needsReview: false, reviewReasons: [], status: 'valid', promptVersion: 'v', createdAt: 'c' },
+      { workspaceId: 'ws-a', meetingId: 'm-a', transcriptId: 't-1', itemHash: 'it_rev', type: 'action_item', text: 'Maybe call', confidence: 0.4,
+        evidence: [{ segmentIds: ['s0'], quote: 'send the proposal friday' }], contradicts: [], needsReview: true, reviewReasons: ['low_confidence'], status: 'valid', promptVersion: 'v', createdAt: 'c' },
+    ]);
+    const read = await getMeetingIntelligenceAction('m-a', 'ws-a');
+    expect(read.intelligence).toMatchObject({ executiveSummary: 'Ama sends the proposal.', actionItems: [{ id: 'it_ok', needsReview: false }, { id: 'it_rev', needsReview: true }] });
+    const before = h.tasksCreated;
+    const first = await convertActionItemToCrmTaskAction('m-a', 'ws-a', 'it_ok');
+    const second = await convertActionItemToCrmTaskAction('m-a', 'ws-a', 'it_ok');
+    expect(first.crmTaskId).toBeDefined();
+    expect(second.crmTaskId).toBe(first.crmTaskId);
+    expect(h.tasksCreated).toBe(before + 1);
+    expect(await convertActionItemToCrmTaskAction('m-a', 'ws-a', 'it_rev')).toMatchObject({ success: false, error: expect.stringContaining('Review') });
+    expect((await getMeetingIntelligenceAction('m-a', 'ws-a')).intelligence?.actionItems[0]).toMatchObject({ status: 'converted_to_crm_task', crmTaskId: first.crmTaskId });
+  });
+
+  it('shows a stored v1 analysis (validated) until the meeting is re-analysed', async () => {
+    db.write('meeting_intelligence/m-a', {
+      workspaceId: 'ws-a', meetingId: 'm-a', executiveSummary: 'Old summary', keyTopics: ['pricing'], keyDecisions: [],
+      actionItems: [{ id: 'ai-9', text: 'Old item', priority: 'high', status: 'open' }], buyingSignals: [], objections: [],
+      dealRisks: [], sentiment: { category: 'positive', score: 0.5, explanation: 'x' }, recommendedFollowUp: '', generatedAt: 'g', updatedAt: 'u',
     });
-    vi.stubGlobal('fetch', fetchSpy);
-    const res = await generateMeetingIntelligenceAction('m-a', 'ws-a');
-    expect(res.success).toBe(true);
-    const [url, init] = fetchSpy.mock.calls[0] as unknown as [string, { headers: Record<string, string> }];
-    expect(url).not.toContain('secret-key');
-    expect(init.headers['x-goog-api-key']).toBe('secret-key');
-    expect(db.read('meeting_intelligence/m-a')).toMatchObject({ transcriptId: 't-1', workspaceId: 'ws-a' });
+    const res = await getMeetingIntelligenceAction('m-a', 'ws-a');
+    expect(res.intelligence).toMatchObject({ executiveSummary: 'Old summary', sentiment: { category: 'positive' }, actionItems: [{ id: 'ai-9' }] });
   });
 });
 

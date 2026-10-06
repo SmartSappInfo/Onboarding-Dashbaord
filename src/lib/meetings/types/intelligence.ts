@@ -76,6 +76,10 @@ export interface MeetingActionItem {
   priority: ActionItemPriority;
   status: ActionItemStatus;
   crmTaskId?: string;
+  /** v2 analysis (M2 · T3): needs a person's review before any one-click action. */
+  needsReview?: boolean;
+  /** v2 analysis: the quoted words this item is based on. */
+  evidenceQuote?: string;
 }
 
 export type SentimentCategory = 'positive' | 'neutral' | 'negative' | 'mixed';
@@ -116,7 +120,8 @@ export interface MeetingIntelligence {
   buyingSignals: BuyingSignal[];
   objections: CustomerObjection[];
   dealRisks: string[];
-  sentiment: SentimentAnalysis;
+  /** Absent for v2 analysis, which does not assess sentiment (never shown as a guessed value). */
+  sentiment?: SentimentAnalysis;
   recommendedFollowUp: string;
   modelUsed?: string;
   status: IntelligenceStatus;
