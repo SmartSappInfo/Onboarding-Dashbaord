@@ -677,6 +677,11 @@ Needs written approval:
 | X2 | Dates resolved against the "workspace time zone" | Meeting `timezone` → workspace `timezone` → UTC; the source is recorded on each date. UTC-resolved dates put the item in review | Neither meetings nor workspaces have a time-zone field today. Backoffice/settings field: T7 |
 | X3 | OpenTelemetry spans per step/chunk | Structured content-free trace lines (`traceStep`), 1:1 with the planned spans | The project has no OpenTelemetry SDK; adding one is a project-wide decision (needs approval) |
 | X4 | `meeting_followup_v1` retired "after a zero-instance check" | Removed from the production template registry; file kept as an engine test fixture | Zero instances by construction: no production starter; its capabilities don't exist; it held an ungoverned recap email step |
+| X5 | CRM proposals for deal stage, next step, expected close date, entity note, tags (D17) | Deal stage is executable (bridge, rollback). Tags and notes are proposed as **recommendations** (approvable, never executed). Next step and close date are not proposable | No governed capability changes next step / close date (`deal.update` has neither). The tag / note capabilities report success on failure (and `crm.entity.list_tags` can't run outside a session), so their result can't be verified; follow-up task "Make remaining CRM capabilities fail closed" |
+| X6 | `meeting.propose_crm_update` is "L2 proposal" | Risk L1 (it only writes an approval request); matrix mode `proposal` | At L2 the Meeting Analyst (ceiling L1) couldn't propose, which the plan requires; the L2 change itself is gated by someone else's approval |
+| X7 | `meeting.delete_followup_draft`: owner or meetings edit | Meetings edit | Stricter and simpler; drafts are soft-deleted (kept for audit) |
+| X8 | Undo is compensation only | Added `meeting.undo_followup_task` (L1, meetings + tasks delete) | Undo needs a governed path; the analyst persona has no task-delete permission, so undo stays with people |
+| X9 | (not planned) | `deal.get` / `deal.advance_stage` fail closed | `deal.get` returned an invented deal when one was missing; the CRM bridge's conflict check and postcondition depend on it |
 
 Also:
 - v2 item → task conversion now records claims in `meeting_item_conversions` (keyed by item hash, so it survives re-analysis). T4's `meeting.create_followup_tasks` must use the same record.
@@ -687,11 +692,11 @@ Also:
 | ID | Task | Status | Evidence |
 | --- | --- | --- | --- |
 | P11-M2-T0 | M1 review fixes R1–R7 | ✔ | 7e468039 (content) + 099cf8a8 (provenance) |
-| (M0) | T3 ✔ platform paths (052809b1) · T2 · T4 · T5 ☐ | M0 plan |
+| (M0) | T2 ✔ · T3 ✔ platform paths (052809b1) · T4 ✔ (194b7400) · T5 ✔ (c6db57fc, 911b0422) | M0 plan |
 | P11-M2-T1 | Personas, identity, matrices | ✔ | bcda1853 |
 | P11-M2-T2 | Grounded prep brief | ✔ | prep-brief-service (18 tests), gateway contract (8 tests), fingerprint baseline +1 |
 | P11-M2-T3 | Extraction pipeline + v2 template | ✔ | 39942b0b, 3346541c, 2ae324fd, daf2d189, 178528d1; runbook `docs/runbooks/meetings-intelligence.md`; deviations X1–X4 |
-| P11-M2-T4 | Tasks · drafts · CRM proposals | ☐ | |
+| P11-M2-T4 | Tasks · drafts · CRM proposals | ✔ | 40b46b82, 79fe2a2d (tasks + undo) · 2b963e84, 0dfc5291, 5d184493 (drafts + composer) · 70397b41 (deal reads fail closed) · 58ed6097, 8ab0782d (CRM proposals); deviations X5–X9 |
 | P11-M2-T5 | Evaluation + shadow | ☐ | |
 | P11-M2-T6 | Minimal UI + "Why?" + performance/boundary | ☐ | |
 | P11-M2-T7 | Backoffice + runbook | ☐ | |
