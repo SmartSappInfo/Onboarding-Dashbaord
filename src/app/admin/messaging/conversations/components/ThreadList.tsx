@@ -72,7 +72,7 @@ export default function ThreadList({ threads, selectedEntityId, onSelect, search
                   'w-full text-left p-3 rounded-xl transition-all flex gap-3 relative group outline-none',
                   isSelected 
                     ? 'bg-primary/10 hover:bg-primary/15' 
-                    : 'hover:bg-muted/50 focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-primary/20'
+                    : 'even:bg-muted/20 dark:even:bg-muted/10 hover:bg-muted/50 focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-primary/20'
                 )}
               >
                 {/* Unread indicator dot */}

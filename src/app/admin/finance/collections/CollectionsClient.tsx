@@ -54,6 +54,7 @@ import {
 import { RecordPromiseToPayModal } from '@/components/finance/RecordPromiseToPayModal';
 import { CreatePaymentPlanModal } from '@/components/finance/CreatePaymentPlanModal';
 import { LogCollectionActivityModal } from '@/components/finance/LogCollectionActivityModal';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import Link from 'next/link';
 
 export function CollectionsClient() {
@@ -203,12 +204,12 @@ export function CollectionsClient() {
             <ShieldAlert className="h-4 w-4" />
             Recovery & Risk Engine
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-            Debt Collections Pipeline
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            Manage multi-invoice delinquent accounts, promise-to-pay commitments, and recovery milestones.
-          </p>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              Debt Collections Pipeline
+            </h1>
+            <CardInfoTooltip text="Manage multi-invoice delinquent accounts, promise-to-pay commitments, and recovery milestones across the collection lifecycle." />
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -242,54 +243,62 @@ export function CollectionsClient() {
 
       {/* Top Metrics Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <Card className="rounded-2xl border bg-card p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-            <AlertTriangle className="h-4 w-4 text-rose-500" />
-            Debt in Collection
+        <Card className="rounded-2xl border border-border/80 bg-card text-card-foreground p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+              <AlertTriangle className="h-4 w-4 text-rose-500" />
+              Debt in Collection
+            </div>
+            <CardInfoTooltip text="Total outstanding delinquent debt currently tracked across all active recovery cases." />
           </div>
           <div className="mt-2 text-2xl font-extrabold tracking-tight text-rose-600">
             GHS {metrics.totalDebt.toLocaleString()}
           </div>
-          <p className="text-[11px] text-muted-foreground mt-1">Across all open collection cases</p>
         </Card>
 
-        <Card className="rounded-2xl border bg-card p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-            <ShieldAlert className="h-4 w-4 text-orange-500" />
-            Active Collection Cases
+        <Card className="rounded-2xl border border-border/80 bg-card text-card-foreground p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+              <ShieldAlert className="h-4 w-4 text-orange-500" />
+              Active Collection Cases
+            </div>
+            <CardInfoTooltip text="Number of cases actively requiring scheduled debtor outreach, reminder notices, and negotiation." />
           </div>
           <div className="mt-2 text-2xl font-extrabold tracking-tight text-foreground">
             {metrics.activeCases}
           </div>
-          <p className="text-[11px] text-muted-foreground mt-1">Requiring ongoing recovery outreach</p>
         </Card>
 
-        <Card className="rounded-2xl border bg-card p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-            <Clock className="h-4 w-4 text-amber-500" />
-            High / Critical Priority
+        <Card className="rounded-2xl border border-border/80 bg-card text-card-foreground p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+              <Clock className="h-4 w-4 text-amber-500" />
+              High / Critical Priority
+            </div>
+            <CardInfoTooltip text="Cases at Stage 4+ or with receivables exceeding 60 days overdue requiring escalated intervention." />
           </div>
           <div className="mt-2 text-2xl font-extrabold tracking-tight text-amber-600">
             {metrics.criticalCases}
           </div>
-          <p className="text-[11px] text-muted-foreground mt-1">Stages 4+ or &gt;60d overdue debt</p>
         </Card>
 
-        <Card className="rounded-2xl border bg-card p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-            Resolved Cases
+        <Card className="rounded-2xl border border-border/80 bg-card text-card-foreground p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+              Resolved Cases
+            </div>
+            <CardInfoTooltip text="Cases that have successfully completed repayment, settlement, or structured debt recovery." />
           </div>
           <div className="mt-2 text-2xl font-extrabold tracking-tight text-emerald-600">
             {metrics.resolvedCases}
           </div>
-          <p className="text-[11px] text-muted-foreground mt-1">Successfully settled or recovered</p>
         </Card>
       </div>
 
       {/* Main Table Card */}
-      <Card className="rounded-2xl border shadow-sm">
-        <div className="p-4 border-b space-y-4">
+      <Card className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm overflow-hidden">
+        <div className="p-4 border-b border-border/80 bg-muted/20 space-y-4">
           {/* Controls Header */}
           <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
             <div className="relative w-full md:w-80">
@@ -298,13 +307,13 @@ export function CollectionsClient() {
                 placeholder="Search case # or debtor name..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 rounded-xl h-10 min-h-[44px] text-xs"
+                className="pl-9 rounded-xl h-10 min-h-[44px] text-xs bg-background"
               />
             </div>
 
             <div className="flex items-center gap-2 w-full md:w-auto">
               <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                <SelectTrigger className="w-[140px] rounded-xl h-10 min-h-[44px] text-xs">
+                <SelectTrigger className="w-[140px] rounded-xl h-10 min-h-[44px] text-xs bg-background">
                   <SelectValue placeholder="All Priorities" />
                 </SelectTrigger>
                 <SelectContent>
@@ -349,22 +358,22 @@ export function CollectionsClient() {
           ) : (
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="text-xs font-bold">Case #</TableHead>
+                <TableHeader className="bg-muted/30">
+                  <TableRow className="border-border/80">
+                    <TableHead className="text-xs font-bold pl-6 py-4">Case #</TableHead>
                     <TableHead className="text-xs font-bold">Debtor Entity</TableHead>
                     <TableHead className="text-xs font-bold text-right">Total Debt</TableHead>
                     <TableHead className="text-xs font-bold text-center">Oldest Age</TableHead>
                     <TableHead className="text-xs font-bold text-center">Stage</TableHead>
                     <TableHead className="text-xs font-bold text-center">Priority</TableHead>
                     <TableHead className="text-xs font-bold">Next Action</TableHead>
-                    <TableHead className="text-xs font-bold text-right">Actions</TableHead>
+                    <TableHead className="text-xs font-bold text-right pr-6">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredCases.map((c) => (
-                    <TableRow key={c.id} className="hover:bg-muted/40 transition-colors">
-                      <TableCell className="font-mono text-xs font-bold text-foreground">
+                    <TableRow key={c.id} className="border-border/80">
+                      <TableCell className="font-mono text-xs font-bold text-foreground pl-6 py-4">
                         <Link 
                           href={`/admin/finance/collections/${c.id}`}
                           className="hover:underline text-primary flex items-center gap-1"
@@ -415,7 +424,7 @@ export function CollectionsClient() {
                         )}
                       </TableCell>
 
-                      <TableCell className="text-right">
+                      <TableCell className="text-right pr-6">
                         <div className="flex items-center justify-end gap-1">
                           <Button
                             variant="ghost"

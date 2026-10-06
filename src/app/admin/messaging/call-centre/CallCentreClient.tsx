@@ -32,6 +32,7 @@ import { PageContainer } from '@/components/ui/page-container';
 import type { CallCampaign, CallScript } from '@/lib/types';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { ScriptThumbnailCard } from '@/components/call-centre/ScriptThumbnailCard';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -353,20 +354,18 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
         <Tabs defaultValue="campaigns" value={activeTab} onValueChange={setActiveTab} className="w-full space-y-8 py-6">
           
           {/* Header */}
-          <div className="flex items-center justify-between flex-wrap gap-4 border-b border-border pb-5">
+          <div className="flex items-center justify-between flex-wrap gap-4 border-b border-border/80 pb-5">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-inner shrink-0">
                 <PhoneCall className="h-5 w-5 text-primary animate-pulse" />
               </div>
-              <div>
+              <div className="flex items-center gap-2">
                 <h1 className="text-xl font-black uppercase text-foreground tracking-wider mt-0.5">Call Centre</h1>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
-                  Outreach scripts, dialer queues, and AI-powered workflows
-                </p>
+                <CardInfoTooltip text="Outreach scripts, dialer queues, and AI-powered calling workflows." />
               </div>
             </div>
             <div className="flex items-center gap-4 flex-wrap">
-              <TabsList className="bg-muted border border-border shadow-sm h-10 p-1 rounded-xl ring-1 ring-border/50">
+              <TabsList className="bg-muted/40 border border-border/80 shadow-xs h-10 p-1 rounded-xl">
                 <TabsTrigger value="campaigns" className="rounded-lg font-bold text-xs px-4 py-1.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">Outreach Campaigns</TabsTrigger>
                 <TabsTrigger value="scripts" className="rounded-lg font-bold text-xs px-4 py-1.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">Call Scripts</TabsTrigger>
               </TabsList>
@@ -419,37 +418,46 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
           {/* Stats Row */}
           {activeTab === 'campaigns' && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="border border-border bg-card rounded-2xl shadow-sm hover:shadow-md transition-all">
+              <Card className="border border-border/80 bg-card rounded-2xl shadow-sm hover:shadow-md transition-all">
                 <CardContent className="p-6 flex items-center gap-4">
                   <div className="p-3 bg-primary/10 text-primary rounded-xl border border-primary/20">
                     <CheckCircle2 className="h-6 w-6" />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Calls Completed</p>
+                    <div className="flex items-center gap-1">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Calls Completed</p>
+                      <CardInfoTooltip text="Total outbound calls successfully finalized." />
+                    </div>
                     <p className="text-2xl font-black text-foreground">{stats.completedCalls}</p>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="border border-border bg-card rounded-2xl shadow-sm hover:shadow-md transition-all">
+              <Card className="border border-border/80 bg-card rounded-2xl shadow-sm hover:shadow-md transition-all">
                 <CardContent className="p-6 flex items-center gap-4">
                   <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl border border-amber-500/20">
                     <Clock className="h-6 w-6" />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Callbacks Pending</p>
+                    <div className="flex items-center gap-1">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Callbacks Pending</p>
+                      <CardInfoTooltip text="Scheduled callbacks requiring agent follow-up." />
+                    </div>
                     <p className="text-2xl font-black text-foreground">{stats.callbackCalls}</p>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="border border-border bg-card rounded-2xl shadow-sm hover:shadow-md transition-all">
+              <Card className="border border-border/80 bg-card rounded-2xl shadow-sm hover:shadow-md transition-all">
                 <CardContent className="p-6 flex items-center gap-4">
                   <div className="p-3 bg-indigo-500/10 text-indigo-500 rounded-xl border border-indigo-500/20">
                     <UserCheck className="h-6 w-6" />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Deferred / Retries</p>
+                    <div className="flex items-center gap-1">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Deferred / Retries</p>
+                      <CardInfoTooltip text="Unanswered calls queued for automated retry." />
+                    </div>
                     <p className="text-2xl font-black text-foreground">{stats.deferredCalls}</p>
                   </div>
                 </CardContent>
@@ -486,7 +494,7 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
                   return (
                     <div 
                       key={camp.id} 
-                      className="grid grid-cols-[1fr_auto_auto] items-center p-4 bg-card border border-border rounded-xl hover:border-primary/30 hover:shadow-sm transition-all gap-4"
+                      className="grid grid-cols-[1fr_auto_auto] items-center p-4 bg-card even:bg-muted/30 dark:even:bg-muted/15 hover:bg-muted/50 border border-border/80 rounded-2xl transition-all gap-4"
                     >
                       {/* Left Section: Icon & Info (clickable → analytics) */}
                       <div 

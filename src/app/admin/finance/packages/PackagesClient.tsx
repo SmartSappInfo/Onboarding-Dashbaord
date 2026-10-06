@@ -84,6 +84,7 @@ import {
 } from '@/app/actions/product-actions';
 import { calculateCommercialAnalytics } from '@/lib/deals/deal-commercial-analytics';
 import CatalogAnalyticsTab from './components/CatalogAnalyticsTab';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 export default function PackagesClient() {
   const firestore = useFirestore();
@@ -602,7 +603,7 @@ export default function PackagesClient() {
     <PageContainerFluid>
       <div className="space-y-6 pb-32 w-full text-left">
         {/* Header Banner */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-3xl bg-gradient-to-r from-primary/10 via-card to-background border border-primary/20 shadow-xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-2xl bg-card border border-border/80 shadow-sm">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 font-extrabold text-[10px] uppercase tracking-wider px-2.5 py-0.5 rounded-lg">
@@ -610,13 +611,13 @@ export default function PackagesClient() {
               </Badge>
               <span className="text-xs font-bold text-muted-foreground">• {products.length} Products & {packages.length} Subscription Tiers</span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-black tracking-tight text-foreground flex items-center gap-2.5">
-              <Package className="h-7 w-7 text-primary" />
-              Commercial & Pricing Hub
-            </h1>
-            <p className="text-xs text-muted-foreground max-w-2xl">
-              Centralized commercial catalog for standard products, recurring software subscriptions, institutional pricing tiers, price books, and margin analytics.
-            </p>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl md:text-3xl font-black tracking-tight text-foreground flex items-center gap-2.5">
+                <Package className="h-7 w-7 text-primary" />
+                Commercial & Pricing Hub
+              </h1>
+              <CardInfoTooltip text="Centralized commercial catalog for standard products, recurring software subscriptions, institutional pricing tiers, price books, and margin analytics." />
+            </div>
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
@@ -723,10 +724,10 @@ export default function PackagesClient() {
               )}
             </div>
 
-            <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden text-left">
+            <div className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm overflow-hidden text-left">
               <Table>
-                <TableHeader className="bg-muted/20">
-                  <TableRow>
+                <TableHeader className="bg-muted/30">
+                  <TableRow className="border-border/80">
                     <TableHead className="text-[10px] font-bold uppercase tracking-wider pl-6 py-4">Product / SKU</TableHead>
                     <TableHead className="text-[10px] font-bold uppercase tracking-wider">Category</TableHead>
                     <TableHead className="text-[10px] font-bold uppercase tracking-wider">Billing Type</TableHead>
@@ -738,7 +739,7 @@ export default function PackagesClient() {
                 <TableBody>
                   {isLoadingCatalog ? (
                     Array.from({ length: 3 }).map((_, i) => (
-                      <TableRow key={i}>
+                      <TableRow key={i} className="border-border/80">
                         <TableCell className="pl-6 py-5"><Skeleton className="h-4 w-36" /></TableCell>
                         <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                         <TableCell><Skeleton className="h-4 w-20" /></TableCell>
@@ -749,7 +750,7 @@ export default function PackagesClient() {
                     ))
                   ) : filteredProducts.length ? (
                     filteredProducts.map((prod) => (
-                      <TableRow key={prod.id} className="group hover:bg-muted/25 transition-colors">
+                      <TableRow key={prod.id} className="border-border/80 group">
                         <TableCell className="pl-6 py-3.5">
                           <div>
                             <p className="font-bold text-xs text-foreground tracking-tight">{prod.name}</p>
@@ -829,10 +830,10 @@ export default function PackagesClient() {
               />
             </div>
 
-            <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden text-left">
+            <div className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm overflow-hidden text-left">
               <Table>
-                <TableHeader className="bg-muted/20">
-                  <TableRow>
+                <TableHeader className="bg-muted/30">
+                  <TableRow className="border-border/80">
                     <TableHead className="text-[10px] font-bold uppercase tracking-wider pl-6 py-4">Package Name</TableHead>
                     <TableHead className="text-[10px] font-bold uppercase tracking-wider">Rate (Per {singular})</TableHead>
                     <TableHead className="text-[10px] font-bold uppercase tracking-wider text-center">Visibility</TableHead>
@@ -843,7 +844,7 @@ export default function PackagesClient() {
                 <TableBody>
                   {isLoadingPackages ? (
                     Array.from({ length: 3 }).map((_, i) => (
-                      <TableRow key={i}>
+                      <TableRow key={i} className="border-border/80">
                         <TableCell className="pl-6 py-5"><Skeleton className="h-4 w-32" /></TableCell>
                         <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                         <TableCell className="text-center"><Skeleton className="h-4 w-20 mx-auto" /></TableCell>
@@ -853,7 +854,7 @@ export default function PackagesClient() {
                     ))
                   ) : filteredPackages.length ? (
                     filteredPackages.map((pkg) => (
-                      <TableRow key={pkg.id} className="group hover:bg-muted/25 transition-colors">
+                      <TableRow key={pkg.id} className="border-border/80 group">
                         <TableCell className="pl-6 py-3.5">
                           <div>
                             <p className="font-bold text-xs text-foreground tracking-tight">{pkg.name}</p>
@@ -917,10 +918,10 @@ export default function PackagesClient() {
 
           {/* TAB 3: PRICE BOOKS */}
           <TabsContent value="price_books" className="space-y-4">
-            <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden text-left">
+            <div className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm overflow-hidden text-left">
               <Table>
-                <TableHeader className="bg-muted/20">
-                  <TableRow>
+                <TableHeader className="bg-muted/30">
+                  <TableRow className="border-border/80">
                     <TableHead className="text-[10px] font-bold uppercase tracking-wider pl-6 py-4">Price Book Name</TableHead>
                     <TableHead className="text-[10px] font-bold uppercase tracking-wider">Currency</TableHead>
                     <TableHead className="text-[10px] font-bold uppercase tracking-wider text-center">Type</TableHead>
@@ -931,7 +932,7 @@ export default function PackagesClient() {
                 <TableBody>
                   {isLoadingCatalog ? (
                     Array.from({ length: 2 }).map((_, i) => (
-                      <TableRow key={i}>
+                      <TableRow key={i} className="border-border/80">
                         <TableCell className="pl-6 py-5"><Skeleton className="h-4 w-32" /></TableCell>
                         <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                         <TableCell className="text-center"><Skeleton className="h-4 w-16 mx-auto" /></TableCell>
@@ -941,7 +942,7 @@ export default function PackagesClient() {
                     ))
                   ) : priceBooks.length ? (
                     priceBooks.map((pb) => (
-                      <TableRow key={pb.id} className="group hover:bg-muted/25 transition-colors">
+                      <TableRow key={pb.id} className="border-border/80 group">
                         <TableCell className="pl-6 py-3.5">
                           <div>
                             <p className="font-bold text-xs text-foreground tracking-tight">{pb.name}</p>
@@ -1000,10 +1001,10 @@ export default function PackagesClient() {
 
           {/* TAB 4: CATEGORIES */}
           <TabsContent value="categories" className="space-y-4">
-            <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden text-left">
+            <div className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm overflow-hidden text-left">
               <Table>
-                <TableHeader className="bg-muted/20">
-                  <TableRow>
+                <TableHeader className="bg-muted/30">
+                  <TableRow className="border-border/80">
                     <TableHead className="text-[10px] font-bold uppercase tracking-wider pl-6 py-4">Category Name</TableHead>
                     <TableHead className="text-[10px] font-bold uppercase tracking-wider">Description</TableHead>
                     <TableHead className="text-[10px] font-bold uppercase tracking-wider text-right pr-6">Actions</TableHead>
@@ -1012,7 +1013,7 @@ export default function PackagesClient() {
                 <TableBody>
                   {isLoadingCatalog ? (
                     Array.from({ length: 2 }).map((_, i) => (
-                      <TableRow key={i}>
+                      <TableRow key={i} className="border-border/80">
                         <TableCell className="pl-6 py-5"><Skeleton className="h-4 w-32" /></TableCell>
                         <TableCell><Skeleton className="h-4 w-48" /></TableCell>
                         <TableCell className="text-right pr-6"><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
@@ -1020,7 +1021,7 @@ export default function PackagesClient() {
                     ))
                   ) : categories.length ? (
                     categories.map((cat) => (
-                      <TableRow key={cat.id} className="group hover:bg-muted/25 transition-colors">
+                      <TableRow key={cat.id} className="border-border/80 group">
                         <TableCell className="pl-6 py-3.5">
                           <div className="flex items-center gap-2.5">
                             <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: cat.color || '#4f46e5' }} />

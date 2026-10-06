@@ -40,6 +40,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { ExecuteRecurringBillingModal } from '@/components/finance/ExecuteRecurringBillingModal';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 /**
  * @fileOverview Billing Cycles Management.
@@ -183,13 +184,13 @@ export default function PeriodsClient() {
             <div className="space-y-6 pb-32 w-full text-left">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex flex-col items-start">
-                        <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
+                        <div className="flex items-center gap-2">
                             <Timer className="h-8 w-8 text-primary" />
-                            Billing Cycles
-                        </h1>
-                        <p className="text-muted-foreground text-xs mt-1">
-                            Define recurring and term-based invoicing windows for {activeWorkspace?.name || activeWorkspaceId}
-                        </p>
+                            <h1 className="text-3xl font-bold tracking-tight text-foreground">
+                                Billing Cycles
+                            </h1>
+                            <CardInfoTooltip text={`Define recurring and term-based invoicing windows for ${activeWorkspace?.name || activeWorkspaceId || 'this workspace'}.`} />
+                        </div>
                     </div>
                     <div className="flex items-center gap-2">
                         <Button 
@@ -222,10 +223,10 @@ export default function PeriodsClient() {
                     />
                 </div>
 
-                <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden text-left">
+                <div className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm overflow-hidden text-left">
                     <Table>
-                        <TableHeader className="bg-muted/20">
-                            <TableRow>
+                        <TableHeader className="bg-muted/30">
+                            <TableRow className="border-border/80">
                                 <TableHead className="text-[10px] font-bold uppercase tracking-wider pl-6 py-4">Cycle Window</TableHead>
                                 <TableHead className="text-[10px] font-bold uppercase tracking-wider">Visibility</TableHead>
                                 <TableHead className="text-[10px] font-bold uppercase tracking-wider text-center">Trigger Date</TableHead>
@@ -236,7 +237,7 @@ export default function PeriodsClient() {
                         <TableBody>
                             {isLoading ? (
                                 Array.from({ length: 3 }).map((_, i) => (
-                                    <TableRow key={i}>
+                                    <TableRow key={i} className="border-border/80">
                                         <TableCell className="pl-6 py-5"><Skeleton className="h-4 w-32" /></TableCell>
                                         <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                                         <TableCell className="text-center"><Skeleton className="h-4 w-32 mx-auto" /></TableCell>
@@ -246,7 +247,7 @@ export default function PeriodsClient() {
                                 ))
                             ) : filteredPeriods.length ? (
                                 filteredPeriods.map((period) => (
-                                    <TableRow key={period.id} className={cn('group hover:bg-muted/25 transition-colors', period.status === 'closed' && 'opacity-60')}>
+                                    <TableRow key={period.id} className={cn('border-border/80 group', period.status === 'closed' && 'opacity-60')}>
                                         <TableCell className="pl-6 py-3.5">
                                             <p className="font-bold text-xs text-foreground tracking-tight">{period.name}</p>
                                             <p className="text-[10px] font-semibold text-muted-foreground tabular-nums">
@@ -325,18 +326,21 @@ export default function PeriodsClient() {
 
             {/* Editor Dialog */}
             <Dialog open={isAdding || !!editingPeriod} onOpenChange={(o) => { if (!o) { setIsAdding(false); setEditingPeriod(null); } }}>
-                <DialogContent className="sm:max-w-xl rounded-2xl p-0 overflow-hidden border border-border shadow-2xl bg-card text-left">
+                <DialogContent className="sm:max-w-xl rounded-2xl p-0 overflow-hidden border border-border/80 shadow-2xl bg-card text-card-foreground text-left">
                     <form onSubmit={handleSave}>
-                        <DialogHeader className="p-6 bg-muted/20 border-b shrink-0 text-left">
+                        <DialogHeader className="p-6 bg-muted/20 border-b border-border/80 shrink-0 text-left">
                             <div className="flex items-center gap-3 text-left">
                                 <div className="p-2.5 bg-primary text-white rounded-xl shadow-md shadow-primary/20 text-left">
                                     <Timer className="h-5 w-5" />
                                 </div>
                                 <div className="text-left">
-                                    <DialogTitle className="text-xl font-bold tracking-tight text-left">
-                                        {editingPeriod ? 'Modify Billing Cycle' : 'Initialize Billing Cycle'}
-                                    </DialogTitle>
-                                    <DialogDescription className="text-xs text-muted-foreground text-left">
+                                    <div className="flex items-center gap-2">
+                                        <DialogTitle className="text-xl font-bold tracking-tight text-left">
+                                            {editingPeriod ? 'Modify Billing Cycle' : 'Initialize Billing Cycle'}
+                                        </DialogTitle>
+                                        <CardInfoTooltip text="Configure the active invoicing window and payment deadlines." />
+                                    </div>
+                                    <DialogDescription className="sr-only">
                                         Configure the active window and payment deadlines
                                     </DialogDescription>
                                 </div>

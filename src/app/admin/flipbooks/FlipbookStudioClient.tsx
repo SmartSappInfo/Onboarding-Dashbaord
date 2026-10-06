@@ -28,6 +28,7 @@ import {
   Trash2, Edit3, ExternalLink, Copy, Check, Users, FileText,
   Library, FolderOpen
 } from 'lucide-react';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { createFlipbookAction, deleteFlipbookAction } from '@/lib/flipbook-actions';
 import {
   Dialog,
@@ -209,14 +210,12 @@ export default function FlipbookStudioClient() {
           
           {/* Header Row */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
+            <div className="flex items-center gap-2.5">
               <h1 className="text-3xl font-extrabold text-foreground tracking-tight flex items-center gap-2.5">
                 <BookOpen className="h-8 w-8 text-primary" />
                 Flipbook Studio
               </h1>
-              <p className="text-muted-foreground text-sm mt-1 leading-relaxed">
-                Convert PDFs, Word documents, and eBooks into interactive 3D Flipbooks and public landing pages.
-              </p>
+              <CardInfoTooltip text="Convert PDFs, Word documents, and eBooks into interactive 3D Flipbooks and public landing pages." />
             </div>
             
             <div className="flex items-center gap-2 shrink-0">
@@ -241,50 +240,62 @@ export default function FlipbookStudioClient() {
 
           {/* KPI Analytics Overview */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="rounded-2xl border-border/50 bg-card p-4 shadow-sm">
+            <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-primary/10 text-primary rounded-xl">
                   <BookOpen className="h-5 w-5" />
                 </div>
                 <div>
                   <div className="text-2xl font-black tracking-tight">{stats.total}</div>
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Total Flipbooks</div>
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                    Total Flipbooks
+                    <CardInfoTooltip text="Total interactive publications created in this workspace." />
+                  </div>
                 </div>
               </div>
             </Card>
 
-            <Card className="rounded-2xl border-border/50 bg-card p-4 shadow-sm">
+            <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl">
                   <Sparkles className="h-5 w-5" />
                 </div>
                 <div>
                   <div className="text-2xl font-black tracking-tight">{stats.published}</div>
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Published Landing Pages</div>
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                    Published
+                    <CardInfoTooltip text="Active publications accessible via public landing page URLs." />
+                  </div>
                 </div>
               </div>
             </Card>
 
-            <Card className="rounded-2xl border-border/50 bg-card p-4 shadow-sm">
+            <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl">
                   <Eye className="h-5 w-5" />
                 </div>
                 <div>
                   <div className="text-2xl font-black tracking-tight">{stats.totalFlips}</div>
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Total Page Flips</div>
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                    Page Flips
+                    <CardInfoTooltip text="Cumulative reader page flips across all published flipbooks." />
+                  </div>
                 </div>
               </div>
             </Card>
 
-            <Card className="rounded-2xl border-border/50 bg-card p-4 shadow-sm">
+            <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-xl">
                   <Users className="h-5 w-5" />
                 </div>
                 <div>
                   <div className="text-2xl font-black tracking-tight">{stats.totalLeads}</div>
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Captured Leads</div>
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                    Captured Leads
+                    <CardInfoTooltip text="Leads generated through gated flipbook reading sessions." />
+                  </div>
                 </div>
               </div>
             </Card>
@@ -344,7 +355,7 @@ export default function FlipbookStudioClient() {
               {filteredFlipbooks.map((fb) => (
                 <Card 
                   key={fb.id}
-                  className="group relative overflow-hidden rounded-3xl border-border/50 hover:shadow-2xl transition-all duration-300 bg-card flex flex-col justify-between"
+                  className="group relative overflow-hidden rounded-2xl border border-border/80 hover:shadow-md transition-all duration-300 bg-card flex flex-col justify-between"
                 >
                   <CardContent className="p-5 space-y-4">
                     <div className="flex items-start justify-between gap-2">
@@ -383,7 +394,7 @@ export default function FlipbookStudioClient() {
                     {/* Book Cover Visual Placeholder */}
                     <div 
                       onClick={() => router.push(`/admin/flipbooks/${fb.id}/edit`)}
-                      className="aspect-[3/4] w-full rounded-2xl bg-gradient-to-tr from-slate-900 via-indigo-950 to-slate-900 border border-white/10 flex flex-col items-center justify-center p-4 text-center cursor-pointer shadow-lg group-hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden"
+                      className="aspect-[3/4] w-full rounded-xl bg-gradient-to-tr from-slate-900 via-indigo-950 to-slate-900 border border-white/10 flex flex-col items-center justify-center p-4 text-center cursor-pointer shadow-lg group-hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden"
                     >
                       <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px]" />
                       <div className="relative z-10 space-y-2">
@@ -394,14 +405,14 @@ export default function FlipbookStudioClient() {
                     </div>
 
                     <div className="space-y-1">
-                      <h3 className="text-sm font-bold text-foreground truncate">{fb.title}</h3>
+                      <h3 className="text-sm font-semibold text-foreground truncate">{fb.title}</h3>
                       <p className="text-xs text-muted-foreground line-clamp-1">
                         {fb.description || `Source: ${fb.sourceFileName}`}
                       </p>
                     </div>
                   </CardContent>
 
-                  <div className="p-4 pt-0 border-t border-border/30 flex items-center justify-between gap-2 mt-2">
+                  <div className="p-4 border-t border-border/80 bg-muted/15 flex items-center justify-between gap-2 mt-2">
                     <Button
                       variant="outline"
                       size="sm"
@@ -430,18 +441,19 @@ export default function FlipbookStudioClient() {
 
       {/* Create New Flipbook Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="sm:max-w-md rounded-3xl p-6 shadow-2xl">
-          <DialogHeader className="text-left space-y-1">
-            <DialogTitle className="text-xl font-black text-foreground flex items-center gap-2">
+        <DialogContent className="sm:max-w-md rounded-2xl border border-border/80 bg-card text-card-foreground p-0 shadow-2xl overflow-hidden">
+          <DialogHeader demarcated className="px-6 py-4 flex flex-row items-center justify-between border-b border-border/80 bg-muted/20">
+            <DialogTitle className="text-base font-semibold tracking-tight text-foreground flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-primary" />
-              Create New Flipbook
+              <span>Create New Flipbook</span>
+              <CardInfoTooltip text="Provide a document URL (PDF, Word, or eBook) to generate an interactive flipbook page." />
             </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
+            <DialogDescription className="sr-only">
               Provide a document URL (PDF, Word, or eBook) to generate an interactive flipbook page.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-2 text-left">
+          <div className="space-y-4 p-6 text-left">
             <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Flipbook Title</Label>
               <Input
@@ -531,12 +543,12 @@ export default function FlipbookStudioClient() {
             </div>
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter demarcated className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
             <Button
               type="button"
               variant="ghost"
               onClick={() => setIsCreateOpen(false)}
-              className="rounded-xl font-bold text-xs h-11 px-4 min-h-[44px]"
+              className="rounded-xl font-bold text-xs h-11 px-4 min-h-[44px] active:scale-[0.97]"
             >
               Cancel
             </Button>
@@ -544,7 +556,7 @@ export default function FlipbookStudioClient() {
               type="button"
               disabled={isSubmitting}
               onClick={handleCreate}
-              className="rounded-xl font-bold text-xs h-11 px-5 shadow-md min-h-[44px]"
+              className="rounded-xl font-bold text-xs h-11 px-5 shadow-md min-h-[44px] active:scale-[0.97]"
             >
               {isSubmitting ? 'Initializing...' : 'Create & Edit Studio'}
             </Button>

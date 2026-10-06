@@ -40,6 +40,7 @@ import { useTerminology } from '@/hooks/use-terminology';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { FinancialAccount, Invoice, AgingBucket, AgingSummary } from '@/lib/types';
 import { calculateInvoiceAging } from '@/lib/services/aging-utils';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import Link from 'next/link';
 
 export function ReceivablesClient() {
@@ -225,13 +226,13 @@ export function ReceivablesClient() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <TrendingDown className="h-7 w-7 text-primary" />
-            Accounts Receivable
-          </h1>
-          <p className="text-sm text-muted-foreground font-medium mt-1">
-            Aging analysis, debt risk intelligence, and customer statement generation for {activeWorkspace?.name || activeWorkspaceId}
-          </p>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
+              Accounts Receivable
+            </h1>
+            <CardInfoTooltip text={`Aging analysis, debt risk intelligence, and customer statement generation for ${activeWorkspace?.name || activeWorkspaceId || 'this workspace'}`} />
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -239,7 +240,7 @@ export function ReceivablesClient() {
             asChild
             variant="outline"
             size="sm"
-            className="rounded-xl h-10 min-h-[44px] text-xs font-semibold"
+            className="rounded-xl h-10 min-h-[44px] text-xs font-semibold active:scale-[0.97]"
           >
             <Link href="/admin/finance/automations">
               <Zap className="h-4 w-4 mr-1.5 text-primary" />
@@ -251,7 +252,7 @@ export function ReceivablesClient() {
             asChild
             variant="outline"
             size="sm"
-            className="rounded-xl h-10 min-h-[44px] text-xs font-semibold"
+            className="rounded-xl h-10 min-h-[44px] text-xs font-semibold active:scale-[0.97]"
           >
             <Link href="/admin/finance/reports">
               <BarChart3 className="h-4 w-4 mr-1.5 text-primary" />
@@ -274,9 +275,12 @@ export function ReceivablesClient() {
 
       {/* Top Aging KPI Bar */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <Card className="rounded-3xl border-border bg-card shadow-sm col-span-2 sm:col-span-1 lg:col-span-1 border-l-4 border-l-primary">
+        <Card className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm col-span-2 sm:col-span-1 lg:col-span-1 border-l-4 border-l-primary">
           <CardContent className="p-4">
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Receivables</p>
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Receivables</p>
+              <CardInfoTooltip text="Aggregated gross outstanding balance across all debtor accounts in the workspace." />
+            </div>
             <h3 className="text-xl font-black text-foreground mt-1 truncate">
               GHS {agingSummary.totalReceivables.toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </h3>
@@ -284,9 +288,12 @@ export function ReceivablesClient() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl border-border bg-card shadow-sm border-l-4 border-l-emerald-500">
+        <Card className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm border-l-4 border-l-emerald-500">
           <CardContent className="p-4">
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Current (Not Due)</p>
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Current (Not Due)</p>
+              <CardInfoTooltip text="Invoices that have been billed but have not yet reached their contractual payment due date." />
+            </div>
             <h3 className="text-lg font-black text-emerald-600 dark:text-emerald-400 mt-1 truncate">
               GHS {agingSummary.current.toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </h3>
@@ -296,9 +303,12 @@ export function ReceivablesClient() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl border-border bg-card shadow-sm border-l-4 border-l-blue-500">
+        <Card className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm border-l-4 border-l-blue-500">
           <CardContent className="p-4">
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">1–30 Days</p>
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">1–30 Days</p>
+              <CardInfoTooltip text="Receivables 1 to 30 days past invoice due date requiring initial automated payment reminders." />
+            </div>
             <h3 className="text-lg font-black text-blue-600 dark:text-blue-400 mt-1 truncate">
               GHS {agingSummary.days1_30.toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </h3>
@@ -306,9 +316,12 @@ export function ReceivablesClient() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl border-border bg-card shadow-sm border-l-4 border-l-amber-500">
+        <Card className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm border-l-4 border-l-amber-500">
           <CardContent className="p-4">
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">31–60 Days</p>
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">31–60 Days</p>
+              <CardInfoTooltip text="Receivables 31 to 60 days past due requiring escalated payment notices and debtor contact." />
+            </div>
             <h3 className="text-lg font-black text-amber-600 dark:text-amber-400 mt-1 truncate">
               GHS {agingSummary.days31_60.toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </h3>
@@ -316,9 +329,12 @@ export function ReceivablesClient() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl border-border bg-card shadow-sm border-l-4 border-l-orange-500">
+        <Card className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm border-l-4 border-l-orange-500">
           <CardContent className="p-4">
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">61–90 Days</p>
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">61–90 Days</p>
+              <CardInfoTooltip text="Receivables 61 to 90 days overdue requiring direct outreach, call center tasks, and formal notices." />
+            </div>
             <h3 className="text-lg font-black text-orange-600 dark:text-orange-400 mt-1 truncate">
               GHS {agingSummary.days61_90.toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </h3>
@@ -326,9 +342,12 @@ export function ReceivablesClient() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl border-border bg-card shadow-sm border-l-4 border-l-rose-500">
+        <Card className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm border-l-4 border-l-rose-500">
           <CardContent className="p-4">
-            <p className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">90+ Days (High Risk)</p>
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">90+ Days (High Risk)</p>
+              <CardInfoTooltip text="Severely overdue receivables exceeding 90 days requiring formal recovery and collection pipeline action." />
+            </div>
             <h3 className="text-lg font-black text-rose-600 dark:text-rose-400 mt-1 truncate">
               GHS {agingSummary.days90Plus.toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </h3>
@@ -338,7 +357,7 @@ export function ReceivablesClient() {
       </div>
 
       {/* Filter Tabs & Search Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-card p-3 rounded-2xl border border-border shadow-sm">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-card p-3 rounded-2xl border border-border/80 shadow-sm">
         <Tabs value={agingFilter} onValueChange={setAgingFilter} className="w-full sm:w-auto">
           <TabsList className="bg-muted/50 rounded-xl p-1 h-9 flex flex-wrap">
             <TabsTrigger value="all" className="rounded-lg text-xs font-bold px-3">All Debts</TabsTrigger>
@@ -362,7 +381,7 @@ export function ReceivablesClient() {
       </div>
 
       {/* Receivables Table */}
-      <Card className="rounded-3xl border-border bg-card shadow-sm overflow-hidden">
+      <Card className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm overflow-hidden">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
@@ -401,7 +420,7 @@ export function ReceivablesClient() {
                     const oldestDays = aging?.oldestDays || 0;
 
                     return (
-                      <TableRow key={account.id} className="border-border hover:bg-muted/20 transition-colors">
+                      <TableRow key={account.id} className="border-border/80">
                         <TableCell className="pl-6 py-4 font-mono font-bold text-xs text-foreground">
                           {account.accountNumber}
                         </TableCell>

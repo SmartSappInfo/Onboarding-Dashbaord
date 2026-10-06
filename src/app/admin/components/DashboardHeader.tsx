@@ -12,6 +12,7 @@ import {
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
+import { CardInfoTooltip } from "@/components/shared/CardInfoTooltip";
 import type { Workspace } from "@/lib/types";
 
 interface DashboardHeaderProps {
@@ -40,8 +41,9 @@ export function DashboardHeader({
                 animate={{ opacity: 1, y: 0 }}
                 className="flex flex-col gap-1.5 text-left"
             >
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 flex-wrap">
                     <h1 className="text-3xl font-bold text-foreground">Intelligence Hub</h1>
+                    <CardInfoTooltip text={`Enterprise performance audit for the ${activeWorkspaceId} subsystem`} />
                     <Badge 
                         variant="outline" 
                         className="font-bold text-[10px] px-3 h-6 border uppercase tracking-widest ring-1 ring-border/50"
@@ -54,9 +56,6 @@ export function DashboardHeader({
                         {activeWorkspace?.name || 'Main Operational Track'}
                     </Badge>
                 </div>
-                <p className="text-muted-foreground text-sm mt-1">
-                    Enterprise performance audit for the <span className="text-primary font-bold italic">{activeWorkspaceId}</span> subsystem
-                </p>
             </motion.div>
 
             <motion.div 

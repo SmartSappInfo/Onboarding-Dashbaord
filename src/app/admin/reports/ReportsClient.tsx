@@ -39,6 +39,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { withUnassignedZone } from '@/lib/zone-constants';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 const CHART_COLORS = [
   "hsl(var(--primary))",
@@ -198,25 +199,25 @@ export default function ReportsClient() {
             <div className="space-y-8 pb-32 w-full">
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                     <div className="flex flex-col items-start">
-                        <h1 className="text-3xl font-bold text-foreground">
-                            Intelligence Hub
-                        </h1>
-                        <p className="text-muted-foreground text-sm mt-1">
-                            Operational health and network performance metrics
-                        </p>
+                        <div className="flex items-center gap-2">
+                            <h1 className="text-3xl font-bold text-foreground">
+                                Intelligence Hub
+                            </h1>
+                            <CardInfoTooltip text="Operational health, onboarding velocity, and network performance metrics across the organization." />
+                        </div>
                     </div>
                     <div className="flex items-center gap-3">
-                        <Button variant="outline" className="rounded-xl font-bold h-11 px-6 border-border text-foreground hover:bg-primary/5 shadow-sm">
+                        <Button variant="outline" className="rounded-xl font-bold h-11 px-6 border-border text-foreground hover:bg-primary/5 shadow-sm active:scale-[0.97]">
                             <FileText className="mr-2 h-4 w-4" /> System Audit
                         </Button>
-                        <Button className="rounded-xl font-semibold h-11 px-6 shadow-xl text-xs">
+                        <Button className="rounded-xl font-semibold h-11 px-6 shadow-xl text-xs active:scale-[0.97]">
                             Executive Export
                         </Button>
                     </div>
                 </div>
 
                 {/* KPI Tier */}
- <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
                     <StatCard 
                         label="Network Growth" 
                         value={`+${velocityData.length > 0 ? velocityData[velocityData.length - 1].count : 0}`} 
@@ -224,20 +225,47 @@ export default function ReportsClient() {
                         icon={TrendingUp} 
                         color="text-primary" 
                         bg="bg-primary/10" 
+                        tooltip="Total newly onboarded institutions added to the network in the last 30 days."
                     />
-                    <StatCard label="Force Multiplier" value={`${taskMetrics.efficiency}%`} sub="Task Closure Velocity" icon={Target} color="text-emerald-500" bg="bg-emerald-500/10" />
-                    <StatCard label="Lead-Time Avg" value={`${taskMetrics.avgResolutionDays}d`} sub="Days to Task Closure" icon={Clock} color="text-blue-500" bg="bg-blue-500/10" />
-                    <StatCard label="Network Density" value={zoneHealth.reduce((a,c) => a + c.students, 0).toLocaleString()} sub="Total Active Strength" icon={Users} color="text-purple-500" bg="bg-purple-500/10" />
+                    <StatCard 
+                        label="Force Multiplier" 
+                        value={`${taskMetrics.efficiency}%`} 
+                        sub="Task Closure Velocity" 
+                        icon={Target} 
+                        color="text-emerald-500" 
+                        bg="bg-emerald-500/10" 
+                        tooltip="Rate of operational tasks successfully closed within institutional target windows."
+                    />
+                    <StatCard 
+                        label="Lead-Time Avg" 
+                        value={`${taskMetrics.avgResolutionDays}d`} 
+                        sub="Days to Task Closure" 
+                        icon={Clock} 
+                        color="text-blue-500" 
+                        bg="bg-blue-500/10" 
+                        tooltip="Mean days required from task initiation to complete resolution."
+                    />
+                    <StatCard 
+                        label="Network Density" 
+                        value={zoneHealth.reduce((a,c) => a + c.students, 0).toLocaleString()} 
+                        sub="Total Active Strength" 
+                        icon={Users} 
+                        color="text-purple-500" 
+                        bg="bg-purple-500/10" 
+                        tooltip="Aggregated active member and student footprint across all regional operational zones."
+                    />
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* CRM Resolution Trend */}
-                    <Card className="lg:col-span-2 rounded-2xl border border-border shadow-sm overflow-hidden bg-transparent ring-1 ring-border">
-                        <CardHeader className="bg-transparent border-b pb-6 px-8 pt-8">
-                            <CardTitle className="text-[10px] font-bold text-primary flex items-center gap-2 uppercase tracking-widest">
-                                <Gauge className="h-4 w-4" /> CRM Resolution velocity (7D)
-                            </CardTitle>
-                            <CardDescription className="text-xs font-semibold mt-1">Intervention creation vs. successful closure.</CardDescription>
+                    <Card className="lg:col-span-2 rounded-2xl border border-border/80 shadow-sm overflow-hidden bg-card text-card-foreground">
+                        <CardHeader className="bg-muted/20 border-b border-border/80 p-6 flex flex-row items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                                    <Gauge className="h-4 w-4 text-primary" /> CRM Resolution Velocity (7D)
+                                </CardTitle>
+                                <CardInfoTooltip text="Intervention creation rate versus successful closure over the last 7 rolling days." />
+                            </div>
                         </CardHeader>
                         <CardContent className="p-8 h-[350px]">
                             <ResponsiveContainer width="100%" height="100%">
@@ -257,12 +285,14 @@ export default function ReportsClient() {
                     </Card>
 
                     {/* Regional Performance */}
-                    <Card className="rounded-2xl border border-border shadow-sm overflow-hidden bg-transparent ring-1 ring-border">
-                        <CardHeader className="bg-transparent border-b pb-6 px-8 pt-8">
-                            <CardTitle className="text-[10px] font-bold text-primary flex items-center gap-2 uppercase tracking-widest">
-                                <MapPin className="h-4 w-4" /> Regional Strategic Density
-                            </CardTitle>
-                            <CardDescription className="text-xs font-semibold mt-1">Strategic distribution by geographic zone.</CardDescription>
+                    <Card className="rounded-2xl border border-border/80 shadow-sm overflow-hidden bg-card text-card-foreground">
+                        <CardHeader className="bg-muted/20 border-b border-border/80 p-6 flex flex-row items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                                    <MapPin className="h-4 w-4 text-primary" /> Regional Strategic Density
+                                </CardTitle>
+                                <CardInfoTooltip text="Strategic distribution and member footprint categorized by regional operating zone." />
+                            </div>
                         </CardHeader>
                         <CardContent className="p-8 h-[350px]">
                             <ResponsiveContainer width="100%" height="100%">
@@ -284,10 +314,14 @@ export default function ReportsClient() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* Functional Lead-Time Analysis */}
-                    <Card className="rounded-2xl border border-border shadow-sm overflow-hidden bg-transparent ring-1 ring-border">
-                        <CardHeader className="bg-primary/5 p-8 border-b border-primary/10">
-                            <CardTitle className="text-lg font-bold tracking-tight">Lead-Time Analysis</CardTitle>
-                            <CardDescription className="text-xs font-semibold text-primary/60">Average days to resolution per task category.</CardDescription>
+                    <Card className="rounded-2xl border border-border/80 shadow-sm overflow-hidden bg-card text-card-foreground">
+                        <CardHeader className="bg-muted/20 border-b border-border/80 p-6 flex flex-row items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                                    <Clock className="h-4 w-4 text-primary" /> Lead-Time Analysis
+                                </CardTitle>
+                                <CardInfoTooltip text="Average days to task resolution categorized per functional protocol category." />
+                            </div>
                         </CardHeader>
                         <CardContent className="p-8 space-y-6">
                             {categoryMetrics.length > 0 ? categoryMetrics.map((cat, _i) => (
@@ -313,11 +347,14 @@ export default function ReportsClient() {
                     </Card>
 
                     {/* Operational Insights */}
-                    <Card className="rounded-2xl border border-border shadow-sm overflow-hidden bg-transparent ring-1 ring-border">
-                        <CardHeader className="bg-transparent border-b p-8">
-                            <CardTitle className="text-lg font-bold tracking-tight flex items-center gap-3">
-                                <Zap className="h-5 w-5 text-primary" /> Executive Snapshot
-                            </CardTitle>
+                    <Card className="rounded-2xl border border-border/80 shadow-sm overflow-hidden bg-card text-card-foreground">
+                        <CardHeader className="bg-muted/20 border-b border-border/80 p-6 flex flex-row items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                                    <Zap className="h-4 w-4 text-primary" /> Executive Snapshot
+                                </CardTitle>
+                                <CardInfoTooltip text="Operational health indicators, SLA compliance, and identified workflow bottlenecks." />
+                            </div>
                         </CardHeader>
                         <CardContent className="p-8 space-y-8">
                             <InsightRow icon={Target} title="Regional Efficiency" value={zoneHealth[0]?.name || 'N/A'} desc="Highest regional onboarding density and task speed." />
@@ -332,32 +369,63 @@ export default function ReportsClient() {
     );
 }
 
-function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string, value: string | number, sub: string, icon: any, color: string, bg: string }) {
+function StatCard({ 
+    label, 
+    value, 
+    sub, 
+    icon: Icon, 
+    color, 
+    bg,
+    tooltip 
+}: { 
+    label: string; 
+    value: string | number; 
+    sub: string; 
+    icon: React.ComponentType<{ className?: string }>; 
+    color: string; 
+    bg: string;
+    tooltip?: string;
+}) {
     return (
-        <div className="rounded-2xl border border-border shadow-sm bg-transparent ring-1 ring-border overflow-hidden group hover:bg-accent/5 transition-all">
-            <div className="p-6 flex items-center gap-5">
+        <Card className="rounded-2xl border border-border/80 shadow-sm bg-card text-card-foreground overflow-hidden group hover:bg-muted/10 transition-all">
+            <CardContent className="p-6 flex items-center gap-5">
                 <div className={cn("p-4 rounded-2xl shrink-0 transition-transform group-hover:scale-110 shadow-inner", bg, color)}>
                     <Icon className="h-7 w-7" />
                 </div>
-                <div>
-                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest leading-none mb-1.5">{label}</p>
-                    <p className="text-3xl font-black tabular-nums tracking-tighter leading-none">{value}</p>
-                    <p className="text-[10px] font-semibold text-muted-foreground/60 tracking-tighter mt-1">{sub}</p>
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1 mb-1.5">
+                        <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest leading-none truncate">{label}</p>
+                        {tooltip && <CardInfoTooltip text={tooltip} />}
+                    </div>
+                    <p className="text-3xl font-black tabular-nums tracking-tighter leading-none text-foreground">{value}</p>
+                    <p className="text-[10px] font-semibold text-muted-foreground/70 tracking-tighter mt-1">{sub}</p>
                 </div>
-            </div>
-        </div>
+            </CardContent>
+        </Card>
     );
 }
 
-function InsightRow({ icon: Icon, title, value, desc }: { icon: any, title: string, value: string, desc: string }) {
+function InsightRow({ 
+    icon: Icon, 
+    title, 
+    value, 
+    desc 
+}: { 
+    icon: React.ComponentType<{ className?: string }>; 
+    title: string; 
+    value: string; 
+    desc: string;
+}) {
     return (
- <div className="flex gap-4 group text-left">
- <div className="p-2.5 bg-primary/10 rounded-xl text-primary shrink-0 h-fit mt-1 shadow-inner group-hover:scale-110 transition-transform text-left"><Icon className="h-4 w-4" /></div>
- <div className="space-y-0.5 min-w-0 text-left">
- <p className="text-[10px] font-semibold text-primary/60 leading-none text-left">{title}</p>
- <p className="text-base font-semibold tracking-tight text-foreground truncate text-left">{value}</p>
- <p className="text-[10px] font-medium text-muted-foreground leading-relaxed line-clamp-2 text-left">{desc}</p>
+        <div className="flex gap-4 group text-left">
+            <div className="p-2.5 bg-primary/10 rounded-xl text-primary shrink-0 h-fit mt-1 shadow-inner group-hover:scale-110 transition-transform text-left">
+                <Icon className="h-4 w-4" />
             </div>
-    </div>
+            <div className="space-y-0.5 min-w-0 text-left">
+                <p className="text-[10px] font-semibold text-primary/60 leading-none text-left">{title}</p>
+                <p className="text-base font-semibold tracking-tight text-foreground truncate text-left">{value}</p>
+                <p className="text-[10px] font-medium text-muted-foreground leading-relaxed line-clamp-2 text-left">{desc}</p>
+            </div>
+        </div>
     );
 }

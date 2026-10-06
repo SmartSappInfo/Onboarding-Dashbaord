@@ -9,6 +9,7 @@ import { APP_FEATURES, type AppFeatureId, type FeatureToggleMap } from '@/lib/ty
 import { updateOrganizationFeaturesAction, updateWorkspaceFeaturesAction } from '@/lib/feature-actions';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { cn } from '@/lib/utils';
 import {
   Loader2,
@@ -164,12 +165,12 @@ export default function FeatureManager() {
                   <div
                     key={featureId}
                     className={cn(
-                      'relative p-4 rounded-2xl border-2 transition-all duration-300 group',
+                      'relative p-4 rounded-2xl border transition-all duration-300 group',
                       isLocked
-                        ? 'bg-muted/10 border-border opacity-40 cursor-not-allowed'
+                        ? 'bg-muted/10 border-border/80 opacity-40 cursor-not-allowed'
                         : enabled
-                          ? 'bg-primary/[0.03] border-primary/20 hover:border-primary/40 hover:shadow-md'
-                          : 'bg-muted/5 border-border hover:border-muted-foreground/20'
+                          ? 'bg-card border-primary/30 text-card-foreground shadow-sm hover:border-primary/50 hover:shadow-md'
+                          : 'bg-card border-border/80 text-card-foreground hover:border-muted-foreground/30'
                     )}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -216,11 +217,9 @@ export default function FeatureManager() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between px-1">
-        <div className="text-left">
+        <div className="flex items-center gap-2 text-left">
           <h3 className="text-xl font-semibold tracking-tight text-foreground">Feature Manager</h3>
-          <p className="text-sm text-muted-foreground font-medium">
-            Control which features are available across the organization and workspace.
-          </p>
+          <CardInfoTooltip text="Control which features are available across the organization and workspace." />
         </div>
       </div>
 

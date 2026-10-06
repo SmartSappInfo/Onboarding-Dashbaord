@@ -119,7 +119,7 @@ export default function ConversationsClient() {
   if (isLoading) {
     return (
       <PageContainerFluid className="h-[calc(100vh-64px)] flex flex-col">
-        <div className="flex flex-1 items-center justify-center rounded-[2rem] border bg-card shadow-sm">
+        <div className="flex flex-1 items-center justify-center rounded-2xl border border-border/80 bg-card shadow-sm">
           <Loader2 className="h-8 w-8 animate-spin text-primary/40" />
         </div>
       </PageContainerFluid>
@@ -128,7 +128,7 @@ export default function ConversationsClient() {
 
   return (
     <PageContainerFluid className="h-[calc(100vh-64px)] flex flex-col">
-      <div className="flex flex-1 overflow-hidden rounded-[2rem] border bg-card shadow-xl ring-1 ring-black/5">
+      <div className="flex flex-1 overflow-hidden rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm">
       {/* Panel 1: Thread List */}
       <ThreadList 
         threads={threads}

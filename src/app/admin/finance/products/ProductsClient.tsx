@@ -46,6 +46,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { FinanceProduct, BillingProfile } from '@/lib/types';
 import { createProductAction, updateProductAction } from '@/lib/product-actions';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 export function ProductsClient() {
   const { user } = useUser();
@@ -165,17 +166,17 @@ export function ProductsClient() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <Package className="h-7 w-7 text-primary" />
-            Product & Service Catalogue
-          </h1>
-          <p className="text-sm text-muted-foreground font-medium mt-1">
-            Institutional billing products, SKUs, units of measure, and default tax configurations
-          </p>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
+              Product & Service Catalogue
+            </h1>
+            <CardInfoTooltip text="Institutional billing products, SKUs, units of measure, and default tax configurations for this workspace." />
+          </div>
         </div>
 
         <Button
-          className="h-11 min-h-[44px] rounded-2xl px-5 text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.97] shadow-lg shadow-primary/20"
+          className="h-11 min-h-[44px] rounded-xl px-5 text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.97] shadow-md"
           onClick={() => setIsCreating(true)}
         >
           <Plus className="h-4 w-4 mr-1.5" /> New Product / Service
@@ -183,7 +184,7 @@ export function ProductsClient() {
       </div>
 
       {/* Search Bar */}
-      <div className="flex items-center justify-between gap-3 bg-card p-3 rounded-2xl border border-border shadow-sm">
+      <div className="flex items-center justify-between gap-3 bg-card p-3 rounded-2xl border border-border/80 shadow-sm">
         <div className="relative w-full sm:w-80">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -196,12 +197,12 @@ export function ProductsClient() {
       </div>
 
       {/* Products Table */}
-      <Card className="rounded-3xl border-border bg-card shadow-sm overflow-hidden">
+      <Card className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm overflow-hidden">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader className="bg-muted/30">
-                <TableRow className="border-border">
+                <TableRow className="border-border/80">
                   <TableHead className="text-xs font-bold text-muted-foreground uppercase pl-6 py-4">Product Name</TableHead>
                   <TableHead className="text-xs font-bold text-muted-foreground uppercase">SKU</TableHead>
                   <TableHead className="text-xs font-bold text-muted-foreground uppercase">Category</TableHead>
@@ -238,7 +239,7 @@ export function ProductsClient() {
                   </TableRow>
                 ) : (
                   filteredProducts.map((prod: FinanceProduct) => (
-                    <TableRow key={prod.id} className="border-border hover:bg-muted/20 transition-colors">
+                    <TableRow key={prod.id} className="border-border/80">
                       <TableCell className="pl-6 py-4 font-bold text-xs text-foreground">
                         {prod.name}
                         {prod.description && (
@@ -287,17 +288,20 @@ export function ProductsClient() {
 
       {/* New Product Modal */}
       <Dialog open={isCreating} onOpenChange={setIsCreating}>
-        <DialogContent className="sm:max-w-[500px] rounded-3xl p-6 border-border shadow-2xl bg-card">
-          <DialogHeader className="space-y-1.5 text-left">
-            <DialogTitle className="text-lg font-black tracking-tight text-foreground">
-              Add New Product / Service
-            </DialogTitle>
-            <DialogDescription className="text-xs font-semibold text-muted-foreground">
+        <DialogContent className="sm:max-w-[500px] rounded-2xl p-0 overflow-hidden border border-border/80 shadow-2xl bg-card text-card-foreground">
+          <DialogHeader className="border-b border-border/80 bg-muted/20 px-6 py-4 text-left">
+            <div className="flex items-center gap-2">
+              <DialogTitle className="text-lg font-black tracking-tight text-foreground">
+                Add New Product / Service
+              </DialogTitle>
+              <CardInfoTooltip text="Register a billable product or subscription tier in the institutional catalogue." />
+            </div>
+            <DialogDescription className="sr-only">
               Register a billable product or subscription tier in the catalogue
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
+          <div className="p-6 space-y-4">
             <div className="space-y-1.5 text-left">
               <Label className="text-xs font-bold text-foreground">Product / Service Name *</Label>
               <Input
@@ -373,7 +377,7 @@ export function ProductsClient() {
             </div>
           </div>
 
-          <DialogFooter className="flex flex-row items-center justify-end gap-2 pt-2">
+          <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
             <Button
               variant="outline"
               className="h-11 min-h-[44px] rounded-xl px-5 text-xs font-bold active:scale-[0.97]"

@@ -56,6 +56,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { PageContainer } from '@/components/ui/page-container';
 import { getErrorMessage } from '@/lib/errors/report-error';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 function SurveyResponseCount({ surveyId }: { surveyId: string }) {
     const firestore = useFirestore();
@@ -411,14 +412,12 @@ export default function SurveysClient() {
             <PageContainer>
                 <div className="space-y-8 pb-32 w-full">
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                        <div>
+                        <div className="flex items-center gap-2.5">
                             <h1 className="text-3xl font-bold text-foreground flex items-center gap-2.5">
                                 <ClipboardList className="h-7 w-7 text-primary" />
                                 Surveys & Intelligence
                             </h1>
-                            <p className="text-sm text-muted-foreground mt-1">
-                                Design, version, distribute, and analyze structured feedback across all organization touchpoints.
-                            </p>
+                            <CardInfoTooltip text="Design, version, distribute, and analyze structured feedback across all organization touchpoints." />
                         </div>
                 <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                     <Button asChild variant="outline" className="h-11 px-4 gap-2 font-semibold text-xs border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/20 shadow-sm transition-all active:scale-[0.97]">
@@ -449,7 +448,7 @@ export default function SurveysClient() {
                 </div>
             </div>
 
-            <Card className="p-4 rounded-xl border-border bg-card">
+            <Card className="p-4 rounded-2xl border border-border/80 bg-card shadow-sm">
                 <div className="flex flex-col md:flex-row items-center gap-3">
                   <div className="relative w-full md:flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -507,10 +506,10 @@ export default function SurveysClient() {
                   </div>
                 </div>
             </Card>
-             <Card className="rounded-xl border-border bg-card overflow-hidden">
+             <Card className="rounded-2xl border border-border/80 bg-card shadow-sm overflow-hidden">
              <Table>
-                 <TableHeader>
-                    <TableRow className="border-border hover:bg-transparent">
+                 <TableHeader className="bg-muted/30">
+                    <TableRow className="border-border/80 hover:bg-transparent">
                         <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground pl-6">Blueprint Title</TableHead>
                         <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground text-center">Status</TableHead>
                         <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground text-center">Responses</TableHead>
@@ -531,7 +530,7 @@ export default function SurveysClient() {
                     ))
                 ) : filteredTemplates.length > 0 ? (
                     filteredTemplates.map((survey) => (
- <TableRow key={survey.id} className="border-border hover:bg-muted/30 transition-colors">
+ <TableRow key={survey.id} className="border-border/60 transition-colors">
  <TableCell className="font-bold pl-6">
  <div className="flex items-center gap-3">
                                 <AsyncEntityAvatar 

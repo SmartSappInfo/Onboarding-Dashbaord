@@ -10,6 +10,7 @@ import { TemplateWorkshop } from './components/template-workshop';
 import { TemplatePreviewModal } from './components/template-preview-modal';
 // import { cloneTemplate } from '@/lib/template-actions'; // TODO: Implement cloneTemplate function
 import { getVariablesAction } from '@/lib/services/fields-variables-service';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -763,8 +764,10 @@ export default function MessageTemplatesPage() {
                             <div className="flex items-center justify-between flex-wrap gap-6">
                                 <div className="space-y-1">
                                     <Badge variant="outline" className="bg-blue-500/5 text-blue-600 border-blue-500/20 font-bold uppercase tracking-widest text-[9px] px-3 py-1">Communications Hub</Badge>
-                                    <h1 className="text-3xl font-bold tracking-tight">Client Messaging Library</h1>
-                                    <p className="text-muted-foreground text-sm max-w-lg">Manage your organization&apos;s messaging blueprints. These templates are automatically synced across all platform modules.</p>
+                                    <div className="flex items-center gap-2">
+                                        <h1 className="text-3xl font-bold tracking-tight">Client Messaging Library</h1>
+                                        <CardInfoTooltip text="Manage your organization's messaging blueprints. These templates are automatically synced across all platform modules." />
+                                    </div>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     {activeOrganizationId ? (

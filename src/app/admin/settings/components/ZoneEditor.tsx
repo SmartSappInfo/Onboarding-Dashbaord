@@ -7,6 +7,7 @@ import type { Zone } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/context/TenantContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -79,15 +80,15 @@ export default function ZoneEditor() {
 
   return (
     <>
- <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
- <CardHeader className="bg-muted/30 border-b pb-6 text-left">
- <div className="flex items-center gap-3">
- <div className="p-2 bg-primary/10 rounded-xl">
- <MapPin className="h-5 w-5 text-primary" />
+      <Card className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm overflow-hidden">
+        <CardHeader className="bg-muted/20 border-b border-border/80 py-4 px-6 text-left">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-xl">
+              <MapPin className="h-5 w-5 text-primary" />
             </div>
-            <div>
- <CardTitle className="text-lg font-semibold tracking-tight">Zone Architecture</CardTitle>
- <CardDescription className="text-xs font-medium">Manage operational areas and zones to categorize and group workspace entities.</CardDescription>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-lg font-semibold tracking-tight">Zone Architecture</CardTitle>
+              <CardInfoTooltip text="Manage operational areas and zones to categorize and group workspace entities." />
             </div>
           </div>
         </CardHeader>
@@ -100,7 +101,7 @@ export default function ZoneEditor() {
           ) : (
  <div className="space-y-3">
               {zones?.map((zone) => (
- <div key={zone.id} className="flex items-center gap-2 bg-muted/20 p-3 rounded-xl group transition-all hover:bg-muted/40">
+                <div key={zone.id} className="flex items-center gap-2 bg-card even:bg-muted/30 dark:even:bg-muted/15 p-3 rounded-xl border border-border/80 group transition-all hover:bg-muted/50">
                   {editingZoneId === zone.id ? (
  <div className="flex-grow flex items-center gap-2">
                         <Input

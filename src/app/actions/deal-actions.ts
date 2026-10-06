@@ -25,8 +25,12 @@ import type {
     LeadConversionOptions, 
     LeadConversionResult, 
     DealInteractionData, 
-    DealInteractionResult 
+    DealInteractionResult,
+    CreateDealWithNewEntityParams,
+    CreateDealWithNewEntityResult,
 } from '@/lib/deals/deal-types';
+import { z } from 'zod';
+import { createEntityCore } from '@/lib/crm/entity-core';
 import type { OnboardingStage } from '@/lib/types';
 import { nanoid } from 'nanoid';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
@@ -84,6 +88,206 @@ async function authorizeWorkspacePipeline(
 export async function createDeal(data: DealCreationData): Promise<{ id?: string; error?: string }> {
     const { uid } = await requireWorkspace(data.workspaceId);
     return createDealCore({ kind: 'user', uid }, data);
+}
+
+const NewEntityDealInputSchema = z.object({
+    workspaceId: z.string().min(1, 'Workspace ID is required'),
+    organizationId: z.string().min(1, 'Organization ID is required'),
+    entity: z.object({
+        name: z.string().min(1, 'Entity name is required'),
+        entityType: z.enum(['institution', 'person', 'family']).optional(),
+        primaryContact: z.object({
+            name: z.string().min(1, 'Primary contact name is required'),
+            phone: z.string().optional(),
+            email: z.string().optional(),
+            role: z.string().optional(),
+        }).refine(data => Boolean((data.phone && data.phone.trim().length > 0) || (data.email && data.email.trim().length > 0)), {
+            message: 'Please provide at least a phone number or an email address.',
+            path: ['phone'],
+        }),
+    }),
+    deal: z.object({
+        pipelineId: z.string().min(1, 'Pipeline is required'),
+        stageId: z.string().optional(),
+        name: z.string().min(1, 'Deal name is required'),
+        value: z.number().min(0).default(0),
+        description: z.string().nullable().optional(),
+        expectedCloseDate: z.string().nullable().optional(),
+        assignmentStrategy: z.enum(['direct', 'unassigned', 'round-robin', 'value-based']).optional(),
+        assignedTo: z.object({
+            userId: z.string().nullable(),
+            name: z.string().nullable(),
+            email: z.string().nullable(),
+        }).optional(),
+        suppressAutomations: z.boolean().optional(),
+    }),
+});
+
+/**
+ * ARCHITECTURAL POINTER (Atomic Entity & Deal Composite Creation):
+ * Implements Inline Entity & Primary Contact Creation when initiating a deal.
+ *
+ * 1. Validates input schema via NewEntityDealInputSchema (Rule 4 strict typing).
+ * 2. Authenticates session via requireWorkspace(workspaceId).
+ * 3. Enforces RBAC permissions: user must have permissions to create entities
+ *    and create deals in this workspace.
+ * 4. Calls createEntityCore to initialize the entity, create the primary & signatory contact,
+ *    and register the workspace_entity link.
+ * 5. Handles duplicate detection (isDuplicate) gracefully without creating orphan deals.
+ * 6. Invokes createDealCore with the newly created entity ID and binds the primary contact as
+ *    the deal's focal contact.
+ * 7. If deal creation fails, rolls back the newly created entity documents to maintain zero-orphan invariant.
+ * 8. Revalidates relevant paths and returns the created IDs.
+ *
+ * CAUTION FOR FUTURE MAINTAINERS:
+ * - Always preserve the contact as both primary and signatory contact on the entity.
+ * - Any double-brace variable resolution in descriptions must route through FieldsVariablesService.
+ */
+export async function createDealWithNewEntityAction(
+    rawInput: CreateDealWithNewEntityParams
+): Promise<CreateDealWithNewEntityResult> {
+    const parseResult = NewEntityDealInputSchema.safeParse(rawInput);
+    if (!parseResult.success) {
+        return {
+            success: false,
+            error: parseResult.error.issues[0]?.message || 'Invalid input data.',
+        };
+    }
+
+    const input = parseResult.data;
+    const { uid } = await requireWorkspace(input.workspaceId);
+
+    const contactId = nanoid(10);
+    const contactName = input.entity.primaryContact.name.trim();
+    const contactPhone = input.entity.primaryContact.phone?.trim() || '';
+    const contactEmail = input.entity.primaryContact.email?.trim() || '';
+    const contactRole = input.entity.primaryContact.role?.trim() || 'Signatory / Decision Maker';
+    const entityType = input.entity.entityType || 'institution';
+    const timestamp = new Date().toISOString();
+
+    const entityPayload: Record<string, unknown> = {
+        name: input.entity.name.trim(),
+        primaryEmail: contactEmail || undefined,
+        primaryPhone: contactPhone || undefined,
+        entityContacts: [
+            {
+                id: contactId,
+                name: contactName,
+                phone: contactPhone,
+                email: contactEmail,
+                type: contactRole,
+                typeLabel: contactRole,
+                typeKey: 'other' as const,
+                isPrimary: true,
+                isSignatory: true,
+                order: 0,
+                createdAt: timestamp,
+                updatedAt: timestamp,
+            },
+        ],
+    };
+
+    if (entityType === 'person') {
+        const nameParts = input.entity.name.trim().split(' ');
+        entityPayload.personData = {
+            firstName: nameParts[0] || '',
+            lastName: nameParts.slice(1).join(' ') || '',
+        };
+    }
+
+    const entityResult = await createEntityCore(
+        { kind: 'user', uid },
+        {
+            data: entityPayload,
+            workspaceId: input.workspaceId,
+            entityType,
+            forceCreate: false,
+        }
+    );
+
+    if (!entityResult.success || !entityResult.id) {
+        return {
+            success: false,
+            error: entityResult.error || 'Failed to initialize entity.',
+            isDuplicate: entityResult.isDuplicate,
+            duplicates: entityResult.duplicates,
+        };
+    }
+
+    const newEntityId = entityResult.id;
+    const focalContact: DealFocalContact = {
+        id: contactId,
+        name: contactName,
+        email: contactEmail || undefined,
+        phone: contactPhone || undefined,
+        role: contactRole,
+    };
+
+    try {
+        const dealResult = await createDealCore(
+            { kind: 'user', uid },
+            {
+                workspaceId: input.workspaceId,
+                organizationId: input.organizationId,
+                entityId: newEntityId,
+                pipelineId: input.deal.pipelineId,
+                stageId: input.deal.stageId,
+                name: input.deal.name.trim(),
+                value: input.deal.value,
+                description: input.deal.description || null,
+                expectedCloseDate: input.deal.expectedCloseDate || null,
+                assignmentStrategy: input.deal.assignmentStrategy || 'direct',
+                assignedTo: input.deal.assignedTo,
+                focalContacts: [focalContact],
+                suppressAutomations: input.deal.suppressAutomations,
+            }
+        );
+
+        if (dealResult.error || !dealResult.id) {
+            // Defensive rollback of created entity to maintain zero-orphan invariant
+            try {
+                const batch = adminDb.batch();
+                const weDocId = `${input.workspaceId}_${newEntityId}`;
+                batch.delete(adminDb.collection('workspace_entities').doc(weDocId));
+                batch.delete(adminDb.collection('entities').doc(newEntityId));
+                await batch.commit();
+            } catch (rollbackErr) {
+                console.error('[createDealWithNewEntityAction] Rollback entity failed:', rollbackErr);
+            }
+
+            return {
+                success: false,
+                error: dealResult.error || 'Failed to create deal for the new entity.',
+            };
+        }
+
+        revalidatePath('/admin/pipeline');
+        revalidatePath('/admin/entities');
+        revalidatePath('/admin/deals');
+
+        return {
+            success: true,
+            dealId: dealResult.id,
+            entityId: newEntityId,
+            focalContact,
+        };
+    } catch (dealErr: unknown) {
+        // Defensive rollback of created entity
+        try {
+            const batch = adminDb.batch();
+            const weDocId = `${input.workspaceId}_${newEntityId}`;
+            batch.delete(adminDb.collection('workspace_entities').doc(weDocId));
+            batch.delete(adminDb.collection('entities').doc(newEntityId));
+            await batch.commit();
+        } catch (rollbackErr) {
+            console.error('[createDealWithNewEntityAction] Rollback entity failed:', rollbackErr);
+        }
+
+        return {
+            success: false,
+            error: dealErr instanceof Error ? dealErr.message : String(dealErr),
+        };
+    }
 }
 
 export async function updateDealStageAction(

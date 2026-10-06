@@ -21,6 +21,7 @@ import {
     Lock
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -319,15 +320,13 @@ export default function WorkspaceEditor({ workspaces, selectedScope: _selectedSc
         <>
             <div className="space-y-6">
                 <div className="flex items-center justify-between px-1">
-                    <div className="text-left">
+                    <div className="flex items-center gap-2 text-left">
                         <h3 className="text-xl font-semibold tracking-tight text-foreground">Workspace Architect</h3>
-                        <p className="text-sm text-muted-foreground font-medium">
-                            Manage workspaces for <span className="font-bold text-primary">{activeOrganization?.name || 'current organization'}</span>
-                        </p>
+                        <CardInfoTooltip text={`Manage workspaces for ${activeOrganization?.name || 'current organization'}`} />
                     </div>
                     <Button 
                         onClick={handleOpenCreate} 
-                        className="rounded-xl font-semibold h-11 px-6 shadow-lg gap-2"
+                        className="rounded-xl font-semibold h-11 px-6 shadow-lg gap-2 active:scale-[0.97]"
                         disabled={!activeOrganizationId}
                     >
                         <Plus className="h-4 w-4" /> New Workspace
@@ -368,13 +367,16 @@ export default function WorkspaceEditor({ workspaces, selectedScope: _selectedSc
                             const IndustryIcon = getIndustryIcon(w.industry || 'SaaS');
                             return (
                                 <Card key={w.id} className={cn(
-                                    "rounded-2xl border border-border bg-card text-left group transition-all duration-500",
-                                    w.status === 'archived' ? "opacity-50 grayscale" : "ring-border hover:ring-primary/20 hover:shadow-xl"
+                                    "rounded-2xl border border-border/80 bg-card text-card-foreground text-left shadow-sm group transition-all duration-300",
+                                    w.status === 'archived' ? "opacity-50 grayscale" : "hover:border-primary/40 hover:shadow-xl"
                                 )}>
                                     <div className="h-1.5 w-full" style={{ backgroundColor: w.color || '#3B5FFF' }} />
                                     <CardHeader className="p-6 pb-4 flex flex-row items-center justify-between">
                                         <div className="min-w-0">
-                                            <CardTitle className="text-base font-semibold tracking-tight truncate">{w.name}</CardTitle>
+                                            <div className="flex items-center gap-2">
+                                                <CardTitle className="text-base font-semibold tracking-tight truncate">{w.name}</CardTitle>
+                                                <CardInfoTooltip text={w.description || 'No description provided.'} />
+                                            </div>
                                             <div className="flex items-center gap-2 mt-1 flex-wrap">
                                                 <Badge variant="secondary" className="text-[8px] font-semibold uppercase px-1.5 h-4">{w.statuses?.length || 0} Statuses</Badge>
                                                 {/* Industry Badge */}
@@ -408,7 +410,6 @@ export default function WorkspaceEditor({ workspaces, selectedScope: _selectedSc
                                         </div>
                                     </CardHeader>
                                     <CardContent className="p-6 pt-0 space-y-4">
-                                        <p className="text-xs font-medium text-muted-foreground leading-relaxed line-clamp-2 min-h-[2.5rem]">{w.description || 'No description provided.'}</p>
                                         
                                         <div className="flex items-center justify-between pt-2">
                                             <div className="flex items-center gap-2">

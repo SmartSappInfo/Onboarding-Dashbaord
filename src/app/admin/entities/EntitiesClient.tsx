@@ -27,6 +27,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User, FileUp, ShieldCheck, Share2, Tag as TagIcon, Mail, Phone, Building2, Flame, ChevronDown, ListFilter, X, RotateCcw, CalendarDays, ClipboardList, Video, PhoneCall, Download, Archive } from 'lucide-react';
 import ManageWorkspacesModal from './components/ManageWorkspacesModal';
 import AiEntityGenerator from './components/ai-entity-generator';
@@ -1021,13 +1022,11 @@ export default function EntitiesClient() {
             <PageContainerFluid>
                 <div className="space-y-8 pb-32 w-full">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                        <div>
+                        <div className="flex items-center gap-3">
                             <h1 className="text-2xl font-bold tracking-tight text-foreground">
                                 {plural} Hub
                             </h1>
-                            <p className="text-sm text-muted-foreground mt-1">
-                                Manage and monitor your {plural} records
-                            </p>
+                            <CardInfoTooltip text={`Manage and monitor your ${plural} records`} />
                         </div>
                         <div className="flex items-center gap-2">
                             {selectedCount > 0 && (
@@ -1483,7 +1482,7 @@ export default function EntitiesClient() {
                     )}
 
                     {/* Data Table */}
-                    <div className={cn("border border-border bg-muted/30 overflow-hidden", selectedCount > 0 ? "rounded-b-2xl border-t-0" : "rounded-2xl")}>
+                    <div className={cn("border border-border/80 bg-card overflow-hidden shadow-sm", selectedCount > 0 ? "rounded-b-2xl border-t-0" : "rounded-2xl")}>
                         {/* Top Pagination */}
                         <BentoPagination
                           currentPage={currentPage}
@@ -1498,7 +1497,7 @@ export default function EntitiesClient() {
                           className="border-t-0 border-b bg-card/40"
                         />
                         <Table>
-                            <TableHeader>
+                            <TableHeader className="bg-muted/40">
                                 <TableRow className="border-border hover:bg-transparent">
                                     <TableHead className="w-[80px] pl-6">
                                         <Checkbox
@@ -1548,7 +1547,7 @@ export default function EntitiesClient() {
                             ) : paginatedEntities.length > 0 ? (
                                 paginatedEntities.map((entity) => {
                                 return (
-                                        <TableRow key={entity.id} className={cn("border-border hover:bg-accent/20 transition-colors", assigningEntity?.id === entity.id && "bg-primary/5")}>
+                                        <TableRow key={entity.id} className={cn("border-border/60 even:bg-muted/30 dark:even:bg-muted/15 hover:bg-muted/50 transition-colors", assigningEntity?.id === entity.id && "bg-primary/5")}>
                                             <TableCell className="pl-6">
                                                 <div className="flex items-center gap-2">
                                                     <Checkbox

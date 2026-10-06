@@ -64,6 +64,7 @@ import { InvitationsManager } from './components/InvitationsManager';
 import { AccessRequestsManager } from './components/AccessRequestsManager';
 import { SavedViewsPillBar } from './components/SavedViewsPillBar';
 import InviteUserModal from './components/InviteUserModal';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import type { SavedDirectoryView } from '@/lib/types';
 import { getPeopleDirectoryAction } from '@/app/actions/identity-actions';
 import { listDepartmentsAction, listTeamsAction } from '@/app/actions/workforce-actions';
@@ -322,12 +323,13 @@ export default function UsersClient() {
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
-            <Users className="w-6 h-6 text-primary" /> Users Hub
-          </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Manage team members, departments, and workspace access.
-          </p>
+          <div className="flex items-center gap-2">
+            <Users className="w-6 h-6 text-primary" />
+            <h1 className="text-2xl font-black tracking-tight text-foreground">
+              Users Hub
+            </h1>
+            <CardInfoTooltip text="Manage team members, roles, departments, invitations, and workspace access governance." />
+          </div>
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
@@ -422,11 +424,11 @@ export default function UsersClient() {
           </div>
 
           {/* Directory Table */}
-          <Card className="border bg-card shadow-xs overflow-hidden">
+          <Card className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader className="bg-muted/20 border-b">
-                  <TableRow>
+                <TableHeader className="bg-muted/30 border-b border-border/80">
+                  <TableRow className="border-border/80">
                     <TableHead className="w-[40px] pl-4">
                       <Checkbox
                         checked={
@@ -446,7 +448,7 @@ export default function UsersClient() {
                 <TableBody>
                   {isLoading ? (
                     Array.from({ length: 4 }).map((_, i) => (
-                      <TableRow key={i}>
+                      <TableRow key={i} className="border-border/80">
                         <TableCell colSpan={6} className="p-4">
                           <div className="h-8 bg-muted/40 animate-pulse rounded-md" />
                         </TableCell>
@@ -463,7 +465,7 @@ export default function UsersClient() {
                         <TableRow
                           key={user.id}
                           className={cn(
-                            'hover:bg-muted/10 transition-colors',
+                            'border-border/80',
                             isSelected && 'bg-primary/5'
                           )}
                         >

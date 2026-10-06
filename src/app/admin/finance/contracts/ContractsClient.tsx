@@ -84,6 +84,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { getErrorMessage } from '@/lib/errors/report-error';
 import ContractLifecycleDetailModal from './components/ContractLifecycleDetailModal';
 import CreateAmendmentModal from './components/CreateAmendmentModal';
@@ -315,13 +316,11 @@ export default function AgreementsClient() {
             <div className="h-full overflow-y-auto w-full">
                 <div className="space-y-8 pb-32 w-full p-8">
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                        <div className="flex flex-col items-start">
+                        <div className="flex items-center gap-2.5">
                             <h1 className="text-3xl font-bold text-foreground">
                                 Agreements Hub
                             </h1>
-                            <p className="text-muted-foreground text-sm mt-1">
-                                Institutional legal contracts, templates, and post-signing obligations for {activeWorkspaceId || 'this workspace'}
-                            </p>
+                            <CardInfoTooltip text={`Institutional legal contracts, templates, and post-signing obligations for ${activeWorkspaceId || 'this workspace'}.`} />
                         </div>
                         <div className="flex items-center gap-2">
                             <Button
@@ -346,7 +345,7 @@ export default function AgreementsClient() {
 
                     {/* Unified 8-Tab Workspace Navigation */}
                     <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'contracts' | 'templates' | 'obligations' | 'analytics' | 'governance' | 'migration' | 'developer' | 'campaigns')} className="w-full space-y-6">
-                        <TabsList className="bg-muted/60 p-1 rounded-xl border border-border flex flex-wrap h-auto gap-1">
+                        <TabsList className="bg-muted/40 p-1 rounded-xl border border-border/80 flex flex-wrap h-auto gap-1">
                             <TabsTrigger value="contracts" className="rounded-lg text-xs font-semibold gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                                 <FileCheck className="h-3.5 w-3.5" />
                                 Contracts & Lifecycle
@@ -423,7 +422,7 @@ export default function AgreementsClient() {
                     </div>
 
                     {/* Search & Filters */}
-                    <Card className="border border-border shadow-sm rounded-2xl overflow-hidden bg-transparent ring-1 ring-border">
+                    <Card className="border border-border/80 shadow-sm rounded-2xl overflow-hidden bg-card">
  <CardContent className="p-4 flex flex-wrap items-center gap-4">
  <div className="flex-grow min-w-[240px] relative">
  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
@@ -468,7 +467,7 @@ export default function AgreementsClient() {
                     </Card>
 
                     {/* Institutional Registry */}
-                    <div className="rounded-2xl border border-border bg-transparent ring-1 ring-border shadow-sm overflow-hidden text-left">
+                    <div className="rounded-2xl border border-border/80 bg-card shadow-sm overflow-hidden text-left">
                         <Table>
  <TableHeader className="bg-muted/30">
                                 <TableRow>
@@ -1030,19 +1029,21 @@ function StatCard({ label, value, sub, icon: Icon, color, bg, onClick }: { label
     return (
         <Card 
             className={cn(
-                "rounded-2xl border border-border shadow-sm bg-transparent ring-1 ring-border overflow-hidden group hover:border-primary/50 transition-all text-left",
+                "rounded-2xl border border-border/80 shadow-sm bg-card text-card-foreground overflow-hidden group hover:shadow-md transition-all text-left",
                 onClick && "cursor-pointer active:scale-95"
             )}
             onClick={onClick}
         >
- <CardContent className="p-6 flex items-center gap-5">
- <div className={cn("p-4 rounded-2xl shrink-0 transition-transform group-hover:scale-110 shadow-inner", bg, color)}>
- <Icon className="h-7 w-7" />
+            <CardContent className="p-6 flex items-center gap-5">
+                <div className={cn("p-4 rounded-2xl shrink-0 transition-transform group-hover:scale-105 shadow-inner", bg, color)}>
+                    <Icon className="h-7 w-7" />
                 </div>
- <div className="flex-1 min-w-0">
- <p className="text-[9px] font-semibold text-muted-foreground leading-none mb-1.5">{label}</p>
- <p className="text-3xl font-semibold tabular-nums tracking-tighter truncate">{value}</p>
- <p className="text-[9px] font-bold text-muted-foreground/60 tracking-tighter mt-1 truncate">{sub}</p>
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1 mb-1.5">
+                        <p className="text-[9px] font-semibold text-muted-foreground leading-none">{label}</p>
+                        <CardInfoTooltip text={sub} />
+                    </div>
+                    <p className="text-3xl font-semibold tabular-nums tracking-tighter truncate">{value}</p>
                 </div>
             </CardContent>
         </Card>

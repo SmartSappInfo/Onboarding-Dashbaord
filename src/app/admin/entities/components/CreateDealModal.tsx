@@ -14,11 +14,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
+import { Command, CommandInput, CommandList, CommandGroup, CommandItem } from '@/components/ui/command';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Plus, Check, X, UserCircle2, Users, Calendar } from 'lucide-react';
+import { Loader2, Plus, Check, X, UserCircle2, Users, Calendar, Building2 } from 'lucide-react';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import { createDeal, type AssignmentStrategy } from '@/app/actions/deal-actions';
+import { createDeal, createDealWithNewEntityAction, type AssignmentStrategy } from '@/app/actions/deal-actions';
 import { getEntityDealDefaultsAction, searchEntitiesForDealAction, type EntityAssignee, type SearchedEntityResult } from '@/app/actions/entity-contact-actions';
 import { useWorkspaceUsers } from '@/hooks/use-workspace-users';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
@@ -53,6 +53,14 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
     const [selectedEntityId, setSelectedEntityId] = React.useState('');
     const [selectedEntityName, setSelectedEntityName] = React.useState('');
     const [entitySearchOpen, setEntitySearchOpen] = React.useState(false);
+
+    // Inline New Entity Creation State
+    const [isCreatingNewEntity, setIsCreatingNewEntity] = React.useState(false);
+    const [newEntityName, setNewEntityName] = React.useState('');
+    const [newContactName, setNewContactName] = React.useState('');
+    const [newContactPhone, setNewContactPhone] = React.useState('');
+    const [newContactEmail, setNewContactEmail] = React.useState('');
+    const [newContactRole, setNewContactRole] = React.useState('Signatory / Decision Maker');
 
     // Owner: 'auto' = inherit the entity's assignee via the server 'direct'
     // strategy, 'unassigned' = explicitly none, otherwise a specific user id.
@@ -133,6 +141,12 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
             setEntityContacts([]);
             setEntitySearch('');
             setSelectedEntityName('');
+            setIsCreatingNewEntity(false);
+            setNewEntityName('');
+            setNewContactName('');
+            setNewContactPhone('');
+            setNewContactEmail('');
+            setNewContactRole('Signatory / Decision Maker');
 
             if (entityId) {
                 setSelectedEntityId(entityId);
@@ -193,6 +207,82 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (isCreatingNewEntity) {
+            if (!newEntityName.trim()) {
+                toast({ variant: 'destructive', title: 'Validation Error', description: `Please enter the ${singular.toLowerCase()} name.` });
+                return;
+            }
+            if (!newContactName.trim()) {
+                toast({ variant: 'destructive', title: 'Validation Error', description: 'Please enter the primary / signatory contact full name.' });
+                return;
+            }
+            if (!newContactPhone.trim() && !newContactEmail.trim()) {
+                toast({ variant: 'destructive', title: 'Validation Error', description: 'Please provide at least a phone number or an email address for the contact.' });
+                return;
+            }
+            if (!name.trim() || !pipelineId) {
+                toast({ variant: 'destructive', title: 'Validation Error', description: 'Please fill in the deal name and pipeline.' });
+                return;
+            }
+
+            let assignmentStrategy: AssignmentStrategy = 'direct';
+            let explicitAssignedTo: { userId: string | null; name: string | null; email: string | null } | undefined;
+            if (ownerUserId === 'unassigned') {
+                assignmentStrategy = 'unassigned';
+            } else if (ownerUserId !== 'auto') {
+                const u = workspaceUsers?.find(x => x.id === ownerUserId);
+                explicitAssignedTo = { userId: ownerUserId, name: u?.name || u?.email || null, email: u?.email || null };
+            }
+
+            setIsSubmitting(true);
+            try {
+                const parsedVal = value.trim() !== '' ? (parseFloat(value) || 0) : (selectedPipelineObj?.defaultDealValue || 0);
+                const result = await createDealWithNewEntityAction({
+                    workspaceId: activeWorkspaceId!,
+                    organizationId: activeOrganizationId || 'smartsapp-hq',
+                    entity: {
+                        name: newEntityName.trim(),
+                        primaryContact: {
+                            name: newContactName.trim(),
+                            phone: newContactPhone.trim() || undefined,
+                            email: newContactEmail.trim() || undefined,
+                            role: newContactRole.trim() || 'Signatory / Decision Maker',
+                        },
+                    },
+                    deal: {
+                        pipelineId,
+                        stageId: stageId || undefined,
+                        name: name.trim(),
+                        value: parsedVal,
+                        description: description || null,
+                        assignmentStrategy,
+                        assignedTo: explicitAssignedTo,
+                    },
+                });
+
+                if (!result.success) {
+                    if (result.isDuplicate && result.duplicates && result.duplicates.length > 0) {
+                        toast({
+                            variant: 'destructive',
+                            title: `Duplicate ${singular} Found`,
+                            description: `An existing ${singular.toLowerCase()} ("${result.duplicates[0].name}") already matches this name or contact.`,
+                        });
+                        return;
+                    }
+                    throw new Error(result.error || `Failed to create ${singular.toLowerCase()} and deal.`);
+                }
+
+                toast({ title: 'Record & Deal Initialized', description: `Deal "${name}" successfully created for "${newEntityName.trim()}".` });
+                onOpenChange(false);
+            } catch (error: unknown) {
+                toast({ variant: 'destructive', title: 'Creation Failed', description: getErrorMessage(error) });
+            } finally {
+                setIsSubmitting(false);
+            }
+            return;
+        }
+
         const finalEntityId = entityId || selectedEntityId;
         if (!finalEntityId || !name || !pipelineId) {
             toast({ variant: 'destructive', title: 'Validation Error', description: 'Please fill in all required fields.' });
@@ -265,102 +355,236 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
         return `Auto — ${entityAssignee?.name || `${singular} owner`}`;
     };
 
+    const isEntityValid = React.useMemo(() => {
+        if (entityId) return true;
+        if (isCreatingNewEntity) {
+            return Boolean(newEntityName.trim() && newContactName.trim() && (newContactPhone.trim() || newContactEmail.trim()));
+        }
+        return Boolean(selectedEntityId);
+    }, [entityId, isCreatingNewEntity, newEntityName, newContactName, newContactPhone, newContactEmail, selectedEntityId]);
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[450px] rounded-2xl p-0 border border-border/50 shadow-2xl overflow-hidden bg-white dark:bg-zinc-900 z-[150]">
+            <DialogContent className="sm:max-w-[480px] rounded-2xl p-0 border border-border/80 bg-card text-card-foreground shadow-2xl overflow-hidden z-[150]">
                 <form onSubmit={handleSubmit}>
-                    <DialogHeader className="p-6 border-b border-border/50 shrink-0 text-left bg-white dark:bg-zinc-900">
+                    <DialogHeader className="p-6 border-b border-border/80 shrink-0 text-left bg-muted/20">
                         <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">Add new deal</DialogTitle>
                         <DialogDescription className="text-xs font-medium text-muted-foreground mt-1.5">
                             Create a new deal for a {singular.toLowerCase()} in the pipeline.
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="p-6 space-y-5 max-h-[60vh] overflow-y-auto">
+                    <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
                         {!entityId && (
                             <div className="space-y-2 flex flex-col">
-                                <Label className="text-xs font-semibold text-muted-foreground ml-1">Target contact / {singular.toLowerCase()}</Label>
-                                <Popover open={entitySearchOpen} onOpenChange={setEntitySearchOpen} modal={true}>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            role="combobox"
-                                            aria-expanded={entitySearchOpen}
-                                            className="w-full justify-between h-10 rounded-xl font-bold border border-border bg-background shadow-sm text-xs text-muted-foreground hover:bg-muted/50"
-                                        >
-                                            {selectedEntityId
-                                                ? (selectedEntityName || searchResults.find(r => r.entityId === selectedEntityId)?.name || `Select ${singular}...`)
-                                                : `Select ${singular} or contact...`}
-                                            <Plus className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent data-scroll-lock-scrollable className="w-[var(--radix-popover-trigger-width)] p-0 border border-border shadow-2xl rounded-xl overflow-hidden bg-background z-[200]" align="start">
-                                        <Command shouldFilter={false}>
-                                            <CommandInput
-                                                placeholder={`Search by ${singular.toLowerCase()} name, contact name, email or phone...`}
-                                                value={entitySearch}
-                                                onValueChange={setEntitySearch}
-                                            />
-                                            <CommandList data-scroll-lock-scrollable className="max-h-[240px] overflow-y-auto overflow-x-hidden scrollbar-thin">
-                                                {isSearchingEntities ? (
-                                                    <div className="flex items-center justify-center p-4 gap-2 text-xs font-bold text-muted-foreground">
-                                                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                                                        <span>Searching entities & contacts...</span>
-                                                    </div>
-                                                ) : searchResults.length === 0 ? (
-                                                    <CommandEmpty className="p-4 text-xs font-semibold text-muted-foreground text-center">
-                                                        No {singular.toLowerCase()} or contact found matching &quot;{entitySearch}&quot;.
-                                                    </CommandEmpty>
-                                                ) : (
-                                                    <CommandGroup>
-                                                        {searchResults.map((item) => (
-                                                            <CommandItem
-                                                                key={item.workspaceEntityId || item.entityId}
-                                                                value={`${item.name} ${item.email || ''} ${item.phone || ''} ${item.matchedContact?.name || ''} ${item.matchedContact?.email || ''}`}
-                                                                onSelect={() => {
-                                                                    setSelectedEntityId(item.entityId);
-                                                                    setSelectedEntityName(item.name || item.displayName);
-                                                                    setEntityContacts(item.allContacts);
-                                                                    if (item.matchedContact) {
-                                                                        setSelectedFocalContactIds([item.matchedContact.id]);
-                                                                    } else {
-                                                                        setSelectedFocalContactIds([]);
-                                                                    }
-                                                                    setEntitySearchOpen(false);
-                                                                }}
-                                                                className="font-bold text-xs p-3 cursor-pointer hover:bg-muted/50 rounded-lg my-0.5 border-b border-border/30 last:border-none"
-                                                            >
-                                                                <div className="flex flex-col gap-1 w-full text-left">
-                                                                    <div className="flex items-center justify-between gap-2">
-                                                                        <span className="font-extrabold text-xs text-foreground truncate">{item.name || item.displayName}</span>
-                                                                        <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-primary/10 text-primary shrink-0">
-                                                                            {item.entityType}
-                                                                        </span>
+                                {!isCreatingNewEntity ? (
+                                    <>
+                                        <div className="flex items-center justify-between ml-1">
+                                            <Label className="text-xs font-semibold text-muted-foreground">Target contact / {singular.toLowerCase()}</Label>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setIsCreatingNewEntity(true);
+                                                    setNewEntityName(entitySearch.trim());
+                                                }}
+                                                className="text-[11px] font-bold text-primary hover:underline flex items-center gap-1 active:scale-[0.97] transition-transform"
+                                            >
+                                                <Plus className="h-3 w-3" />
+                                                <span>New {singular}</span>
+                                            </button>
+                                        </div>
+                                        <Popover open={entitySearchOpen} onOpenChange={setEntitySearchOpen} modal={true}>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    role="combobox"
+                                                    aria-expanded={entitySearchOpen}
+                                                    className="w-full justify-between min-h-[44px] h-11 rounded-xl font-bold border border-border bg-background shadow-sm text-xs text-muted-foreground hover:bg-muted/50"
+                                                >
+                                                    {selectedEntityId
+                                                        ? (selectedEntityName || searchResults.find(r => r.entityId === selectedEntityId)?.name || `Select ${singular}...`)
+                                                        : `Select ${singular} or contact...`}
+                                                    <Plus className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent data-scroll-lock-scrollable className="w-[var(--radix-popover-trigger-width)] p-0 border border-border shadow-2xl rounded-xl overflow-hidden bg-background z-[200]" align="start">
+                                                <Command shouldFilter={false}>
+                                                    <CommandInput
+                                                        placeholder={`Search by ${singular.toLowerCase()} name, contact name, email or phone...`}
+                                                        value={entitySearch}
+                                                        onValueChange={setEntitySearch}
+                                                    />
+                                                    <CommandList data-scroll-lock-scrollable className="max-h-[260px] overflow-y-auto overflow-x-hidden scrollbar-thin">
+                                                        {isSearchingEntities ? (
+                                                            <div className="flex items-center justify-center p-4 gap-2 text-xs font-bold text-muted-foreground">
+                                                                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                                                                <span>Searching entities & contacts...</span>
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                {/* Quick creation option if search query entered */}
+                                                                {entitySearch.trim().length > 0 && !searchResults.some(r => (r.name || r.displayName || '').toLowerCase() === entitySearch.trim().toLowerCase()) && (
+                                                                    <div className="p-1 border-b border-border/40 bg-muted/20">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                setIsCreatingNewEntity(true);
+                                                                                setNewEntityName(entitySearch.trim());
+                                                                                setEntitySearchOpen(false);
+                                                                            }}
+                                                                            className="w-full text-left p-2.5 rounded-lg text-xs font-bold text-primary hover:bg-primary/10 flex items-center gap-2 transition-colors active:scale-[0.98]"
+                                                                        >
+                                                                            <Plus className="h-4 w-4 shrink-0 text-primary" />
+                                                                            <span className="truncate">Create &quot;{entitySearch.trim()}&quot; as new {singular}</span>
+                                                                        </button>
                                                                     </div>
-                                                                    <div className="text-[10px] text-muted-foreground font-medium truncate">
-                                                                        {[item.email, item.phone].filter(Boolean).join(' • ') || 'No primary email/phone'}
-                                                                    </div>
+                                                                )}
 
-                                                                    {/* Matched Contact Highlight Badge */}
-                                                                    {item.matchedContact && (
-                                                                        <div className="mt-1 flex items-center gap-1.5 p-1.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-bold text-indigo-600 dark:text-indigo-300">
-                                                                            <UserCircle2 className="h-3 w-3 shrink-0" />
-                                                                            <span className="truncate">
-                                                                                Contact match: <span className="underline">{item.matchedContact.name}</span>
-                                                                                {item.matchedContact.email || item.matchedContact.phone ? ` (${[item.matchedContact.email, item.matchedContact.phone].filter(Boolean).join(' • ')})` : ''}
-                                                                            </span>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                )}
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
+                                                                {searchResults.length === 0 ? (
+                                                                    <div className="p-4 text-xs font-semibold text-muted-foreground text-center">
+                                                                        <p>No {singular.toLowerCase()} or contact found matching &quot;{entitySearch}&quot;.</p>
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="ghost"
+                                                                            size="sm"
+                                                                            onClick={() => {
+                                                                                setIsCreatingNewEntity(true);
+                                                                                setNewEntityName(entitySearch.trim());
+                                                                                setEntitySearchOpen(false);
+                                                                            }}
+                                                                            className="mt-2 h-8 text-xs font-bold text-primary hover:bg-primary/10 rounded-lg active:scale-[0.97]"
+                                                                        >
+                                                                            <Plus className="h-3.5 w-3.5 mr-1" /> Create new {singular}
+                                                                        </Button>
+                                                                    </div>
+                                                                ) : (
+                                                                    <CommandGroup>
+                                                                        {searchResults.map((item) => (
+                                                                            <CommandItem
+                                                                                key={item.workspaceEntityId || item.entityId}
+                                                                                value={`${item.name} ${item.email || ''} ${item.phone || ''} ${item.matchedContact?.name || ''} ${item.matchedContact?.email || ''}`}
+                                                                                onSelect={() => {
+                                                                                    setSelectedEntityId(item.entityId);
+                                                                                    setSelectedEntityName(item.name || item.displayName);
+                                                                                    setEntityContacts(item.allContacts);
+                                                                                    if (item.matchedContact) {
+                                                                                        setSelectedFocalContactIds([item.matchedContact.id]);
+                                                                                    } else {
+                                                                                        setSelectedFocalContactIds([]);
+                                                                                    }
+                                                                                    setEntitySearchOpen(false);
+                                                                                }}
+                                                                                className="font-bold text-xs p-3 cursor-pointer hover:bg-muted/50 rounded-lg my-0.5 border-b border-border/30 last:border-none"
+                                                                            >
+                                                                                <div className="flex flex-col gap-1 w-full text-left">
+                                                                                    <div className="flex items-center justify-between gap-2">
+                                                                                        <span className="font-extrabold text-xs text-foreground truncate">{item.name || item.displayName}</span>
+                                                                                        <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-primary/10 text-primary shrink-0">
+                                                                                            {item.entityType}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                    <div className="text-[10px] text-muted-foreground font-medium truncate">
+                                                                                        {[item.email, item.phone].filter(Boolean).join(' • ') || 'No primary email/phone'}
+                                                                                    </div>
+
+                                                                                    {/* Matched Contact Highlight Badge */}
+                                                                                    {item.matchedContact && (
+                                                                                        <div className="mt-1 flex items-center gap-1.5 p-1.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-bold text-indigo-600 dark:text-indigo-300">
+                                                                                            <UserCircle2 className="h-3 w-3 shrink-0" />
+                                                                                            <span className="truncate">
+                                                                                                Contact match: <span className="underline">{item.matchedContact.name}</span>
+                                                                                                {item.matchedContact.email || item.matchedContact.phone ? ` (${[item.matchedContact.email, item.matchedContact.phone].filter(Boolean).join(' • ')})` : ''}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            </CommandItem>
+                                                                        ))}
+                                                                    </CommandGroup>
+                                                                )}
+                                                            </>
+                                                        )}
+                                                    </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
+                                    </>
+                                ) : (
+                                    /* Inline New Entity & Primary Contact Card */
+                                    <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 space-y-3.5 shadow-sm transition-all animate-in fade-in-50 duration-200">
+                                        <div className="flex items-center justify-between border-b border-primary/15 pb-2">
+                                            <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                                <Building2 className="h-4 w-4 text-primary" />
+                                                New {singular} Details
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsCreatingNewEntity(false)}
+                                                className="text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:underline transition-colors active:scale-[0.97]"
+                                            >
+                                                Choose existing instead
+                                            </button>
+                                        </div>
+
+                                        <div className="space-y-1.5">
+                                            <Label className="text-[11px] font-semibold text-muted-foreground">{singular} name *</Label>
+                                            <Input
+                                                required
+                                                value={newEntityName}
+                                                onChange={e => setNewEntityName(e.target.value)}
+                                                placeholder={`e.g. Acme Corporation`}
+                                                className="min-h-[44px] h-11 rounded-xl font-bold border border-border bg-background shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 text-xs"
+                                            />
+                                        </div>
+
+                                        <div className="pt-2 border-t border-primary/10 space-y-2.5">
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-[11px] font-bold text-foreground flex items-center gap-1.5">
+                                                    <UserCircle2 className="h-3.5 w-3.5 text-primary" />
+                                                    Primary &amp; Signatory Contact
+                                                </Label>
+                                                <span className="text-[9px] font-medium text-muted-foreground">Phone or email required</span>
+                                            </div>
+
+                                            <div className="space-y-1.5">
+                                                <Input
+                                                    required
+                                                    value={newContactName}
+                                                    onChange={e => setNewContactName(e.target.value)}
+                                                    placeholder="Contact Full Name (e.g. Sarah Jenkins)"
+                                                    className="min-h-[44px] h-11 rounded-xl font-bold border border-border bg-background shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 text-xs"
+                                                />
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-2.5">
+                                                <Input
+                                                    type="tel"
+                                                    value={newContactPhone}
+                                                    onChange={e => setNewContactPhone(e.target.value)}
+                                                    placeholder="Phone number"
+                                                    className="min-h-[44px] h-11 rounded-xl font-bold border border-border bg-background shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 text-xs"
+                                                />
+                                                <Input
+                                                    type="email"
+                                                    value={newContactEmail}
+                                                    onChange={e => setNewContactEmail(e.target.value)}
+                                                    placeholder="Email address"
+                                                    className="min-h-[44px] h-11 rounded-xl font-bold border border-border bg-background shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 text-xs"
+                                                />
+                                            </div>
+
+                                            <div className="space-y-1.5">
+                                                <Input
+                                                    value={newContactRole}
+                                                    onChange={e => setNewContactRole(e.target.value)}
+                                                    placeholder="Role / Title (e.g. Managing Director)"
+                                                    className="min-h-[44px] h-11 rounded-xl font-bold border border-border bg-background shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 text-xs"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -371,11 +595,11 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
                                 value={name} 
                                 onChange={e => setName(e.target.value)} 
                                 placeholder="e.g. 2026 Expansion Contract" 
-                                className="h-10 rounded-xl font-bold border border-border bg-background shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 text-xs"
+                                className="min-h-[44px] h-11 rounded-xl font-bold border border-border bg-background shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 text-xs"
                             />
                         </div>
 
-                        {focalEntityId && (
+                        {focalEntityId && !isCreatingNewEntity && (
                             <div className="space-y-2">
                                 <Label className="text-xs font-semibold text-muted-foreground ml-1 flex items-center gap-1.5">
                                     <Users className="h-3 w-3" /> Focal contacts (optional)
@@ -540,12 +764,32 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
                         </div>
                     </div>
 
-                    <DialogFooter className="p-4 bg-muted/5 dark:bg-zinc-900/50 border-t border-border/50 flex items-center justify-end gap-2 shrink-0">
-                        <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSubmitting} className="rounded-xl font-bold h-10 px-6 hover:bg-rose-50 hover:text-rose-600 transition-colors">
+                    <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5 shrink-0">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => onOpenChange(false)}
+                            disabled={isSubmitting}
+                            className="rounded-xl font-bold min-h-[44px] h-11 px-5 hover:bg-muted active:scale-[0.97] transition-all text-xs"
+                        >
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={isSubmitting || !name || !pipelineId || (!entityId && !selectedEntityId)} className="rounded-xl font-bold h-10 px-8 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all">
-                            {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating...</> : <><Plus className="mr-2 h-4 w-4" /> Create Deal</>}
+                        <Button
+                            type="submit"
+                            disabled={isSubmitting || !name.trim() || !pipelineId || !isEntityValid}
+                            className="rounded-xl font-bold min-h-[44px] h-11 px-7 shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-[0.97] transition-all text-xs"
+                        >
+                            {isSubmitting ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    {isCreatingNewEntity ? 'Creating Entity & Deal...' : 'Creating Deal...'}
+                                </>
+                            ) : (
+                                <>
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Create Deal
+                                </>
+                            )}
                         </Button>
                     </DialogFooter>
                 </form>

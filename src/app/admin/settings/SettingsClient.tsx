@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import * as React from 'react';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import OrganizationManagementDialog from '../components/OrganizationManagementDialog';
 import MediaSelectorTrigger from '../components/MediaSelectorTrigger';
 import { saveOrganizationAction } from '@/lib/organization-actions';
@@ -143,17 +144,15 @@ export default function SettingsClient() {
     <PageContainer>
       <div className="space-y-8 pb-32 w-full text-left">
         {/* Header Block */}
-        <div className="flex flex-col gap-1 px-1">
+        <div className="flex items-center gap-2.5 px-1">
           <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
             Settings & Configurations
           </h1>
-          <p className="text-sm text-muted-foreground font-medium">
-            Manage your workspaces, brand aesthetics, localization parameters, and API keys.
-          </p>
+          <CardInfoTooltip text="Manage your workspaces, brand aesthetics, localization parameters, and API keys." />
         </div>
 
         {/* Scope Switcher Block */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl border border-border/70 bg-card/60 backdrop-blur-sm shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm">
           <div className="flex items-center gap-3.5 text-left">
             <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
               <Layers className="h-5 w-5" />
@@ -163,13 +162,11 @@ export default function SettingsClient() {
                 <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Configuration Scope
                 </h2>
+                <CardInfoTooltip text="Switch between global organization-level governance and workspace-specific settings." />
                 <Badge variant="outline" className="text-[9px] uppercase font-extrabold tracking-widest px-2 h-4.5 bg-primary/5 text-primary border-primary/20">
                   {selectedScope === 'organization' ? 'Global Org' : 'Workspace'}
                 </Badge>
               </div>
-              <p className="text-xs text-muted-foreground/90 font-medium">
-                Switch between global organization-level governance and workspace-specific settings.
-              </p>
             </div>
           </div>
           <div className="w-full sm:w-[320px] shrink-0">
@@ -223,7 +220,7 @@ export default function SettingsClient() {
           <TabsContent value="profile" className="space-y-8 outline-none">
             {selectedScope === 'organization' ? (
               <>
-                <Card className="border border-border/70 shadow-xl ring-1 ring-border/40 rounded-3xl overflow-hidden bg-card text-left relative group/card transition-all">
+                <Card className="border border-border/80 shadow-sm rounded-2xl overflow-hidden bg-card text-card-foreground text-left relative group/card transition-all">
                   <div className="h-1.5 w-full bg-gradient-to-r from-primary via-blue-500 to-indigo-600" />
                   <CardContent className="p-6 md:p-8 relative z-10">
                     <div className="flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-8">
@@ -248,18 +245,16 @@ export default function SettingsClient() {
                       <div className="flex-1 space-y-5 text-center md:text-left min-w-0">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                           <div className="space-y-1.5">
-                            <div className="flex items-center justify-center md:justify-start gap-3 flex-wrap">
+                            <div className="flex items-center justify-center md:justify-start gap-2.5 flex-wrap">
                               <h2 className="text-2xl font-black text-foreground tracking-tight">
                                 {activeOrganization?.name || 'System Parameters'}
                               </h2>
+                              <CardInfoTooltip text={activeOrganization?.description || "Manage your organization's workspaces, modules, zones, and security roles from a centralized command center."} />
                               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-bold uppercase tracking-wider">
                                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                 Active Institution
                               </div>
                             </div>
-                            <p className="text-sm font-normal text-muted-foreground leading-relaxed max-w-2xl">
-                              {activeOrganization?.description || 'Manage your organization\'s workspaces, modules, zones, and security roles from a centralized command center.'}
-                            </p>
                           </div>
                           {activeOrganization && (
                             <Button 
@@ -369,20 +364,18 @@ export default function SettingsClient() {
                 <FeatureManager />
 
                 <div className="space-y-8">
-                  <Card className="rounded-2xl border border-primary/20 bg-primary/5 overflow-hidden">
-                    <CardContent className="p-8 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
+                  <Card className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm overflow-hidden">
+                    <CardContent className="p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
                       <div className="flex items-center gap-4">
-                        <div className="p-4 bg-primary text-white rounded-2xl shadow-lg">
-                          <ShieldCheck className="h-8 w-8" />
+                        <div className="p-3.5 bg-primary/10 text-primary border border-primary/20 rounded-xl shrink-0">
+                          <ShieldCheck className="h-6 w-6" />
                         </div>
-                        <div>
+                        <div className="flex items-center gap-2">
                           <h3 className="text-xl font-bold tracking-tight text-foreground">Role Architecture</h3>
-                          <p className="text-sm font-medium text-muted-foreground mt-1">
-                            Role definition and permission management has been unified into a dedicated security center.
-                          </p>
+                          <CardInfoTooltip text="Role definition and permission management has been unified into a dedicated security center." />
                         </div>
                       </div>
-                      <Button asChild className="rounded-xl font-bold h-12 px-8 whitespace-nowrap">
+                      <Button asChild className="rounded-xl font-bold h-11 px-8 whitespace-nowrap active:scale-[0.97]">
                         <Link href="/admin/users/roles">Manage Roles</Link>
                       </Button>
                     </CardContent>

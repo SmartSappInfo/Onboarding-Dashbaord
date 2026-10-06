@@ -55,6 +55,7 @@ import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTerminology } from '@/hooks/use-terminology';
 import { PageContainerFluid } from '@/components/ui/page-container';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 /**
  * InvoicesClient - Invoice Registry UI
@@ -311,14 +312,12 @@ export default function InvoicesClient() {
                 <div className="space-y-6 pb-32 w-full">
                     {/* Header Row */}
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="flex flex-col items-start text-left">
+                        <div className="flex items-center gap-2.5 text-left">
                             <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
                                 <Receipt className="h-8 w-8 text-primary" />
                                 Invoice Registry
                             </h1>
-                            <p className="text-muted-foreground text-xs mt-1">
-                                Institutional billing records & financial cycles for {activeWorkspace?.name || activeWorkspaceId}
-                            </p>
+                            <CardInfoTooltip text={`Institutional billing records and financial cycles for ${activeWorkspace?.name || activeWorkspaceId || 'this workspace'}.`} />
                         </div>
                         <div className="flex items-center gap-3">
                             {canCreate && (
@@ -334,9 +333,12 @@ export default function InvoicesClient() {
 
                     {/* KPI Metrics Cards */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-                        <Card className="rounded-2xl border border-border/70 shadow-xs bg-card/60 p-4 space-y-2 text-left">
+                        <Card className="rounded-2xl border border-border/80 shadow-sm bg-card p-4 space-y-2 text-left">
                             <div className="flex items-center justify-between text-muted-foreground">
-                                <span className="text-[10px] font-bold uppercase tracking-wider">Total Invoiced</span>
+                                <div className="flex items-center gap-1">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider">Total Invoiced</span>
+                                    <CardInfoTooltip text="Cumulative value of all generated invoices across this workspace." />
+                                </div>
                                 <TrendingUp className="h-4 w-4 text-primary" />
                             </div>
                             <p className="text-xl font-black text-foreground tabular-nums">
@@ -345,9 +347,12 @@ export default function InvoicesClient() {
                             <p className="text-[10px] text-muted-foreground font-medium">Across {kpiMetrics.count} active records</p>
                         </Card>
 
-                        <Card className="rounded-2xl border border-border/70 shadow-xs bg-card/60 p-4 space-y-2 text-left">
+                        <Card className="rounded-2xl border border-border/80 shadow-sm bg-card p-4 space-y-2 text-left">
                             <div className="flex items-center justify-between text-muted-foreground">
-                                <span className="text-[10px] font-bold uppercase tracking-wider">Settled & Paid</span>
+                                <div className="flex items-center gap-1">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider">Settled & Paid</span>
+                                    <CardInfoTooltip text="Total collected revenue from fully settled invoices." />
+                                </div>
                                 <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                             </div>
                             <p className="text-xl font-black text-emerald-600 tabular-nums">
@@ -356,9 +361,12 @@ export default function InvoicesClient() {
                             <p className="text-[10px] text-muted-foreground font-medium">Realized revenue</p>
                         </Card>
 
-                        <Card className="rounded-2xl border border-border/70 shadow-xs bg-card/60 p-4 space-y-2 text-left">
+                        <Card className="rounded-2xl border border-border/80 shadow-sm bg-card p-4 space-y-2 text-left">
                             <div className="flex items-center justify-between text-muted-foreground">
-                                <span className="text-[10px] font-bold uppercase tracking-wider">Draft Volume</span>
+                                <div className="flex items-center gap-1">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider">Draft Volume</span>
+                                    <CardInfoTooltip text="Outstanding draft invoices awaiting final approval and issue." />
+                                </div>
                                 <Clock className="h-4 w-4 text-amber-500" />
                             </div>
                             <p className="text-xl font-black text-foreground tabular-nums">
@@ -367,9 +375,12 @@ export default function InvoicesClient() {
                             <p className="text-[10px] text-muted-foreground font-medium">Unfinalized drafts</p>
                         </Card>
 
-                        <Card className="rounded-2xl border border-border/70 shadow-xs bg-card/60 p-4 space-y-2 text-left">
+                        <Card className="rounded-2xl border border-border/80 shadow-sm bg-card p-4 space-y-2 text-left">
                             <div className="flex items-center justify-between text-muted-foreground">
-                                <span className="text-[10px] font-bold uppercase tracking-wider">Overdue</span>
+                                <div className="flex items-center gap-1">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider">Overdue</span>
+                                    <CardInfoTooltip text="Invoices past due requiring collection action." />
+                                </div>
                                 <AlertCircle className="h-4 w-4 text-destructive" />
                             </div>
                             <p className="text-xl font-black text-destructive tabular-nums">
@@ -380,7 +391,7 @@ export default function InvoicesClient() {
                     </div>
 
                     {/* Filter & Tab Controls Bar */}
-                    <Card className="border border-border shadow-xs rounded-2xl overflow-hidden bg-card/40 text-left">
+                    <Card className="border border-border/80 shadow-sm rounded-2xl overflow-hidden bg-card text-left">
                         <CardContent className="p-3.5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 text-left">
                             {/* Status Pills */}
                             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
@@ -428,9 +439,9 @@ export default function InvoicesClient() {
                     </Card>
 
                     {/* Table View */}
-                    <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden text-left">
+                    <div className="rounded-2xl border border-border/80 bg-card shadow-sm overflow-hidden text-left">
                         <Table className="text-left">
-                            <TableHeader className="bg-muted/20 text-left">
+                            <TableHeader className="bg-muted/30 text-left">
                                 <TableRow className="text-left">
                                     <TableHead className="text-[10px] font-bold uppercase tracking-wider pl-6 py-4 text-left">Invoice Reference</TableHead>
                                     <TableHead className="text-[10px] font-bold uppercase tracking-wider text-left">Target {singular}</TableHead>

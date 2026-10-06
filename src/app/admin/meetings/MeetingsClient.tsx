@@ -539,8 +539,8 @@ export default function MeetingsHubClient() {
                     </div>
 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-  <Tabs value={activeView} onValueChange={setActiveView} className="w-fit">
-            <TabsList className="bg-transparent border border-border shadow-sm p-1 h-12 rounded-xl ring-1 ring-border">
+          <Tabs value={activeView} onValueChange={setActiveView} className="w-fit">
+            <TabsList className="bg-muted/30 border border-border/80 shadow-sm p-1 h-12 rounded-xl">
                 <TabsTrigger value="list" className="rounded-lg font-semibold text-[10px] px-8 gap-2">
                     <LayoutList className="h-4 w-4" /> Hub Registry
                 </TabsTrigger>
@@ -548,30 +548,30 @@ export default function MeetingsHubClient() {
                     <LayoutGrid className="h-4 w-4" /> Temporal Map
                 </TabsTrigger>
             </TabsList>
-        </Tabs>
+          </Tabs>
 
-        <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex-1 min-w-[280px] max-w-sm border border-border bg-transparent shadow-sm rounded-3xl p-4 ring-1 ring-border">
-                        <Select value={typeFilter} onValueChange={setTypeFilter}>
-  <SelectTrigger className="h-10 rounded-lg bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
-                                <SelectValue placeholder="Filter by category..." />
-                            </SelectTrigger>
-  <SelectContent className="rounded-xl">
-                                <SelectItem value="all">All Meeting Categories</SelectItem>
-                                {MEETING_TYPES.map(type => (
-                                <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex-1 min-w-[280px] max-w-sm border border-border/80 bg-card text-card-foreground shadow-sm rounded-2xl p-2.5">
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="h-10 rounded-xl bg-muted/20 border border-border/80 shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
+                  <SelectValue placeholder="Filter by category..." />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="all">All Meeting Categories</SelectItem>
+                  {MEETING_TYPES.map(type => (
+                    <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            </div>
+          </div>
+        </div>
             
-  <Tabs value={activeView} onValueChange={setActiveView} className="w-full">
-  <TabsContent value="list" className="m-0 animate-in fade-in slide-in-from-bottom-2 duration-500">
-  <div className="rounded-2xl border border-border bg-transparent text-card-foreground shadow-sm overflow-hidden ring-1 ring-border">
-                        <Table>
-  <TableHeader className="bg-muted/30">
+        <Tabs value={activeView} onValueChange={setActiveView} className="w-full">
+          <TabsContent value="list" className="m-0 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <div className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm overflow-hidden">
+              <Table>
+                <TableHeader className="bg-muted/20 border-b border-border/80">
                             <TableRow>
   <TableHead className="w-[80px]"></TableHead>
   <TableHead className="text-[10px] font-semibold py-4">{singular} Context</TableHead>
@@ -715,7 +715,7 @@ export default function MeetingsHubClient() {
         </div>
 
         <AlertDialog open={!!meetingToDelete} onOpenChange={(open) => !open && setMeetingToDelete(null)}>
-          <AlertDialogContent className="rounded-[2.5rem]">
+          <AlertDialogContent className="sm:rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
             <AlertDialogHeader>
               <AlertDialogTitle className="font-semibold tracking-tight">Purge Session Architecture?</AlertDialogTitle>
               <AlertDialogDescription className="text-sm font-medium">
@@ -743,7 +743,7 @@ export default function MeetingsHubClient() {
 
         {/* Save as Template Dialog */}
         <AlertDialog open={!!meetingForTemplate} onOpenChange={(open) => !open && setMeetingForTemplate(null)}>
-            <AlertDialogContent className="rounded-[2rem]">
+            <AlertDialogContent className="sm:rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
                 <AlertDialogHeader>
                     <AlertDialogTitle className="flex items-center gap-2">
                         <PlusCircle className="h-5 w-5 text-primary" />

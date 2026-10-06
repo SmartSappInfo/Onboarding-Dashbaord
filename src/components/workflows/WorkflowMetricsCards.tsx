@@ -13,6 +13,7 @@
 import * as React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { GitBranch, Play, Clock, AlertTriangle } from 'lucide-react';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import type { WorkflowPlatformMetrics } from '@/app/actions/workflow-admin-actions';
 
 export interface WorkflowMetricsCardsProps {
@@ -25,7 +26,7 @@ export function WorkflowMetricsCards({ metrics, isLoading = false }: WorkflowMet
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[...Array(4)].map((_, i) => (
-          <Card key={i} className="animate-pulse bg-muted/30 border-border/60">
+          <Card key={i} className="animate-pulse bg-muted/30 border-border/80 rounded-2xl">
             <CardContent className="p-4 sm:p-5 h-24" />
           </Card>
         ))}
@@ -40,12 +41,15 @@ export function WorkflowMetricsCards({ metrics, isLoading = false }: WorkflowMet
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {/* 1. Total Workflows */}
-      <Card className="border border-border/80 bg-card/60 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow">
+      <Card className="border border-border/80 bg-card text-card-foreground shadow-sm hover:shadow-md transition-all rounded-2xl">
         <CardContent className="p-4 sm:p-5 flex items-center justify-between">
           <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Total Instances
-            </p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Total Instances
+              </p>
+              <CardInfoTooltip text="Total workflow instances tracked across all execution runs, checkpoints, and templates." />
+            </div>
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-bold tracking-tight">{metrics.totalWorkflows}</span>
               <span className="text-xs text-muted-foreground">workflows</span>
@@ -58,12 +62,15 @@ export function WorkflowMetricsCards({ metrics, isLoading = false }: WorkflowMet
       </Card>
 
       {/* 2. Active Workflows */}
-      <Card className="border border-border/80 bg-card/60 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow">
+      <Card className="border border-border/80 bg-card text-card-foreground shadow-sm hover:shadow-md transition-all rounded-2xl">
         <CardContent className="p-4 sm:p-5 flex items-center justify-between">
           <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              In-Flight Active
-            </p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                In-Flight Active
+              </p>
+              <CardInfoTooltip text="Workflows currently executing steps or scheduled in Cloud Tasks runner queue." />
+            </div>
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-bold tracking-tight text-blue-600 dark:text-blue-400">
                 {metrics.activeWorkflows}
@@ -83,12 +90,15 @@ export function WorkflowMetricsCards({ metrics, isLoading = false }: WorkflowMet
       </Card>
 
       {/* 3. Waiting for Approval */}
-      <Card className="border border-border/80 bg-card/60 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow">
+      <Card className="border border-border/80 bg-card text-card-foreground shadow-sm hover:shadow-md transition-all rounded-2xl">
         <CardContent className="p-4 sm:p-5 flex items-center justify-between">
           <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Awaiting Approval
-            </p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Awaiting Approval
+              </p>
+              <CardInfoTooltip text="Workflows paused at human checkpoint steps waiting for operator or supervisor approval." />
+            </div>
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-bold tracking-tight text-amber-600 dark:text-amber-400">
                 {metrics.waitingWorkflows}
@@ -105,12 +115,15 @@ export function WorkflowMetricsCards({ metrics, isLoading = false }: WorkflowMet
       </Card>
 
       {/* 4. Failed / DLQ */}
-      <Card className="border border-border/80 bg-card/60 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow">
+      <Card className="border border-border/80 bg-card text-card-foreground shadow-sm hover:shadow-md transition-all rounded-2xl">
         <CardContent className="p-4 sm:p-5 flex items-center justify-between">
           <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Failed / DLQ
-            </p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Failed / DLQ
+              </p>
+              <CardInfoTooltip text="Workflows that failed execution or entered Dead Letter Queue after exhausting retry attempts." />
+            </div>
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-bold tracking-tight text-destructive">
                 {metrics.failedWorkflows}

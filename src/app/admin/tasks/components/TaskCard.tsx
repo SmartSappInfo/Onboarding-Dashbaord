@@ -92,10 +92,10 @@ export default function TaskCard({ task, entityLogoUrl, isOverlay, onClick, user
         <Card 
             onClick={onClick}
             className={cn(
-                "group mb-3 rounded-2xl border-border/50 bg-card transition-all duration-300 select-none w-full max-w-full overflow-hidden",
-                !isOverlay && "hover:shadow-lg hover:border-primary/20",
+                "group mb-3 rounded-2xl border border-border/80 bg-card text-card-foreground shadow-xs transition-all duration-200 select-none w-full max-w-full overflow-hidden",
+                !isOverlay && "hover:shadow-md hover:border-border",
                 isOverlay && "shadow-2xl border-primary ring-1 ring-primary/20 rotate-2 scale-105 cursor-grabbing",
-                isDone && "opacity-60 bg-background"
+                isDone && "opacity-60 bg-muted/20"
             )}
         >
             <CardContent className="p-4 space-y-4" {...attributes} {...listeners}>

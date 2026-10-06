@@ -353,8 +353,8 @@ function TemplateCard({ template, styles, cloningId, onPreview, onEdit, onClone,
     }, [template, styles, activeOrganization, activeOrganizationId, activeWorkspaceId]);
 
     return (
-        <Card className={cn("group relative border-2 transition-all duration-500 rounded-2xl overflow-hidden bg-card shadow-sm hover:shadow-2xl border-border/50 flex flex-col h-[420px]", cloningId === template.id ? "opacity-50 scale-[0.98] grayscale" : "")}>
-            <div className="h-12 shrink-0 border-b flex items-center justify-between px-4 bg-background group-hover:bg-background transition-colors duration-500">
+        <Card className={cn("group relative border transition-all duration-300 rounded-2xl overflow-hidden bg-card text-card-foreground shadow-sm hover:shadow-xl border-border/80 flex flex-col h-[420px]", cloningId === template.id ? "opacity-50 scale-[0.98] grayscale" : "")}>
+            <div className="h-12 shrink-0 border-b border-border/80 flex items-center justify-between px-4 bg-muted/20 group-hover:bg-muted/30 transition-colors duration-300">
                 <div className="flex items-center gap-1.5">
                     {(() => {
                         const meta = channelMeta(template.channel);
@@ -461,7 +461,7 @@ function TemplateCard({ template, styles, cloningId, onPreview, onEdit, onClone,
                 <div className="absolute inset-0 bg-transparent z-10" />
             </div>
 
-            <CardHeader className="p-5 shrink-0 bg-background border-t">
+            <CardHeader className="p-5 shrink-0 bg-card border-t border-border/80">
                 <div className="min-w-0">
                     <div className="flex items-center justify-between gap-2 mb-1">
                         <InlineEditableName
@@ -542,7 +542,7 @@ function TemplateRow({ template, cloningId, onPreview, onEdit, onClone, onCloneA
 
     return (
         <div className={cn(
-            "flex flex-col md:flex-row md:items-center justify-between p-4 border rounded-xl bg-card hover:bg-muted/10 hover:shadow-md transition-all duration-300 gap-4 border-border/50",
+            "flex flex-col md:flex-row md:items-center justify-between p-4 border rounded-xl bg-card even:bg-muted/30 dark:even:bg-muted/15 hover:bg-muted/50 transition-colors gap-4 border-border/80",
             cloningId === template.id ? "opacity-50 scale-[0.98] grayscale" : ""
         )}>
             {/* Title and Subtitle Info */}
@@ -812,7 +812,7 @@ function WhatsAppTemplateRow({ template, onPreview, onSendTest, onAdopt }: Whats
     const StatusIcon = status.Icon;
     const isApproved = template.waStatus === 'APPROVED';
     return (
-        <div className="flex flex-col md:flex-row md:items-center justify-between p-4 border rounded-xl bg-card hover:bg-muted/10 hover:shadow-md transition-all duration-300 gap-4 border-border/50">
+        <div className="flex flex-col md:flex-row md:items-center justify-between p-4 border rounded-xl bg-card even:bg-muted/30 dark:even:bg-muted/15 hover:bg-muted/50 transition-colors gap-4 border-border/80">
             <div className="flex-1 min-w-0 space-y-1">
                 <TooltipProvider>
                     <Tooltip>
@@ -1167,7 +1167,7 @@ export function TemplateGallery({
                     ))}
                     
                     {filteredTemplates.length === 0 ? (
-                        <div className="col-span-full py-32 text-center border-4 border-dashed rounded-[4rem] bg-background flex flex-col items-center justify-center gap-4 opacity-30">
+                        <div className="col-span-full py-24 text-center border-2 border-dashed border-border/80 rounded-2xl bg-card flex flex-col items-center justify-center gap-4 opacity-60">
                             <FileType className="h-16 w-16 text-muted-foreground" />
                             <p className="font-semibold text-sm">No templates found.</p>
                         </div>

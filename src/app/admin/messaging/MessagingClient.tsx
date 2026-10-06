@@ -47,6 +47,7 @@ import { collection, query } from 'firebase/firestore';
 import type { MessageLog } from '@/lib/types';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import type { SmsReportItem } from '@/lib/mnotify-service';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 const chartConfig = {
   sent: {
@@ -248,27 +249,37 @@ export default function MessagingClient() {
         return `${href}${separator}track=${activeWorkspaceId}`;
     }, [activeWorkspaceId]);
 
-    const ModuleCard = ({ mod }: { mod: any }) => (
+    interface ModuleConfig {
+        title: string;
+        description: string;
+        icon: React.ComponentType<{ className?: string }>;
+        href: string;
+        color: string;
+        bg: string;
+        border: string;
+    }
+
+    const ModuleCard = ({ mod }: { mod: ModuleConfig }) => (
         <Link href={wrapHref(mod.href)} className="group block h-full outline-none">
-  <Card className={cn(
-                "h-full transition-all duration-300 border border-border/50 bg-card group-hover:shadow-xl group-hover:-translate-y-1 group-focus-visible:ring-2 group-focus-visible:ring-primary relative overflow-hidden rounded-2xl",
+            <Card className={cn(
+                "h-full transition-all duration-300 border border-border/80 bg-card group-hover:shadow-md group-hover:-translate-y-0.5 group-focus-visible:ring-2 group-focus-visible:ring-primary relative overflow-hidden rounded-2xl",
                 mod.border
             )}>
- <CardHeader className="p-6 space-y-4">
- <div className="flex items-center gap-4">
- <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110 shrink-0 shadow-sm border", mod.bg)}>
- <mod.icon className={cn("h-6 w-6", mod.color)} />
+                <CardHeader className="p-6 space-y-4">
+                    <div className="flex items-center gap-4">
+                        <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-105 shrink-0 shadow-sm border border-border/60", mod.bg)}>
+                            <mod.icon className={cn("h-6 w-6", mod.color)} />
                         </div>
- <CardTitle className="text-xl font-semibold tracking-tight flex items-center justify-between flex-1 ">
-                             {mod.title}
- <ArrowRight className="h-5 w-5 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 text-primary" />
-                         </CardTitle>
-                     </div>
- <CardDescription className="text-xs leading-relaxed font-bold text-muted-foreground opacity-70">
-                        {mod.description}
-                    </CardDescription>
+                        <CardTitle className="text-base font-semibold tracking-tight flex items-center justify-between flex-1">
+                            <span className="flex items-center gap-2">
+                                {mod.title}
+                                <CardInfoTooltip text={mod.description} />
+                            </span>
+                            <ArrowRight className="h-4 w-4 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 text-primary" />
+                        </CardTitle>
+                    </div>
                 </CardHeader>
- <div className={cn("absolute bottom-0 left-0 h-1 bg-transparent group-hover:bg-primary/20 w-full transition-colors")} />
+                <div className={cn("absolute bottom-0 left-0 h-1 bg-transparent group-hover:bg-primary/20 w-full transition-colors")} />
             </Card>
         </Link>
     );
@@ -286,18 +297,16 @@ export default function MessagingClient() {
         <div className="h-full overflow-y-auto w-full">
             <div className="space-y-8 pb-32 w-full">
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                    <div className="flex flex-col items-start">
+                    <div className="flex items-center gap-2.5">
                         <h1 className="text-3xl font-bold text-foreground">
                             Messaging Hub
                         </h1>
-                        <p className="text-muted-foreground text-sm mt-1">
-                            Send and manage messages across email and SMS
-                        </p>
+                        <CardInfoTooltip text="Send and manage multichannel outreach across email, SMS, and WhatsApp channels." />
                     </div>
                 </div>
 
         <Tabs defaultValue="overview" className="space-y-8">
-            <TabsList className="bg-transparent border border-border shadow-sm h-12 p-1 rounded-xl ring-1 ring-border">
+            <TabsList className="bg-muted/40 border border-border/80 shadow-xs h-12 p-1 rounded-xl">
                 <TabsTrigger value="overview" className="rounded-lg font-semibold text-[10px] px-6">Hub Overview</TabsTrigger>
                 <TabsTrigger value="jobs" className="rounded-lg font-semibold text-[10px] px-6 gap-2">
                     <Layers className="h-4 w-4" /> Bulk Jobs
@@ -310,13 +319,16 @@ export default function MessagingClient() {
  <TabsContent value="overview" className="space-y-16 animate-in fade-in slide-in-from-bottom-2">
                         {/* Operational Intelligence Row */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <Card className="rounded-2xl border border-border bg-transparent shadow-sm overflow-hidden ring-1 ring-border">
+                            <Card className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm overflow-hidden">
                                 <CardContent className="p-6 flex items-center gap-5">
                                     <div className="p-4 bg-primary/10 rounded-2xl text-primary shrink-0 shadow-inner border border-primary/20">
                                         <Target className="h-7 w-7" />
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-semibold text-muted-foreground leading-none mb-1.5">Delivery Rate</p>
+                                        <div className="flex items-center gap-1 mb-1.5">
+                                            <p className="text-[10px] font-semibold text-muted-foreground leading-none">Delivery Rate</p>
+                                            <CardInfoTooltip text="Percentage of dispatched messages successfully delivered to recipients." />
+                                        </div>
                                         <div className="flex items-baseline gap-2">
                                             <p className="text-4xl font-semibold tabular-nums tracking-tighter">{deliveryEfficiency}%</p>
                                             <Badge variant="outline" className={cn("text-[8px] font-semibold uppercase", deliveryEfficiency > 90 ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : deliveryEfficiency > 70 ? "bg-orange-500/10 text-orange-500 border-orange-500/20" : "bg-red-500/10 text-red-500 border-red-500/20")}>{deliveryEfficiency > 90 ? 'Good' : deliveryEfficiency > 70 ? 'Fair' : 'Low'}</Badge>
@@ -325,7 +337,7 @@ export default function MessagingClient() {
                                 </CardContent>
                             </Card>
 
-                            <Card className="rounded-2xl border border-border bg-transparent shadow-sm overflow-hidden ring-1 ring-border">
+                            <Card className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm overflow-hidden">
                                 <CardContent className="p-6 flex items-center gap-5">
                                     <div className={cn(
                                         "p-4 rounded-2xl shrink-0 shadow-inner border",
@@ -334,7 +346,10 @@ export default function MessagingClient() {
                                         <Wallet className="h-7 w-7" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-[10px] font-semibold text-muted-foreground leading-none mb-1.5">SMS Unit Balance</p>
+                                        <div className="flex items-center gap-1 mb-1.5">
+                                            <p className="text-[10px] font-semibold text-muted-foreground leading-none">SMS Unit Balance</p>
+                                            <CardInfoTooltip text="Remaining SMS message units available for dispatch in this organization." />
+                                        </div>
                                         <div className="flex items-center justify-between">
                                             <p className={cn(
                                                 "text-4xl font-semibold tabular-nums tracking-tighter",
@@ -353,13 +368,16 @@ export default function MessagingClient() {
                                 )}
                             </Card>
 
-                            <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+                            <Card className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm overflow-hidden">
                                 <CardContent className="p-6 flex items-center gap-5">
                                     <div className="p-4 bg-emerald-500/10 rounded-2xl text-emerald-500 shrink-0 shadow-inner border border-emerald-500/20">
                                         <ShieldCheck className="h-7 w-7" />
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-semibold text-muted-foreground leading-none mb-1.5">Provider Status</p>
+                                        <div className="flex items-center gap-1 mb-1.5">
+                                            <p className="text-[10px] font-semibold text-muted-foreground leading-none">Provider Status</p>
+                                            <CardInfoTooltip text="Live gateway connection health across SMS and WhatsApp providers." />
+                                        </div>
                                         <div className="flex items-baseline gap-2">
                                             <p className="text-lg font-semibold tracking-tighter">All Systems Active</p>
                                             <span className="text-[10px] font-bold text-emerald-500 tracking-tighter">Connected</span>

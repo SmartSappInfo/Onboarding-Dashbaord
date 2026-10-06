@@ -638,4 +638,46 @@ export interface CommercialAnalyticsSummary {
   avgDiscountDepth: number;
 }
 
+/**
+ * Parameters for creating a deal along with a newly initialized entity and primary contact.
+ */
+export interface CreateDealWithNewEntityParams {
+  workspaceId: string;
+  organizationId: string;
+  entity: {
+    name: string;
+    entityType?: import('../types').EntityType;
+    primaryContact: {
+      name: string;
+      phone?: string;
+      email?: string;
+      role?: string;
+    };
+  };
+  deal: {
+    pipelineId: string;
+    stageId?: string;
+    name: string;
+    value: number;
+    description?: string | null;
+    expectedCloseDate?: string | null;
+    assignmentStrategy?: 'direct' | 'unassigned' | 'round-robin' | 'value-based';
+    assignedTo?: { userId: string | null; name: string | null; email: string | null };
+    suppressAutomations?: boolean;
+  };
+}
+
+/**
+ * Result payload from composite deal and entity creation.
+ */
+export interface CreateDealWithNewEntityResult {
+  success: boolean;
+  dealId?: string;
+  entityId?: string;
+  focalContact?: DealFocalContact;
+  error?: string;
+  isDuplicate?: boolean;
+  duplicates?: import('../entity-duplicate-detection').DuplicateMatch[];
+}
+
 

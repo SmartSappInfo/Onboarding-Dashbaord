@@ -561,7 +561,7 @@ export default function DealsListView({
                 key={deal.id}
                 onClick={() => router.push(`/admin/deals/${deal.id}`)}
                 className={cn(
-                  "group cursor-pointer bg-card hover:bg-muted/40 transition-colors shadow-sm",
+                  "group cursor-pointer bg-card even:bg-muted/30 dark:even:bg-muted/15 hover:bg-muted/50 transition-colors shadow-sm",
                   isSelected && "bg-primary/[0.06] hover:bg-primary/[0.09] ring-1 ring-primary/30",
                   urgency.level === 'overdue' && !isSelected && "bg-destructive/[0.03]"
                 )}

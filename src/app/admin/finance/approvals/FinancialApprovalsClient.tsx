@@ -42,6 +42,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { FinancialApprovalRequest, ApprovalRequestType } from '@/lib/types';
 import { decideApprovalRequestAction } from '@/lib/approval-actions';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import Link from 'next/link';
 
 export function FinancialApprovalsClient() {
@@ -133,15 +134,15 @@ export function FinancialApprovalsClient() {
             <ShieldCheck className="h-4 w-4" />
             Financial Governance &amp; Controls
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-            Approvals &amp; Authorizations
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            Managerial review queue for high-value write-offs, customer refunds, and void operations in {activeWorkspace?.name || activeWorkspaceId}.
-          </p>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              Approvals &amp; Authorizations
+            </h1>
+            <CardInfoTooltip text={`Managerial review queue for high-value write-offs, customer refunds, and void operations in ${activeWorkspace?.name || activeWorkspaceId || 'this workspace'}.`} />
+          </div>
         </div>
 
-        <Button variant="outline" size="sm" asChild className="rounded-xl h-10 min-h-[44px] text-xs font-semibold">
+        <Button variant="outline" size="sm" asChild className="rounded-xl h-10 min-h-[44px] text-xs font-semibold active:scale-[0.97]">
           <Link href="/admin/finance/settings">
             <Sliders className="h-4 w-4 mr-1.5" />
             Policy Settings
@@ -150,16 +151,14 @@ export function FinancialApprovalsClient() {
       </div>
 
       {/* Queue Card */}
-      <Card className="rounded-2xl border shadow-sm">
-        <CardHeader className="p-4 border-b flex flex-row items-center justify-between pb-3">
-          <div>
+      <Card className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm overflow-hidden">
+        <CardHeader className="p-4 border-b border-border/80 bg-muted/20 flex flex-row items-center justify-between pb-3">
+          <div className="flex items-center gap-2">
             <CardTitle className="text-sm font-bold flex items-center gap-1.5">
               <Clock className="h-4 w-4 text-amber-500" />
               Pending Signoff Queue ({requests.length})
             </CardTitle>
-            <CardDescription className="text-xs">
-              Actions awaiting managerial authorization before sub-ledger settlement.
-            </CardDescription>
+            <CardInfoTooltip text="Actions awaiting managerial authorization before sub-ledger settlement and financial posting." />
           </div>
         </CardHeader>
 
@@ -180,15 +179,15 @@ export function FinancialApprovalsClient() {
           ) : (
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="text-xs font-bold">Request Type</TableHead>
+                <TableHeader className="bg-muted/30">
+                  <TableRow className="border-border/80">
+                    <TableHead className="text-xs font-bold pl-6 py-4">Request Type</TableHead>
                     <TableHead className="text-xs font-bold">Entity / Customer</TableHead>
                     <TableHead className="text-xs font-bold">Reference #</TableHead>
                     <TableHead className="text-xs font-bold text-right">Amount</TableHead>
                     <TableHead className="text-xs font-bold">Requested By</TableHead>
                     <TableHead className="text-xs font-bold">Reason</TableHead>
-                    <TableHead className="text-xs font-bold text-right">Actions</TableHead>
+                    <TableHead className="text-xs font-bold text-right pr-6">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -196,8 +195,8 @@ export function FinancialApprovalsClient() {
                     const isSelfRequest = req.requestedByUserId === user?.uid;
 
                     return (
-                      <TableRow key={req.id} className="hover:bg-muted/40 text-xs">
-                        <TableCell>
+                      <TableRow key={req.id} className="border-border/80 text-xs">
+                        <TableCell className="pl-6 py-4">
                           {getRequestTypeBadge(req.requestType)}
                         </TableCell>
 
@@ -224,7 +223,7 @@ export function FinancialApprovalsClient() {
                           {req.reason}
                         </TableCell>
 
-                        <TableCell className="text-right">
+                        <TableCell className="text-right pr-6">
                           <div className="flex items-center justify-end gap-1.5">
                             <Button
                               size="sm"
@@ -261,21 +260,24 @@ export function FinancialApprovalsClient() {
       {/* Decision Confirmation Modal */}
       {decidingRequest && (
         <Dialog open={!!decidingRequest} onOpenChange={(open) => !open && setDecidingRequest(null)}>
-          <DialogContent className="sm:max-w-md rounded-2xl p-6">
-            <DialogHeader className="text-left space-y-1">
+          <DialogContent className="sm:max-w-md rounded-2xl p-0 overflow-hidden border border-border/80 bg-card text-card-foreground shadow-2xl">
+            <DialogHeader className="border-b border-border/80 bg-muted/20 px-6 py-4 text-left">
               <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
                 <UserCheck className="h-4 w-4" />
                 Managerial Authorization
               </div>
-              <DialogTitle className="text-xl font-bold tracking-tight">
-                {decidingRequest.decision === 'approved' ? 'Approve Financial Request' : 'Reject Financial Request'}
-              </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground">
-                Confirm your decision for <strong className="text-foreground">{decidingRequest.request.entityName}</strong> ({decidingRequest.request.currency} {decidingRequest.request.amount.toLocaleString()}).
+              <div className="flex items-center gap-2 mt-1">
+                <DialogTitle className="text-xl font-bold tracking-tight">
+                  {decidingRequest.decision === 'approved' ? 'Approve Financial Request' : 'Reject Financial Request'}
+                </DialogTitle>
+                <CardInfoTooltip text={`Confirm managerial sign-off for ${decidingRequest.request.entityName} (${decidingRequest.request.currency} ${decidingRequest.request.amount.toLocaleString()}).`} />
+              </div>
+              <DialogDescription className="sr-only">
+                Confirm your decision for {decidingRequest.request.entityName} ({decidingRequest.request.currency} {decidingRequest.request.amount.toLocaleString()}).
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-3 pt-2">
+            <div className="p-6 space-y-3">
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold">Decision Notes / Justification</Label>
                 <Textarea
@@ -283,12 +285,12 @@ export function FinancialApprovalsClient() {
                   placeholder="Add optional notes for the audit record..."
                   value={decisionNotes}
                   onChange={(e) => setDecisionNotes(e.target.value)}
-                  className="rounded-xl resize-none text-xs"
+                  className="rounded-xl resize-none text-xs bg-background"
                 />
               </div>
             </div>
 
-            <DialogFooter className="pt-3 gap-2">
+            <DialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
               <Button
                 type="button"
                 variant="outline"

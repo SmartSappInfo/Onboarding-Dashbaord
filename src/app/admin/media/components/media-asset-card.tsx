@@ -262,10 +262,10 @@ export default function MediaAssetCard({ asset, onCardClick, onInspect, isConfig
 
   return (
     <>
-      <Card className="group relative overflow-hidden rounded-3xl border-border/50 hover:shadow-2xl transition-all duration-700 bg-card">
+      <Card className="group relative overflow-hidden rounded-2xl border border-border/80 hover:shadow-md transition-all duration-300 bg-card">
         <CardContent className="p-0">
           <div
-            className="aspect-square w-full bg-background0 flex items-center justify-center cursor-pointer overflow-hidden relative"
+            className="aspect-square w-full bg-muted/20 flex items-center justify-center cursor-pointer overflow-hidden relative"
             onClick={handleMainClick}
           >
             {hasPreviewImage && previewSrc ? (

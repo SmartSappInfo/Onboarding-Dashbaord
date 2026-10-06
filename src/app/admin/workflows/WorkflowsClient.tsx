@@ -288,11 +288,8 @@ export function WorkflowsClient() {
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
                 Workflow Mission Control
               </h1>
-              <CardInfoTooltip text="Enterprise control plane for deterministic business workflow DAGs, Cloud Tasks execution, human approval pauses, and emergency governance." />
+              <CardInfoTooltip text="Enterprise control plane for deterministic business workflow DAGs, Cloud Tasks execution, human approval pauses, and emergency governance. Monitor, launch, inspect, and manage multi-step business workflows with idempotent guarantees." />
             </div>
-            <p className="text-sm text-muted-foreground">
-              Monitor, launch, inspect, and manage multi-step business workflows with idempotent guarantees.
-            </p>
           </div>
         </div>
 

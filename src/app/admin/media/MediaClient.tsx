@@ -21,6 +21,7 @@ import PdfCompressorView from './components/PdfCompressorView';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import {
   Select,
   SelectContent,
@@ -216,15 +217,17 @@ export default function MediaClient() {
           
           {/* Header Row */}
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-            <div className="flex flex-col items-start">
+            <div className="flex items-center gap-2.5">
               <h1 className="text-3xl font-extrabold text-foreground tracking-tight">
                 {currentView === 'gallery' ? 'Media Hub' : 'PDF Compressor'}
               </h1>
-              <p className="text-muted-foreground text-sm mt-1 leading-relaxed">
-                {currentView === 'gallery' 
-                  ? 'Workspace assets and visual resources' 
-                  : 'Optimize, downsample, and compress PDF documents client-side'}
-              </p>
+              <CardInfoTooltip
+                text={
+                  currentView === 'gallery'
+                    ? 'Workspace assets and visual resources including documents, flipbooks, and media'
+                    : 'Optimize, downsample, and compress PDF documents client-side'
+                }
+              />
             </div>
             
             <div className="flex justify-end items-center gap-3 shrink-0">

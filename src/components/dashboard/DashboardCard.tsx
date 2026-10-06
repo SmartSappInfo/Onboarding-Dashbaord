@@ -1,6 +1,7 @@
 'use client';
 import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardInfoTooltip } from "@/components/shared/CardInfoTooltip";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
@@ -41,38 +42,36 @@ export default function DashboardCard({
     >
       <Card 
         className={cn(
-          "h-full rounded-[1.5rem] border-none bg-background/80 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] ring-1 ring-black/5 dark:ring-white/10 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-500 overflow-hidden relative group",
+          "h-full rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden relative group",
           className
         )} 
         {...props}
       >
-        <CardHeader className="min-h-14 flex flex-row items-center justify-between py-3 px-6 border-b border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02]">
+        <CardHeader className="min-h-14 flex flex-row items-center justify-between py-3 px-6 border-b border-border/80 bg-muted/20">
           <div className="flex items-center gap-3">
             {Icon ? (
               <Icon className="w-4 h-4 text-primary" />
             ) : (
               <div className="w-1.5 h-1.5 rounded-full bg-primary/60 shadow-[0_0_8px_rgba(var(--primary),0.6)]" />
             )}
-            <div>
-              <CardTitle className="text-xs font-semibold tracking-[0.05em] flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-sm font-semibold tracking-tight text-foreground flex items-center gap-2">
                 {displayTitle}
                 {badge}
               </CardTitle>
               {subtitle && (
-                <CardDescription className="text-[11px] text-muted-foreground mt-0.5">
-                  {subtitle}
-                </CardDescription>
+                <CardInfoTooltip text={subtitle} />
               )}
             </div>
           </div>
           {action && <div className="flex items-center gap-2">{action}</div>}
         </CardHeader>
-        <CardContent className="flex-grow pt-6 p-6 relative z-10">
+        <CardContent className="flex-grow p-6 bg-card relative z-10">
           {children}
         </CardContent>
       </Card>
     </motion.div>
-  )
+  );
 }
 
 export { DashboardCard };

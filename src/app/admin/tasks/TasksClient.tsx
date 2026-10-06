@@ -58,6 +58,7 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { useWorkspaceVisibility } from '@/hooks/use-workspace-visibility';
 import { cn, toTitleCase } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -970,9 +971,9 @@ export default function TasksClient() {
                 }} 
                 className="space-y-8 pb-32 w-full"
             >
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-6">
-                    <div className="flex flex-col items-start">
-                        <div className="flex items-center gap-3">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/80 pb-6">
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2.5">
                             <h1 className="text-3xl font-bold text-foreground tracking-tight">
                                 Operations Hub
                             </h1>
@@ -980,9 +981,7 @@ export default function TasksClient() {
                                 Tasks
                             </Badge>
                         </div>
-                        <p className="text-muted-foreground text-sm mt-1">
-                            Action items, global workflows, and execution protocols
-                        </p>
+                        <CardInfoTooltip text="Action items, global workflows, and execution protocols across all operations." />
                     </div>
                     {/* Header Tabs matching Reference Image */}
                     <TabsList className="bg-muted/40 border border-border/80 shadow-xs p-1 h-12 min-h-[44px] rounded-xl ring-1 ring-border/50 shrink-0">
@@ -1013,6 +1012,7 @@ export default function TasksClient() {
                             icon={Zap} 
                             color="text-blue-500" 
                             bg="bg-blue-500/10" 
+                            info="Tasks currently pending execution or in progress."
                         />
                         <StatCard 
                             label="Resolved Protocols" 
@@ -1020,6 +1020,7 @@ export default function TasksClient() {
                             icon={CheckCircle2} 
                             color="text-emerald-500" 
                             bg="bg-emerald-500/10" 
+                            info="Successfully completed and verified tasks."
                         />
                         <StatCard 
                             label="Overdue Alerts" 
@@ -1027,6 +1028,7 @@ export default function TasksClient() {
                             icon={ShieldAlert} 
                             color="text-rose-500" 
                             bg="bg-rose-500/10" 
+                            info="Tasks past their due date requiring urgent attention."
                         />
                         <StatCard 
                             label="Closure Velocity" 
@@ -1034,13 +1036,14 @@ export default function TasksClient() {
                             icon={Target} 
                             color="text-violet-500" 
                             bg="bg-violet-500/10" 
+                            info="Rate of task completion against total recorded actions."
                         />
                     </div>
                 )}
 
 
                 {/* Toolbar */}
-                <div className="flex flex-col gap-4 bg-card border-none ring-1 ring-border shadow-sm p-4 sm:p-5 rounded-2xl">
+                <div className="flex flex-col gap-4 bg-card border border-border/80 shadow-sm p-4 sm:p-5 rounded-2xl">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="flex flex-wrap items-center gap-3">
                             <h2 className="text-xl font-bold text-foreground tracking-tight">Tasks</h2>
@@ -1648,12 +1651,12 @@ export default function TasksClient() {
                                 if (category.id === 'completed' && category.count === 0 && !isPeriodFilter) return null;
 
                                 return (
-                                    <div key={category.id} className="rounded-2xl border-none ring-1 ring-border shadow-sm bg-card overflow-hidden">
+                                    <div key={category.id} className="rounded-2xl border border-border/80 shadow-sm bg-card overflow-hidden">
                                         {/* Accordion Trigger */}
                                         <button
                                             type="button"
                                             onClick={() => toggleSection(category.id)}
-                                            className="w-full flex items-center justify-between py-3.5 px-5 bg-card hover:bg-muted/30 border-b border-border transition-all text-left cursor-pointer"
+                                            className="w-full flex items-center justify-between py-3.5 px-5 bg-muted/20 hover:bg-muted/30 border-b border-border/80 transition-all text-left cursor-pointer"
                                         >
                                             <div className="flex items-center gap-3">
                                                 <ChevronDown 
@@ -1671,7 +1674,7 @@ export default function TasksClient() {
 
                                         {/* Accordion Content */}
                                         {isExpanded && (
-                                            <div className="divide-y divide-border">
+                                            <div className="divide-y divide-border/60">
                                                 {isLoading ? (
                                                     <div className="p-6 space-y-4">
                                                         <Skeleton className="h-10 w-full rounded-xl" />
@@ -1690,8 +1693,8 @@ export default function TasksClient() {
                                                                 key={task.id} 
                                                                 className={cn(
                                                                     isSimpleView 
-                                                                        ? "flex items-center gap-3 px-6 py-2 sm:py-2.5 bg-transparent hover:bg-muted/30 transition-all"
-                                                                        : "flex items-center gap-4 px-6 py-4 bg-transparent hover:bg-muted/30 transition-all",
+                                                                        ? "flex items-center gap-3 px-6 py-2.5 sm:py-3 transition-colors even:bg-muted/30 dark:even:bg-muted/15 hover:bg-muted/50"
+                                                                        : "flex items-center gap-4 px-6 py-4 transition-colors even:bg-muted/30 dark:even:bg-muted/15 hover:bg-muted/50",
                                                                     task.status === 'done' && "opacity-65"
                                                                 )}
                                                             >
@@ -2195,14 +2198,17 @@ export default function TasksClient() {
     );
 }
 
-function StatCard({ label, value, icon: Icon, color, bg }: { label: string, value: string | number, sub?: string, icon: React.ComponentType<{ className?: string }>, color: string, bg: string }) {
+function StatCard({ label, value, icon: Icon, color, bg, info }: { label: string, value: string | number, sub?: string, icon: React.ComponentType<{ className?: string }>, color: string, bg: string, info?: string }) {
     return (
-        <div className="p-5 rounded-2xl border-none ring-1 ring-border shadow-sm bg-card hover:ring-primary/20 hover:shadow-md transition-all duration-200 flex items-center gap-3 group">
+        <div className="p-5 rounded-2xl border border-border/80 shadow-sm bg-card hover:shadow-md transition-all duration-200 flex items-center gap-3 group">
             <div className={cn("p-2.5 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105", bg, color)}>
                 <Icon className="h-5 w-5" />
             </div>
             <div>
-                <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">{label}</p>
+                <div className="flex items-center gap-1">
+                    <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">{label}</p>
+                    {info && <CardInfoTooltip text={info} />}
+                </div>
                 <p className="text-2xl font-bold text-foreground tracking-tight tabular-nums">{value}</p>
             </div>
         </div>
