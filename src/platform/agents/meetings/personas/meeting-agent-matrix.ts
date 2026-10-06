@@ -52,6 +52,8 @@ export const MEETING_TOOL_MATRIX: Readonly<Record<MeetingPersonaId, readonly Mee
     { capabilityId: 'meeting.extract_intelligence', riskLevel: 'L1_INTERNAL_DRAFT', mode: 'autonomous', description: 'Start (or rejoin) the evidence-checked analysis of a transcript.', compensatingAction: 'delete the analysis; re-run is idempotent per prompt version' },
     { capabilityId: 'meeting.summarize', riskLevel: 'L1_INTERNAL_DRAFT', mode: 'autonomous', description: 'New summary from checked outcomes only (version-checked).' },
     { capabilityId: 'meeting.create_followup_tasks', riskLevel: 'L1_INTERNAL_DRAFT', mode: 'autonomous', description: 'One task per checked commitment / action item; never duplicates (shared claim with "Convert to task").', compensatingAction: 'meeting.undo_followup_task (person): deletes only an unchanged task' },
+    { capabilityId: 'meeting.draft_followup', riskLevel: 'L1_INTERNAL_DRAFT', mode: 'autonomous', description: 'Saves a follow-up email draft (participants / record contacts only; never sent).', compensatingAction: 'meeting.delete_followup_draft' },
+    { capabilityId: 'meeting.delete_followup_draft', riskLevel: 'L1_INTERNAL_DRAFT', mode: 'autonomous', description: 'Deletes a saved draft (kept for audit).' },
   ],
 };
 

@@ -3,6 +3,8 @@
 exports[`meetings_conversations behaviour > tool definitions match the reviewed fingerprint baseline (Rule 14: changes need review) 1`] = `
 {
   "meeting.create_followup_tasks@1.0.0": "4f17da43ff435fc78c4467f4786729ba9e4e90fe99cdb7f0f54cbbda08ceaa7d",
+  "meeting.delete_followup_draft@1.0.0": "d0d8ecb38f47a802db6f47ad2f98ca7c5c2a9368b02d0dcd61c8ff76947c8003",
+  "meeting.draft_followup@1.0.0": "6dfd8cc37d7aacd0d5c43ed6e6e79064ffa640a76178a8b49f29241687024d33",
   "meeting.extract_intelligence@1.0.0": "e41f8898f6787d2b05b315506cd5eff23fad944fbbb62784015e299badc47966",
   "meeting.generate_prep_brief@1.1.0": "41d214fef17a56d6238b97e2ec408b8ce7eda9324e3b902db63c5cf90759eb8c",
   "meeting.get@1.0.0": "d6333de3aad7e29bf1d6a9b27591b65c7bbcedd041005e6e76b25709a4c9f9d7",

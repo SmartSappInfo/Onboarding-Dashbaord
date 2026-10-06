@@ -186,6 +186,8 @@ describe('meetings_conversations behaviour', () => {
       'meeting.get_intelligence': { level: 'L0_READ', permissions: ['rbac:operations.meetings.view'], nonDelegable: false },
       'meeting.create_followup_tasks': { level: 'L1_INTERNAL_DRAFT', permissions: ['rbac:operations.meetings.edit', 'rbac:operations.tasks.create'], nonDelegable: false },
       'meeting.undo_followup_task': { level: 'L1_INTERNAL_DRAFT', permissions: ['rbac:operations.meetings.edit', 'rbac:operations.tasks.delete'], nonDelegable: false },
+      'meeting.draft_followup': { level: 'L1_INTERNAL_DRAFT', permissions: ['rbac:operations.meetings.edit'], nonDelegable: false },
+      'meeting.delete_followup_draft': { level: 'L1_INTERNAL_DRAFT', permissions: ['rbac:operations.meetings.edit'], nonDelegable: false },
     };
     for (const cap of MEETINGS_CONVERSATIONS_CAPABILITIES) {
       const want = expected[cap.id];

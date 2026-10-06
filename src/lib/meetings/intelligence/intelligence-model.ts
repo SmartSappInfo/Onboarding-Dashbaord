@@ -5,7 +5,7 @@ import 'server-only';
  *
  * - Data policy first: transcript content is personal data, so only providers allowed for
  *   `personal` are used; none → `IntelligencePolicyError` (the run stops, nothing is sent).
- * - Chunk extraction on the fast tier, the summary on the reasoning tier, via the central gateway
+ * - Chunk extraction on the fast tier, the summary and follow-up drafts on the reasoning tier, via the central gateway
  *   `getModel` (no MCP Sampling).
  * - Genkit 1.42 structured output; `response.output` may be null (the validator counts it as a
  *   schema drop). Token usage (`response.usage`) is returned for metering. `abortSignal` stops a
@@ -21,6 +21,7 @@ import type { Firestore } from 'firebase-admin/firestore';
 import type { AiModelTier } from '@/lib/ai/model-registry';
 import { providersAllowedFor, resolveAiDataPolicy } from '@/platform/policy/ai-data-policy';
 import { IntelligencePolicyError, type IntelligenceModel, type IntelligenceModelRequest, type IntelligenceModelResponse } from './pipeline';
+import type { FollowupDraftModel } from './followup-drafts';
 
 const ExtractOutputSchema = z.object({
   items: z.array(z.object({
@@ -39,11 +40,18 @@ const SummaryOutputSchema = z.object({
   sentences: z.array(z.object({ text: z.string(), itemIds: z.array(z.string()) })),
 });
 
-export function createIntelligenceModel(db: Firestore): IntelligenceModel {
-  async function call(
+const FollowupDraftOutputSchema = z.object({
+  subject: z.string(),
+  sentences: z.array(z.object({ text: z.string(), itemIds: z.array(z.string()) })),
+});
+
+type OutputSchema = typeof ExtractOutputSchema | typeof SummaryOutputSchema | typeof FollowupDraftOutputSchema;
+
+function createCaller(db: Firestore) {
+  return async function call(
     request: IntelligenceModelRequest,
     tier: AiModelTier,
-    schema: typeof ExtractOutputSchema | typeof SummaryOutputSchema,
+    schema: OutputSchema,
     maxOutputTokens: number
   ): Promise<IntelligenceModelResponse> {
     const policy = await resolveAiDataPolicy(db, { workspaceId: request.workspaceId, ...(request.organizationId ? { organizationId: request.organizationId } : {}) });
@@ -64,11 +72,23 @@ export function createIntelligenceModel(db: Firestore): IntelligenceModel {
       ...(response.usage?.inputTokens !== undefined ? { inputTokens: response.usage.inputTokens } : {}),
       ...(response.usage?.outputTokens !== undefined ? { outputTokens: response.usage.outputTokens } : {}),
     };
-  }
+  };
+}
 
+export function createIntelligenceModel(db: Firestore): IntelligenceModel {
+  const call = createCaller(db);
   return {
     breakerKey: 'meeting_intelligence',
     extract: (request) => call(request, 'fast', ExtractOutputSchema, 8_192),
     summarize: (request) => call(request, 'reasoning', SummaryOutputSchema, 2_048),
+  };
+}
+
+/** Follow-up drafts (M2 · T4.2): reasoning tier, same data policy as the analysis (D19). */
+export function createFollowupDraftModel(db: Firestore): FollowupDraftModel {
+  const call = createCaller(db);
+  return {
+    breakerKey: 'meeting_intelligence',
+    draft: (request) => call(request, 'reasoning', FollowupDraftOutputSchema, 2_048),
   };
 }
