@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { Task, TaskPriority, UserProfile } from '@/lib/types';
+import type { Task, TaskPriority, TaskStatus, UserProfile } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -14,15 +14,23 @@ import {
     Circle, 
     Bell,
     ArrowRight,
+    ArrowRightLeft,
     MessageSquare,
     Paperclip,
     type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format, isToday, isPast } from 'date-fns';
+import { isToday, isPast } from 'date-fns';
+import { safeParseDate, formatTaskDueDate } from '@/lib/utils/date-utils';
 import { getTaskInterlinkUrl } from '@/lib/task-actions';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const PRIORITY_CONFIG: Record<TaskPriority, { color: string, icon: LucideIcon }> = {
     urgent: { color: 'text-rose-600 bg-rose-50 border-rose-200', icon: ShieldAlert },
@@ -30,6 +38,14 @@ const PRIORITY_CONFIG: Record<TaskPriority, { color: string, icon: LucideIcon }>
     medium: { color: 'text-blue-600 bg-blue-50 border-blue-200', icon: Clock },
     low: { color: 'text-slate-500 bg-muted/10 border-slate-200', icon: Circle }
 };
+
+const STATUS_OPTIONS: Array<{ value: TaskStatus; label: string }> = [
+    { value: 'todo', label: 'Backlog' },
+    { value: 'in_progress', label: 'In Progress' },
+    { value: 'waiting', label: 'Waiting' },
+    { value: 'review', label: 'Review' },
+    { value: 'done', label: 'Done' },
+];
 
 import { AsyncEntityAvatar } from '../../components/AsyncEntityAvatar';
 
@@ -39,12 +55,13 @@ interface TaskCardProps {
     isOverlay?: boolean;
     onClick?: () => void;
     userMap?: Map<string, UserProfile>;
+    onStatusChange?: (taskId: string, newStatus: TaskStatus) => void;
 }
 
 const getInitials = (name?: string | null) =>
   name ? name.split(' ').map((n) => n[0]).join('').toUpperCase() : '?';
 
-export default function TaskCard({ task, entityLogoUrl, isOverlay, onClick, userMap }: TaskCardProps) {
+export default function TaskCard({ task, entityLogoUrl, isOverlay, onClick, userMap, onStatusChange }: TaskCardProps) {
     const {
         attributes,
         listeners,
@@ -66,9 +83,8 @@ export default function TaskCard({ task, entityLogoUrl, isOverlay, onClick, user
 
     const P = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium;
     const isDone = task.status === 'done';
-    const dueDateObj = task.dueDate ? new Date(task.dueDate) : null;
-    const isValidDueDate = Boolean(dueDateObj && !isNaN(dueDateObj.getTime()));
-    const isOverdue = Boolean(isValidDueDate && dueDateObj && isPast(dueDateObj) && !isToday(dueDateObj) && !isDone);
+    const dueDateObj = safeParseDate(task.dueDate);
+    const isOverdue = Boolean(dueDateObj && isPast(dueDateObj) && !isToday(dueDateObj) && !isDone);
     const interlinkUrl = getTaskInterlinkUrl(task);
 
     return (
@@ -102,19 +118,55 @@ export default function TaskCard({ task, entityLogoUrl, isOverlay, onClick, user
                             {task.title}
                         </h4>
                     </div>
-                    {interlinkUrl && (
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-6 w-6 rounded-lg text-primary opacity-0 group-hover:opacity-100 transition-opacity bg-primary/5 border border-primary/10 shrink-0 self-start"
-                            asChild
-                            onPointerDown={(e) => e.stopPropagation()} // Prevent drag when clicking link
-                        >
-                            <Link href={interlinkUrl}>
-                                <ArrowRight className="h-3 w-3" />
-                            </Link>
-                        </Button>
-                    )}
+                    <div className="flex items-center gap-1 shrink-0 self-start">
+                        {onStatusChange && !isOverlay && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        aria-label="Change status"
+                                        title="Change status"
+                                        className="h-6 w-6 rounded-lg text-muted-foreground opacity-60 hover:opacity-100 hover:text-foreground hover:bg-muted/50 transition-opacity shrink-0"
+                                        onPointerDown={(e) => e.stopPropagation()}
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        <ArrowRightLeft className="h-3 w-3" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-36 z-[10001]">
+                                    {STATUS_OPTIONS.map((opt) => (
+                                        <DropdownMenuItem
+                                            key={opt.value}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onStatusChange(task.id, opt.value);
+                                            }}
+                                            className={cn(
+                                                "text-xs cursor-pointer flex items-center justify-between",
+                                                task.status === opt.value && "font-semibold text-primary"
+                                            )}
+                                        >
+                                            {opt.label}
+                                        </DropdownMenuItem>
+                                    ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
+                        {interlinkUrl && (
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-6 w-6 rounded-lg text-primary opacity-0 group-hover:opacity-100 transition-opacity bg-primary/5 border border-primary/10 shrink-0 self-start"
+                                asChild
+                                onPointerDown={(e) => e.stopPropagation()} // Prevent drag when clicking link
+                            >
+                                <Link href={interlinkUrl}>
+                                    <ArrowRight className="h-3 w-3" />
+                                </Link>
+                            </Button>
+                        )}
+                    </div>
                 </div>
 
                 <div className="flex flex-col gap-2 pt-1">
@@ -172,13 +224,13 @@ export default function TaskCard({ task, entityLogoUrl, isOverlay, onClick, user
                                         <Paperclip className="h-3 w-3 opacity-60" />
                                         <span className="tabular-nums">{attachmentsCount}</span>
                                     </div>
-                                    {isValidDueDate && dueDateObj && (
+                                    {dueDateObj && (
                                         <div className={cn(
                                             "flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-tighter transition-colors ml-1",
                                             isOverdue ? "text-rose-600 animate-pulse font-bold" : isToday(dueDateObj) ? "text-orange-600 font-bold" : "text-muted-foreground/60"
                                         )}>
                                             <Clock className="h-3 w-3" />
-                                            {isToday(dueDateObj) ? 'Today' : format(dueDateObj, 'MMM d')}
+                                            {formatTaskDueDate(dueDateObj)}
                                         </div>
                                     )}
                                 </div>

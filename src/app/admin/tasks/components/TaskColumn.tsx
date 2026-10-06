@@ -26,9 +26,10 @@ interface TaskColumnProps {
     entityLogoMap?: Map<string, string | undefined>;
     onTaskClick: (task: Task) => void;
     userMap?: Map<string, UserProfile>;
+    onStatusChange?: (taskId: string, newStatus: TaskStatus) => void;
 }
 
-export default function TaskColumn({ status, tasks, entityLogoMap, onTaskClick, userMap }: TaskColumnProps) {
+export default function TaskColumn({ status, tasks, entityLogoMap, onTaskClick, userMap, onStatusChange }: TaskColumnProps) {
     const { setNodeRef, isOver } = useDroppable({
         id: status,
         data: { type: 'COLUMN', status }
@@ -65,6 +66,7 @@ export default function TaskColumn({ status, tasks, entityLogoMap, onTaskClick, 
                                     entityLogoUrl={task.entityId ? entityLogoMap?.get(task.entityId) : undefined}
                                     onClick={() => onTaskClick(task)} 
                                     userMap={userMap}
+                                    onStatusChange={onStatusChange}
                                 />
                             ))}
                         </SortableContext>

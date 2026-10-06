@@ -25,6 +25,7 @@ import {
     Clock, 
     ShieldAlert, 
     AlertTriangle,
+    type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -33,8 +34,9 @@ import type { Task, TaskPriority, UserProfile } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { computeTimelineLayout, formatMinutesToTime, type LayoutItem } from '../utils/timelineLayout';
+import { safeParseDate } from '@/lib/utils/date-utils';
 
-const PRIORITY_ICONS: Record<TaskPriority, any> = {
+const PRIORITY_ICONS: Record<TaskPriority, LucideIcon | null> = {
     urgent: ShieldAlert,
     high: AlertTriangle,
     medium: Clock,
@@ -103,7 +105,8 @@ function TaskCalendarCard({ task, onTaskClick, userMap, onDragStart, onDragEnd }
 
     const taskTime = React.useMemo(() => {
         try {
-            const date = new Date(task.dueDate);
+            const date = safeParseDate(task.dueDate);
+            if (!date) return null;
             // Check if it's midnight (untimed)
             if (date.getHours() === 0 && date.getMinutes() === 0) {
                 return null;
@@ -476,7 +479,10 @@ export default function TaskCalendar({ tasks, onTaskClick, userMap, onTaskUpdate
 
                 <div className="grid grid-cols-7 auto-rows-[1fr] min-h-[600px] divide-x divide-y divide-border/40 border-b border-border/40">
                     {days.map((day, idx) => {
-                        const dayTasks = tasks.filter(t => isSameDay(new Date(t.dueDate), day));
+                        const dayTasks = tasks.filter(t => {
+                            const d = safeParseDate(t.dueDate);
+                            return d ? isSameDay(d, day) : false;
+                        });
                         const isSelectedMonth = isSameMonth(day, currentDate);
                         const isTodayDate = isToday(day);
 
@@ -605,7 +611,10 @@ export default function TaskCalendar({ tasks, onTaskClick, userMap, onTaskUpdate
                 {/* Week Columns Content */}
                 <div className="grid grid-cols-7 divide-x divide-border/40 min-h-[500px] border-b border-border/40 bg-background/20">
                     {weekDays.map(day => {
-                        const dayTasks = tasks.filter(t => isSameDay(new Date(t.dueDate), day));
+                        const dayTasks = tasks.filter(t => {
+                            const d = safeParseDate(t.dueDate);
+                            return d ? isSameDay(d, day) : false;
+                        });
                         
                         return (
                             <div 
@@ -655,8 +664,8 @@ export default function TaskCalendar({ tasks, onTaskClick, userMap, onTaskUpdate
         // Group tasks into all day and hourly
         const allDayTasks: Task[] = [];
         tasks.forEach(task => {
-            const d = new Date(task.dueDate);
-            if (isSameDay(d, currentDate)) {
+            const d = safeParseDate(task.dueDate);
+            if (d && isSameDay(d, currentDate)) {
                 if (d.getHours() === 0 && d.getMinutes() === 0) {
                     allDayTasks.push(task);
                 }

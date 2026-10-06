@@ -141,6 +141,57 @@ export default function TaskBoard({ tasks, entityLogoMap, onTaskClick, userMap }
         }
     };
 
+    const handleStatusChangeDirect = async (taskId: string, targetStatus: TaskStatus) => {
+        const activeTaskItem = localTasks.find(t => t.id === taskId);
+        if (!activeTaskItem || activeTaskItem.status === targetStatus) return;
+
+        // Optimistic UI update
+        setLocalTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: targetStatus } : t));
+
+        try {
+            const result = await updateTaskAction(taskId, { 
+                status: targetStatus 
+            });
+
+            if (!result.success) {
+                setLocalTasks(tasks); // Rollback optimistic state
+                toast({ 
+                    variant: 'destructive', 
+                    title: 'Status Update Failed',
+                    description: result.error || 'Failed to update task status in this workspace.',
+                    actionConfig: {
+                        path: '/admin/settings/permissions',
+                        label: 'Review Permissions',
+                    },
+                });
+                return;
+            }
+
+            if (targetStatus === 'done' && activeTaskItem.relatedParentId) {
+                toast({ 
+                    title: 'Status Synchronized', 
+                    description: 'Moved task to done phase. Linked contractual obligation fulfilled.' 
+                });
+            } else {
+                toast({ 
+                    title: 'Status Synchronized', 
+                    description: `Moved task to ${targetStatus.replace('_', ' ')} phase.` 
+                });
+            }
+        } catch (err: unknown) {
+            setLocalTasks(tasks); // Rollback optimistic state
+            toast({ 
+                variant: 'destructive', 
+                title: 'Sync Failure',
+                description: err instanceof Error ? err.message : 'An unexpected error occurred.',
+                actionConfig: {
+                    path: '/admin/settings/permissions',
+                    label: 'Review Permissions',
+                },
+            });
+        }
+    };
+
     const tasksByStatus = React.useMemo(() => {
         const grouped = {} as Record<TaskStatus, Task[]>;
         TASK_STATUSES.forEach(s => grouped[s] = []);
@@ -169,6 +220,7 @@ export default function TaskBoard({ tasks, entityLogoMap, onTaskClick, userMap }
                                 entityLogoMap={entityLogoMap}
                                 onTaskClick={onTaskClick}
                                 userMap={userMap}
+                                onStatusChange={handleStatusChangeDirect}
                             />
                         ))}
                     </div>

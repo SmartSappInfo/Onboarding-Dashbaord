@@ -1,5 +1,6 @@
 import { isSameDay, startOfDay, endOfDay } from 'date-fns';
 import { Task } from '@/lib/types';
+import { safeParseDate } from '@/lib/utils/date-utils';
 
 export interface LayoutItem {
   task: Task;
@@ -26,7 +27,8 @@ export function computeTimelineLayout(
   // 1. Filter, default, and clamp tasks to today
   const timedItems = tasks
     .filter(task => {
-      const d = new Date(task.dueDate);
+      const d = safeParseDate(task.dueDate);
+      if (!d) return false;
       // Exclude untimed tasks (midnight 00:00)
       if (d.getHours() === 0 && d.getMinutes() === 0) {
         return false;
@@ -34,9 +36,10 @@ export function computeTimelineLayout(
       return isSameDay(d, currentDate);
     })
     .map(task => {
-      const due = new Date(task.dueDate);
+      const due = safeParseDate(task.dueDate)!;
       // Default start time to 1 hour before due date if invalid/undefined
-      const start = task.startDate ? new Date(task.startDate) : new Date(due.getTime() - 60 * 60 * 1000);
+      const parsedStart = safeParseDate(task.startDate);
+      const start = parsedStart || new Date(due.getTime() - 60 * 60 * 1000);
 
       const renderStart = start < dayStart ? dayStart : start;
       const renderEnd = due > dayEnd ? dayEnd : due;
