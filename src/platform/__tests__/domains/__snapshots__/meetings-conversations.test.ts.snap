@@ -12,6 +12,7 @@ exports[`meetings_conversations behaviour > tool definitions match the reviewed 
   "meeting.get_transcript@1.0.0": "914685b254b5a94547756ab8528db9de2938e7f76314d4ce346dcf37ab821583",
   "meeting.ingest_transcript@1.0.0": "7acc472f1051ee88cdb16ae6ffc005adba33e942ae2fd8deb068a1fee4fa6b2f",
   "meeting.list_recordings@1.0.0": "b935bee6fc1460be1b2d0b45818f66d3734ebf5a753376b2ddadea4134ef0b5e",
+  "meeting.propose_crm_update@1.0.0": "1acf02eadde73bc4613579b916a85d686938039f4ff6c5ce6e382d3a677ba08a",
   "meeting.record_consent@1.0.0": "4ba0c6f78c74d0228510e311f62af70493398cad0646b69e9aa8f73e06004a9b",
   "meeting.search@1.0.0": "424f25dbb31576eb9e28c387a04824b3f0ff20df3e0449e5347edb7c0c5031a6",
   "meeting.summarize@1.0.0": "b02f69c3cf5eb8b414d595b8693c04b61c7e2b56a686c89ddc797a60d629012e",

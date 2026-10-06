@@ -54,6 +54,7 @@ export const MEETING_TOOL_MATRIX: Readonly<Record<MeetingPersonaId, readonly Mee
     { capabilityId: 'meeting.create_followup_tasks', riskLevel: 'L1_INTERNAL_DRAFT', mode: 'autonomous', description: 'One task per checked commitment / action item; never duplicates (shared claim with "Convert to task").', compensatingAction: 'meeting.undo_followup_task (person): deletes only an unchanged task' },
     { capabilityId: 'meeting.draft_followup', riskLevel: 'L1_INTERNAL_DRAFT', mode: 'autonomous', description: 'Saves a follow-up email draft (participants / record contacts only; never sent).', compensatingAction: 'meeting.delete_followup_draft' },
     { capabilityId: 'meeting.delete_followup_draft', riskLevel: 'L1_INTERNAL_DRAFT', mode: 'autonomous', description: 'Deletes a saved draft (kept for audit).' },
+    { capabilityId: 'meeting.propose_crm_update', riskLevel: 'L1_INTERNAL_DRAFT', mode: 'proposal', description: 'Asks for approval of one CRM change (deal stage; tags/notes as recommendations) from one checked outcome. Never approves or executes.', compensatingAction: 'rollback through the CRM proposal bridge (deal stage)' },
   ],
 };
 
@@ -91,7 +92,7 @@ export const MEETING_FAILURE_MATRIX: readonly MeetingFailureMatrixEntry[] = [
 export const MEETING_ROLLBACK_MATRIX: Readonly<Record<string, string>> = {
   'meeting.ingest_transcript': 'Delete the transcript (cascades to derived analysis and drafts).',
   'meeting.create_followup_tasks': 'Undo deletes the task only if unchanged since creation (M2 · T4).',
-  'meeting.propose_crm_update': 'Rollback through the proposal bridge compensating capability (after M0 T4).',
+  'meeting.propose_crm_update': 'Deal stage: rollback through the CRM proposal bridge (restores the previous stage, version-checked). Tags/notes are recommendations (nothing applied).',
   'meeting.draft_followup': 'Delete the draft; nothing was sent.',
   'meeting_postprocess_v2': 'Flags off; analysis can be deleted and re-run (idempotent per prompt version).',
 };

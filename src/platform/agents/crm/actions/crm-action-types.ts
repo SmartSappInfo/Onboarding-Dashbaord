@@ -279,6 +279,11 @@ export const CRM_ACTION_ROLLBACK_MATRIX: Record<CrmActionType, CrmRollbackDefini
     description: 'Reverts hygiene remediation changes',
     reversible: true,
   },
+  ADD_NOTE: {
+    compensatingCapabilityId: 'none',
+    description: 'A note stays on the record; a person removes it if needed (no governed note delete)',
+    reversible: false,
+  },
 };
 
 export const CRM_ROLLBACK_MATRIX = CRM_ACTION_ROLLBACK_MATRIX;

@@ -33,6 +33,7 @@ import {
   meetingDeleteFollowupDraftCapability,
   meetingDraftFollowupCapability,
 } from './contracts/meeting-followup-drafts.contracts';
+import { meetingProposeCrmUpdateCapability } from './contracts/meeting-crm-proposal.contract';
 
 export * from './contracts/meeting-read.contracts';
 export * from './contracts/meeting-transcript-read.contract';
@@ -43,6 +44,7 @@ export * from './contracts/meeting-prep-brief.contract';
 export * from './contracts/meeting-intelligence.contracts';
 export * from './contracts/meeting-followup-tasks.contracts';
 export * from './contracts/meeting-followup-drafts.contracts';
+export * from './contracts/meeting-crm-proposal.contract';
 
 export const MEETINGS_CONVERSATIONS_CAPABILITIES: AnyCapabilityDefinition[] = [
   meetingSearchCapability as AnyCapabilityDefinition,
@@ -60,6 +62,7 @@ export const MEETINGS_CONVERSATIONS_CAPABILITIES: AnyCapabilityDefinition[] = [
   meetingUndoFollowupTaskCapability as AnyCapabilityDefinition,
   meetingDraftFollowupCapability as AnyCapabilityDefinition,
   meetingDeleteFollowupDraftCapability as AnyCapabilityDefinition,
+  meetingProposeCrmUpdateCapability as AnyCapabilityDefinition,
 ];
 
 export function registerMeetingsConversationsCapabilities(): void {
