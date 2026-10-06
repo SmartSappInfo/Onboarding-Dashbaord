@@ -498,6 +498,8 @@ function mapLegacyPermissionToCoordinates(permission: AppPermissionId): { sectio
     portals_view: { section: 'studios', feature: 'publicPortals', action: 'view' },
     portals_manage: { section: 'studios', feature: 'publicPortals', action: 'edit' },
     portal_members_manage: { section: 'studios', feature: 'publicPortals', action: 'edit' },
+    // Phase 11 M0 · T2 (D6): deciding agent proposals sits with workspace administration by default.
+    agent_approvals_decide: { section: 'management', feature: 'users', action: 'edit' },
   };
 
   return mapping[permission] || null;

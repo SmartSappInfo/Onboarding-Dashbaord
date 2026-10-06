@@ -69,6 +69,8 @@ export const NON_DELEGABLE_ACTIONS = [
   // Platform-level authority
   'app:system_admin',
   'app:system_user_switch',
+  // Deciding agent proposals (Phase 11 M0 · T2): an agent must never approve agent actions
+  'app:agent_approvals_decide',
   // Destroying signed agreements
   'app:contracts_delete',
   'rbac:finance.agreements.delete',
@@ -92,6 +94,8 @@ export const NON_DELEGABLE_ACTIONS = [
 export type NonDelegableAction = (typeof NON_DELEGABLE_ACTIONS)[number];
 
 const LEGACY_NON_DELEGABLE_ACTIONS = [
+  // Bare flat id as it appears in session scopes (Phase 11 M0 · T2).
+  'agent_approvals_decide',
   'admin.grant_permission',
   'admin.rotate_credentials',
   'admin.change_tenant_isolation',

@@ -975,6 +975,9 @@ export const APP_PERMISSIONS = [
   { id: 'dashboard_manage', label: 'Customize Dashboard Layout', category: 'Management' },
   { id: 'system_admin', label: 'Full System Management', category: 'Management' },
   { id: 'system_user_switch', label: 'Switch User Context', category: 'Management' },
+  // Phase 11 M0 · T2 (F5): decide (approve/reject) actions proposed by agents. Non-delegable: agents
+  // can never hold it. Workspace admins (users_manage) hold it by default (decision D6).
+  { id: 'agent_approvals_decide', label: 'Approve Agent Actions', category: 'Management' },
   { id: 'meetings_manage', label: 'Schedule & Edit Meetings', category: 'Operations' },
   { id: 'tasks_manage', label: 'Manage CRM Tasks', category: 'Operations' },
   { id: 'activities_view', label: 'View Audit Timeline', category: 'Management' },
