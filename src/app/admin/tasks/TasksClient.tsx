@@ -6,7 +6,7 @@ import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebas
 import type { Task, UserProfile, TaskPriority, TaskCategory, TaskStatus, Tag } from '@/lib/types';
 import { useEntityResolver } from '@/context/EntityCacheContext';
 import { format, isToday, isPast, differenceInCalendarDays, addDays, startOfWeek, endOfWeek, endOfMonth, addMonths, addWeeks, startOfDay, endOfDay } from 'date-fns';
-import { safeParseDate, formatTaskDueDate, formatTaskDate } from '@/lib/utils/date-utils';
+import { safeParseDate, formatTaskDueDate } from '@/lib/utils/date-utils';
 import { Separator } from '@/components/ui/separator';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
-import type { Task, UserProfile } from '@/lib/types';
+import type { Task } from '@/lib/types';
 import type { DragEndEvent, DragOverEvent } from '@dnd-kit/core';
 
 // Mock updateTaskAction

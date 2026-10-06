@@ -92,7 +92,6 @@ interface TaskCalendarCardProps {
 
 function TaskCalendarCard({ task, onTaskClick, userMap, onDragStart, onDragEnd }: TaskCalendarCardProps) {
     const isDone = task.status === 'done';
-    const P = PRIORITY_ICONS[task.priority];
     const pColor = PRIORITY_COLORS[task.priority];
     
     // Parse assignees
@@ -296,7 +295,7 @@ export default function TaskCalendar({ tasks, onTaskClick, userMap, onTaskUpdate
         const onPointerUp = async (upEvent: PointerEvent) => {
             try {
                 handle.releasePointerCapture(upEvent.pointerId);
-            } catch (_err) {}
+            } catch {}
             handle.removeEventListener('pointermove', onPointerMove);
             handle.removeEventListener('pointerup', onPointerUp);
             handle.removeEventListener('pointercancel', onPointerCancel);
@@ -333,7 +332,7 @@ export default function TaskCalendar({ tasks, onTaskClick, userMap, onTaskUpdate
         const onPointerCancel = (cancelEvent: PointerEvent) => {
             try {
                 handle.releasePointerCapture(cancelEvent.pointerId);
-            } catch (_err) {}
+            } catch {}
             handle.removeEventListener('pointermove', onPointerMove);
             handle.removeEventListener('pointerup', onPointerUp);
             handle.removeEventListener('pointercancel', onPointerCancel);
