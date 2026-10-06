@@ -4779,6 +4779,7 @@ export interface Task {
   relatedEntityId?: string | null; // e.g. Response ID
   dealId?: string | null;
   createdBy?: string;
+  tagIds?: string[];
 }
 
 export interface TaskNote {

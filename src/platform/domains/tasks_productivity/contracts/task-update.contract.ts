@@ -24,6 +24,7 @@ export const TaskUpdateInputSchema = z.object({
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
   dueDate: z.string().optional(),
   status: z.enum(['todo', 'in_progress', 'completed', 'blocked']).optional(),
+  tagIds: z.array(z.string()).optional(),
 });
 
 export const TaskUpdateOutputSchema = z.object({
@@ -89,6 +90,9 @@ export const taskUpdateCapability: CapabilityDefinition<
     if (input.dueDate !== undefined) updates.dueDate = input.dueDate;
     if (input.status !== undefined) {
       updates.status = (input.status === 'completed' ? 'done' : input.status) as TaskStatus;
+    }
+    if (input.tagIds !== undefined) {
+      updates.tagIds = input.tagIds;
     }
 
     try {

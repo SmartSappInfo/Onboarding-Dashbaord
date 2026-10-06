@@ -26,6 +26,7 @@ export const TaskCreateInputSchema = z.object({
   dueDate: z.string().optional(),
   entityId: z.string().optional(),
   category: z.string().default('follow_up').optional(),
+  tagIds: z.array(z.string()).optional(),
 });
 
 export const TaskCreateOutputSchema = z.object({
@@ -102,6 +103,7 @@ export const taskCreateCapability: CapabilityDefinition<
           assignedTo: principal.userId,
           reminders: [],
           reminderSent: false,
+          tagIds: input.tagIds,
         },
         callerActor
       );
