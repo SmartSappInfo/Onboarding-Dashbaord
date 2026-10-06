@@ -1,3 +1,5 @@
+import 'server-only';
+
 /**
  * @fileOverview Follow-up tasks from meeting items, and their undo (Phase 11 M2 · T4.1; plan §4.6, §4.11).
  *

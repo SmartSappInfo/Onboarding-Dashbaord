@@ -1,3 +1,5 @@
+import 'server-only';
+
 /**
  * @fileOverview Who may receive a meeting follow-up (Phase 11 M2 · T4.2; plan §4.7; Rule 32).
  *

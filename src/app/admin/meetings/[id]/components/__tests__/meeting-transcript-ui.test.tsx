@@ -71,6 +71,29 @@ describe('MeetingTranscriptPanel', () => {
     expect(screen.getByText('Needs review')).toBeTruthy();
   });
 
+  it('"Line N" loads the page holding the line, renders it and highlights it (M2 · T6)', async () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    const page = (n: number) => ({
+      success: true,
+      data: {
+        transcriptId: 't-1', trust: 'untrusted_customer_content', page: n, pageCount: 2, language: 'en', speakers: [],
+        segmentCount: 600, durationMs: 1000, injectionFlagged: false, version: 1,
+        segments: Array.from({ length: n === 0 ? 500 : 100 }, (_, i) => ({ id: `s${n * 500 + i}`, speakerId: 'sp1', speakerName: 'Ama', startMs: 0, endMs: 1, text: `line ${n * 500 + i + 1}` })),
+      },
+    });
+    actions.getMeetingTranscriptAction.mockImplementation(async (_ws: string, _m: string, p: number) => page(p));
+    const { rerender } = render(
+      <MeetingTranscriptPanel meetingId="m-1" workspaceId="ws-a" consentEnforced={false} refreshKey={0} onTranscriptChange={() => undefined} />
+    );
+    expect(await screen.findByText('line 1')).toBeTruthy();
+    rerender(
+      <MeetingTranscriptPanel meetingId="m-1" workspaceId="ws-a" consentEnforced={false} refreshKey={0} onTranscriptChange={() => undefined} focus={{ segmentId: 's549', transcriptId: 't-1', nonce: 1 }} />
+    );
+    const line = await screen.findByText('line 550');
+    expect(actions.getMeetingTranscriptAction).toHaveBeenCalledWith('ws-a', 'm-1', 1, 't-1');
+    await waitFor(() => expect(line.closest('li')?.className).toContain('bg-primary/15'));
+  });
+
   it('shows nothing (no invented content) when there is no transcript', async () => {
     actions.getMeetingTranscriptAction.mockResolvedValue({ success: true, data: null });
     const onChange = vi.fn();

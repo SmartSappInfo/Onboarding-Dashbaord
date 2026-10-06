@@ -12,6 +12,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -60,7 +61,6 @@ import {
   generateMeetingIntelligenceAction,
   getMeetingIntelligenceAction,
   convertActionItemToCrmTaskAction,
-  generateMeetingPrepBriefAction,
 } from '@/app/actions/meeting-intelligence-actions';
 import type { IntelligenceProgress } from '@/app/actions/meeting-intelligence-actions';
 import {
@@ -73,9 +73,18 @@ import type {
   MeetingIntelligence,
   MeetingActionItem,
   MeetingRecording,
-  MeetingPrepBrief,
 } from '@/lib/meetings/types/intelligence';
 import { formatRecordingDuration } from '@/lib/meetings/recording-service';
+
+// M2 · T6 (Rule 54): the outcomes panel and brief card load only when this tab shows them.
+const MeetingOutcomesPanel = dynamic(() => import('./outcomes/MeetingOutcomesPanel'), {
+  ssr: false,
+  loading: () => <Skeleton className="h-48 w-full rounded-2xl" />,
+});
+const MeetingBriefCard = dynamic(() => import('./outcomes/MeetingBriefCard'), {
+  ssr: false,
+  loading: () => <Skeleton className="h-24 w-full rounded-2xl" />,
+});
 
 interface MeetingIntelligenceTabProps {
   meetingId: string;
@@ -100,7 +109,11 @@ export function MeetingIntelligenceTab({
 
   const [intelligence, setIntelligence] = React.useState<MeetingIntelligence | null>(null);
   const [recordings, setRecordings] = React.useState<MeetingRecording[]>([]);
-  const [_prepBrief, setPrepBrief] = React.useState<MeetingPrepBrief | null>(null);
+  // M2 · T6: evidence-checked outcomes (v2). When present they replace the older summary cards.
+  const [outcomesAvailable, setOutcomesAvailable] = React.useState(false);
+  const [outcomesRefresh, setOutcomesRefresh] = React.useState(0);
+  const [focusLine, setFocusLine] = React.useState<{ segmentId: string; transcriptId: string; nonce: number } | null>(null);
+  const jumpToLine = React.useCallback((segmentId: string, transcriptId: string) => setFocusLine({ segmentId, transcriptId, nonce: Date.now() }), []);
 
   const [isLoading, setIsLoading] = React.useState(true);
   const [isGenerating, setIsGenerating] = React.useState(false);
@@ -179,6 +192,7 @@ export function MeetingIntelligenceTab({
       const res = await generateMeetingIntelligenceAction(meetingId, workspaceId);
       if (res.success && res.intelligence) {
         setIntelligence(res.intelligence);
+        setOutcomesRefresh((n) => n + 1);
         setAnalysisRun(res.progress ?? null);
         toast({ title: 'Analysis ready', description: 'Outcomes from this transcript are shown below.' });
       } else if (res.success) {
@@ -211,6 +225,7 @@ export function MeetingIntelligenceTab({
       setAnalysisRun(res.progress ?? null);
       if (res.progress?.status === 'completed' && res.intelligence) {
         setIntelligence(res.intelligence);
+        setOutcomesRefresh((n) => n + 1);
         toast({ title: 'Analysis ready', description: 'Outcomes from this transcript are shown below.' });
       }
       if (res.progress && ['failed', 'dead_lettered', 'cancelled', 'superseded'].includes(res.progress.status)) {
@@ -355,17 +370,6 @@ export function MeetingIntelligenceTab({
     return best === null || order.indexOf(sig.strength) > order.indexOf(best) ? sig.strength : best;
   }, null) ?? null;
 
-  const handleLoadPrepBrief = async () => {
-    try {
-      const res = await generateMeetingPrepBriefAction(meetingId, workspaceId);
-      if (res.success && res.brief) {
-        setPrepBrief(res.brief);
-      }
-    } catch (err) {
-      console.warn('[handleLoadPrepBrief]', err);
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -507,6 +511,7 @@ export function MeetingIntelligenceTab({
         consentEnforced={consentEnforced}
         refreshKey={transcriptRefresh}
         onTranscriptChange={setTranscript}
+        focus={focusLine}
       />
 
       {/* Main Intelligence Grid */}
@@ -537,7 +542,15 @@ export function MeetingIntelligenceTab({
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column: Summary & Action Items */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Executive Summary Card */}
+            <MeetingOutcomesPanel
+              meetingId={meetingId}
+              workspaceId={workspaceId}
+              refreshKey={outcomesRefresh}
+              onJumpToLine={jumpToLine}
+              onAvailability={setOutcomesAvailable}
+            />
+            {!outcomesAvailable && (<>
+            {/* Executive Summary Card (pre-M2 analysis only) */}
             <Card className="rounded-2xl border shadow-sm">
               <CardHeader className="pb-3 border-b">
                 <div className="flex items-center justify-between">
@@ -654,12 +667,14 @@ export function MeetingIntelligenceTab({
                 )}
               </CardContent>
             </Card>
+            </>)}
           </div>
 
-          {/* Right Column: Buying Signals, Objections & Follow-Up */}
+          {/* Right Column: brief, signals, objections, follow-up */}
           <div className="space-y-6">
+            <MeetingBriefCard meetingId={meetingId} workspaceId={workspaceId} />
             {/* Buying Signals Card */}
-            {intelligence.buyingSignals && intelligence.buyingSignals.length > 0 && (
+            {!outcomesAvailable && intelligence.buyingSignals && intelligence.buyingSignals.length > 0 && (
               <Card className="rounded-2xl border shadow-sm">
                 <CardHeader className="pb-3 border-b bg-emerald-500/5">
                   <CardTitle className="text-sm font-semibold flex items-center gap-2 text-emerald-600">
@@ -686,7 +701,7 @@ export function MeetingIntelligenceTab({
             )}
 
             {/* Objections & Risks Card */}
-            {intelligence.objections && intelligence.objections.length > 0 && (
+            {!outcomesAvailable && intelligence.objections && intelligence.objections.length > 0 && (
               <Card className="rounded-2xl border shadow-sm">
                 <CardHeader className="pb-3 border-b bg-amber-500/5">
                   <CardTitle className="text-sm font-semibold flex items-center gap-2 text-amber-600">
@@ -802,7 +817,7 @@ export function MeetingIntelligenceTab({
             </Card>
 
             {/* Recommended Follow-up */}
-            {intelligence.recommendedFollowUp && (
+            {!outcomesAvailable && intelligence.recommendedFollowUp && (
               <Card className="rounded-2xl border shadow-sm bg-primary/5">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-xs font-bold uppercase tracking-wider text-primary">

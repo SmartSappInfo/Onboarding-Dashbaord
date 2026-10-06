@@ -45,9 +45,13 @@ interface MeetingTranscriptPanelProps {
   consentEnforced: boolean;
   refreshKey: number;
   onTranscriptChange: (t: MeetingGetTranscriptOutput | null) => void;
+  /** Scroll to and highlight a line ("Line N" from the outcomes panel, M2 · T6). */
+  focus?: { segmentId: string; transcriptId?: string; nonce: number } | null;
 }
 
-export function MeetingTranscriptPanel({ meetingId, workspaceId, consentEnforced, refreshKey, onTranscriptChange }: MeetingTranscriptPanelProps) {
+const PAGE_MAX_LINES = 500;
+
+export function MeetingTranscriptPanel({ meetingId, workspaceId, consentEnforced, refreshKey, onTranscriptChange, focus }: MeetingTranscriptPanelProps) {
   const { toast } = useToast();
   const [transcript, setTranscript] = React.useState<MeetingGetTranscriptOutput | null>(null);
   const [visible, setVisible] = React.useState(RENDER_STEP);
@@ -56,6 +60,7 @@ export function MeetingTranscriptPanel({ meetingId, workspaceId, consentEnforced
   const [deleting, setDeleting] = React.useState(false);
   const [consents, setConsents] = React.useState<MeetingConsents | null>(null);
   const [savingConsent, setSavingConsent] = React.useState<ConsentType | null>(null);
+  const [highlight, setHighlight] = React.useState<string | null>(null);
 
   const load = React.useCallback(async (page = 0) => {
     setLoading(true);
@@ -78,6 +83,44 @@ export function MeetingTranscriptPanel({ meetingId, workspaceId, consentEnforced
 
   React.useEffect(() => { void load(0); }, [load, refreshKey]);
   React.useEffect(() => { void loadConsents(); }, [loadConsents]);
+
+  // "Line N" jump: find the page holding the line (pages hold ≤ 500 lines, so it is on page
+  // floor(N / 500) or later), render up to it, scroll, and highlight it for a moment.
+  const transcriptRef = React.useRef(transcript);
+  transcriptRef.current = transcript;
+  React.useEffect(() => {
+    if (!focus) return;
+    const index = /^s(\d+)$/.exec(focus.segmentId);
+    if (!index) return;
+    let cancelled = false;
+    (async () => {
+      let current = transcriptRef.current;
+      const sameTranscript = !focus.transcriptId || current?.transcriptId === focus.transcriptId;
+      let position = sameTranscript ? current?.segments.findIndex((s) => s.id === focus.segmentId) ?? -1 : -1;
+      if (position < 0) {
+        const pageCount = current?.pageCount ?? 1;
+        for (let page = Math.floor(Number(index[1]) / PAGE_MAX_LINES); page < pageCount && !cancelled; page += 1) {
+          const res = await getMeetingTranscriptAction(workspaceId, meetingId, page, focus.transcriptId);
+          if (!res.success || !res.data) return;
+          current = res.data;
+          position = current.segments.findIndex((s) => s.id === focus.segmentId);
+          if (position >= 0) {
+            setTranscript(current);
+            onTranscriptChange(current);
+            break;
+          }
+        }
+      }
+      if (cancelled || position < 0) return;
+      setVisible((v) => Math.max(v, position + 1));
+      setHighlight(focus.segmentId);
+      requestAnimationFrame(() => document.getElementById(`tline-${focus.segmentId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+      setTimeout(() => !cancelled && setHighlight(null), 2500);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [focus, workspaceId, meetingId, onTranscriptChange]);
 
   const toggleConsent = async (type: ConsentType, granted: boolean) => {
     if (!consents) return;
@@ -161,7 +204,11 @@ export function MeetingTranscriptPanel({ meetingId, workspaceId, consentEnforced
           <CardContent className="p-4 space-y-3">
             <ol className="space-y-2">
               {transcript.segments.slice(0, visible).map((s) => (
-                <li key={s.id} className="text-xs leading-relaxed">
+                <li
+                  key={s.id}
+                  id={`tline-${s.id}`}
+                  className={`text-xs leading-relaxed rounded-lg px-1 -mx-1 transition-colors ${highlight === s.id ? 'bg-primary/15' : ''}`}
+                >
                   <span className="text-muted-foreground tabular-nums mr-2">{formatTimestampMs(s.startMs)}</span>
                   <strong className="font-semibold mr-1">{s.speakerName}:</strong>
                   <span>{s.text}</span>

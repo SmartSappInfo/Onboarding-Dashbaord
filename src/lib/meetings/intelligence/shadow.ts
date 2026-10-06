@@ -1,3 +1,5 @@
+import 'server-only';
+
 /**
  * @fileOverview Meeting Agent shadow runs and rollout ladder (Phase 11 M2 · T5.4; plan §9; Rules 42, 65).
  *

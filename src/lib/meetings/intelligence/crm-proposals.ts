@@ -1,3 +1,5 @@
+import 'server-only';
+
 /**
  * @fileOverview CRM update proposals from meeting outcomes (Phase 11 M2 · T4.3; plan §4.11, §4.12, D17; Rules 18–22, 27).
  *

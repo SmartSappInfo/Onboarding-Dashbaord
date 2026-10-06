@@ -1,3 +1,5 @@
+import 'server-only';
+
 /**
  * @fileOverview Follow-up drafts from meeting outcomes (Phase 11 M2 · T4.2; plan §4.7, §4.11, §7.2; Rules 13, 31–33, 40, 57).
  *
