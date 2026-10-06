@@ -9,7 +9,7 @@ import { useTenant } from "@/context/TenantContext";
 import { useUser } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { createTaskAction } from "@/lib/task-server-actions";
-import TaskEditor from "@/app/admin/tasks/components/TaskEditor";
+import TaskEditor, { type TaskSavePayload } from "@/app/admin/tasks/components/TaskEditor";
 import { PageContainerFluid } from "@/components/ui/page-container";
 
 interface DashboardClientWrapperProps {
@@ -36,7 +36,7 @@ export function DashboardClientWrapper({
     const [isSavingTask, setIsSavingTask] = React.useState(false);
     const canManageDashboard = hasPermission('dashboard_manage');
 
-    const handleSaveTask = async (payload: any) => {
+    const handleSaveTask = async (payload: TaskSavePayload) => {
         if (!currentUser) return;
         setIsSavingTask(true);
         try {
