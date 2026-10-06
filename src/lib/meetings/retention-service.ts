@@ -29,6 +29,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { Firestore } from 'firebase-admin/firestore';
 import { z } from 'zod/v4';
 import { CompliancePolicyRecordSchema } from './compliance-policy-store';
+import { deleteIntelligenceRuns } from './intelligence/intelligence-store';
 import { meetingBelongsToWorkspace } from './meeting-access';
 import { MeetingRecordingRecordSchema, isRecordingPathForMeeting } from './schemas/recording-schemas';
 import { SEGMENTS, TRANSCRIPTS, TranscriptHeaderSchema, chunkId, canTransition, type TranscriptStatusV2 } from './transcript-store';
@@ -273,6 +274,12 @@ export async function deleteDerivedMeetingData(
     for (const d of drafts.docs) batch.delete(d.ref);
     await batch.commit();
   }
+  // Pipeline runs and their chunk checkpoints hold quotes from the transcript (M2 · T3).
+  await deleteIntelligenceRuns(db, {
+    workspaceId: params.workspaceId,
+    meetingId: params.meetingId,
+    ...(params.transcriptId && !deletedIntel ? { transcriptId: params.transcriptId } : {}),
+  });
   return deletedIntel;
 }
 

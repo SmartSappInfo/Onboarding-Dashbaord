@@ -53,6 +53,13 @@ export const DROP_REASONS = [
 ] as const;
 export type DropReason = (typeof DROP_REASONS)[number];
 
+/**
+ * Why an item needs a person's review before any one-click action (plan §4.4 rule 7). An unmatched
+ * owner is NOT a review reason: it is shown as "Unassigned" (plan §4.6).
+ */
+export const ReviewReasonSchema = z.enum(['low_confidence', 'injection_flagged', 'ambiguous_amount', 'default_time_zone']);
+export type ReviewReason = z.infer<typeof ReviewReasonSchema>;
+
 export const ItemOwnerSchema = z.object({
   name: z.string().max(200),
   participantId: z.string().max(200).optional(),
@@ -96,7 +103,7 @@ export const MeetingItemSchema = z.object({
   evidence: z.array(ItemEvidenceSchema).min(1),
   contradicts: z.array(z.string()).default([]),
   needsReview: z.boolean(),
-  reviewReasons: z.array(z.enum(['low_confidence', 'injection_flagged', 'ambiguous_amount', 'default_time_zone', 'unassigned_owner'])).default([]),
+  reviewReasons: z.array(ReviewReasonSchema).default([]),
   status: z.literal('valid'),
   promptVersion: z.string().min(1),
   createdAt: z.string(),
