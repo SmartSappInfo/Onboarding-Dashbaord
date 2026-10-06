@@ -263,7 +263,7 @@ export default function FlipbookStudioClient() {
                 <div>
                   <div className="text-2xl font-black tracking-tight">{stats.published}</div>
                   <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                    Published
+                    Published Landing Pages
                     <CardInfoTooltip text="Active publications accessible via public landing page URLs." />
                   </div>
                 </div>
@@ -278,7 +278,7 @@ export default function FlipbookStudioClient() {
                 <div>
                   <div className="text-2xl font-black tracking-tight">{stats.totalFlips}</div>
                   <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                    Page Flips
+                    Total Page Flips
                     <CardInfoTooltip text="Cumulative reader page flips across all published flipbooks." />
                   </div>
                 </div>
