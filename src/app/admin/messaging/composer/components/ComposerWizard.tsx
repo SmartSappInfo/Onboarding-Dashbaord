@@ -11,6 +11,7 @@ import { createBulkMessageJob, processJobChunkBackground } from '@/lib/bulk-mess
 import { resolveContact } from '@/lib/contact-adapter';
 import { fetchSmsBalanceAction } from '@/lib/mnotify-actions';
 import { fetchContextualData, resolveRecipientContacts, updateEntityLastContactedAt } from '@/lib/messaging-actions';
+import { getFollowupDraftForComposerAction } from '@/app/actions/meeting-intelligence-actions';
 import { contactResolutionChannel } from '@/lib/messaging/channel-registry';
 import { getVariablesForContext } from '@/lib/template-variable-utils';
 import { getWorkspaceVariablesAction } from '@/lib/fields-actions';
@@ -240,6 +241,8 @@ interface ComposerWizardProps {
         formId?: string;
         surveyId?: string;
         agreementId?: string;
+        /** Saved meeting follow-up draft to open (with meetingId). */
+        draftId?: string;
     };
 }
 
@@ -509,6 +512,33 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
             fetchTemplateOnMount();
         }
     }, [searchParams, firestore, setValue]);
+
+    // Meeting follow-up draft (M2 · T4.2): the server checks access and returns only a live draft of
+    // this meeting. It fills an email with the draft's subject, text and recipients; the person
+    // reviews and sends it here (nothing was sent when the draft was written).
+    const draftMeetingId = composerContext?.meetingId;
+    const draftId = composerContext?.draftId;
+    React.useEffect(() => {
+        if (!draftId || !draftMeetingId || !activeWorkspaceId) return;
+        let cancelled = false;
+        getFollowupDraftForComposerAction(activeWorkspaceId, draftMeetingId, draftId).then((res) => {
+            if (cancelled) return;
+            if (!res.success) {
+                toast({ variant: 'destructive', title: "Couldn't open the draft", description: res.error });
+                return;
+            }
+            setValue('channel', 'email');
+            setValue('messageSourceType', 'new');
+            setValue('customSubject', res.draft.subject);
+            setValue('customBody', res.draft.body);
+            setValue('sourceMeetingId', draftMeetingId);
+            setValue('audienceMode', 'adhoc');
+            setAdhocContacts(res.draft.recipients.map((email, i) => ({ id: `draft-${i}`, rawInput: email, target: email, isValid: true })));
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [draftId, draftMeetingId, activeWorkspaceId, setValue, toast]);
 
     React.useEffect(() => {
         if (!watchedSourceMeetingId) return;

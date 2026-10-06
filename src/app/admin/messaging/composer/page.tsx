@@ -16,6 +16,8 @@ export default function MessageComposerPage() {
         const formId = searchParams?.get('formId') || undefined;
         const surveyId = searchParams?.get('surveyId') || undefined;
         const agreementId = searchParams?.get('agreementId') || undefined;
+        // A saved meeting follow-up draft (M2 · T4.2); loaded server-side, permission-checked.
+        const draftId = meetingId ? searchParams?.get('draftId') || undefined : undefined;
         
         if (!categoryParam && !meetingId && !formId && !surveyId && !agreementId) {
             return undefined;
@@ -34,6 +36,7 @@ export default function MessageComposerPage() {
             formId,
             surveyId,
             agreementId,
+            draftId,
         };
     }, [searchParams]);
 

@@ -38,6 +38,7 @@ import type { AuthContext } from '@/lib/auth/require-auth';
 import { toLegacyIntelligence } from '@/lib/meetings/intelligence/legacy-adapter';
 import { convertItemToTask, findV2Item, ItemConversionError, listConversions } from '@/lib/meetings/intelligence/item-conversion';
 import { taskFromItem } from '@/lib/meetings/intelligence/followup-tasks';
+import { readFollowupDraft } from '@/lib/meetings/intelligence/followup-drafts';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -369,6 +370,31 @@ export async function generateMeetingPrepBriefAction(
       createServerActionInvocation({ capabilityId: 'meeting.generate_prep_brief', input: { workspaceId, meetingId }, principal })
     );
     return result.success ? { success: true, brief: result.data } : { success: false, error: result.error.message };
+  } catch (err) {
+    return { success: false, error: getErrorMessage(err) };
+  }
+}
+
+/**
+ * Loads a saved follow-up draft into the messaging composer (Phase 11 M2 · T4.2; plan §4.7).
+ *
+ * Server-side and permission-checked: meetings view in the workspace, a meeting of that workspace,
+ * and a LIVE draft of that meeting (missing, foreign, other-meeting and deleted drafts all read as
+ * "not found"). Returns only what the composer shows; the composer enforces sending permissions.
+ */
+export async function getFollowupDraftForComposerAction(
+  workspaceId: string,
+  meetingId: string,
+  draftId: string
+): Promise<
+  | { success: true; draft: { draftId: string; subject: string; body: string; recipients: string[] } }
+  | { success: false; error: string }
+> {
+  try {
+    await requireMeetingAccess(workspaceId, meetingId, 'meetings_view');
+    const draft = await readFollowupDraft(adminDb, workspaceId, draftId);
+    if (!draft || draft.meetingId !== meetingId) return { success: false, error: 'Draft not found.' };
+    return { success: true, draft: { draftId: draft.draftId, subject: draft.subject, body: draft.body, recipients: draft.recipients } };
   } catch (err) {
     return { success: false, error: getErrorMessage(err) };
   }

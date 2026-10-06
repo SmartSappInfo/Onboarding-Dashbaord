@@ -78,6 +78,7 @@ import {
   convertActionItemToCrmTaskAction,
   getMeetingIntelligenceAction,
   generateMeetingPrepBriefAction,
+  getFollowupDraftForComposerAction,
 } from '@/app/actions/meeting-intelligence-actions';
 
 let db: FakeFirestore;
@@ -349,5 +350,39 @@ describe('recording playback (G8, T7)', () => {
   it('does not return share tokens or store new ones', async () => {
     const res = await attach();
     expect(db.read(`meeting_recordings/${res.recordingId}`)).not.toHaveProperty('shareToken');
+  });
+});
+
+describe('follow-up draft in the composer (M2 · T4.2)', () => {
+  const draft = (id: string, over: Record<string, unknown> = {}) => db.write(`meeting_followup_drafts/${id}`, {
+    draftId: id, requestKey: 'k', workspaceId: 'ws-a', meetingId: 'm-a', transcriptId: 't-1', intelligenceVersion: 0,
+    status: 'draft', version: 1, recipients: ['ama@customer.test'], subject: 'Next steps', sentences: [{ text: 'We will send it.', itemHashes: ['it_a'] }],
+    body: 'We will send it.', sourceItemHashes: ['it_a'], droppedSentences: 0, provider: { modelId: 'm', promptVersion: 'mi_followup_v1' },
+    createdBy: 'user-1', createdAt: 'x', ...over,
+  });
+
+  it('loads a live draft of this meeting for a workspace member (view is enough; sending is checked by the composer)', async () => {
+    draft('d-1');
+    h.canManage = true;
+    const res = await getFollowupDraftForComposerAction('ws-a', 'm-a', 'd-1');
+    expect(res).toEqual({ success: true, draft: { draftId: 'd-1', subject: 'Next steps', body: 'We will send it.', recipients: ['ama@customer.test'] } });
+  });
+
+  it('refuses anonymous callers, other workspaces and foreign meetings before reading', async () => {
+    draft('d-1');
+    h.signedIn = false;
+    expect((await getFollowupDraftForComposerAction('ws-a', 'm-a', 'd-1')).success).toBe(false);
+    h.signedIn = true;
+    expect((await getFollowupDraftForComposerAction('ws-b', 'm-b', 'd-1')).success).toBe(false);
+    expect((await getFollowupDraftForComposerAction('ws-a', 'm-b', 'd-1')).success).toBe(false);
+  });
+
+  it("refuses a draft of another meeting, another workspace's draft and a deleted draft", async () => {
+    draft('d-other-meeting', { meetingId: 'm-x' });
+    draft('d-foreign', { workspaceId: 'ws-b', meetingId: 'm-a' });
+    draft('d-deleted', { status: 'deleted', deletedBy: 'user-1', deletedAt: 'x' });
+    for (const id of ['d-other-meeting', 'd-foreign', 'd-deleted', 'missing', 'a/b']) {
+      expect(await getFollowupDraftForComposerAction('ws-a', 'm-a', id)).toEqual({ success: false, error: 'Draft not found.' });
+    }
   });
 });
