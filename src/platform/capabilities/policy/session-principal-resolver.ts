@@ -125,6 +125,17 @@ export function principalFromProfile(params: {
     scopesSet.add('rbac:operations.meetings.edit');
   }
 
+  // 3c. Legacy flat task permissions imply the tasks RBAC coordinates exactly as
+  // `migrateToPermissionsSchema` defines them (Phase 11 M2 · T6): view; manage = create + edit,
+  // never delete. Without this, legacy-role users couldn't create tasks through governed paths.
+  if (scopesSet.has('tasks_view') || scopesSet.has('app:tasks_view') || scopesSet.has('tasks_manage') || scopesSet.has('app:tasks_manage')) {
+    scopesSet.add('rbac:operations.tasks.view');
+  }
+  if (scopesSet.has('tasks_manage') || scopesSet.has('app:tasks_manage')) {
+    scopesSet.add('rbac:operations.tasks.create');
+    scopesSet.add('rbac:operations.tasks.edit');
+  }
+
   // 4. Default self-identity and workspace discovery scopes granted to all verified workspace members
   scopesSet.add('identity:read');
   scopesSet.add('workspace:read');

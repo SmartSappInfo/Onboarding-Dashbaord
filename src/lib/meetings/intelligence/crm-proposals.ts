@@ -63,6 +63,7 @@ export interface MeetingCrmProposalDeps {
 const ClaimSchema = z.object({
   workspaceId: z.string(),
   meetingId: z.string(),
+  itemHash: z.string().optional(),
   approvalId: z.string().optional(),
   runId: z.string().optional(),
   claimedAt: z.string().optional(),
@@ -174,7 +175,19 @@ export async function proposeMeetingCrmUpdate(
     await claimRef.set({ workspaceId: params.workspaceId, meetingId: params.meetingId });
     throw err;
   }
-  await claimRef.set({ workspaceId: params.workspaceId, meetingId: params.meetingId, approvalId: proposalId, runId: stored.header.runId });
+  await claimRef.set({ workspaceId: params.workspaceId, meetingId: params.meetingId, itemHash: item.itemHash, kind: target.kind, approvalId: proposalId, runId: stored.header.runId });
   const state = await deps.approvalState(proposalId, params.organizationId);
   return { proposalId, replayed: false, executable: state?.executable ?? false };
+}
+
+/** Live proposals made from this meeting's items (for the outcomes panel): itemHash → proposal ids. */
+export async function listMeetingProposals(db: Firestore, workspaceId: string, meetingId: string): Promise<Array<{ itemHash: string; approvalId: string; kind: string }>> {
+  const snap = await db.collection(MEETING_CRM_PROPOSALS).where('workspaceId', '==', workspaceId).where('meetingId', '==', meetingId).limit(100).get();
+  const Row = ClaimSchema.extend({ kind: z.string().optional() });
+  const out: Array<{ itemHash: string; approvalId: string; kind: string }> = [];
+  for (const d of snap.docs) {
+    const row = Row.safeParse(d.data());
+    if (row.success && row.data.approvalId && row.data.itemHash) out.push({ itemHash: row.data.itemHash, approvalId: row.data.approvalId, kind: row.data.kind ?? 'deal_stage' });
+  }
+  return out;
 }
