@@ -684,6 +684,9 @@ Needs written approval:
 | X9 | (not planned) | `deal.get` / `deal.advance_stage` fail closed | `deal.get` returned an invented deal when one was missing; the CRM bridge's conflict check and postcondition depend on it |
 | X10 | Shadow ladder per workspace | Ladder, promotion rules and per-run shadow records are in place; the stage is not yet stored or enforced per workspace | Storing and switching the stage is an operator action: Backoffice T7 (7.1/7.3). Until then the existing flags gate agents and MCP |
 | X11 | Offline real-model run before canary | Script ready (`pnpm eval:meeting-agent --workspace <id>`), not yet run | It spends real model budget (D18): needs a go-ahead and a workspace whose data policy allows a provider. CI uses the scripted model, which measures the pipeline and scorer, not model quality |
+| X12 | Panel JS ≤ 40 KB gz; first item ≤ 300 ms after data | Panel and brief are lazy-loaded (asserted by test), render ≤ 50 outcomes at a time, one read per load; size and paint time not measured | Builds don't run locally; measure from the CI build output / a deployed page before canary |
+| X13 | Draft sheet "editable" | The sheet shows the saved draft; editing happens in the composer ("Open in composer") | Drafts are never edited in place (plan §4.12); the composer is where people edit and send |
+| X14 | (not planned) | Session principal maps flat `tasks_view` / `tasks_manage` to the RBAC task scopes (view; create + edit; never delete), like the M1 meetings bridge | Without it, flat-role users couldn't create tasks through the governed panel actions. Decided with the product owner 2026-10-06 |
 
 Also:
 - v2 item → task conversion now records claims in `meeting_item_conversions` (keyed by item hash, so it survives re-analysis). T4's `meeting.create_followup_tasks` must use the same record.
@@ -700,7 +703,7 @@ Also:
 | P11-M2-T3 | Extraction pipeline + v2 template | ✔ | 39942b0b, 3346541c, 2ae324fd, daf2d189, 178528d1; runbook `docs/runbooks/meetings-intelligence.md`; deviations X1–X4 |
 | P11-M2-T4 | Tasks · drafts · CRM proposals | ✔ | 40b46b82, 79fe2a2d (tasks + undo) · 2b963e84, 0dfc5291, 5d184493 (drafts + composer) · 70397b41 (deal reads fail closed) · 58ed6097, 8ab0782d (CRM proposals); deviations X5–X9 |
 | P11-M2-T5 | Evaluation + shadow | ✔ (real-model run pending) | d5b0fdf3 (22 gold meetings, scorer, CI gate) · 0b670895 (`pnpm eval:meeting-agent`, capped budget) · 268410af, 45cc354b (shadow records + ladder gates); deviations X10–X11 |
-| P11-M2-T6 | Minimal UI + "Why?" + performance/boundary | ☐ | |
+| P11-M2-T6 | Minimal UI + "Why?" + performance/boundary | ✔ (bundle size unmeasured) | 9fb222c7 (panel actions, legacy tasks bridge) · 239af89f (outcomes panel, Why?, brief, draft and propose sheets, boundary); deviations X12–X14 |
 | P11-M2-T7 | Backoffice + runbook | ☐ | |
 | P11-M2-T8 | Verification + report | ☐ | |
 
