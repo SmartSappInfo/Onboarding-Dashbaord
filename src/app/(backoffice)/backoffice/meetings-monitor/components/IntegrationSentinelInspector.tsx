@@ -12,8 +12,6 @@
 
 import * as React from 'react';
 import {
-  ShieldAlert,
-  ShieldCheck,
   Activity,
   RefreshCw,
   Calendar,
