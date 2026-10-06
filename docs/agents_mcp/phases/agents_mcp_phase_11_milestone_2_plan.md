@@ -2,7 +2,7 @@
 ## Meeting Agent: Grounded Prep Briefs and Evidence-Backed Post-Meeting Intelligence
 
 **Version:** 1.1.0 (full `agents_mcp_rules.md` conformance; no functionality removed)
-**Status:** PLANNING. Decisions D14–D20 in §17.
+**Status:** EXECUTING (T0–T3 done locally, not deployed). Decisions D14–D20 in §17; execution deviations X1–X4 in §17.1.
 **Date:** 2026-10-05
 **Parent:** [`agents_mcp_phase_11_master_plan.md`](agents_mcp_phase_11_master_plan.md) §1.1 (workflow A), §5.2–5.6, §5.9, §6, §8, §9, §13 (P11-M2-T1…T5).
 **Depends on** (§2.3):
@@ -669,6 +669,19 @@ Needs written approval:
 | D19 | Model tiers | Flash for chunks; Pro for summary, brief, draft, within tenant policy |
 | D20 | Task undo after edits | Refuse with explanation (no silent deletion of edited work) |
 
+### 17.1 Execution deviations (recorded during T3, 2026-10-06)
+
+| ID | Plan said | Done instead | Why |
+| --- | --- | --- | --- |
+| X1 | `meeting_postprocess_v2` as a static workflow template on the platform workflow engine | Static step list on a dedicated Cloud Tasks worker (`src/lib/meetings/intelligence/pipeline.ts`), using the same durability primitives as M1 transcription: deterministic run, lease, attempts → DLQ, per-chunk checkpoints, reaper, cancel/supersede, TOCTOU re-checks | Nothing in production starts platform workflows (no dispatcher caller), so a template there would never run. Revisit when the workflow engine gets a production starter |
+| X2 | Dates resolved against the "workspace time zone" | Meeting `timezone` → workspace `timezone` → UTC; the source is recorded on each date. UTC-resolved dates put the item in review | Neither meetings nor workspaces have a time-zone field today. Backoffice/settings field: T7 |
+| X3 | OpenTelemetry spans per step/chunk | Structured content-free trace lines (`traceStep`), 1:1 with the planned spans | The project has no OpenTelemetry SDK; adding one is a project-wide decision (needs approval) |
+| X4 | `meeting_followup_v1` retired "after a zero-instance check" | Removed from the production template registry; file kept as an engine test fixture | Zero instances by construction: no production starter; its capabilities don't exist; it held an ungoverned recap email step |
+
+Also:
+- v2 item → task conversion now records claims in `meeting_item_conversions` (keyed by item hash, so it survives re-analysis). T4's `meeting.create_followup_tasks` must use the same record.
+- The prep brief reads items through the stored `MeetingItemSchema` (single source).
+
 ## 18. Tracker
 
 | ID | Task | Status | Evidence |
@@ -677,7 +690,7 @@ Needs written approval:
 | (M0) | T3 ✔ platform paths (052809b1) · T2 · T4 · T5 ☐ | M0 plan |
 | P11-M2-T1 | Personas, identity, matrices | ✔ | bcda1853 |
 | P11-M2-T2 | Grounded prep brief | ✔ | prep-brief-service (18 tests), gateway contract (8 tests), fingerprint baseline +1 |
-| P11-M2-T3 | Extraction pipeline + v2 template | ☐ | |
+| P11-M2-T3 | Extraction pipeline + v2 template | ✔ | 39942b0b, 3346541c, 2ae324fd, daf2d189, 178528d1; runbook `docs/runbooks/meetings-intelligence.md`; deviations X1–X4 |
 | P11-M2-T4 | Tasks · drafts · CRM proposals | ☐ | |
 | P11-M2-T5 | Evaluation + shadow | ☐ | |
 | P11-M2-T6 | Minimal UI + "Why?" + performance/boundary | ☐ | |
