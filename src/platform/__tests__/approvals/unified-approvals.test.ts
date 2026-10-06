@@ -19,7 +19,7 @@ import { isNonDelegableAction } from '../../capabilities/contracts/risk-levels';
 import { computeApprovalPayloadHash } from '../../capabilities/policy/approval-verifier';
 import { readStoredApproval } from '../../policy/approval-record';
 import { canDecideApprovals, type DecisionActor } from '../../policy/approver-policy';
-import { createApproval, createUnifiedApprovalVerifier, decideApproval, getApproval, listApprovals } from '../../policy/unified-approval-store';
+import { createApproval, createUnifiedApprovalVerifier, decideApproval, getApproval, hashProposalPayload, listApprovals } from '../../policy/unified-approval-store';
 
 let db: FakeFirestore;
 let handled: unknown[];
@@ -179,6 +179,15 @@ describe('unified approvals', () => {
     });
     expect((await execute(cap, 'gw_old')).success).toBe(true);
     expect(readStoredApproval('gw_old', db.read('capability_approvals/gw_old')).kind).toBe('legacy_gateway');
+  });
+
+  it('hashProposalPayload hashes only the gateway envelope (extra fields on a whole proposal never leak in)', async () => {
+    const rec = await create();
+    const target = { capabilityId: rec.capabilityId, capabilityVersion: rec.capabilityVersion, organizationId: rec.organizationId, workspaceId: rec.workspaceId };
+    const wholeProposal = { ...target, what: 'x', why: 'y', payloadHash: 'z' };
+    const fromWhole = hashProposalPayload(wholeProposal, payload, () => capability());
+    expect(fromWhole).toBe(hashProposalPayload(target, payload, () => capability()));
+    expect(fromWhole).toBe(rec.payloadHash);
   });
 
   it('lists only this organisation\'s approvals for the workspace', async () => {

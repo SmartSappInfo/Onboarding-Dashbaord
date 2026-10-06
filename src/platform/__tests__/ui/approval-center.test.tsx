@@ -15,7 +15,7 @@ import { ApprovalMetricsCards } from '@/components/approvals/ApprovalMetricsCard
 import { EmergencyPauseBanner } from '@/components/approvals/EmergencyPauseBanner';
 import { AgentPolicyMatrix } from '@/components/approvals/AgentPolicyMatrix';
 import { ApprovalsClient } from '@/app/admin/approvals/ApprovalsClient';
-import type { ActionProposal } from '@/platform/policy/approval-proposal-types';
+import type { ApprovalView } from '@/platform/policy/approval-view';
 
 // Mock Workspace Context
 vi.mock('@/context/WorkspaceContext', () => ({
@@ -57,7 +57,14 @@ vi.mock('@/hooks/useEventStream', () => ({
   }),
 }));
 
-const mockProposal: ActionProposal = {
+const mockProposal: ApprovalView = {
+  // Unified approval view (Phase 11 M0 · T2): an approver looking at a pending, decidable request.
+  needsReproposal: false,
+  executable: true,
+  requiredApprovals: 1,
+  approvalsCount: 0,
+  version: 0,
+  canDecide: true,
   proposalId: 'prop_test_001',
   organizationId: 'org_test_456',
   workspaceId: 'ws_test_123',
@@ -149,7 +156,26 @@ describe('Phase 3 Milestone 4: Operator UI Surfaces', () => {
       const approveBtn = screen.getByRole('button', { name: /Approve Action/ });
       fireEvent.click(approveBtn);
 
-      expect(onApprove).toHaveBeenCalledWith('prop_test_001');
+      // The version shown is sent back so a concurrent decision is refused (M0 · T2, Rule 18).
+      expect(onApprove).toHaveBeenCalledWith('prop_test_001', 0);
+    });
+
+    it('hides decision buttons from people who cannot decide (server enforces it too)', () => {
+      render(<ApprovalProposalCard proposal={{ ...mockProposal, canDecide: false }} onApprove={vi.fn()} onReject={vi.fn()} />);
+      expect(screen.queryByRole('button', { name: /Approve Action/ })).toBeNull();
+      expect(screen.queryByRole('button', { name: /Reject Proposal/ })).toBeNull();
+      expect(screen.getByText(/Waiting for an approver/)).toBeDefined();
+    });
+
+    it('marks legacy requests as needing re-proposal and offers no decision', () => {
+      render(<ApprovalProposalCard proposal={{ ...mockProposal, needsReproposal: true, canDecide: false }} onApprove={vi.fn()} onReject={vi.fn()} />);
+      expect(screen.getAllByText(/Needs re-proposal|Ask for it again/).length).toBeGreaterThan(0);
+      expect(screen.queryByRole('button', { name: /Approve Action/ })).toBeNull();
+    });
+
+    it('shows L4 progress (1 of 2 approvals)', () => {
+      render(<ApprovalProposalCard proposal={{ ...mockProposal, requiredApprovals: 2, approvalsCount: 1 }} onApprove={vi.fn()} onReject={vi.fn()} />);
+      expect(screen.getByText('1 of 2 approvals')).toBeDefined();
     });
 
     it('opens rejection modal when Reject Proposal is clicked', () => {

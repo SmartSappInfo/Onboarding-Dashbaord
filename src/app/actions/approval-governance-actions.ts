@@ -23,18 +23,18 @@
 
 import { requireAuth, type AuthContext } from '@/lib/auth/require-auth';
 import { adminDb } from '@/lib/firebase-admin';
-import {
-  type ActionProposal,
-  ActionProposalSchema,
-  ACTION_PROPOSAL_STATUSES,
-} from '@/platform/policy/approval-proposal-types';
+import { ACTION_PROPOSAL_STATUSES } from '@/platform/policy/approval-proposal-types';
+import { readStoredApproval } from '@/platform/policy/approval-record';
+import { toApprovalView, type ApprovalView } from '@/platform/policy/approval-view';
+import { canDecideApprovals, DECISION_MESSAGES, type DecisionActor } from '@/platform/policy/approver-policy';
+import { decideApproval, getApproval, hashProposalPayload } from '@/platform/policy/unified-approval-store';
+import { flattenPermissionsSchema } from '@/lib/permissions-engine';
 import {
   checkGovernanceDeadManSwitch,
   updateEmergencyPauseStatus,
 } from '@/platform/policy/governance-dead-man';
 import { defaultEventBus } from '@/platform/events/event-bus';
 import { createDomainEvent } from '@/platform/capabilities/events/domain-event';
-import { ApprovalInterceptor } from '@/platform/runtime/execution/approval-interceptor';
 import { getAgentRunStore } from '@/platform/runtime/agent-run-store';
 import { getSagaCompensationEngine } from '@/platform/runtime/governance/saga-compensation';
 import { z } from 'zod/v4';
@@ -99,6 +99,8 @@ const ApproveProposalInputSchema = z.object({
   proposalId: z.string().min(1),
   executionPayload: z.record(z.string(), z.unknown()).optional(),
   decisionNotes: z.string().max(2000).optional(),
+  /** The record version the person saw (Rule 18): a concurrent decision is refused, not overwritten. */
+  expectedVersion: z.number().int().min(0).optional(),
 });
 
 export type ApproveProposalInput = z.infer<typeof ApproveProposalInputSchema>;
@@ -107,6 +109,7 @@ const RejectProposalInputSchema = z.object({
   organizationId: z.string().min(1),
   proposalId: z.string().min(1),
   decisionNotes: z.string().min(5, 'Mandatory explanation note required (minimum 5 characters)').max(2000),
+  expectedVersion: z.number().int().min(0).optional(),
 });
 
 export type RejectProposalInput = z.infer<typeof RejectProposalInputSchema>;
@@ -138,11 +141,48 @@ function assertTenantContext(auth: AuthContext, requestedOrgId: string): void {
   }
 }
 
+/** The person deciding, with their effective flat permissions (profile list ∪ flattened schema). */
+function decisionActorFrom(auth: AuthContext): DecisionActor {
+  const schemaPerms = auth.profile.permissionsSchema ? flattenPermissionsSchema(auth.profile.permissionsSchema) : [];
+  return {
+    uid: auth.uid,
+    isSystemAdmin: auth.isSystemAdmin,
+    workspaceIds: auth.profile.workspaceIds ?? [],
+    permissions: [...(auth.profile.permissions ?? []), ...schemaPerms],
+  };
+}
+
+const canDecideFor = (actor: DecisionActor) => (r: { workspaceId: string; requestedByUserId: string }) =>
+  canDecideApprovals(actor, r.workspaceId).ok && r.requestedByUserId !== actor.uid;
+
+/** Security feed (Rule 62): refused decisions are recorded, without payload content. */
+function publishSecurityEvent(
+  type: 'approval.self_decision_blocked' | 'approval.permission_denied' | 'approval.binding_mismatch',
+  params: { organizationId: string; workspaceId?: string; approvalId: string; uid: string; code: string }
+): void {
+  void defaultEventBus.publish(createDomainEvent({
+    type,
+    organizationId: params.organizationId,
+    ...(params.workspaceId ? { workspaceId: params.workspaceId } : {}),
+    actor: { type: 'user', id: params.uid },
+    entity: { type: 'approval_proposal', id: params.approvalId },
+    payload: { approvalId: params.approvalId, code: params.code },
+    correlationId: `appr-sec-${params.approvalId}`,
+    source: 'unified_approval_center',
+  }));
+}
+
+const REFUSAL_MESSAGES: Readonly<Record<string, string>> = {
+  ...DECISION_MESSAGES,
+  NOT_FOUND: 'This request no longer exists.',
+  NEEDS_REPROPOSAL: 'This request was made before approvals were updated. Ask for it again.',
+};
+
 // ============================================================================
 // 4. HELPER: Proposal Categorizer (Rule 41)
 // ============================================================================
 
-function classifyProposalCategory(proposal: ActionProposal): ProposalCategory {
+function classifyProposalCategory(proposal: Pick<ApprovalView, 'capabilityId' | 'blastRadius'>): ProposalCategory {
   const capId = proposal.capabilityId.toLowerCase();
   const risk = proposal.blastRadius?.riskLevel;
   const count = proposal.blastRadius?.entityCount ?? 0;
@@ -186,82 +226,45 @@ function classifyProposalCategory(proposal: ActionProposal): ProposalCategory {
  */
 export async function listActionProposalsAction(
   rawInput: ListProposalsInput
-): Promise<ApprovalGovernanceActionResult<ActionProposal[]>> {
+): Promise<ApprovalGovernanceActionResult<ApprovalView[]>> {
   try {
     const input = ListProposalsInputSchema.parse(rawInput);
     const auth = await requireAuth();
     assertTenantContext(auth, input.organizationId);
+    const actor = decisionActorFrom(auth);
 
     let queryRef = adminDb
       .collection('capability_approvals')
       .where('organizationId', '==', input.organizationId);
-
     if (input.workspaceId) {
       queryRef = queryRef.where('workspaceId', '==', input.workspaceId);
     }
-
     const targetStatus = input.status ?? 'pending';
     if (targetStatus !== 'all') {
       queryRef = queryRef.where('status', '==', targetStatus);
     }
-
-    const limitVal = input.limit ?? 50;
-    const snap = await queryRef.limit(limitVal).get();
-
-    const proposals: ActionProposal[] = [];
+    const snap = await queryRef.limit(input.limit ?? 50).get();
     const searchLower = input.search ? input.search.toLowerCase().trim() : '';
+    const proposals: ApprovalView[] = [];
 
     for (const doc of snap.docs) {
-      const data = doc.data();
-      const parsed = ActionProposalSchema.safeParse({
-        ...data,
-        proposalId: doc.id,
-      });
-
-      if (!parsed.success) {
-        continue;
-      }
-
-      const proposal = parsed.data;
-
-      // Category filter
-      if (input.category && input.category !== 'all') {
-        const cat = classifyProposalCategory(proposal);
-        if (cat !== input.category) {
-          continue;
-        }
-      }
-
-      // Search filter
+      const view = toApprovalView(readStoredApproval(doc.id, doc.data()), canDecideFor(actor));
+      if (!view || view.organizationId !== input.organizationId) continue;
+      // Only workspaces the person belongs to (system admins see all).
+      if (!actor.isSystemAdmin && !actor.workspaceIds.includes(view.workspaceId)) continue;
+      if (input.category && input.category !== 'all' && classifyProposalCategory(view) !== input.category) continue;
       if (searchLower) {
-        const matchWhat = proposal.what.toLowerCase().includes(searchLower);
-        const matchWhy = proposal.why.toLowerCase().includes(searchLower);
-        const matchCap = proposal.capabilityId.toLowerCase().includes(searchLower);
-        const matchPersona = proposal.agentPersonaId.toLowerCase().includes(searchLower);
-        const matchId = proposal.proposalId.toLowerCase().includes(searchLower);
-
-        if (!matchWhat && !matchWhy && !matchCap && !matchPersona && !matchId) {
-          continue;
-        }
+        const haystack = [view.what, view.why, view.capabilityId, view.agentPersonaId ?? '', view.proposalId].join(' ').toLowerCase();
+        if (!haystack.includes(searchLower)) continue;
       }
-
-      proposals.push(proposal);
+      proposals.push(view);
     }
 
-    return {
-      success: true,
-      data: proposals,
-    };
+    return { success: true, data: proposals };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to list action proposals';
     const isIdor = message.startsWith('IDOR_VIOLATION');
-    return {
-      success: false,
-      error: {
-        code: isIdor ? 'IDOR_VIOLATION' : 'LIST_PROPOSALS_FAILED',
-        message,
-      },
-    };
+    return { success: false, error: { code: isIdor ? 'IDOR_VIOLATION' : 'LIST_PROPOSALS_FAILED', message } };
   }
 }
 
@@ -270,403 +273,170 @@ export async function listActionProposalsAction(
  */
 export async function getActionProposalDetailsAction(
   rawInput: GetProposalDetailsInput
-): Promise<ApprovalGovernanceActionResult<ActionProposal>> {
+): Promise<ApprovalGovernanceActionResult<ApprovalView>> {
   try {
     const input = GetProposalDetailsInputSchema.parse(rawInput);
     const auth = await requireAuth();
     assertTenantContext(auth, input.organizationId);
-
-    const doc = await adminDb.collection('capability_approvals').doc(input.proposalId).get();
-    if (!doc.exists) {
-      return {
-        success: false,
-        error: {
-          code: 'PROPOSAL_NOT_FOUND',
-          message: `Action proposal '${input.proposalId}' does not exist.`,
-        },
-      };
+    const actor = decisionActorFrom(auth);
+    const stored = await getApproval(adminDb, input.proposalId, input.organizationId);
+    const view = stored ? toApprovalView(stored, canDecideFor(actor)) : null;
+    if (!view || (!actor.isSystemAdmin && !actor.workspaceIds.includes(view.workspaceId))) {
+      return { success: false, error: { code: 'PROPOSAL_NOT_FOUND', message: REFUSAL_MESSAGES.NOT_FOUND } };
     }
-
-    const data = doc.data();
-    if (!data || data.organizationId !== input.organizationId) {
-      return {
-        success: false,
-        error: {
-          code: 'TENANT_MISMATCH',
-          message: 'Access denied: Tenant isolation violation.',
-        },
-      };
-    }
-
-    const parsed = ActionProposalSchema.safeParse({
-      ...data,
-      proposalId: doc.id,
-    });
-
-    if (!parsed.success) {
-      return {
-        success: false,
-        error: {
-          code: 'PROPOSAL_CORRUPT',
-          message: 'Invalid proposal record structure in database.',
-        },
-      };
-    }
-
-    return {
-      success: true,
-      data: parsed.data,
-    };
+    return { success: true, data: view };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to retrieve proposal details';
     const isIdor = message.startsWith('IDOR_VIOLATION');
-    return {
-      success: false,
-      error: {
-        code: isIdor ? 'IDOR_VIOLATION' : 'GET_PROPOSAL_FAILED',
-        message,
-      },
-    };
+    return { success: false, error: { code: isIdor ? 'IDOR_VIOLATION' : 'GET_PROPOSAL_FAILED', message } };
   }
 }
 
 /**
- * Approve an action proposal with dual-control enforcement, live TOCTOU authority,
- * and cryptographic SHA-256 payload tampering validation (Rules 13, 18, 21, 22, 60).
+ * Shared decision path (Phase 11 M0 · T2.5): approver policy in a transaction (membership +
+ * `agent_approvals_decide`, never the proposer, L4 dual, expected version), security-feed events on
+ * refusals (Rule 62), the decision event only when the decision is complete (Rule 40).
+ */
+async function decide(
+  auth: AuthContext,
+  params: {
+    organizationId: string;
+    proposalId: string;
+    decision: 'approved' | 'rejected';
+    notes?: string;
+    expectedVersion?: number;
+    executionPayload?: Record<string, unknown>;
+  }
+): Promise<ApprovalGovernanceActionResult<ApprovalView>> {
+  const actor = decisionActorFrom(auth);
+
+  // Rule 22: when the UI sends the payload it showed, it must hash to what was proposed.
+  if (params.executionPayload) {
+    const stored = await getApproval(adminDb, params.proposalId, params.organizationId);
+    if (stored?.kind === 'v2' && hashProposalPayload(stored.record, params.executionPayload) !== stored.record.payloadHash) {
+      publishSecurityEvent('approval.binding_mismatch', { organizationId: params.organizationId, workspaceId: stored.record.workspaceId, approvalId: params.proposalId, uid: auth.uid, code: 'PAYLOAD_TAMPERED' });
+      return { success: false, error: { code: 'PAYLOAD_TAMPERED', message: 'The change shown differs from the one proposed. Reload and review it again.' } };
+    }
+  }
+
+  const result = await decideApproval(adminDb, {
+    approvalId: params.proposalId,
+    organizationId: params.organizationId,
+    actor,
+    decision: params.decision,
+    ...(params.notes ? { notes: params.notes } : {}),
+    ...(params.expectedVersion !== undefined ? { expectedVersion: params.expectedVersion } : {}),
+    nowMs: Date.now(),
+  });
+
+  if (!result.ok) {
+    if (result.code === 'SELF_DECISION') {
+      publishSecurityEvent('approval.self_decision_blocked', { organizationId: params.organizationId, approvalId: params.proposalId, uid: auth.uid, code: result.code });
+    } else if (result.code === 'NOT_PERMITTED' || result.code === 'NOT_MEMBER') {
+      publishSecurityEvent('approval.permission_denied', { organizationId: params.organizationId, approvalId: params.proposalId, uid: auth.uid, code: result.code });
+    }
+    return { success: false, error: { code: result.code, message: REFUSAL_MESSAGES[result.code] ?? 'This request could not be decided.' } };
+  }
+
+  const record = result.record;
+  if (result.complete) {
+    void defaultEventBus.publish(createDomainEvent({
+      type: params.decision === 'approved' ? 'policy.approval.granted' : 'policy.approval.rejected',
+      organizationId: record.organizationId,
+      workspaceId: record.workspaceId,
+      actor: { type: 'user', id: auth.uid },
+      entity: { type: 'approval_proposal', id: record.approvalId },
+      payload: {
+        proposalId: record.approvalId,
+        decision: params.decision,
+        capabilityId: record.capabilityId,
+        notes: params.notes ?? null,
+        decidedBy: auth.uid,
+        ...(record.workflowRef ? { workflowRef: record.workflowRef } : {}),
+      },
+      correlationId: `appr-${params.decision === 'approved' ? '' : 'rej-'}${record.approvalId}`,
+      source: 'unified_approval_center',
+    }));
+  }
+
+  // Rule 27: a rejected step of an agent run triggers saga compensation for that run.
+  const runId = typeof record.evidence?.runId === 'string' ? record.evidence.runId : undefined;
+  if (params.decision === 'rejected' && runId) {
+    try {
+      const run = await getAgentRunStore().getRun(record.organizationId, runId);
+      if (run) {
+        void getSagaCompensationEngine().rollbackRun({
+          organizationId: record.organizationId,
+          workspaceId: record.workspaceId,
+          runId,
+          reason: `Approval '${record.approvalId}' was rejected (${auth.uid}): ${params.notes ?? ''}`,
+        });
+      }
+    } catch (sagaErr) {
+      console.warn('[ApprovalGovernance] Failed to trigger saga compensation on rejection:', sagaErr);
+    }
+  }
+
+  const view = toApprovalView({ kind: 'v2', record }, canDecideFor(actor));
+  return view ? { success: true, data: view } : { success: false, error: { code: 'DECIDE_FAILED', message: 'Decision saved, but it could not be displayed.' } };
+}
+
+function mapDecisionError(err: unknown, fallback: string): ApprovalGovernanceActionResult<ApprovalView> {
+  const code = typeof err === 'object' && err !== null && 'code' in err ? String(err.code) : '';
+  if (code === 'AGENT_GOVERNANCE_EMERGENCY_PAUSED') {
+    return { success: false, error: { code: 'EMERGENCY_PAUSED', message: 'Operation blocked: Platform emergency dead-man pause is currently active.' } };
+  }
+  const message = err instanceof Error ? err.message : fallback;
+  const isIdor = message.startsWith('IDOR_VIOLATION');
+  const isInvalid = message.includes('Mandatory explanation note required');
+  return { success: false, error: { code: isIdor ? 'IDOR_VIOLATION' : isInvalid ? 'INVALID_ARGUMENT' : 'DECIDE_FAILED', message } };
+}
+
+/**
+ * Approve an action proposal (Rules 13, 17, 18, 21, 22, 60): approver policy, payload binding,
+ * L4 dual approval, expected version.
  */
 export async function approveActionProposalAction(
   rawInput: ApproveProposalInput
-): Promise<ApprovalGovernanceActionResult<ActionProposal>> {
+): Promise<ApprovalGovernanceActionResult<ApprovalView>> {
   try {
     const input = ApproveProposalInputSchema.parse(rawInput);
-
-    // 1. Rule 60: Check platform emergency dead-man pause
     await checkGovernanceDeadManSwitch(input.organizationId);
-
-    // 2. Rule 51: Authenticate operator session
     const auth = await requireAuth();
     assertTenantContext(auth, input.organizationId);
-
-    const docRef = adminDb.collection('capability_approvals').doc(input.proposalId);
-    const snap = await docRef.get();
-
-    if (!snap.exists) {
-      return {
-        success: false,
-        error: {
-          code: 'PROPOSAL_NOT_FOUND',
-          message: `Action proposal '${input.proposalId}' not found.`,
-        },
-      };
-    }
-
-    const data = snap.data();
-    if (!data || data.organizationId !== input.organizationId) {
-      return {
-        success: false,
-        error: {
-          code: 'TENANT_MISMATCH',
-          message: 'Tenant boundary violation.',
-        },
-      };
-    }
-
-    const parsed = ActionProposalSchema.safeParse({
-      ...data,
-      proposalId: snap.id,
+    return await decide(auth, {
+      organizationId: input.organizationId,
+      proposalId: input.proposalId,
+      decision: 'approved',
+      ...(input.decisionNotes ? { notes: input.decisionNotes } : {}),
+      ...(input.expectedVersion !== undefined ? { expectedVersion: input.expectedVersion } : {}),
+      ...(input.executionPayload ? { executionPayload: input.executionPayload } : {}),
     });
-
-    if (!parsed.success) {
-      return {
-        success: false,
-        error: {
-          code: 'PROPOSAL_CORRUPT',
-          message: 'Stored proposal data failed schema validation.',
-        },
-      };
-    }
-
-    const proposal = parsed.data;
-
-    // 3. Rule 21: Check status is pending (prevent double decision / replay attacks)
-    if (proposal.status !== 'pending') {
-      return {
-        success: false,
-        error: {
-          code: 'PROPOSAL_ALREADY_DECIDED',
-          message: `Proposal '${input.proposalId}' is already ${proposal.status}.`,
-        },
-      };
-    }
-
-    // Check expiration
-    if (new Date(proposal.expiresAt).getTime() < Date.now()) {
-      return {
-        success: false,
-        error: {
-          code: 'PROPOSAL_EXPIRED',
-          message: `Proposal '${input.proposalId}' expired at ${proposal.expiresAt}.`,
-        },
-      };
-    }
-
-    // 4. Rule 13: Model Distrust & Anti-Self-Approval
-    const isProposer =
-      proposal.authorizingUserId === auth.uid ||
-      proposal.toolInvocationId === auth.uid;
-
-    const isL4Privileged =
-      proposal.blastRadius?.riskLevel === 'L4_PRIVILEGED_DESTRUCTIVE';
-
-    if (isProposer && isL4Privileged) {
-      return {
-        success: false,
-        error: {
-          code: 'SELF_APPROVAL_FORBIDDEN',
-          message:
-            'Dual-authorization required: Proposing operator cannot self-approve L4 privileged actions (Rule 13).',
-        },
-      };
-    }
-
-    // 5. Rule 22: Cryptographic SHA-256 Payload Hash Matching
-    if (input.executionPayload) {
-      const computedHash = ApprovalInterceptor.computePayloadHash(input.executionPayload);
-      if (computedHash !== proposal.payloadHash) {
-        return {
-          success: false,
-          error: {
-            code: 'PAYLOAD_TAMPERED',
-            message: `Execution payload does not match approved proposal hash (expected ${proposal.payloadHash}, computed ${computedHash}). Execution aborted (Rule 22).`,
-          },
-        };
-      }
-    }
-
-    // 6. Update database record atomically
-    const now = new Date().toISOString();
-    const updateData: Record<string, unknown> = {
-      status: 'approved',
-      approvedBy: auth.uid,
-      approvedAt: now,
-      updatedAt: now,
-      decisionNotes: input.decisionNotes ?? null,
-    };
-
-    await docRef.update(updateData);
-
-    const approvedProposal: ActionProposal = {
-      ...proposal,
-      status: 'approved',
-      approvedBy: auth.uid,
-      approvedAt: now,
-      updatedAt: now,
-      decisionNotes: input.decisionNotes,
-    };
-
-    // 7. Rule 40: Emit domain event
-    const domainEvent = createDomainEvent({
-      type: 'policy.approval.granted',
-      organizationId: proposal.organizationId,
-      workspaceId: proposal.workspaceId,
-      actor: { type: 'user', id: auth.uid },
-      entity: { type: 'approval_proposal', id: proposal.proposalId },
-      payload: {
-        proposalId: proposal.proposalId,
-        decision: 'approved',
-        capabilityId: proposal.capabilityId,
-        notes: input.decisionNotes ?? null,
-        decidedBy: auth.uid,
-      },
-      correlationId: `appr-${proposal.proposalId}`,
-      source: 'unified_approval_center',
-    });
-
-    void defaultEventBus.publish(domainEvent);
-
-    return {
-      success: true,
-      data: approvedProposal,
-    };
   } catch (err: unknown) {
-    const errObj = err as { code?: string; message?: string };
-    if (errObj?.code === 'AGENT_GOVERNANCE_EMERGENCY_PAUSED') {
-      return {
-        success: false,
-        error: {
-          code: 'EMERGENCY_PAUSED',
-          message: 'Operation blocked: Platform emergency dead-man pause is currently active.',
-        },
-      };
-    }
-
-    const message = err instanceof Error ? err.message : 'Failed to approve proposal';
-    const isIdor = message.startsWith('IDOR_VIOLATION');
-    return {
-      success: false,
-      error: {
-        code: isIdor ? 'IDOR_VIOLATION' : 'APPROVE_FAILED',
-        message,
-      },
-    };
+    return mapDecisionError(err, 'Failed to approve proposal');
   }
 }
 
 /**
- * Reject an action proposal with mandatory rationale and automatic saga rollback trigger (Rules 27, 40, 60).
+ * Reject an action proposal with a mandatory reason (Rules 27, 40, 60); same approver policy.
  */
 export async function rejectActionProposalAction(
   rawInput: RejectProposalInput
-): Promise<ApprovalGovernanceActionResult<ActionProposal>> {
+): Promise<ApprovalGovernanceActionResult<ApprovalView>> {
   try {
     const input = RejectProposalInputSchema.parse(rawInput);
-
-    // 1. Rule 60: Check platform emergency dead-man pause
     await checkGovernanceDeadManSwitch(input.organizationId);
-
-    // 2. Rule 51: Authenticate operator session
     const auth = await requireAuth();
     assertTenantContext(auth, input.organizationId);
-
-    const docRef = adminDb.collection('capability_approvals').doc(input.proposalId);
-    const snap = await docRef.get();
-
-    if (!snap.exists) {
-      return {
-        success: false,
-        error: {
-          code: 'PROPOSAL_NOT_FOUND',
-          message: `Action proposal '${input.proposalId}' not found.`,
-        },
-      };
-    }
-
-    const data = snap.data();
-    if (!data || data.organizationId !== input.organizationId) {
-      return {
-        success: false,
-        error: {
-          code: 'TENANT_MISMATCH',
-          message: 'Tenant boundary violation.',
-        },
-      };
-    }
-
-    const parsed = ActionProposalSchema.safeParse({
-      ...data,
-      proposalId: snap.id,
+    return await decide(auth, {
+      organizationId: input.organizationId,
+      proposalId: input.proposalId,
+      decision: 'rejected',
+      notes: input.decisionNotes,
+      ...(input.expectedVersion !== undefined ? { expectedVersion: input.expectedVersion } : {}),
     });
-
-    if (!parsed.success) {
-      return {
-        success: false,
-        error: {
-          code: 'PROPOSAL_CORRUPT',
-          message: 'Stored proposal data failed schema validation.',
-        },
-      };
-    }
-
-    const proposal = parsed.data;
-
-    // Check status
-    if (proposal.status !== 'pending') {
-      return {
-        success: false,
-        error: {
-          code: 'PROPOSAL_ALREADY_DECIDED',
-          message: `Proposal '${input.proposalId}' is already ${proposal.status}.`,
-        },
-      };
-    }
-
-    // Update database record atomically
-    const now = new Date().toISOString();
-    const updateData: Record<string, unknown> = {
-      status: 'rejected',
-      rejectedBy: auth.uid,
-      rejectedAt: now,
-      updatedAt: now,
-      decisionNotes: input.decisionNotes,
-    };
-
-    await docRef.update(updateData);
-
-    const rejectedProposal: ActionProposal = {
-      ...proposal,
-      status: 'rejected',
-      rejectedBy: auth.uid,
-      rejectedAt: now,
-      updatedAt: now,
-      decisionNotes: input.decisionNotes,
-    };
-
-    // 3. Rule 27: Trigger reverse-LIFO Saga compensation if linked to an agent run
-    if (proposal.toolInvocationId) {
-      try {
-        const runStore = getAgentRunStore();
-        const run = await runStore.getRun(proposal.organizationId, proposal.toolInvocationId);
-
-        if (run) {
-          const sagaEngine = getSagaCompensationEngine();
-          void sagaEngine.rollbackRun({
-            organizationId: proposal.organizationId,
-            workspaceId: proposal.workspaceId,
-            runId: proposal.toolInvocationId,
-            reason: `Action proposal '${proposal.proposalId}' was rejected by human operator (${auth.uid}): ${input.decisionNotes}`,
-          });
-        }
-      } catch (sagaErr) {
-        console.warn('[ApprovalGovernance] Failed to trigger saga compensation on rejection:', sagaErr);
-      }
-    }
-
-    // 4. Rule 40: Emit domain event
-    const domainEvent = createDomainEvent({
-      type: 'policy.approval.rejected',
-      organizationId: proposal.organizationId,
-      workspaceId: proposal.workspaceId,
-      actor: { type: 'user', id: auth.uid },
-      entity: { type: 'approval_proposal', id: proposal.proposalId },
-      payload: {
-        proposalId: proposal.proposalId,
-        decision: 'rejected',
-        capabilityId: proposal.capabilityId,
-        notes: input.decisionNotes,
-        decidedBy: auth.uid,
-      },
-      correlationId: `appr-rej-${proposal.proposalId}`,
-      source: 'unified_approval_center',
-    });
-
-    void defaultEventBus.publish(domainEvent);
-
-    return {
-      success: true,
-      data: rejectedProposal,
-    };
   } catch (err: unknown) {
-    const errObj = err as { code?: string; message?: string };
-    if (errObj?.code === 'AGENT_GOVERNANCE_EMERGENCY_PAUSED') {
-      return {
-        success: false,
-        error: {
-          code: 'EMERGENCY_PAUSED',
-          message: 'Operation blocked: Platform emergency dead-man pause is currently active.',
-        },
-      };
-    }
-
-    const message = err instanceof Error ? err.message : 'Failed to reject proposal';
-    const isIdor = message.startsWith('IDOR_VIOLATION');
-    const isInvalid = message.includes('Mandatory explanation note required');
-    return {
-      success: false,
-      error: {
-        code: isIdor ? 'IDOR_VIOLATION' : isInvalid ? 'INVALID_ARGUMENT' : 'REJECT_FAILED',
-        message,
-      },
-    };
+    return mapDecisionError(err, 'Failed to reject proposal');
   }
 }
 
@@ -693,6 +463,7 @@ export async function getApprovalGovernanceMetricsAction(
     for (const doc of pendingSnap.docs) {
       const data = doc.data();
       if (
+        data.riskLevel === 'L4_PRIVILEGED_DESTRUCTIVE' ||
         data.blastRadius?.riskLevel === 'L4_PRIVILEGED_DESTRUCTIVE' ||
         data.blastRadius?.riskLevel === 'critical'
       ) {

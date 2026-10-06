@@ -23,13 +23,14 @@ import {
   Users,
 } from 'lucide-react';
 import { RejectApprovalModal } from './RejectApprovalModal';
-import type { ActionProposal } from '@/platform/policy/approval-proposal-types';
+import type { ApprovalView } from '@/platform/policy/approval-view';
 import { cn } from '@/lib/utils';
 
 export interface ApprovalProposalCardProps {
-  proposal: ActionProposal;
-  onApprove: (proposalId: string) => Promise<void>;
-  onReject: (proposalId: string, reason: string, notes?: string) => Promise<void>;
+  proposal: ApprovalView;
+  /** `version` is the record version shown, sent back so a concurrent decision is refused (Rule 18). */
+  onApprove: (proposalId: string, version: number) => Promise<void>;
+  onReject: (proposalId: string, reason: string, notes: string | undefined, version: number) => Promise<void>;
   isSubmitting?: boolean;
 }
 
@@ -90,8 +91,23 @@ export function ApprovalProposalCard({
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-bold uppercase tracking-wider text-foreground">
-                  {proposal.agentPersonaId.replace(/_/g, ' ')}
+                  {proposal.agentPersonaId ? proposal.agentPersonaId.replace(/_/g, ' ') : proposal.workflowRef ? 'Workflow' : 'Request'}
                 </span>
+                {proposal.needsReproposal && (
+                  <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 text-amber-600 border-amber-500/40 font-normal">
+                    Needs re-proposal
+                  </Badge>
+                )}
+                {!proposal.needsReproposal && !proposal.executable && (
+                  <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 text-muted-foreground font-normal">
+                    Recommendation
+                  </Badge>
+                )}
+                {proposal.requiredApprovals > 1 && (
+                  <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 text-muted-foreground font-normal">
+                    {proposal.approvalsCount} of {proposal.requiredApprovals} approvals
+                  </Badge>
+                )}
                 {proposal.delegationChain && proposal.delegationChain.length > 1 && (
                   <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 text-muted-foreground font-normal">
                     Hop {proposal.delegationChain.length - 1}
@@ -106,7 +122,7 @@ export function ApprovalProposalCard({
 
           <div className="flex items-center gap-2">
             <div className={`px-2 py-0.5 rounded-md text-[11px] font-semibold border ${riskBadgeColor}`}>
-              {proposal.blastRadius?.riskLevel ?? 'L3_APPROVAL_REQUIRED'}
+              {proposal.riskLevel ?? proposal.blastRadius?.riskLevel ?? 'L3_APPROVAL_REQUIRED'}
             </div>
             <div
               className={cn(
@@ -215,6 +231,13 @@ export function ApprovalProposalCard({
 
         {/* Footer Actions: Tactile Approve & Reject */}
         <div className="px-5 py-3.5 border-t border-border/80 bg-muted/15 flex items-center justify-end gap-2.5">
+          {proposal.needsReproposal ? (
+            <p className="text-xs text-muted-foreground">This request was made before approvals were updated. Ask for it again.</p>
+          ) : !proposal.canDecide ? (
+            // Buttons are hidden for people who can't decide; the server refuses them anyway.
+            <p className="text-xs text-muted-foreground">Waiting for an approver.</p>
+          ) : (
+          <>
           <Button
             type="button"
             variant="outline"
@@ -227,7 +250,7 @@ export function ApprovalProposalCard({
 
           <Button
             type="button"
-            onClick={() => onApprove(proposal.proposalId)}
+            onClick={() => onApprove(proposal.proposalId, proposal.version)}
             disabled={isSubmitting}
             className="rounded-xl min-h-[44px] px-5 active:scale-[0.97] transition-transform text-xs font-semibold bg-primary text-primary-foreground shadow-sm flex items-center gap-1.5"
           >
@@ -240,6 +263,8 @@ export function ApprovalProposalCard({
               <span>Approve Action</span>
             )}
           </Button>
+          </>
+          )}
         </div>
       </div>
 
@@ -248,7 +273,7 @@ export function ApprovalProposalCard({
         onOpenChange={setRejectModalOpen}
         proposalId={proposal.proposalId}
         proposalTitle={proposal.what}
-        onConfirmReject={(reason, notes) => onReject(proposal.proposalId, reason, notes)}
+        onConfirmReject={(reason, notes) => onReject(proposal.proposalId, reason, notes, proposal.version)}
         isSubmitting={isSubmitting}
       />
     </>

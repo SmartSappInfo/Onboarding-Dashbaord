@@ -15,10 +15,17 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ProposalReviewDrawer } from '@/components/approvals/ProposalReviewDrawer';
-import type { ActionProposal } from '@/platform/policy/approval-proposal-types';
+import type { ApprovalView } from '@/platform/policy/approval-view';
 
 describe('ProposalReviewDrawer Component (Phase 8 Milestone 3)', () => {
-  const mockProposal: ActionProposal = {
+  const mockProposal: ApprovalView = {
+    // Unified approval view (Phase 11 M0 · T2): an approver looking at a pending, decidable request.
+    needsReproposal: false,
+    executable: true,
+    requiredApprovals: 1,
+    approvalsCount: 0,
+    version: 0,
+    canDecide: true,
     proposalId: 'prop_test_300',
     organizationId: 'org_acme_corp',
     workspaceId: 'ws_sales_01',

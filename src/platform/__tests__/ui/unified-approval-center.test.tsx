@@ -21,7 +21,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ApprovalsClient } from '@/app/admin/intelligence/approvals/ApprovalsClient';
 import AdminApprovalsRedirectPage from '@/app/admin/approvals/page';
-import type { ActionProposal } from '@/platform/policy/approval-proposal-types';
+import type { ApprovalView } from '@/platform/policy/approval-view';
 
 // Mock Workspace Context
 vi.mock('@/context/WorkspaceContext', () => ({
@@ -72,7 +72,14 @@ vi.mock('@/hooks/useEventStream', () => ({
 }));
 
 describe('Unified Approval Center & Mission Control (/admin/intelligence/approvals)', () => {
-  const sampleProposal: ActionProposal = {
+  const sampleProposal: ApprovalView = {
+    // Unified approval view (Phase 11 M0 · T2): a pending request this approver may decide.
+    needsReproposal: false,
+    executable: true,
+    requiredApprovals: 1,
+    approvalsCount: 0,
+    version: 0,
+    canDecide: true,
     proposalId: 'prop_unified_001',
     organizationId: 'org_acme_corp',
     workspaceId: 'ws_sales_01',
@@ -214,9 +221,11 @@ describe('Unified Approval Center & Mission Control (/admin/intelligence/approva
       fireEvent.click(approveBtn);
 
       await waitFor(() => {
+        // The version shown is sent back so a concurrent decision is refused (M0 · T2, Rule 18).
         expect(mockApproveProposal).toHaveBeenCalledWith({
           organizationId: 'org_acme_corp',
           proposalId: 'prop_unified_001',
+          expectedVersion: 0,
         });
       });
     });
@@ -244,6 +253,7 @@ describe('Unified Approval Center & Mission Control (/admin/intelligence/approva
           expect.objectContaining({
             organizationId: 'org_acme_corp',
             proposalId: 'prop_unified_001',
+            expectedVersion: 0,
           })
         );
       });

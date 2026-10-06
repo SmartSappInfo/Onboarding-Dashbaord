@@ -18,6 +18,7 @@ import { randomUUID } from 'node:crypto';
 import type { Firestore } from 'firebase-admin/firestore';
 import { z } from 'zod/v4';
 import type { AnyCapabilityDefinition } from '../capabilities/contracts/capability-definition';
+import { getCapability } from '../capabilities/registry/capability-registry';
 import { RISK_LEVELS, type RiskLevel } from '../capabilities/contracts/risk-levels';
 import {
   CAPABILITY_APPROVALS_COLLECTION,
@@ -130,6 +131,33 @@ export function buildApprovalRecord(input: CreateApprovalInput, nowMs: number, a
     createdAt: nowIso,
     updatedAt: nowIso,
     version: 0,
+  });
+}
+
+/**
+ * The hash a proposal's payload must have (Rule 22), for callers that compare a payload with a
+ * proposal outside the gateway (agent interceptor, approval centre). Same envelope as the gateway:
+ * the registered capability's VALIDATED input when the capability (at that version) is registered,
+ * else the raw payload.
+ */
+export function hashProposalPayload(
+  target: { capabilityId: string; capabilityVersion: string; organizationId: string; workspaceId: string },
+  payload: Record<string, unknown>,
+  lookup: (id: string) => AnyCapabilityDefinition | undefined = getCapability
+): string {
+  const cap = lookup(target.capabilityId);
+  let input: unknown = payload;
+  if (cap && cap.version === target.capabilityVersion) {
+    const validated = cap.inputSchema.safeParse(payload);
+    if (validated.success) input = validated.data;
+  }
+  // Exactly the gateway envelope: callers often pass a whole proposal, whose other fields must not leak in.
+  return computeApprovalPayloadHash({
+    capabilityId: target.capabilityId,
+    capabilityVersion: target.capabilityVersion,
+    organizationId: target.organizationId,
+    workspaceId: target.workspaceId,
+    input,
   });
 }
 

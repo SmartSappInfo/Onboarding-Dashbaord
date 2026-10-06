@@ -1,159 +1,47 @@
 /**
- * @fileOverview Test Suite for Approval Governance Server Actions (Phase 8 Milestone 3)
+ * @fileOverview Approval Governance Server Actions over the UNIFIED approval record
+ * (Phase 8 M3; rewritten for Phase 11 M0 · T2, findings F4/F5).
  *
- * Implements:
- * - Rule 4: Zero `any` / zero `any[]`.
- * - Rule 8 & 47: Anti-IDOR validation.
- * - Rule 13: Model Distrust & Anti-Self-Approval.
- * - Rule 18: Live TOCTOU Authority Check.
- * - Rule 21 & 22: Cryptographic Payload Hash Matching (Tamper Detection).
- * - Rule 27: Saga Compensation Trigger on Rejection.
- * - Rule 40: Tamper-Evident Domain Event Publication.
- * - Rule 51: Server Action Authentication via `requireAuth()`.
- * - Rule 60: Emergency Dead-Man Switch Evaluation.
+ * Covers: anti-IDOR; listing limited to the person's workspaces; approver policy (permission,
+ * membership, never the proposer, L4 dual); payload tamper check with the gateway envelope; one
+ * decision wins (version); legacy proposals need re-proposal; decision + security-feed events;
+ * metrics; emergency pause.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { ActionProposal } from '@/platform/policy/approval-proposal-types';
+import { FakeFirestore } from '../helpers/fake-firestore';
+import type { AuthContext } from '@/lib/auth/require-auth';
+import type { UserProfile } from '@/lib/types';
 
-// Mock auth context
-let mockAuthUser = {
-  uid: 'user_operator_1',
-  isSystemAdmin: false,
-  profile: {
-    organizationId: 'org_acme_corp',
-  },
-};
+const h = vi.hoisted(() => ({ db: undefined as unknown, paused: false, events: [] as Array<{ type: string; payload: Record<string, unknown> }> }));
 
+let mockAuthUser: AuthContext;
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuth: vi.fn(async () => mockAuthUser),
 }));
-
-// Mock dead-man switch
-let mockDeadManPaused = false;
+vi.mock('@/lib/firebase-admin', () => ({
+  get adminDb() {
+    return h.db;
+  },
+}));
 vi.mock('@/platform/policy/governance-dead-man', () => ({
   checkGovernanceDeadManSwitch: vi.fn(async () => {
-    if (mockDeadManPaused) {
-      const err = new Error('Platform emergency dead-man pause is active.');
-      (err as { code?: string }).code = 'AGENT_GOVERNANCE_EMERGENCY_PAUSED';
+    if (h.paused) {
+      const err = Object.assign(new Error('Platform emergency dead-man pause is active.'), { code: 'AGENT_GOVERNANCE_EMERGENCY_PAUSED' });
       throw err;
     }
   }),
   updateEmergencyPauseStatus: vi.fn(async (paused: boolean) => {
-    mockDeadManPaused = paused;
+    h.paused = paused;
   }),
 }));
-
-// Mock EventBus
-const publishedEvents: unknown[] = [];
-vi.mock('@/platform/events/event-bus', () => ({
-  globalEventBus: {
-    publish: vi.fn(async (event: unknown) => {
-      publishedEvents.push(event);
-    }),
-  },
-  defaultEventBus: {
-    publish: vi.fn(async (event: unknown) => {
-      publishedEvents.push(event);
-    }),
-  },
-}));
-
-// In-memory Firestore mock for capability_approvals
-const mockProposalsStore = new Map<string, Record<string, unknown>>();
-
-vi.mock('@/lib/firebase-admin', () => {
-  const collectionMock = (collName: string) => {
-    if (collName === 'system_settings') {
-      return {
-        doc: (_docId: string) => ({
-          get: async () => ({
-            exists: true,
-            data: () => ({ emergencyPause: mockDeadManPaused }),
-          }),
-          set: async (data: unknown) => {
-            if ((data as { emergencyPause?: boolean })?.emergencyPause !== undefined) {
-              mockDeadManPaused = !!(data as { emergencyPause?: boolean }).emergencyPause;
-            }
-          },
-        }),
-      };
-    }
-
-    return {
-      doc: (docId: string) => ({
-        get: async () => {
-          const item = mockProposalsStore.get(docId);
-          return {
-            exists: !!item,
-            id: docId,
-            data: () => (item ? { ...item } : undefined),
-          };
-        },
-        set: async (data: Record<string, unknown>) => {
-          mockProposalsStore.set(docId, { ...data, proposalId: docId });
-        },
-        update: async (data: Record<string, unknown>) => {
-          const existing = mockProposalsStore.get(docId);
-          if (!existing) throw new Error('Not found');
-          mockProposalsStore.set(docId, { ...existing, ...data });
-        },
-      }),
-      where: (field: string, op: string, val: unknown) => {
-        let filters: Array<[string, string, unknown]> = [[field, op, val]];
-        const queryBuilder = {
-          where: (f2: string, op2: string, val2: unknown) => {
-            filters.push([f2, op2, val2]);
-            return queryBuilder;
-          },
-          limit: (_n: number) => ({
-            get: async () => {
-              const docs: Array<{ id: string; data: () => Record<string, unknown> }> = [];
-              for (const [id, record] of mockProposalsStore.entries()) {
-                let match = true;
-                for (const [f, , v] of filters) {
-                  if (record[f] !== v) {
-                    match = false;
-                    break;
-                  }
-                }
-                if (match) {
-                  docs.push({ id, data: () => ({ ...record, proposalId: id }) });
-                }
-              }
-              return { docs, empty: docs.length === 0, size: docs.length };
-            },
-          }),
-          get: async () => {
-            const docs: Array<{ id: string; data: () => Record<string, unknown> }> = [];
-            for (const [id, record] of mockProposalsStore.entries()) {
-              let match = true;
-              for (const [f, , v] of filters) {
-                if (record[f] !== v) {
-                  match = false;
-                  break;
-                }
-              }
-              if (match) {
-                docs.push({ id, data: () => ({ ...record, proposalId: id }) });
-              }
-            }
-            return { docs, empty: docs.length === 0, size: docs.length };
-          },
-        };
-        return queryBuilder;
-      },
-    };
-  };
-
-  return {
-    adminDb: {
-      collection: collectionMock,
-    },
-  };
+vi.mock('@/platform/events/event-bus', () => {
+  const publish = vi.fn(async (event: { type: string; payload: Record<string, unknown> }) => {
+    h.events.push(event);
+  });
+  return { globalEventBus: { publish }, defaultEventBus: { publish } };
 });
 
-// Import actions under test
 import {
   listActionProposalsAction,
   getActionProposalDetailsAction,
@@ -162,272 +50,198 @@ import {
   getApprovalGovernanceMetricsAction,
   setEmergencyPauseAction,
 } from '@/app/actions/approval-governance-actions';
-import { ApprovalInterceptor } from '@/platform/runtime/execution/approval-interceptor';
+import { buildApprovalRecord } from '@/platform/policy/unified-approval-store';
+import type { ApprovalRecord } from '@/platform/policy/approval-record';
+import { getFullAdminPermissions } from '@/lib/permissions-engine';
 
-describe('Approval Governance Server Actions (Phase 8 Milestone 3)', () => {
-  const samplePayload = {
-    campaignId: 'camp_789',
-    recipientCount: 500,
-    discountRate: 0.15,
-  };
-  const samplePayloadHash = ApprovalInterceptor.computePayloadHash(samplePayload);
+const db = new FakeFirestore();
+h.db = db;
 
-  const mockProposalDoc: ActionProposal = {
-    proposalId: 'prop_test_100',
+const samplePayload = { campaignId: 'camp_789', recipientCount: 500, discountRate: 0.15 };
+
+function seed(id: string, over: Partial<Parameters<typeof buildApprovalRecord>[0]> = {}): ApprovalRecord {
+  const record = buildApprovalRecord({
+    capability: null,
+    capabilityId: 'campaigns.dispatch_outbound',
     organizationId: 'org_acme_corp',
     workspaceId: 'ws_sales_01',
-    capabilityId: 'campaigns.dispatch_outbound',
-    capabilityVersion: '1.0.0',
-    agentPersonaId: 'lead_sdr',
-    authorizingUserId: 'user_agent_supervisor',
+    payload: samplePayload,
+    requestedBy: { kind: 'agent', userId: 'user_agent_supervisor', agentPersonaId: 'lead_sdr' },
     what: 'Dispatch Q4 renewal campaign to 500 targeted customers',
     why: 'Customer health score >= 80 and contracts up for renewal in 45 days',
-    blastRadius: {
-      entityCount: 500,
-      entityType: 'contacts',
-      estimatedCostUsd: 25.0,
-      riskLevel: 'L3_EXTERNAL_COMMUNICATION_FINANCE',
-      targetSummary: 'Tier 1 Enterprise Renewals',
-    },
-    payload: samplePayload,
-    payloadHash: samplePayloadHash,
-    status: 'pending',
-    expiresAt: new Date(Date.now() + 86400000).toISOString(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    blastRadius: { entityCount: 500, entityType: 'contacts', estimatedCostUsd: 25, riskLevel: 'L3_EXTERNAL_COMMUNICATION_FINANCE', targetSummary: 'Tier 1 Enterprise Renewals' },
+    ...over,
+  }, Date.now(), id);
+  db.write(`capability_approvals/${id}`, record);
+  return record;
+}
+
+function auth(over: Partial<UserProfile> = {}, uid = 'user_operator_1', isSystemAdmin = false): AuthContext {
+  const profile: UserProfile = {
+    id: uid, name: 'Operator', email: `${uid}@acme.test`, createdAt: '2026-01-01T00:00:00.000Z',
+    organizationId: 'org_acme_corp', workspaceIds: ['ws_sales_01'], permissions: ['agent_approvals_decide'], ...over,
   };
+  return { uid, isSystemAdmin, profile };
+}
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockProposalsStore.clear();
-    publishedEvents.length = 0;
-    mockDeadManPaused = false;
-    mockAuthUser = {
-      uid: 'user_operator_1',
-      isSystemAdmin: false,
-      profile: {
-        organizationId: 'org_acme_corp',
-      },
-    };
+beforeEach(() => {
+  vi.clearAllMocks();
+  db.docs.clear();
+  h.events.length = 0;
+  h.paused = false;
+  mockAuthUser = auth();
+  seed('prop_test_100');
+});
 
-    mockProposalsStore.set(mockProposalDoc.proposalId, { ...mockProposalDoc });
-  });
-
+describe('Approval Governance Server Actions (unified approvals)', () => {
   describe('1. listActionProposalsAction', () => {
     it('enforces Anti-IDOR: rejects requests for another tenant', async () => {
-      const result = await listActionProposalsAction({
-        organizationId: 'org_other_tenant',
-      });
-
+      const result = await listActionProposalsAction({ organizationId: 'org_rival_corp' });
       expect(result.success).toBe(false);
       expect(result.error?.code).toBe('IDOR_VIOLATION');
     });
 
-    it('returns pending proposals for the authenticated organization', async () => {
-      const result = await listActionProposalsAction({
-        organizationId: 'org_acme_corp',
-      });
-
+    it('returns pending requests with what the approver needs (canDecide, version, approvals)', async () => {
+      const result = await listActionProposalsAction({ organizationId: 'org_acme_corp', workspaceId: 'ws_sales_01' });
       expect(result.success).toBe(true);
-      expect(result.data).toBeDefined();
-      expect(result.data?.length).toBe(1);
-      expect(result.data?.[0].proposalId).toBe('prop_test_100');
+      expect(result.data).toHaveLength(1);
+      expect(result.data?.[0]).toMatchObject({ proposalId: 'prop_test_100', canDecide: true, version: 0, requiredApprovals: 1, approvalsCount: 0, executable: false, needsReproposal: false });
     });
 
-    it('filters proposals by category and search query', async () => {
-      const result = await listActionProposalsAction({
-        organizationId: 'org_acme_corp',
-        category: 'campaigns',
-        search: 'renewal',
+    it('filters by category and search query', async () => {
+      expect((await listActionProposalsAction({ organizationId: 'org_acme_corp', category: 'campaigns', search: 'renewal' })).data).toHaveLength(1);
+      expect((await listActionProposalsAction({ organizationId: 'org_acme_corp', category: 'campaigns', search: 'nonexistent' })).data).toHaveLength(0);
+    });
+
+    it("hides other workspaces' requests from non-members; the proposer can't decide their own", async () => {
+      mockAuthUser = auth({ workspaceIds: ['ws_other'] });
+      expect((await listActionProposalsAction({ organizationId: 'org_acme_corp' })).data).toHaveLength(0);
+      mockAuthUser = auth({}, 'user_agent_supervisor');
+      expect((await listActionProposalsAction({ organizationId: 'org_acme_corp' })).data?.[0].canDecide).toBe(false);
+    });
+
+    it('shows legacy proposals as needing re-proposal', async () => {
+      db.write('capability_approvals/prop_legacy', {
+        organizationId: 'org_acme_corp', workspaceId: 'ws_sales_01', capabilityId: 'campaigns.dispatch_outbound', capabilityVersion: '1.0.0',
+        agentPersonaId: 'lead_sdr', authorizingUserId: 'user_agent_supervisor', what: 'Old', why: 'Old', payload: samplePayload,
+        payloadHash: 'b'.repeat(64), status: 'pending', expiresAt: new Date(Date.now() + 86400000).toISOString(),
+        createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
       });
-
-      expect(result.success).toBe(true);
-      expect(result.data?.length).toBe(1);
-
-      const emptyResult = await listActionProposalsAction({
-        organizationId: 'org_acme_corp',
-        category: 'financial',
-      });
-
-      expect(emptyResult.success).toBe(true);
-      expect(emptyResult.data?.length).toBe(0);
+      const legacy = (await listActionProposalsAction({ organizationId: 'org_acme_corp' })).data?.find((p) => p.proposalId === 'prop_legacy');
+      expect(legacy).toMatchObject({ needsReproposal: true, canDecide: false });
+      expect((await approveActionProposalAction({ organizationId: 'org_acme_corp', proposalId: 'prop_legacy' })).error?.code).toBe('NEEDS_REPROPOSAL');
     });
   });
 
   describe('2. getActionProposalDetailsAction', () => {
-    it('retrieves detailed proposal record by ID', async () => {
-      const result = await getActionProposalDetailsAction({
-        organizationId: 'org_acme_corp',
-        proposalId: 'prop_test_100',
-      });
-
+    it('retrieves a request by id', async () => {
+      const result = await getActionProposalDetailsAction({ organizationId: 'org_acme_corp', proposalId: 'prop_test_100' });
       expect(result.success).toBe(true);
-      expect(result.data?.proposalId).toBe('prop_test_100');
       expect(result.data?.what).toContain('Dispatch Q4 renewal');
     });
 
-    it('fails with PROPOSAL_NOT_FOUND when ID does not exist', async () => {
-      const result = await getActionProposalDetailsAction({
-        organizationId: 'org_acme_corp',
-        proposalId: 'prop_non_existent',
-      });
-
-      expect(result.success).toBe(false);
+    it('fails with PROPOSAL_NOT_FOUND when the id does not exist', async () => {
+      const result = await getActionProposalDetailsAction({ organizationId: 'org_acme_corp', proposalId: 'prop_nonexistent' });
       expect(result.error?.code).toBe('PROPOSAL_NOT_FOUND');
     });
   });
 
-  describe('3. approveActionProposalAction (Rule 13, 18, 21, 22, 60)', () => {
-    it('fails closed when emergency dead-man switch is active (Rule 60)', async () => {
-      mockDeadManPaused = true;
-
-      const result = await approveActionProposalAction({
-        organizationId: 'org_acme_corp',
-        proposalId: 'prop_test_100',
-      });
-
-      expect(result.success).toBe(false);
+  describe('3. approveActionProposalAction (Rules 13, 17, 18, 21, 22, 60)', () => {
+    it('fails closed when the emergency dead-man switch is active (Rule 60)', async () => {
+      h.paused = true;
+      const result = await approveActionProposalAction({ organizationId: 'org_acme_corp', proposalId: 'prop_test_100' });
       expect(result.error?.code).toBe('EMERGENCY_PAUSED');
     });
 
-    it('enforces Anti-Self-Approval: proposer cannot approve L4 privileged actions (Rule 13)', async () => {
-      // Modify proposal to L4 privileged and set proposer to caller
-      const l4Proposal: ActionProposal = {
-        ...mockProposalDoc,
-        proposalId: 'prop_l4_self',
-        authorizingUserId: 'user_operator_1', // caller is proposer
-        blastRadius: {
-          entityCount: 1,
-          entityType: 'database',
-          riskLevel: 'L4_PRIVILEGED_DESTRUCTIVE',
-        },
-      };
-      mockProposalsStore.set(l4Proposal.proposalId, { ...l4Proposal });
-
-      const result = await approveActionProposalAction({
-        organizationId: 'org_acme_corp',
-        proposalId: 'prop_l4_self',
-      });
-
-      expect(result.success).toBe(false);
-      expect(result.error?.code).toBe('SELF_APPROVAL_FORBIDDEN');
+    it('the proposer can never decide their own request (any risk level) and it is recorded', async () => {
+      mockAuthUser = auth({}, 'user_agent_supervisor');
+      const result = await approveActionProposalAction({ organizationId: 'org_acme_corp', proposalId: 'prop_test_100' });
+      expect(result.error?.code).toBe('SELF_DECISION');
+      expect(h.events.map((e) => e.type)).toContain('approval.self_decision_blocked');
     });
 
-    it('enforces Cryptographic Payload Hash Matching: rejects tampered payloads (Rule 22)', async () => {
-      const tamperedPayload = {
-        ...samplePayload,
-        discountRate: 0.99, // tampered from 0.15 to 0.99!
-      };
+    it('a workspace-admin role (schema with users edit) can decide by default (D6)', async () => {
+      mockAuthUser = auth({ permissions: [], permissionsSchema: getFullAdminPermissions() });
+      expect((await approveActionProposalAction({ organizationId: 'org_acme_corp', proposalId: 'prop_test_100' })).success).toBe(true);
+    });
 
+    it('a member without the decide permission is refused and it is recorded', async () => {
+      mockAuthUser = auth({ permissions: ['prospects_view'] });
+      const result = await approveActionProposalAction({ organizationId: 'org_acme_corp', proposalId: 'prop_test_100' });
+      expect(result.error?.code).toBe('NOT_PERMITTED');
+      expect(h.events.map((e) => e.type)).toContain('approval.permission_denied');
+    });
+
+    it('rejects a tampered payload (Rule 22) and records the mismatch', async () => {
       const result = await approveActionProposalAction({
-        organizationId: 'org_acme_corp',
-        proposalId: 'prop_test_100',
-        executionPayload: tamperedPayload,
+        organizationId: 'org_acme_corp', proposalId: 'prop_test_100',
+        executionPayload: { ...samplePayload, discountRate: 0.99 },
       });
-
-      expect(result.success).toBe(false);
       expect(result.error?.code).toBe('PAYLOAD_TAMPERED');
+      expect(h.events.map((e) => e.type)).toContain('approval.binding_mismatch');
     });
 
-    it('successfully approves proposal, updates status, and emits domain event (Rule 21 & 40)', async () => {
-      const result = await approveActionProposalAction({
-        organizationId: 'org_acme_corp',
-        proposalId: 'prop_test_100',
-        decisionNotes: 'Approved after verifying Q4 quota allocation.',
-      });
-
+    it('approves, records the approver and emits policy.approval.granted (Rules 21, 40)', async () => {
+      const result = await approveActionProposalAction({ organizationId: 'org_acme_corp', proposalId: 'prop_test_100', executionPayload: samplePayload, expectedVersion: 0 });
       expect(result.success).toBe(true);
-      expect(result.data?.status).toBe('approved');
-      expect(result.data?.approvedBy).toBe('user_operator_1');
-
-      // Verify domain event emitted
-      expect(publishedEvents.length).toBeGreaterThan(0);
-      const event = publishedEvents[0] as { type: string; payload: { decision: string } };
-      expect(event.type).toBe('policy.approval.granted');
-      expect(event.payload.decision).toBe('approved');
+      expect(result.data).toMatchObject({ status: 'approved', approvedBy: 'user_operator_1', version: 1 });
+      const event = h.events.find((e) => e.type === 'policy.approval.granted');
+      expect(event?.payload.decision).toBe('approved');
     });
 
-    it('rejects double-approval: fails if proposal is already decided', async () => {
-      // First approval
-      await approveActionProposalAction({
-        organizationId: 'org_acme_corp',
-        proposalId: 'prop_test_100',
-      });
+    it('a second decision is refused: someone already decided this', async () => {
+      await approveActionProposalAction({ organizationId: 'org_acme_corp', proposalId: 'prop_test_100' });
+      const second = await approveActionProposalAction({ organizationId: 'org_acme_corp', proposalId: 'prop_test_100' });
+      expect(second.error?.code).toBe('NOT_PENDING');
+      expect(second.error?.message).toBe('Someone already decided this.');
+      const stale = await rejectActionProposalAction({ organizationId: 'org_acme_corp', proposalId: 'prop_test_100', decisionNotes: 'Too late now', expectedVersion: 0 });
+      expect(stale.error?.code).toBe('VERSION_CONFLICT');
+    });
 
-      // Second approval attempt
-      const secondResult = await approveActionProposalAction({
-        organizationId: 'org_acme_corp',
-        proposalId: 'prop_test_100',
-      });
-
-      expect(secondResult.success).toBe(false);
-      expect(secondResult.error?.code).toBe('PROPOSAL_ALREADY_DECIDED');
+    it('L4 needs two different approvers; the decision event fires only when complete', async () => {
+      seed('prop_l4', { blastRadius: { entityCount: 1, entityType: 'workspace', riskLevel: 'L4_PRIVILEGED_DESTRUCTIVE' } });
+      const first = await approveActionProposalAction({ organizationId: 'org_acme_corp', proposalId: 'prop_l4' });
+      expect(first.data).toMatchObject({ status: 'pending', approvalsCount: 1, requiredApprovals: 2 });
+      expect(h.events.find((e) => e.type === 'policy.approval.granted')).toBeUndefined();
+      expect((await approveActionProposalAction({ organizationId: 'org_acme_corp', proposalId: 'prop_l4' })).error?.code).toBe('DUPLICATE_APPROVER');
+      mockAuthUser = auth({}, 'user_operator_2');
+      const second = await approveActionProposalAction({ organizationId: 'org_acme_corp', proposalId: 'prop_l4' });
+      expect(second.data?.status).toBe('approved');
+      expect(h.events.find((e) => e.type === 'policy.approval.granted')).toBeDefined();
     });
   });
 
-  describe('4. rejectActionProposalAction (Rule 27 & 40)', () => {
+  describe('4. rejectActionProposalAction (Rules 27, 40)', () => {
     it('requires mandatory decision notes (min 5 characters)', async () => {
-      const result = await rejectActionProposalAction({
-        organizationId: 'org_acme_corp',
-        proposalId: 'prop_test_100',
-        decisionNotes: 'no', // Too short
-      });
-
-      expect(result.success).toBe(false);
+      const result = await rejectActionProposalAction({ organizationId: 'org_acme_corp', proposalId: 'prop_test_100', decisionNotes: 'No' });
       expect(result.error?.code).toBe('INVALID_ARGUMENT');
     });
 
-    it('successfully rejects proposal and emits policy.approval.rejected event', async () => {
-      const result = await rejectActionProposalAction({
-        organizationId: 'org_acme_corp',
-        proposalId: 'prop_test_100',
-        decisionNotes: 'Target customer segment already received promotional emails this week.',
-      });
-
-      expect(result.success).toBe(true);
-      expect(result.data?.status).toBe('rejected');
-      expect(result.data?.rejectedBy).toBe('user_operator_1');
-
-      const event = publishedEvents[0] as { type: string; payload: { decision: string } };
-      expect(event.type).toBe('policy.approval.rejected');
-      expect(event.payload.decision).toBe('rejected');
+    it('rejects and emits policy.approval.rejected', async () => {
+      const result = await rejectActionProposalAction({ organizationId: 'org_acme_corp', proposalId: 'prop_test_100', decisionNotes: 'Discount too high for this tier' });
+      expect(result.data).toMatchObject({ status: 'rejected', rejectedBy: 'user_operator_1' });
+      expect(h.events.find((e) => e.type === 'policy.approval.rejected')?.payload.decision).toBe('rejected');
     });
   });
 
   describe('5. getApprovalGovernanceMetricsAction', () => {
-    it('aggregates metrics for pending, approved, and rejected proposals', async () => {
-      const result = await getApprovalGovernanceMetricsAction({
-        organizationId: 'org_acme_corp',
-      });
-
-      expect(result.success).toBe(true);
-      expect(result.data?.pendingCount).toBe(1);
-      expect(result.data?.isEmergencyPaused).toBe(false);
+    it('aggregates metrics', async () => {
+      const result = await getApprovalGovernanceMetricsAction({ organizationId: 'org_acme_corp' });
+      expect(result.data).toMatchObject({ pendingCount: 1, isEmergencyPaused: false });
     });
   });
 
   describe('6. setEmergencyPauseAction (Rule 60)', () => {
-    it('forbids non-system-admin from toggling emergency pause', async () => {
-      const result = await setEmergencyPauseAction({
-        paused: true,
-        reason: 'Testing emergency pause',
-      });
-
-      expect(result.success).toBe(false);
+    it('forbids non-system-admins from toggling the emergency pause', async () => {
+      const result = await setEmergencyPauseAction({ paused: true, reason: 'Testing emergency pause' });
       expect(result.error?.code).toBe('FORBIDDEN');
     });
 
-    it('allows system admin to toggle emergency pause', async () => {
-      mockAuthUser.isSystemAdmin = true;
-
-      const result = await setEmergencyPauseAction({
-        paused: true,
-        reason: 'Security incident drill',
-      });
-
-      expect(result.success).toBe(true);
+    it('allows a system admin to toggle the emergency pause', async () => {
+      mockAuthUser = auth({}, 'admin', true);
+      const result = await setEmergencyPauseAction({ paused: true, reason: 'Security incident drill' });
       expect(result.data?.paused).toBe(true);
-      expect(mockDeadManPaused).toBe(true);
+      expect(h.paused).toBe(true);
     });
   });
 });

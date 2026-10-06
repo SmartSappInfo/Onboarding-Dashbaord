@@ -34,7 +34,7 @@ import {
   Activity,
   ArrowRight,
 } from 'lucide-react';
-import type { ActionProposal } from '@/platform/policy/approval-proposal-types';
+import type { ApprovalView } from '@/platform/policy/approval-view';
 
 // ============================================================================
 // 1. UNTRUSTED REFERENCE DATA ISOLATION (Rule 13 & 30)
@@ -57,10 +57,10 @@ function UntrustedReferenceData({
 // ============================================================================
 
 export interface ApprovalReviewCardProps {
-  proposal: ActionProposal;
-  onApprove: (proposal: ActionProposal) => void;
-  onReject: (proposal: ActionProposal) => void;
-  onInspect: (proposal: ActionProposal) => void;
+  proposal: ApprovalView;
+  onApprove: (proposal: ApprovalView) => void;
+  onReject: (proposal: ApprovalView) => void;
+  onInspect: (proposal: ApprovalView) => void;
   isProcessing?: boolean;
 }
 
@@ -149,7 +149,7 @@ export function ApprovalReviewCard({
           {/* Agent Persona badge */}
           <span className="inline-flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
             <Sparkles className="h-3.5 w-3.5" />
-            {proposal.agentPersonaId}
+            {proposal.agentPersonaId ?? (proposal.workflowRef ? 'workflow' : 'request')}
           </span>
 
           {/* Provenance / Delegation Hop (Rule 20 & 39) */}
@@ -328,6 +328,15 @@ export function ApprovalReviewCard({
           Review Details
         </button>
 
+        {proposal.needsReproposal ? (
+          <span className="text-xs text-muted-foreground">Made before approvals were updated. Ask for it again.</span>
+        ) : !proposal.canDecide ? (
+          // Hidden for people who can't decide; the server refuses them anyway (M0 · T2).
+          <span className="text-xs text-muted-foreground">
+            {proposal.requiredApprovals > 1 ? `${proposal.approvalsCount} of ${proposal.requiredApprovals} approvals · ` : ''}Waiting for an approver
+          </span>
+        ) : (
+          <>
         {/* Reject Proposal Button */}
         <button
           type="button"
@@ -349,6 +358,8 @@ export function ApprovalReviewCard({
           <CheckCircle2 className="h-4 w-4" />
           Approve
         </button>
+          </>
+        )}
       </div>
     </div>
   );

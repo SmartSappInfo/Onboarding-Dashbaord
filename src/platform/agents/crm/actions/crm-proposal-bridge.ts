@@ -11,7 +11,8 @@
  * ARCHITECTURAL GUIDANCE FOR MAINTAINERS:
  * - Bridges Next-Best-Actions (NBA) into the platform's unified `ApprovalStore`.
  * - Formulates immutable `ActionProposal` objects bound cryptographically to canonical SHA-256 hashes (`payloadHash`).
- * - When an approved proposal is executed, the bridge re-computes `sha256Hex(actualPayload)` and compares it against
+ * - When an approved proposal is executed, the bridge re-hashes the payload with the UNIFIED approval envelope
+ *   (`hashProposalPayload`, Phase 11 M0 · T2: the same hash the gateway verifies) and compares it against
  *   `proposal.payloadHash`. If any argument was modified between review and execution, it rejects closed with
  *   `PAYLOAD_TAMPERED` (HTTP 400).
  * - Enforces the Dual-Tier CRM Data Model: all entity state mutations strictly target `/workspace_entities/{workspaceId}_{entityId}`
@@ -33,7 +34,7 @@ import {
   CRM_ROLLBACK_MATRIX,
   CrmActionError,
 } from './crm-action-types';
-import { sha256Hex } from '@/platform/capabilities/contracts/canonical-json';
+import { hashProposalPayload } from '@/platform/policy/unified-approval-store';
 import { checkGovernanceDeadManSwitch } from '@/platform/policy/governance-dead-man';
 import { defaultEventBus } from '@/platform/events/event-bus';
 import { createDomainEvent } from '@/platform/capabilities/events/domain-event';
@@ -111,7 +112,6 @@ export class CrmProposalBridge {
       );
     }
 
-    const payloadHash = sha256Hex(input.action.payload);
     const nowIso = new Date().toISOString();
 
     const proposalInput: CreateProposalInput = {
@@ -140,6 +140,7 @@ export class CrmProposalBridge {
     };
 
     const proposal = await this.approvalStore.createProposal(proposalInput);
+    const payloadHash = proposal.payloadHash;
 
     // 2. Publish domain event crm.action.proposed (Rule 40)
     await defaultEventBus.publish(
@@ -217,7 +218,7 @@ export class CrmProposalBridge {
 
     // 5. Cryptographic SHA-256 Tamper Detection (Rule 22)
     const actualPayload = input.executionPayload ?? proposal.payload;
-    const computedHash = sha256Hex(actualPayload);
+    const computedHash = hashProposalPayload(proposal, actualPayload);
     if (computedHash !== proposal.payloadHash) {
       throw new CrmActionError(
         'PAYLOAD_TAMPERED',

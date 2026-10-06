@@ -44,7 +44,7 @@ import {
   type ProposalCategory,
   type ApprovalGovernanceMetrics,
 } from '@/app/actions/approval-governance-actions';
-import type { ActionProposal } from '@/platform/policy/approval-proposal-types';
+import type { ApprovalView } from '@/platform/policy/approval-view';
 import {
   ShieldCheck,
   Search,
@@ -73,7 +73,7 @@ export function ApprovalsClient() {
   const organizationId = activeOrganizationId || 'org_default';
 
   // Data state
-  const [proposals, setProposals] = useState<ActionProposal[]>([]);
+  const [proposals, setProposals] = useState<ApprovalView[]>([]);
   const [metrics, setMetrics] = useState<ApprovalGovernanceMetrics>({
     pendingCount: 0,
     approvedCount24h: 0,
@@ -91,9 +91,9 @@ export function ApprovalsClient() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Modals & Drawer State
-  const [selectedProposal, setSelectedProposal] = useState<ActionProposal | null>(null);
+  const [selectedProposal, setSelectedProposal] = useState<ApprovalView | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [rejectingProposal, setRejectingProposal] = useState<ActionProposal | null>(null);
+  const [rejectingProposal, setRejectingProposal] = useState<ApprovalView | null>(null);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -153,27 +153,28 @@ export function ApprovalsClient() {
   }, [lastActivity, loadData]);
 
   // Handlers
-  const handleApprove = async (proposal: ActionProposal) => {
+  const handleApprove = async (proposal: ApprovalView) => {
     setIsProcessing(true);
     try {
       const res = await approveActionProposalAction({
         organizationId: proposal.organizationId,
         proposalId: proposal.proposalId,
+        expectedVersion: proposal.version,
       });
 
       if (!res.success) {
         toast({
-          title: 'Approval Failed',
-          description: res.error?.message || 'Failed to approve action proposal.',
+          title: "Couldn't approve",
+          description: res.error?.message || 'Try again.',
           variant: 'destructive',
         });
+        if (res.error?.code === 'VERSION_CONFLICT' || res.error?.code === 'NOT_PENDING') void loadData();
         return;
       }
 
-      toast({
-        title: 'Action Proposal Approved',
-        description: `Successfully authorized ${proposal.capabilityId}. Execution will proceed.`,
-      });
+      toast(res.data?.status === 'pending'
+        ? { title: 'Approval recorded', description: `${res.data.approvalsCount} of ${res.data.requiredApprovals} approvals. A second, different approver is needed.` }
+        : { title: 'Action approved', description: `The agent can now carry out exactly this change (${proposal.capabilityId}).` });
 
       setIsDrawerOpen(false);
       void loadData();
@@ -188,7 +189,7 @@ export function ApprovalsClient() {
     }
   };
 
-  const handleOpenRejectModal = (proposal: ActionProposal) => {
+  const handleOpenRejectModal = (proposal: ApprovalView) => {
     setRejectingProposal(proposal);
     setIsRejectModalOpen(true);
   };
@@ -202,6 +203,7 @@ export function ApprovalsClient() {
         organizationId: rejectingProposal.organizationId,
         proposalId: rejectingProposal.proposalId,
         decisionNotes: combinedNotes,
+        expectedVersion: rejectingProposal.version,
       });
 
       if (!res.success) {
@@ -233,7 +235,7 @@ export function ApprovalsClient() {
     }
   };
 
-  const handleInspect = (proposal: ActionProposal) => {
+  const handleInspect = (proposal: ApprovalView) => {
     setSelectedProposal(proposal);
     setIsDrawerOpen(true);
   };

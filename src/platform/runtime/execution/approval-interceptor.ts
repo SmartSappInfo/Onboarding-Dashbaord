@@ -27,6 +27,10 @@ import { type AgentRunStore, getAgentRunStore } from '../agent-run-store';
 import { defaultEventBus, type EventBus } from '@/platform/events/event-bus';
 import { createDomainEvent } from '@/platform/capabilities/events/domain-event';
 import { checkGovernanceDeadManSwitch } from '@/platform/policy/governance-dead-man';
+import { getCapability } from '@/platform/capabilities/registry/capability-registry';
+import type { ApprovalRecord } from '@/platform/policy/approval-record';
+import { createApproval, getApproval, hashProposalPayload } from '@/platform/policy/unified-approval-store';
+import { CAPABILITY_APPROVALS_COLLECTION } from '@/platform/capabilities/policy/approval-verifier';
 import { adminDb } from '@/lib/firebase-admin';
 import {
   type ApprovalInterceptionResult,
@@ -60,7 +64,8 @@ export function createMemoryApprovalStore(): ApprovalStore {
       const now = new Date().toISOString();
       const expiresAt = new Date(Date.now() + (input.ttlSeconds ?? 86400) * 1000).toISOString();
 
-      const payloadHash = ApprovalInterceptor.computePayloadHash(input.payload);
+      // Same envelope as the gateway and the Firestore store (Phase 11 M0 · T2).
+      const payloadHash = hashProposalPayload(input, input.payload);
 
       const proposal: ActionProposal = {
         proposalId,
@@ -134,51 +139,71 @@ export function createMemoryApprovalStore(): ApprovalStore {
   };
 }
 
+/** The `ActionProposal` view of a unified record created for an agent (null without a persona). */
+export function proposalFromRecord(r: ApprovalRecord): ActionProposal | null {
+  if (!r.requestedBy.agentPersonaId) return null;
+  return ActionProposalSchema.parse({
+    proposalId: r.approvalId,
+    organizationId: r.organizationId,
+    workspaceId: r.workspaceId,
+    capabilityId: r.capabilityId,
+    capabilityVersion: r.capabilityVersion,
+    agentPersonaId: r.requestedBy.agentPersonaId,
+    authorizingUserId: r.requestedBy.userId,
+    what: r.what,
+    why: r.why,
+    ...(r.blastRadius ? { blastRadius: r.blastRadius } : {}),
+    ...(r.evidence ? { evidence: r.evidence } : {}),
+    payload: r.payload,
+    payloadHash: r.payloadHash,
+    status: r.status,
+    expiresAt: r.expiresAt,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+    decisionNotes: r.decisionNotes ?? null,
+    approvedBy: r.approvedBy,
+    approvedAt: r.approvedAt,
+    rejectedBy: r.rejectedBy ?? null,
+    rejectedAt: r.rejectedAt ?? null,
+    boundToolInvocationId: r.boundToolInvocationId ?? null,
+    boundAt: r.boundAt ?? null,
+  });
+}
+
+/**
+ * Firestore proposal store over the UNIFIED approval record (Phase 11 M0 · T2.6, F4).
+ * - Creation writes an `ApprovalRecord`: the payload is validated by the registered capability and
+ *   hashed with the gateway envelope; an unregistered target becomes a recommendation (F7).
+ * - Decisions (approve/reject) are NOT possible here: they go through the approval centre's policy
+ *   (`decideApproval`). Only lifecycle transitions (bound / revoked / expired) are allowed.
+ */
 export function createFirestoreApprovalStore(): ApprovalStore {
+  const LIFECYCLE: readonly ActionProposalStatus[] = ['bound', 'revoked', 'expired'];
   return {
     async createProposal(input: CreateProposalInput): Promise<ActionProposal> {
-      const proposalId = `prop_${crypto.randomUUID()}`;
-      const now = new Date().toISOString();
-      const expiresAt = new Date(Date.now() + (input.ttlSeconds ?? 86400) * 1000).toISOString();
-
-      const payloadHash = ApprovalInterceptor.computePayloadHash(input.payload);
-
-      const proposal: ActionProposal = {
-        proposalId,
+      const record = await createApproval(adminDb, {
+        capability: getCapability(input.capabilityId) ?? null,
+        capabilityId: input.capabilityId,
         organizationId: input.organizationId,
         workspaceId: input.workspaceId,
-        capabilityId: input.capabilityId,
-        capabilityVersion: input.capabilityVersion,
-        agentPersonaId: input.agentPersonaId,
-        authorizingUserId: input.authorizingUserId,
-        delegationId: input.delegationId,
-        delegationChain: input.delegationChain,
-        toolInvocationId: input.toolInvocationId,
+        payload: input.payload,
+        requestedBy: { kind: 'agent', userId: input.authorizingUserId, agentPersonaId: input.agentPersonaId },
         what: input.what,
         why: input.why,
-        blastRadius: input.blastRadius,
-        evidence: input.evidence,
-        payload: input.payload,
-        payloadHash,
-        status: 'pending',
-        expiresAt,
-        createdAt: now,
-        updatedAt: now,
-      };
-
-      const parsed = ActionProposalSchema.parse(proposal);
-      await adminDb.collection('capability_approvals').doc(proposalId).set(parsed);
-      return { ...parsed };
+        ...(input.blastRadius ? { blastRadius: input.blastRadius } : {}),
+        ...(input.evidence ? { evidence: input.evidence } : {}),
+        ...(input.ttlSeconds ? { ttlSeconds: input.ttlSeconds } : {}),
+      });
+      const proposal = proposalFromRecord(record);
+      if (!proposal) throw new ExecutionError({ code: 'INVALID_EXECUTION_STATE', message: 'Proposal has no agent persona.', organizationId: input.organizationId });
+      return proposal;
     },
-
     async getProposal(organizationId: string, proposalId: string): Promise<ActionProposal | null> {
-      const doc = await adminDb.collection('capability_approvals').doc(proposalId).get();
-      if (!doc.exists) return null;
-      const data = doc.data();
-      if (!data || data.organizationId !== organizationId) return null;
-      return ActionProposalSchema.parse(data);
+      const stored = await getApproval(adminDb, proposalId, organizationId);
+      if (!stored) return null;
+      if (stored.kind === 'v2') return proposalFromRecord(stored.record);
+      return stored.kind === 'legacy_proposal' ? stored.proposal : null;
     },
-
     async updateProposalStatus(input: {
       organizationId: string;
       proposalId: string;
@@ -186,42 +211,29 @@ export function createFirestoreApprovalStore(): ApprovalStore {
       decidedBy?: string;
       decisionNotes?: string;
     }): Promise<ActionProposal> {
-      const docRef = adminDb.collection('capability_approvals').doc(input.proposalId);
-      const doc = await docRef.get();
-      if (!doc.exists) {
+      if (!LIFECYCLE.includes(input.status)) {
         throw new ExecutionError({
           code: 'INVALID_EXECUTION_STATE',
-          message: `Action proposal '${input.proposalId}' not found.`,
+          message: 'Approve and reject go through the approval centre (approver policy), not the proposal store.',
           organizationId: input.organizationId,
         });
       }
-
-      const existing = ActionProposalSchema.parse(doc.data());
-      if (existing.organizationId !== input.organizationId) {
-        throw new ExecutionError({
-          code: 'INVALID_EXECUTION_STATE',
-          message: 'Tenant mismatch on proposal status update.',
-          organizationId: input.organizationId,
-        });
+      const stored = await getApproval(adminDb, input.proposalId, input.organizationId);
+      if (!stored || (stored.kind !== 'v2' && stored.kind !== 'legacy_proposal')) {
+        throw new ExecutionError({ code: 'INVALID_EXECUTION_STATE', message: `Action proposal '${input.proposalId}' not found.`, organizationId: input.organizationId });
       }
-
       const now = new Date().toISOString();
-      const updateData: Record<string, unknown> = {
-        status: input.status,
-        updatedAt: now,
-        decisionNotes: input.decisionNotes ?? null,
-      };
-
-      if (input.status === 'approved') {
-        updateData.approvedBy = input.decidedBy ?? 'system';
-        updateData.approvedAt = now;
-      } else if (input.status === 'rejected') {
-        updateData.rejectedBy = input.decidedBy ?? 'system';
-        updateData.rejectedAt = now;
+      const ref = adminDb.collection(CAPABILITY_APPROVALS_COLLECTION).doc(input.proposalId);
+      if (stored.kind === 'v2') {
+        const next: ApprovalRecord = { ...stored.record, status: input.status, updatedAt: now, version: stored.record.version + 1, decisionNotes: input.decisionNotes ?? stored.record.decisionNotes ?? null };
+        await ref.set(next);
+        const view = proposalFromRecord(next);
+        if (!view) throw new ExecutionError({ code: 'INVALID_EXECUTION_STATE', message: 'Proposal has no agent persona.', organizationId: input.organizationId });
+        return view;
       }
-
-      await docRef.update(updateData);
-      return ActionProposalSchema.parse({ ...existing, ...updateData });
+      const updated = { ...stored.proposal, status: input.status, updatedAt: now, decisionNotes: input.decisionNotes ?? null };
+      await ref.update({ status: input.status, updatedAt: now, decisionNotes: input.decisionNotes ?? null });
+      return ActionProposalSchema.parse(updated);
     },
   };
 }
@@ -304,7 +316,12 @@ export class ApprovalInterceptor {
     }
 
     const payload = planStep.arguments ?? {};
-    const payloadHash = ApprovalInterceptor.computePayloadHash(payload);
+    const payloadHash = hashProposalPayload({
+      capabilityId: planStep.capabilityId || 'system.unspecified',
+      capabilityVersion: planStep.capabilityVersion || '1.0.0',
+      organizationId: run.organizationId,
+      workspaceId: run.workspaceId,
+    }, payload);
 
     // If an existing proposal was already linked, check its current status (Resumption flow)
     if (existingProposalId) {
@@ -473,7 +490,8 @@ export class ApprovalInterceptor {
     }
 
     // Rule 22: Cryptographic Payload Hash Matching
-    const currentHash = ApprovalInterceptor.computePayloadHash(currentPayload);
+    // Same envelope the proposal was hashed with (Phase 11 M0 · T2).
+    const currentHash = hashProposalPayload(proposal, currentPayload);
     if (currentHash !== proposal.payloadHash) {
       throw new ExecutionError({
         code: 'PAYLOAD_TAMPERED',

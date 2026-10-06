@@ -27,7 +27,7 @@ import {
   Layers,
   Sparkles,
 } from 'lucide-react';
-import type { ActionProposal } from '@/platform/policy/approval-proposal-types';
+import type { ApprovalView } from '@/platform/policy/approval-view';
 import {
   listPendingApprovalsAction,
   decideApprovalAction,
@@ -41,7 +41,7 @@ export function ApprovalsClient() {
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = React.useState<ApprovalsTab>('pending');
-  const [proposals, setProposals] = React.useState<ActionProposal[]>([]);
+  const [proposals, setProposals] = React.useState<ApprovalView[]>([]);
   const [searchQuery, setSearchQuery] = React.useState<string>('');
   const [isPaused, setIsPaused] = React.useState<boolean>(false);
   const [submittingIds, setSubmittingIds] = React.useState<Set<string>>(new Set());
@@ -77,10 +77,8 @@ export function ApprovalsClient() {
     enabled: Boolean(activeWorkspaceId),
     onActivity: (activity) => {
       if (activity.eventType === 'policy.approval.requested') {
-        const newProposal = activity.metadata?.proposal as ActionProposal | undefined;
-        if (newProposal && newProposal.workspaceId === activeWorkspaceId) {
-          setProposals((prev) => [newProposal, ...prev.filter((p) => p.proposalId !== newProposal.proposalId)]);
-        }
+        // Reload from the server (never trust event payloads as records; canDecide is per person).
+        void fetchProposals();
       } else if (activity.eventType === 'policy.approval.granted' || activity.eventType === 'policy.approval.rejected') {
         const resolvedId = activity.metadata?.proposalId as string | undefined;
         if (resolvedId) {
@@ -90,19 +88,27 @@ export function ApprovalsClient() {
     },
   });
 
-  const handleApprove = async (proposalId: string) => {
+  const handleApprove = async (proposalId: string, version: number) => {
     setSubmittingIds((prev) => new Set(prev).add(proposalId));
     try {
       const res = await decideApprovalAction({
         approvalId: proposalId,
         decision: 'approved',
+        expectedVersion: version,
       });
 
-      if (res.success) {
+      if (res.success && res.data?.status === 'pending') {
+        // L4: one of two approvals recorded; it stays in the list for a second, different approver.
+        toast({
+          title: 'Approval recorded',
+          description: `${res.data.approvalsCount} of ${res.data.requiredApprovals} approvals. A second, different approver is needed.`,
+        });
+        void fetchProposals();
+      } else if (res.success) {
         setProposals((prev) => prev.filter((p) => p.proposalId !== proposalId));
         toast({
-          title: 'Action Approved',
-          description: 'The agent proposal was verified and queued for execution.',
+          title: 'Action approved',
+          description: 'The agent can now carry out exactly this change.',
           actionConfig: {
             path: '/admin/activity',
             label: 'View Timeline',
@@ -110,10 +116,11 @@ export function ApprovalsClient() {
         });
       } else {
         toast({
-          title: 'Approval Failed',
-          description: res.error || 'Failed to approve proposal.',
+          title: "Couldn't approve",
+          description: res.error || 'Try again.',
           variant: 'destructive',
         });
+        if (res.code === 'VERSION_CONFLICT' || res.code === 'NOT_PENDING') void fetchProposals();
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown error';
@@ -131,13 +138,14 @@ export function ApprovalsClient() {
     }
   };
 
-  const handleReject = async (proposalId: string, reason: string, notes?: string) => {
+  const handleReject = async (proposalId: string, reason: string, notes: string | undefined, version: number) => {
     setSubmittingIds((prev) => new Set(prev).add(proposalId));
     try {
       const res = await decideApprovalAction({
         approvalId: proposalId,
         decision: 'rejected',
         notes: notes ? `${reason}: ${notes}` : reason,
+        expectedVersion: version,
       });
 
       if (res.success) {
@@ -152,10 +160,11 @@ export function ApprovalsClient() {
         });
       } else {
         toast({
-          title: 'Rejection Failed',
-          description: res.error || 'Failed to reject proposal.',
+          title: "Couldn't reject",
+          description: res.error || 'Try again.',
           variant: 'destructive',
         });
+        if (res.code === 'VERSION_CONFLICT' || res.code === 'NOT_PENDING') void fetchProposals();
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown error';
@@ -211,7 +220,7 @@ export function ApprovalsClient() {
       (p) =>
         p.what.toLowerCase().includes(q) ||
         p.why.toLowerCase().includes(q) ||
-        p.agentPersonaId.toLowerCase().includes(q) ||
+        (p.agentPersonaId ?? '').toLowerCase().includes(q) ||
         p.capabilityId.toLowerCase().includes(q)
     );
   }, [proposals, searchQuery]);

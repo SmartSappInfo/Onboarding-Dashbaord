@@ -29,6 +29,8 @@ import type { AgentPrincipal } from '../contracts/capability-definition';
 import { isAutomatedPrincipal } from '../contracts/capability-definition';
 import { defaultIdempotencyStore } from '../storage/execution-store';
 import { defaultApprovalStore } from '../storage/approval-store';
+import type { ApprovalVerifier } from '../policy/approval-verifier';
+import { selectPlatformStore } from '@/platform/storage/storage-mode';
 import type { LivePrincipalCheck } from '@/platform/tasks/live-principal-check';
 import type { ExecuteCapabilityDeps } from './execute-capability';
 
@@ -114,6 +116,29 @@ export function getGovernedGatewayDeps(): ExecuteCapabilityDeps {
  * Process-wide production dependencies (built once). Stores come from the platform storage switch,
  * and Firestore-touching lookups load lazily.
  */
+/**
+ * The gateway's approval verifier: the UNIFIED store in Firestore mode (Phase 11 M0 · T2, F4), so an
+ * approval decided in the inbox is exactly what step 09 verifies and binds. Memory mode (tests, local)
+ * keeps the in-memory store. Firestore loads lazily.
+ */
+function unifiedApprovalVerifier(): ApprovalVerifier {
+  let verifier: ApprovalVerifier | undefined;
+  const get = async (): Promise<ApprovalVerifier> => {
+    if (!verifier) {
+      const [{ adminDb }, { createUnifiedApprovalVerifier }] = await Promise.all([
+        import('@/lib/firebase-admin'),
+        import('@/platform/policy/unified-approval-store'),
+      ]);
+      verifier = createUnifiedApprovalVerifier(adminDb);
+    }
+    return verifier;
+  };
+  return {
+    verify: async (request) => (await get()).verify(request),
+    verifyAndBind: async (request) => (await get()).verifyAndBind(request),
+  };
+}
+
 export function buildProductionGatewayDeps(): ExecuteCapabilityDeps {
   if (productionDefaults) return productionDefaults;
 
@@ -121,7 +146,7 @@ export function buildProductionGatewayDeps(): ExecuteCapabilityDeps {
 
   productionDefaults = {
     idempotencyStore: defaultIdempotencyStore,
-    approvals: defaultApprovalStore,
+    approvals: selectPlatformStore<ApprovalVerifier>(() => defaultApprovalStore, unifiedApprovalVerifier),
     verifyActorStanding: createActorStandingCheck({
       livePrincipals: async () => {
         if (!livePrincipals) {

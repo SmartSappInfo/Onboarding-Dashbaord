@@ -14,7 +14,7 @@
  */
 
 import { requireAuth } from '@/lib/auth/require-auth';
-import type { ActionProposal } from '@/platform/policy/approval-proposal-types';
+import type { ApprovalView } from '@/platform/policy/approval-view';
 import {
   listActionProposalsAction,
   getActionProposalDetailsAction,
@@ -36,7 +36,7 @@ export interface ApprovalActionResult<T = void> {
 export async function listPendingApprovalsAction(options?: {
   workspaceId?: string;
   organizationId?: string;
-}): Promise<ApprovalActionResult<ActionProposal[]>> {
+}): Promise<ApprovalActionResult<ApprovalView[]>> {
   try {
     const auth = await requireAuth();
     const orgId = auth.isSystemAdmin && options?.organizationId
@@ -73,7 +73,7 @@ export async function listPendingApprovalsAction(options?: {
  */
 export async function getApprovalDetailsAction(
   approvalId: string
-): Promise<ApprovalActionResult<ActionProposal>> {
+): Promise<ApprovalActionResult<ApprovalView>> {
   try {
     const auth = await requireAuth();
     const orgId = auth.profile?.organizationId;
@@ -109,7 +109,9 @@ export async function decideApprovalAction(input: {
   approvalId: string;
   decision: 'approved' | 'rejected';
   notes?: string;
-}): Promise<ApprovalActionResult<{ status: string }>> {
+  /** The version the person saw (Rule 18). */
+  expectedVersion?: number;
+}): Promise<ApprovalActionResult<{ status: string; approvalsCount: number; requiredApprovals: number }>> {
   try {
     const auth = await requireAuth();
     const orgId = auth.profile?.organizationId;
@@ -122,6 +124,7 @@ export async function decideApprovalAction(input: {
         organizationId: orgId,
         proposalId: input.approvalId,
         decisionNotes: input.notes,
+        ...(input.expectedVersion !== undefined ? { expectedVersion: input.expectedVersion } : {}),
       });
 
       if (!res.success) {
@@ -132,12 +135,14 @@ export async function decideApprovalAction(input: {
         };
       }
 
-      return { success: true, data: { status: 'approved' } };
+      // L4: the first of two approvals leaves the request pending (status reported as stored).
+      return { success: true, data: { status: res.data?.status ?? 'approved', approvalsCount: res.data?.approvalsCount ?? 1, requiredApprovals: res.data?.requiredApprovals ?? 1 } };
     } else {
       const res = await rejectActionProposalAction({
         organizationId: orgId,
         proposalId: input.approvalId,
         decisionNotes: input.notes || 'Proposal rejected by operator',
+        ...(input.expectedVersion !== undefined ? { expectedVersion: input.expectedVersion } : {}),
       });
 
       if (!res.success) {
@@ -148,7 +153,7 @@ export async function decideApprovalAction(input: {
         };
       }
 
-      return { success: true, data: { status: 'rejected' } };
+      return { success: true, data: { status: res.data?.status ?? 'rejected', approvalsCount: res.data?.approvalsCount ?? 0, requiredApprovals: res.data?.requiredApprovals ?? 1 } };
     }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to decide proposal';
