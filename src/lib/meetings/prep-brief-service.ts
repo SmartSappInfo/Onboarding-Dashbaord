@@ -23,7 +23,7 @@
  * delimited block marked as data; it never changes what the model is asked to do.
  *
  * CAUTION
- * - `ValidatedMeetingItemSchema` is the contract the M2 · T3 extraction pipeline writes to
+ * - `ValidatedMeetingItemSchema` is derived from the stored `MeetingItemSchema` the M2 · T3 pipeline writes to
  *   `meeting_intelligence/{meetingId}/items`. Only `status: 'valid'` items are ever used here.
  * - Never widen a query beyond the caller's workspace; every source carries the workspace it was
  *   read from and is re-checked before use.
@@ -36,6 +36,7 @@ import { z } from 'zod/v4';
 import { CircuitBreaker, CircuitBreakerOpenError } from '@/platform/events/resilience/circuit-breaker';
 import type { Account360Context } from '@/platform/agents/crm/context/account-context-types';
 import { getMeetingDetail, listMeetingsWithRecord, type MeetingDetail } from './meeting-read-service';
+import { MeetingItemSchema } from './intelligence/intelligence-schemas';
 
 export const PREP_BRIEF_PROMPT_VERSION = 'prep_brief_v1';
 
@@ -101,16 +102,13 @@ export interface PrepSource {
   itemType?: ValidatedMeetingItem['type'];
 }
 
-/** Written by the M2 · T3 pipeline; read here. Only validated items are used. */
-export const ValidatedMeetingItemSchema = z.object({
-  workspaceId: z.string().min(1),
-  meetingId: z.string().min(1),
-  type: z.enum(['decision', 'action_item', 'commitment', 'risk', 'objection', 'question', 'next_step', 'buying_signal']),
-  text: z.string().trim().min(1).max(2000),
-  status: z.literal('valid'),
-  dueDate: z.string().optional(),
-  createdAt: z.string().optional(),
-});
+/**
+ * The fields the brief reads from items stored by the M2 · T3 pipeline (single source:
+ * `MeetingItemSchema`). Only `status: 'valid'` items are ever used.
+ */
+export const ValidatedMeetingItemSchema = MeetingItemSchema.pick({
+  workspaceId: true, meetingId: true, type: true, text: true, status: true, dueIso: true, createdAt: true,
+}).partial({ createdAt: true });
 export type ValidatedMeetingItem = z.infer<typeof ValidatedMeetingItemSchema>;
 
 // ── Output ─────────────────────────────────────────────────────────────────────
@@ -291,7 +289,7 @@ async function priorMeetingSources(
         id: `meeting_item:${m.meetingId}:${doc.id}`, type: 'meeting_item', itemType: it.type, workspaceId: params.workspaceId,
         label: `${m.title}: ${it.type.replace('_', ' ')}`, text: clip(it.text),
         ...(it.createdAt ?? m.meetingTime ? { at: it.createdAt ?? m.meetingTime } : {}),
-        ...(it.dueDate ? { dueAt: it.dueDate } : {}),
+        ...(it.dueIso ? { dueAt: it.dueIso } : {}),
         ...(it.type === 'risk' || it.type === 'objection' ? { riskNote: clip(it.text, 300) } : {}),
       });
     }
@@ -426,7 +424,7 @@ export function buildFactsOnlyBrief(meeting: { meetingId: string; title: string 
     sections: {
       history: of((s) => s.type === 'prior_meeting' || s.type === 'timeline', SECTION_MAX.history).map((s) => item(s, s.text)),
       openDeals: of((s) => s.type === 'deal', SECTION_MAX.openDeals).map((s) => item(s, s.text)),
-      openCommitments: of((s) => s.type === 'task' || (s.type === 'meeting_item' && (s.itemType === 'commitment' || s.itemType === 'action_item' || s.itemType === 'next_step')), SECTION_MAX.openCommitments).map((s) => item(s, s.text)),
+      openCommitments: of((s) => s.type === 'task' || (s.type === 'meeting_item' && (s.itemType === 'commitment' || s.itemType === 'action_item')), SECTION_MAX.openCommitments).map((s) => item(s, s.text)),
       risks: of((s) => s.riskNote !== undefined, SECTION_MAX.risks).map((s) => item(s, s.riskNote ?? s.text)),
       agenda: [],
       questions: of((s) => s.type === 'meeting_item' && s.itemType === 'question', SECTION_MAX.questions).map((s) => item(s, s.text)),

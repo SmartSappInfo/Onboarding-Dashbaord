@@ -73,7 +73,7 @@ beforeEach(() => {
   db.write('meetings/m-next', { workspaceIds: ['ws-a'], title: 'Renewal review', meetingTime: '2026-10-06T10:00:00.000Z', entityId: 'ent-1', entityName: 'Acme School' });
   db.write('participants/p-1', { meetingId: 'm-next', name: 'Ama', email: 'ama@acme.edu', role: 'host' });
   db.write('meetings/m-prev', { workspaceIds: ['ws-a'], title: 'Discovery call', meetingTime: '2026-09-20T10:00:00.000Z', entityId: 'ent-1' });
-  db.write('meeting_intelligence/m-prev/items/i-1', { workspaceId: 'ws-a', meetingId: 'm-prev', type: 'commitment', text: 'We will share a term-based quote.', status: 'valid', dueDate: '2026-10-03' });
+  db.write('meeting_intelligence/m-prev/items/i-1', { workspaceId: 'ws-a', meetingId: 'm-prev', type: 'commitment', text: 'We will share a term-based quote.', status: 'valid', dueIso: '2026-10-03' });
   db.write('meeting_intelligence/m-prev/items/i-bad', { workspaceId: 'ws-a', meetingId: 'm-prev', type: 'decision', text: 'Unvalidated', status: 'needs_review' });
   // Another workspace's meeting with the same record: must never be used.
   db.write('meetings/m-foreign', { workspaceIds: ['ws-b'], title: 'Other tenant meeting', meetingTime: '2026-09-25T10:00:00.000Z', entityId: 'ent-1' });
