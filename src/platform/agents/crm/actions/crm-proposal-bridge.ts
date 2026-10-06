@@ -43,17 +43,42 @@ import { defaultEventBus } from '@/platform/events/event-bus';
 import { createDomainEvent } from '@/platform/capabilities/events/domain-event';
 import { CrmActionError, type CrmProposedAction } from './crm-action-types';
 import { executableFor, type CrmExecutableAction } from './crm-execution-map';
+import { readIntelligenceV2 } from '@/lib/meetings/intelligence/intelligence-store';
 
 export const CRM_EXECUTIONS = 'crm_proposal_executions';
 /** `FF_CRM_PROPOSAL_EXECUTION` (flag record id in `platform_features`). */
 export const CRM_PROPOSAL_EXECUTION_FLAG = 'feature.crm_proposal_execution';
+
+/**
+ * Where a proposal came from, when it was derived from a meeting (Phase 11 M2 · T4.3). Bound into
+ * the approval evidence; at execute time the meeting's analysis must still be the same run and
+ * still contain the item, otherwise the proposal is stale (re-analysis invalidates it).
+ */
+export interface MeetingProposalOrigin {
+  origin: 'meeting';
+  meetingId: string;
+  itemHash: string;
+  transcriptId: string;
+  runId: string;
+  intelligenceVersion: number;
+}
 
 export interface ProposeCrmActionInput {
   organizationId: string;
   workspaceId: string;
   callerId: string;
   action: CrmProposedAction;
+  origin?: MeetingProposalOrigin;
+  /** Defaults to 72 h; meeting proposals use 24 h (plan §4.12). */
+  ttlSeconds?: number;
 }
+
+const MeetingOriginEvidenceSchema = z.object({
+  origin: z.literal('meeting'),
+  meetingId: z.string().min(1),
+  itemHash: z.string().min(1),
+  runId: z.string().min(1),
+}).loose();
 
 export interface ExecuteApprovedProposalInput {
   organizationId: string;
@@ -171,6 +196,16 @@ export class CrmProposalBridge {
     }
   }
 
+  /** A meeting-derived proposal is stale once the meeting was re-analysed or the item is gone. */
+  private async assertOriginCurrent(db: Firestore, workspaceId: string, evidence: Record<string, unknown> | undefined): Promise<void> {
+    const origin = MeetingOriginEvidenceSchema.safeParse(evidence ?? {});
+    if (!origin.success) return;
+    const stored = await readIntelligenceV2(db, origin.data.meetingId, workspaceId);
+    if (!stored || stored.header.runId !== origin.data.runId || !stored.items.some((i) => i.itemHash === origin.data.itemHash)) {
+      throw new CrmActionError('VERSION_CONFLICT', 'The meeting was analysed again since this was proposed. Propose the update again.');
+    }
+  }
+
   /** Reads the fields that matter for the action (conflict check / rollback). */
   private async readState(map: CrmExecutableAction, input: Record<string, unknown>, principal: AgentPrincipal, surface: 'ui' | 'agent', correlationId: string): Promise<Record<string, unknown> | null> {
     if (!map.before) return null;
@@ -224,9 +259,10 @@ export class CrmProposalBridge {
         priority: action.priority,
         idempotencyKey: action.idempotencyKey,
         impact: action.explainability.impact,
+        ...(input.origin ?? {}),
       },
       ...(beforeState ? { beforeState } : {}),
-      ttlSeconds: 72 * 3600,
+      ttlSeconds: input.ttlSeconds ?? 72 * 3600,
     }, this.now());
 
     await defaultEventBus.publish(createDomainEvent({
@@ -284,6 +320,8 @@ export class CrmProposalBridge {
     const actionType = typeof record.evidence?.actionType === 'string' ? record.evidence.actionType : '';
     const map = executableFor(actionType);
     if (!map || map.capabilityId !== record.capabilityId) throw new CrmActionError('NOT_EXECUTABLE', 'This change can no longer be applied automatically.');
+
+    await this.assertOriginCurrent(db, record.workspaceId, record.evidence);
 
     const caller = await this.principalFor(input.callerId, input.organizationId, input.workspaceId);
     if (!caller) throw new CrmActionError('IDOR_VIOLATION', 'You no longer have access to this workspace.');

@@ -130,6 +130,8 @@ export const CrmActionTypeEnum = z.enum([
   'ENRICH_LEAD',
   'RESOLVE_DUPLICATE',
   'RESOLVE_HYGIENE',
+  // Phase 11 M2 · T4.3: a note proposed from a meeting (recommendation until crm.note.create fails closed).
+  'ADD_NOTE',
 ]);
 export type CrmActionType = z.infer<typeof CrmActionTypeEnum>;
 
