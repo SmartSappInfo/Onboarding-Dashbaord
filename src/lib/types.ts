@@ -6052,6 +6052,10 @@ export interface Module {
   description?: string;
   order: number;
   organizationId?: string;
+  /** Optional single workspace ownership identifier */
+  workspaceId?: string;
+  /** Optional array of workspace IDs this module/interest is enabled for */
+  workspaceIds?: string[];
   isDefault?: boolean;
 }
 

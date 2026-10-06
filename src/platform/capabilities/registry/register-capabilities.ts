@@ -18,6 +18,8 @@ import { registerIdentityAccessCapabilities } from '@/platform/domains/identity_
 import { registerTasksProductivityCapabilities } from '@/platform/domains/tasks_productivity';
 import { registerMeetingsConversationsCapabilities } from '@/platform/domains/meetings_conversations';
 
+import { canonicalCapabilityRegistryStore } from './capability-registry';
+
 type Registrar = () => void;
 
 /** Platform domain registrars. */
@@ -33,9 +35,16 @@ export const DOMAIN_REGISTRARS: readonly Registrar[] = [
 const globalRef = globalThis as { __smartsappCapabilitiesRegistered?: boolean };
 
 export function ensureCapabilitiesRegistered(registrars: readonly Registrar[] = DOMAIN_REGISTRARS): void {
-  if (globalRef.__smartsappCapabilitiesRegistered && registrars === DOMAIN_REGISTRARS) return;
+  const isDefault = registrars === DOMAIN_REGISTRARS;
+  if (
+    globalRef.__smartsappCapabilitiesRegistered &&
+    isDefault &&
+    canonicalCapabilityRegistryStore.list().length > 0
+  ) {
+    return;
+  }
   for (const register of registrars) register();
-  if (registrars === DOMAIN_REGISTRARS) globalRef.__smartsappCapabilitiesRegistered = true;
+  if (isDefault) globalRef.__smartsappCapabilitiesRegistered = true;
 }
 
 export function resetCapabilitiesRegisteredForTests(): void {

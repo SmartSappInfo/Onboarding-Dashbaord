@@ -19,6 +19,7 @@ import { defaultFlagChecker } from '../flags/flag-service';
 import { evaluatePrincipalAuthority } from '../policy/principal-evaluator';
 import { resolvePrincipalFromSession } from '../policy/session-principal-resolver';
 import { getCapability } from '../registry/capability-registry';
+import { ensureCapabilitiesRegistered } from '../registry/register-capabilities';
 import type {
   ClientActionConfig,
   ClientCapabilityInvocation,
@@ -54,6 +55,7 @@ function sanitizeActionConfig(raw: unknown): ClientActionConfig | undefined {
 export async function invokeCapabilityAction<TInput = unknown, TOutput = unknown>(
   invocation: ClientCapabilityInvocation<TInput>
 ): Promise<ClientCapabilityOutcome<TOutput>> {
+  ensureCapabilitiesRegistered();
   try {
     // 1. Determine target workspace ID
     let workspaceId = invocation.workspaceId;
@@ -204,6 +206,7 @@ export async function checkCapabilityAvailabilityAction(
   capabilityId: string,
   workspaceId: string
 ): Promise<CapabilityAvailability> {
+  ensureCapabilitiesRegistered();
   try {
     const capability = getCapability(capabilityId);
     if (!capability) {

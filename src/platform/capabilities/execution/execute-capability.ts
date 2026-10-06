@@ -40,6 +40,7 @@ import type {
 } from '../contracts/capability-definition';
 import type { DomainEvent } from '../events/domain-event';
 import { getCapability } from '../registry/capability-registry';
+import { ensureCapabilitiesRegistered } from '../registry/register-capabilities';
 import {
   CapabilityError,
 } from '../errors/capability-error';
@@ -126,6 +127,10 @@ export async function executeCapability<TOutput = unknown>(
   const approvals = deps.approvals;
   const effectiveAuditSink = deps.auditSink ?? defaultAuditSink;
   const effectiveOutboxSink = deps.outboxSink ?? defaultOutboxSink;
+
+  if (!deps.registryLookup) {
+    ensureCapabilitiesRegistered();
+  }
 
   try {
     // 1. Resolve Principal

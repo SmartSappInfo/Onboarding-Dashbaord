@@ -2,7 +2,9 @@
 
 import * as React from 'react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, orderBy, query } from 'firebase/firestore';
+import { useTenant } from '@/context/TenantContext';
+import { useWorkspace } from '@/context/WorkspaceContext';
+import { collection, orderBy, query, where } from 'firebase/firestore';
 import type { Module } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
@@ -15,26 +17,52 @@ interface InterestFilterSelectProps {
   value?: string[];
   onChange: (value: string[]) => void;
   className?: string;
+  workspaceId?: string;
+  organizationId?: string;
 }
 
-export function InterestFilterSelect({ value = [], onChange, className }: InterestFilterSelectProps) {
+export function InterestFilterSelect({ value = [], onChange, className, workspaceId, organizationId }: InterestFilterSelectProps) {
   const firestore = useFirestore();
+  const { activeOrganizationId } = useTenant();
+  const { activeWorkspaceId } = useWorkspace();
   const [open, setOpen] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState('');
 
+  const targetOrgId = organizationId || activeOrganizationId;
+  const targetWorkspaceId = workspaceId || activeWorkspaceId;
+
   const modulesQuery = useMemoFirebase(() => {
-    return firestore ? query(collection(firestore, 'modules'), orderBy('order')) : null;
-  }, [firestore]);
+    if (!firestore) return null;
+    if (targetOrgId) {
+      return query(
+        collection(firestore, 'modules'),
+        where('organizationId', '==', targetOrgId),
+        orderBy('order')
+      );
+    }
+    return query(collection(firestore, 'modules'), orderBy('order'));
+  }, [firestore, targetOrgId]);
   const { data: allModules, isLoading } = useCollection<Module>(modulesQuery);
 
   const options = React.useMemo(() => {
     if (!allModules) return [];
     
+    const workspaceFilteredModules = allModules.filter(m => {
+      if (targetOrgId && m.organizationId && m.organizationId !== targetOrgId) {
+        return false;
+      }
+      const hasWorkspaceRestriction = Boolean(m.workspaceId || (m.workspaceIds && m.workspaceIds.length > 0));
+      if (!hasWorkspaceRestriction) return true;
+      if (!targetWorkspaceId) return true;
+
+      const matchesSingle = m.workspaceId === targetWorkspaceId;
+      const matchesArray = m.workspaceIds ? m.workspaceIds.includes(targetWorkspaceId) : false;
+      return matchesSingle || matchesArray;
+    });
+
     // Deduplicate by name to prevent duplicates in workspace UI
     const uniqueMap = new Map<string, Pick<Module, 'id' | 'name' | 'abbreviation' | 'color'>>();
-    allModules.forEach(m => {
-      // We map the unique string identifier (which could be the ID or Name)
-      // Since entities are mapped via their module names/ids, we use Name as the identifier for perfect matching
+    workspaceFilteredModules.forEach(m => {
       if (!uniqueMap.has(m.name)) {
         uniqueMap.set(m.name, {
           id: m.id,
@@ -46,7 +74,7 @@ export function InterestFilterSelect({ value = [], onChange, className }: Intere
     });
 
     return Array.from(uniqueMap.values());
-  }, [allModules]);
+  }, [allModules, targetOrgId, targetWorkspaceId]);
 
   const selectedSet = React.useMemo(() => new Set(value), [value]);
 

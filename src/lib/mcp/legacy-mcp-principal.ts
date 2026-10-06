@@ -24,24 +24,13 @@
  */
 
 import type { Firestore } from 'firebase-admin/firestore';
-import { z } from 'zod/v4';
 import type { AgentPrincipal } from '@/platform/capabilities/contracts/capability-definition';
-import { principalFromProfile } from '@/platform/capabilities/policy/session-principal-resolver';
+import { loadLiveUserPrincipal } from '@/platform/capabilities/policy/live-user-principal';
 import { isNonDelegableAction } from '@/platform/capabilities/contracts/risk-levels';
 import type { McpExecutionContext } from './types';
 
 export const LEGACY_MCP_API_KEY_REFUSAL =
   "Platform capabilities aren't available to API keys on this endpoint. Use the governed endpoint /api/mcp/v2/{domain}.";
-
-const LiveProfileSchema = z.object({
-  organizationId: z.string().min(1),
-  workspaceIds: z.array(z.string()).default([]),
-  isAuthorized: z.boolean().optional(),
-  permissions: z.array(z.string()).optional(),
-  permissionsSchema: z.unknown().optional(),
-  role: z.string().optional(),
-  roles: z.array(z.string()).optional(),
-});
 
 export type LegacyMcpAuthority = { principal: AgentPrincipal } | { refusal: string };
 
@@ -50,18 +39,8 @@ export async function resolveLegacyMcpPrincipal(ctx: McpExecutionContext, db: Fi
 
   const uid = ctx.userId ?? ctx.callerId;
   const denied = { refusal: 'The acting user could not be verified for this workspace.' };
-  if (!uid || uid.includes('/')) return denied;
-
-  const snap = await db.collection('users').doc(uid).get();
-  const parsed = snap.exists ? LiveProfileSchema.safeParse(snap.data()) : null;
-  if (!parsed?.success) return denied;
-  const profile = parsed.data;
-  const isSystemAdmin = (profile.permissions ?? []).includes('system_admin');
-  if (profile.isAuthorized !== true) return denied;
-  if (profile.organizationId !== ctx.organizationId) return denied;
-  if (!isSystemAdmin && !profile.workspaceIds.includes(ctx.workspaceId)) return denied;
-
-  const human = principalFromProfile({ uid, workspaceId: ctx.workspaceId, isSystemAdmin, profile });
+  const human = await loadLiveUserPrincipal(db, { uid, organizationId: ctx.organizationId, workspaceId: ctx.workspaceId });
+  if (!human) return denied;
   if (ctx.callerType !== 'agent') return { principal: human };
 
   return {

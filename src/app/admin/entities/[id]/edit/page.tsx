@@ -909,7 +909,11 @@ function EditEntityForm({ entityId }: EditFormProps) {
                   <FormItem className="text-left">
                     <FormLabel className="text-[10px] font-semibold text-muted-foreground/50 ml-1 text-left">Specific Interests</FormLabel>
                     <FormControl>
-                      <ModuleSelect {...field} />
+                      <ModuleSelect 
+                        {...field} 
+                        workspaceId={activeWorkspaceId}
+                        organizationId={activeOrganizationId}
+                      />
                     </FormControl>
                     <FormDescription className="text-[9px] font-bold opacity-60 text-left">Identify the specific interests for this workspace.</FormDescription>
                     <FormMessage />

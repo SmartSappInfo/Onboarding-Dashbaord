@@ -1,8 +1,11 @@
 'use client';
+
 import * as React from 'react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, orderBy, query } from 'firebase/firestore';
+import { collection, orderBy, query, where } from 'firebase/firestore';
 import type { Module } from '@/lib/types';
+import { useTenant } from '@/context/TenantContext';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -13,27 +16,82 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 type ModuleOption = Pick<Module, 'id' | 'name' | 'abbreviation' | 'color'>;
 
+/**
+ * ARCHITECTURAL NOTICE (Workspace Interest Scoping):
+ * This component handles the selection of specific interests/modules for entities.
+ * It is strictly scoped to the target workspace and organization. Modules specified for other
+ * workspaces are filtered out, while organization-wide default modules are preserved.
+ */
 interface ModuleSelectProps {
   value?: ModuleOption[];
   onChange?: (value: ModuleOption[]) => void;
+  /** Explicit target workspace ID override */
+  workspaceId?: string;
+  /** Explicit array of target workspace IDs override (e.g. multi-workspace entity creation) */
+  workspaceIds?: string[];
+  /** Explicit organization ID override */
+  organizationId?: string;
 }
 
-export function ModuleSelect({ value, onChange }: ModuleSelectProps) {
+export function ModuleSelect({ value, onChange, workspaceId, workspaceIds, organizationId }: ModuleSelectProps) {
   const firestore = useFirestore();
+  const { activeOrganizationId } = useTenant();
+  const { activeWorkspaceId } = useWorkspace();
   const [open, setOpen] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState("");
 
+  const targetOrgId = organizationId || activeOrganizationId;
+
+  // Resolve active target workspace IDs
+  const targetWorkspaceIdsList = React.useMemo(() => {
+    if (workspaceIds && workspaceIds.length > 0) return workspaceIds;
+    if (workspaceId) return [workspaceId];
+    if (activeWorkspaceId) return [activeWorkspaceId];
+    return [];
+  }, [workspaceId, workspaceIds, activeWorkspaceId]);
+
   const modulesQuery = useMemoFirebase(() => {
-    return firestore ? query(collection(firestore, 'modules'), orderBy('order')) : null;
-  }, [firestore]);
+    if (!firestore) return null;
+    if (targetOrgId) {
+      return query(
+        collection(firestore, 'modules'),
+        where('organizationId', '==', targetOrgId),
+        orderBy('order')
+      );
+    }
+    return query(collection(firestore, 'modules'), orderBy('order'));
+  }, [firestore, targetOrgId]);
+
   const { data: allModules, isLoading } = useCollection<Module>(modulesQuery);
 
   const options: ModuleOption[] = React.useMemo(() => {
     if (!allModules) return [];
-    
+
+    // Filter modules to those matching target workspace(s) or org defaults
+    const workspaceFilteredModules = allModules.filter(m => {
+      // Enforce organization scope boundary
+      if (targetOrgId && m.organizationId && m.organizationId !== targetOrgId) {
+        return false;
+      }
+
+      // Check for workspace-specific restrictions
+      const hasWorkspaceRestriction = Boolean(m.workspaceId || (m.workspaceIds && m.workspaceIds.length > 0));
+      if (!hasWorkspaceRestriction) {
+        // Organization default module — available to all workspaces
+        return true;
+      }
+
+      if (targetWorkspaceIdsList.length === 0) return true;
+
+      const matchesSingle = m.workspaceId ? targetWorkspaceIdsList.includes(m.workspaceId) : false;
+      const matchesArray = m.workspaceIds ? targetWorkspaceIdsList.some(id => m.workspaceIds?.includes(id)) : false;
+
+      return matchesSingle || matchesArray;
+    });
+
     // Deduplicate by name to prevent confusing duplicates in UI
     const uniqueMap = new Map<string, ModuleOption>();
-    allModules.forEach(m => {
+    workspaceFilteredModules.forEach(m => {
         if (!uniqueMap.has(m.name)) {
             uniqueMap.set(m.name, {
                 id: m.id,
@@ -47,7 +105,7 @@ export function ModuleSelect({ value, onChange }: ModuleSelectProps) {
     const filtered = Array.from(uniqueMap.values());
     if (!searchTerm) return filtered;
     return filtered.filter(m => m.name.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [allModules, searchTerm]);
+  }, [allModules, targetOrgId, targetWorkspaceIdsList, searchTerm]);
   
   const selectedValues = new Set(value?.map(v => v.id) || []);
 

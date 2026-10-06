@@ -64,7 +64,7 @@ import {
     CheckCircle2
 } from 'lucide-react';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { collection, orderBy, query } from 'firebase/firestore';
+import { collection, orderBy, query, where } from 'firebase/firestore';
 import type { Task, UserProfile, EntityType } from '@/lib/types';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { EntityCombobox } from '@/components/entities/EntityCombobox';
@@ -218,7 +218,7 @@ export default function TaskEditor({
     preFilledEntityName
 }: TaskEditorProps) {
     const { user: currentUser } = useUser();
-    const { activeWorkspaceId } = useWorkspace();
+    const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
     const firestore = useFirestore();
     const terminology = useTerminology();
     const entityName = terminology?.singular || 'Campus';
@@ -227,11 +227,23 @@ export default function TaskEditor({
     const [activeStep, setActiveStep] = React.useState<number>(1);
     const [newNoteContent, setNewNoteContent] = React.useState('');
 
-    // Fetch team members for assignment
+    // Fetch team members for assignment from canonical 'users' collection
     const userProfilesQuery = useMemoFirebase(() => {
         if (!firestore) return null;
-        return query(collection(firestore, 'userProfiles'), orderBy('displayName', 'asc'));
-    }, [firestore]);
+        if (activeOrganizationId) {
+            return query(
+                collection(firestore, 'users'),
+                where('organizationId', '==', activeOrganizationId),
+                where('isAuthorized', '==', true),
+                orderBy('name', 'asc')
+            );
+        }
+        return query(
+            collection(firestore, 'users'),
+            where('isAuthorized', '==', true),
+            orderBy('name', 'asc')
+        );
+    }, [firestore, activeOrganizationId]);
 
     const { data: userProfiles } = useCollection<UserProfile>(userProfilesQuery);
 
@@ -610,9 +622,9 @@ export default function TaskEditor({
                                                                         <Badge key={user.id} variant="secondary" className="gap-1.5 py-1 px-2 rounded-lg bg-muted text-foreground">
                                                                             <Avatar className="h-4 w-4">
                                                                                 <AvatarImage src={user.photoURL || undefined} />
-                                                                                <AvatarFallback className="text-[8px]">{getInitials(user.displayName)}</AvatarFallback>
+                                                                                <AvatarFallback className="text-[8px]">{getInitials(user.name || user.displayName)}</AvatarFallback>
                                                                             </Avatar>
-                                                                            <span className="text-xs font-medium">{user.displayName}</span>
+                                                                            <span className="text-xs font-medium">{user.name || user.displayName}</span>
                                                                             <X 
                                                                                 className="h-3 w-3 hover:text-rose-500 cursor-pointer" 
                                                                                 onClick={(e) => {
@@ -631,6 +643,7 @@ export default function TaskEditor({
                                                             <div className="space-y-1">
                                                                 {userProfiles?.map(u => {
                                                                     const isSelected = field.value?.includes(u.id);
+                                                                    const displayNameStr = u.name || u.displayName || u.email || 'Team Member';
                                                                     return (
                                                                         <div 
                                                                             key={u.id}
@@ -647,9 +660,9 @@ export default function TaskEditor({
                                                                         >
                                                                             <Avatar className="h-6 w-6">
                                                                                 <AvatarImage src={u.photoURL || undefined} />
-                                                                                <AvatarFallback className="text-[10px]">{getInitials(u.displayName)}</AvatarFallback>
+                                                                                <AvatarFallback className="text-[10px]">{getInitials(displayNameStr)}</AvatarFallback>
                                                                             </Avatar>
-                                                                            <span className="truncate flex-1">{u.displayName}</span>
+                                                                            <span className="truncate flex-1">{displayNameStr}</span>
                                                                             {isSelected && <CheckCircle2 className="h-4 w-4 text-primary ml-auto" />}
                                                                         </div>
                                                                     );

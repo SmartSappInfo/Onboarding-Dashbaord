@@ -45,7 +45,7 @@ vi.mock('../contacts/contact-projection-writer', () => ({
 vi.mock('../firebase-admin', () => ({
   adminDb: {
     collection: vi.fn((name: string) => {
-      if (name === 'tasks') return { doc: () => ({ update: tasksUpdate }) };
+      if (name === 'tasks') return { doc: () => ({ update: tasksUpdate, get: async () => ({ exists: true, data: () => ({ workspaceId: 'ws-1', organizationId: 'org-1' }) }) }) };
       if (name === 'entities') return { doc: () => ({ id: 'entity-ref' }) };
       if (name === 'workspace_entities') {
         const chain: Record<string, unknown> = {};

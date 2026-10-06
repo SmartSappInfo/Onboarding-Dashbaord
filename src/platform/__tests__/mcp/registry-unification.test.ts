@@ -200,13 +200,13 @@ describe('Canonical Registry Unification (PR-5 / Decision D1 / Rule 69 SSOT)', (
     });
   });
 
-  describe('Core 12 CompanyBrain Tools Bridging', () => {
-    it('bridges all 12 CompanyBrain tools into canonical registry with canonical risk classifications', () => {
+  describe('Core CompanyBrain Tools Bridging', () => {
+    it('bridges all core CompanyBrain tools into canonical registry with canonical risk classifications', () => {
       registerAllCoreTools(globalMcpRegistry);
 
-      expect(ALL_CORE_MCP_TOOLS.length).toBe(12);
+      expect(ALL_CORE_MCP_TOOLS.length).toBe(13);
       const allCaps = listCapabilities();
-      expect(allCaps.length).toBe(12);
+      expect(allCaps.length).toBe(13);
 
       // Verify L0_READ tools
       const recallCap = getCapability('memory.recall');

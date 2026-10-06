@@ -232,6 +232,17 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.auth.uid == userId;
     }
 
+    match /userProfiles/{profileId} {
+      // Backward-compatible alias for user profile reads and queries
+      allow get: if isSignedIn() && (request.auth.uid == profileId || isSystemAdmin() || isAuthorized());
+      allow list: if isSignedIn() && (isSystemAdmin() || isAuthorized());
+      allow update: if isSignedIn() && (
+        isSystemAdmin() ||
+        (request.auth.uid == profileId && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['requiresPasswordReset', 'updatedAt']) && request.resource.data.requiresPasswordReset == false)
+      );
+      allow create: if isSignedIn() && request.auth.uid == profileId;
+    }
+
     // --- Identity & Membership 2.0 Collections ---
     match /accounts/{accountId} {
       allow get: if isSignedIn() && (request.auth.uid == accountId || isSystemAdmin());

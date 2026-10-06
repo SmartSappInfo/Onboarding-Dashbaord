@@ -256,6 +256,13 @@ describe('PR-9: Capability UI Invocation Framework & Error Surfaces', () => {
       expect(result.authorized).toBe(true);
       expect(result.riskLevel).toBe('L2_STATE_MUTATION');
     });
+
+    it('auto-registers domain capabilities (e.g. deal.advance_stage) upon invocation', async () => {
+      // Even if registry was reset or freshly booted, ensureCapabilitiesRegistered runs
+      const result = await checkCapabilityAvailabilityAction('deal.advance_stage', 'ws_ui_test');
+      expect(result.available).toBe(true);
+      expect(result.enabled).toBe(true);
+    });
   });
 
   describe('useCapability React hook', () => {

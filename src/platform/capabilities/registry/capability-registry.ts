@@ -186,6 +186,8 @@ export function unregisterCapabilityForTests(id: string): boolean {
 /** Test-only: clears every registration. Never call from application code. */
 export function resetCapabilityRegistryForTests(): void {
   canonicalCapabilityRegistryStore.clear();
+  const globalRef = globalThis as { __smartsappCapabilitiesRegistered?: boolean };
+  globalRef.__smartsappCapabilitiesRegistered = false;
 }
 
 /**
