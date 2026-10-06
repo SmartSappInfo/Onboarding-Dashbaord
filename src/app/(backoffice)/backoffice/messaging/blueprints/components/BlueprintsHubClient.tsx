@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
 import { 
-  Zap, Loader2, ArrowLeft, Building2, BarChart2, Search, 
+  Zap, Loader2, ArrowLeft, Search, 
   SlidersHorizontal, X, Info, Inbox, RefreshCw, Database
 } from 'lucide-react';
 import Link from 'next/link';

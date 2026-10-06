@@ -115,10 +115,11 @@ describe('Bug Condition Exploration: TypeScript Type Errors', () => {
       fileTypecheckOutput = error.stdout || error.stderr || '';
     }
     
-    console.log('\n=== Sample File Type Errors ===');
-    console.log(`File: ${testFiles[0]}`);
-    console.log(fileTypecheckOutput.substring(0, 1000)); // First 1000 chars
-    console.log('================================\n');
+    // Print a count, never the raw compiler lines: CI's TypeScript problem matcher turns any
+    // `file(l,c): error TS…` line into a failure annotation, and this standalone run (no project
+    // tsconfig) also reports unrelated errors in node_modules typings.
+    const rawErrorLines = fileTypecheckOutput.split('\n').filter((line) => line.includes('error TS')).length;
+    console.log(`Sample file ${testFiles[0]}: ${rawErrorLines} compiler line(s) (standalone, no project tsconfig)`);
     
     // EXPECTED BEHAVIOR (after fix): No type errors in output
     // CURRENT BEHAVIOR (unfixed): Type errors present

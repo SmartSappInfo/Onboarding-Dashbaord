@@ -26,8 +26,8 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { 
-  ShieldCheck, HardDrive, Layers, RefreshCw, 
-  CheckCircle2, AlertCircle, Loader2, Sparkles,
+  ShieldCheck, Layers, RefreshCw, 
+  Loader2, Sparkles,
   Bot, TrendingUp, Cpu, ArrowUpRight, Zap, Shield, Activity
 } from 'lucide-react';
 

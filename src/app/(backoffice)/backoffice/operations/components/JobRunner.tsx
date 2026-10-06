@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import {
-  Search, PlayCircle, Loader2, StopCircle, RefreshCw,
+  PlayCircle, Loader2, StopCircle, RefreshCw,
   Network, RotateCcw, ShieldAlert, ChevronRight, Terminal,
   X,
 } from 'lucide-react';

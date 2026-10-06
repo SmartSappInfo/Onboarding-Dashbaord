@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -32,11 +32,7 @@ export default function DeveloperClient({ workspaces }: { workspaces: WorkspaceI
 
   const [copiedKey, setCopiedKey] = useState(false);
 
-  useEffect(() => {
-    fetchKeys();
-  }, []);
-
-  const fetchKeys = async () => {
+  const fetchKeys = useCallback(async () => {
     setLoading(true);
     const res = await listApiKeys();
     if (res.success && res.keys) {
@@ -45,7 +41,11 @@ export default function DeveloperClient({ workspaces }: { workspaces: WorkspaceI
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to load API keys' });
     }
     setLoading(false);
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    fetchKeys();
+  }, [fetchKeys]);
 
   const handleCreate = async () => {
     if (!newKeyName || !selectedWorkspace) return;

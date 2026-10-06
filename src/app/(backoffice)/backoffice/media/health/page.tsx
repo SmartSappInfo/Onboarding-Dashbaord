@@ -16,7 +16,7 @@
  * - PRD Sec 135 (Quality Metrics: stream startup latency, event loss rate, processing failure rate).
  */
 
-import React, { useState, useEffect, useTransition } from 'react';
+import React, { useState, useEffect, useCallback, useTransition } from 'react';
 import { useFirestore } from '@/lib/firestore-context';
 import {
   getPlatformHealthAction,
@@ -47,17 +47,17 @@ export default function BackofficeMediaHealthPage() {
   const [isPending, startTransition] = useTransition();
   const [isRetrying, setIsRetrying] = useState(false);
 
-  const loadHealth = () => {
+  const loadHealth = useCallback(() => {
     startTransition(async () => {
       if (!firestore) return;
       const data = await getPlatformHealthAction(firestore);
       setHealth(data);
     });
-  };
+  }, [firestore]);
 
   useEffect(() => {
     loadHealth();
-  }, [firestore]);
+  }, [loadHealth]);
 
   const handleRetryJobs = async () => {
     if (!firestore) return;

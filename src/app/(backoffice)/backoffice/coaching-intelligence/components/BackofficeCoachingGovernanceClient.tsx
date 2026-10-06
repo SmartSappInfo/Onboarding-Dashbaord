@@ -80,11 +80,12 @@ export default function BackofficeCoachingGovernanceClient() {
       if (res.success) {
         setTemplates(res.templates);
         setScenarios(res.scenarios);
-        if (res.templates.length > 0 && !selectedTemplate) {
-          setSelectedTemplate(res.templates[0]);
+        // Keep the current selection; pick the first item only when nothing is selected yet.
+        if (res.templates.length > 0) {
+          setSelectedTemplate((current) => current ?? res.templates[0]);
         }
-        if (res.scenarios.length > 0 && !selectedScenario) {
-          setSelectedScenario(res.scenarios[0]);
+        if (res.scenarios.length > 0) {
+          setSelectedScenario((current) => current ?? res.scenarios[0]);
         }
       }
     } catch (err: unknown) {

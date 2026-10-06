@@ -27,7 +27,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { 
   ShieldCheck, Layout, Globe, Loader2, Target, 
-  Sparkles, Split, RefreshCw, CheckCircle2 
+  Split, RefreshCw, CheckCircle2 
 } from 'lucide-react';
 
 export default function BackofficeExperienceGovernancePage() {
