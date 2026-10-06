@@ -1,92 +1,51 @@
 import 'server-only';
 
 /**
- * @fileOverview Production model for meeting intelligence (Phase 11 M2 · T3; plan §6; Rules 38, 57, 58).
+ * @fileOverview Production models for meeting intelligence (Phase 11 M2 · T3/T4; plan §6; Rules 38, 57, 58).
  *
- * - Data policy first: transcript content is personal data, so only providers allowed for
- *   `personal` are used; none → `IntelligencePolicyError` (the run stops, nothing is sent).
- * - Chunk extraction on the fast tier, the summary and follow-up drafts on the reasoning tier, via the central gateway
- *   `getModel` (no MCP Sampling).
- * - Genkit 1.42 structured output; `response.output` may be null (the validator counts it as a
- *   schema drop). Token usage (`response.usage`) is returned for metering. `abortSignal` stops a
- *   call past its deadline.
- *
- * CAUTION: Google is preferred when allowed so `getModel`'s fallbacks stay within one provider;
- * its cross-provider fallback is not yet policy-aware (tracked separately).
+ * Chunk extraction on the fast tier, the summary and follow-up drafts on the reasoning tier, all
+ * through the policy-checked caller in `model-caller.ts` (data policy first; no MCP Sampling).
+ * "No allowed provider" becomes `IntelligencePolicyError`: the run stops and nothing is sent.
  */
 
-import { ai, getModel } from '@/ai/genkit';
-import { z } from 'genkit';
 import type { Firestore } from 'firebase-admin/firestore';
-import type { AiModelTier } from '@/lib/ai/model-registry';
-import { providersAllowedFor, resolveAiDataPolicy } from '@/platform/policy/ai-data-policy';
 import { IntelligencePolicyError, type IntelligenceModel, type IntelligenceModelRequest, type IntelligenceModelResponse } from './pipeline';
 import type { FollowupDraftModel } from './followup-drafts';
+import {
+  EXTRACT_MAX_OUTPUT_TOKENS,
+  EXTRACT_TIER,
+  ExtractOutputSchema,
+  FollowupDraftOutputSchema,
+  NoAllowedProviderError,
+  SummaryOutputSchema,
+  createMeetingModelCaller,
+  type MeetingModelCall,
+} from './model-caller';
 
-const ExtractOutputSchema = z.object({
-  items: z.array(z.object({
-    type: z.string(),
-    text: z.string(),
-    ownerName: z.string().optional(),
-    dueText: z.string().optional(),
-    amountValue: z.number().optional(),
-    amountCurrency: z.string().optional(),
-    confidence: z.number(),
-    evidence: z.array(z.object({ segmentIds: z.array(z.string()), quote: z.string() })),
-  })),
-});
-
-const SummaryOutputSchema = z.object({
-  sentences: z.array(z.object({ text: z.string(), itemIds: z.array(z.string()) })),
-});
-
-const FollowupDraftOutputSchema = z.object({
-  subject: z.string(),
-  sentences: z.array(z.object({ text: z.string(), itemIds: z.array(z.string()) })),
-});
-
-type OutputSchema = typeof ExtractOutputSchema | typeof SummaryOutputSchema | typeof FollowupDraftOutputSchema;
-
-function createCaller(db: Firestore) {
-  return async function call(
-    request: IntelligenceModelRequest,
-    tier: AiModelTier,
-    schema: OutputSchema,
-    maxOutputTokens: number
-  ): Promise<IntelligenceModelResponse> {
-    const policy = await resolveAiDataPolicy(db, { workspaceId: request.workspaceId, ...(request.organizationId ? { organizationId: request.organizationId } : {}) });
-    const allowed = providersAllowedFor(policy, 'personal');
-    const provider = allowed.includes('googleai') ? 'googleai' : allowed[0];
-    if (!provider) throw new IntelligencePolicyError();
-    const { modelString, customAi } = await getModel({ workspaceId: request.workspaceId, organizationId: request.organizationId, provider, tier });
-    const response = await (customAi || ai).generate({
-      model: modelString,
-      prompt: request.prompt,
-      output: { schema },
-      config: { temperature: 0, maxOutputTokens },
-      ...(request.signal ? { abortSignal: request.signal } : {}),
-    });
-    return {
-      output: response.output ?? null,
-      modelId: modelString,
-      ...(response.usage?.inputTokens !== undefined ? { inputTokens: response.usage.inputTokens } : {}),
-      ...(response.usage?.outputTokens !== undefined ? { outputTokens: response.usage.outputTokens } : {}),
-    };
+function policyChecked(db: Firestore): MeetingModelCall {
+  const call = createMeetingModelCaller(db);
+  return async (request: IntelligenceModelRequest, tier, schema, maxOutputTokens): Promise<IntelligenceModelResponse> => {
+    try {
+      return await call(request, tier, schema, maxOutputTokens);
+    } catch (err) {
+      if (err instanceof NoAllowedProviderError) throw new IntelligencePolicyError();
+      throw err;
+    }
   };
 }
 
 export function createIntelligenceModel(db: Firestore): IntelligenceModel {
-  const call = createCaller(db);
+  const call = policyChecked(db);
   return {
     breakerKey: 'meeting_intelligence',
-    extract: (request) => call(request, 'fast', ExtractOutputSchema, 8_192),
+    extract: (request) => call(request, EXTRACT_TIER, ExtractOutputSchema, EXTRACT_MAX_OUTPUT_TOKENS),
     summarize: (request) => call(request, 'reasoning', SummaryOutputSchema, 2_048),
   };
 }
 
 /** Follow-up drafts (M2 · T4.2): reasoning tier, same data policy as the analysis (D19). */
 export function createFollowupDraftModel(db: Firestore): FollowupDraftModel {
-  const call = createCaller(db);
+  const call = policyChecked(db);
   return {
     breakerKey: 'meeting_intelligence',
     draft: (request) => call(request, 'reasoning', FollowupDraftOutputSchema, 2_048),

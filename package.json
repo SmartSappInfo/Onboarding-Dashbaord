@@ -16,6 +16,7 @@
     "lint": "NODE_OPTIONS='--max-old-space-size=8192' eslint 'src/**/*.{ts,tsx}' --max-warnings 670",
     "audit:ai-keys": "tsx scripts/audit-ai-key-overrides.ts",
     "audit:agentic-inventory": "tsx scripts/audit-agentic-inventory.ts",
+    "eval:meeting-agent": "tsx scripts/eval-meeting-agent.ts",
     "check:directives": "node scripts/check-directives.mjs",
     "typecheck": "NODE_OPTIONS='--max-old-space-size=8192' tsc --noEmit",
     "format": "prettier --write .",
