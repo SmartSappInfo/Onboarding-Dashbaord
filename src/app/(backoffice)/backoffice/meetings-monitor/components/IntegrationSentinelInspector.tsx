@@ -17,7 +17,6 @@ import {
   Activity,
   RefreshCw,
   Calendar,
-  AlertTriangle,
   RotateCw,
   Send,
 } from 'lucide-react';
