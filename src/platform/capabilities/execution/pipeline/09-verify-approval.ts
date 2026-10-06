@@ -45,7 +45,10 @@ export async function step09VerifyApproval(
   options?: VerifyApprovalOptions
 ): Promise<VerifiedApproval | undefined> {
   const isAutomatedAgent = isAutomatedPrincipal(principal);
-  const needsApproval = isAutomatedAgent && requiresAgentApproval(capability.risk);
+  // A PRESENTED approval is always verified and bound, even when the capability wouldn't require one
+  // (Phase 11 M0 · T4, Rule 22): otherwise an approved proposal could run without its payload hash
+  // being checked or the approval being consumed. Presenting an approval can only add checks.
+  const needsApproval = (isAutomatedAgent && requiresAgentApproval(capability.risk)) || Boolean(options?.approvalId);
 
   if (!needsApproval) {
     return undefined;

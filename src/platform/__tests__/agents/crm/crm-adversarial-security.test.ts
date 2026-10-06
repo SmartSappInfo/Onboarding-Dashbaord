@@ -23,8 +23,9 @@ import type { Account360Context } from '@/platform/agents/crm/context/account-co
 import { executeCrmSignatureInquiryAction, sendCrmFollowupMessageAction } from '@/app/actions/crm-signature-actions';
 import * as requireAuthModule from '@/lib/auth/require-auth';
 import * as deadManModule from '@/platform/policy/governance-dead-man';
-import { getCrmProposalBridge } from '@/platform/agents/crm/actions/crm-proposal-bridge';
-import { sha256Hex } from '@/platform/capabilities/contracts/canonical-json';
+import { CrmProposalBridge } from '@/platform/agents/crm/actions/crm-proposal-bridge';
+import { hashProposalPayload } from '@/platform/policy/unified-approval-store';
+import { FakeFirestore } from '../../helpers/fake-firestore';
 
 describe('CRM Adversarial Red-Team Security Suite (Phase 9 Milestone 5)', () => {
   const organizationId = 'org_victim_corp';
@@ -265,8 +266,9 @@ describe('CRM Adversarial Red-Team Security Suite (Phase 9 Milestone 5)', () => 
       expect(result.proposedActions.length).toBeGreaterThan(0);
       const action = result.proposedActions[0];
 
-      // Formulate a cryptographic approval proposal via CrmProposalBridge
-      const bridge = getCrmProposalBridge();
+      // Formulate a proposal on the unified approval record (isolated store; target unregistered →
+      // recommendation, so no live principal is needed here). Phase 11 M0 · T2/T4.
+      const bridge = new CrmProposalBridge({ db: new FakeFirestore().asFirestore(), lookup: () => undefined, loadPrincipal: async () => null });
       const payload = action.payload || { entityId };
       const proposal = await bridge.proposeAction({
         action: {
@@ -287,8 +289,10 @@ describe('CRM Adversarial Red-Team Security Suite (Phase 9 Milestone 5)', () => 
         unauthorizedRoleElevation: true,
       };
 
-      const tamperedHash = sha256Hex(tamperedParameters);
-      expect(tamperedHash).not.toBe(proposal.payloadHash);
+      // The gateway hashes with the unified envelope; a tampered payload can never match (and
+      // execution only ever uses the stored, approved payload).
+      expect(hashProposalPayload(proposal, tamperedParameters)).not.toBe(proposal.payloadHash);
+      expect(hashProposalPayload(proposal, payload)).toBe(proposal.payloadHash);
     });
   });
 

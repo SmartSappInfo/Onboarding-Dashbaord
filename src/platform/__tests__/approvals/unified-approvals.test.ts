@@ -153,6 +153,16 @@ describe('unified approvals', () => {
     expect(results.find((r) => !r.ok)).toMatchObject({ ok: false, code: expect.stringMatching(/VERSION_CONFLICT|NOT_PENDING/) });
   });
 
+  it('a presented approval is verified and bound even when the capability would not require one (Rule 22)', async () => {
+    const cap: AnyCapabilityDefinition = { ...capability(), risk: { ...capability().risk, requiresHumanApproval: false, level: 'L1_INTERNAL_DRAFT' } };
+    const rec = await create(cap);
+    await decide(rec.approvalId, admin);
+    const tampered = await execute(cap, rec.approvalId, { ...payload, stageId: 'lost' });
+    expect(!tampered.success && tampered.error.code).toBe('APPROVAL_MISMATCH');
+    expect((await execute(cap, rec.approvalId)).success).toBe(true);
+    expect(db.read(`capability_approvals/${rec.approvalId}`)?.status).toBe('bound');
+  });
+
   it('(i) agents can never hold the decide permission (non-delegable)', () => {
     expect(isNonDelegableAction('app:agent_approvals_decide')).toBe(true);
     expect(isNonDelegableAction('agent_approvals_decide')).toBe(true);

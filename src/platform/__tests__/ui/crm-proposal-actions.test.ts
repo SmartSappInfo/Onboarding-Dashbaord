@@ -10,6 +10,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as authModule from '@/lib/auth/require-auth';
 import * as deadManModule from '@/platform/policy/governance-dead-man';
 import * as assemblerModule from '@/platform/agents/crm/context/account-context-assembler';
+import * as bridgeModule from '@/platform/agents/crm/actions/crm-proposal-bridge';
+import { CrmProposalBridge } from '@/platform/agents/crm/actions/crm-proposal-bridge';
+import { FakeFirestore } from '../helpers/fake-firestore';
 import {
   evaluateAccountRisksAction,
   generateNextBestActionsAction,
@@ -179,6 +182,11 @@ describe('CRM Proposal Server Actions', () => {
   });
 
   it('creates an action proposal via proposeCrmActionAction', async () => {
+    // Isolated bridge (unified approval store over a fake Firestore; target unregistered here, so the
+    // proposal is a recommendation and needs no live principal). Phase 11 M0 · T4.
+    vi.spyOn(bridgeModule, 'getCrmProposalBridge').mockReturnValue(new CrmProposalBridge({
+      db: new FakeFirestore().asFirestore(), lookup: () => undefined, loadPrincipal: async () => null, flags: { getFlagRecord: async () => null },
+    }));
     const action = createSampleAction();
     const res = await proposeCrmActionAction({
       workspaceId: mockWsId,
@@ -234,9 +242,10 @@ describe('CRM Proposal Server Actions', () => {
       executionPayload: { dealId: 'deal_123', stage: 'negotiation' },
     });
 
-    // In-memory proposal bridge returns error PROPOSAL_NOT_FOUND if not present
+    // Real execution is behind FF_CRM_PROPOSAL_EXECUTION (off by default, M0 · T4): refused before
+    // any lookup, so nothing about the proposal leaks.
     expect(res.success).toBe(false);
-    expect(res.error?.code).toBe('PROPOSAL_NOT_FOUND');
+    expect(res.error?.code).toBe('EXECUTION_DISABLED');
   });
 
   it('rolls back crm proposal via rollbackCrmActionAction', async () => {
@@ -247,7 +256,8 @@ describe('CRM Proposal Server Actions', () => {
       reason: 'Testing reverse-LIFO rollback',
     });
 
+    // Nothing was applied for this id, so there is nothing to undo (M0 · T4).
     expect(res.success).toBe(false);
-    expect(res.error?.code).toBe('PROPOSAL_NOT_FOUND');
+    expect(res.error?.code).toBe('NOT_EXECUTED');
   });
 });

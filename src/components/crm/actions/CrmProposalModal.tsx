@@ -83,8 +83,9 @@ export function CrmProposalModal({
 
       if (res.success && res.data) {
         toast({
-          title: 'Action Proposal Created',
-          description: `Proposal '${res.data.proposalId}' submitted to Approval Desk with cryptographic SHA-256 lock.`,
+          // M0 · T4: say exactly what happens next; nothing changes until approved AND applied.
+          title: 'Sent for approval',
+          description: 'Nothing changes until an approver accepts it and it is applied.',
           duration: 10000,
           actionConfig: {
             path: '/admin/intelligence/approvals',
@@ -95,8 +96,8 @@ export function CrmProposalModal({
         onOpenChange(false);
       } else {
         toast({
-          title: 'Proposal Submission Failed',
-          description: res.error?.message || 'Could not formulate proposal in Approval Desk.',
+          title: "Couldn't send for approval",
+          description: res.error?.message || 'Try again.',
           variant: 'destructive',
         });
       }
