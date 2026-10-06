@@ -128,7 +128,7 @@ export async function recordShadowRun(
       .map((d) => HumanTaskSchema.safeParse(d.data()))
       .filter((t) => t.success && t.data.source !== 'system' && t.data.title)
       .map((t) => (t.success ? t.data.title : ''));
-    const comparison = compareWithBaselines(params.items, { heuristicTitles: heuristic.map((h) => h.description), humanTaskTitles });
+    const comparison = compareWithBaselines(params.items, { heuristicTitles: heuristic.map((h) => h.description ?? h.title).filter((t): t is string => Boolean(t)), humanTaskTitles });
     await db.collection(SHADOW_RUNS).doc(params.runId).set({
       runId: params.runId,
       workspaceId: params.workspaceId,
