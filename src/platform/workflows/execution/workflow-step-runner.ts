@@ -14,6 +14,7 @@
  * 6. HMR PRESERVATION (Rule 69): Global singleton preserved on globalThis.__smartsappWorkflowStepRunner.
  */
 
+import { approvalIdOf, defaultWorkflowApprovals, type WorkflowApprovalPort } from './workflow-approvals';
 import { randomUUID } from 'node:crypto';
 import { defaultEventBus, type EventBus } from '@/platform/events/event-bus';
 import { checkGovernanceDeadManSwitch } from '@/platform/policy/governance-dead-man';
@@ -76,6 +77,8 @@ export interface StepRunnerOptions {
   signal?: AbortSignal;
   /** Gateway dependencies (tests inject fakes; production uses the governed defaults). */
   gatewayDeps?: ExecuteCapabilityDeps;
+  /** Durable step approvals (M0 · T5); production uses the unified approval store. */
+  approvals?: WorkflowApprovalPort;
 }
 
 export interface WorkflowStepRunner {
@@ -144,6 +147,21 @@ export function createWorkflowStepRunner(): WorkflowStepRunner {
 
         if (instance.status === 'CANCELLED') {
           await leaseManager.releaseLease(payload.workflowId, payload.stepId, tenant, workerId);
+          // A decision that arrives for a cancelled workflow is ignored, and that is recorded (M0 · T5).
+          const cancelledStep = await store.getStep(payload.workflowId, payload.stepId, tenant);
+          const ignoredApprovalId = approvalIdOf(cancelledStep?.waitCondition);
+          if (ignoredApprovalId) {
+            await eventBus.publish(createDomainEvent({
+              type: 'workflow.approval_ignored',
+              organizationId: payload.organizationId,
+              workspaceId: payload.workspaceId,
+              entity: { type: 'workflow', id: payload.workflowId },
+              actor: { type: 'system', id: 'workflow_runner' },
+              correlationId,
+              source: 'workflow_runner',
+              payload: { stepId: payload.stepId, approvalId: ignoredApprovalId, reason: 'workflow_cancelled' },
+            }));
+          }
           return StepExecutionResultSchema.parse({
             stepId: payload.stepId,
             status: 'CANCELLED',
@@ -175,7 +193,36 @@ export function createWorkflowStepRunner(): WorkflowStepRunner {
         }
 
         // ── Stage 3.5: Suspension Evaluation (Wait Condition / Non-Delegable) (Rules 17, 21, 22) ──
-        const alreadyResumed = Boolean(
+        // Durable approval (M0 · T5): a step waiting on an approval reads the decision. Approved → it
+        // runs with the approvalId (the gateway verifies the hash and binds it once); rejected or
+        // expired → the step fails (DLQ + saga); still pending → it keeps waiting.
+        const approvals = options?.approvals ?? defaultWorkflowApprovals;
+        const waitingApprovalId = step.status === 'WAITING' ? approvalIdOf(step.waitCondition) : undefined;
+        let approvedApprovalId: string | undefined;
+        if (waitingApprovalId) {
+          const decision = await approvals.status(waitingApprovalId, tenant.organizationId, Date.now());
+          if (decision === 'pending') {
+            await leaseManager.releaseLease(payload.workflowId, payload.stepId, tenant, workerId);
+            return StepExecutionResultSchema.parse({
+              stepId: payload.stepId,
+              status: 'WAITING',
+              durationMs: Date.now() - startTime,
+              nextStepsScheduled: [],
+              retryScheduled: false,
+            });
+          }
+          if (decision !== 'approved') {
+            throw new WorkflowExecutionError(
+              decision === 'rejected' ? 'APPROVAL_REJECTED' : 'APPROVAL_EXPIRED',
+              decision === 'rejected'
+                ? `Step '${payload.stepId}' was rejected by an approver.`
+                : `The approval for step '${payload.stepId}' expired before a decision was made.`
+            );
+          }
+          approvedApprovalId = waitingApprovalId;
+        }
+
+        const alreadyResumed = Boolean(approvedApprovalId) || Boolean(
           step.output && (step.output as Record<string, unknown>)._resumedAt
         );
 
@@ -253,6 +300,33 @@ export function createWorkflowStepRunner(): WorkflowStepRunner {
           instance.principal.actorType === 'agent';
 
         if (requiresApproval && !step.waitCondition) {
+          // M0 · T5: the suspension creates an approval in the unified inbox (workflowRef), with the
+          // step's input validated by the capability, so the decision binds exactly this call.
+          let approvalId: string;
+          try {
+            ({ approvalId } = await approvals.request({
+              capability,
+              capabilityId: capability.id,
+              organizationId: tenant.organizationId,
+              workspaceId: tenant.workspaceId,
+              payload: step.input ?? {},
+              requestedBy: {
+                kind: 'workflow',
+                userId: instance.principal.userId,
+                ...(instance.principal.agentId ? { agentId: instance.principal.agentId } : {}),
+              },
+              what: step.name,
+              why: `Workflow step '${step.name}' needs approval (${isNonDelegable ? 'non-delegable action' : 'high-risk capability'}).`,
+              workflowRef: { workflowId: payload.workflowId, stepId: payload.stepId },
+              ttlSeconds: 24 * 3600,
+            }));
+          } catch (approvalErr) {
+            throw new WorkflowExecutionError(
+              'INPUT_VALIDATION_FAILED',
+              `The step's input can't be put up for approval: ${approvalErr instanceof Error ? approvalErr.message : String(approvalErr)}`
+            );
+          }
+
           const resumptionService =
             options?.resumptionService ??
             getWorkflowResumptionService({
@@ -274,6 +348,7 @@ export function createWorkflowStepRunner(): WorkflowStepRunner {
                     ? 'non_delegable_action'
                     : 'high_risk_capability',
                   riskLevel: capability.risk.level,
+                  approvalId,
                 },
               },
             },
@@ -308,13 +383,18 @@ export function createWorkflowStepRunner(): WorkflowStepRunner {
           delegationId: storedPrincipal.delegationId,
           grantedScopes: storedPrincipal.grantedScopes,
           effectiveRole: storedPrincipal.effectiveRole,
+          // The approval binds to exactly this step invocation (M0 · T5).
+          ...(approvedApprovalId ? { runId: payload.workflowId, toolInvocationId: `wf_${payload.workflowId}_${payload.stepId}` } : {}),
         };
         const authResult = evaluatePrincipalAuthority(
           principal,
           capability,
           tenant
         );
-        if (!authResult.allowed) {
+        // With an approved approval, "approval required" is satisfied by the gateway's step 09 (which
+        // verifies and binds it); every other violation still stops the step here.
+        const blockingViolations = authResult.violationCodes.filter((c) => !(approvedApprovalId && c === 'APPROVAL_REQUIRED'));
+        if (!authResult.allowed && blockingViolations.length > 0) {
           throw new WorkflowExecutionError(
             'AUTHORIZATION_DENIED',
             `Authority evaluation denied execution for capability '${step.capabilityId}': ${authResult.violations.join('; ')}`
@@ -400,6 +480,7 @@ export function createWorkflowStepRunner(): WorkflowStepRunner {
               correlationId: payload.workflowId,
               causationId: payload.stepId,
               idempotencyKey: `wf_${payload.workflowId}_${payload.stepId}`,
+              ...(approvedApprovalId ? { approvalId: approvedApprovalId } : {}),
             },
             options?.gatewayDeps
           );

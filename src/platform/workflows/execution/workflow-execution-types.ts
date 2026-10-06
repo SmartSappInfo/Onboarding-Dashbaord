@@ -141,6 +141,9 @@ export const EXECUTION_PIPELINE_ERROR_CODES = [
   'AUTHORIZATION_DENIED',
   'CIRCUIT_BREAKER_OPEN',
   'CIRCUIT_BREAKER_DEGRADED',
+  // Durable step approvals (Phase 11 M0 · T5): permanent, never retried.
+  'APPROVAL_REJECTED',
+  'APPROVAL_EXPIRED',
 ] as const;
 export type ExecutionPipelineErrorCode = (typeof EXECUTION_PIPELINE_ERROR_CODES)[number];
 

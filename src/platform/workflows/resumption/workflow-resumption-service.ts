@@ -35,6 +35,7 @@ import {
   getWorkflowDispatcher,
 } from '../dispatcher/workflow-dispatcher';
 import { createCheckpointHash } from '../workflow-state-machine';
+import { defaultTokenLedger, type ResumptionTokenLedger } from './resumption-token-ledger';
 import {
   type ResumptionSignalInput,
   ResumptionSignalSchema,
@@ -77,6 +78,8 @@ export interface WorkflowResumptionServiceOptions {
   dispatcher?: WorkflowDispatcher;
   eventBus?: EventBus;
   resumptionSecret?: string;
+  /** Single-use token ledger shared across instances (M0 · T5.4). */
+  tokenLedger?: ResumptionTokenLedger;
 }
 
 export function createWorkflowResumptionService(
@@ -88,8 +91,8 @@ export function createWorkflowResumptionService(
   const eventBus = options?.eventBus ?? defaultEventBus;
   const secret = options?.resumptionSecret;
 
-  // In-memory set for replay protection within this instance process
-  const consumedTokens = new Set<string>();
+  // Replay protection across instances (M0 · T5.4): a transactional single-use record per token.
+  const tokenLedger = options?.tokenLedger ?? defaultTokenLedger();
 
   return {
     async evaluateAndSuspendStep(
@@ -308,11 +311,11 @@ export function createWorkflowResumptionService(
         );
       }
 
-      // 3. Replay Protection: verify token has not been consumed yet
-      if (consumedTokens.has(signal.token)) {
+      // 3. Replay protection: refuse a used token early; step 6 claims it atomically (any instance).
+      if (await tokenLedger.isConsumed(signal.token)) {
         throw new WorkflowResumptionError(
           'RESUMPTION_TOKEN_ALREADY_CONSUMED',
-          `Resumption token '${signal.token}' has already been consumed`
+          'This resumption link was already used.'
         );
       }
 
@@ -365,8 +368,21 @@ export function createWorkflowResumptionService(
         _verifiedBy: signal.verifiedBy ?? 'external_signal',
       };
 
-      // 6. Atomically mark token consumed
-      consumedTokens.add(signal.token);
+      // 6. Atomically consume the token (first caller on ANY instance wins; Rule 20)
+      const nowMs = Date.now();
+      const expiresAtMs = step.waitCondition?.expiresAt ? Date.parse(step.waitCondition.expiresAt) : nowMs + 7 * 24 * 3600_000;
+      const consumed = await tokenLedger.consume(signal.token, {
+        workflowId: signal.workflowId,
+        stepId: signal.stepId,
+        expiresAtMs: Number.isFinite(expiresAtMs) ? expiresAtMs : nowMs + 7 * 24 * 3600_000,
+        nowMs,
+      });
+      if (!consumed) {
+        throw new WorkflowResumptionError(
+          'RESUMPTION_TOKEN_ALREADY_CONSUMED',
+          'This resumption link was already used.'
+        );
+      }
 
       // 7. Update Step: advance to RUNNING and merge output with signal data
       await store.updateStep(
