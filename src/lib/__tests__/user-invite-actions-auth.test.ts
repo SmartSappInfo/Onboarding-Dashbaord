@@ -15,6 +15,7 @@ import {
   adminUpdateUserAccessAction,
   declineJoinRequestAction,
   removeUserFromOrgAction,
+  publicResetPasswordViaEmailAction,
 } from '../user-invite-actions';
 
 interface Session { uid: string; isSystemAdmin: boolean; organizationId: string }
@@ -22,7 +23,7 @@ interface Session { uid: string; isSystemAdmin: boolean; organizationId: string 
 const h = vi.hoisted(() => ({
   session: null as Session | null,
   docs: new Map<string, Record<string, unknown>>(),
-  writes: [] as Array<{ op: string; path: string }>,
+  writes: [] as Array<{ op: string; path: string; data?: unknown }>,
   createUser: vi.fn(),
   getUserByEmail: vi.fn(),
   updateUser: vi.fn(),
@@ -57,8 +58,27 @@ vi.mock('@/lib/firebase-admin', () => ({
           const data = h.docs.get(`${col}/${id}`);
           return { id, exists: Boolean(data), data: () => data };
         },
-        set: async () => { h.writes.push({ op: 'set', path: `${col}/${id}` }); },
-        update: async () => { h.writes.push({ op: 'update', path: `${col}/${id}` }); },
+        set: async (data?: unknown) => { h.writes.push({ op: 'set', path: `${col}/${id}`, data }); },
+        update: async (data?: unknown) => { h.writes.push({ op: 'update', path: `${col}/${id}`, data }); },
+      }),
+      where: (field: string, _op: string, val: unknown) => ({
+        limit: (_n: number) => ({
+          get: async () => {
+            const matching: Array<{ id: string; exists: boolean; data: () => Record<string, unknown> }> = [];
+            for (const [key, data] of h.docs.entries()) {
+              if (key.startsWith(`${col}/`)) {
+                const id = key.substring(`${col}/`.length);
+                if (data[field] === val) {
+                  matching.push({ id, exists: true, data: () => data });
+                }
+              }
+            }
+            return {
+              empty: matching.length === 0,
+              docs: matching,
+            };
+          },
+        }),
       }),
     }),
   },
@@ -197,6 +217,34 @@ describe('user-invite-actions authorization', () => {
 
     expect(result.success).toBe(true);
     expect(h.requireUserManagerForUser).toHaveBeenCalledWith('target_a');
-    expect(h.writes).toContainEqual({ op: 'update', path: 'users/target_a' });
+    expect(h.writes).toContainEqual(expect.objectContaining({ op: 'update', path: 'users/target_a' }));
+  });
+
+  describe('publicResetPasswordViaEmailAction', () => {
+    it('updates user password, marks requiresPasswordReset in Firestore, and returns success for registered user', async () => {
+      const result = await publicResetPasswordViaEmailAction('t@example.com');
+
+      expect(result.success).toBe(true);
+      expect(h.updateUser).toHaveBeenCalledWith('target_a', expect.objectContaining({ password: expect.any(String) }));
+      const setCall = h.writes.find((w) => w.path === 'users/target_a' && w.op === 'set');
+      expect(setCall).toBeDefined();
+      expect(setCall?.data).toMatchObject({ requiresPasswordReset: true });
+    });
+
+    it('returns privacy-safe success message without updating when user is not registered', async () => {
+      const result = await publicResetPasswordViaEmailAction('unknown@example.com');
+
+      expect(result.success).toBe(true);
+      expect(result.message).toMatch(/If your email is registered/);
+      expect(h.updateUser).not.toHaveBeenCalled();
+    });
+
+    it('returns error when given an empty or invalid email', async () => {
+      const result = await publicResetPasswordViaEmailAction('   ');
+
+      expect(result.success).toBe(false);
+      expect(result.message).toMatch(/valid email/);
+    });
   });
 });
+

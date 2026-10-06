@@ -24,7 +24,7 @@ import { SmartSappIcon } from '@/components/icons';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ArrowLeft, Mail, Phone, Loader2 } from 'lucide-react';
 import LightRays from '@/components/LightRays';
-import { publicResetPasswordViaPhoneAction } from '@/lib/user-invite-actions';
+import { publicResetPasswordViaPhoneAction, publicResetPasswordViaEmailAction } from '@/lib/user-invite-actions';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { getErrorMessage } from '@/lib/errors/report-error';
 import { useSanitizeSensitiveQueryParams } from '@/hooks/use-sanitize-sensitive-query-params';
@@ -55,15 +55,18 @@ export default function ForgotPasswordPage() {
   });
 
   const onEmailSubmit = async (data: z.infer<typeof emailSchema>) => {
-    if (!auth) return;
     setIsSubmitting(true);
     try {
-      await sendPasswordResetEmail(auth, data.email);
-      toast({
-        title: 'Recovery Email Sent',
-        description: 'Check your inbox for password reset instructions.',
-      });
-      router.push('/login');
+      const result = await publicResetPasswordViaEmailAction(data.email);
+      if (result.success) {
+        toast({
+          title: 'Recovery Email Sent',
+          description: result.message || 'Check your inbox for password reset instructions.',
+        });
+        router.push('/login');
+      } else {
+        throw new Error(result.message || 'Reset failed');
+      }
     } catch (error: unknown) {
       toast({
         variant: 'destructive',

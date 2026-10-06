@@ -118,7 +118,7 @@ describe('invitation-crypto-actions', () => {
       expect(res.invitation?.departmentName).toBe('Engineering');
     });
 
-    it('returns already_completed if user profile is already completed in Firestore', async () => {
+    it('returns already_completed if user profile is already completed in Firestore, preserving tempPassword for reset flows', async () => {
       mockUsersMap.set('user-alex', {
         id: 'user-alex',
         email: 'newuser@example.com',
@@ -131,6 +131,8 @@ describe('invitation-crypto-actions', () => {
 
       expect(res.success).toBe(true);
       expect(res.state).toBe('already_completed');
+      expect(res.invitation?.email).toBe('newuser@example.com');
+      expect(res.invitation?.tempPassword).toBe('Password123!');
     });
 
     it('returns declined state if invitation was previously declined', async () => {

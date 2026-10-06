@@ -61,6 +61,8 @@ export interface PasswordResetDispatchInput {
   tempPassword: string;
   loginUrl: string;
   channels: DispatchChannel[];
+  encryptedResetToken?: string;
+  baseUrl?: string;
 }
 
 export interface ChannelDeliveryOutcome {
@@ -730,6 +732,7 @@ export class InvitationDispatchService {
       tempPassword,
       loginUrl,
       channels,
+      encryptedResetToken,
     } = input;
 
     const orgName = await this.resolveOrgName(organizationId, input.organizationName);
@@ -737,6 +740,20 @@ export class InvitationDispatchService {
     const errors: string[] = [];
     const channelOutcomes: DispatchInvitationResult['channels'] = {};
     const now = new Date().toISOString();
+
+    // Construct tracked reset URL matching the invite email link flow
+    const cleanOrigin = (input.baseUrl || (typeof window !== 'undefined' ? window.location.origin : 'https://smartsapp.com')).replace(/\/+$/, '');
+    let trackedResetUrl = loginUrl;
+    if (encryptedResetToken) {
+      try {
+        const targetUrl = new URL(loginUrl, cleanOrigin);
+        targetUrl.searchParams.set('invite', encryptedResetToken);
+        targetUrl.searchParams.set('email', email);
+        trackedResetUrl = targetUrl.toString();
+      } catch {
+        trackedResetUrl = `${cleanOrigin}/login?invite=${encodeURIComponent(encryptedResetToken)}&email=${encodeURIComponent(email)}`;
+      }
+    }
 
     const deliveryRecord: Record<string, InvitationChannelState> = {};
 
@@ -778,7 +795,7 @@ export class InvitationDispatchService {
                   </div>
                   <p>Click below to log in and set a permanent new password:</p>
                   <div style="text-align: center;">
-                    <a href="${loginUrl}" class="cta-button">Log In & Set New Password</a>
+                    <a href="${trackedResetUrl}" class="cta-button">Log In & Set New Password</a>
                   </div>
                   <p style="font-size: 13px; color: #64748b; margin-top: 24px;">For your account security, you will be prompted to create a new password immediately upon logging in.</p>
                 </div>
@@ -803,9 +820,9 @@ export class InvitationDispatchService {
                 user_email: email,
                 temp_password: tempPassword,
                 temporary_password: tempPassword,
-                login_link: loginUrl,
-                reset_link: loginUrl,
-                action_url: loginUrl,
+                login_link: trackedResetUrl,
+                reset_link: trackedResetUrl,
+                action_url: trackedResetUrl,
                 org_name: orgName,
                 organization_name: orgName,
               },
@@ -814,7 +831,7 @@ export class InvitationDispatchService {
           );
           if (rendered.subject) emailSubject = rendered.subject;
           if (rendered.body) {
-            emailHtml = this.formatTemplateHtml(rendered.body, orgName, loginUrl);
+            emailHtml = this.formatTemplateHtml(rendered.body, orgName, trackedResetUrl);
           }
         } catch (tmplErr) {
           console.warn('[InvitationDispatchService] Could not resolve password reset email template, using default:', tmplErr);
@@ -849,7 +866,7 @@ export class InvitationDispatchService {
         errors.push(`SMS: ${msg}`);
       } else {
         try {
-          let smsText = `Hello ${fullName || 'User'}, your password has been reset for ${orgName}. Temp password: ${tempPassword}. Log in here: ${loginUrl}`;
+          let smsText = `Hello ${fullName || 'User'}, your password has been reset for ${orgName}. Temp password: ${tempPassword}. Log in here: ${trackedResetUrl}`;
           try {
             const rendered = await resolveAndRender(
               'users',
@@ -863,9 +880,9 @@ export class InvitationDispatchService {
                   user_email: email,
                   temp_password: tempPassword,
                   temporary_password: tempPassword,
-                  login_link: loginUrl,
-                  reset_link: loginUrl,
-                  action_url: loginUrl,
+                  login_link: trackedResetUrl,
+                  reset_link: trackedResetUrl,
+                  action_url: trackedResetUrl,
                   org_name: orgName,
                   organization_name: orgName,
                 },
@@ -908,7 +925,7 @@ export class InvitationDispatchService {
       } else {
         try {
           const { sendWhatsApp } = await import('@/lib/whatsapp/whatsapp-send');
-          let waText = `Hello *${fullName || 'User'}*, your password has been reset for *${orgName}* by an administrator.\n\n*Temporary Password:* ${tempPassword}\n*Log in:* ${loginUrl}\n\nPlease change your password upon login.`;
+          let waText = `Hello *${fullName || 'User'}*, your password has been reset for *${orgName}* by an administrator.\n\n*Temporary Password:* ${tempPassword}\n*Log in:* ${trackedResetUrl}\n\nPlease change your password upon login.`;
           try {
             const rendered = await resolveAndRender(
               'users',
@@ -922,9 +939,9 @@ export class InvitationDispatchService {
                   user_email: email,
                   temp_password: tempPassword,
                   temporary_password: tempPassword,
-                  login_link: loginUrl,
-                  reset_link: loginUrl,
-                  action_url: loginUrl,
+                  login_link: trackedResetUrl,
+                  reset_link: trackedResetUrl,
+                  action_url: trackedResetUrl,
                   org_name: orgName,
                   organization_name: orgName,
                 },

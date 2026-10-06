@@ -372,6 +372,50 @@ describe('InvitationDispatchService Suite', () => {
       );
     });
 
+    it('dispatches password reset with encryptedResetToken tracking link embedding email and token', async () => {
+      const { sendEmail } = await import('@/lib/resend-service');
+      const { sendSms } = await import('@/lib/mnotify-service');
+      const { sendWhatsApp } = await import('@/lib/whatsapp/whatsapp-send');
+
+      vi.mocked(sendEmail).mockResolvedValueOnce({
+        id: 'msg-tracked-reset-123',
+        status: 'sent',
+      });
+      vi.mocked(sendSms).mockResolvedValueOnce({
+        status: 'success',
+        summary: { _id: 'sms-tracked-reset-123' },
+      });
+      vi.mocked(sendWhatsApp).mockResolvedValueOnce({
+        metaMessageId: 'wamid.tracked123',
+        status: 'sent',
+      });
+
+      const res = await InvitationDispatchService.dispatchPasswordReset({
+        userId: 'usr-reset-2',
+        organizationId: 'org-456',
+        organizationName: 'Acme Academy',
+        email: 'sarah@acme.edu',
+        fullName: 'Sarah Connor',
+        phone: '+233241234567',
+        tempPassword: 'TemporaryKey789!',
+        loginUrl: 'https://app.smartsapp.com/login',
+        encryptedResetToken: 'mock.encrypted.reset.token',
+        channels: ['email', 'sms', 'whatsapp'],
+      });
+
+      expect(res.success).toBe(true);
+      expect(sendEmail).toHaveBeenCalled();
+      const emailArgs = vi.mocked(sendEmail).mock.calls.at(-1)?.[0];
+      expect(emailArgs?.html).toContain('invite=mock.encrypted.reset.token');
+      expect(emailArgs?.html).toContain('email=sarah%40acme.edu');
+
+      const smsArgs = vi.mocked(sendSms).mock.calls.at(-1)?.[0];
+      expect(smsArgs?.message).toContain('invite=mock.encrypted.reset.token');
+
+      const waArgs = vi.mocked(sendWhatsApp).mock.calls.at(-1)?.[0];
+      expect(waArgs?.resolvedBody).toContain('invite=mock.encrypted.reset.token');
+    });
+
     it('captures password reset delivery failures across channels with descriptive warnings', async () => {
       const { sendEmail } = await import('@/lib/resend-service');
       const { sendWhatsApp } = await import('@/lib/whatsapp/whatsapp-send');

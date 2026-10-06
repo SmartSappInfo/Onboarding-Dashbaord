@@ -318,6 +318,27 @@ export async function adminResetUserPasswordAction(params: AdminResetPasswordPar
             }
         }
 
+        // 3b. Generate tamper-proof encrypted reset token (AES-256-GCM) matching invite email link tracking
+        let encryptedResetToken: string | undefined;
+        try {
+            const exp = Date.now() + 7 * 24 * 60 * 60 * 1000;
+            encryptedResetToken = InviteCryptoService.encryptInvitePayload({
+                invitationId: userId,
+                organizationId,
+                organizationName: orgName,
+                departmentId: userData.departmentId || '',
+                departmentName: userData.departmentName || '',
+                email: userData.email,
+                fullName: userData.name || userData.displayName || 'User',
+                tempPassword,
+                workspaceId: userData.workspaceIds?.[0] || undefined,
+                roleIds: userData.roleIds || [],
+                exp,
+            });
+        } catch (cryptoErr) {
+            console.warn('[adminResetUserPasswordAction] Failed to generate encryptedResetToken, falling back to direct login link:', cryptoErr);
+        }
+
         // 4. Dispatch security notification over requested channels (Email, SMS, WhatsApp)
         const dispatchRes = await InvitationDispatchService.dispatchPasswordReset({
             userId,
@@ -328,7 +349,9 @@ export async function adminResetUserPasswordAction(params: AdminResetPasswordPar
             phone: userData.phone,
             tempPassword,
             loginUrl: loginLink,
+            encryptedResetToken,
             channels: channelsToUse,
+            baseUrl: getBaseUrl(),
         });
 
         return { 
@@ -378,7 +401,28 @@ export async function publicResetPasswordViaPhoneAction(phone: string) {
         const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
         const orgName = orgSnap.exists ? orgSnap.data()?.name || 'SmartSapp' : 'SmartSapp';
 
-        let smsBody = `Hello ${userData?.name || 'User'}, your password has been reset. Temp password: ${tempPassword}. Link: ${loginLink}`;
+        // Generate encrypted reset token for SMS link tracking
+        let encryptedResetToken: string | undefined;
+        try {
+            const exp = Date.now() + 24 * 60 * 60 * 1000;
+            encryptedResetToken = InviteCryptoService.encryptInvitePayload({
+                invitationId: userId,
+                organizationId,
+                organizationName: orgName,
+                email: userData?.email || '',
+                fullName: userData?.name || 'User',
+                tempPassword,
+                exp,
+            });
+        } catch (cryptoErr) {
+            console.warn('[publicResetPasswordViaPhoneAction] Failed to generate encryptedResetToken:', cryptoErr);
+        }
+
+        const trackedLoginLink = encryptedResetToken
+            ? `${loginLink}?invite=${encodeURIComponent(encryptedResetToken)}&email=${encodeURIComponent(userData?.email || '')}`
+            : loginLink;
+
+        let smsBody = `Hello ${userData?.name || 'User'}, your password has been reset. Temp password: ${tempPassword}. Link: ${trackedLoginLink}`;
         try {
             const smsTemplate = await resolveAndRender(
                 'users',
@@ -386,7 +430,7 @@ export async function publicResetPasswordViaPhoneAction(phone: string) {
                 organizationId,
                 {
                     userId,
-                    extraVars: { temp_password: tempPassword, login_link: loginLink }
+                    extraVars: { temp_password: tempPassword, login_link: trackedLoginLink, reset_link: trackedLoginLink }
                 },
                 'sms'
             );
@@ -405,6 +449,101 @@ export async function publicResetPasswordViaPhoneAction(phone: string) {
     } catch (error: unknown) {
         console.error('>>> [PUBLIC RESET PASSWORD] Error:', getErrorMessage(error));
         return { success: true, message: 'Password recovery initiated.' };
+    }
+}
+
+/**
+ * PUBLIC EMAIL RESET ACTION
+ * For users who forgot their password and request recovery via email.
+ * Dispatches password reset notification with encrypted tracking token
+ * matching the invitation link flow.
+ */
+export async function publicResetPasswordViaEmailAction(email: string) {
+    try {
+        const normalizedEmail = (email || '').trim().toLowerCase();
+        if (!normalizedEmail) {
+            return { success: false, message: 'Please enter a valid email address.' };
+        }
+        const auth = getAuth();
+        
+        let userId: string | null = null;
+        let userData: Record<string, unknown> | null = null;
+
+        const usersSnap = await adminDb.collection('users').where('email', '==', normalizedEmail).limit(1).get();
+        if (!usersSnap.empty) {
+            const userDoc = usersSnap.docs[0];
+            userId = userDoc.id;
+            userData = userDoc.data();
+        } else {
+            try {
+                const authUser = await auth.getUserByEmail(normalizedEmail);
+                userId = authUser.uid;
+            } catch {
+                // Privacy / anti-enumeration: return friendly success message
+                return { success: true, message: 'If your email is registered, you will receive password reset instructions.' };
+            }
+        }
+
+        if (!userId) {
+            return { success: true, message: 'If your email is registered, you will receive password reset instructions.' };
+        }
+
+        const tempPassword = generateRandomPassword();
+        const loginLink = `${getBaseUrl()}/login`;
+
+        // 1. Update Firebase Auth password
+        await auth.updateUser(userId, { password: tempPassword });
+
+        // 2. Mark password reset required in Firestore
+        const now = new Date().toISOString();
+        await adminDb.collection('users').doc(userId).set({
+            requiresPasswordReset: true,
+            updatedAt: now,
+        }, { merge: true });
+
+        const organizationId = (userData?.organizationId as string) || 'system';
+        const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
+        const orgName = orgSnap.exists ? orgSnap.data()?.name || 'SmartSapp' : 'SmartSapp';
+        const fullName = (userData?.name as string) || (userData?.displayName as string) || 'User';
+
+        // 3. Generate encrypted reset token (AES-256-GCM) matching invite tracking flow
+        let encryptedResetToken: string | undefined;
+        try {
+            const exp = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+            encryptedResetToken = InviteCryptoService.encryptInvitePayload({
+                invitationId: userId,
+                organizationId,
+                organizationName: orgName,
+                departmentId: (userData?.departmentId as string) || '',
+                departmentName: (userData?.departmentName as string) || '',
+                email: normalizedEmail,
+                fullName,
+                tempPassword,
+                exp,
+            });
+        } catch (cryptoErr) {
+            console.warn('[publicResetPasswordViaEmailAction] Failed to generate encryptedResetToken:', cryptoErr);
+        }
+
+        // 4. Dispatch security notification via email
+        await InvitationDispatchService.dispatchPasswordReset({
+            userId,
+            organizationId,
+            organizationName: orgName,
+            email: normalizedEmail,
+            fullName,
+            phone: (userData?.phone as string) || undefined,
+            tempPassword,
+            loginUrl: loginLink,
+            encryptedResetToken,
+            channels: ['email'],
+            baseUrl: getBaseUrl(),
+        });
+
+        return { success: true, message: 'If your email is registered, you will receive password reset instructions.' };
+    } catch (error: unknown) {
+        console.error('>>> [PUBLIC RESET PASSWORD VIA EMAIL] Error:', getErrorMessage(error));
+        return { success: true, message: 'If your email is registered, you will receive password reset instructions.' };
     }
 }
 

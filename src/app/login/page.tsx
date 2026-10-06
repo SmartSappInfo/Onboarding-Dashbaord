@@ -53,7 +53,11 @@ function LoginContent() {
   const searchParams = useSearchParams();
   // Post-auth destination carried from an invite link (open-redirect safe).
   const returnTo = safeInternalRedirect(searchParams.get('redirect'));
-  const inviteToken = searchParams.get('invite') || (typeof window !== 'undefined' ? sessionStorage.getItem('active_invite_payload') : null);
+  const inviteToken =
+    searchParams.get('invite') ||
+    searchParams.get('reset') ||
+    searchParams.get('token') ||
+    (typeof window !== 'undefined' ? sessionStorage.getItem('active_invite_payload') : null);
   const emailParam = searchParams.get('email');
   const auth = useAuth();
   const firestore = useFirestore();
@@ -77,11 +81,11 @@ function LoginContent() {
   // Pre-fill email from query param if available
   React.useEffect(() => {
     if (emailParam && !form.getValues('email')) {
-      form.setValue('email', emailParam);
+      form.setValue('email', emailParam, { shouldValidate: true, shouldDirty: true });
     }
   }, [emailParam, form]);
 
-  // Pre-fill email and credentials from encrypted invitation token
+  // Pre-fill email and credentials from encrypted invitation/reset token
   React.useEffect(() => {
     if (inviteToken) {
       if (typeof window !== 'undefined') {
@@ -90,11 +94,20 @@ function LoginContent() {
       validateEncryptedInvitationAction({ token: inviteToken })
         .then((res) => {
           if (res.success && res.invitation) {
+            let populated = false;
             if (res.invitation.email && !form.getValues('email')) {
-              form.setValue('email', res.invitation.email);
+              form.setValue('email', res.invitation.email, { shouldValidate: true, shouldDirty: true });
+              populated = true;
             }
             if (res.invitation.tempPassword && !form.getValues('password')) {
-              form.setValue('password', res.invitation.tempPassword);
+              form.setValue('password', res.invitation.tempPassword, { shouldValidate: true, shouldDirty: true });
+              populated = true;
+            }
+            if (populated && res.invitation.tempPassword) {
+              toast({
+                title: 'Credentials Loaded',
+                description: 'Your email and password reset code have been populated. Click sign in to continue.',
+              });
             }
           }
         })
@@ -102,7 +115,7 @@ function LoginContent() {
           console.warn('[Login] Encrypted invite check warning:', err);
         });
     }
-  }, [inviteToken, form]);
+  }, [inviteToken, form, toast]);
 
   const handleAuthorizedGoogleUser = React.useCallback(
     async (uid: string, profile: { name: string | null; email: string | null; phone: string | null }) => {

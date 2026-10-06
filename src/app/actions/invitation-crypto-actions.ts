@@ -149,6 +149,7 @@ export async function validateEncryptedInvitationAction(
             departmentName: decrypted.departmentName,
             email,
             fullName: userData.name || decrypted.fullName,
+            tempPassword: decrypted.tempPassword,
           },
         };
       }
