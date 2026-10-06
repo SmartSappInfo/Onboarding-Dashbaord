@@ -682,6 +682,8 @@ Needs written approval:
 | X7 | `meeting.delete_followup_draft`: owner or meetings edit | Meetings edit | Stricter and simpler; drafts are soft-deleted (kept for audit) |
 | X8 | Undo is compensation only | Added `meeting.undo_followup_task` (L1, meetings + tasks delete) | Undo needs a governed path; the analyst persona has no task-delete permission, so undo stays with people |
 | X9 | (not planned) | `deal.get` / `deal.advance_stage` fail closed | `deal.get` returned an invented deal when one was missing; the CRM bridge's conflict check and postcondition depend on it |
+| X10 | Shadow ladder per workspace | Ladder, promotion rules and per-run shadow records are in place; the stage is not yet stored or enforced per workspace | Storing and switching the stage is an operator action: Backoffice T7 (7.1/7.3). Until then the existing flags gate agents and MCP |
+| X11 | Offline real-model run before canary | Script ready (`pnpm eval:meeting-agent --workspace <id>`), not yet run | It spends real model budget (D18): needs a go-ahead and a workspace whose data policy allows a provider. CI uses the scripted model, which measures the pipeline and scorer, not model quality |
 
 Also:
 - v2 item → task conversion now records claims in `meeting_item_conversions` (keyed by item hash, so it survives re-analysis). T4's `meeting.create_followup_tasks` must use the same record.
@@ -697,7 +699,7 @@ Also:
 | P11-M2-T2 | Grounded prep brief | ✔ | prep-brief-service (18 tests), gateway contract (8 tests), fingerprint baseline +1 |
 | P11-M2-T3 | Extraction pipeline + v2 template | ✔ | 39942b0b, 3346541c, 2ae324fd, daf2d189, 178528d1; runbook `docs/runbooks/meetings-intelligence.md`; deviations X1–X4 |
 | P11-M2-T4 | Tasks · drafts · CRM proposals | ✔ | 40b46b82, 79fe2a2d (tasks + undo) · 2b963e84, 0dfc5291, 5d184493 (drafts + composer) · 70397b41 (deal reads fail closed) · 58ed6097, 8ab0782d (CRM proposals); deviations X5–X9 |
-| P11-M2-T5 | Evaluation + shadow | ☐ | |
+| P11-M2-T5 | Evaluation + shadow | ✔ (real-model run pending) | d5b0fdf3 (22 gold meetings, scorer, CI gate) · 0b670895 (`pnpm eval:meeting-agent`, capped budget) · 268410af, 45cc354b (shadow records + ladder gates); deviations X10–X11 |
 | P11-M2-T6 | Minimal UI + "Why?" + performance/boundary | ☐ | |
 | P11-M2-T7 | Backoffice + runbook | ☐ | |
 | P11-M2-T8 | Verification + report | ☐ | |
