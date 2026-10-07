@@ -75,7 +75,10 @@ import {
     Search,
     X,
     Play,
-    Wrench
+    Wrench,
+    Inbox,
+    Share2,
+    ShieldAlert
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import UnifiedOrgWorkspaceSwitcher from './UnifiedOrgWorkspaceSwitcher';
@@ -217,8 +220,11 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
     { href: wrapHref('/admin/intelligence'), icon: Sparkles, label: 'Command Center', visible: can('operations', 'intelligence', 'view') || isSystemAdmin },
     { href: wrapHref('/admin/intelligence/runs'), icon: Play, label: 'Agent Runs', visible: can('operations', 'intelligence', 'view') || isSystemAdmin },
     { href: wrapHref('/admin/intelligence/agents'), icon: Bot, label: 'Agent Studio', visible: can('operations', 'intelligence', 'view') || isSystemAdmin },
+    { href: wrapHref('/admin/intelligence/knowledge/inbox'), icon: Inbox, label: 'Knowledge Inbox', visible: can('operations', 'intelligence', 'view') || isSystemAdmin },
+    { href: wrapHref('/admin/intelligence/knowledge/graph'), icon: Share2, label: 'Knowledge Graph', visible: can('operations', 'intelligence', 'view') || isSystemAdmin },
+    { href: wrapHref('/admin/intelligence/governance'), icon: ShieldAlert, label: 'Governance & Control', visible: isSystemAdmin || can('management', 'systemSettings', 'view') },
     { href: wrapHref('/admin/quick-notes'), icon: Brain, label: 'Company Brain', visible: isFeatureEnabled('quick_notes') && can('operations', 'quickNotes', 'view') },
-    { href: wrapHref('/admin/quick-notes/graph'), icon: Network, label: 'Knowledge Graph', visible: isFeatureEnabled('quick_notes') && (can('operations', 'knowledgeGraph', 'view') || can('operations', 'quickNotes', 'view')) },
+    { href: wrapHref('/admin/quick-notes/graph'), icon: Network, label: 'Quick Notes Graph', visible: isFeatureEnabled('quick_notes') && (can('operations', 'knowledgeGraph', 'view') || can('operations', 'quickNotes', 'view')) },
     { href: wrapHref('/admin/reports'), icon: BarChart3, label: 'Reports', visible: isFeatureEnabled('reports') && can('operations', 'intelligence', 'view') },
     { href: wrapHref('/admin/analytics/sales-effort'), icon: BarChart3, label: 'Sales Effort', visible: isFeatureEnabled('reports') && (can('operations', 'salesEffort', 'view') || can('operations', 'intelligence', 'view')) },
     { href: wrapHref('/admin/workforce/intelligence'), icon: BrainCircuit, label: 'User Intelligence', visible: can('workforce', 'intelligence', 'view') || can('management', 'users', 'view') },
