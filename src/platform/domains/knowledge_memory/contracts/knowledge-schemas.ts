@@ -222,3 +222,170 @@ export const GraphFindPathQuerySchema = z.object({
   maxNodes: z.number().int().min(1).max(80, 'Graph query cannot exceed 80 nodes (Rule 55)').default(80),
 });
 export type GraphFindPathQuery = z.infer<typeof GraphFindPathQuerySchema>;
+
+// ============================================================================
+// 6. Citations & Claims Schemas (Phase 11 M4 · T0; Rule 47)
+// ============================================================================
+
+export const KNOWLEDGE_SOURCE_TYPES = [
+  'memory',
+  'meeting',
+  'crm_note',
+  'document',
+] as const;
+export type KnowledgeSourceType = (typeof KNOWLEDGE_SOURCE_TYPES)[number];
+
+export const KnowledgeCitationSchema = z.object({
+  citationId: z.string().trim().min(1, 'Citation ID is required'),
+  sourceId: z.string().trim().min(1, 'Source ID is required'),
+  sourceType: z.enum(KNOWLEDGE_SOURCE_TYPES),
+  textSpan: z.string().trim().min(1, 'Citation text span is required'),
+  relevanceScore: z.number().min(0).max(1).default(1.0),
+});
+export type KnowledgeCitation = z.infer<typeof KnowledgeCitationSchema>;
+
+export const KnowledgeClaimSchema = z.object({
+  claimText: z.string().trim().min(1, 'Claim text is required'),
+  citationIds: z.array(z.string().trim().min(1)).min(1, 'Claim must have at least one citation span (Rule 47)'),
+  confidence: z.number().min(0).max(1).default(0.9),
+});
+export type KnowledgeClaim = z.infer<typeof KnowledgeClaimSchema>;
+
+// ============================================================================
+// 7. Adaptive Retrieval Schemas (Phase 11 M4 · T0; Rules 8, 28, 29, 55, 56)
+// ============================================================================
+
+export const KnowledgeSearchHybridInputSchema = z.object({
+  organizationId: z.string().trim().min(1, 'Organization ID is required'),
+  workspaceId: z.string().trim().min(1, 'Workspace ID is required'),
+  query: z.string().trim().min(1, 'Search query is required').max(1000),
+  vector: z.array(z.number()).optional(),
+  entityId: z.string().trim().optional(),
+  limit: z.number().int().min(1).max(50).optional().default(10),
+  includeGraphNeighbors: z.boolean().optional().default(true),
+  applyRecencyDecay: z.boolean().optional().default(true),
+  halfLifeDays: z.number().positive().optional().default(30),
+});
+export type KnowledgeSearchHybridInput = z.infer<typeof KnowledgeSearchHybridInputSchema>;
+
+export const AdaptiveRetrievalHitSchema = z.object({
+  id: z.string().trim().min(1),
+  sourceType: z.enum(KNOWLEDGE_SOURCE_TYPES),
+  title: z.string().trim().min(1),
+  content: z.string(),
+  denseRank: z.number().int().nullable().default(null),
+  sparseRank: z.number().int().nullable().default(null),
+  graphDistance: z.number().int().nullable().default(null),
+  rrfScore: z.number(),
+  temporalDecayMultiplier: z.number().min(0).max(1),
+  verificationMultiplier: z.number(),
+  finalScore: z.number(),
+  sensitivity: z.enum(KNOWLEDGE_SENSITIVITY_LEVELS).default('internal'),
+  verificationState: z.enum(KNOWLEDGE_VERIFICATION_STATES).default('unverified'),
+  createdAt: z.string(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
+export type AdaptiveRetrievalHit = z.infer<typeof AdaptiveRetrievalHitSchema>;
+
+export const KnowledgeSearchHybridOutputSchema = z.object({
+  hits: z.array(AdaptiveRetrievalHitSchema),
+  totalFound: z.number().int(),
+  includedCount: z.number().int(),
+  omittedCount: z.number().int(),
+  tokenCount: z.number().int(),
+  durationMs: z.number(),
+});
+export type KnowledgeSearchHybridOutput = z.infer<typeof KnowledgeSearchHybridOutputSchema>;
+
+// ============================================================================
+// 8. Evidence Retrieval Schemas (Phase 11 M4 · T0; Rule 47)
+// ============================================================================
+
+export const KnowledgeGetEvidenceInputSchema = z.object({
+  organizationId: z.string().trim().min(1, 'Organization ID is required'),
+  workspaceId: z.string().trim().min(1, 'Workspace ID is required'),
+  memoryIds: z.array(z.string().trim().min(1)).min(1, 'At least one memory ID is required'),
+});
+export type KnowledgeGetEvidenceInput = z.infer<typeof KnowledgeGetEvidenceInputSchema>;
+
+export const KnowledgeGetEvidenceOutputSchema = z.object({
+  items: z.array(AdaptiveRetrievalHitSchema),
+  missingIds: z.array(z.string()),
+});
+export type KnowledgeGetEvidenceOutput = z.infer<typeof KnowledgeGetEvidenceOutputSchema>;
+
+export const KnowledgeGetCitationsInputSchema = z.object({
+  organizationId: z.string().trim().min(1, 'Organization ID is required'),
+  workspaceId: z.string().trim().min(1, 'Workspace ID is required'),
+  query: z.string().trim().min(1, 'Query is required'),
+  limit: z.number().int().min(1).max(20).optional().default(10),
+});
+export type KnowledgeGetCitationsInput = z.infer<typeof KnowledgeGetCitationsInputSchema>;
+
+export const KnowledgeGetCitationsOutputSchema = z.object({
+  citations: z.array(KnowledgeCitationSchema),
+});
+export type KnowledgeGetCitationsOutput = z.infer<typeof KnowledgeGetCitationsOutputSchema>;
+
+// ============================================================================
+// 9. Context Inclusion Explanation Schemas (Phase 11 M4 · T0; Rule 41)
+// ============================================================================
+
+export const ExplainContextInclusionInputSchema = z.object({
+  organizationId: z.string().trim().min(1, 'Organization ID is required'),
+  workspaceId: z.string().trim().min(1, 'Workspace ID is required'),
+  query: z.string().trim().min(1, 'Query is required'),
+  itemId: z.string().trim().min(1, 'Item ID is required'),
+});
+export type ExplainContextInclusionInput = z.infer<typeof ExplainContextInclusionInputSchema>;
+
+export const ExplainContextInclusionOutputSchema = z.object({
+  itemId: z.string().trim().min(1),
+  included: z.boolean(),
+  reason: z.string(),
+  metrics: z.object({
+    denseRank: z.number().int().nullable().optional(),
+    sparseRank: z.number().int().nullable().optional(),
+    graphHops: z.number().int().nullable().optional(),
+    rrfScore: z.number(),
+    recencyWeight: z.number(),
+    verificationWeight: z.number(),
+  }),
+});
+export type ExplainContextInclusionOutput = z.infer<typeof ExplainContextInclusionOutputSchema>;
+
+// ============================================================================
+// 10. Rule 47 Grounded Answer Contract Schema
+// ============================================================================
+
+export const KnowledgeAnswerCoverageSchema = z.enum([
+  'complete',
+  'partial',
+  'no_evidence',
+]);
+export type KnowledgeAnswerCoverage = z.infer<typeof KnowledgeAnswerCoverageSchema>;
+
+export const KnowledgeAnswerConflictSchema = z.object({
+  factA: z.string(),
+  factB: z.string(),
+  reason: z.string(),
+});
+export type KnowledgeAnswerConflict = z.infer<typeof KnowledgeAnswerConflictSchema>;
+
+export const KnowledgeAnswerContractSchema = z.object({
+  query: z.string(),
+  answer: z.string(),
+  coverage: KnowledgeAnswerCoverageSchema,
+  claims: z.array(KnowledgeClaimSchema),
+  citations: z.array(KnowledgeCitationSchema),
+  conflictsDetected: z.array(KnowledgeAnswerConflictSchema).default([]),
+  contextSummary: z.object({
+    totalFound: z.number().int(),
+    includedCount: z.number().int(),
+    omittedCount: z.number().int(),
+    tokenCount: z.number().int(),
+  }),
+  citationPrecision: z.number().min(0).max(1),
+});
+export type KnowledgeAnswerContract = z.infer<typeof KnowledgeAnswerContractSchema>;
+
