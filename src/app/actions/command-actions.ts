@@ -35,7 +35,6 @@ import { generateCommandSuggestions } from '@/platform/ui/command/command-sugges
 import { checkGovernanceDeadManSwitch } from '@/platform/policy/governance-dead-man';
 import { defaultEventBus } from '@/platform/events/event-bus';
 import { createDomainEvent } from '@/platform/capabilities/events/domain-event';
-import { getCanonicalMemoryService } from '@/platform/memory';
 import { getKnowledgeAgentService } from '@/platform/domains/knowledge_memory/services/knowledge-agent-service';
 import { getAgentRunStore } from '@/platform/runtime/agent-run-store';
 import { getWorkflowStore } from '@/platform/workflows/workflow-store';

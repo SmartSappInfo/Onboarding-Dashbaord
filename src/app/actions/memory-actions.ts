@@ -34,7 +34,7 @@ export interface MemoryActionResult<T = void> {
   code?: string;
 }
 
-const InboxTabSchema = z.enum([
+export const InboxTabSchema = z.enum([
   'new',
   'insights',
   'potential',

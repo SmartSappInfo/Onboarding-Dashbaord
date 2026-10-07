@@ -11,7 +11,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   KnowledgeCandidateService,
-  getKnowledgeCandidateService,
 } from '../../domains/knowledge_memory/services/knowledge-candidate-service';
 import {
   knowledgeProposeCandidateCapability,

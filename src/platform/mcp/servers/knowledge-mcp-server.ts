@@ -14,12 +14,11 @@
  */
 
 import { McpServer, ResourceTemplate } from '@modelcontextprotocol/server';
-import type { AgentPrincipal, AnyCapabilityDefinition } from '@/platform/capabilities/contracts/capability-definition';
+import type { AgentPrincipal } from '@/platform/capabilities/contracts/capability-definition';
 import { canonicalCapabilityRegistryStore } from '@/platform/capabilities/registry/capability-registry';
 import {
   toolNameFor,
   createCapabilityToolHandler,
-  type McpToolAuditEntry,
 } from '../create-stateless-handler';
 import { toMcpToolSchema } from '../to-mcp-tool-schema';
 import {

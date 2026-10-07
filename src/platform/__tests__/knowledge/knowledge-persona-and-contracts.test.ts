@@ -17,10 +17,7 @@ import {
 import { globalAgentPersonaRegistry } from '@/platform/identity/agent-registry';
 import {
   KnowledgeSearchHybridInputSchema,
-  KnowledgeSearchHybridOutputSchema,
   KnowledgeAnswerContractSchema,
-  KnowledgeGetEvidenceInputSchema,
-  KnowledgeGetEvidenceOutputSchema,
   ExplainContextInclusionInputSchema,
   ExplainContextInclusionOutputSchema,
 } from '@/platform/domains/knowledge_memory/contracts/knowledge-schemas';

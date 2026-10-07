@@ -23,8 +23,6 @@ import {
 } from '@/platform/domains/knowledge_memory/contracts/knowledge-schemas';
 import {
   BackfillKnowledgeEmbeddingsRunner,
-  type KnowledgeBackfillItem,
-  type EmbeddingsProvider,
 } from '../../../../scripts/migrations/backfill-knowledge-embeddings';
 
 // Mock event bus

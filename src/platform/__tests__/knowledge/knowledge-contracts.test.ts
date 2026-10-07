@@ -16,7 +16,6 @@ import {
   GraphNeighborQuerySchema,
   GraphFindPathQuerySchema,
   type KnowledgeCandidate,
-  type ProposeCandidateInput,
   type ReviewQueueDecideInput,
   type KnowledgeConflict,
   type ResolveConflictInput,

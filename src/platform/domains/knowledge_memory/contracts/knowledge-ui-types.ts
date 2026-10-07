@@ -15,7 +15,6 @@ import { z } from 'zod/v4';
 import {
   KNOWLEDGE_SOURCE_TYPES,
   KNOWLEDGE_SENSITIVITY_LEVELS,
-  KNOWLEDGE_VERIFICATION_STATES,
 } from './knowledge-schemas';
 
 // ============================================================================

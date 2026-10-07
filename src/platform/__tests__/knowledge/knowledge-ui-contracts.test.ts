@@ -14,7 +14,6 @@ import {
   KnowledgeInboxFilterSchema,
   KnowledgeCandidateTriageInputSchema,
   BatchTriageInputSchema,
-  KnowledgeSearchModalInputSchema,
   GraphExplorerStateSchema,
   BackofficeGovernanceConfigSchema,
   SecurityIncidentFeedItemSchema,

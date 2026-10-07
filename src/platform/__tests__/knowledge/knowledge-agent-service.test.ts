@@ -13,7 +13,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   KnowledgeAgentService,
-  getKnowledgeAgentService,
 } from '@/platform/domains/knowledge_memory/services/knowledge-agent-service';
 import {
   KnowledgeAdaptiveRetriever,
@@ -21,7 +20,6 @@ import {
 } from '@/platform/domains/knowledge_memory/services/knowledge-adaptive-retriever';
 import { getCapability } from '@/platform/capabilities/registry/capability-registry';
 import * as deadManModule from '@/platform/policy/governance-dead-man';
-import { KNOWLEDGE_AGENT_ERROR_CODES } from '@/platform/domains/knowledge_memory/contracts/knowledge-errors';
 import '@/platform/domains/knowledge_memory/contracts/knowledge-capabilities.contract';
 
 describe('KnowledgeAgentService & Capabilities 10–13 (Phase 11 M4 · T2)', () => {
