@@ -104,7 +104,7 @@ describe('Genkit Multi-Provider Cross-Fallback Proxy', () => {
     expect(mockAnthropicGenerate).toHaveBeenCalledTimes(1);
     expect(mockGoogleAiGenerate).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: 'googleai/gemini-2.5-flash',
+        model: 'googleai/gemini-3-flash-preview',
         prompt: 'Hello AI',
       })
     );

@@ -27,6 +27,8 @@ import {
   dealAdvanceStageCapability,
   dealTransferCapability,
 } from '@/platform/domains/deals_revenue/contracts/deal-capabilities.contract';
+import { transferDealCore } from '@/lib/deals/deal-transfer-core';
+import type { CrmActor } from '@/lib/crm/deal-core';
 
 // ==========================================
 // 1. deal.get (Read-Only)
@@ -406,50 +408,56 @@ export const dealTransferTool: McpToolDefinition<
   version: '1.0.0',
   category: 'deal',
   description: 'Transfers or duplicates a commercial deal across workspaces, pipelines, and stages with entity projection and idempotency protection.',
-  riskLevel: 'high_risk',
+  riskLevel: 'low_risk',
   requiresApproval: false,
   parameters: transferDealInputSchema,
   responseSchema: transferDealOutputSchema,
   handler: async (params, context) => {
     const callerUserId = context.callerType === 'agent' ? `system-${context.callerId}` : context.callerId;
-
-    const result = await dealTransferCapability.handler(
-      {
-        dealId: params.dealId,
-        mode: params.mode,
-        sourceWorkspaceId: context.workspaceId,
-        targetWorkspaceId: params.targetWorkspaceId,
-        targetPipelineId: params.targetPipelineId,
-        targetStageId: params.targetStageId,
-        targetUserId: params.targetUserId,
-        newName: params.newName,
-        summary: params.summary,
-        copyLineItems: params.copyLineItems,
-        copyContacts: params.copyContacts,
-        copyCustomFields: params.copyCustomFields,
-        expectedUpdatedAt: params.expectedUpdatedAt,
-        idempotencyKey: params.idempotencyKey,
-      },
-      {
-        principal: {
-          actorType: context.callerType === 'agent' ? 'agent' : 'user',
-          userId: callerUserId,
-          agentId: context.callerType === 'agent' ? context.callerId : undefined,
+    const actor: CrmActor = context.callerType === 'agent'
+      ? {
+          kind: 'service',
+          service: 'api',
           workspaceId: context.workspaceId,
-          organizationId: context.organizationId,
-          grantedScopes: ['sales:pipeline:edit', 'app:deals_edit', 'deal:transfer', 'deal:create'],
-          effectiveRole: 'mcp_caller',
-        },
-        correlationId: context.requestId,
-        timestamp: context.timestamp,
-      }
-    );
+          allowedWorkspaceIds: [context.workspaceId, params.targetWorkspaceId],
+          onBehalfOf: callerUserId,
+          agentId: context.callerId,
+          toolInvocationId: context.requestId,
+        }
+      : { kind: 'user', uid: context.callerId };
+
+    const result = await transferDealCore(actor, {
+      dealId: params.dealId,
+      mode: params.mode,
+      sourceWorkspaceId: context.workspaceId,
+      targetWorkspaceId: params.targetWorkspaceId,
+      targetPipelineId: params.targetPipelineId,
+      targetStageId: params.targetStageId,
+      assignedTo: params.targetUserId !== undefined
+        ? (params.targetUserId ? { userId: params.targetUserId } : null)
+        : undefined,
+      newName: params.newName,
+      summary: params.summary,
+      copyLineItems: params.copyLineItems,
+      copyContacts: params.copyContacts,
+      copyCustomFields: params.copyCustomFields,
+      expectedUpdatedAt: params.expectedUpdatedAt,
+      idempotencyKey: params.idempotencyKey,
+    });
 
     if (!result.success) {
-      throw new Error(`[deal.transfer] ${result.error.message}`);
+      throw new Error(`[deal.transfer] ${result.error || 'Failed to transfer deal'}`);
     }
 
-    return result.data;
+    return {
+      dealId: result.dealId,
+      mode: result.mode,
+      targetWorkspaceId: result.targetWorkspaceId,
+      targetPipelineId: result.targetPipelineId,
+      targetStageId: result.targetStageId,
+      success: true,
+      updatedAt: result.updatedAt,
+    };
   },
 };
 

@@ -14,21 +14,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { dealTransferTool } from '../tools/deal-tools';
 import type { McpExecutionContext } from '../types';
 
-// Mock dealTransferCapability
-const { mockCapabilityHandler } = vi.hoisted(() => ({
-  mockCapabilityHandler: vi.fn(),
+// Mock transferDealCore
+const { mockTransferDealCore } = vi.hoisted(() => ({
+  mockTransferDealCore: vi.fn(),
 }));
 
-vi.mock('@/platform/domains/deals_revenue/contracts/deal-capabilities.contract', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/platform/domains/deals_revenue/contracts/deal-capabilities.contract')>();
-  return {
-    ...actual,
-    dealTransferCapability: {
-      ...actual.dealTransferCapability,
-      handler: mockCapabilityHandler,
-    },
-  };
-});
+vi.mock('@/lib/deals/deal-transfer-core', () => ({
+  transferDealCore: mockTransferDealCore,
+}));
 
 // Mock Firestore
 vi.mock('@/lib/firebase-admin', () => ({
@@ -60,7 +53,7 @@ describe('dealTransferTool (MCP Layer)', () => {
     expect(dealTransferTool.name).toBe('deal.transfer');
     expect(dealTransferTool.version).toBe('1.0.0');
     expect(dealTransferTool.category).toBe('deal');
-    expect(dealTransferTool.riskLevel).toBe('high_risk');
+    expect(dealTransferTool.riskLevel).toBe('low_risk');
   });
 
   it('validates tool arguments at trust boundary (Rule 4 & 13)', () => {
@@ -82,18 +75,16 @@ describe('dealTransferTool (MCP Layer)', () => {
     expect(validParsed.success).toBe(true);
   });
 
-  it('invokes canonical capability with agent principal and returns formatted result (Rule 16 & 69)', async () => {
-    mockCapabilityHandler.mockResolvedValueOnce({
+  it('invokes transferDealCore with agent principal and returns formatted result (Rule 16 & 69)', async () => {
+    mockTransferDealCore.mockResolvedValueOnce({
       success: true,
-      data: {
-        dealId: 'deal_1',
-        mode: 'move',
-        targetWorkspaceId: 'ws_target_1',
-        targetPipelineId: 'pipe_target_1',
-        targetStageId: 'stage_target_1',
-        success: true,
-        updatedAt: '2026-10-07T12:00:01.000Z',
-      },
+      dealId: 'deal_1',
+      mode: 'move',
+      sourceWorkspaceId: 'ws_source_1',
+      targetWorkspaceId: 'ws_target_1',
+      targetPipelineId: 'pipe_target_1',
+      targetStageId: 'stage_target_1',
+      updatedAt: '2026-10-07T12:00:01.000Z',
     });
 
     const result = await dealTransferTool.handler(
@@ -112,31 +103,26 @@ describe('dealTransferTool (MCP Layer)', () => {
     expect(result.dealId).toBe('deal_1');
     expect(result.targetWorkspaceId).toBe('ws_target_1');
 
-    expect(mockCapabilityHandler).toHaveBeenCalledWith(
+    expect(mockTransferDealCore).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'service',
+        service: 'api',
+        workspaceId: 'ws_source_1',
+        agentId: 'agent_sdr_rev',
+      }),
       expect.objectContaining({
         dealId: 'deal_1',
         mode: 'move',
         sourceWorkspaceId: 'ws_source_1',
         targetWorkspaceId: 'ws_target_1',
-      }),
-      expect.objectContaining({
-        principal: expect.objectContaining({
-          actorType: 'agent',
-          agentId: 'agent_sdr_rev',
-          workspaceId: 'ws_source_1',
-          organizationId: 'org_enterprise_1',
-        }),
       })
     );
   });
 
   it('fails closed and throws on capability execution error (Rule 31 & 48)', async () => {
-    mockCapabilityHandler.mockResolvedValueOnce({
+    mockTransferDealCore.mockResolvedValueOnce({
       success: false,
-      error: {
-        code: 'VALIDATION',
-        message: 'Destination stage does not belong to target pipeline.',
-      },
+      error: 'Destination stage does not belong to target pipeline.',
     });
 
     await expect(

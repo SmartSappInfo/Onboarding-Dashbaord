@@ -204,9 +204,9 @@ describe('Canonical Registry Unification (PR-5 / Decision D1 / Rule 69 SSOT)', (
     it('bridges all core CompanyBrain tools into canonical registry with canonical risk classifications', () => {
       registerAllCoreTools(globalMcpRegistry);
 
-      expect(ALL_CORE_MCP_TOOLS.length).toBe(13);
+      expect(ALL_CORE_MCP_TOOLS.length).toBe(14);
       const allCaps = listCapabilities();
-      expect(allCaps.length).toBe(13);
+      expect(allCaps.length).toBe(14);
 
       // Verify L0_READ tools
       const recallCap = getCapability('memory.recall');
@@ -237,6 +237,10 @@ describe('Canonical Registry Unification (PR-5 / Decision D1 / Rule 69 SSOT)', (
       const taskCreateCap = getCapability('task.create');
       expect(taskCreateCap?.risk.level).toBe('L2_STATE_MUTATION');
       expect(taskCreateCap?.risk.requiresHumanApproval).toBe(false);
+
+      const dealTransferCap = getCapability('deal.transfer');
+      expect(dealTransferCap?.risk.level).toBe('L2_STATE_MUTATION');
+      expect(dealTransferCap?.risk.requiresHumanApproval).toBe(false);
 
       // Verify L3_EXTERNAL_COMMUNICATION_FINANCE tools (requires approval)
       const conflictCap = getCapability('memory.resolve_conflict');
