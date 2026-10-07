@@ -95,6 +95,13 @@ export class KnowledgeAdaptiveRetriever {
   }
 
   /**
+   * Retrieves an item by ID from the local store.
+   */
+  getItem(id: string): AdaptiveKnowledgeItem | undefined {
+    return this.inMemoryItems.get(id);
+  }
+
+  /**
    * Calculates exponential temporal recency weight (Rule 29).
    * Formula: w = 2^(-dt / t_half)
    * If superseded or expired: w = 0.

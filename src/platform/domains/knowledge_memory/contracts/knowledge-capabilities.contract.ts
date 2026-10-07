@@ -25,6 +25,14 @@ import {
   ResolveConflictInputSchema,
   GraphNeighborQuerySchema,
   GraphFindPathQuerySchema,
+  KnowledgeSearchHybridInputSchema,
+  KnowledgeSearchHybridOutputSchema,
+  KnowledgeGetEvidenceInputSchema,
+  KnowledgeGetEvidenceOutputSchema,
+  KnowledgeGetCitationsInputSchema,
+  KnowledgeGetCitationsOutputSchema,
+  ExplainContextInclusionInputSchema,
+  ExplainContextInclusionOutputSchema,
   type KnowledgeCandidate,
   type ProposeCandidateInput,
   type ReviewQueueDecideInput,
@@ -32,11 +40,21 @@ import {
   type ResolveConflictInput,
   type GraphNeighborQuery,
   type GraphFindPathQuery,
+  type KnowledgeSearchHybridInput,
+  type KnowledgeSearchHybridOutput,
+  type KnowledgeGetEvidenceInput,
+  type KnowledgeGetEvidenceOutput,
+  type KnowledgeGetCitationsInput,
+  type KnowledgeGetCitationsOutput,
+  type ExplainContextInclusionInput,
+  type ExplainContextInclusionOutput,
 } from './knowledge-schemas';
 import { getKnowledgeCandidateService } from '../services/knowledge-candidate-service';
 import { getKnowledgeDeduplicationService } from '../services/knowledge-deduplication-service';
 import { getKnowledgeConflictService } from '../services/knowledge-conflict-service';
 import { getKnowledgeGraphProjectionService } from '../services/knowledge-graph-projection-service';
+import { getKnowledgeAdaptiveRetriever } from '../services/knowledge-adaptive-retriever';
+import { getKnowledgeAgentService } from '../services/knowledge-agent-service';
 
 function ok<T>(data: T, context: CapabilityExecutionContext, startMs: number): CapabilityExecutionResult<T> {
   return {
@@ -660,6 +678,224 @@ export const knowledgeGraphFindPathCapability: CapabilityDefinition<
 };
 
 // ============================================================================
+// 10. knowledge.search_hybrid (L0_READ)
+// ============================================================================
+
+export const knowledgeSearchHybridCapability: CapabilityDefinition<
+  KnowledgeSearchHybridInput,
+  KnowledgeSearchHybridOutput
+> = {
+  id: 'knowledge.search_hybrid',
+  version: '1.0.0',
+  name: 'Search Knowledge Hybrid',
+  description: 'Adaptive tri-modal retrieval fusing dense vector similarity, sparse BM25, and relational graph.',
+  domain: 'knowledge_memory',
+  operation: 'read',
+  inputSchema: KnowledgeSearchHybridInputSchema,
+  outputSchema: KnowledgeSearchHybridOutputSchema,
+  permissions: ['knowledge:read'],
+  workspaceScoped: true,
+  tenantScoped: true,
+  risk: {
+    level: 'L0_READ',
+    destructive: false,
+    idempotent: true,
+    openWorld: false,
+    requiresHumanApproval: false,
+    nonDelegable: false,
+  },
+  execution: {
+    synchronous: true,
+    maxDurationMs: 15_000,
+    supportsDryRun: true,
+    supportsCancellation: true,
+    supportsCompensation: false,
+    maxPayloadSizeBytes: 1024 * 1024,
+  },
+  policies: {
+    requiresIdempotencyKey: false,
+    requiresExpectedVersion: false,
+    auditRequired: false,
+    defaultEnabled: true,
+  },
+  async handler(
+    rawInput: KnowledgeSearchHybridInput,
+    context: CapabilityExecutionContext
+  ): Promise<CapabilityExecutionResult<KnowledgeSearchHybridOutput>> {
+    const startTime = Date.now();
+    const input = KnowledgeSearchHybridInputSchema.parse(rawInput);
+    const retriever = getKnowledgeAdaptiveRetriever();
+    const result = await retriever.searchHybrid(input, {
+      callerPermissions: context.callerPermissions,
+    });
+
+    return ok(result, context, startTime);
+  },
+};
+
+// ============================================================================
+// 11. knowledge.get_evidence (L0_READ)
+// ============================================================================
+
+export const knowledgeGetEvidenceCapability: CapabilityDefinition<
+  KnowledgeGetEvidenceInput,
+  KnowledgeGetEvidenceOutput
+> = {
+  id: 'knowledge.get_evidence',
+  version: '1.0.0',
+  name: 'Get Knowledge Evidence',
+  description: 'Retrieves specific evidence items by their IDs, enforcing multi-tenant boundaries.',
+  domain: 'knowledge_memory',
+  operation: 'read',
+  inputSchema: KnowledgeGetEvidenceInputSchema,
+  outputSchema: KnowledgeGetEvidenceOutputSchema,
+  permissions: ['knowledge:read'],
+  workspaceScoped: true,
+  tenantScoped: true,
+  risk: {
+    level: 'L0_READ',
+    destructive: false,
+    idempotent: true,
+    openWorld: false,
+    requiresHumanApproval: false,
+    nonDelegable: false,
+  },
+  execution: {
+    synchronous: true,
+    maxDurationMs: 10_000,
+    supportsDryRun: true,
+    supportsCancellation: false,
+    supportsCompensation: false,
+    maxPayloadSizeBytes: 512 * 1024,
+  },
+  policies: {
+    requiresIdempotencyKey: false,
+    requiresExpectedVersion: false,
+    auditRequired: false,
+    defaultEnabled: true,
+  },
+  async handler(
+    rawInput: KnowledgeGetEvidenceInput,
+    context: CapabilityExecutionContext
+  ): Promise<CapabilityExecutionResult<KnowledgeGetEvidenceOutput>> {
+    const startTime = Date.now();
+    const input = KnowledgeGetEvidenceInputSchema.parse(rawInput);
+    const service = getKnowledgeAgentService();
+    const result = await service.getEvidence(input);
+
+    return ok(result, context, startTime);
+  },
+};
+
+// ============================================================================
+// 12. knowledge.get_citations (L0_READ)
+// ============================================================================
+
+export const knowledgeGetCitationsCapability: CapabilityDefinition<
+  KnowledgeGetCitationsInput,
+  KnowledgeGetCitationsOutput
+> = {
+  id: 'knowledge.get_citations',
+  version: '1.0.0',
+  name: 'Get Knowledge Citations',
+  description: 'Retrieves verified citation spans for a query.',
+  domain: 'knowledge_memory',
+  operation: 'read',
+  inputSchema: KnowledgeGetCitationsInputSchema,
+  outputSchema: KnowledgeGetCitationsOutputSchema,
+  permissions: ['knowledge:read'],
+  workspaceScoped: true,
+  tenantScoped: true,
+  risk: {
+    level: 'L0_READ',
+    destructive: false,
+    idempotent: true,
+    openWorld: false,
+    requiresHumanApproval: false,
+    nonDelegable: false,
+  },
+  execution: {
+    synchronous: true,
+    maxDurationMs: 10_000,
+    supportsDryRun: true,
+    supportsCancellation: false,
+    supportsCompensation: false,
+    maxPayloadSizeBytes: 512 * 1024,
+  },
+  policies: {
+    requiresIdempotencyKey: false,
+    requiresExpectedVersion: false,
+    auditRequired: false,
+    defaultEnabled: true,
+  },
+  async handler(
+    rawInput: KnowledgeGetCitationsInput,
+    context: CapabilityExecutionContext
+  ): Promise<CapabilityExecutionResult<KnowledgeGetCitationsOutput>> {
+    const startTime = Date.now();
+    const input = KnowledgeGetCitationsInputSchema.parse(rawInput);
+    const service = getKnowledgeAgentService();
+    const result = await service.getCitations(input);
+
+    return ok(result, context, startTime);
+  },
+};
+
+// ============================================================================
+// 13. context.explain_inclusion (L0_READ)
+// ============================================================================
+
+export const contextExplainInclusionCapability: CapabilityDefinition<
+  ExplainContextInclusionInput,
+  ExplainContextInclusionOutput
+> = {
+  id: 'context.explain_inclusion',
+  version: '1.0.0',
+  name: 'Explain Context Inclusion',
+  description: 'Provides mathematical explainability (RRF score, ranks, recency, verification) for context inclusion.',
+  domain: 'knowledge_memory',
+  operation: 'read',
+  inputSchema: ExplainContextInclusionInputSchema,
+  outputSchema: ExplainContextInclusionOutputSchema,
+  permissions: ['knowledge:read'],
+  workspaceScoped: true,
+  tenantScoped: true,
+  risk: {
+    level: 'L0_READ',
+    destructive: false,
+    idempotent: true,
+    openWorld: false,
+    requiresHumanApproval: false,
+    nonDelegable: false,
+  },
+  execution: {
+    synchronous: true,
+    maxDurationMs: 10_000,
+    supportsDryRun: true,
+    supportsCancellation: false,
+    supportsCompensation: false,
+    maxPayloadSizeBytes: 512 * 1024,
+  },
+  policies: {
+    requiresIdempotencyKey: false,
+    requiresExpectedVersion: false,
+    auditRequired: false,
+    defaultEnabled: true,
+  },
+  async handler(
+    rawInput: ExplainContextInclusionInput,
+    context: CapabilityExecutionContext
+  ): Promise<CapabilityExecutionResult<ExplainContextInclusionOutput>> {
+    const startTime = Date.now();
+    const input = ExplainContextInclusionInputSchema.parse(rawInput);
+    const retriever = getKnowledgeAdaptiveRetriever();
+    const result = await retriever.explainInclusion(input);
+
+    return ok(result, context, startTime);
+  },
+};
+
+// ============================================================================
 // Auto-registration on module load (Rule 69)
 // ============================================================================
 
@@ -672,3 +908,7 @@ registerCapability(knowledgeConflictListCapability, { allowOverride: true });
 registerCapability(knowledgeConflictResolveCapability, { allowOverride: true });
 registerCapability(knowledgeGraphGetNeighborsCapability, { allowOverride: true });
 registerCapability(knowledgeGraphFindPathCapability, { allowOverride: true });
+registerCapability(knowledgeSearchHybridCapability, { allowOverride: true });
+registerCapability(knowledgeGetEvidenceCapability, { allowOverride: true });
+registerCapability(knowledgeGetCitationsCapability, { allowOverride: true });
+registerCapability(contextExplainInclusionCapability, { allowOverride: true });

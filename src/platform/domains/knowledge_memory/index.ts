@@ -11,3 +11,4 @@ export * from './services/knowledge-conflict-service';
 export * from './services/knowledge-memory-bridge';
 export * from './services/knowledge-graph-projection-service';
 export * from './services/knowledge-adaptive-retriever';
+export * from './services/knowledge-agent-service';
