@@ -328,7 +328,7 @@ describe('Meeting Agent Workflow A End-to-End', () => {
         description: `Follow-up from meeting m-1: ${commitmentItem!.text}`,
         priority: 'high',
         status: 'todo',
-        category: 'follow-up',
+        category: 'follow_up',
         assignedTo: 'rep-1',
         dueDate: '2026-10-10',
         reminders: [],

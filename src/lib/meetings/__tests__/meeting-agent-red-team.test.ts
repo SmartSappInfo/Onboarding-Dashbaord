@@ -316,13 +316,14 @@ describe('Meeting Agent Adversarial Red-Team Suite (Rule 46)', () => {
 
   // Vector 2: Fabricated Quotes & Spurious Line Citations
   it('Vector 2: rejects fabricated quotes and hallucinated segment references with 100% drop', () => {
+    const segments = [
+      { id: 'seg-1', speakerId: 'spk-1', speakerName: 'Kwame', startMs: 0, endMs: 4000, text: 'We agreed to schedule a product demo next Tuesday.' },
+    ];
     const chunk: TranscriptChunk = {
       index: 0,
-      pageCount: 1,
-      segments: [
-        { id: 'seg-1', speakerId: 'spk-1', speakerName: 'Kwame', startMs: 0, endMs: 4000, text: 'We agreed to schedule a product demo next Tuesday.' },
-      ],
-      overlapCount: 0,
+      segments,
+      segmentIds: new Set(segments.map((s) => s.id)),
+      tokenEstimate: 50,
     };
 
     const ctx: ValidationContext = {
@@ -443,7 +444,6 @@ describe('Meeting Agent Adversarial Red-Team Suite (Rule 46)', () => {
           requiresApproval: true,
           createdAt: NOW,
         },
-        origin: { origin: 'manual' },
       })
     ).rejects.toThrowError(/TARGET_NOT_FOUND/);
 
@@ -576,7 +576,6 @@ describe('Meeting Agent Adversarial Red-Team Suite (Rule 46)', () => {
         requiresApproval: true,
         createdAt: NOW,
       },
-      origin: { origin: 'manual' },
     });
 
     // Proposer (rep-1) attempts to self-approve
@@ -726,7 +725,6 @@ describe('Meeting Agent Adversarial Red-Team Suite (Rule 46)', () => {
         requiresApproval: true,
         createdAt: NOW,
       },
-      origin: { origin: 'manual' },
     });
 
     // Manager approves

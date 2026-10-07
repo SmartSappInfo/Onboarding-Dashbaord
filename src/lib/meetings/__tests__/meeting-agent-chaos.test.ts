@@ -178,11 +178,20 @@ describe('Meeting Agent Chaos & Resilience Suite (Rule 45)', () => {
       model: failingBriefModel,
       nowMs,
       loadAccountContext: async () => ({
+        organizationId: 'org-1',
         workspaceId: 'ws-a',
         entityId: 'ent-1',
+        entity: { id: 'ent-1', name: 'Acme Corp', type: 'client', status: 'active', industry: 'general', createdAt: NOW },
+        contacts: [],
         deals: [],
         tasks: [],
+        meetings: [],
+        notes: [],
+        finances: { totalRevenue: 0, openBalance: 0, overdueBalance: 0, currency: 'USD', invoiceCount: 0, agingCategory: 'CLEAR' },
+        memories: [],
+        memoryFacts: [],
         timeline: [],
+        metadata: { assembledAt: NOW, durationMs: 0, estimatedTokens: 0, correlationId: 'test', isKnapsackCompressed: false },
       }),
     };
 
@@ -201,13 +210,14 @@ describe('Meeting Agent Chaos & Resilience Suite (Rule 45)', () => {
 
   // Chaos 3: Malformed JSON Response Parsing (Schema validation fail-closed)
   it('Chaos 3: handles malformed JSON model output by failing closed and counting as dropped.schema', () => {
+    const segments = [
+      { id: 's1', speakerId: 'spk-1', speakerName: 'Kwame', startMs: 0, endMs: 4000, text: 'We agreed to finalize the SLA contract by Friday.' },
+    ];
     const chunk: TranscriptChunk = {
       index: 0,
-      pageCount: 1,
-      segments: [
-        { id: 's1', speakerId: 'spk-1', speakerName: 'Kwame', startMs: 0, endMs: 4000, text: 'We agreed to finalize the SLA contract by Friday.' },
-      ],
-      overlapCount: 0,
+      segments,
+      segmentIds: new Set(segments.map((s) => s.id)),
+      tokenEstimate: 50,
     };
 
     const ctx: ValidationContext = {
