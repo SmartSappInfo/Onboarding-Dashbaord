@@ -194,5 +194,10 @@ export const GovernanceMetricsSummarySchema = z.object({
   dailyCostUsd: z.number(),
   killSwitches: z.record(z.enum(KNOWLEDGE_KILL_SWITCH_KEYS), z.boolean()),
   recentIncidents: z.array(SecurityIncidentFeedItemSchema),
+  config: BackofficeGovernanceConfigSchema.optional(),
+  totalPipelines24h: z.number().int().optional(),
+  totalMemoryObjects: z.number().int().optional(),
+  incidents24h: z.number().int().optional(),
+  activeKillSwitches: z.record(z.string(), z.boolean()).optional(),
 });
 export type GovernanceMetricsSummary = z.infer<typeof GovernanceMetricsSummarySchema>;

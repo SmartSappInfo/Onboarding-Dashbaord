@@ -108,13 +108,36 @@ export async function listKnowledgeCandidatesAction(
 
 /**
  * Decides a candidate in the review queue. Strictly non-delegable human operator action (Rule 17).
+ * Supports both single-argument ReviewQueueDecideInput and two-argument (workspaceId, { candidateId, decision, ... }) invocations.
  */
 export async function decideKnowledgeCandidateAction(
-  rawInput: ReviewQueueDecideInput
+  workspaceIdOrInput: string | ReviewQueueDecideInput,
+  maybeInput?: {
+    candidateId: string;
+    decision: 'accept' | 'reject' | 'edit';
+    editedTitle?: string;
+    editedContent?: string;
+    reason?: string;
+    expectedVersion?: number;
+    version?: number;
+  }
 ): Promise<KnowledgeActionResult<KnowledgeCandidate>> {
   try {
     const auth = await requireAuth();
-    const input = ReviewQueueDecideInputSchema.parse(rawInput);
+    const raw: ReviewQueueDecideInput =
+      typeof workspaceIdOrInput === 'string'
+        ? {
+            workspaceId: workspaceIdOrInput,
+            candidateId: maybeInput!.candidateId,
+            decision: maybeInput!.decision,
+            editedTitle: maybeInput!.editedTitle,
+            editedContent: maybeInput!.editedContent,
+            reason: maybeInput!.reason,
+            version: maybeInput!.expectedVersion ?? maybeInput!.version ?? 1,
+          }
+        : workspaceIdOrInput;
+
+    const input = ReviewQueueDecideInputSchema.parse(raw);
     const orgId = assertTenantAccess(auth, input.workspaceId);
 
     try {
@@ -189,13 +212,36 @@ export async function listKnowledgeConflictsAction(
 
 /**
  * Resolves an open memory conflict. Strictly non-delegable human operator action (Rule 17).
+ * Supports both single-argument ResolveConflictInput and two-argument (workspaceId, { conflictId, resolution, ... }) invocations.
  */
 export async function resolveKnowledgeConflictAction(
-  rawInput: ResolveConflictInput
+  workspaceIdOrInput: string | ResolveConflictInput,
+  maybeInput?: {
+    conflictId: string;
+    resolution: 'supersede_existing' | 'keep_both_distinct' | 'keep_both' | 'reject_candidate';
+    resolutionNotes?: string;
+    notes?: string;
+    expectedVersion?: number;
+    version?: number;
+  }
 ): Promise<KnowledgeActionResult<KnowledgeConflict>> {
   try {
     const auth = await requireAuth();
-    const input = ResolveConflictInputSchema.parse(rawInput);
+    const raw: ResolveConflictInput =
+      typeof workspaceIdOrInput === 'string'
+        ? {
+            workspaceId: workspaceIdOrInput,
+            conflictId: maybeInput!.conflictId,
+            resolution:
+              maybeInput!.resolution === 'keep_both'
+                ? 'keep_both_distinct'
+                : maybeInput!.resolution,
+            notes: maybeInput!.resolutionNotes ?? maybeInput!.notes,
+            version: maybeInput!.expectedVersion ?? maybeInput!.version ?? 1,
+          }
+        : workspaceIdOrInput;
+
+    const input = ResolveConflictInputSchema.parse(raw);
     const orgId = assertTenantAccess(auth, input.workspaceId);
 
     try {

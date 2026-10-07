@@ -53,7 +53,7 @@ export interface KnowledgeConflictModalProps {
   existingMemoryContent?: string;
   onResolve?: (
     conflictId: string,
-    resolution: 'supersede_existing' | 'keep_both' | 'reject_candidate',
+    resolution: 'supersede_existing' | 'keep_both_distinct' | 'keep_both' | 'reject_candidate',
     expectedVersion: number
   ) => void;
   className?: string;
@@ -178,7 +178,7 @@ export function KnowledgeConflictModal({
 
           <Button
             variant="outline"
-            onClick={() => onResolve?.(conflict.id, 'keep_both', conflict.version)}
+            onClick={() => onResolve?.(conflict.id, 'keep_both_distinct', conflict.version)}
             className="min-h-[44px] px-4 rounded-xl border-border/80 text-foreground hover:bg-muted/40 active:scale-[0.97] transition-all text-xs font-medium"
           >
             <Split className="h-4 w-4 mr-1.5" />

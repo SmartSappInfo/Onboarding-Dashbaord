@@ -109,6 +109,11 @@ export async function getKnowledgeGovernanceMetricsAction(
       dailyCostUsd: 14.5,
       killSwitches: config.killSwitches,
       recentIncidents: incidents.slice(0, 10),
+      config,
+      totalPipelines24h: 18,
+      totalMemoryObjects: 420,
+      incidents24h: incidents.length,
+      activeKillSwitches: config.killSwitches,
     };
 
     return { success: true, data: summary };
@@ -178,7 +183,8 @@ export async function updateKnowledgeGovernanceConfigAction(
 export async function setKnowledgeKillSwitchAction(
   workspaceId: string,
   key: KnowledgeKillSwitchKey,
-  enabled: boolean
+  enabled: boolean,
+  reason?: string
 ): Promise<GovernanceActionResult<BackofficeGovernanceConfig>> {
   try {
     const auth = await requireAuth();
@@ -199,8 +205,9 @@ export async function setKnowledgeKillSwitchAction(
       organizationId: orgId,
       workspaceId,
       timestamp: new Date().toISOString(),
-      message: `Kill switch '${key}' set to ${enabled ? 'ENABLED (BLOCKED)' : 'DISABLED (ACTIVE)'} by operator ${auth.uid}.`,
+      message: `Kill switch '${key}' set to ${enabled ? 'ENABLED (BLOCKED)' : 'DISABLED (ACTIVE)'} by operator ${auth.uid}.${reason ? ` Reason: ${reason}` : ''}`,
       actorId: auth.uid,
+      metadata: reason ? { reason } : undefined,
     };
 
     const incidentList = tenantIncidents.get(tenantKey) || [];
@@ -216,7 +223,7 @@ export async function setKnowledgeKillSwitchAction(
         entity: { type: 'kill_switch', id: key },
         source: 'knowledge_governance_actions',
         correlationId: crypto.randomUUID(),
-        payload: { key, enabled },
+        payload: { key, enabled, reason },
       })
     );
 
