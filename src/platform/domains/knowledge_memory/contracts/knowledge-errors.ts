@@ -32,7 +32,7 @@ export class KnowledgeDomainError extends Error {
     message: string,
     details?: Record<string, unknown>
   ) {
-    super(message);
+    super(`[${code}] ${message}`);
     this.name = 'KnowledgeDomainError';
     this.code = code;
     this.details = details;

@@ -118,6 +118,11 @@ const LEGACY_PERMISSION_MAP: ReadonlyMap<string, ParsedPermissionRef> = new Map<
   ['rbac:workflows.run.create', { kind: 'rbac', section: 'operations', feature: 'tasks', action: 'create' }],
   ['rbac:workflows.run.read', { kind: 'rbac', section: 'operations', feature: 'tasks', action: 'view' }],
   ['rbac:workflows.run.cancel', { kind: 'rbac', section: 'operations', feature: 'tasks', action: 'delete' }],
+
+  // Knowledge & Memory (Phase 11 M3)
+  ['knowledge:review', { kind: 'rbac', section: 'operations', feature: 'campuses', action: 'edit' }],
+  ['knowledge:read', { kind: 'rbac', section: 'operations', feature: 'campuses', action: 'view' }],
+  ['knowledge:read_restricted', { kind: 'rbac', section: 'operations', feature: 'campuses', action: 'view' }],
 ]);
 
 export function parsePermissionRef(ref: string): ParsedPermissionRef | null {
