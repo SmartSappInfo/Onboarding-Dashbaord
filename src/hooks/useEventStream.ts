@@ -22,7 +22,9 @@ export interface UseEventStreamOptions {
   workspaceId?: string | null;
   entityId?: string | null;
   actorType?: string | null;
+  eventTypes?: string[] | null;
   onActivity?: (activity: ActivityRecordV2) => void;
+  onEvent?: (event?: unknown) => void;
   enabled?: boolean;
 }
 
@@ -34,7 +36,7 @@ export interface UseEventStreamResult {
 }
 
 export function useEventStream(options: UseEventStreamOptions = {}): UseEventStreamResult {
-  const { workspaceId, entityId, actorType, onActivity, enabled = true } = options;
+  const { workspaceId, entityId, actorType, eventTypes, onActivity, onEvent, enabled = true } = options;
 
   const [status, setStatus] = useState<EventStreamStatus>('disconnected');
   const [lastActivity, setLastActivity] = useState<ActivityRecordV2 | null>(null);
@@ -44,11 +46,13 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const retryCountRef = useRef(0);
   const onActivityRef = useRef(onActivity);
+  const onEventRef = useRef(onEvent);
 
-  // Keep latest onActivity reference
+  // Keep latest onActivity and onEvent references
   useEffect(() => {
     onActivityRef.current = onActivity;
-  }, [onActivity]);
+    onEventRef.current = onEvent;
+  }, [onActivity, onEvent]);
 
   const connect = useCallback(() => {
     if (!enabled || typeof window === 'undefined') return;
@@ -71,6 +75,7 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
     if (workspaceId) params.set('workspaceId', workspaceId);
     if (entityId) params.set('entityId', entityId);
     if (actorType) params.set('actorType', actorType);
+    if (eventTypes && eventTypes.length > 0) params.set('eventTypes', eventTypes.join(','));
 
     const queryString = params.toString();
     const url = `/api/events/stream${queryString ? `?${queryString}` : ''}`;
@@ -91,6 +96,9 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
           setLastActivity(record);
           if (onActivityRef.current) {
             onActivityRef.current(record);
+          }
+          if (onEventRef.current) {
+            onEventRef.current(record);
           }
         } catch (err: unknown) {
           console.warn('[useEventStream] Failed to parse activity event:', err);

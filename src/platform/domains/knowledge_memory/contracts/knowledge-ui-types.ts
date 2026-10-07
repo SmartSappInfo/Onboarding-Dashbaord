@@ -163,11 +163,13 @@ export type BackofficeGovernanceConfig = z.infer<typeof BackofficeGovernanceConf
 
 export const SECURITY_INCIDENT_EVENT_TYPES = [
   'prompt_injection_detected',
+  'prompt_injection_attempt',
   'knowledge_poisoning_flagged',
   'consent_refusal_audited',
   'cross_workspace_denial',
   'egress_exfiltration_blocked',
   'approval_bypass_attempt',
+  'dlq_failure',
 ] as const;
 export type SecurityIncidentEventType = (typeof SECURITY_INCIDENT_EVENT_TYPES)[number];
 

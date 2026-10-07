@@ -51,8 +51,20 @@ vi.mock('@/app/actions/knowledge-governance-actions', () => ({
 
 describe('Knowledge Governance & Control Plane (Phase 11 M5 · T5)', () => {
   const sampleMetrics: GovernanceMetricsSummary = {
+    pendingCandidatesCount: 5,
+    conflictsCount: 1,
+    activePipelinesCount: 2,
+    graphDensity: 0.75,
+    dailyQuotaUsedHours: 3.5,
+    dailyCostUsd: 14.25,
+    killSwitches: {
+      agent_meeting: false,
+      agent_knowledge: false,
+      capability_retrieval: false,
+      draft_messages: false,
+      global_halt: false,
+    },
     totalPipelines24h: 18,
-    activePipelines: 2,
     totalMemoryObjects: 420,
     incidents24h: 3,
     activeKillSwitches: {
@@ -86,7 +98,9 @@ describe('Knowledge Governance & Control Plane (Phase 11 M5 · T5)', () => {
         eventType: 'prompt_injection_attempt',
         severity: 'high',
         sourceId: 'meeting_transcript_99',
-        tenantId: 'org_gov_456',
+        organizationId: 'org_gov_456',
+        workspaceId: 'ws_gov_123',
+        message: 'Prompt injection attempt detected',
         timestamp: '2026-10-07T14:30:00Z',
         metadata: { pattern: 'ignore previous instructions' },
       },
@@ -95,7 +109,9 @@ describe('Knowledge Governance & Control Plane (Phase 11 M5 · T5)', () => {
         eventType: 'dlq_failure',
         severity: 'critical',
         sourceId: 'pipe_dlq_404',
-        tenantId: 'org_gov_456',
+        organizationId: 'org_gov_456',
+        workspaceId: 'ws_gov_123',
+        message: 'Audio transcription timed out',
         timestamp: '2026-10-07T14:45:00Z',
         metadata: { reason: 'Audio transcription timed out' },
       },

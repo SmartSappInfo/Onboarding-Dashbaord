@@ -73,7 +73,7 @@ describe('Knowledge Search Modal & Evidence Stack (Phase 11 M5 · T3)', () => {
       {
         citationId: 'cite_2',
         sourceId: 'crm_deal_842',
-        sourceType: 'crm_deal',
+        sourceType: 'crm_note',
         textSpan: 'Payment terms: 4 equal quarterly installments due on term commencement.',
         relevanceScore: 0.91,
       },

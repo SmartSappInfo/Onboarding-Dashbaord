@@ -112,7 +112,7 @@ export function KnowledgeInboxClient() {
   const filteredCandidates = React.useMemo(() => {
     return candidates.filter((c) => {
       // Tab filter
-      if (activeTab === 'needs_review' && c.status !== 'proposed') return false;
+      if (activeTab === 'needs_review' && c.status !== 'pending') return false;
       if (activeTab === 'conflicts' && !c.conflictId) return false;
       if (activeTab === 'saved' && c.status !== 'accepted') return false;
       if (activeTab === 'important' && c.confidence < 0.85) return false;
@@ -196,7 +196,7 @@ export function KnowledgeInboxClient() {
     }
   };
 
-  const pendingCount = candidates.filter((c) => c.status === 'proposed').length;
+  const pendingCount = candidates.filter((c) => c.status === 'pending').length;
   const conflictCount = candidates.filter((c) => Boolean(c.conflictId)).length;
 
   return (
@@ -394,7 +394,7 @@ export function KnowledgeInboxClient() {
             conflictType: 'contradiction',
             severity: 'high',
             detectedAt: new Date().toISOString(),
-            status: 'pending',
+            status: 'open',
             version: 1,
           }}
           onResolve={async (conflictId, resolution, expectedVersion) => {

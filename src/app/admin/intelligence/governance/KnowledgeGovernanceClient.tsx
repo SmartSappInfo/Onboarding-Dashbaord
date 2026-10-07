@@ -188,8 +188,10 @@ export function KnowledgeGovernanceClient() {
     }
   };
 
-  const activeKillSwitchCount = metrics
+  const activeKillSwitchCount = metrics?.activeKillSwitches
     ? Object.values(metrics.activeKillSwitches).filter(Boolean).length
+    : metrics?.killSwitches
+    ? Object.values(metrics.killSwitches).filter(Boolean).length
     : 0;
 
   return (

@@ -29,7 +29,6 @@ import {
   getMeetingOpsSnapshotAction,
   pinMeetingPromptVersionAction,
   previewWorkspaceRetentionAction,
-  recordMeetingSecurityAlert,
   reprocessDeadLetterAction,
   reprocessPipelineDeadLetterAction,
   runWorkspaceRetentionNowAction,
@@ -37,6 +36,7 @@ import {
   setTranscriptionQuotaAction,
   unpinMeetingPromptVersionAction,
 } from '../backoffice-meeting-ops-actions';
+import { recordMeetingSecurityAlert } from '../meeting-security-alert';
 
 const TID = `tr_${'a'.repeat(32)}`;
 let db: FakeFirestore;

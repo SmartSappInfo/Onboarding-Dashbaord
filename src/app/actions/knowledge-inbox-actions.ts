@@ -114,7 +114,7 @@ export async function decideKnowledgeCandidateAction(
   workspaceIdOrInput: string | ReviewQueueDecideInput,
   maybeInput?: {
     candidateId: string;
-    decision: 'accept' | 'reject' | 'edit';
+    decision: 'accept' | 'reject' | 'edit' | 'accept_with_edit';
     editedTitle?: string;
     editedContent?: string;
     reason?: string;
@@ -124,16 +124,21 @@ export async function decideKnowledgeCandidateAction(
 ): Promise<KnowledgeActionResult<KnowledgeCandidate>> {
   try {
     const auth = await requireAuth();
+    const normalizedDecision: 'accept' | 'reject' | 'accept_with_edit' =
+      maybeInput?.decision === 'edit'
+        ? 'accept_with_edit'
+        : (maybeInput?.decision ?? 'accept');
+
     const raw: ReviewQueueDecideInput =
       typeof workspaceIdOrInput === 'string'
         ? {
             workspaceId: workspaceIdOrInput,
-            candidateId: maybeInput!.candidateId,
-            decision: maybeInput!.decision,
-            editedTitle: maybeInput!.editedTitle,
-            editedContent: maybeInput!.editedContent,
-            reason: maybeInput!.reason,
-            version: maybeInput!.expectedVersion ?? maybeInput!.version ?? 1,
+            candidateId: maybeInput?.candidateId ?? '',
+            decision: normalizedDecision,
+            editedTitle: maybeInput?.editedTitle,
+            editedContent: maybeInput?.editedContent,
+            reason: maybeInput?.reason,
+            version: maybeInput?.expectedVersion ?? maybeInput?.version ?? 1,
           }
         : workspaceIdOrInput;
 
