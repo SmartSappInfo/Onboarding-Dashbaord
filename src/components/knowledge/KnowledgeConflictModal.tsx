@@ -73,9 +73,11 @@ export function KnowledgeConflictModal({
   const conflictTypeLabel =
     conflict.conflictType === 'contradiction'
       ? 'Contradiction Detected'
-      : conflict.conflictType === 'temporal_divergence'
-        ? 'Temporal Divergence Detected'
-        : 'Semantic Divergence Detected';
+      : conflict.conflictType === 'outdated'
+        ? 'Outdated Memory Detected'
+        : conflict.conflictType === 'duplicate'
+          ? 'Duplicate Memory Detected'
+          : 'Policy Divergence Detected';
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>

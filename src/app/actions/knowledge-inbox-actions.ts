@@ -79,7 +79,7 @@ export async function listKnowledgeCandidatesAction(
     const orgId = assertTenantAccess(auth, workspaceId);
 
     try {
-      checkGovernanceDeadManSwitch(orgId);
+      await checkGovernanceDeadManSwitch(orgId);
     } catch {
       return {
         success: false,
@@ -118,7 +118,7 @@ export async function decideKnowledgeCandidateAction(
     const orgId = assertTenantAccess(auth, input.workspaceId);
 
     try {
-      checkGovernanceDeadManSwitch(orgId);
+      await checkGovernanceDeadManSwitch(orgId);
     } catch {
       return {
         success: false,
@@ -160,7 +160,7 @@ export async function listKnowledgeConflictsAction(
     const orgId = assertTenantAccess(auth, workspaceId);
 
     try {
-      checkGovernanceDeadManSwitch(orgId);
+      await checkGovernanceDeadManSwitch(orgId);
     } catch {
       return {
         success: false,
@@ -199,7 +199,7 @@ export async function resolveKnowledgeConflictAction(
     const orgId = assertTenantAccess(auth, input.workspaceId);
 
     try {
-      checkGovernanceDeadManSwitch(orgId);
+      await checkGovernanceDeadManSwitch(orgId);
     } catch {
       return {
         success: false,
@@ -243,7 +243,7 @@ export async function getKnowledgeGraphNeighborsAction(
     const orgId = assertTenantAccess(auth, workspaceId);
 
     try {
-      checkGovernanceDeadManSwitch(orgId);
+      await checkGovernanceDeadManSwitch(orgId);
     } catch {
       return {
         success: false,

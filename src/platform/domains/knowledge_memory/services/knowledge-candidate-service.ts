@@ -71,7 +71,7 @@ export class KnowledgeCandidateService {
   ): Promise<KnowledgeCandidate> {
     // 1. Evaluate Rule 60 Emergency Dead-Man Switch
     try {
-      checkGovernanceDeadManSwitch(input.organizationId);
+      await checkGovernanceDeadManSwitch(input.organizationId);
     } catch {
       throw new KnowledgeDomainError(
         KNOWLEDGE_ERROR_CODES.KNOWLEDGE_DEAD_MAN_PAUSED,
@@ -107,7 +107,11 @@ export class KnowledgeCandidateService {
       title: input.title.trim(),
       content: wrappedContent,
       subjectRefs: input.subjectRefs ?? [],
-      suggestedRelationships: input.suggestedRelationships ?? [],
+      suggestedRelationships: (input.suggestedRelationships ?? []).map((rel) => ({
+        targetId: rel.targetId,
+        predicate: rel.predicate,
+        confidence: rel.confidence ?? 0.8,
+      })),
       confidence: input.confidence ?? 0.8,
       verificationState: 'unverified',
       sensitivity: input.sensitivity ?? 'internal',

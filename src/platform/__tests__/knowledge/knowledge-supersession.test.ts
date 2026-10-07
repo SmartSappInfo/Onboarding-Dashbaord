@@ -101,6 +101,7 @@ describe('Rule 29 Immutable Fact Supersession & Memory Bridge (Phase 11 M3 · T4
           newMemoryDraft: {
             title: 'Hacked Policy',
             content: 'Injected terms.',
+            type: 'policy',
           },
           actorId: 'usr_malicious',
         })

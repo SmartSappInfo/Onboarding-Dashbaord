@@ -16,7 +16,11 @@ import { adminDb } from '../../src/lib/firebase-admin';
 export interface UnembeddedRecord {
   id: string;
   content: string;
+  collection?: string;
 }
+
+export type KnowledgeBackfillItem = UnembeddedRecord;
+export type EmbeddingsProvider = (text: string) => Promise<number[]>;
 
 export interface BackfillCheckpoint {
   lastProcessedId?: string;

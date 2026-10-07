@@ -38,6 +38,16 @@ import { getKnowledgeDeduplicationService } from '../services/knowledge-deduplic
 import { getKnowledgeConflictService } from '../services/knowledge-conflict-service';
 import { getKnowledgeGraphProjectionService } from '../services/knowledge-graph-projection-service';
 
+function ok<T>(data: T, context: CapabilityExecutionContext, startMs: number): CapabilityExecutionResult<T> {
+  return {
+    success: true,
+    data,
+    executionId: context.correlationId,
+    emittedEvents: [],
+    durationMs: Math.max(0, Date.now() - startMs),
+  };
+}
+
 // ============================================================================
 // 1. knowledge.propose_candidate (L1_INTERNAL_DRAFT)
 // ============================================================================
@@ -92,17 +102,11 @@ export const knowledgeProposeCandidateCapability: CapabilityDefinition<
     const input = ProposeCandidateInputSchema.parse(rawInput);
     const service = getKnowledgeCandidateService();
     const candidate = await service.proposeCandidate(input, {
-      actorId: context.principal.id,
-      actorType: context.principal.type === 'agent' ? 'agent' : 'user',
+      actorId: context.principal.userId,
+      actorType: context.principal.actorType === 'agent' ? 'agent' : 'user',
     });
 
-    return {
-      success: true,
-      output: candidate,
-      metadata: {
-        durationMs: Date.now() - startTime,
-      },
-    };
+    return ok(candidate, context, startTime);
   },
 };
 
@@ -155,20 +159,14 @@ export const knowledgeCandidateGetCapability: CapabilityDefinition<
   },
   async handler(
     rawInput: KnowledgeCandidateGetInput,
-    _context: CapabilityExecutionContext
+    context: CapabilityExecutionContext
   ): Promise<CapabilityExecutionResult<KnowledgeCandidate>> {
     const startTime = Date.now();
     const input = KnowledgeCandidateGetInputSchema.parse(rawInput);
     const service = getKnowledgeCandidateService();
     const candidate = await service.getCandidate(input.candidateId, input.workspaceId);
 
-    return {
-      success: true,
-      output: candidate,
-      metadata: {
-        durationMs: Date.now() - startTime,
-      },
-    };
+    return ok(candidate, context, startTime);
   },
 };
 
@@ -227,7 +225,7 @@ export const knowledgeCandidateListCapability: CapabilityDefinition<
   },
   async handler(
     rawInput: KnowledgeCandidateListInput,
-    _context: CapabilityExecutionContext
+    context: CapabilityExecutionContext
   ): Promise<CapabilityExecutionResult<KnowledgeCandidateListOutput>> {
     const startTime = Date.now();
     const input = KnowledgeCandidateListInputSchema.parse(rawInput);
@@ -238,16 +236,14 @@ export const knowledgeCandidateListCapability: CapabilityDefinition<
       limit: input.limit,
     });
 
-    return {
-      success: true,
-      output: {
+    return ok(
+      {
         candidates,
         totalCount: candidates.length,
       },
-      metadata: {
-        durationMs: Date.now() - startTime,
-      },
-    };
+      context,
+      startTime
+    );
   },
 };
 
@@ -305,17 +301,11 @@ export const knowledgeReviewQueueDecideCapability: CapabilityDefinition<
     const input = ReviewQueueDecideInputSchema.parse(rawInput);
     const service = getKnowledgeCandidateService();
     const decided = await service.decideCandidate(input, {
-      id: context.principal.id,
-      type: context.principal.type === 'agent' ? 'agent' : 'user',
+      id: context.principal.userId,
+      type: context.principal.actorType === 'agent' ? 'agent' : 'user',
     });
 
-    return {
-      success: true,
-      output: decided,
-      metadata: {
-        durationMs: Date.now() - startTime,
-      },
-    };
+    return ok(decided, context, startTime);
   },
 };
 
@@ -376,20 +366,14 @@ export const knowledgeDeduplicateCandidateCapability: CapabilityDefinition<
   },
   async handler(
     rawInput: KnowledgeDeduplicateInput,
-    _context: CapabilityExecutionContext
+    context: CapabilityExecutionContext
   ): Promise<CapabilityExecutionResult<KnowledgeDeduplicateOutput>> {
     const startTime = Date.now();
     const input = KnowledgeDeduplicateInputSchema.parse(rawInput);
     const dedupService = getKnowledgeDeduplicationService();
     const result = await dedupService.deduplicateCandidate(input);
 
-    return {
-      success: true,
-      output: result,
-      metadata: {
-        durationMs: Date.now() - startTime,
-      },
-    };
+    return ok(result, context, startTime);
   },
 };
 
@@ -448,23 +432,21 @@ export const knowledgeConflictListCapability: CapabilityDefinition<
   },
   async handler(
     rawInput: KnowledgeConflictListInput,
-    _context: CapabilityExecutionContext
+    context: CapabilityExecutionContext
   ): Promise<CapabilityExecutionResult<KnowledgeConflictListOutput>> {
     const startTime = Date.now();
     const input = KnowledgeConflictListInputSchema.parse(rawInput);
     const conflictService = getKnowledgeConflictService();
     const conflicts = await conflictService.listConflicts(input);
 
-    return {
-      success: true,
-      output: {
+    return ok(
+      {
         conflicts,
         totalCount: conflicts.length,
       },
-      metadata: {
-        durationMs: Date.now() - startTime,
-      },
-    };
+      context,
+      startTime
+    );
   },
 };
 
@@ -522,17 +504,11 @@ export const knowledgeConflictResolveCapability: CapabilityDefinition<
     const input = ResolveConflictInputSchema.parse(rawInput);
     const conflictService = getKnowledgeConflictService();
     const resolved = await conflictService.resolveConflict(input, {
-      id: context.principal.id,
-      type: context.principal.type === 'agent' ? 'agent' : 'user',
+      id: context.principal.userId,
+      type: context.principal.actorType === 'agent' ? 'agent' : 'user',
     });
 
-    return {
-      success: true,
-      output: resolved,
-      metadata: {
-        durationMs: Date.now() - startTime,
-      },
-    };
+    return ok(resolved, context, startTime);
   },
 };
 
@@ -598,20 +574,14 @@ export const knowledgeGraphGetNeighborsCapability: CapabilityDefinition<
   },
   async handler(
     rawInput: GraphNeighborQuery,
-    _context: CapabilityExecutionContext
+    context: CapabilityExecutionContext
   ): Promise<CapabilityExecutionResult<KnowledgeGraphGetNeighborsOutput>> {
     const startTime = Date.now();
     const input = GraphNeighborQuerySchema.parse(rawInput);
     const graphService = getKnowledgeGraphProjectionService();
     const result = await graphService.getNeighbors(input);
 
-    return {
-      success: true,
-      output: result,
-      metadata: {
-        durationMs: Date.now() - startTime,
-      },
-    };
+    return ok(result, context, startTime);
   },
 };
 
@@ -678,20 +648,14 @@ export const knowledgeGraphFindPathCapability: CapabilityDefinition<
   },
   async handler(
     rawInput: GraphFindPathQuery,
-    _context: CapabilityExecutionContext
+    context: CapabilityExecutionContext
   ): Promise<CapabilityExecutionResult<KnowledgeGraphFindPathOutput>> {
     const startTime = Date.now();
     const input = GraphFindPathQuerySchema.parse(rawInput);
     const graphService = getKnowledgeGraphProjectionService();
     const result = await graphService.findPath(input);
 
-    return {
-      success: true,
-      output: result,
-      metadata: {
-        durationMs: Date.now() - startTime,
-      },
-    };
+    return ok(result, context, startTime);
   },
 };
 

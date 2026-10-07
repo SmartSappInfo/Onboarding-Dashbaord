@@ -45,10 +45,7 @@ describe('Knowledge Inbox Server Actions (Phase 11 M3 · T7)', () => {
     } as unknown as authModule.AuthContext);
 
     // Default dead man switch is active (not paused)
-    vi.spyOn(deadManModule, 'checkGovernanceDeadManSwitch').mockReturnValue({
-      isPaused: false,
-      emergencyLevel: 'NORMAL',
-    } as unknown as deadManModule.DeadManStatus);
+    vi.spyOn(deadManModule, 'checkGovernanceDeadManSwitch').mockResolvedValue(undefined);
   });
 
   describe('listKnowledgeCandidatesAction', () => {
@@ -79,8 +76,8 @@ describe('Knowledge Inbox Server Actions (Phase 11 M3 · T7)', () => {
     });
 
     it('blocks execution when dead-man switch is triggered (Rule 60)', async () => {
-      vi.spyOn(deadManModule, 'checkGovernanceDeadManSwitch').mockImplementation(() => {
-        throw new deadManModule.AgentGovernanceEmergencyPausedError('org_enterprise_1', 'Manual kill switch');
+      vi.spyOn(deadManModule, 'checkGovernanceDeadManSwitch').mockImplementation(async () => {
+        throw new deadManModule.AgentGovernanceEmergencyPausedError('Manual kill switch');
       });
 
       const result = await listKnowledgeCandidatesAction(mockWsId);

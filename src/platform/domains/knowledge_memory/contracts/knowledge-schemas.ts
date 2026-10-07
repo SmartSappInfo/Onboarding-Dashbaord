@@ -16,6 +16,7 @@ export const KNOWLEDGE_CANDIDATE_SOURCE_TYPES = [
   'meeting',
   'note',
   'agent',
+  'agent_run',
   'document',
   'manual',
 ] as const;
@@ -126,6 +127,9 @@ export const KnowledgeCandidateSchema = z.object({
   decidedAt: z.string().datetime().optional(),
   decidedBy: z.string().trim().min(1).optional(),
   decisionReason: z.string().trim().optional(),
+  validFrom: z.string().optional(),
+  validUntil: z.string().optional(),
+  supersededBy: z.string().optional(),
 });
 export type KnowledgeCandidate = z.infer<typeof KnowledgeCandidateSchema>;
 
@@ -145,7 +149,7 @@ export const ProposeCandidateInputSchema = z.object({
   confidence: z.number().min(0).max(1).optional().default(0.8),
   sensitivity: z.enum(KNOWLEDGE_SENSITIVITY_LEVELS).optional().default('internal'),
 });
-export type ProposeCandidateInput = z.infer<typeof ProposeCandidateInputSchema>;
+export type ProposeCandidateInput = z.input<typeof ProposeCandidateInputSchema>;
 
 // ============================================================================
 // 3. ReviewQueueDecideInputSchema (Human-only Rule 17 gate)
