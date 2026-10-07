@@ -34,7 +34,7 @@ export interface MemoryActionResult<T = void> {
   code?: string;
 }
 
-export const InboxTabSchema = z.enum([
+const _InboxTabSchema = z.enum([
   'new',
   'insights',
   'potential',
@@ -42,7 +42,7 @@ export const InboxTabSchema = z.enum([
   'unconfirmed',
   'stale',
 ]);
-export type InboxTab = z.infer<typeof InboxTabSchema>;
+export type InboxTab = z.infer<typeof _InboxTabSchema>;
 
 const SearchMemorySchema = z.object({
   query: z.string().min(1),

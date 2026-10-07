@@ -23,7 +23,6 @@ import {
   type GraphEdgeRecord,
 } from '@/platform/domains/knowledge_memory/services/knowledge-graph-projection-service';
 import {
-  KnowledgeCandidateSchema,
   ReviewQueueDecideInputSchema,
   ResolveConflictInputSchema,
   type KnowledgeCandidate,
