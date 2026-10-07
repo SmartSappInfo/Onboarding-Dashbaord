@@ -336,22 +336,22 @@ export class AccountFinanceAssembler {
           .get();
 
         if (!snap.empty) {
-          const docData = snap.docs[0].data();
+          const docData = snap.docs[0].data() as Record<string, unknown>;
           return {
             accountId: snap.docs[0].id,
             entityId,
             workspaceId,
             organizationId,
-            currency: docData.currency || 'GHS',
-            totalInvoiced: docData.totalInvoiced || 0,
-            totalPaid: docData.totalPaid || 0,
-            totalOutstanding: docData.balance || 0,
-            availableCredit: docData.availableCredit || 0,
-            overdueAmount: docData.overdueAmount || 0,
-            unallocatedPayments: docData.unallocatedAmount || 0,
-            paymentPlanActive: !!docData.paymentPlanActive,
-            lastPaymentDate: docData.lastPaymentDate || null,
-            lastInvoiceDate: docData.lastInvoiceDate || null,
+            currency: typeof docData.currency === 'string' ? docData.currency : 'GHS',
+            totalInvoiced: typeof docData.totalInvoiced === 'number' ? docData.totalInvoiced : 0,
+            totalPaid: typeof docData.totalPaid === 'number' ? docData.totalPaid : 0,
+            totalOutstanding: typeof docData.balance === 'number' ? docData.balance : 0,
+            availableCredit: typeof docData.availableCredit === 'number' ? docData.availableCredit : 0,
+            overdueAmount: typeof docData.overdueAmount === 'number' ? docData.overdueAmount : 0,
+            unallocatedPayments: typeof docData.unallocatedAmount === 'number' ? docData.unallocatedAmount : 0,
+            paymentPlanActive: Boolean(docData.paymentPlanActive),
+            lastPaymentDate: typeof docData.lastPaymentDate === 'string' ? docData.lastPaymentDate : null,
+            lastInvoiceDate: typeof docData.lastInvoiceDate === 'string' ? docData.lastInvoiceDate : null,
           };
         }
       }
@@ -399,28 +399,33 @@ export class AccountFinanceAssembler {
 
         if (!snap.empty) {
           return snap.docs.map((doc) => {
-            const data = doc.data();
+            const data = doc.data() as Record<string, unknown>;
+            const totalPayable = typeof data.totalPayable === 'number' ? data.totalPayable : 0;
+            const amountPaid = typeof data.amountPaid === 'number' ? data.amountPaid : 0;
+            const balanceDue =
+              typeof data.balanceDue === 'number'
+                ? data.balanceDue
+                : Math.max(0, totalPayable - amountPaid);
+            const items = Array.isArray(data.items) ? data.items : [];
+
             return {
               id: doc.id,
-              invoiceNumber: data.invoiceNumber || `INV-${doc.id}`,
+              invoiceNumber: typeof data.invoiceNumber === 'string' ? data.invoiceNumber : `INV-${doc.id}`,
               entityId,
-              entityName: data.entityName || 'Unknown Debtor',
-              periodName: data.periodName || 'Standard Period',
-              currency: data.currency || 'GHS',
-              totalPayable: data.totalPayable || 0,
-              amountPaid: data.amountPaid || 0,
-              balanceDue:
-                data.balanceDue !== undefined
-                  ? data.balanceDue
-                  : Math.max(0, (data.totalPayable || 0) - (data.amountPaid || 0)),
-              status: data.status || 'draft',
-              lifecycleStatus: data.lifecycleStatus || 'draft',
-              paymentStatus: data.paymentStatus || 'unpaid',
-              dueDate: data.dueDate || new Date().toISOString(),
-              issuedAt: data.issuedAt || null,
-              paidAt: data.paidAt || null,
-              itemsCount: data.items?.length || 1,
-              agreementNumber: data.agreementNumber || null,
+              entityName: typeof data.entityName === 'string' ? data.entityName : 'Unknown Debtor',
+              periodName: typeof data.periodName === 'string' ? data.periodName : 'Standard Period',
+              currency: typeof data.currency === 'string' ? data.currency : 'GHS',
+              totalPayable,
+              amountPaid,
+              balanceDue,
+              status: typeof data.status === 'string' ? (data.status as InvoiceSummary['status']) : 'draft',
+              lifecycleStatus: typeof data.lifecycleStatus === 'string' ? (data.lifecycleStatus as InvoiceSummary['lifecycleStatus']) : 'draft',
+              paymentStatus: typeof data.paymentStatus === 'string' ? (data.paymentStatus as InvoiceSummary['paymentStatus']) : 'unpaid',
+              dueDate: typeof data.dueDate === 'string' ? data.dueDate : new Date().toISOString(),
+              issuedAt: typeof data.issuedAt === 'string' ? data.issuedAt : null,
+              paidAt: typeof data.paidAt === 'string' ? data.paidAt : null,
+              itemsCount: items.length || 1,
+              agreementNumber: typeof data.agreementNumber === 'string' ? data.agreementNumber : null,
             };
           });
         }
@@ -453,20 +458,20 @@ export class AccountFinanceAssembler {
 
         if (!snap.empty) {
           return snap.docs.map((doc) => {
-            const data = doc.data();
+            const data = doc.data() as Record<string, unknown>;
             return {
               id: doc.id,
               entityId,
-              accountId: data.accountId || `fa_${entityId}`,
-              amount: data.amount || 0,
-              currency: data.currency || 'GHS',
-              paymentMethod: data.paymentMethod || 'bank_transfer',
-              status: data.status || 'recorded',
-              receivedAt: data.receivedAt || new Date().toISOString(),
-              allocatedAmount: data.allocatedAmount || 0,
-              unallocatedAmount: data.unallocatedAmount || 0,
-              reference: data.reference || null,
-              notes: data.notes || null,
+              accountId: typeof data.accountId === 'string' ? data.accountId : `fa_${entityId}`,
+              amount: typeof data.amount === 'number' ? data.amount : 0,
+              currency: typeof data.currency === 'string' ? data.currency : 'GHS',
+              paymentMethod: typeof data.paymentMethod === 'string' ? data.paymentMethod : 'bank_transfer',
+              status: typeof data.status === 'string' ? (data.status as PaymentSummary['status']) : 'recorded',
+              receivedAt: typeof data.receivedAt === 'string' ? data.receivedAt : new Date().toISOString(),
+              allocatedAmount: typeof data.allocatedAmount === 'number' ? data.allocatedAmount : 0,
+              unallocatedAmount: typeof data.unallocatedAmount === 'number' ? data.unallocatedAmount : 0,
+              reference: typeof data.reference === 'string' ? data.reference : null,
+              notes: typeof data.notes === 'string' ? data.notes : null,
             };
           });
         }
@@ -511,7 +516,6 @@ export class AccountFinanceAssembler {
 
 // HMR singleton preservation
 declare global {
-  // eslint-disable-next-line no-var
   var __smartsappAccountFinanceAssembler: AccountFinanceAssembler | undefined;
 }
 

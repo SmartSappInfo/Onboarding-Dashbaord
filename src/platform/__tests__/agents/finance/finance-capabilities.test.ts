@@ -20,8 +20,6 @@ import {
   financePaymentSearchCapability,
   financePaymentGetCapability,
   financePaymentReconcileCapability,
-  financeAccountGetBalanceCapability,
-  financeReceivablesGetAgingCapability,
   seedFinanceCapabilitiesTestState,
   resetFinanceCapabilitiesTestState,
 } from '@/platform/capabilities/finance/finance-capabilities';

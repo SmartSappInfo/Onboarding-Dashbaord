@@ -258,7 +258,6 @@ export class ReceivablesAgingService {
 
 // HMR-safe global singleton preservation
 declare global {
-  // eslint-disable-next-line no-var
   var __smartsappReceivablesAgingService: ReceivablesAgingService | undefined;
 }
 

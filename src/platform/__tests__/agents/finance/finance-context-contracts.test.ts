@@ -10,8 +10,6 @@ import {
   ReceivablesAgingSchema,
   CollectionCaseSchema,
   FeeScheduleSchema,
-  ValidateInvoiceInputSchema,
-  ValidateInvoiceOutputSchema,
   FINANCE_ERROR_CODES,
   FinanceError,
 } from '@/platform/agents/finance/context/finance-context-types';

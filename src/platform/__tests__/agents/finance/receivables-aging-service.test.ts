@@ -229,6 +229,7 @@ describe('ReceivablesAgingService (Phase 12 Milestone 1)', () => {
       invoices,
       asOfDate: referenceDate,
     });
+    expect(aging1.totalOverdue).toBe(5000);
 
     // Mutate invoices list
     const invoicesModified: InvoiceSummary[] = [];
