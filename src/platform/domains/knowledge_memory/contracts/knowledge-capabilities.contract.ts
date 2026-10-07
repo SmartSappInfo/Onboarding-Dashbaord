@@ -726,7 +726,7 @@ export const knowledgeSearchHybridCapability: CapabilityDefinition<
     const input = KnowledgeSearchHybridInputSchema.parse(rawInput);
     const retriever = getKnowledgeAdaptiveRetriever();
     const result = await retriever.searchHybrid(input, {
-      callerPermissions: context.callerPermissions,
+      callerPermissions: context.principal.grantedScopes,
     });
 
     return ok(result, context, startTime);

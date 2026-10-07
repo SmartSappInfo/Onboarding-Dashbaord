@@ -198,7 +198,7 @@ export class KnowledgeAgentService {
         const hitA = searchResult.hits[i];
         const hitB = searchResult.hits[j];
         if (
-          hitA.tags?.some((t) => hitB.tags?.includes(t)) &&
+          hitA.tags?.some((t: string) => hitB.tags?.includes(t)) &&
           (hitA.title.toLowerCase().includes('legacy') !== hitB.title.toLowerCase().includes('legacy') ||
             hitA.content.toLowerCase().includes('legacy') !== hitB.content.toLowerCase().includes('legacy'))
         ) {

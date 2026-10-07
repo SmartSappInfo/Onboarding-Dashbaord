@@ -40,7 +40,7 @@ describe('Knowledge Agent Server Actions & ⌘K Integration (Phase 11 M4 · T4)'
 
   beforeEach(() => {
     vi.restoreAllMocks();
-    vi.spyOn(authModule, 'requireAuth').mockResolvedValue(mockAuthUser as unknown as authModule.AuthSession);
+    vi.spyOn(authModule, 'requireAuth').mockResolvedValue(mockAuthUser as unknown as authModule.AuthContext);
     vi.spyOn(deadManModule, 'checkGovernanceDeadManSwitch').mockResolvedValue(undefined);
 
     const retriever = getKnowledgeAdaptiveRetriever();

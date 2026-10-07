@@ -28,27 +28,30 @@ describe('Knowledge MCP Domain Server (Phase 11 M4 · T3)', () => {
   const workspaceId = 'ws_mcp_primary';
 
   const userPrincipal: AgentPrincipal = {
-    principalId: 'usr_sarah',
+    userId: 'usr_sarah',
     actorType: 'user',
     organizationId: orgId,
     workspaceId: workspaceId,
     grantedScopes: ['knowledge:read'],
+    effectiveRole: 'member',
   };
 
   const restrictedUserPrincipal: AgentPrincipal = {
-    principalId: 'usr_admin',
+    userId: 'usr_admin',
     actorType: 'user',
     organizationId: orgId,
     workspaceId: workspaceId,
     grantedScopes: ['knowledge:read', 'knowledge:read_restricted'],
+    effectiveRole: 'admin',
   };
 
   const foreignTenantPrincipal: AgentPrincipal = {
-    principalId: 'usr_attacker',
+    userId: 'usr_attacker',
     actorType: 'user',
     organizationId: 'org_different_corp',
     workspaceId: 'ws_foreign',
     grantedScopes: ['knowledge:read', 'knowledge:read_restricted'],
+    effectiveRole: 'member',
   };
 
   const mockItems: AdaptiveKnowledgeItem[] = [

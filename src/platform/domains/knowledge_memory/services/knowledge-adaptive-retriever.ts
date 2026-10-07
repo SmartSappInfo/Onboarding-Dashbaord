@@ -253,6 +253,7 @@ export class KnowledgeAdaptiveRetriever {
         sourceType: item.sourceType,
         title: item.title,
         content: item.content,
+        tags: item.tags,
         denseRank,
         sparseRank,
         graphDistance,

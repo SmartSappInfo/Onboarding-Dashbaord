@@ -266,13 +266,14 @@ export const KnowledgeSearchHybridInputSchema = z.object({
   applyRecencyDecay: z.boolean().optional().default(true),
   halfLifeDays: z.number().positive().optional().default(30),
 });
-export type KnowledgeSearchHybridInput = z.infer<typeof KnowledgeSearchHybridInputSchema>;
+export type KnowledgeSearchHybridInput = z.input<typeof KnowledgeSearchHybridInputSchema>;
 
 export const AdaptiveRetrievalHitSchema = z.object({
   id: z.string().trim().min(1),
   sourceType: z.enum(KNOWLEDGE_SOURCE_TYPES),
   title: z.string().trim().min(1),
   content: z.string(),
+  tags: z.array(z.string()).optional(),
   denseRank: z.number().int().nullable().default(null),
   sparseRank: z.number().int().nullable().default(null),
   graphDistance: z.number().int().nullable().default(null),
@@ -320,7 +321,7 @@ export const KnowledgeGetCitationsInputSchema = z.object({
   query: z.string().trim().min(1, 'Query is required'),
   limit: z.number().int().min(1).max(20).optional().default(10),
 });
-export type KnowledgeGetCitationsInput = z.infer<typeof KnowledgeGetCitationsInputSchema>;
+export type KnowledgeGetCitationsInput = z.input<typeof KnowledgeGetCitationsInputSchema>;
 
 export const KnowledgeGetCitationsOutputSchema = z.object({
   citations: z.array(KnowledgeCitationSchema),

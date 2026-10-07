@@ -63,6 +63,7 @@ export interface McpPromptMessage {
 }
 
 export interface McpPromptResult {
+  [x: string]: unknown;
   messages: McpPromptMessage[];
 }
 
