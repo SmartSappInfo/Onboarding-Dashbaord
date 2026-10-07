@@ -148,6 +148,7 @@ describe('AccountFinanceAssembler (Phase 12 Milestone 1)', () => {
       status: 'pending',
     },
     assignedAgentPersona: 'dunning_specialist',
+    reminderCount: 2,
     lastContactedAt: '2026-09-25T14:30:00Z',
     notes: 'Contacted bursar. Confirmed payment order sent to board.',
   };
@@ -164,6 +165,7 @@ describe('AccountFinanceAssembler (Phase 12 Milestone 1)', () => {
     discount: 2500,
     vatAmount: 2375,
     totalPayable: 49875,
+    items: [],
   };
 
   beforeEach(() => {
