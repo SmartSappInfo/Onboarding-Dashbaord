@@ -274,3 +274,52 @@ export async function getKnowledgeGraphNeighborsAction(
     };
   }
 }
+
+/**
+ * Finds the shortest path between two nodes in the knowledge graph within Rule 55 ceilings (maxDepth <= 3, maxNodes <= 80).
+ */
+export async function findKnowledgeGraphPathAction(
+  workspaceId: string,
+  sourceNodeId: string,
+  targetNodeId: string,
+  maxDepth?: number,
+  maxNodes?: number
+): Promise<KnowledgeActionResult<{ pathFound: boolean; nodes: GraphNodeRecord[]; edges: GraphEdgeRecord[] }>> {
+  try {
+    const auth = await requireAuth();
+    const orgId = assertTenantAccess(auth, workspaceId);
+
+    try {
+      await checkGovernanceDeadManSwitch(orgId);
+    } catch {
+      return {
+        success: false,
+        error: KNOWLEDGE_ERROR_CODES.KNOWLEDGE_DEAD_MAN_PAUSED,
+        message: 'Knowledge graph queries are paused under emergency governance (Rule 60).',
+      };
+    }
+
+    const service = getKnowledgeGraphProjectionService();
+    const result = await service.findPath({
+      workspaceId,
+      sourceNodeId,
+      targetNodeId,
+      maxDepth,
+      maxNodes,
+    });
+
+    return {
+      success: true,
+      data: result,
+    };
+  } catch (err: unknown) {
+    const code = err instanceof KnowledgeDomainError ? err.code : 'INTERNAL_ERROR';
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      success: false,
+      error: code,
+      message,
+    };
+  }
+}
+
