@@ -16,6 +16,7 @@ import dynamic from 'next/dynamic';
 const QuickComposeButton = dynamic(() => import('@/components/messaging/QuickComposeButton'), { ssr: false });
 const FloatingNotesHUD = dynamic(() => import('@/components/shared/FloatingNotesHUD'), { ssr: false });
 import { ContextRailProvider, ContextRailTrigger, GlobalContextRail } from '@/components/context-rail';
+import { KnowledgeSearchModal } from '@/components/knowledge';
 
 import {
     LogOut, 
@@ -95,6 +96,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
   const { can: _can, isSystemAdmin } = usePermissions();
   const { hasBackofficeAccess: _hasBackofficeAccess } = useBackofficeAccess();
   const { open: openNotes, close: closeNotes, isOpen: isNotesOpen } = useFloatingNotes();
+  const [isKnowledgeSearchOpen, setIsKnowledgeSearchOpen] = React.useState(false);
 
   // Keyboard shortcut listener for Option/Alt + N
   React.useEffect(() => {
@@ -111,6 +113,18 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [openNotes, closeNotes, isNotesOpen]);
+
+  // Keyboard shortcut listener for ⌘Shift+K / Ctrl+Shift+K (Phase 11 M5 · T3)
+  React.useEffect(() => {
+    const handleKnowledgeSearchKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsKnowledgeSearchOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKnowledgeSearchKeyDown);
+    return () => window.removeEventListener('keydown', handleKnowledgeSearchKeyDown);
+  }, []);
 
   // 1. Hydration Guard
   React.useEffect(() => {
@@ -380,6 +394,10 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
         </main>
         <FloatingNotesHUD />
         <GlobalContextRail />
+        <KnowledgeSearchModal
+          isOpen={isKnowledgeSearchOpen}
+          onClose={() => setIsKnowledgeSearchOpen(false)}
+        />
       </SidebarInset>
     </SidebarProvider>
   );
