@@ -17,6 +17,7 @@ import { registerDealsRevenueCapabilities } from '@/platform/domains/deals_reven
 import { registerIdentityAccessCapabilities } from '@/platform/domains/identity_access';
 import { registerTasksProductivityCapabilities } from '@/platform/domains/tasks_productivity';
 import { registerMeetingsConversationsCapabilities } from '@/platform/domains/meetings_conversations';
+import { registerFinanceCapabilities } from '../finance/finance-capabilities';
 
 import { canonicalCapabilityRegistryStore } from './capability-registry';
 
@@ -30,6 +31,7 @@ export const DOMAIN_REGISTRARS: readonly Registrar[] = [
   registerIdentityAccessCapabilities,
   registerTasksProductivityCapabilities,
   registerMeetingsConversationsCapabilities,
+  registerFinanceCapabilities,
 ];
 
 const globalRef = globalThis as { __smartsappCapabilitiesRegistered?: boolean };

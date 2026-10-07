@@ -18,12 +18,10 @@ import {
   AgentGovernanceEmergencyPausedError,
 } from '@/platform/policy/governance-dead-man';
 import { getAccountFinanceAssembler } from '@/platform/agents/finance/context/account-finance-assembler';
-import {
-  financeInvoiceCreateDraftCapability,
-  financeInvoiceValidateCapability,
-  financePaymentSearchCapability,
-} from '@/platform/capabilities/finance/finance-capabilities';
-import type { CapabilityExecutionContext } from '@/platform/capabilities/contracts/capability-definition';
+import { executeCapability } from '@/platform/capabilities/execution/execute-capability';
+import { createServerActionInvocation } from '@/platform/capabilities/execution/invocation';
+import { ensureCapabilitiesRegistered } from '@/platform/capabilities/registry/register-capabilities';
+import type { AgentPrincipal } from '@/platform/capabilities/contracts/capability-definition';
 import {
   type AccountFinance360Context,
   type ReceivablesAging,
@@ -189,7 +187,7 @@ export async function getReceivablesAgingAction(params: {
 }
 
 /**
- * Creates an unissued draft invoice with deterministic math.
+ * Creates an unissued draft invoice with deterministic math via governed capability gateway.
  */
 export async function createInvoiceDraftAction(
   rawInput: CreateInvoiceDraftInput
@@ -199,41 +197,42 @@ export async function createInvoiceDraftAction(
     const input = CreateInvoiceDraftInputSchema.parse(rawInput);
     assertTenantAccess(auth, input.organizationId, input.workspaceId);
     await checkGovernanceDeadManSwitch(input.organizationId);
+    ensureCapabilitiesRegistered();
 
-    const execContext: CapabilityExecutionContext = {
-      principal: {
-        actorType: 'user',
-        userId: auth.uid,
-        organizationId: input.organizationId,
-        workspaceId: input.workspaceId,
-        grantedScopes: [
-          'rbac:finance.invoices.create',
-          'rbac:finance.invoices.view',
-        ],
-        effectiveRole: auth.profile?.role || 'admin',
-      },
-      correlationId: `corr_${Date.now()}`,
-      timestamp: new Date().toISOString(),
+    const principal: AgentPrincipal = {
+      actorType: 'user',
+      userId: auth.uid,
+      organizationId: input.organizationId,
+      workspaceId: input.workspaceId,
+      grantedScopes: [
+        'rbac:finance.invoices.create',
+        'rbac:finance.invoices.view',
+      ],
+      effectiveRole: auth.profile?.role || 'admin',
     };
 
-    const result = await financeInvoiceCreateDraftCapability.handler(
-      input,
-      execContext
+    const outcome = await executeCapability<CreateInvoiceDraftOutput>(
+      createServerActionInvocation({
+        capabilityId: 'finance.invoice.create_draft',
+        input,
+        principal,
+        idempotencyKey: `idemp_draft_${input.organizationId}_${input.entityId}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      })
     );
 
-    if (!result.success) {
+    if (!outcome.success) {
       return {
         success: false,
         error: {
-          code: result.error.code,
-          message: result.error.message,
+          code: outcome.error.code,
+          message: outcome.error.message,
         },
       };
     }
 
     return {
       success: true,
-      data: result.data,
+      data: outcome.data,
     };
   } catch (err) {
     return handleActionError<CreateInvoiceDraftOutput>(err);
@@ -241,7 +240,7 @@ export async function createInvoiceDraftAction(
 }
 
 /**
- * Validates invoice line items and calculation consistency.
+ * Validates invoice line items and calculation consistency via governed capability gateway.
  */
 export async function validateInvoiceAction(
   rawInput: ValidateInvoiceInput
@@ -249,40 +248,41 @@ export async function validateInvoiceAction(
   try {
     const auth = await requireAuth();
     const orgId = auth.profile?.organizationId || 'org_default';
+    const wsId = auth.profile?.lastActiveWorkspaceId || 'ws_default';
     await checkGovernanceDeadManSwitch(orgId);
+    ensureCapabilitiesRegistered();
 
     const input = ValidateInvoiceInputSchema.parse(rawInput);
-    const execContext: CapabilityExecutionContext = {
-      principal: {
-        actorType: 'user',
-        userId: auth.uid,
-        organizationId: orgId,
-        workspaceId: auth.profile?.lastActiveWorkspaceId || 'ws_default',
-        grantedScopes: ['rbac:finance.invoices.view'],
-        effectiveRole: auth.profile?.role || 'admin',
-      },
-      correlationId: `corr_${Date.now()}`,
-      timestamp: new Date().toISOString(),
+    const principal: AgentPrincipal = {
+      actorType: 'user',
+      userId: auth.uid,
+      organizationId: orgId,
+      workspaceId: wsId,
+      grantedScopes: ['rbac:finance.invoices.view'],
+      effectiveRole: auth.profile?.role || 'admin',
     };
 
-    const result = await financeInvoiceValidateCapability.handler(
-      input,
-      execContext
+    const outcome = await executeCapability<ValidateInvoiceOutput>(
+      createServerActionInvocation({
+        capabilityId: 'finance.invoice.validate',
+        input,
+        principal,
+      })
     );
 
-    if (!result.success) {
+    if (!outcome.success) {
       return {
         success: false,
         error: {
-          code: result.error.code,
-          message: result.error.message,
+          code: outcome.error.code,
+          message: outcome.error.message,
         },
       };
     }
 
     return {
       success: true,
-      data: result.data,
+      data: outcome.data,
     };
   } catch (err) {
     return handleActionError<ValidateInvoiceOutput>(err);
@@ -290,7 +290,7 @@ export async function validateInvoiceAction(
 }
 
 /**
- * Searches recorded payments by reference or debtor.
+ * Searches recorded payments by reference or debtor via governed capability gateway.
  */
 export async function searchPaymentsAction(
   rawInput: SearchPaymentsInput
@@ -302,38 +302,38 @@ export async function searchPaymentsAction(
     const input = SearchPaymentsInputSchema.parse(rawInput);
     assertTenantAccess(auth, input.organizationId, input.workspaceId);
     await checkGovernanceDeadManSwitch(input.organizationId);
+    ensureCapabilitiesRegistered();
 
-    const execContext: CapabilityExecutionContext = {
-      principal: {
-        actorType: 'user',
-        userId: auth.uid,
-        organizationId: input.organizationId,
-        workspaceId: input.workspaceId,
-        grantedScopes: ['rbac:finance.invoices.view'],
-        effectiveRole: auth.profile?.role || 'admin',
-      },
-      correlationId: `corr_${Date.now()}`,
-      timestamp: new Date().toISOString(),
+    const principal: AgentPrincipal = {
+      actorType: 'user',
+      userId: auth.uid,
+      organizationId: input.organizationId,
+      workspaceId: input.workspaceId,
+      grantedScopes: ['rbac:finance.invoices.view'],
+      effectiveRole: auth.profile?.role || 'admin',
     };
 
-    const result = await financePaymentSearchCapability.handler(
-      input,
-      execContext
+    const outcome = await executeCapability<{ payments: PaymentSummary[]; totalFound: number }>(
+      createServerActionInvocation({
+        capabilityId: 'finance.payment.search',
+        input,
+        principal,
+      })
     );
 
-    if (!result.success) {
+    if (!outcome.success) {
       return {
         success: false,
         error: {
-          code: result.error.code,
-          message: result.error.message,
+          code: outcome.error.code,
+          message: outcome.error.message,
         },
       };
     }
 
     return {
       success: true,
-      data: result.data,
+      data: outcome.data,
     };
   } catch (err) {
     return handleActionError<{ payments: PaymentSummary[]; totalFound: number }>(

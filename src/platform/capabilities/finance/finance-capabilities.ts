@@ -189,7 +189,6 @@ export const financeInvoiceCreateDraftCapability: CapabilityDefinition<
     };
   },
 };
-registerCapability(financeInvoiceCreateDraftCapability);
 
 // ============================================================================
 // 2. finance.invoice.validate (L0_READ)
@@ -280,7 +279,6 @@ export const financeInvoiceValidateCapability: CapabilityDefinition<
     };
   },
 };
-registerCapability(financeInvoiceValidateCapability);
 
 // ============================================================================
 // 3. finance.invoice.issue (L3_EXTERNAL_COMMUNICATION_FINANCE - Non-Delegable)
@@ -429,7 +427,6 @@ export const financeInvoiceIssueCapability: CapabilityDefinition<
     };
   },
 };
-registerCapability(financeInvoiceIssueCapability);
 
 // ============================================================================
 // 4. finance.payment.search (L0_READ)
@@ -513,7 +510,6 @@ export const financePaymentSearchCapability: CapabilityDefinition<
     };
   },
 };
-registerCapability(financePaymentSearchCapability);
 
 // ============================================================================
 // 5. finance.payment.get (L0_READ)
@@ -585,7 +581,6 @@ export const financePaymentGetCapability: CapabilityDefinition<
     };
   },
 };
-registerCapability(financePaymentGetCapability);
 
 // ============================================================================
 // 6. finance.payment.reconcile (L2_STATE_MUTATION)
@@ -700,7 +695,6 @@ export const financePaymentReconcileCapability: CapabilityDefinition<
     };
   },
 };
-registerCapability(financePaymentReconcileCapability);
 
 // ============================================================================
 // 7. finance.account.get_balance (L0_READ)
@@ -769,7 +763,6 @@ export const financeAccountGetBalanceCapability: CapabilityDefinition<
     };
   },
 };
-registerCapability(financeAccountGetBalanceCapability);
 
 // ============================================================================
 // 8. finance.receivables.get_aging (L0_READ)
@@ -850,7 +843,24 @@ export const financeReceivablesGetAgingCapability: CapabilityDefinition<
     };
   },
 };
-registerCapability(financeReceivablesGetAgingCapability);
+
+// ============================================================================
+// Canonical Registrar for Platform Capabilities Registry (Rule 69)
+// ============================================================================
+
+export function registerFinanceCapabilities(): void {
+  registerCapability(financeInvoiceCreateDraftCapability, { allowOverride: true });
+  registerCapability(financeInvoiceValidateCapability, { allowOverride: true });
+  registerCapability(financeInvoiceIssueCapability, { allowOverride: true });
+  registerCapability(financePaymentSearchCapability, { allowOverride: true });
+  registerCapability(financePaymentGetCapability, { allowOverride: true });
+  registerCapability(financePaymentReconcileCapability, { allowOverride: true });
+  registerCapability(financeAccountGetBalanceCapability, { allowOverride: true });
+  registerCapability(financeReceivablesGetAgingCapability, { allowOverride: true });
+}
+
+// Auto-register upon module load
+registerFinanceCapabilities();
 
 // ============================================================================
 // Test Helpers to Seed & Reset In-Memory Capability State
