@@ -6,3 +6,5 @@
 
 export * from './contracts';
 export * from './services/knowledge-candidate-service';
+export * from './services/knowledge-deduplication-service';
+export * from './services/knowledge-conflict-service';

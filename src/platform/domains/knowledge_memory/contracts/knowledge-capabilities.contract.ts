@@ -21,11 +21,17 @@ import {
   KnowledgeCandidateSchema,
   ProposeCandidateInputSchema,
   ReviewQueueDecideInputSchema,
+  KnowledgeConflictSchema,
+  ResolveConflictInputSchema,
   type KnowledgeCandidate,
   type ProposeCandidateInput,
   type ReviewQueueDecideInput,
+  type KnowledgeConflict,
+  type ResolveConflictInput,
 } from './knowledge-schemas';
 import { getKnowledgeCandidateService } from '../services/knowledge-candidate-service';
+import { getKnowledgeDeduplicationService } from '../services/knowledge-deduplication-service';
+import { getKnowledgeConflictService } from '../services/knowledge-conflict-service';
 
 // ============================================================================
 // 1. knowledge.propose_candidate (L1_INTERNAL_DRAFT)
@@ -309,6 +315,223 @@ export const knowledgeReviewQueueDecideCapability: CapabilityDefinition<
 };
 
 // ============================================================================
+// 5. knowledge.deduplicate_candidate (L0_READ)
+// ============================================================================
+
+export const KnowledgeDeduplicateInputSchema = z.object({
+  workspaceId: z.string().trim().min(1, 'Workspace ID is required'),
+  title: z.string().trim().min(1, 'Title is required'),
+  content: z.string().trim().min(1, 'Content is required'),
+});
+export const KnowledgeDeduplicateOutputSchema = z.object({
+  isDuplicate: z.boolean(),
+  similarity: z.number(),
+  duplicateOfMemoryId: z.string().optional(),
+  reason: z.string().optional(),
+});
+export type KnowledgeDeduplicateInput = z.infer<typeof KnowledgeDeduplicateInputSchema>;
+export type KnowledgeDeduplicateOutput = z.infer<typeof KnowledgeDeduplicateOutputSchema>;
+
+export const knowledgeDeduplicateCandidateCapability: CapabilityDefinition<
+  KnowledgeDeduplicateInput,
+  KnowledgeDeduplicateOutput
+> = {
+  id: 'knowledge.deduplicate_candidate',
+  version: '1.0.0',
+  name: 'Deduplicate Knowledge Candidate',
+  description: 'Checks candidate content against existing memory objects for exact and high-similarity duplicates.',
+  domain: 'knowledge_memory',
+  operation: 'read',
+  inputSchema: KnowledgeDeduplicateInputSchema,
+  outputSchema: KnowledgeDeduplicateOutputSchema,
+  permissions: ['knowledge:read'],
+  workspaceScoped: true,
+  tenantScoped: true,
+  risk: {
+    level: 'L0_READ',
+    destructive: false,
+    idempotent: true,
+    openWorld: false,
+    requiresHumanApproval: false,
+    nonDelegable: false,
+  },
+  execution: {
+    synchronous: true,
+    maxDurationMs: 5_000,
+    supportsDryRun: true,
+    supportsCancellation: false,
+    supportsCompensation: false,
+    maxPayloadSizeBytes: 512 * 1024,
+  },
+  policies: {
+    requiresIdempotencyKey: false,
+    requiresExpectedVersion: false,
+    auditRequired: false,
+    defaultEnabled: true,
+  },
+  async handler(
+    rawInput: KnowledgeDeduplicateInput,
+    _context: CapabilityExecutionContext
+  ): Promise<CapabilityExecutionResult<KnowledgeDeduplicateOutput>> {
+    const startTime = Date.now();
+    const input = KnowledgeDeduplicateInputSchema.parse(rawInput);
+    const dedupService = getKnowledgeDeduplicationService();
+    const result = await dedupService.deduplicateCandidate(input);
+
+    return {
+      success: true,
+      output: result,
+      metadata: {
+        durationMs: Date.now() - startTime,
+      },
+    };
+  },
+};
+
+// ============================================================================
+// 6. knowledge.conflict.list (L0_READ)
+// ============================================================================
+
+export const KnowledgeConflictListInputSchema = z.object({
+  workspaceId: z.string().trim().min(1, 'Workspace ID is required'),
+  status: z.enum(['open', 'resolved']).optional(),
+  limit: z.number().int().min(1).max(100).optional().default(50),
+});
+export const KnowledgeConflictListOutputSchema = z.object({
+  conflicts: z.array(KnowledgeConflictSchema),
+  totalCount: z.number().int(),
+});
+export type KnowledgeConflictListInput = z.infer<typeof KnowledgeConflictListInputSchema>;
+export type KnowledgeConflictListOutput = z.infer<typeof KnowledgeConflictListOutputSchema>;
+
+export const knowledgeConflictListCapability: CapabilityDefinition<
+  KnowledgeConflictListInput,
+  KnowledgeConflictListOutput
+> = {
+  id: 'knowledge.conflict.list',
+  version: '1.0.0',
+  name: 'List Knowledge Conflicts',
+  description: 'Lists open or resolved memory conflicts for a workspace.',
+  domain: 'knowledge_memory',
+  operation: 'read',
+  inputSchema: KnowledgeConflictListInputSchema,
+  outputSchema: KnowledgeConflictListOutputSchema,
+  permissions: ['knowledge:read'],
+  workspaceScoped: true,
+  tenantScoped: true,
+  risk: {
+    level: 'L0_READ',
+    destructive: false,
+    idempotent: true,
+    openWorld: false,
+    requiresHumanApproval: false,
+    nonDelegable: false,
+  },
+  execution: {
+    synchronous: true,
+    maxDurationMs: 5_000,
+    supportsDryRun: true,
+    supportsCancellation: false,
+    supportsCompensation: false,
+    maxPayloadSizeBytes: 1024 * 1024,
+  },
+  policies: {
+    requiresIdempotencyKey: false,
+    requiresExpectedVersion: false,
+    auditRequired: false,
+    defaultEnabled: true,
+  },
+  async handler(
+    rawInput: KnowledgeConflictListInput,
+    _context: CapabilityExecutionContext
+  ): Promise<CapabilityExecutionResult<KnowledgeConflictListOutput>> {
+    const startTime = Date.now();
+    const input = KnowledgeConflictListInputSchema.parse(rawInput);
+    const conflictService = getKnowledgeConflictService();
+    const conflicts = await conflictService.listConflicts(input);
+
+    return {
+      success: true,
+      output: {
+        conflicts,
+        totalCount: conflicts.length,
+      },
+      metadata: {
+        durationMs: Date.now() - startTime,
+      },
+    };
+  },
+};
+
+// ============================================================================
+// 7. knowledge.conflict.resolve (L2_STATE_MUTATION, Non-Delegable human-only)
+// ============================================================================
+
+export const knowledgeConflictResolveCapability: CapabilityDefinition<
+  ResolveConflictInput,
+  KnowledgeConflict
+> = {
+  id: 'knowledge.conflict.resolve',
+  version: '1.0.0',
+  name: 'Resolve Knowledge Conflict',
+  description: 'Resolves an open memory contradiction. Strictly non-delegable to AI agents (Rule 17).',
+  domain: 'knowledge_memory',
+  operation: 'update',
+  inputSchema: ResolveConflictInputSchema,
+  outputSchema: KnowledgeConflictSchema,
+  permissions: ['knowledge:review'],
+  workspaceScoped: true,
+  tenantScoped: true,
+  risk: {
+    level: 'L2_STATE_MUTATION',
+    destructive: false,
+    idempotent: true,
+    openWorld: false,
+    requiresHumanApproval: false,
+    nonDelegable: true,
+  },
+  execution: {
+    synchronous: true,
+    maxDurationMs: 10_000,
+    supportsDryRun: false,
+    supportsCancellation: false,
+    supportsCompensation: false,
+    maxPayloadSizeBytes: 512 * 1024,
+  },
+  policies: {
+    requiresIdempotencyKey: true,
+    requiresExpectedVersion: true,
+    auditRequired: true,
+    defaultEnabled: true,
+  },
+  governance: {
+    dataClassification: 'confidential',
+    emitsEvents: ['knowledge.conflict.resolved'],
+    breakingChangePolicy: 'additive_only',
+  },
+  async handler(
+    rawInput: ResolveConflictInput,
+    context: CapabilityExecutionContext
+  ): Promise<CapabilityExecutionResult<KnowledgeConflict>> {
+    const startTime = Date.now();
+    const input = ResolveConflictInputSchema.parse(rawInput);
+    const conflictService = getKnowledgeConflictService();
+    const resolved = await conflictService.resolveConflict(input, {
+      id: context.principal.id,
+      type: context.principal.type === 'agent' ? 'agent' : 'user',
+    });
+
+    return {
+      success: true,
+      output: resolved,
+      metadata: {
+        durationMs: Date.now() - startTime,
+      },
+    };
+  },
+};
+
+// ============================================================================
 // Auto-registration on module load (Rule 69)
 // ============================================================================
 
@@ -316,3 +539,6 @@ registerCapability(knowledgeProposeCandidateCapability, { allowOverride: true })
 registerCapability(knowledgeCandidateGetCapability, { allowOverride: true });
 registerCapability(knowledgeCandidateListCapability, { allowOverride: true });
 registerCapability(knowledgeReviewQueueDecideCapability, { allowOverride: true });
+registerCapability(knowledgeDeduplicateCandidateCapability, { allowOverride: true });
+registerCapability(knowledgeConflictListCapability, { allowOverride: true });
+registerCapability(knowledgeConflictResolveCapability, { allowOverride: true });
