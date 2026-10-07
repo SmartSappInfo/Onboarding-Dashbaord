@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Card } from '@/components/ui/card';
 import { Search, Megaphone, Inbox } from 'lucide-react';
 import type { MessageCampaign } from '@/lib/types';
 import { CampaignListRow } from './campaign-list-row';
@@ -104,19 +105,19 @@ export function CampaignList({
     return (
         <div className="space-y-6">
             {/* Filter bar */}
-            <div className="flex flex-wrap items-center gap-3">
+            <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm flex flex-wrap items-center gap-3">
                 <div className="relative flex-1 min-w-[200px] max-w-sm">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                         placeholder="Search campaigns..."
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
-                        className="pl-9 h-10 rounded-xl border-border/50 bg-card font-semibold text-xs"
+                        className="pl-9 h-10 rounded-xl border-border bg-background font-semibold text-xs min-h-[44px]"
                     />
                 </div>
 
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-[140px] h-10 rounded-xl font-bold text-xs border-border/50 bg-card">
+                    <SelectTrigger className="w-[140px] h-10 min-h-[44px] rounded-xl font-bold text-xs border-border bg-background">
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl">
@@ -134,7 +135,7 @@ export function CampaignList({
                 </Select>
 
                 <Select value={channelFilter} onValueChange={setChannelFilter}>
-                    <SelectTrigger className="w-[130px] h-10 rounded-xl font-bold text-xs border-border/50 bg-card">
+                    <SelectTrigger className="w-[130px] h-10 min-h-[44px] rounded-xl font-bold text-xs border-border bg-background">
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl">
@@ -147,7 +148,7 @@ export function CampaignList({
                 </Select>
 
                 <Select value={targetFilter} onValueChange={setTargetFilter}>
-                    <SelectTrigger className="w-[130px] h-10 rounded-xl font-bold text-xs border-border/50 bg-card">
+                    <SelectTrigger className="w-[130px] h-10 min-h-[44px] rounded-xl font-bold text-xs border-border bg-background">
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl">
@@ -161,11 +162,11 @@ export function CampaignList({
 
                 {/* Active filter count */}
                 {(statusFilter !== 'all' || channelFilter !== 'all' || targetFilter !== 'all' || searchQuery) && (
-                    <Badge variant="outline" className="h-8 px-3 text-[10px] font-bold rounded-xl">
+                    <Badge variant="outline" className="h-8 px-3 text-[10px] font-bold rounded-xl border-border bg-muted/30">
                         {filteredCampaigns.length} of {campaigns.length}
                     </Badge>
                 )}
-            </div>
+            </Card>
 
             {/* Campaign list */}
             {filteredCampaigns.length > 0 ? (

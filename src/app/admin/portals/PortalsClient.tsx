@@ -21,6 +21,7 @@ import type { Survey, PDFForm, Meeting, CampaignPage } from '@/lib/types';
 import type { Portal } from '@/lib/types/portal';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { RainbowButton } from '@/components/ui/rainbow-button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -525,23 +526,45 @@ export default function PortalsClient() {
       <div className="space-y-6 pb-32 w-full">
         {/* ── Hub Tabs Wrapper ── */}
         <Tabs value={activeTab} onValueChange={(val: string) => setActiveTab(val as 'experience' | 'launchpad')} className="w-full space-y-6">
-          {/* ── Top Header Bar: Page Name on Left, Segmented Tabs on Right ────── */}
+          {/* ── Top Header Bar: Page Name on Left, Action Buttons on Right ────── */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-4">
-            <div>
-              <div className="flex items-center gap-2 mb-1 text-primary">
-                <Sparkles className="w-4 h-4" />
-                <span className="text-xs font-bold uppercase tracking-wider">
-                  {orgName} Experience Platform
-                </span>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">Experience Portals</h1>
-                <CardInfoTooltip text={`Design, publish, and manage intelligent branded portals for the ${activeWorkspaceId || 'global'} track.`} />
-              </div>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">Experience Portals</h1>
+              <CardInfoTooltip text={`Design, publish, and manage intelligent branded portals for the ${activeWorkspaceId || 'global'} track.`} />
             </div>
 
-            {/* Top-Right Segmented Tabs */}
-            <TabsList className="inline-flex items-center gap-1 bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto self-start sm:self-auto">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRunMasterSeed}
+                disabled={isSeeding}
+                className="h-10 px-4 rounded-xl font-bold text-xs gap-1.5 shrink-0 bg-white dark:bg-card border border-border/80 shadow-xs hover:bg-muted/60 active:scale-[0.97]"
+              >
+                <Zap className={cn('w-3.5 h-3.5 text-amber-500', isSeeding && 'animate-spin')} />
+                {isSeeding ? 'Seeding Demo...' : 'Seed Demo Data'}
+              </Button>
+
+              <RainbowButton
+                onClick={() => setIsMarketplaceOpen(true)}
+                className="h-10 px-4 rounded-xl font-bold text-xs gap-1.5 shadow-md active:scale-[0.97]"
+              >
+                <Sparkles className="w-3.5 h-3.5" /> Template Marketplace
+              </RainbowButton>
+
+              <Button
+                size="sm"
+                onClick={() => setIsCreateModalOpen(true)}
+                className="h-10 px-4 rounded-xl font-bold text-xs gap-1.5 bg-primary text-white hover:bg-primary/90 shadow-sm shrink-0 active:scale-[0.97]"
+              >
+                <Plus className="w-3.5 h-3.5" /> Create Portal
+              </Button>
+            </div>
+          </div>
+
+          {/* ── Segmented Navigation Tabs ──────────────────────────────────── */}
+          <div className="flex items-center justify-between gap-4">
+            <TabsList className="inline-flex items-center gap-1 bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto">
               <TabsTrigger
                 value="experience"
                 className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground active:scale-[0.97]"
@@ -555,49 +578,6 @@ export default function PortalsClient() {
                 <Rocket className="w-3.5 h-3.5" /> Quick Launchpad
               </TabsTrigger>
             </TabsList>
-          </div>
-
-          {/* ── Action Bar: Search & Primary Triggers ───────────────────────── */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div className="relative flex-1 md:max-w-xs">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50" />
-              <Input
-                placeholder="Search portals by title or slug..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                className="pl-10 h-10 rounded-xl bg-background border-border shadow-xs font-medium text-xs"
-              />
-            </div>
-
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRunMasterSeed}
-                disabled={isSeeding}
-                className="h-9 px-3.5 rounded-xl font-bold text-xs gap-1.5 shrink-0 bg-background border-border shadow-2xs hover:bg-muted/60 active:scale-[0.97]"
-              >
-                <Zap className={cn('w-3.5 h-3.5 text-amber-500', isSeeding && 'animate-spin')} />
-                {isSeeding ? 'Seeding Demo...' : 'Seed Demo Data'}
-              </Button>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsMarketplaceOpen(true)}
-                className="h-9 px-3.5 rounded-xl font-bold text-xs gap-1.5 shrink-0 bg-background border-border shadow-2xs active:scale-[0.97]"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-primary" /> Template Marketplace
-              </Button>
-
-              <Button
-                size="sm"
-                onClick={() => setIsCreateModalOpen(true)}
-                className="h-9 px-4 rounded-xl font-bold text-xs gap-1.5 bg-primary text-white hover:bg-primary/90 shadow-sm shrink-0 active:scale-[0.97]"
-              >
-                <Plus className="w-3.5 h-3.5" /> Create Portal
-              </Button>
-            </div>
           </div>
 
           {/* ── Stats Summary Row ─────────────────────────────────────────── */}
@@ -624,35 +604,53 @@ export default function PortalsClient() {
             />
           </div>
 
-          {/* Mode Filters (visible in experience tab) */}
+          {/* Filter Card (Search + Mode Filters) */}
           {activeTab === 'experience' && (
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-border/40 pb-3">
-              <span className="text-xs font-bold text-muted-foreground flex items-center gap-1 shrink-0">
-                <SlidersHorizontal className="w-3.5 h-3.5" /> Mode:
-              </span>
-              {[
-                { id: 'all', label: 'All Modes' },
-                { id: 'academy', label: 'Academy' },
-                { id: 'documentation', label: 'Docs' },
-                { id: 'membership', label: 'Membership' },
-                { id: 'community', label: 'Community' },
-                { id: 'resource_center', label: 'Resources' },
-                { id: 'blog', label: 'Blog' },
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setSelectedModeFilter(tab.id)}
-                  className={`text-xs px-3 py-1.5 rounded-lg font-bold transition-all shrink-0 active:scale-[0.97] ${
-                    selectedModeFilter === tab.id
-                      ? 'bg-primary text-white shadow-xs'
-                      : 'bg-card text-muted-foreground border border-border hover:border-primary/40'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
+            <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50" />
+                  <Input
+                    placeholder="Search portals by title or slug..."
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    className="pl-10 h-10 rounded-xl bg-background border-border/80 shadow-xs font-medium text-xs"
+                  />
+                </div>
+                <div className="text-xs font-semibold text-muted-foreground">
+                  {filteredPortals.length} {filteredPortals.length === 1 ? 'portal' : 'portals'}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 overflow-x-auto pt-1">
+                <span className="text-xs font-bold text-muted-foreground flex items-center gap-1 shrink-0">
+                  <SlidersHorizontal className="w-3.5 h-3.5" /> Mode:
+                </span>
+                {[
+                  { id: 'all', label: 'All Modes' },
+                  { id: 'academy', label: 'Academy' },
+                  { id: 'documentation', label: 'Docs' },
+                  { id: 'membership', label: 'Membership' },
+                  { id: 'community', label: 'Community' },
+                  { id: 'resource_center', label: 'Resources' },
+                  { id: 'blog', label: 'Blog' },
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setSelectedModeFilter(tab.id)}
+                    className={cn(
+                      'text-xs px-3 py-1.5 rounded-lg font-bold transition-all shrink-0 active:scale-[0.97] border',
+                      selectedModeFilter === tab.id
+                        ? 'bg-primary text-white border-primary shadow-xs'
+                        : 'bg-white dark:bg-card text-muted-foreground border-border/80 hover:text-foreground hover:bg-muted/60'
+                    )}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </Card>
           )}
 
           {/* ── Tab 1: Experience Portals Grid ──────────────────────────── */}

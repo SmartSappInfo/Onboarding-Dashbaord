@@ -6,6 +6,7 @@ import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { RainbowButton } from '@/components/ui/rainbow-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -276,10 +277,10 @@ export default function ListeningClient() {
               </TabsTrigger>
             </TabsList>
 
-            <Button 
+            <RainbowButton 
               onClick={handleSimulateMention}
               disabled={isSimulating}
-              className="rounded-xl h-8.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs tracking-wide active:scale-[0.97] transition-all gap-1.5 shadow-lg shadow-emerald-500/10"
+              className="rounded-xl h-8.5 px-4 font-bold text-xs active:scale-[0.97] transition-all gap-1.5 shadow-sm text-white"
             >
               {isSimulating ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -287,7 +288,7 @@ export default function ListeningClient() {
                 <Sparkles className="h-3.5 w-3.5" />
               )}
               Simulate Mention
-            </Button>
+            </RainbowButton>
           </div>
         </div>
 

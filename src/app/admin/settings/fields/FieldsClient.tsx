@@ -833,15 +833,17 @@ export default function FieldsClient() {
         <TabsContent value="custom" className="space-y-8 mt-4">
 
       {/* Search Bar */}
-      <div className="relative max-w-md">
-        <LucideIcons.Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input 
-          placeholder="Search fields or groups..." 
-          className="pl-9" 
-          value={searchTerm} 
-          onChange={e => setSearchTerm(e.target.value)} 
-        />
-      </div>
+      <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm max-w-md">
+        <div className="relative">
+          <LucideIcons.Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input 
+            placeholder="Search fields or groups..." 
+            className="pl-9 h-10 rounded-xl bg-white dark:bg-card border-border/80 shadow-xs text-xs" 
+            value={searchTerm} 
+            onChange={e => setSearchTerm(e.target.value)} 
+          />
+        </div>
+      </Card>
 
       {/* Main Accordion */}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -1123,7 +1125,7 @@ export default function FieldsClient() {
                   placeholder="Search by variable name, label, description, or group..."
                   value={systemVarSearch}
                   onChange={e => setSystemVarSearch(e.target.value)}
-                  className="pl-9 pr-8 h-10 text-xs rounded-xl bg-background border-border/80 focus-visible:ring-1"
+                  className="pl-9 pr-8 h-10 text-xs rounded-xl bg-white dark:bg-card border-border/80 shadow-xs focus-visible:ring-1"
                 />
                 {systemVarSearch && (
                   <button

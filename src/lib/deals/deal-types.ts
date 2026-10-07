@@ -334,7 +334,46 @@ export interface DealMergeResult {
 }
 
 /**
- * ARCHITECTURAL POINTER (Cross-Workspace Deal Transfer & Copy - Rule 10):
+ * Conversion strategy for adapting an entity when transferring a deal across different workspace scopes.
+ * Aligned with Rule 4 (Strict Typing) and Rule 61 (Backoffice Control Plane).
+ */
+export type EntityScopeConversionStrategy =
+  | 'auto'
+  | 'promote_primary_focal_contact'
+  | 'promote_first_contact'
+  | 'derive_from_company_field'
+  | 'promote_primary_as_guardian'
+  | 'require_human_approval';
+
+/**
+ * Backoffice configuration policy for handling entity scope conversions on a pipeline or workspace.
+ * Allows operations to dictate autonomous agent behavior without code changes (Rule 61 & 64).
+ */
+export interface EntityScopeConversionPolicy {
+  institutionToPersonStrategy: 'promote_primary_focal_contact' | 'promote_first_contact' | 'require_human_approval';
+  personToInstitutionStrategy: 'derive_from_company_field' | 'require_human_approval';
+  toFamilyStrategy: 'promote_primary_as_guardian' | 'require_human_approval';
+  requireApprovalForCrossScope?: boolean; // Forces Two-Phase proposal model (Rule 21 & 22)
+  disableAutonomousTransfers?: boolean;   // Dead-Man Kill Switch (Rule 60)
+}
+
+/**
+ * Result of resolving entity scope conversion before or during deal transfer.
+ * Captures bi-directional lineage and audit trace (Rule 41).
+ */
+export interface EntityScopeResolutionResult {
+  sourceEntityId: string;
+  targetEntityId: string;
+  sourceScope: string;
+  targetScope: string;
+  strategyUsed: EntityScopeConversionStrategy;
+  wasCreated: boolean;
+  promotedContactId?: string;
+  auditEvidence: string;
+}
+
+/**
+ * ARCHITECTURAL POINTER (Cross-Workspace Deal Transfer & Copy - Rule 10 & Rule 69):
  * Input options for transferring (moving) or copying a Deal across pipelines and workspaces.
  */
 export interface TransferDealInput {
@@ -358,6 +397,11 @@ export interface TransferDealInput {
   copyCustomFields?: boolean;
   idempotencyKey?: string;
   expectedUpdatedAt?: string;
+  // Polymorphic entity scope resolution & Two-Phase options (Rules 21, 22, 42):
+  entityConversionStrategy?: EntityScopeConversionStrategy;
+  focalContactId?: string; // Explicit focal contact to promote into person entity
+  dryRun?: boolean; // Shadow Mode: simulate without writing to database
+  approvalId?: string; // Pre-approved proposal ID for committing Two-Phase transfers
 }
 
 /**
@@ -366,6 +410,11 @@ export interface TransferDealInput {
 export interface TransferDealResult {
   success: boolean;
   dealId?: string;
+  phase?: 'COMMITTED' | 'PROPOSAL';
+  approvalId?: string;
+  requiresProposal?: boolean;
+  auditEvidence?: string;
+  entityResolution?: EntityScopeResolutionResult;
   error?: string;
 }
 

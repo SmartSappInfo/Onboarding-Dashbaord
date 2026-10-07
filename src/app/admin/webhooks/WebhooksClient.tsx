@@ -169,7 +169,7 @@ export default function WebhooksClient() {
         <div className="space-y-8 pb-32 w-full">
 
           {/* Page Header */}
-          <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-bold tracking-tight text-foreground">Webhook Hub</h1>
@@ -178,7 +178,7 @@ export default function WebhooksClient() {
             </div>
             <Button
               onClick={() => { setEditingWebhook(null); setIsEditorOpen(true); }}
-              className="h-11 px-6 rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all gap-2"
+              className="h-11 px-6 rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all gap-2 active:scale-[0.97]"
             >
               <PlusCircle className="h-4 w-4" />
               Create Webhook
@@ -208,7 +208,7 @@ export default function WebhooksClient() {
           </div>
 
           {/* Filters */}
-          <Card className="p-4 rounded-2xl border-border/50 bg-card/50 backdrop-blur-sm shadow-sm">
+          <Card className="p-4 rounded-2xl border border-border/80 bg-card shadow-sm">
             <div className="flex flex-col md:flex-row items-center gap-4">
               <div className="relative w-full md:w-96">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

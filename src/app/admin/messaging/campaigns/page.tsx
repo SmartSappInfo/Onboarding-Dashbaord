@@ -19,6 +19,8 @@ import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { getErrorMessage } from '@/lib/errors/report-error';
 
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+
 // bundle-dynamic-imports: lazy load wizard + analytics (Vercel best practice)
 const CampaignWizard = dynamic(
     () => import('./components/campaign-wizard').then(m => ({ default: m.CampaignWizard })),
@@ -32,7 +34,7 @@ const CampaignAnalytics = dynamic(
 export default function CampaignsPage() {
     const firestore = useFirestore();
     const { user } = useUser();
-    const { activeWorkspaceId, _activeOrganizationId } = useWorkspace() as any;
+    const { activeWorkspaceId } = useWorkspace();
     const { toast } = useToast();
     const searchParams = useSearchParams();
 
@@ -135,16 +137,14 @@ export default function CampaignsPage() {
                         <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
                             <Megaphone className="h-5 w-5 text-primary" />
                         </div>
-                        <div>
-                            <h2 className="text-xl font-semibold tracking-tight">Campaigns</h2>
-                            <p className="text-[10px] font-bold text-muted-foreground">
-                                Create, schedule, and track targeted outreach
-                            </p>
+                        <div className="flex items-center gap-2">
+                            <h1 className="text-2xl font-bold tracking-tight">Campaigns</h1>
+                            <CardInfoTooltip text="Create, schedule, and track targeted outreach across your audience." />
                         </div>
                     </div>
                     <Button
                         onClick={handleNewCampaign}
-                        className="h-11 px-6 rounded-xl font-bold text-xs shadow-lg gap-2"
+                        className="h-11 px-6 rounded-xl font-bold text-xs shadow-lg gap-2 active:scale-[0.97]"
                     >
                         <Plus className="h-4 w-4" /> New Campaign
                     </Button>

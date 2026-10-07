@@ -34,7 +34,14 @@ import { z } from 'zod';
 import { nanoid } from 'nanoid';
 import { revalidatePath } from 'next/cache';
 import { adminDb } from '@/lib/firebase-admin';
-import type { Deal, DealLineItem } from '@/lib/types';
+import type {
+  Deal,
+  DealLineItem,
+  Entity,
+  EntityContact,
+  EntityScopeConversionPolicy,
+  EntityScopeConversionStrategy,
+} from '@/lib/types';
 import type { TransferDealInput, TransferDealResult } from '@/lib/deals/deal-types';
 import {
   type CrmActor,
@@ -86,7 +93,452 @@ export const TransferDealInputSchema = z.object({
   copyCustomFields: z.boolean().optional(),
   idempotencyKey: z.string().optional(),
   expectedUpdatedAt: z.string().optional(),
+  entityConversionStrategy: z
+    .enum([
+      'auto',
+      'promote_primary_focal_contact',
+      'promote_first_contact',
+      'derive_from_company_field',
+      'promote_primary_as_guardian',
+      'require_human_approval',
+    ])
+    .optional(),
+  focalContactId: z.string().optional(),
+  dryRun: z.boolean().optional(),
+  approvalId: z.string().optional(),
 });
+
+interface PolymorphicConversionInternalResult {
+  ok: boolean;
+  requiresProposal?: boolean;
+  approvalId?: string;
+  targetEntityId: string;
+  sourceScope: string;
+  targetScope: string;
+  strategyUsed: EntityScopeConversionStrategy;
+  wasCreated: boolean;
+  promotedContactId?: string;
+  auditEvidence: string;
+  createdEntityDocId?: string;
+  createdWeDocId?: string;
+  error?: string;
+}
+
+/**
+ * Resolves polymorphic entity scope adaptation across workspaces.
+ * Aligned with Rule 4 (Strict Typing), Rule 21 & 22 (Two-Phase Action Model),
+ * Rule 27 (Saga / Compensation), Rule 41 (Audit Trace), and Rule 61 (Backoffice Control Plane).
+ */
+async function resolvePolymorphicEntityConversion(params: {
+  sourceDeal: Deal;
+  targetWorkspaceId: string;
+  targetPipelineId: string;
+  organizationId: string;
+  strategyOverride?: EntityScopeConversionStrategy;
+  focalContactId?: string;
+  dryRun?: boolean;
+  approvalId?: string;
+  pipelinePolicy?: EntityScopeConversionPolicy;
+}): Promise<PolymorphicConversionInternalResult> {
+  const {
+    sourceDeal,
+    targetWorkspaceId,
+    organizationId,
+    strategyOverride,
+    focalContactId,
+    dryRun,
+    approvalId,
+    pipelinePolicy,
+  } = params;
+
+  const now = new Date().toISOString();
+
+  // 1. Resolve Target Workspace Contact Scope
+  let targetScope = 'institution';
+  try {
+    const wsSnap = await adminDb.collection('workspaces').doc(targetWorkspaceId).get();
+    if (wsSnap.exists) {
+      targetScope = (wsSnap.data()?.contactScope as string) || 'institution';
+    }
+  } catch {
+    // Fail-safe default
+  }
+
+  // 2. Fetch Source Entity
+  let sourceEntity: Entity | undefined;
+  let sourceScope = 'institution';
+  if (sourceDeal.entityId) {
+    try {
+      const entitySnap = await adminDb.collection('entities').doc(sourceDeal.entityId).get();
+      if (entitySnap.exists) {
+        sourceEntity = entitySnap.data() as Entity;
+        sourceScope = sourceEntity.entityType || 'institution';
+      }
+    } catch {
+      // Fallback
+    }
+  }
+
+  // 3. Evaluate Scope Compatibility
+  const isCompatible = sourceScope === targetScope || targetScope === 'mixed';
+
+  if (isCompatible) {
+    // Same scope or mixed: direct projection
+    const targetWeId = `${targetWorkspaceId}_${sourceDeal.entityId}`;
+    if (!dryRun) {
+      try {
+        const existingWe = await resolveWorkspaceEntityRecord(targetWorkspaceId, sourceDeal.entityId);
+        if (!existingWe && sourceEntity) {
+          const primaryContact = sourceEntity.entityContacts?.find((c) => c.isPrimary) || sourceEntity.entityContacts?.[0];
+          await adminDb.collection('workspace_entities').doc(targetWeId).set({
+            id: targetWeId,
+            entityId: sourceDeal.entityId,
+            workspaceId: targetWorkspaceId,
+            organizationId,
+            entityType: sourceScope,
+            displayName: sourceEntity.name || sourceDeal.name,
+            displayNameLower: (sourceEntity.name || sourceDeal.name).toLowerCase(),
+            primaryContactName: primaryContact?.name || sourceEntity.name || '',
+            primaryEmail: primaryContact?.email || '',
+            primaryPhone: primaryContact?.phone || '',
+            entityContacts: sourceEntity.entityContacts || [],
+            workspaceTags: [],
+            status: 'active',
+            addedAt: now,
+            updatedAt: now,
+          });
+        }
+      } catch {
+        // Fallback
+      }
+    }
+
+    return {
+      ok: true,
+      targetEntityId: sourceDeal.entityId,
+      sourceScope,
+      targetScope,
+      strategyUsed: 'auto',
+      wasCreated: false,
+      auditEvidence: `Entity scope "${sourceScope}" is directly compatible with target workspace scope "${targetScope}". Global entity projection linked.`,
+    };
+  }
+
+  // 4. Scope Mismatch: Determine Conversion Strategy (Rule 61)
+  let effectiveStrategy: EntityScopeConversionStrategy = strategyOverride || 'auto';
+  if (effectiveStrategy === 'auto' && pipelinePolicy) {
+    if (sourceScope === 'institution' && targetScope === 'person') {
+      effectiveStrategy = pipelinePolicy.institutionToPersonStrategy || 'promote_primary_focal_contact';
+    } else if (sourceScope === 'person' && targetScope === 'institution') {
+      effectiveStrategy = pipelinePolicy.personToInstitutionStrategy || 'derive_from_company_field';
+    } else if (targetScope === 'family') {
+      effectiveStrategy = pipelinePolicy.toFamilyStrategy || 'promote_primary_as_guardian';
+    }
+  }
+  if (effectiveStrategy === 'auto') {
+    if (sourceScope === 'institution' && targetScope === 'person') {
+      effectiveStrategy = 'promote_primary_focal_contact';
+    } else if (sourceScope === 'person' && targetScope === 'institution') {
+      effectiveStrategy = 'derive_from_company_field';
+    } else if (targetScope === 'family') {
+      effectiveStrategy = 'promote_primary_as_guardian';
+    }
+  }
+
+  // Two-Phase Approval Requirement Check (Rule 21 & 22)
+  const mandatesApproval =
+    pipelinePolicy?.requireApprovalForCrossScope === true ||
+    effectiveStrategy === 'require_human_approval';
+
+  if ((mandatesApproval && !approvalId) || dryRun) {
+    const generatedProposalId = approvalId || nanoid();
+    return {
+      ok: true,
+      requiresProposal: true,
+      approvalId: generatedProposalId,
+      targetEntityId: sourceDeal.entityId,
+      sourceScope,
+      targetScope,
+      strategyUsed: effectiveStrategy,
+      wasCreated: false,
+      auditEvidence: `Scope mismatch (${sourceScope} -> ${targetScope}) requires Two-Phase human review per pipeline configuration. Proposal generated for sign-off.`,
+    };
+  }
+
+  // 5. Execute Polymorphic Conversion Strategy
+  if (sourceScope === 'institution' && targetScope === 'person') {
+    // Find focal contact to promote
+    let chosenContact: EntityContact | undefined;
+    if (Array.isArray(sourceDeal.focalContacts) && sourceDeal.focalContacts.length > 0) {
+      const match = focalContactId
+        ? sourceDeal.focalContacts.find((c) => c.id === focalContactId)
+        : (sourceDeal.focalContacts.find((c) => c.isPrimary) || sourceDeal.focalContacts[0]);
+      if (match) {
+        chosenContact = {
+          id: match.id,
+          name: match.name,
+          email: match.email || '',
+          phone: match.phone || '',
+          typeKey: 'primary',
+          typeLabel: match.role || 'Focal Contact',
+          isPrimary: true,
+          isSignatory: false,
+          order: 0,
+        };
+      }
+    }
+
+    if (!chosenContact && Array.isArray(sourceEntity?.entityContacts) && sourceEntity.entityContacts.length > 0) {
+      chosenContact =
+        sourceEntity.entityContacts.find((c) => (focalContactId ? c.id === focalContactId : c.isPrimary)) ||
+        (effectiveStrategy === 'promote_first_contact'
+          ? sourceEntity.entityContacts[0]
+          : sourceEntity.entityContacts.find((c) => c.isPrimary) || sourceEntity.entityContacts[0]);
+    }
+
+    const contactName = chosenContact?.name || sourceDeal.name;
+    const contactEmail = chosenContact?.email || '';
+    const contactPhone = chosenContact?.phone || '';
+    const contactRole = chosenContact?.typeLabel || 'Focal Contact';
+
+    // Check if an existing person entity matches this email in the organization
+    if (contactEmail) {
+      try {
+        const existingPersonSnap = await adminDb
+          .collection('workspace_entities')
+          .where('organizationId', '==', organizationId)
+          .where('entityType', '==', 'person')
+          .where('primaryEmail', '==', contactEmail)
+          .limit(1)
+          .get();
+
+        if (!existingPersonSnap.empty) {
+          const matchedDoc = existingPersonSnap.docs[0];
+          const matchedPersonId = (matchedDoc.data().entityId as string) || matchedDoc.id;
+          const targetWeId = `${targetWorkspaceId}_${matchedPersonId}`;
+          await adminDb.collection('workspace_entities').doc(targetWeId).set(
+            {
+              id: targetWeId,
+              entityId: matchedPersonId,
+              workspaceId: targetWorkspaceId,
+              organizationId,
+              entityType: 'person',
+              displayName: contactName,
+              displayNameLower: contactName.toLowerCase(),
+              primaryContactName: contactName,
+              primaryEmail: contactEmail,
+              primaryPhone: contactPhone,
+              entityContacts: chosenContact ? [chosenContact] : [],
+              workspaceTags: [],
+              status: 'active',
+              addedAt: now,
+              updatedAt: now,
+            },
+            { merge: true }
+          );
+
+          return {
+            ok: true,
+            targetEntityId: matchedPersonId,
+            sourceScope,
+            targetScope,
+            strategyUsed: effectiveStrategy,
+            wasCreated: false,
+            promotedContactId: chosenContact?.id,
+            auditEvidence: `Promoted focal contact "${contactName}" matched existing Person entity "${matchedPersonId}". Linked directly.`,
+          };
+        }
+      } catch {
+        // Fallback to creation
+      }
+    }
+
+    // Create new Person Entity
+    const newPersonId = nanoid();
+    const targetWeId = `${targetWorkspaceId}_${newPersonId}`;
+    const nameParts = contactName.trim().split(/\s+/);
+    const firstName = nameParts[0] || contactName;
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    await adminDb.collection('entities').doc(newPersonId).set({
+      id: newPersonId,
+      organizationId,
+      entityType: 'person',
+      name: contactName,
+      personData: {
+        firstName,
+        lastName,
+        jobTitle: contactRole,
+        company: sourceEntity?.name || '',
+      },
+      entityContacts: chosenContact ? [chosenContact] : [],
+      globalTags: sourceEntity?.globalTags || [],
+      relatedEntityIds: [sourceDeal.entityId], // Bi-directional provenance (Rule 41)
+      workspaceIds: [targetWorkspaceId],
+      status: 'active',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await adminDb.collection('workspace_entities').doc(targetWeId).set({
+      id: targetWeId,
+      entityId: newPersonId,
+      workspaceId: targetWorkspaceId,
+      organizationId,
+      entityType: 'person',
+      displayName: contactName,
+      displayNameLower: contactName.toLowerCase(),
+      primaryContactName: contactName,
+      primaryEmail: contactEmail,
+      primaryPhone: contactPhone,
+      entityContacts: chosenContact ? [chosenContact] : [],
+      workspaceTags: [],
+      status: 'active',
+      addedAt: now,
+      updatedAt: now,
+    });
+
+    return {
+      ok: true,
+      targetEntityId: newPersonId,
+      sourceScope,
+      targetScope,
+      strategyUsed: effectiveStrategy,
+      wasCreated: true,
+      promotedContactId: chosenContact?.id,
+      createdEntityDocId: newPersonId,
+      createdWeDocId: targetWeId,
+      auditEvidence: `Promoted focal contact "${contactName}" (${contactRole}) from Institution "${sourceEntity?.name || sourceDeal.name}" into new Person entity "${newPersonId}".`,
+    };
+  } else if (sourceScope === 'person' && targetScope === 'institution') {
+    const primaryContact = sourceEntity?.entityContacts?.find((c) => c.isPrimary) || sourceEntity?.entityContacts?.[0];
+    const companyName = sourceEntity?.personData?.company || `${sourceDeal.name} (Organization)`;
+    const newInstitutionId = nanoid();
+    const targetWeId = `${targetWorkspaceId}_${newInstitutionId}`;
+
+    await adminDb.collection('entities').doc(newInstitutionId).set({
+      id: newInstitutionId,
+      organizationId,
+      entityType: 'institution',
+      name: companyName,
+      entityContacts: [
+        {
+          id: nanoid(),
+          name: sourceEntity?.name || sourceDeal.name,
+          email: primaryContact?.email || '',
+          phone: primaryContact?.phone || '',
+          typeKey: 'primary',
+          typeLabel: sourceEntity?.personData?.jobTitle || 'Primary Contact',
+          isPrimary: true,
+          isSignatory: true,
+          order: 0,
+        },
+      ],
+      globalTags: sourceEntity?.globalTags || [],
+      relatedEntityIds: [sourceDeal.entityId],
+      workspaceIds: [targetWorkspaceId],
+      status: 'active',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await adminDb.collection('workspace_entities').doc(targetWeId).set({
+      id: targetWeId,
+      entityId: newInstitutionId,
+      workspaceId: targetWorkspaceId,
+      organizationId,
+      entityType: 'institution',
+      displayName: companyName,
+      displayNameLower: companyName.toLowerCase(),
+      primaryContactName: sourceEntity?.name || sourceDeal.name,
+      primaryEmail: primaryContact?.email || '',
+      primaryPhone: primaryContact?.phone || '',
+      entityContacts: [],
+      workspaceTags: [],
+      status: 'active',
+      addedAt: now,
+      updatedAt: now,
+    });
+
+    return {
+      ok: true,
+      targetEntityId: newInstitutionId,
+      sourceScope,
+      targetScope,
+      strategyUsed: effectiveStrategy,
+      wasCreated: true,
+      createdEntityDocId: newInstitutionId,
+      createdWeDocId: targetWeId,
+      auditEvidence: `Derived Institution entity "${companyName}" from Person "${sourceEntity?.name || sourceDeal.name}". Linked person as primary stakeholder.`,
+    };
+  } else if (targetScope === 'family') {
+    const primaryContact = sourceEntity?.entityContacts?.find((c) => c.isPrimary) || sourceEntity?.entityContacts?.[0];
+    const familyName = `${sourceDeal.name} Family`;
+    const newFamilyId = nanoid();
+    const targetWeId = `${targetWorkspaceId}_${newFamilyId}`;
+
+    await adminDb.collection('entities').doc(newFamilyId).set({
+      id: newFamilyId,
+      organizationId,
+      entityType: 'family',
+      name: familyName,
+      familyData: {
+        familyName,
+        primaryGuardianName: sourceEntity?.name || sourceDeal.name,
+        primaryGuardianPhone: primaryContact?.phone || '',
+        primaryGuardianEmail: primaryContact?.email || '',
+      },
+      entityContacts: [],
+      globalTags: sourceEntity?.globalTags || [],
+      relatedEntityIds: [sourceDeal.entityId],
+      workspaceIds: [targetWorkspaceId],
+      status: 'active',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await adminDb.collection('workspace_entities').doc(targetWeId).set({
+      id: targetWeId,
+      entityId: newFamilyId,
+      workspaceId: targetWorkspaceId,
+      organizationId,
+      entityType: 'family',
+      displayName: familyName,
+      displayNameLower: familyName.toLowerCase(),
+      primaryContactName: sourceEntity?.name || sourceDeal.name,
+      primaryEmail: primaryContact?.email || '',
+      primaryPhone: primaryContact?.phone || '',
+      entityContacts: [],
+      workspaceTags: [],
+      status: 'active',
+      addedAt: now,
+      updatedAt: now,
+    });
+
+    return {
+      ok: true,
+      targetEntityId: newFamilyId,
+      sourceScope,
+      targetScope,
+      strategyUsed: effectiveStrategy,
+      wasCreated: true,
+      createdEntityDocId: newFamilyId,
+      createdWeDocId: targetWeId,
+      auditEvidence: `Converted entity "${sourceDeal.name}" into Family entity "${familyName}".`,
+    };
+  }
+
+  // Fallback direct link
+  return {
+    ok: true,
+    targetEntityId: sourceDeal.entityId,
+    sourceScope,
+    targetScope,
+    strategyUsed: 'auto',
+    wasCreated: false,
+    auditEvidence: `Scope conversion defaulted to direct projection.`,
+  };
+}
 
 /**
  * Executes a deal transfer (move) or clone (copy) across workspaces and pipelines.
@@ -96,6 +548,7 @@ export async function transferDealCore(
   input: TransferDealInput
 ): Promise<TransferDealResult> {
   const userId = actorAttributionUid(actor);
+  let activeConversion: PolymorphicConversionInternalResult | null = null;
 
   try {
     const parsed = TransferDealInputSchema.safeParse(input);
@@ -220,11 +673,13 @@ export async function transferDealCore(
     // Fetch target pipeline name and calculate close date
     let targetPipelineName = 'Pipeline';
     let expectedCloseDate = sourceDeal.expectedCloseDate;
+    let targetPipelinePolicy: EntityScopeConversionPolicy | undefined;
     try {
       const pipelineDoc = await adminDb.collection('pipelines').doc(validated.targetPipelineId).get();
       if (pipelineDoc.exists) {
         const pData = pipelineDoc.data();
         targetPipelineName = pData?.name || targetPipelineName;
+        targetPipelinePolicy = pData?.entityScopeConversionPolicy as EntityScopeConversionPolicy | undefined;
         const calculated = calculateExpectedCloseDate(pData, sourceDeal.expectedCloseDate);
         if (calculated) expectedCloseDate = calculated;
       }
@@ -234,35 +689,106 @@ export async function transferDealCore(
 
     const now = new Date().toISOString();
 
-    // 8. Ensure Entity Projection in target workspace (Cross-Workspace Entity Invariant)
-    if (validated.targetWorkspaceId !== sourceDeal.workspaceId && sourceDeal.entityId) {
-      const targetWe = await resolveWorkspaceEntityRecord(validated.targetWorkspaceId, sourceDeal.entityId);
-      if (!targetWe) {
-        const entitySnap = await adminDb.collection('entities').doc(sourceDeal.entityId).get();
-        if (entitySnap.exists) {
-          const eData = entitySnap.data();
-          const targetWeId = `${validated.targetWorkspaceId}_${sourceDeal.entityId}`;
-          await adminDb
-            .collection('workspace_entities')
-            .doc(targetWeId)
-            .set({
-              id: targetWeId,
-              entityId: sourceDeal.entityId,
-              workspaceId: validated.targetWorkspaceId,
-              organizationId: sourceDeal.organizationId || targetOrgId || '',
-              displayName: eData?.name || sourceDeal.name,
-              displayNameLower: (eData?.name || sourceDeal.name).toLowerCase(),
-              primaryContactName: eData?.primaryContactName || eData?.name || '',
-              primaryEmail: eData?.primaryEmail || '',
-              primaryPhone: eData?.primaryPhone || '',
-              entityContacts: eData?.entityContacts || [],
-              status: 'active',
-              createdAt: now,
-              updatedAt: now,
-            });
+    // 7.1 Dead-Man Controls (Rule 60): Enforce disableAutonomousTransfers for non-human service/agent actors
+    if (targetPipelinePolicy?.disableAutonomousTransfers && actor.kind === 'service' && !validated.dryRun) {
+      return {
+        success: false,
+        error: 'Autonomous cross-workspace deal transfers are disabled for destination pipeline per Backoffice governance policy (Rule 60).',
+      };
+    }
+
+    // 8. Polymorphic Entity Scope Conversion & Projection (Rule 69, Rule 61 & ScopeGuard)
+    const conversion = await resolvePolymorphicEntityConversion({
+      sourceDeal,
+      targetWorkspaceId: validated.targetWorkspaceId,
+      targetPipelineId: validated.targetPipelineId,
+      organizationId: sourceDeal.organizationId || targetOrgId || '',
+      strategyOverride: validated.entityConversionStrategy,
+      focalContactId: validated.focalContactId,
+      dryRun: validated.dryRun,
+      approvalId: validated.approvalId,
+      pipelinePolicy: targetPipelinePolicy,
+    });
+
+    if (!conversion.ok) {
+      return { success: false, error: conversion.error || 'Failed to resolve entity scope conversion' };
+    }
+
+    activeConversion = conversion;
+
+    // Two-Phase Proposal or Dry-Run Interception (Rule 21, 22, 42)
+    if (conversion.requiresProposal || validated.dryRun) {
+      if (conversion.approvalId) {
+        try {
+          await adminDb.collection('deal_transfer_proposals').doc(conversion.approvalId).set({
+            approvalId: conversion.approvalId,
+            dealId: sourceDeal.id,
+            mode: validated.mode,
+            sourceWorkspaceId: sourceDeal.workspaceId,
+            targetWorkspaceId: validated.targetWorkspaceId,
+            targetPipelineId: validated.targetPipelineId,
+            targetStageId: validated.targetStageId,
+            entityResolution: {
+              sourceEntityId: sourceDeal.entityId,
+              targetEntityId: conversion.targetEntityId,
+              sourceScope: conversion.sourceScope,
+              targetScope: conversion.targetScope,
+              strategyUsed: conversion.strategyUsed,
+              wasCreated: false,
+              promotedContactId: conversion.promotedContactId,
+              auditEvidence: conversion.auditEvidence,
+            },
+            actorKind: actor.kind,
+            actorId: userId || 'system',
+            createdAt: now,
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          });
+        } catch {
+          // Non-blocking in testing
         }
       }
+
+      // Emit proposal domain event (Rule 39)
+      try {
+        await emitDealDomainEvent('deal.transfer.proposal_created', {
+          dealId: sourceDeal.id,
+          dealName: sourceDeal.name,
+          workspaceId: validated.targetWorkspaceId,
+          sourceWorkspaceId: sourceDeal.workspaceId,
+          targetWorkspaceId: validated.targetWorkspaceId,
+          sourcePipelineId: sourceDeal.pipelineId,
+          targetPipelineId: validated.targetPipelineId,
+          sourceEntityType: conversion.sourceScope,
+          targetEntityType: conversion.targetScope,
+          conversionStrategy: conversion.strategyUsed,
+          proposalId: conversion.approvalId,
+          actorType: actor.kind === 'service' ? 'agent' : 'user',
+          actorUserId: userId || 'system',
+          metadata: {
+            evidence: conversion.auditEvidence,
+          },
+        });
+      } catch {}
+
+      return {
+        success: true,
+        phase: 'PROPOSAL',
+        requiresProposal: true,
+        approvalId: conversion.approvalId,
+        entityResolution: {
+          sourceEntityId: sourceDeal.entityId,
+          targetEntityId: conversion.targetEntityId,
+          sourceScope: conversion.sourceScope,
+          targetScope: conversion.targetScope,
+          strategyUsed: conversion.strategyUsed,
+          wasCreated: false,
+          promotedContactId: conversion.promotedContactId,
+          auditEvidence: conversion.auditEvidence,
+        },
+      };
     }
+
+    const resolvedEntityId = conversion.targetEntityId;
 
     const resolvedProbability =
       targetStageProbability !== undefined ? targetStageProbability : (sourceDeal.probability ?? 20);
@@ -309,6 +835,7 @@ export async function transferDealCore(
         pipelineId: validated.targetPipelineId,
         stageId: validated.targetStageId,
         stageName: targetStageName,
+        entityId: resolvedEntityId, // Link adapted polymorphic entity (Rule 69)
         stageEnteredAt: now,
         stageHistory: currentHistory,
         probability: resolvedProbability,
@@ -324,12 +851,20 @@ export async function transferDealCore(
         updatedDealData.nextStep = validated.nextStep;
       }
 
+      // Synchronize focal contact on move when promoted to person entity
+      if (conversion.targetScope === 'person' && conversion.promotedContactId) {
+        const promotedFocal = sourceDeal.focalContacts?.find((c) => c.id === conversion.promotedContactId);
+        if (promotedFocal) {
+          updatedDealData.focalContacts = [{ ...promotedFocal, isPrimary: true }];
+        }
+      }
+
       await sourceLoaded.ref.update(updatedDealData);
 
       // Audit activity log
       await logActivity({
         organizationId: sourceDeal.organizationId || targetOrgId || '',
-        entityId: sourceDeal.entityId || null,
+        entityId: resolvedEntityId || null,
         dealId: sourceDeal.id,
         userId: userId || null,
         workspaceId: validated.targetWorkspaceId,
@@ -344,30 +879,63 @@ export async function transferDealCore(
           targetPipelineId: validated.targetPipelineId,
           targetStageId: validated.targetStageId,
           actorKind: actor.kind,
+          sourceEntityId: sourceDeal.entityId,
+          targetEntityId: resolvedEntityId,
+          conversionStrategy: conversion.strategyUsed,
         },
       });
 
       // Legacy deal domain event
-      await emitDealDomainEvent('deal.moved', {
+      await emitDealDomainEvent('deal.transferred', {
         dealId: sourceDeal.id,
         dealName: sourceDeal.name,
         workspaceId: validated.targetWorkspaceId,
-        organizationId: sourceDeal.organizationId || targetOrgId || '',
-        pipelineId: validated.targetPipelineId,
+        sourceWorkspaceId: sourceDeal.workspaceId,
+        targetWorkspaceId: validated.targetWorkspaceId,
+        sourcePipelineId: sourceDeal.pipelineId,
+        targetPipelineId: validated.targetPipelineId,
         stageId: validated.targetStageId,
         previousStageId: sourceDeal.stageId,
+        sourceEntityId: sourceDeal.entityId,
+        targetEntityId: resolvedEntityId,
+        sourceEntityType: conversion.sourceScope,
+        targetEntityType: conversion.targetScope,
+        conversionStrategy: conversion.strategyUsed,
+        actorType: actor.kind === 'service' ? 'agent' : 'user',
         actorUserId: userId || 'system',
         metadata: {
           fromPipelineId: sourceDeal.pipelineId,
           toPipelineId: validated.targetPipelineId,
           actorKind: actor.kind,
+          evidence: conversion.auditEvidence,
         },
       });
+
+      if (conversion.wasCreated) {
+        try {
+          await emitDealDomainEvent('deal.entity_scope_converted', {
+            dealId: sourceDeal.id,
+            dealName: sourceDeal.name,
+            workspaceId: validated.targetWorkspaceId,
+            sourceWorkspaceId: sourceDeal.workspaceId,
+            targetWorkspaceId: validated.targetWorkspaceId,
+            sourceEntityId: sourceDeal.entityId,
+            targetEntityId: resolvedEntityId,
+            sourceEntityType: conversion.sourceScope,
+            targetEntityType: conversion.targetScope,
+            conversionStrategy: conversion.strategyUsed,
+            promotedContactId: conversion.promotedContactId,
+            actorType: actor.kind === 'service' ? 'agent' : 'user',
+            actorUserId: userId || 'system',
+            metadata: { evidence: conversion.auditEvidence },
+          });
+        } catch {}
+      }
 
       // Platform typed domain event (Rule 39 & 40)
       try {
         const platformEvent = createDomainEvent({
-          type: 'crm.deal.moved',
+          type: 'crm.deal.transferred',
           source: `crm:${actorSource}:deal_transfer`,
           correlationId: validated.idempotencyKey || `trans_${sourceDeal.id}_${Date.now()}`,
           actor: {
@@ -390,6 +958,9 @@ export async function transferDealCore(
             pipelineId: validated.targetPipelineId,
             stageId: validated.targetStageId,
             stageName: targetStageName,
+            sourceEntityId: sourceDeal.entityId,
+            targetEntityId: resolvedEntityId,
+            conversionStrategy: conversion.strategyUsed,
           },
         });
         await defaultEventBus.publish(platformEvent);
@@ -422,7 +993,21 @@ export async function transferDealCore(
         // Context may be non-HTTP
       }
 
-      return { success: true, dealId: sourceDeal.id };
+      return {
+        success: true,
+        dealId: sourceDeal.id,
+        phase: 'COMMITTED',
+        entityResolution: {
+          sourceEntityId: sourceDeal.entityId,
+          targetEntityId: resolvedEntityId,
+          sourceScope: conversion.sourceScope,
+          targetScope: conversion.targetScope,
+          strategyUsed: conversion.strategyUsed,
+          wasCreated: conversion.wasCreated,
+          promotedContactId: conversion.promotedContactId,
+          auditEvidence: conversion.auditEvidence,
+        },
+      };
     } else {
       // COPY (Duplicate) MODE
       const clonedLineItems: DealLineItem[] =
@@ -433,7 +1018,7 @@ export async function transferDealCore(
       const clonedDealData: Omit<Deal, 'id'> = {
         organizationId: sourceDeal.organizationId || targetOrgId || '',
         workspaceId: validated.targetWorkspaceId,
-        entityId: sourceDeal.entityId,
+        entityId: resolvedEntityId, // Link adapted polymorphic entity (Rule 69)
         pipelineId: validated.targetPipelineId,
         stageId: validated.targetStageId,
         stageName: targetStageName,
@@ -470,7 +1055,21 @@ export async function transferDealCore(
         priceBookId: sourceDeal.priceBookId || null,
         contractStatus: 'none',
         contacts: validated.copyContacts !== false ? sourceDeal.contacts || [] : [],
-        focalContacts: validated.copyContacts !== false ? sourceDeal.focalContacts || [] : [],
+        focalContacts:
+          conversion.targetScope === 'person' && conversion.promotedContactId
+            ? [
+                {
+                  ...(sourceDeal.focalContacts?.find((c) => c.id === conversion.promotedContactId) || {
+                    id: conversion.promotedContactId,
+                    name: sourceDeal.name,
+                    role: 'Primary Contact',
+                  }),
+                  isPrimary: true,
+                },
+              ]
+            : validated.copyContacts !== false
+            ? sourceDeal.focalContacts || []
+            : [],
         assignedTo: resolvedAssignee,
         expectedCloseDate: expectedCloseDate || null,
         description: validated.summary?.trim() || sourceDeal.description || null,
@@ -487,7 +1086,7 @@ export async function transferDealCore(
 
       await logActivity({
         organizationId: sourceDeal.organizationId || targetOrgId || '',
-        entityId: sourceDeal.entityId || null,
+        entityId: resolvedEntityId || null,
         dealId: newDocRef.id,
         userId: userId || null,
         workspaceId: validated.targetWorkspaceId,
@@ -499,24 +1098,56 @@ export async function transferDealCore(
           newDealId: newDocRef.id,
           targetWorkspaceId: validated.targetWorkspaceId,
           actorKind: actor.kind,
+          sourceEntityId: sourceDeal.entityId,
+          targetEntityId: resolvedEntityId,
+          conversionStrategy: conversion.strategyUsed,
         },
       });
 
-      await emitDealDomainEvent('deal.created', {
+      await emitDealDomainEvent('deal.duplicated', {
         dealId: newDocRef.id,
         dealName: clonedDealData.name,
         workspaceId: validated.targetWorkspaceId,
-        organizationId: sourceDeal.organizationId || targetOrgId || '',
-        pipelineId: validated.targetPipelineId,
+        sourceWorkspaceId: sourceDeal.workspaceId,
+        targetWorkspaceId: validated.targetWorkspaceId,
+        sourcePipelineId: sourceDeal.pipelineId,
+        targetPipelineId: validated.targetPipelineId,
         stageId: validated.targetStageId,
+        sourceEntityId: sourceDeal.entityId,
+        targetEntityId: resolvedEntityId,
+        sourceEntityType: conversion.sourceScope,
+        targetEntityType: conversion.targetScope,
+        conversionStrategy: conversion.strategyUsed,
         value: clonedDealData.value,
+        actorType: actor.kind === 'service' ? 'agent' : 'user',
         actorUserId: userId || 'system',
       });
+
+      if (conversion.wasCreated) {
+        try {
+          await emitDealDomainEvent('deal.entity_scope_converted', {
+            dealId: newDocRef.id,
+            dealName: clonedDealData.name,
+            workspaceId: validated.targetWorkspaceId,
+            sourceWorkspaceId: sourceDeal.workspaceId,
+            targetWorkspaceId: validated.targetWorkspaceId,
+            sourceEntityId: sourceDeal.entityId,
+            targetEntityId: resolvedEntityId,
+            sourceEntityType: conversion.sourceScope,
+            targetEntityType: conversion.targetScope,
+            conversionStrategy: conversion.strategyUsed,
+            promotedContactId: conversion.promotedContactId,
+            actorType: actor.kind === 'service' ? 'agent' : 'user',
+            actorUserId: userId || 'system',
+            metadata: { evidence: conversion.auditEvidence },
+          });
+        } catch {}
+      }
 
       // Platform typed domain event (Rule 39 & 40)
       try {
         const platformEvent = createDomainEvent({
-          type: 'crm.deal.created',
+          type: 'crm.deal.duplicated',
           source: `crm:${actorSource}:deal_transfer`,
           correlationId: validated.idempotencyKey || `clone_${newDocRef.id}_${Date.now()}`,
           actor: {
@@ -540,6 +1171,9 @@ export async function transferDealCore(
             pipelineId: validated.targetPipelineId,
             stageId: validated.targetStageId,
             value: clonedDealData.value,
+            sourceEntityId: sourceDeal.entityId,
+            targetEntityId: resolvedEntityId,
+            conversionStrategy: conversion.strategyUsed,
           },
         });
         await defaultEventBus.publish(platformEvent);
@@ -571,11 +1205,48 @@ export async function transferDealCore(
         // Non-blocking outside HTTP context
       }
 
-      return { success: true, dealId: newDocRef.id };
+      return {
+        success: true,
+        dealId: newDocRef.id,
+        phase: 'COMMITTED',
+        entityResolution: {
+          sourceEntityId: sourceDeal.entityId,
+          targetEntityId: resolvedEntityId,
+          sourceScope: conversion.sourceScope,
+          targetScope: conversion.targetScope,
+          strategyUsed: conversion.strategyUsed,
+          wasCreated: conversion.wasCreated,
+          promotedContactId: conversion.promotedContactId,
+          auditEvidence: conversion.auditEvidence,
+        },
+      };
     }
   } catch (e: unknown) {
     const error = e instanceof Error ? e.message : 'Failed to transfer deal';
     console.error('❌ [transferDealCore] Failed to transfer deal:', error);
+
+    // Rule 27: Saga Compensation Rollback
+    if (activeConversion?.createdWeDocId) {
+      try {
+        await adminDb.collection('workspace_entities').doc(activeConversion.createdWeDocId).delete();
+      } catch {}
+    }
+    if (activeConversion?.createdEntityDocId) {
+      try {
+        await adminDb.collection('entities').doc(activeConversion.createdEntityDocId).delete();
+      } catch {}
+    }
+    try {
+      await emitDealDomainEvent('deal.transfer.compensated', {
+        dealId: input.dealId,
+        workspaceId: input.targetWorkspaceId,
+        metadata: {
+          rolledBackEntityId: activeConversion?.createdEntityDocId,
+          error,
+        },
+      });
+    } catch {}
+
     return { success: false, error };
   }
 }

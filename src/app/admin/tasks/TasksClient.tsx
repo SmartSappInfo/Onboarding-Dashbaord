@@ -986,11 +986,8 @@ export default function TasksClient() {
                             <h1 className="text-3xl font-bold text-foreground tracking-tight">
                                 Operations Hub
                             </h1>
-                            <Badge variant="outline" className="text-[10px] font-bold uppercase h-5 px-2 rounded-md bg-blue-500/10 text-blue-500 dark:text-blue-400 border-none">
-                                Tasks
-                            </Badge>
+                            <CardInfoTooltip text="Action items, global workflows, and execution protocols across all operations." />
                         </div>
-                        <CardInfoTooltip text="Action items, global workflows, and execution protocols across all operations." />
                     </div>
                     {/* Header Tabs conforming to standard segmented pill */}
                     <TabsList className="inline-flex items-center gap-1 bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto shrink-0">
@@ -1128,7 +1125,7 @@ export default function TasksClient() {
                                 size="sm" 
                                 onClick={() => setIsSelectionMode(!isSelectionMode)} 
                                 className={cn(
-                                    "rounded-xl font-semibold text-xs gap-2 h-11 min-h-[44px] px-4 transition-all border-border bg-background text-foreground hover:bg-muted/30 active:scale-[0.97]", 
+                                    "rounded-xl font-semibold text-xs gap-2 h-11 min-h-[44px] px-4 transition-all border border-border/80 bg-white dark:bg-card text-foreground hover:bg-muted/60 active:scale-[0.97] shadow-xs", 
                                     isSelectionMode && "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
                                 )}
                             >

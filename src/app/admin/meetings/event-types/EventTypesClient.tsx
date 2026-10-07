@@ -189,29 +189,31 @@ export default function EventTypesClient() {
     <>
       <div className="space-y-6 max-w-6xl pb-16">
         {/* Header & Actions */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="text-2xl font-bold tracking-tight">Event Types</h1>
             <CardInfoTooltip text="Create reusable 1:1, group, or consultation session formats with custom booking rules." />
           </div>
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <div className="relative flex-1 sm:w-72">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search event types..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="pl-9 rounded-xl min-h-[44px]"
-              />
-            </div>
-            <Link href="/admin/meetings/event-types/new">
-              <Button className="rounded-xl min-h-[44px] px-5 font-semibold gap-2 shadow-sm shrink-0 active:scale-[0.97]">
-                <Plus className="w-4 h-4" />
-                New Event Type
-              </Button>
-            </Link>
-          </div>
+          <Link href="/admin/meetings/event-types/new">
+            <Button className="rounded-xl min-h-[44px] px-5 font-semibold gap-2 shadow-sm shrink-0 active:scale-[0.97]">
+              <Plus className="w-4 h-4" />
+              New Event Type
+            </Button>
+          </Link>
         </div>
+
+        {/* Filter Card */}
+        <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm">
+          <div className="relative w-full max-w-md">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search event types..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="pl-9 rounded-xl min-h-[44px] bg-background"
+            />
+          </div>
+        </Card>
 
         {/* Loading State */}
         {isLoading ? (
@@ -308,7 +310,7 @@ export default function EventTypesClient() {
                         variant="outline"
                         size="sm"
                         onClick={() => handleCopyLink(et.slug, et.id)}
-                        className="rounded-xl text-xs gap-1.5 flex-1 min-h-[38px]"
+                        className="rounded-xl text-xs gap-1.5 flex-1 min-h-[38px] bg-white dark:bg-card border border-border/80 shadow-xs active:scale-[0.97]"
                       >
                         {isCopied ? (
                           <>

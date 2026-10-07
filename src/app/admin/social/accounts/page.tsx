@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { 
   Linkedin, 
@@ -134,13 +135,11 @@ export default function SocialAccountsPage() {
     <PageContainerFluid className="space-y-8 max-w-6xl mx-auto py-8">
       {/* Header: Title & Description */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50 pb-6">
-        <div>
+        <div className="flex items-center gap-2.5">
           <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-400 to-teal-500 bg-clip-text text-transparent">
             Connected Profiles
           </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Authorize and manage connected social media profiles for your organization.
-          </p>
+          <CardInfoTooltip text="Authorize and manage connected social media profiles for your organization." />
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400 gap-1.5 py-1 px-3 font-semibold text-xs tracking-wider uppercase rounded-full">
@@ -287,7 +286,7 @@ export default function SocialAccountsPage() {
                     key={platform}
                     variant="outline" 
                     className={cn(
-                      "w-full justify-between h-12 rounded-xl hover:bg-muted/40 font-semibold text-xs tracking-wide active:scale-[0.97] transition-all",
+                      "w-full justify-between h-12 rounded-xl hover:bg-muted/40 font-semibold text-xs tracking-wide active:scale-[0.97] transition-all bg-white dark:bg-card border border-border/80 shadow-xs",
                       isConnected && "opacity-60"
                     )}
                     onClick={() => triggerConnect(platform)}

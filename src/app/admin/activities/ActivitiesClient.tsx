@@ -104,7 +104,7 @@ export default function ActivitiesClient() {
                             <Button 
                                 variant="outline" 
                                 onClick={clearFilters} 
-                                className="rounded-xl font-bold h-11 px-6 border-border text-foreground bg-transparent ring-1 ring-border transition-all active:scale-95"
+                                className="rounded-xl font-bold h-11 px-6 border border-border/80 text-foreground bg-white dark:bg-card hover:bg-muted/60 shadow-xs transition-all active:scale-[0.97]"
                             >
                                 <X className="h-4 w-4 mr-2" /> Reset Filters
                             </Button>
@@ -112,7 +112,7 @@ export default function ActivitiesClient() {
                     </div>
                 </div>
 
-                <Card className="border border-border shadow-sm rounded-2xl overflow-hidden bg-transparent ring-1 ring-border text-left">
+                <Card className="border border-border/80 shadow-sm rounded-2xl overflow-hidden bg-card text-left">
  <CardContent className="p-4 sm:p-6 text-left">
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
  <div className="space-y-2 text-left">

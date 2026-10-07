@@ -58,6 +58,8 @@ import { PermissionEditor } from './PermissionEditor';
 import { PermissionExplorerMatrix } from './components/PermissionExplorerMatrix';
 import { RoleBuilderDrawer } from './components/RoleBuilderDrawer';
 import { AccessSimulatorSheet } from './components/AccessSimulatorSheet';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+import { RainbowButton } from '@/components/ui/rainbow-button';
 import { deleteRoleAction, createOrUpdateRoleAction } from '@/app/actions/authorization-actions';
 
 export default function RolesClient() {
@@ -194,31 +196,31 @@ export default function RolesClient() {
     <div className="space-y-6 pb-32 w-full p-4 md:p-8 max-w-7xl mx-auto">
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Button asChild variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground">
-              <Link href="/admin/users">
-                <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Back to People
-              </Link>
-            </Button>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin/users"
+            className="p-2 rounded-xl border border-border/80 bg-white dark:bg-card text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors shadow-xs"
+            aria-label="Back to People"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-6 h-6 text-primary" />
+            <h1 className="text-2xl font-black tracking-tight text-foreground">
+              Roles & Permissions Architecture
+            </h1>
+            <CardInfoTooltip text="Define hierarchical permission schemas, explore 2D authorization matrices, and simulate capabilities." />
           </div>
-          <h1 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
-            <ShieldCheck className="w-6 h-6 text-primary" /> Roles & Permissions Architecture
-          </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Define hierarchical permission schemas, explore 2D authorization matrices, and simulate capabilities
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
-          <Button
+          <RainbowButton
             type="button"
-            variant="outline"
             onClick={() => setIsSimulatorOpen(true)}
-            className="rounded-xl font-medium h-10 px-4 border-border hover:bg-muted text-foreground text-sm active:scale-[0.97]"
+            className="rounded-xl h-10 px-4 font-bold text-xs gap-1.5 active:scale-[0.97] shadow-sm text-white"
           >
-            <Sparkles className="h-4 w-4 mr-2 text-primary" /> Access Simulator
-          </Button>
+            <Sparkles className="h-4 w-4" /> Access Simulator
+          </RainbowButton>
           <Button
             type="button"
             onClick={() => {

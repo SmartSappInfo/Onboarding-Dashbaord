@@ -101,6 +101,8 @@ import CampaignsTab from './components/campaigns/campaigns-tab';
 import AnalyticsTab from './components/analytics/analytics-tab';
 import CustomDomainsDialog from './components/domains/custom-domains-dialog';
 import { PageContainer } from '@/components/ui/page-container';
+import { RainbowButton } from '@/components/ui/rainbow-button';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 const QR_TYPE_LABELS: Record<string, string> = {
   url: 'External URL',
@@ -532,25 +534,22 @@ export default function QRStudioClient() {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
+          <div className="flex items-center gap-2.5">
             <h1 className="text-2xl font-bold tracking-tight text-foreground">QR Studio</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Create, track, and manage branded physical-to-digital QR experiences.
-            </p>
+            <CardInfoTooltip text="Create, track, and manage branded physical-to-digital QR experiences." />
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <RainbowButton
               onClick={() => setShowAiDialog(true)}
-              className="rounded-xl h-11 px-4 font-semibold text-sm border-primary/30 text-primary hover:bg-primary/5 active:scale-[0.97] transition-all shadow-sm"
+              className="rounded-xl h-11 px-4 font-semibold text-sm gap-2 active:scale-[0.97] shadow-sm text-white"
             >
-              <Sparkles className="h-4 w-4 mr-2 text-primary animate-pulse" />
+              <Sparkles className="h-4 w-4" />
               Create with AI
-            </Button>
+            </RainbowButton>
             <Button
               variant="outline"
               onClick={() => setShowDomainsDialog(true)}
-              className="rounded-xl h-11 px-4 font-semibold text-sm active:scale-[0.97] transition-transform"
+              className="rounded-xl h-11 px-4 font-semibold text-sm active:scale-[0.97] border border-border/80 bg-white dark:bg-card text-foreground shadow-xs hover:bg-muted/60"
             >
               <Globe className="h-4 w-4 mr-2 text-primary" />
               Domains
@@ -558,7 +557,7 @@ export default function QRStudioClient() {
             <Button
               variant="outline"
               onClick={() => setShowBatchDialog(true)}
-              className="rounded-xl h-11 px-4 font-semibold text-sm active:scale-[0.97] transition-transform"
+              className="rounded-xl h-11 px-4 font-semibold text-sm active:scale-[0.97] border border-border/80 bg-white dark:bg-card text-foreground shadow-xs hover:bg-muted/60"
             >
               <Upload className="h-4 w-4 mr-2" />
               Batch Import
@@ -631,7 +630,7 @@ export default function QRStudioClient() {
         </div>
 
         {/* Filters Bar */}
-        <Card className="p-4 rounded-2xl border-none ring-1 ring-border shadow-sm bg-card">
+        <Card className="p-4 rounded-2xl border border-border/80 shadow-sm bg-card">
           <div className="flex flex-col sm:flex-row items-center gap-3">
             <div className="relative w-full sm:w-80">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

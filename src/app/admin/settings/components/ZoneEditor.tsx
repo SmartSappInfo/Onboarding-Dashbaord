@@ -138,8 +138,8 @@ export default function ZoneEditor() {
               onKeyDown={(e) => e.key === 'Enter' && handleAddZone()}
  className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"
             />
- <Button onClick={handleAddZone} disabled={isAdding} className="h-11 rounded-xl font-bold shadow-lg">
- {isAdding ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
+            <Button onClick={handleAddZone} disabled={isAdding} className="h-11 rounded-xl font-bold shadow-lg active:scale-[0.97]">
+              {isAdding ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
               Add Zone
             </Button>
           </div>
@@ -157,7 +157,7 @@ export default function ZoneEditor() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
- <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-xl font-bold border-border/80 bg-white dark:bg-card shadow-xs active:scale-[0.97]">Cancel</AlertDialogCancel>
  <AlertDialogAction onClick={handleDeleteZone} className="rounded-xl font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete Zone</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

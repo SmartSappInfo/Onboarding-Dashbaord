@@ -20,6 +20,7 @@ import {
   ArrowUpRight 
 } from 'lucide-react';
 import type { SocialPost, SocialInboxItem } from '@/lib/types';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { cn } from '@/lib/utils';
 
 interface SocialListeningAlert {
@@ -94,9 +95,9 @@ export default function SocialDashboardClient() {
           <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/10">
             <LayoutDashboard className="h-5 w-5 text-white" />
           </div>
-          <div>
+          <div className="flex items-center gap-2.5">
             <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Social Hub</h1>
-            <p className="text-muted-foreground text-xs font-medium">Configure brand voice tones, review unread parent comments, and track conversions pipeline.</p>
+            <CardInfoTooltip text="Configure brand voice tones, review unread comments, and track conversions pipeline." />
           </div>
         </div>
       </div>

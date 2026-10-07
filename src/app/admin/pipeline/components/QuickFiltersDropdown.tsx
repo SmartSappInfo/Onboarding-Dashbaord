@@ -300,7 +300,7 @@ export function QuickFiltersDropdown({
           <Button
             variant="outline"
             className={cn(
-              'h-10 sm:h-9 rounded-xl border border-border bg-background px-3 font-bold text-xs sm:text-[11px] shadow-sm hover:bg-muted/10 active:scale-[0.97] transition-all gap-2 text-foreground focus-visible:ring-1 focus-visible:ring-primary/40 focus:outline-none min-h-[44px] sm:min-h-[36px]',
+              'h-10 sm:h-9 rounded-xl border border-border/80 bg-white dark:bg-card px-3 font-bold text-xs sm:text-[11px] shadow-xs hover:bg-muted/10 active:scale-[0.97] transition-all gap-2 text-foreground focus-visible:ring-1 focus-visible:ring-primary/40 focus:outline-none min-h-[44px] sm:min-h-[36px]',
               className
             )}
           >

@@ -40,6 +40,7 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { PageContainerFluid } from '@/components/ui/page-container';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 export default function OrganizationsClient() {
     const firestore = useFirestore();
@@ -170,20 +171,18 @@ export default function OrganizationsClient() {
         <PageContainerFluid>
             <div className="space-y-8 pb-32 w-full">
                 {/* Header */}
-                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                    <div className="flex flex-col items-start">
-                        <h1 className="text-3xl font-bold text-foreground">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-2.5">
+                        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
                             Tenant Hub
                         </h1>
-                        <p className="text-muted-foreground text-sm mt-1">
-                            Global organization management and system settings
-                        </p>
+                        <CardInfoTooltip text="Global organization management and system settings." />
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
-                        <Button variant="outline" onClick={() => router.push('/admin/seeds')} className="rounded-xl font-bold h-11 px-6 gap-2 bg-transparent ring-1 ring-border shadow-sm border-border hover:bg-primary/5 hover:text-primary transition-all">
+                        <Button variant="outline" onClick={() => router.push('/admin/seeds')} className="rounded-xl font-bold h-11 px-6 gap-2 border border-border/80 bg-white dark:bg-card text-foreground hover:bg-muted/60 shadow-xs active:scale-[0.97] transition-all">
                             <Database className="h-4 w-4" /> System Seeding Hub
                         </Button>
-                        <Button onClick={() => handleOpenEdit()} className="rounded-xl font-bold h-11 px-6 shadow-lg gap-2 transform active:scale-95 transition-all">
+                        <Button onClick={() => handleOpenEdit()} className="rounded-xl font-bold h-11 px-6 shadow-sm gap-2 active:scale-[0.97] transition-all">
                             <Plus className="h-5 w-5" /> New Organization
                         </Button>
                     </div>
@@ -197,8 +196,8 @@ export default function OrganizationsClient() {
                         const primaryColor = org.brandPrimaryColor || '#3B5FFF';
                         return (
                             <Card key={org.id} className={cn(
-                                "rounded-2xl border border-border bg-transparent shadow-sm overflow-hidden ring-1 ring-border text-left group transition-all duration-300",
-                                org.status === 'archived' ? "opacity-50 grayscale" : "hover:shadow-xl hover:ring-primary/20"
+                                "rounded-2xl border border-border/80 bg-card shadow-sm overflow-hidden text-left group transition-all duration-300",
+                                org.status === 'archived' ? "opacity-50 grayscale" : "hover:shadow-md"
                             )}>
                                 <div className="h-1.5 w-full transition-colors duration-300" style={{ backgroundColor: primaryColor }} />
                                 <CardHeader className="p-6 pb-4">

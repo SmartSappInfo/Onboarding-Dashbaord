@@ -6,6 +6,8 @@ import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { RainbowButton } from '@/components/ui/rainbow-button';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { collection, query, where } from 'firebase/firestore';
 import { Label } from '@/components/ui/label';
@@ -202,16 +204,16 @@ export default function AnalyticsClient() {
           <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/10">
             <ChartBarIcon className="h-5 w-5 text-white" />
           </div>
-          <div>
+          <div className="flex items-center gap-2.5">
             <h1 className="text-2xl font-extrabold tracking-tight text-foreground">ROI Analytics</h1>
-            <p className="text-muted-foreground text-xs font-medium">Track your social content click-through rates, lead acquisitions, and attributed program revenue.</p>
+            <CardInfoTooltip text="Track your social content click-through rates, lead acquisitions, and attributed program revenue." />
           </div>
         </div>
 
-        <Button 
+        <RainbowButton 
           onClick={handleSeedMetrics}
           disabled={isSeeding}
-          className="rounded-xl h-10 px-5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs tracking-wide active:scale-[0.97] transition-all gap-1.5 shadow-lg shadow-emerald-500/10 self-end md:self-auto"
+          className="rounded-xl h-10 px-5 font-bold text-xs tracking-wide active:scale-[0.97] transition-all gap-1.5 shadow-sm text-white self-end md:self-auto"
         >
           {isSeeding ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -219,44 +221,46 @@ export default function AnalyticsClient() {
             <Sparkles className="h-4 w-4" />
           )}
           Simulate Post Conversions
-        </Button>
+        </RainbowButton>
       </div>
 
-      {/* Select filters row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md">
-        <div className="space-y-1">
-          <Label className="text-[10px] font-bold text-muted-foreground uppercase">Filter Profile Channel</Label>
-          <Select value={activePlatform} onValueChange={setActivePlatform}>
-            <SelectTrigger className="rounded-xl border-border/30 h-10 bg-card/40">
-              <SelectValue placeholder="All channels" />
-            </SelectTrigger>
-            <SelectContent className="rounded-xl">
-              <SelectItem value="all">All Profiles</SelectItem>
-              <SelectItem value="linkedin">LinkedIn</SelectItem>
-              <SelectItem value="facebook">Facebook</SelectItem>
-              <SelectItem value="instagram">Instagram</SelectItem>
-              <SelectItem value="x">X</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      {/* Select filters card */}
+      <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm max-w-xl">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <Label className="text-[10px] font-bold text-muted-foreground uppercase">Filter Profile Channel</Label>
+            <Select value={activePlatform} onValueChange={setActivePlatform}>
+              <SelectTrigger className="rounded-xl border-border/80 h-10 bg-background">
+                <SelectValue placeholder="All channels" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                <SelectItem value="all">All Profiles</SelectItem>
+                <SelectItem value="linkedin">LinkedIn</SelectItem>
+                <SelectItem value="facebook">Facebook</SelectItem>
+                <SelectItem value="instagram">Instagram</SelectItem>
+                <SelectItem value="x">X</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-        <div className="space-y-1">
-          <Label className="text-[10px] font-bold text-muted-foreground uppercase">Filter Specific Campaign</Label>
-          <Select value={selectedPostId} onValueChange={setSelectedPostId}>
-            <SelectTrigger className="rounded-xl border-border/30 h-10 bg-card/40">
-              <SelectValue placeholder="All campaigns" />
-            </SelectTrigger>
-            <SelectContent className="rounded-xl">
-              <SelectItem value="all">All Posts / Campaigns</SelectItem>
-              {posts.map((post) => (
-                <SelectItem key={post.id} value={post.id}>
-                  {post.contentObject.title}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="space-y-1">
+            <Label className="text-[10px] font-bold text-muted-foreground uppercase">Filter Specific Campaign</Label>
+            <Select value={selectedPostId} onValueChange={setSelectedPostId}>
+              <SelectTrigger className="rounded-xl border-border/80 h-10 bg-background">
+                <SelectValue placeholder="All campaigns" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                <SelectItem value="all">All Posts / Campaigns</SelectItem>
+                {posts.map((post) => (
+                  <SelectItem key={post.id} value={post.id}>
+                    {post.contentObject.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-      </div>
+      </Card>
 
       {/* KPI metric summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">

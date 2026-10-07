@@ -125,7 +125,7 @@ export default function PipelineFilterBar({
   };
 
   return (
-    <div className="shrink-0 mb-4 rounded-2xl border-none ring-1 ring-border shadow-sm bg-card transition-all duration-200">
+    <div className="shrink-0 mb-4 rounded-2xl border border-border/80 shadow-sm bg-card transition-all duration-200">
       {/* Primary Command Bar */}
       <div className="flex flex-wrap items-center gap-2 p-2.5 sm:p-3">
         {/* Search Input */}
@@ -135,7 +135,7 @@ export default function PipelineFilterBar({
             value={searchTerm}
             onChange={e => onSearchChange(e.target.value)}
             placeholder="Search deals..."
-            className="h-10 sm:h-9 rounded-xl border-border bg-background pl-9 pr-8 font-semibold text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-primary/40 focus:outline-none min-h-[44px] sm:min-h-[36px]"
+            className="h-10 sm:h-9 rounded-xl border border-border/80 bg-white dark:bg-card pl-9 pr-8 font-semibold text-xs shadow-xs focus-visible:ring-1 focus-visible:ring-primary/40 focus:outline-none min-h-[44px] sm:min-h-[36px]"
           />
           {searchTerm && (
             <button
@@ -169,7 +169,7 @@ export default function PipelineFilterBar({
           value={filters.status} 
           onValueChange={(v: 'all' | 'open' | 'won' | 'lost') => updateFilter('status', v)}
         >
-          <SelectTrigger className="h-10 sm:h-9 w-full sm:w-[110px] rounded-xl border border-border bg-background font-bold text-xs sm:text-[11px] shadow-sm hover:bg-muted/10 active:scale-[0.97] transition-all min-h-[44px] sm:min-h-[36px] focus-visible:ring-1 focus-visible:ring-primary/40 focus:outline-none">
+          <SelectTrigger className="h-10 sm:h-9 w-full sm:w-[110px] rounded-xl border border-border/80 bg-white dark:bg-card font-bold text-xs sm:text-[11px] shadow-xs hover:bg-muted/10 active:scale-[0.97] transition-all min-h-[44px] sm:min-h-[36px] focus-visible:ring-1 focus-visible:ring-primary/40 focus:outline-none">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent className="rounded-xl">
@@ -185,7 +185,7 @@ export default function PipelineFilterBar({
           value={filters.assignedToId ?? 'all'} 
           onValueChange={v => updateFilter('assignedToId', v)}
         >
-          <SelectTrigger className="h-10 sm:h-9 w-full sm:w-[130px] rounded-xl border border-border bg-background font-bold text-xs sm:text-[11px] shadow-sm hover:bg-muted/10 active:scale-[0.97] transition-all min-h-[44px] sm:min-h-[36px] focus-visible:ring-1 focus-visible:ring-primary/40 focus:outline-none">
+          <SelectTrigger className="h-10 sm:h-9 w-full sm:w-[130px] rounded-xl border border-border/80 bg-white dark:bg-card font-bold text-xs sm:text-[11px] shadow-xs hover:bg-muted/10 active:scale-[0.97] transition-all min-h-[44px] sm:min-h-[36px] focus-visible:ring-1 focus-visible:ring-primary/40 focus:outline-none">
             <Users className="h-3.5 w-3.5 mr-1 text-muted-foreground/60 shrink-0" />
             <SelectValue placeholder="Owner" />
           </SelectTrigger>
@@ -225,7 +225,7 @@ export default function PipelineFilterBar({
           variant="outline"
           onClick={() => setExpanded(e => !e)}
           className={cn(
-            "h-10 sm:h-9 rounded-xl font-bold text-xs sm:text-[11px] gap-1.5 px-3 border border-border bg-background shadow-sm hover:bg-muted/10 active:scale-[0.97] transition-all min-h-[44px] sm:min-h-[36px] focus-visible:ring-1 focus-visible:ring-primary/40 focus:outline-none",
+            "h-10 sm:h-9 rounded-xl font-bold text-xs sm:text-[11px] gap-1.5 px-3 border border-border/80 bg-white dark:bg-card shadow-xs hover:bg-muted/10 active:scale-[0.97] transition-all min-h-[44px] sm:min-h-[36px] focus-visible:ring-1 focus-visible:ring-primary/40 focus:outline-none",
             expanded ? "bg-primary/10 text-primary border-primary/30" : "text-muted-foreground hover:text-foreground",
             moreFiltersActiveCount > 0 && !expanded && "border-primary/40 text-primary bg-primary/[0.04]"
           )}
@@ -307,7 +307,7 @@ export default function PipelineFilterBar({
                       placeholder="Min" 
                       value={filters.valueMin ?? ''} 
                       onChange={e => updateFilter('valueMin', e.target.value === '' ? null : Number(e.target.value))} 
-                      className="h-10 sm:h-9 w-[110px] sm:w-[95px] rounded-xl border border-border bg-background font-semibold text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-primary/40 min-h-[44px] sm:min-h-[36px]" 
+                      className="h-10 sm:h-9 w-[110px] sm:w-[95px] rounded-xl border border-border/80 bg-white dark:bg-card font-semibold text-xs shadow-xs focus-visible:ring-1 focus-visible:ring-primary/40 min-h-[44px] sm:min-h-[36px]" 
                     />
                     <span className="text-muted-foreground text-xs">–</span>
                     <Input 
@@ -316,7 +316,7 @@ export default function PipelineFilterBar({
                       placeholder="Max" 
                       value={filters.valueMax ?? ''} 
                       onChange={e => updateFilter('valueMax', e.target.value === '' ? null : Number(e.target.value))} 
-                      className="h-10 sm:h-9 w-[110px] sm:w-[95px] rounded-xl border border-border bg-background font-semibold text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-primary/40 min-h-[44px] sm:min-h-[36px]" 
+                      className="h-10 sm:h-9 w-[110px] sm:w-[95px] rounded-xl border border-border/80 bg-white dark:bg-card font-semibold text-xs shadow-xs focus-visible:ring-1 focus-visible:ring-primary/40 min-h-[44px] sm:min-h-[36px]" 
                     />
                   </div>
                 </div>
@@ -331,14 +331,14 @@ export default function PipelineFilterBar({
                       type="date" 
                       value={filters.closeDateFrom ?? ''} 
                       onChange={e => updateFilter('closeDateFrom', e.target.value || null)} 
-                      className="h-10 sm:h-9 rounded-xl border border-border bg-background font-semibold text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-primary/40 min-h-[44px] sm:min-h-[36px]" 
+                      className="h-10 sm:h-9 rounded-xl border border-border/80 bg-white dark:bg-card font-semibold text-xs shadow-xs focus-visible:ring-1 focus-visible:ring-primary/40 min-h-[44px] sm:min-h-[36px]" 
                     />
                     <span className="text-muted-foreground text-xs">–</span>
                     <Input 
                       type="date" 
                       value={filters.closeDateTo ?? ''} 
                       onChange={e => updateFilter('closeDateTo', e.target.value || null)} 
-                      className="h-10 sm:h-9 rounded-xl border border-border bg-background font-semibold text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-primary/40 min-h-[44px] sm:min-h-[36px]" 
+                      className="h-10 sm:h-9 rounded-xl border border-border/80 bg-white dark:bg-card font-semibold text-xs shadow-xs focus-visible:ring-1 focus-visible:ring-primary/40 min-h-[44px] sm:min-h-[36px]" 
                     />
                   </div>
                 </div>
@@ -352,7 +352,7 @@ export default function PipelineFilterBar({
                     value={filters.healthStatus ?? 'all'} 
                     onValueChange={(v: 'all' | 'healthy' | 'at_risk' | 'stalled') => updateFilter('healthStatus', v)}
                   >
-                    <SelectTrigger className="h-10 sm:h-9 w-[130px] rounded-xl border border-border bg-background font-bold text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-primary/40 min-h-[44px] sm:min-h-[36px]">
+                    <SelectTrigger className="h-10 sm:h-9 w-[130px] rounded-xl border border-border/80 bg-white dark:bg-card font-bold text-xs shadow-xs focus-visible:ring-1 focus-visible:ring-primary/40 min-h-[44px] sm:min-h-[36px]">
                       <SelectValue placeholder="Health" />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl">
@@ -373,7 +373,7 @@ export default function PipelineFilterBar({
                     value={filters.archiveStatus ?? 'active'} 
                     onValueChange={(v: 'active' | 'archived' | 'all') => updateFilter('archiveStatus', v)}
                   >
-                    <SelectTrigger className="h-10 sm:h-9 w-[130px] rounded-xl border border-border bg-background font-bold text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-primary/40 min-h-[44px] sm:min-h-[36px]">
+                    <SelectTrigger className="h-10 sm:h-9 w-[130px] rounded-xl border border-border/80 bg-white dark:bg-card font-bold text-xs shadow-xs focus-visible:ring-1 focus-visible:ring-primary/40 min-h-[44px] sm:min-h-[36px]">
                       <SelectValue placeholder="Archive Status" />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl">
@@ -463,7 +463,7 @@ export default function PipelineFilterBar({
                           "h-8 px-3 rounded-lg text-xs font-bold shadow-xs active:scale-[0.97] transition-all",
                           hasAdvancedRules 
                             ? "bg-indigo-600 hover:bg-indigo-700 text-white" 
-                            : "border-border text-foreground hover:bg-muted/40"
+                            : "border-border/80 bg-white dark:bg-card text-foreground hover:bg-muted/40"
                         )}
                       >
                         {hasAdvancedRules ? "Edit Rules..." : "+ Configure Rules"}
@@ -502,7 +502,7 @@ function MultiSelectPopover({
         <Button
           variant="outline"
           className={cn(
-            "h-10 sm:h-9 rounded-xl font-bold text-xs sm:text-[11px] gap-1.5 px-3 border border-border bg-background shadow-sm hover:bg-muted/10 active:scale-[0.97] transition-all min-h-[44px] sm:min-h-[36px] focus-visible:ring-1 focus-visible:ring-primary/40 focus:outline-none",
+            "h-10 sm:h-9 rounded-xl font-bold text-xs sm:text-[11px] gap-1.5 px-3 border border-border/80 bg-white dark:bg-card shadow-xs hover:bg-muted/10 active:scale-[0.97] transition-all min-h-[44px] sm:min-h-[36px] focus-visible:ring-1 focus-visible:ring-primary/40 focus:outline-none",
             selectedCount > 0 ? "text-primary border-primary/30 bg-primary/[0.04]" : "text-muted-foreground hover:text-foreground"
           )}
         >

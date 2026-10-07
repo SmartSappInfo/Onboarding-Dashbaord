@@ -6,6 +6,7 @@ import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { RainbowButton } from '@/components/ui/rainbow-button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -267,7 +268,7 @@ export default function UniversalComposerClient() {
         <div className="flex items-center gap-2">
           <Button 
             variant="outline" 
-            className="rounded-xl h-10 px-4 font-semibold text-xs tracking-wide active:scale-[0.97] transition-all"
+            className="rounded-xl h-10 px-4 font-semibold text-xs tracking-wide active:scale-[0.97] transition-all bg-white dark:bg-card border border-border/80 shadow-xs"
             onClick={() => handlePublish('draft')}
             disabled={isPublishing}
           >
@@ -351,14 +352,13 @@ export default function UniversalComposerClient() {
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <Label htmlFor="base-composer" className="text-xs font-semibold">Base Draft Idea</Label>
-                  <Button
+                  <RainbowButton
                     type="button"
-                    variant="ghost"
                     onClick={handleAdaptAll}
-                    className="h-8 text-[10px] uppercase font-bold tracking-wider rounded-lg text-emerald-500 hover:bg-emerald-500/10 gap-1 active:scale-[0.97] transition-all"
+                    className="h-8 text-xs font-bold rounded-xl gap-1.5 active:scale-[0.97] transition-all px-3 text-white shadow-xs"
                   >
-                    <Sparkles className="h-3 w-3" /> Adapt Selected with AI
-                  </Button>
+                    <Sparkles className="h-3.5 w-3.5" /> Adapt Selected with AI
+                  </RainbowButton>
                 </div>
                 <Textarea
                   id="base-composer"
@@ -426,13 +426,11 @@ export default function UniversalComposerClient() {
                       <Icon className="h-4 w-4 text-muted-foreground" />
                       <span className="capitalize text-xs font-bold">{platform} Variation</span>
                     </div>
-                    <Button
+                    <RainbowButton
                       type="button"
-                      variant="ghost"
-                      size="sm"
                       onClick={() => handleAdaptPlatform(platform)}
                       disabled={data.generating}
-                      className="text-[10px] uppercase font-bold tracking-wider rounded-lg h-7 hover:bg-emerald-500/10 text-emerald-500 gap-1 active:scale-[0.97] transition-all"
+                      className="text-xs font-bold rounded-xl h-7 gap-1 active:scale-[0.97] transition-all px-2.5 text-white shadow-xs"
                     >
                       {data.generating ? (
                         <Loader2 className="h-3 w-3 animate-spin" />
@@ -440,7 +438,7 @@ export default function UniversalComposerClient() {
                         <Sparkles className="h-3 w-3" />
                       )}
                       Re-adapt
-                    </Button>
+                    </RainbowButton>
                   </CardHeader>
                   <CardContent className="pt-4">
                     <Textarea

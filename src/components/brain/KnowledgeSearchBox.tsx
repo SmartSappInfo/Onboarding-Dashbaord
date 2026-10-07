@@ -10,6 +10,7 @@
 import * as React from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Search, X, Filter, Loader2 } from 'lucide-react';
 import type { MemoryTier, SensitivityLevel } from '@/platform/memory';
 
@@ -65,7 +66,7 @@ export function KnowledgeSearchBox({
   };
 
   return (
-    <div className="space-y-3">
+    <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm space-y-3">
       {/* Search Input */}
       <div className="relative flex items-center">
         <Search className="absolute left-3.5 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -74,7 +75,7 @@ export function KnowledgeSearchBox({
           value={localQuery}
           onChange={(e) => setLocalQuery(e.target.value)}
           placeholder="Search institutional memory across dense vectors & BM25..."
-          className="pl-10 pr-10 min-h-[44px] rounded-xl border border-border/80 bg-background shadow-sm focus-visible:ring-1 text-sm"
+          className="pl-10 pr-10 min-h-[44px] rounded-xl border border-border/80 bg-white dark:bg-card shadow-xs focus-visible:ring-1 text-sm"
         />
         <div className="absolute right-2 flex items-center gap-1">
           {isLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
@@ -111,7 +112,7 @@ export function KnowledgeSearchBox({
               className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all active:scale-[0.97] min-h-[32px] sm:min-h-[28px] ${
                 isActive
                   ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'bg-muted/30 text-muted-foreground hover:bg-muted/70 hover:text-foreground border border-border/60'
+                  : 'bg-white dark:bg-card text-muted-foreground hover:bg-muted/70 hover:text-foreground border border-border/80 shadow-xs'
               }`}
             >
               {t.label}
@@ -132,7 +133,7 @@ export function KnowledgeSearchBox({
               className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all active:scale-[0.97] min-h-[32px] sm:min-h-[28px] ${
                 isActive
                   ? 'bg-secondary text-secondary-foreground shadow-sm'
-                  : 'bg-muted/20 text-muted-foreground hover:bg-muted/60 hover:text-foreground border border-border/50'
+                  : 'bg-white dark:bg-card text-muted-foreground hover:bg-muted/60 hover:text-foreground border border-border/80 shadow-xs'
               }`}
             >
               {s.label}
@@ -140,6 +141,6 @@ export function KnowledgeSearchBox({
           );
         })}
       </div>
-    </div>
+    </Card>
   );
 }

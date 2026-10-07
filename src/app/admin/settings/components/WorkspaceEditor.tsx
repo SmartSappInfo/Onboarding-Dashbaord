@@ -334,13 +334,13 @@ export default function WorkspaceEditor({ workspaces, selectedScope: _selectedSc
                 </div>
 
                 {/* Industry Filter */}
-                <div className="flex items-center gap-3 px-1">
+                <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm flex items-center gap-3">
                     <div className="flex items-center gap-2">
                         <Filter className="h-4 w-4 text-muted-foreground" />
                         <Label className="text-xs font-semibold text-muted-foreground">Filter by Industry:</Label>
                     </div>
                     <Select value={industryFilter} onValueChange={(value) => setIndustryFilter(value as IndustryVertical | 'all')}>
-                        <SelectTrigger className="w-[200px] h-9 rounded-xl">
+                        <SelectTrigger className="w-[200px] h-9 rounded-xl border border-border/80 bg-white dark:bg-card shadow-xs">
                             <SelectValue placeholder="All Industries" />
                         </SelectTrigger>
                         <SelectContent>
@@ -358,7 +358,7 @@ export default function WorkspaceEditor({ workspaces, selectedScope: _selectedSc
                             })}
                         </SelectContent>
                     </Select>
-                </div>
+                </Card>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {workspaces
@@ -701,7 +701,7 @@ export default function WorkspaceEditor({ workspaces, selectedScope: _selectedSc
                                 setPendingIndustryChange(null);
                                 setShowResetWarning(false);
                             }}
-                            className="rounded-xl font-bold h-11 border-border/80"
+                            className="rounded-xl font-bold h-11 border-border/80 bg-white dark:bg-card shadow-xs active:scale-[0.97]"
                         >
                             Cancel
                         </AlertDialogCancel>

@@ -366,7 +366,7 @@ function TagsClientInner() {
           <TabsContent value="tags" className="mt-6 space-y-8">
             {/* Stats Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Card className="border border-border bg-transparent shadow-sm rounded-2xl ring-1 ring-border">
+              <Card className="border border-border/80 bg-card shadow-sm rounded-2xl">
                 <CardContent className="p-5">
                   <div className="flex items-center gap-4">
                     <div className="p-3 bg-primary/10 rounded-2xl text-primary shrink-0"><Hash className="h-5 w-5" /></div>
@@ -377,7 +377,7 @@ function TagsClientInner() {
                   </div>
                 </CardContent>
               </Card>
-              <Card className="border border-border bg-transparent shadow-sm rounded-2xl ring-1 ring-border">
+              <Card className="border border-border/80 bg-card shadow-sm rounded-2xl">
                 <CardContent className="p-5">
                   <div className="flex items-center gap-4">
                     <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-500 shrink-0"><Users className="h-5 w-5" /></div>
@@ -388,7 +388,7 @@ function TagsClientInner() {
                   </div>
                 </CardContent>
               </Card>
-              <Card className="border border-border bg-transparent shadow-sm rounded-2xl ring-1 ring-border">
+              <Card className="border border-border/80 bg-card shadow-sm rounded-2xl">
                 <CardContent className="p-5">
                   <div className="flex items-center gap-4">
                     <div className="p-3 bg-amber-500/10 rounded-2xl text-amber-500 shrink-0"><TrendingUp className="h-5 w-5" /></div>
@@ -399,7 +399,7 @@ function TagsClientInner() {
                   </div>
                 </CardContent>
               </Card>
-              <Card className="border border-border bg-transparent shadow-sm rounded-2xl ring-1 ring-border">
+              <Card className="border border-border/80 bg-card shadow-sm rounded-2xl">
                 <CardContent className="p-5">
                   <div className="flex items-center gap-4">
                     <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-500 shrink-0"><TagIcon className="h-5 w-5" /></div>
@@ -415,7 +415,7 @@ function TagsClientInner() {
             </div>
 
              {/* Search */}
-             <Card className="border border-border shadow-sm rounded-2xl bg-transparent ring-1 ring-border">
+             <Card className="border border-border/80 shadow-sm rounded-2xl bg-card">
               <CardContent className="p-4">
                 <div className="relative">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground opacity-40" />
@@ -467,7 +467,7 @@ function TagsClientInner() {
                   <>
                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {paginatedTags.map(tag => (
-                        <Card key={tag.id} className="border border-border bg-transparent shadow-sm rounded-2xl ring-1 ring-border hover:shadow-md transition-all group overflow-hidden">
+                        <Card key={tag.id} className="border border-border/80 bg-card shadow-sm rounded-2xl hover:shadow-md transition-all group overflow-hidden">
                           <div className="h-1.5 w-full transition-all group-hover:h-2" style={{ backgroundColor: tag.color }} />
                           <CardContent className="p-6">
                             <div className="flex items-start justify-between gap-4">
@@ -532,7 +532,7 @@ function TagsClientInner() {
                       <div className="flex justify-center pt-12">
                         <Button
                           variant="outline"
-                          className="rounded-xl font-bold h-11 px-8 bg-transparent ring-1 ring-border hover:bg-primary/5 hover:text-primary transition-all shadow-sm"
+                          className="rounded-xl font-bold h-11 px-8 border border-border/80 bg-white dark:bg-card text-foreground hover:bg-muted/60 transition-all shadow-xs active:scale-[0.97]"
                           onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
                         >
                           Load More ({filteredTags.length - visibleCount} remaining)

@@ -388,6 +388,20 @@ const transferDealInputSchema = z.object({
   copyCustomFields: z.boolean().optional(),
   expectedUpdatedAt: z.string().optional().describe('TOCTOU optimistic concurrency timestamp.'),
   idempotencyKey: z.string().optional().describe('Unique token for replay protection.'),
+  entityConversionStrategy: z
+    .enum([
+      'auto',
+      'promote_primary_focal_contact',
+      'promote_first_contact',
+      'derive_from_company_field',
+      'promote_primary_as_guardian',
+      'require_human_approval',
+    ])
+    .optional()
+    .describe('Polymorphic entity conversion strategy across workspace scopes (Rule 61 & 69).'),
+  focalContactId: z.string().optional().describe('Explicit focal contact ID to promote to a Person entity.'),
+  dryRun: z.boolean().optional().describe('Shadow Mode: dry run simulation without DB write (Rule 42).'),
+  approvalId: z.string().optional().describe('Approval token for committing Two-Phase proposals (Rule 21 & 22).'),
 });
 
 const transferDealOutputSchema = z.object({
@@ -397,6 +411,21 @@ const transferDealOutputSchema = z.object({
   targetPipelineId: z.string(),
   targetStageId: z.string(),
   success: z.boolean(),
+  phase: z.enum(['COMMITTED', 'PROPOSAL']).optional(),
+  requiresProposal: z.boolean().optional(),
+  approvalId: z.string().optional(),
+  entityResolution: z
+    .object({
+      sourceEntityId: z.string(),
+      targetEntityId: z.string(),
+      sourceScope: z.string(),
+      targetScope: z.string(),
+      strategyUsed: z.string(),
+      wasCreated: z.boolean(),
+      promotedContactId: z.string().optional(),
+      auditEvidence: z.string(),
+    })
+    .optional(),
   updatedAt: z.string(),
 });
 
@@ -443,21 +472,46 @@ export const dealTransferTool: McpToolDefinition<
       copyCustomFields: params.copyCustomFields,
       expectedUpdatedAt: params.expectedUpdatedAt,
       idempotencyKey: params.idempotencyKey,
+      entityConversionStrategy: params.entityConversionStrategy,
+      focalContactId: params.focalContactId,
+      dryRun: params.dryRun,
+      approvalId: params.approvalId,
     });
 
-    if (!result.success || !result.dealId) {
+    if (!result.success || (!result.dealId && result.phase !== 'PROPOSAL')) {
       throw new Error(`[deal.transfer] ${result.error || 'Failed to transfer deal'}`);
     }
 
     return {
-      dealId: result.dealId,
+      dealId: result.dealId || params.dealId,
       mode: params.mode,
       targetWorkspaceId: params.targetWorkspaceId,
       targetPipelineId: params.targetPipelineId,
       targetStageId: params.targetStageId,
       success: true,
+      phase: result.phase || 'COMMITTED',
+      requiresProposal: result.requiresProposal,
+      approvalId: result.approvalId,
+      entityResolution: result.entityResolution,
       updatedAt: new Date().toISOString(),
     };
+  },
+};
+
+export const dealPreviewTransferTool: McpToolDefinition<
+  z.infer<typeof transferDealInputSchema>,
+  z.infer<typeof transferDealOutputSchema>
+> = {
+  name: 'deal.preview_transfer',
+  version: '1.0.0',
+  category: 'deal',
+  description: 'Simulates and previews a deal transfer/cloning operation across workspaces, returning placement checks, assignee access, and polymorphic entity conversion proposals without mutating database state (Rule 21 & 42).',
+  riskLevel: 'read_only',
+  requiresApproval: false,
+  parameters: transferDealInputSchema,
+  responseSchema: transferDealOutputSchema,
+  handler: async (params, context) => {
+    return dealTransferTool.handler({ ...params, dryRun: true }, context);
   },
 };
 

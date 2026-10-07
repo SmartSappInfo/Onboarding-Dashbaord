@@ -980,19 +980,19 @@ export function TemplateGallery({
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 text-left">
-            <div className="flex flex-col sm:flex-row items-center gap-3">
+            <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm flex flex-col sm:flex-row items-center gap-3">
                 <div className="relative w-full sm:w-80">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
                         placeholder="Search templates..." 
-                        className="pl-9 rounded-xl border-border bg-background h-10 w-full" 
+                        className="pl-9 rounded-xl border-border bg-background h-10 min-h-[44px] w-full" 
                         value={searchTerm} 
                         onChange={e => setSearchTerm(e.target.value)} 
                     />
                 </div>
                 <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
                     <Select value={channelFilter} onValueChange={setChannelFilter}>
-                        <SelectTrigger className="w-full sm:w-36 rounded-xl border-border bg-background h-10">
+                        <SelectTrigger className="w-full sm:w-36 rounded-xl border-border bg-background h-10 min-h-[44px]">
                             <SelectValue placeholder="Channel" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl">
@@ -1003,7 +1003,7 @@ export function TemplateGallery({
                         </SelectContent>
                     </Select>
                     <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                        <SelectTrigger className="w-full sm:w-36 rounded-xl border-border bg-background h-10">
+                        <SelectTrigger className="w-full sm:w-36 rounded-xl border-border bg-background h-10 min-h-[44px]">
                             <SelectValue placeholder="Category" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl">
@@ -1011,8 +1011,8 @@ export function TemplateGallery({
                             {['general', 'surveys', 'meetings', 'forms', 'agreements', 'campaigns', 'reminders', 'tasks', 'automations', 'qr_codes', 'users'].map(c => <SelectItem key={c} value={c} className="capitalize">{c.replace('_', ' ')}</SelectItem>)}
                         </SelectContent>
                     </Select>
-                    <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
-                        <SelectTrigger className="w-full sm:w-36 rounded-xl border-border bg-background h-10">
+                    <Select value={statusFilter} onValueChange={(v: string) => setStatusFilter(v as TemplateStatus | 'all')}>
+                        <SelectTrigger className="w-full sm:w-36 rounded-xl border-border bg-background h-10 min-h-[44px]">
                             <SelectValue placeholder="Status" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl">
@@ -1022,8 +1022,8 @@ export function TemplateGallery({
                             <SelectItem value="archived">Archived</SelectItem>
                         </SelectContent>
                     </Select>
-                    <Select value={targetFilter} onValueChange={(v: any) => setTargetFilter(v)}>
-                        <SelectTrigger className="w-full sm:w-40 rounded-xl border-border bg-background h-10">
+                    <Select value={targetFilter} onValueChange={(v: string) => setTargetFilter(v as TemplateTarget | 'all')}>
+                        <SelectTrigger className="w-full sm:w-40 rounded-xl border-border bg-background h-10 min-h-[44px]">
                             <SelectValue placeholder="Target" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl">
@@ -1032,8 +1032,8 @@ export function TemplateGallery({
                             <SelectItem value="internal_team">Team / Staff</SelectItem>
                         </SelectContent>
                     </Select>
-                    <Select value={groupBy} onValueChange={(v: any) => setGroupBy(v)}>
-                        <SelectTrigger className="w-full sm:w-36 rounded-xl border-border bg-background h-10">
+                    <Select value={groupBy} onValueChange={(v: string) => setGroupBy(v as 'none' | 'channel' | 'category')}>
+                        <SelectTrigger className="w-full sm:w-36 rounded-xl border-border bg-background h-10 min-h-[44px]">
                             <SelectValue placeholder="Group By" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl">
@@ -1044,7 +1044,7 @@ export function TemplateGallery({
                     </Select>
 
                     {/* Grid / List View Mode Toggle Button */}
-                    <div className="flex items-center border rounded-xl p-0.5 bg-muted/20 shrink-0 h-10">
+                    <div className="flex items-center border rounded-xl p-0.5 bg-muted/20 shrink-0 h-10 min-h-[44px]">
                         <Button
                             variant="ghost"
                             size="icon"
@@ -1071,7 +1071,7 @@ export function TemplateGallery({
                         </Button>
                     </div>
                 </div>
-            </div>
+            </Card>
 
             {isLoading ? (
                 <div className={cn(

@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Palette, Loader2, Save, Download, Sparkles } from 'lucide-react';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import type { SocialBrandKit } from '@/lib/types';
 
 export default function BrandKitClient() {
@@ -130,9 +131,9 @@ export default function BrandKitClient() {
           <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/10">
             <Palette className="h-5 w-5 text-white" />
           </div>
-          <div>
+          <div className="flex items-center gap-2.5">
             <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Media Brand Kits</h1>
-            <p className="text-muted-foreground text-xs font-medium">Define your colors, logo, and slogan assets to style promotional media cards on the fly.</p>
+            <CardInfoTooltip text="Define your colors, logo, and slogan assets to style promotional media cards on the fly." />
           </div>
         </div>
       </div>
@@ -270,7 +271,7 @@ export default function BrandKitClient() {
                   size="sm"
                   variant="outline"
                   onClick={handleDownloadSVG}
-                  className="h-8 rounded-lg text-[10px] font-bold uppercase tracking-wider gap-1.5 active:scale-[0.97] transition-all"
+                  className="h-8 rounded-xl text-xs font-semibold gap-1.5 active:scale-[0.97] transition-all bg-white dark:bg-card border border-border/80 shadow-xs"
                 >
                   <Download className="h-3.5 w-3.5" /> Download SVG
                 </Button>

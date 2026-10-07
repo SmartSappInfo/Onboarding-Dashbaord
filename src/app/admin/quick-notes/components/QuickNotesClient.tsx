@@ -23,6 +23,8 @@ import { PageContainerFluid } from '@/components/ui/page-container';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+import { RainbowButton } from '@/components/ui/rainbow-button';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useFirestore, useUser } from '@/firebase';
@@ -285,61 +287,59 @@ export default function QuickNotesClient() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="font-serif text-3xl font-semibold tracking-tight text-foreground">Company Brain</h1>
+              <CardInfoTooltip text="Organizational knowledge, ideas, decisions, and intelligence across this workspace." />
               <Badge variant="outline" className="text-xs font-mono font-medium">
                 {counts.all} {counts.all === 1 ? 'item' : 'items'}
               </Badge>
             </div>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Organizational knowledge, ideas, decisions, and intelligence across this workspace.
-            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Link href="/admin/quick-notes/inbox">
-            <Button variant="outline" className="gap-2 shadow-sm font-semibold min-h-[36px] text-purple-600 border-purple-300 dark:border-purple-800 dark:text-purple-400">
+            <Button variant="outline" className="gap-2 shadow-xs font-semibold min-h-[36px] rounded-xl border border-border/80 bg-white dark:bg-card text-purple-600 dark:text-purple-400 hover:bg-muted/60 active:scale-[0.97]">
               <Inbox className="h-4 w-4" />
               <span>Inbox</span>
             </Button>
           </Link>
           <Link href="/admin/quick-notes/insights">
-            <Button variant="outline" className="gap-2 shadow-sm font-semibold min-h-[36px] text-emerald-600 border-emerald-300 dark:border-emerald-800 dark:text-emerald-400">
+            <Button variant="outline" className="gap-2 shadow-xs font-semibold min-h-[36px] rounded-xl border border-border/80 bg-white dark:bg-card text-emerald-600 dark:text-emerald-400 hover:bg-muted/60 active:scale-[0.97]">
               <TrendingUp className="h-4 w-4" />
               <span>Insights</span>
             </Button>
           </Link>
           <Link href="/admin/quick-notes/campaigns">
-            <Button variant="outline" className="gap-2 shadow-sm font-semibold min-h-[36px] text-blue-600 border-blue-300 dark:border-blue-800 dark:text-blue-400">
+            <Button variant="outline" className="gap-2 shadow-xs font-semibold min-h-[36px] rounded-xl border border-border/80 bg-white dark:bg-card text-blue-600 dark:text-blue-400 hover:bg-muted/60 active:scale-[0.97]">
               <Rocket className="h-4 w-4" />
               <span>Campaigns</span>
             </Button>
           </Link>
           <Link href="/admin/quick-notes/federation">
-            <Button variant="outline" className="gap-2 shadow-sm font-semibold min-h-[36px] text-indigo-600 border-indigo-300 dark:border-indigo-800 dark:text-indigo-400">
+            <Button variant="outline" className="gap-2 shadow-xs font-semibold min-h-[36px] rounded-xl border border-border/80 bg-white dark:bg-card text-indigo-600 dark:text-indigo-400 hover:bg-muted/60 active:scale-[0.97]">
               <Network className="h-4 w-4" />
               <span>Federation</span>
             </Button>
           </Link>
           <Link href="/admin/quick-notes/search">
-            <Button variant="outline" className="gap-2 shadow-sm font-semibold min-h-[36px] text-blue-600 border-blue-200 dark:border-blue-900/50 dark:text-blue-400">
+            <Button variant="outline" className="gap-2 shadow-xs font-semibold min-h-[36px] rounded-xl border border-border/80 bg-white dark:bg-card text-blue-600 dark:text-blue-400 hover:bg-muted/60 active:scale-[0.97]">
               <Search className="h-4 w-4" />
               <span className="hidden sm:inline">Semantic Search</span>
             </Button>
           </Link>
-          <Link href="/admin/quick-notes/ask">
-            <Button variant="outline" className="gap-2 shadow-sm font-semibold min-h-[36px] text-violet-600 border-violet-300 dark:border-violet-800 dark:text-violet-400">
-              <Sparkles className="h-4 w-4" />
+          <RainbowButton asChild className="h-9 px-3.5 rounded-xl font-bold text-xs gap-1.5 active:scale-[0.97] shadow-sm text-white">
+            <Link href="/admin/quick-notes/ask">
+              <Sparkles className="h-3.5 w-3.5" />
               <span>Ask Brain AI</span>
-            </Button>
-          </Link>
+            </Link>
+          </RainbowButton>
           <Link href="/admin/quick-notes/templates">
-            <Button variant="outline" className="gap-2 shadow-sm font-semibold min-h-[36px]">
+            <Button variant="outline" className="gap-2 shadow-xs font-semibold min-h-[36px] rounded-xl border border-border/80 bg-white dark:bg-card text-foreground hover:bg-muted/60 active:scale-[0.97]">
               <LayoutTemplate className="h-4 w-4 text-muted-foreground" />
               <span className="hidden sm:inline">Templates</span>
             </Button>
           </Link>
           <Link href="/admin/quick-notes/settings">
-            <Button variant="outline" className="gap-2 shadow-sm font-semibold min-h-[36px]">
+            <Button variant="outline" className="gap-2 shadow-xs font-semibold min-h-[36px] rounded-xl border border-border/80 bg-white dark:bg-card text-foreground hover:bg-muted/60 active:scale-[0.97]">
               <Settings className="h-4 w-4 text-muted-foreground" />
               <span className="hidden sm:inline">Settings</span>
             </Button>
@@ -353,7 +353,7 @@ export default function QuickNotesClient() {
             showTriggerButton={false}
           />
           <DigestButton notes={digestNotes} scopeLabel={scopeLabel} workspaceId={activeWorkspaceId} userId={user?.uid} />
-          <Button onClick={handleNew} className="gap-2 shadow-sm font-semibold min-h-[36px]">
+          <Button onClick={handleNew} className="gap-2 shadow-sm font-semibold min-h-[36px] rounded-xl active:scale-[0.97]">
             <Plus className="h-4 w-4" />
             Capture Knowledge
           </Button>

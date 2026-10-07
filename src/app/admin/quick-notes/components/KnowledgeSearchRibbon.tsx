@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { RainbowButton } from '@/components/ui/rainbow-button';
 import { Badge } from '@/components/ui/badge';
 import type { KnowledgeType, UnifiedNoteSource, NoteSentiment } from '@/lib/quick-notes-types';
 
@@ -74,7 +75,7 @@ export function KnowledgeSearchRibbon({
   };
 
   return (
-    <div className="w-full space-y-3 bg-card border border-border/70 rounded-xl p-3 md:p-4 shadow-sm">
+    <div className="w-full space-y-3 bg-card border border-border/80 rounded-2xl p-4 shadow-sm">
       {/* Search Input Bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
         <div className="relative flex-1">
@@ -84,7 +85,7 @@ export function KnowledgeSearchRibbon({
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search notes, ideas, decisions, or press ⌘K..."
             aria-label="Search organizational knowledge"
-            className="pl-9 pr-8 text-sm min-h-[44px] md:min-h-[40px] bg-background border-border/80 focus-visible:ring-violet-500"
+            className="pl-9 pr-8 text-sm min-h-[44px] md:min-h-[40px] bg-background border-border/80 focus-visible:ring-violet-500 rounded-xl"
           />
           {searchQuery && (
             <button
@@ -97,13 +98,13 @@ export function KnowledgeSearchRibbon({
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={() => setShowFilters(!showFilters)}
-            className="min-h-[44px] md:min-h-[40px] gap-1.5 text-xs shrink-0"
+            className="min-h-[44px] md:min-h-[40px] gap-1.5 text-xs shrink-0 rounded-xl border border-border/80 bg-white dark:bg-card text-foreground shadow-xs hover:bg-muted/60 active:scale-[0.97]"
           >
             <SlidersHorizontal className="h-3.5 w-3.5" />
             <span>Filters</span>
@@ -119,22 +120,21 @@ export function KnowledgeSearchRibbon({
               type="button"
               variant="outline"
               size="sm"
-              className="min-h-[44px] md:min-h-[40px] text-xs gap-1.5 shrink-0 border-violet-200 dark:border-violet-900/50 hover:bg-violet-50 dark:hover:bg-violet-950/40 text-violet-700 dark:text-violet-300 active:scale-[0.97] transition-transform"
+              className="min-h-[44px] md:min-h-[40px] text-xs gap-1.5 shrink-0 rounded-xl border border-border/80 bg-white dark:bg-card text-violet-700 dark:text-violet-300 shadow-xs hover:bg-muted/60 active:scale-[0.97]"
             >
               <Search className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Semantic Search</span>
             </Button>
           </Link>
 
-          <Button
+          <RainbowButton
             type="button"
-            size="sm"
             onClick={onOpenAskModal}
-            className="min-h-[44px] md:min-h-[40px] bg-violet-600 hover:bg-violet-700 text-white gap-1.5 text-xs shrink-0 active:scale-95 transition-transform"
+            className="min-h-[44px] md:min-h-[40px] h-10 px-3.5 rounded-xl font-bold text-xs gap-1.5 shrink-0 active:scale-[0.97] shadow-sm text-white"
           >
             <Sparkles className="h-3.5 w-3.5" />
             <span>Ask Brain</span>
-          </Button>
+          </RainbowButton>
 
           <Link href="/admin/quick-notes/ask">
             <Button

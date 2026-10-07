@@ -45,6 +45,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -604,20 +605,12 @@ export default function PackagesClient() {
       <div className="space-y-6 pb-32 w-full text-left">
         {/* Header Banner */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-2xl bg-card border border-border/80 shadow-sm">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 font-extrabold text-[10px] uppercase tracking-wider px-2.5 py-0.5 rounded-lg">
-                Finance & Sales Command
-              </Badge>
-              <span className="text-xs font-bold text-muted-foreground">• {products.length} Products & {packages.length} Subscription Tiers</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl md:text-3xl font-black tracking-tight text-foreground flex items-center gap-2.5">
-                <Package className="h-7 w-7 text-primary" />
-                Commercial & Pricing Hub
-              </h1>
-              <CardInfoTooltip text="Centralized commercial catalog for standard products, recurring software subscriptions, institutional pricing tiers, price books, and margin analytics." />
-            </div>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl md:text-3xl font-black tracking-tight text-foreground flex items-center gap-2.5">
+              <Package className="h-7 w-7 text-primary" />
+              Commercial & Pricing Hub
+            </h1>
+            <CardInfoTooltip text="Centralized commercial catalog for standard products, recurring software subscriptions, institutional pricing tiers, price books, and margin analytics." />
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
@@ -698,20 +691,20 @@ export default function PackagesClient() {
 
           {/* TAB 1: PRODUCTS & SERVICES */}
           <TabsContent value="products" className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="relative max-w-sm flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground opacity-50" />
                 <Input 
                   placeholder="Search products by name or SKU..." 
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 h-10 bg-card border-border/80 text-foreground placeholder:text-muted-foreground rounded-xl text-xs font-medium"
+                  className="pl-9 h-10 bg-white dark:bg-card border-border/80 text-foreground placeholder:text-muted-foreground rounded-xl text-xs font-medium shadow-xs"
                 />
               </div>
 
               {categories.length > 0 && (
                 <Select value={selectedCategoryFilter} onValueChange={setSelectedCategoryFilter}>
-                  <SelectTrigger className="w-48 h-10 rounded-xl text-xs font-semibold bg-card border-border/80">
+                  <SelectTrigger className="w-48 h-10 rounded-xl text-xs font-semibold bg-white dark:bg-card border-border/80 shadow-xs">
                     <SelectValue placeholder="All Categories" />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl">
@@ -722,7 +715,7 @@ export default function PackagesClient() {
                   </SelectContent>
                 </Select>
               )}
-            </div>
+            </Card>
 
             <div className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm overflow-hidden text-left">
               <Table>
@@ -820,15 +813,17 @@ export default function PackagesClient() {
 
           {/* TAB 2: SUBSCRIPTION PACKAGES */}
           <TabsContent value="packages" className="space-y-4">
-            <div className="relative max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground opacity-50" />
-              <Input 
-                placeholder="Search subscription packages..." 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 h-10 bg-card border-border/80 text-foreground placeholder:text-muted-foreground rounded-xl text-xs font-medium"
-              />
-            </div>
+            <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm max-w-md">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground opacity-50" />
+                <Input 
+                  placeholder="Search subscription packages..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 h-10 bg-white dark:bg-card border-border/80 text-foreground placeholder:text-muted-foreground rounded-xl text-xs font-medium shadow-xs"
+                />
+              </div>
+            </Card>
 
             <div className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm overflow-hidden text-left">
               <Table>

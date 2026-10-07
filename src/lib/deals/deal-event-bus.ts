@@ -47,7 +47,12 @@ export type DealEventType =
   | 'deal.contract.in_progress'
   | 'deal.contract.signed'
   | 'deal.contract.declined'
-  | 'deal.contract.voided';
+  | 'deal.contract.voided'
+  | 'deal.transferred'
+  | 'deal.duplicated'
+  | 'deal.entity_scope_converted'
+  | 'deal.transfer.proposal_created'
+  | 'deal.transfer.compensated';
 
 export interface DealDomainEventPayload {
   dealId: string;
@@ -58,6 +63,18 @@ export interface DealDomainEventPayload {
   pipelineId?: string;
   stageId?: string;
   previousStageId?: string;
+  sourceWorkspaceId?: string;
+  targetWorkspaceId?: string;
+  sourcePipelineId?: string;
+  targetPipelineId?: string;
+  sourceEntityType?: string;
+  targetEntityType?: string;
+  conversionStrategy?: string;
+  sourceEntityId?: string;
+  targetEntityId?: string;
+  promotedContactId?: string;
+  proposalId?: string;
+  actorType?: 'user' | 'agent' | 'service';
   status?: 'open' | 'won' | 'lost';
   previousStatus?: 'open' | 'won' | 'lost';
   value?: number;
@@ -122,6 +139,10 @@ export function mapEventToAutomationTrigger(eventType: DealEventType): Automatio
       return 'DEAL_CONTRACT_SIGNED';
     case 'deal.activity.created':
       return 'DEAL_ACTIVITY_LOGGED';
+    case 'deal.transferred':
+      return 'DEAL_TRANSFERRED';
+    case 'deal.duplicated':
+      return 'DEAL_COPIED';
     default:
       return null;
   }

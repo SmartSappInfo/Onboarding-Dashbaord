@@ -727,7 +727,7 @@ export default function AutomationsClient() {
         <div className="h-full overflow-y-auto w-full">
             <div className="space-y-6 pb-32 w-full">
                 <Tabs defaultValue="blueprints" className="space-y-6">
-                    {/* Top Header Bar: Page Name on Top-Left, Segmented Tabs on Top-Right */}
+                    {/* Top Header Bar: Page Name on Left, Action Buttons on Right */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-4">
                         <div className="flex items-center gap-2.5">
                             <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
@@ -736,8 +736,51 @@ export default function AutomationsClient() {
                             <CardInfoTooltip text="Proactive relationship logic and event-driven protocols." />
                         </div>
 
-                        {/* Top-Right Segmented Tabs */}
-                        <TabsList className="inline-flex items-center gap-1 bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto self-start sm:self-auto">
+                        {/* Action Bar aligned with Title */}
+                        <div className="flex items-center gap-2.5 flex-wrap">
+                            <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => setIsDlqModalOpen(true)}
+                                className="rounded-xl font-bold h-10 px-4 border-destructive/30 text-destructive bg-white dark:bg-card hover:bg-destructive/5 shadow-xs transition-all active:scale-[0.97]"
+                            >
+                                <ShieldAlert className="h-4 w-4 mr-1.5 text-destructive" />
+                                Dead-Letter Queue
+                            </Button>
+                            <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={handlePulseEngine} 
+                                disabled={isPulsing}
+                                className="rounded-xl font-bold h-10 px-4 border-border/80 text-foreground bg-white dark:bg-card hover:bg-muted/60 shadow-xs transition-all active:scale-[0.97]"
+                            >
+                                {isPulsing ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <RefreshCw className="h-4 w-4 mr-1.5" />}
+                                Pulse Engine
+                            </Button>
+                            <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => {
+                                    setImportError(null);
+                                    setImportEnvelope(null);
+                                    setImportStep(1);
+                                    setShowImportDialog(true);
+                                }}
+                                className="rounded-xl font-bold h-10 px-4 border-border/80 text-foreground bg-white dark:bg-card hover:bg-muted/60 shadow-xs transition-all active:scale-[0.97]"
+                            >
+                                <Upload className="mr-1.5 h-4 w-4" /> Import Workflow
+                            </Button>
+                            <Button asChild size="sm" className="rounded-xl font-bold h-10 px-4 shadow-sm active:scale-[0.97]">
+                                <Link href="/admin/automations/new">
+                                    <Plus className="mr-1.5 h-4 w-4" /> New Workflow
+                                </Link>
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* Segmented Navigation Tabs */}
+                    <div className="flex items-center justify-between gap-4">
+                        <TabsList className="inline-flex items-center gap-1 bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto">
                             <TabsTrigger
                                 value="blueprints"
                                 className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground active:scale-[0.97]"
@@ -759,49 +802,9 @@ export default function AutomationsClient() {
                         </TabsList>
                     </div>
 
-                    {/* Action Bar */}
-                    <div className="flex items-center justify-end gap-3 flex-wrap">
-                        <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => setIsDlqModalOpen(true)}
-                            className="rounded-xl font-bold h-9 px-4 border-destructive/30 text-destructive bg-destructive/5 hover:bg-destructive/10 shadow-sm ring-1 ring-destructive/20 transition-all active:scale-[0.97]"
-                        >
-                            <ShieldAlert className="h-4 w-4 mr-1.5 text-destructive" />
-                            Dead-Letter Queue
-                        </Button>
-                        <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={handlePulseEngine} 
-                            disabled={isPulsing}
-                            className="rounded-xl font-bold h-9 px-4 border-border text-foreground bg-transparent shadow-sm ring-1 ring-border transition-all active:scale-[0.97]"
-                        >
-                            {isPulsing ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <RefreshCw className="h-4 w-4 mr-1.5" />}
-                            Pulse Engine
-                        </Button>
-                        <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => {
-                                setImportError(null);
-                                setImportEnvelope(null);
-                                setImportStep(1);
-                                setShowImportDialog(true);
-                            }}
-                            className="rounded-xl font-bold h-9 px-4 border-border text-foreground bg-transparent shadow-sm ring-1 ring-border transition-all active:scale-[0.97]"
-                        >
-                            <Upload className="mr-1.5 h-4 w-4" /> Import Workflow
-                        </Button>
-                        <Button asChild size="sm" className="rounded-xl font-semibold h-9 px-4 shadow-sm active:scale-[0.97]">
-                            <Link href="/admin/automations/new">
-                                <Plus className="mr-1.5 h-4 w-4" /> New Workflow
-                            </Link>
-                        </Button>
-                    </div>
-
- <TabsContent value="blueprints" className="space-y-8 animate-in fade-in slide-in-from-bottom-2">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <TabsContent value="blueprints" className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                        {/* Filter Card */}
+                        <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div className="flex flex-wrap items-center gap-3">
                                 <div className="relative group w-full md:w-72">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40 group-focus-within:text-primary transition-colors" />
@@ -809,11 +812,11 @@ export default function AutomationsClient() {
                                         placeholder="Search workflows..." 
                                         value={searchTerm}
                                         onChange={e => setSearchTerm(e.target.value)}
-                                        className="pl-10 h-10 bg-muted/50 border-border text-foreground placeholder:text-muted-foreground rounded-xl focus:border-primary/50 focus:ring-primary/20 font-medium"
+                                        className="pl-10 h-10 bg-background border-border/80 text-foreground placeholder:text-muted-foreground rounded-xl focus:border-primary/50 focus:ring-primary/20 font-medium text-xs"
                                     />
                                 </div>
                                 <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
-                                    <SelectTrigger className="w-full md:w-36 h-10 bg-muted/50 border-border text-foreground rounded-xl text-xs font-semibold px-3.5 shadow-sm">
+                                    <SelectTrigger className="w-full md:w-36 h-10 bg-background border-border/80 text-foreground rounded-xl text-xs font-semibold px-3.5 shadow-xs">
                                         <div className="flex items-center gap-2">
                                             <Filter className="h-3 w-3 text-muted-foreground/60" />
                                             <SelectValue placeholder="Status" />
@@ -826,7 +829,7 @@ export default function AutomationsClient() {
                                     </SelectContent>
                                 </Select>
                                 <Select value={triggerFilter} onValueChange={(v: any) => setTriggerFilter(v)}>
-                                    <SelectTrigger className="w-full md:w-48 h-10 bg-muted/50 border-border text-foreground rounded-xl text-xs font-semibold px-3.5 shadow-sm">
+                                    <SelectTrigger className="w-full md:w-48 h-10 bg-background border-border/80 text-foreground rounded-xl text-xs font-semibold px-3.5 shadow-xs">
                                         <div className="flex items-center gap-2">
                                             <Zap className="h-3 w-3 text-muted-foreground/60 animate-pulse" />
                                             <SelectValue placeholder="Trigger Event" />
@@ -849,7 +852,7 @@ export default function AutomationsClient() {
                                     className={cn(
                                         "p-2 rounded-lg transition-all focus:outline-none",
                                         viewMode === 'list' 
-                                            ? "bg-background text-foreground shadow-sm border border-border" 
+                                            ? "bg-white dark:bg-card text-foreground shadow-xs border border-border/80" 
                                             : "text-muted-foreground hover:text-foreground bg-transparent border border-transparent"
                                     )}
                                     title="List View"
@@ -861,7 +864,7 @@ export default function AutomationsClient() {
                                     className={cn(
                                         "p-2 rounded-lg transition-all focus:outline-none",
                                         viewMode === 'card' 
-                                            ? "bg-background text-foreground shadow-sm border border-border" 
+                                            ? "bg-white dark:bg-card text-foreground shadow-xs border border-border/80" 
                                             : "text-muted-foreground hover:text-foreground bg-transparent border border-transparent"
                                     )}
                                     title="Card View"
@@ -869,7 +872,7 @@ export default function AutomationsClient() {
                                     <Grid className="h-4 w-4" />
                                 </button>
                             </div>
-                        </div>
+                        </Card>
 
                         {selectedIds.size > 0 && (
                             <div className="flex items-center justify-between bg-primary/5 border border-primary/25 rounded-2xl p-4 animate-in slide-in-from-top-2 duration-300">
@@ -1020,7 +1023,7 @@ export default function AutomationsClient() {
                                 )}
                             </div>
                         ) : (
-                            <div className="rounded-2xl border border-border bg-transparent shadow-sm overflow-hidden ring-1 ring-border animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <div className="rounded-2xl border border-border/80 bg-card shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
                                 <div className="overflow-x-auto">
                                     <Table>
                                         <TableHeader>
@@ -1265,8 +1268,8 @@ export default function AutomationsClient() {
                         )}
                     </TabsContent>
 
-                    <TabsContent value="archived" className="space-y-8 animate-in fade-in slide-in-from-bottom-2">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <TabsContent value="archived" className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                        <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div className="flex flex-wrap items-center gap-3">
                                 <div className="relative group w-full md:w-72">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40 group-focus-within:text-primary transition-colors" />
@@ -1274,7 +1277,7 @@ export default function AutomationsClient() {
                                         placeholder="Search archived workflows..." 
                                         value={searchTerm}
                                         onChange={e => setSearchTerm(e.target.value)}
-                                        className="pl-10 h-10 bg-muted/50 border-border text-foreground placeholder:text-muted-foreground rounded-xl focus:border-primary/50 focus:ring-primary/20 font-medium"
+                                        className="pl-10 h-10 bg-background border-border/80 text-foreground placeholder:text-muted-foreground rounded-xl focus:border-primary/50 focus:ring-primary/20 font-medium text-xs"
                                     />
                                 </div>
                             </div>
@@ -1283,15 +1286,15 @@ export default function AutomationsClient() {
                                 <Button 
                                     variant="outline" 
                                     onClick={handleDeleteAllArchived} 
-                                    className="rounded-xl font-bold h-10 px-5 border-rose-200 text-rose-600 bg-rose-50/50 hover:bg-rose-100/60 shadow-sm transition-all active:scale-95 shrink-0 self-end md:self-auto"
+                                    className="rounded-xl font-bold h-10 px-5 border-rose-200 text-rose-600 bg-white dark:bg-card hover:bg-rose-50/50 shadow-xs transition-all active:scale-[0.97] shrink-0 self-end md:self-auto"
                                 >
                                     <Trash2 className="h-4 w-4 mr-2" />
                                     Delete All Archived
                                 </Button>
                             ) : null}
-                        </div>
+                        </Card>
 
-                        <div className="rounded-2xl border border-border bg-transparent shadow-sm overflow-hidden ring-1 ring-border animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <div className="rounded-2xl border border-border/80 bg-card shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
                             <div className="overflow-x-auto">
                                 <Table>
                                     <TableHeader>
@@ -1448,7 +1451,7 @@ export default function AutomationsClient() {
                     </TabsContent>
 
                     <TabsContent value="runs" className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
- <div className="rounded-2xl border border-border bg-transparent shadow-sm overflow-hidden ring-1 ring-border">
+                        <div className="rounded-2xl border border-border/80 bg-card shadow-sm overflow-hidden">
  <div className="p-6 border-b bg-background flex items-center justify-between">
  <div className="flex items-center gap-3">
  <Activity className="h-4 w-4 text-primary" />

@@ -60,6 +60,13 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
         defaultCloseDateOffsetValue: '',
         defaultCloseDateOffsetUnit: 'days',
         dealCustomFields: [],
+        entityScopeConversionPolicy: {
+            institutionToPersonStrategy: 'promote_primary_focal_contact',
+            personToInstitutionStrategy: 'derive_from_company_field',
+            toFamilyStrategy: 'promote_primary_as_guardian',
+            requireApprovalForCrossScope: false,
+            disableAutonomousTransfers: false,
+        },
     });
 
     const updateField = React.useCallback(<K extends keyof PipelineFormData>(key: K, value: PipelineFormData[K]) => {
@@ -235,6 +242,13 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
                 defaultCloseDateOffsetValue: pipeline.defaultCloseDateOffsetValue ?? '',
                 defaultCloseDateOffsetUnit: pipeline.defaultCloseDateOffsetUnit ?? 'days',
                 dealCustomFields: pipeline.dealCustomFields || [],
+                entityScopeConversionPolicy: pipeline.entityScopeConversionPolicy || {
+                    institutionToPersonStrategy: 'promote_primary_focal_contact',
+                    personToInstitutionStrategy: 'derive_from_company_field',
+                    toFamilyStrategy: 'promote_primary_as_guardian',
+                    requireApprovalForCrossScope: false,
+                    disableAutonomousTransfers: false,
+                },
             });
             if (pipeline.columnWidth) onWidthChange(pipeline.columnWidth);
         }
@@ -271,6 +285,7 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
                 defaultCloseDateOffsetValue: numOffset,
                 defaultCloseDateOffsetUnit: unitOffset,
                 dealCustomFields: formData.dealCustomFields || [],
+                entityScopeConversionPolicy: formData.entityScopeConversionPolicy || null,
                 updatedAt: new Date().toISOString()
             });
             toast({ title: 'Architecture Synchronized' });

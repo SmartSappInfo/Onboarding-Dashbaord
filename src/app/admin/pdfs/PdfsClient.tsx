@@ -12,6 +12,7 @@ import type { PDFForm } from '@/lib/types';
 import { deletePdfForm, updatePdfFormStatus, clonePdfForm } from '@/lib/pdf-actions';
 
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import {
   Table,
@@ -254,31 +255,31 @@ export default function PdfsClient() {
         <TooltipProvider>
             <div className="h-full overflow-y-auto w-full">
                 <div className="space-y-8 pb-32 w-full p-8">
-                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="flex items-center gap-2.5">
                             <h1 className="text-3xl font-bold text-foreground">
                                 Signing Studio
                             </h1>
                             <CardInfoTooltip text="Manage interactive institutional agreements and tracking." />
                         </div>
-                        <Button asChild className="rounded-xl font-bold shadow-lg h-11 px-8 transition-all active:scale-95">
+                        <Button asChild className="rounded-xl font-bold shadow-lg h-11 px-8 transition-all active:scale-[0.97]">
                             <Link href="/admin/pdfs/new">
                                 <PlusCircle className="mr-2 h-4 w-4" /> New Blueprint
                             </Link>
                         </Button>
                     </div>
-                    <div className="flex flex-col md:flex-row gap-3 items-center">
+                    <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm flex flex-col md:flex-row gap-3 items-center">
                         <div className="relative flex-1 w-full max-w-sm">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input 
                                 placeholder="Search document titles..." 
-                                className="pl-10 h-10 bg-background border border-border text-foreground placeholder:text-muted-foreground rounded-xl shadow-sm focus:ring-1 focus:ring-primary/20 transition-all font-medium" 
+                                className="pl-10 h-10 min-h-[44px] bg-background border border-border text-foreground placeholder:text-muted-foreground rounded-xl shadow-xs transition-all font-medium" 
                                 value={searchTerm} 
                                 onChange={e => setSearchTerm(e.target.value)} 
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-[180px] h-10 bg-background border border-border text-foreground rounded-xl shadow-sm focus:ring-1 focus:ring-primary/20 transition-all">
+                            <SelectTrigger className="w-[180px] h-10 min-h-[44px] bg-background border border-border text-foreground rounded-xl shadow-xs transition-all">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="rounded-xl border-border bg-card">
@@ -288,9 +289,9 @@ export default function PdfsClient() {
                                 <SelectItem value="archived">Archived</SelectItem>
                             </SelectContent>
                         </Select>
-                    </div>
+                    </Card>
 
-                    <div className="rounded-2xl border border-border bg-transparent ring-1 ring-border shadow-sm overflow-hidden text-left">
+                    <Card className="rounded-2xl border border-border/80 bg-card shadow-sm overflow-hidden text-left">
                         <Table>
                             <TableHeader>
                                 <TableRow className="bg-muted/10 border-b border-border">
@@ -361,7 +362,7 @@ export default function PdfsClient() {
                             )}
                             </TableBody>
                         </Table>
-                    </div>
+                    </Card>
                 </div>
             </div>
             <AlertDialog open={!!formToDelete} onOpenChange={(isOpen) => !isOpen && setFormToDelete(null)}>

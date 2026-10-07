@@ -1036,12 +1036,12 @@ export default function EntitiesClient() {
                             )}
 
                             {canCreate && (
-                                <RainbowButton onClick={() => setIsAiArchitectOpen(true)} className="h-11 px-5 gap-2 font-bold text-[10px] shadow-xl transition-all active:scale-95 text-white">
+                                <RainbowButton onClick={() => setIsAiArchitectOpen(true)} className="h-11 px-5 gap-2 font-bold text-xs shadow-md transition-all active:scale-[0.97] rounded-xl text-white">
                                     <Sparkles className="h-4 w-4" /> AI Architect
                                 </RainbowButton>
                             )}
 
-                            <Button asChild variant="outline" className="h-11 px-5 gap-2 font-bold text-[10px] uppercase tracking-widest shadow-sm rounded-xl border-amber-500/30 hover:bg-amber-500/10 hover:text-amber-600">
+                            <Button asChild variant="outline" className="h-11 px-5 gap-2 font-bold text-xs shadow-xs rounded-xl border-amber-500/30 bg-white dark:bg-card hover:bg-amber-500/10 hover:text-amber-600 active:scale-[0.97]">
                                 <Link href="/admin/entities/lead-scoring">
                                     <Sparkles className="h-4 w-4 text-amber-500" />
                                     Lead Cleanup
@@ -1050,7 +1050,7 @@ export default function EntitiesClient() {
 
                             <Button
                                 variant="outline"
-                                className="h-11 px-5 gap-2 font-bold text-[10px] uppercase tracking-widest shadow-sm rounded-xl border-border bg-card hover:bg-accent hover:text-accent-foreground gap-2"
+                                className="h-11 px-5 gap-2 font-bold text-xs shadow-xs rounded-xl border border-border/80 bg-white dark:bg-card hover:bg-accent hover:text-accent-foreground active:scale-[0.97]"
                                 onClick={() => handleExportCSV()}
                                 disabled={isExporting || filteredEntityIds.length === 0}
                             >
@@ -1107,7 +1107,7 @@ export default function EntitiesClient() {
                     </div>
 
                     {/* Unified Action Bar */}
-                    <div className="flex flex-col md:flex-row items-center gap-3 bg-white dark:bg-slate-900/50 p-2.5 rounded-2xl border shadow-sm ring-1 ring-border">
+                    <div className="flex flex-col md:flex-row items-center gap-3 bg-card p-2.5 rounded-2xl border border-border/80 shadow-sm">
                         <div className="relative flex-1 group w-full">
                             <Input 
                                 placeholder={`Search ${plural.toLowerCase()}...`} 
@@ -1125,7 +1125,7 @@ export default function EntitiesClient() {
                                 variant={isFilterPanelOpen ? "secondary" : "outline"}
                                 onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
                                 className={cn(
-                                    "h-11 px-4 rounded-xl font-bold gap-2 transition-all border-border/50 w-full md:w-auto justify-center",
+                                    "h-11 px-4 rounded-xl font-bold gap-2 transition-all border border-border/80 w-full md:w-auto justify-center bg-white dark:bg-card active:scale-[0.97]",
                                     isFilterPanelOpen && "ring-2 ring-primary/20 border-primary/30"
                                 )}
                             >

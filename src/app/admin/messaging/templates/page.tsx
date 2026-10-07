@@ -762,20 +762,17 @@ export default function MessageTemplatesPage() {
                             <div className="space-y-8">
                             {/* Dashboard Header */}
                             <div className="flex items-center justify-between flex-wrap gap-6">
-                                <div className="space-y-1">
-                                    <Badge variant="outline" className="bg-blue-500/5 text-blue-600 border-blue-500/20 font-bold uppercase tracking-widest text-[9px] px-3 py-1">Communications Hub</Badge>
-                                    <div className="flex items-center gap-2">
-                                        <h1 className="text-3xl font-bold tracking-tight">Client Messaging Library</h1>
-                                        <CardInfoTooltip text="Manage your organization's messaging blueprints. These templates are automatically synced across all platform modules." />
-                                    </div>
+                                <div className="flex items-center gap-2">
+                                    <h1 className="text-3xl font-bold tracking-tight">Client Messaging Library</h1>
+                                    <CardInfoTooltip text="Manage your organization's messaging blueprints. These templates are automatically synced across all platform modules." />
                                 </div>
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-3 flex-wrap">
                                     {activeOrganizationId ? (
                                         <Button
                                             onClick={whatsapp.sync}
                                             disabled={whatsapp.isSyncing}
                                             variant="outline"
-                                            className="rounded-xl font-bold h-11 px-5 gap-2"
+                                            className="rounded-xl font-bold h-11 px-5 gap-2 border border-border/80 bg-white dark:bg-card shadow-xs active:scale-[0.97]"
                                             title="Pull the latest WhatsApp template statuses from Meta"
                                         >
                                             <RefreshCw className={`h-4 w-4 ${whatsapp.isSyncing ? 'animate-spin' : ''}`} /> Sync from Meta
@@ -786,7 +783,7 @@ export default function MessageTemplatesPage() {
                                             onClick={handleBulkPushSkeletons}
                                             disabled={isBulkPushing}
                                             variant="outline"
-                                            className="rounded-xl font-bold h-11 px-5 gap-2 border-emerald-500/20 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
+                                            className="rounded-xl font-bold h-11 px-5 gap-2 border border-emerald-500/30 text-emerald-600 bg-white dark:bg-card hover:bg-emerald-50 dark:hover:bg-emerald-950/20 shadow-xs active:scale-[0.97]"
                                             title="Push all offline drafted WhatsApp skeletons to Meta"
                                         >
                                             <ArrowUpToLine className={`h-4 w-4 ${isBulkPushing ? 'animate-pulse' : ''}`} /> Push All Skeletons ({unpushedSkeletons.length})
@@ -794,6 +791,7 @@ export default function MessageTemplatesPage() {
                                     ) : null}
                                     <RainbowButton
                                         onClick={() => setIsAiModalOpen(true)}
+                                        className="h-11 px-5 rounded-xl font-bold text-xs gap-2 active:scale-[0.97] shadow-sm text-white"
                                     >
                                         <Sparkles className="h-4 w-4" /> AI Template Generator
                                     </RainbowButton>

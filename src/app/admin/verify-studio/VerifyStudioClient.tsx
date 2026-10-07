@@ -9,8 +9,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import type { VerifyEmailResult } from '@/lib/email-verifier';
 import { PageContainer } from '@/components/ui/page-container';
+
+interface VerifyDetails {
+  dns?: { primaryMx?: string };
+  smtp?: { logs?: string[]; uncertain?: boolean };
+}
 
 export default function VerifyStudioClient() {
   const [email, setEmail] = useState('');
@@ -59,7 +65,8 @@ export default function VerifyStudioClient() {
         addLog(`> [ERROR] ${data.error}`);
       } else {
         // Show real DNS MX info if available
-        const dnsDetail = (data.details as any)?.dns;
+        const details = (data.details || {}) as VerifyDetails;
+        const dnsDetail = details.dns;
         if (dnsDetail?.primaryMx) {
           addLog(`> [DNS] Primary MX: ${dnsDetail.primaryMx}`);
         }
@@ -68,7 +75,7 @@ export default function VerifyStudioClient() {
         }
 
         // Show real SMTP logs from the engine
-        const smtpLogs: string[] = (data.details as any)?.smtp?.logs ?? [];
+        const smtpLogs: string[] = details.smtp?.logs ?? [];
         smtpLogs.forEach(line => addLog(`> ${line}`));
 
         // Catch-all note
@@ -76,7 +83,7 @@ export default function VerifyStudioClient() {
           addLog('> [SMTP] Domain is a catch-all — accepts any address (RISKY).');
         }
 
-        if ((data.details as any)?.smtp?.uncertain) {
+        if (details.smtp?.uncertain) {
           addLog('> [SMTP] Connection inconclusive (firewall/timeout) — treating as likely valid.');
         }
 
@@ -131,29 +138,24 @@ export default function VerifyStudioClient() {
     <div className="space-y-8 pb-32 w-full font-sans">
       
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold mb-4 tracking-wide">
-            <ShieldCheck size={14} /> NEW FEATURE
-          </div>
-          <h1 className="text-4xl font-black tracking-tight text-foreground mb-2">Verify Studio</h1>
-          <p className="text-muted-foreground max-w-2xl text-lg">
-            High-performance native email verification. Protect your sender reputation by diagnosing syntax, DNS, burners, and live mailboxes.
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-2.5">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Verify Studio</h1>
+          <CardInfoTooltip text="High-performance native email verification. Protect your sender reputation by diagnosing syntax, DNS, burners, and live mailboxes." />
         </div>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-2 p-1 bg-muted/80 rounded-xl w-fit border border-border mb-8 backdrop-blur-sm">
         {[
-            { id: 'sandbox', icon: Search, label: 'Sandbox Diagnostics' },
-            { id: 'bulk', icon: FileSpreadsheet, label: 'Bulk List Processor' },
-            { id: 'database', icon: Activity, label: 'Burner Database' },
+            { id: 'sandbox' as const, icon: Search, label: 'Sandbox Diagnostics' },
+            { id: 'bulk' as const, icon: FileSpreadsheet, label: 'Bulk List Processor' },
+            { id: 'database' as const, icon: Activity, label: 'Burner Database' },
         ].map(t => (
             <button 
                 key={t.id}
-                onClick={() => setActiveTab(t.id as any)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === t.id ? 'bg-background text-foreground border shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-accent/40'}`}
+                onClick={() => setActiveTab(t.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all active:scale-[0.97] ${activeTab === t.id ? 'bg-background text-foreground border shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-accent/40'}`}
             >
                 <t.icon size={16} /> {t.label}
             </button>
@@ -183,7 +185,7 @@ export default function VerifyStudioClient() {
                     <Button 
                       type="submit" 
                       disabled={!email || isVerifying}
-                      className="w-full h-12 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-base"
+                      className="w-full h-12 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-base rounded-xl active:scale-[0.97] shadow-sm"
                     >
                       {isVerifying ? <Loader2 className="animate-spin mr-2" /> : <Search className="mr-2" size={18} />}
                       {isVerifying ? 'Probing...' : 'Verify Now'}

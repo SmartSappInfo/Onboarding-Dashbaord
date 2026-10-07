@@ -5,6 +5,7 @@ import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -339,9 +340,9 @@ export default function AutomationBuilderClient() {
           <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/10">
             <Zap className="h-5 w-5 text-white" />
           </div>
-          <div>
+          <div className="flex items-center gap-2.5">
             <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Automation Builder</h1>
-            <p className="text-muted-foreground text-xs font-medium">Design instant triggers to tag leads, generate drafts, and alert teams in real-time.</p>
+            <CardInfoTooltip text="Design instant triggers to tag leads, generate drafts, and alert teams in real-time." />
           </div>
         </div>
 
@@ -534,7 +535,7 @@ export default function AutomationBuilderClient() {
                     size="sm"
                     variant="outline"
                     onClick={handleAddAction}
-                    className="h-7 gap-1 text-[10px] active:scale-[0.97] transition-all rounded-lg"
+                    className="h-7 gap-1 text-xs font-semibold active:scale-[0.97] transition-all rounded-xl bg-white dark:bg-card border border-border/80 shadow-xs"
                   >
                     <Plus className="h-3.5 w-3.5" /> Add Step Action
                   </Button>

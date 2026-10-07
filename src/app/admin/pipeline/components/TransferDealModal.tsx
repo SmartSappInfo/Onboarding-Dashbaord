@@ -52,10 +52,12 @@ import type {
   OnboardingStage,
   DealNextStep,
   TransferDealResult,
+  EntityScopeConversionStrategy,
 } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import {
   ArrowRight,
+  ArrowRightLeft,
   Copy,
   Move,
   Check,
@@ -132,6 +134,10 @@ export default function TransferDealModal({
   const [copyContacts, setCopyContacts] = React.useState(true);
   const [copyCustomFields, setCopyCustomFields] = React.useState(true);
 
+  // Polymorphic Scope Conversion State (Rules 21, 22, 61)
+  const [conversionStrategy, setConversionStrategy] = React.useState<EntityScopeConversionStrategy>('auto');
+  const [selectedFocalContactId, setSelectedFocalContactId] = React.useState<string>('');
+
   // Submission State
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
@@ -151,6 +157,9 @@ export default function TransferDealModal({
       setCopyContacts(true);
       setCopyCustomFields(true);
       setAiRecommendation(null);
+      setConversionStrategy('auto');
+      const defaultFocal = deal.focalContacts?.find((c) => c.isPrimary) || deal.focalContacts?.[0];
+      setSelectedFocalContactId(defaultFocal?.id || '');
 
       if (deal.nextStep) {
         if (typeof deal.nextStep === 'object' && deal.nextStep !== null) {
@@ -244,11 +253,29 @@ export default function TransferDealModal({
     });
   }, [workspaceUsers, assigneeSearchQuery]);
 
+  // Target and Source Workspace Scopes (Rule 61)
+  const sourceWorkspace = React.useMemo(() => {
+    return accessibleWorkspaces.find((w) => w.id === deal?.workspaceId);
+  }, [accessibleWorkspaces, deal?.workspaceId]);
+
+  const targetWorkspace = React.useMemo(() => {
+    return accessibleWorkspaces.find((w) => w.id === targetWorkspaceId);
+  }, [accessibleWorkspaces, targetWorkspaceId]);
+
+  const sourceScope = sourceWorkspace?.contactScope || 'institution';
+  const targetScope = targetWorkspace?.contactScope || 'institution';
+
+  const isCrossScope = Boolean(
+    targetWorkspaceId &&
+    deal?.workspaceId &&
+    targetWorkspaceId !== deal.workspaceId &&
+    sourceScope !== targetScope
+  );
+
   // Target Workspace display name
   const targetWorkspaceName = React.useMemo(() => {
-    const ws = accessibleWorkspaces.find((w) => w.id === targetWorkspaceId);
-    return ws?.name || 'Selected Workspace';
-  }, [accessibleWorkspaces, targetWorkspaceId]);
+    return targetWorkspace?.name || 'Selected Workspace';
+  }, [targetWorkspace]);
 
   const targetPipeline = React.useMemo(() => {
     return availablePipelines.find((p) => p.id === targetPipelineId);
@@ -353,16 +380,25 @@ export default function TransferDealModal({
         copyLineItems: mode === 'copy' ? copyLineItems : undefined,
         copyContacts: mode === 'copy' ? copyContacts : undefined,
         copyCustomFields: mode === 'copy' ? copyCustomFields : undefined,
+        entityConversionStrategy: isCrossScope ? conversionStrategy : undefined,
+        focalContactId: isCrossScope && selectedFocalContactId ? selectedFocalContactId : undefined,
       });
 
       if (!result.success) {
         throw new Error(result.error || 'Transfer failed');
       }
 
-      toast({
-        title: mode === 'move' ? 'Deal Moved' : 'Deal Copied',
-        description: `Successfully ${mode === 'move' ? 'moved' : 'copied'} deal to "${targetPipeline?.name || 'pipeline'}" (${targetStage?.name || 'stage'}).`,
-      });
+      if (result.phase === 'PROPOSAL' || result.requiresProposal) {
+        toast({
+          title: 'Transfer Proposal Submitted',
+          description: `Cross-scope transfer proposal #${(result.approvalId || '').slice(0, 8)} created for review per pipeline governance policy.`,
+        });
+      } else {
+        toast({
+          title: mode === 'move' ? 'Deal Moved' : 'Deal Copied',
+          description: result.auditEvidence || `Successfully ${mode === 'move' ? 'moved' : 'copied'} deal to "${targetPipeline?.name || 'pipeline'}" (${targetStage?.name || 'stage'}).`,
+        });
+      }
 
       onTransferred?.(result);
       onOpenChange(false);
@@ -540,6 +576,105 @@ export default function TransferDealModal({
               </div>
             </div>
           </div>
+
+          {/* Section 1.5: Cross-Scope Entity Adaptation (Rules 21, 22, 61) */}
+          {isCrossScope && (
+            <div className="space-y-4 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 animate-in fade-in-50 duration-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                  <ArrowRightLeft className="h-3.5 w-3.5" />
+                  <span>Cross-Scope Entity Adaptation</span>
+                </div>
+                <Badge variant="outline" className="text-[10px] font-bold border-amber-500/40 text-amber-600 dark:text-amber-400 capitalize">
+                  {sourceScope} &rarr; {targetScope}
+                </Badge>
+              </div>
+
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                The destination workspace manages <span className="font-bold text-foreground uppercase">{targetScope}</span> contacts, whereas this opportunity originated from an <span className="font-bold text-foreground uppercase">{sourceScope}</span> workspace. The system will adapt the entity during transfer.
+              </p>
+
+              {/* Institution -> Person */}
+              {sourceScope === 'institution' && targetScope === 'person' && (
+                <div className="space-y-3 pt-1">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold text-foreground">
+                      Conversion Strategy
+                    </Label>
+                    <select
+                      value={conversionStrategy}
+                      onChange={(e) => setConversionStrategy(e.target.value as EntityScopeConversionStrategy)}
+                      className="w-full h-10 min-h-[44px] rounded-xl border border-input bg-background px-3 py-2 text-xs font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <option value="auto">Pipeline Default Strategy (Automated)</option>
+                      <option value="promote_primary_focal_contact">Promote Primary Focal Contact to Person Entity</option>
+                      <option value="promote_first_contact">Promote First Available Contact</option>
+                      <option value="create_blank_person">Create Independent Person Entity from Deal Name</option>
+                      <option value="require_human_approval">Submit as Two-Phase Proposal (Requires Sign-Off)</option>
+                    </select>
+                  </div>
+
+                  {deal.focalContacts && deal.focalContacts.length > 0 && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-bold text-foreground">
+                        Select Focal Contact to Promote
+                      </Label>
+                      <select
+                        value={selectedFocalContactId}
+                        onChange={(e) => setSelectedFocalContactId(e.target.value)}
+                        className="w-full h-10 min-h-[44px] rounded-xl border border-input bg-background px-3 py-2 text-xs font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        {deal.focalContacts.map((contact) => (
+                          <option key={contact.id} value={contact.id}>
+                            {contact.name} {contact.role ? `(${contact.role})` : ''} {contact.isPrimary ? '[Primary]' : ''}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-[10px] text-muted-foreground">
+                        This contact will become the new primary Person entity in the destination workspace, while preserving linkage to the original institution.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Person -> Institution */}
+              {sourceScope === 'person' && targetScope === 'institution' && (
+                <div className="space-y-1.5 pt-1">
+                  <Label className="text-xs font-bold text-foreground">
+                    Conversion Strategy
+                  </Label>
+                  <select
+                    value={conversionStrategy}
+                    onChange={(e) => setConversionStrategy(e.target.value as EntityScopeConversionStrategy)}
+                    className="w-full h-10 min-h-[44px] rounded-xl border border-input bg-background px-3 py-2 text-xs font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="auto">Pipeline Default Strategy (Automated)</option>
+                    <option value="derive_from_company_field">Derive Company Name from Domain / Contact</option>
+                    <option value="require_human_approval">Submit as Two-Phase Proposal (Requires Sign-Off)</option>
+                  </select>
+                </div>
+              )}
+
+              {/* Target is Family */}
+              {targetScope === 'family' && (
+                <div className="space-y-1.5 pt-1">
+                  <Label className="text-xs font-bold text-foreground">
+                    Conversion Strategy
+                  </Label>
+                  <select
+                    value={conversionStrategy}
+                    onChange={(e) => setConversionStrategy(e.target.value as EntityScopeConversionStrategy)}
+                    className="w-full h-10 min-h-[44px] rounded-xl border border-input bg-background px-3 py-2 text-xs font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="auto">Pipeline Default Strategy (Automated)</option>
+                    <option value="promote_primary_as_guardian">Promote Primary Contact as Household Guardian</option>
+                    <option value="require_human_approval">Submit as Two-Phase Proposal (Requires Sign-Off)</option>
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Section 2: Scoped Assignee Picker (Strict Destination Workspace Check) */}
           <div className="space-y-3 rounded-xl border border-border/60 bg-muted/10 p-4">

@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { RainbowButton } from '@/components/ui/rainbow-button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { saveOrganizationAction } from '@/lib/organization-actions';
@@ -226,10 +227,10 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
                                 disabled={isScraping}
                             />
                         </div>
-                        <Button
+                        <RainbowButton
                             onClick={handleScrape}
                             disabled={isScraping || !seedUrl.trim()}
-                            className="h-11 px-5 rounded-xl font-bold text-sm gap-2 bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-500/20 transition-all"
+                            className="h-11 px-5 rounded-xl font-bold text-xs gap-1.5 active:scale-[0.97] text-white shadow-sm"
                         >
                             {isScraping ? (
                                 <>
@@ -242,7 +243,7 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
                                     Extract Assets
                                 </>
                             )}
-                        </Button>
+                        </RainbowButton>
                     </div>
 
                     {/* Error state */}
@@ -702,7 +703,7 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
                 <Button
                     onClick={handleSave}
                     disabled={isSaving}
-                    className="rounded-xl font-bold h-11 px-8 shadow-lg shadow-primary/10"
+                    className="rounded-xl font-bold h-11 px-8 shadow-lg shadow-primary/10 active:scale-[0.97]"
                 >
                     {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                     Save Branding

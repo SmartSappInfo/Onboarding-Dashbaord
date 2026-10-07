@@ -347,9 +347,9 @@ export default function ModuleEditor() {
                     onChange={(e) => setNewModuleName(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleAddModule()}
                 />
-                <Button onClick={handleAddModule} disabled={isAdding}>
- {isAdding ? <Loader2 className="animate-spin" /> : <Plus />}
- <span className="ml-2">Add Module</span>
+                <Button onClick={handleAddModule} disabled={isAdding} className="rounded-xl font-bold shadow-sm active:scale-[0.97]">
+                  {isAdding ? <Loader2 className="animate-spin" /> : <Plus />}
+                  <span className="ml-2">Add Module</span>
                 </Button>
                 </div>
             </CardContent>
@@ -363,8 +363,8 @@ export default function ModuleEditor() {
                   </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDeleteModule}>Delete</AlertDialogAction>
+                  <AlertDialogCancel className="rounded-xl font-bold border-border/80 bg-white dark:bg-card shadow-xs active:scale-[0.97]">Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteModule} className="rounded-xl font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
               </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

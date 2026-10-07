@@ -411,7 +411,7 @@ export default function SurveysClient() {
         <TooltipProvider>
             <PageContainer>
                 <div className="space-y-8 pb-32 w-full">
-                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="flex items-center gap-2.5">
                             <h1 className="text-3xl font-bold text-foreground flex items-center gap-2.5">
                                 <ClipboardList className="h-7 w-7 text-primary" />
@@ -420,18 +420,18 @@ export default function SurveysClient() {
                             <CardInfoTooltip text="Design, version, distribute, and analyze structured feedback across all organization touchpoints." />
                         </div>
                 <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                    <Button asChild variant="outline" className="h-11 px-4 gap-2 font-semibold text-xs border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/20 shadow-sm transition-all active:scale-[0.97]">
+                    <Button asChild variant="outline" className="h-11 px-4 gap-2 font-semibold text-xs border border-border/80 bg-white dark:bg-card text-foreground shadow-xs transition-all active:scale-[0.97]">
                         <Link href="/admin/surveys/predictive">
                             <Sparkles className="h-4 w-4 text-indigo-600" /> Predictive Hub
                         </Link>
                     </Button>
-                    <Button asChild variant="outline" className="h-11 px-4 gap-2 font-semibold text-xs border-border/80 shadow-sm transition-all active:scale-[0.97]">
+                    <Button asChild variant="outline" className="h-11 px-4 gap-2 font-semibold text-xs border border-border/80 bg-white dark:bg-card text-foreground shadow-xs transition-all active:scale-[0.97]">
                         <Link href="/admin/surveys/projects">
                             <FolderGit2 className="h-4 w-4 text-primary" /> Research Projects
                         </Link>
                     </Button>
                     {canCreate && (
-                        <RainbowButton asChild className="h-11 px-5 gap-2 font-semibold text-xs shadow-xl transition-all active:scale-95 text-white">
+                        <RainbowButton asChild className="h-11 px-5 gap-2 font-semibold text-xs shadow-md transition-all active:scale-[0.97] rounded-xl text-white">
                             <Link href="/admin/surveys/new/ai">
                                 <Sparkles className="h-4 w-4" /> AI Architect
                             </Link>

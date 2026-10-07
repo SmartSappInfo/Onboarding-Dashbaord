@@ -315,19 +315,19 @@ export default function AgreementsClient() {
         <TooltipProvider>
             <div className="h-full overflow-y-auto w-full">
                 <div className="space-y-8 pb-32 w-full p-8">
-                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="flex items-center gap-2.5">
-                            <h1 className="text-3xl font-bold text-foreground">
+                            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
                                 Agreements Hub
                             </h1>
                             <CardInfoTooltip text={`Institutional legal contracts, templates, and post-signing obligations for ${activeWorkspaceId || 'this workspace'}.`} />
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                             <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => setIsReminderSettingsOpen(true)}
-                                className="rounded-xl font-bold text-xs h-9 px-3 gap-1.5 shadow-sm active:scale-[0.97] transition-all min-h-[44px] sm:min-h-0"
+                                className="rounded-xl font-bold text-xs h-9 px-3 gap-1.5 border border-border/80 bg-white dark:bg-card text-foreground hover:bg-muted/60 shadow-xs active:scale-[0.97] transition-all min-h-[44px] sm:min-h-0"
                             >
                                 <Bell className="h-3.5 w-3.5 text-primary" />
                                 Reminder Rules

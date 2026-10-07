@@ -6,6 +6,8 @@ import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { RainbowButton } from '@/components/ui/rainbow-button';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -311,17 +313,14 @@ export default function InboxClient() {
     <div className="flex flex-col h-[calc(100vh-6rem)] max-w-7xl mx-auto py-6 px-4 gap-6">
       {/* Header controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/50 pb-4">
-        <div>
+        <div className="flex items-center gap-2.5">
           <h1 className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-400 to-teal-500 bg-clip-text text-transparent">
             Social Inbox
           </h1>
-          <p className="text-muted-foreground text-xs mt-1">
-            Monitor and respond to customer questions, DMs, and reviews in a single hub linked directly to CRM records.
-          </p>
+          <CardInfoTooltip text="Monitor and respond to customer questions, DMs, and reviews in a single hub linked directly to CRM records." />
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[10px] font-bold text-muted-foreground uppercase mr-1">Simulate parent inquiry:</span>
           {['facebook', 'instagram', 'linkedin', 'x'].map((platform) => {
             const Icon = platformIcons[platform] || Globe;
             return (
@@ -331,12 +330,12 @@ export default function InboxClient() {
                 variant="outline"
                 onClick={() => handleSimulateInbound(platform as 'linkedin' | 'facebook' | 'instagram' | 'x')}
                 disabled={isSimulating}
-                className="h-8 rounded-xl text-[10px] font-bold uppercase tracking-wider gap-1 active:scale-[0.97] transition-all"
+                className="h-8 rounded-xl text-xs font-semibold capitalize gap-1.5 active:scale-[0.97] transition-all bg-white dark:bg-card border border-border/80 shadow-xs"
               >
                 {isSimulating ? (
                   <Loader2 className="h-3 w-3 animate-spin" />
                 ) : (
-                  <Icon className="h-3 w-3 shrink-0" />
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
                 )}
                 {platform}
               </Button>
@@ -517,20 +516,19 @@ export default function InboxClient() {
                     className="rounded-2xl border-border/30 bg-background text-xs leading-relaxed pb-12"
                   />
                   <div className="absolute bottom-2.5 right-3.5 flex items-center gap-1.5">
-                    <Button
+                    <RainbowButton
                       type="button"
-                      variant="ghost"
                       onClick={handleDraftAI}
                       disabled={isDraftingAI}
-                      className="h-8 text-[10px] font-bold uppercase tracking-wider rounded-xl hover:bg-emerald-500/15 text-emerald-500 gap-1 active:scale-[0.97] transition-all border border-emerald-500/10 bg-emerald-500/5"
+                      className="h-8 text-xs font-bold rounded-xl gap-1.5 active:scale-[0.97] transition-all px-3 text-white shadow-xs"
                     >
                       {isDraftingAI ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
                       ) : (
                         <Sparkles className="h-3.5 w-3.5" />
                       )}
                       Draft with AI
-                    </Button>
+                    </RainbowButton>
                     <Button
                       onClick={handleSendReply}
                       disabled={isSending || !replyText.trim()}

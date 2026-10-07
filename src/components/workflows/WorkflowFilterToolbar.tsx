@@ -15,6 +15,7 @@ import * as React from 'react';
 import { Search, Plus, RefreshCw, X, Filter } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { WorkflowState } from '@/platform/workflows/workflow-types';
 
@@ -62,7 +63,7 @@ export function WorkflowFilterToolbar({
   }, [localSearch, searchQuery, onSearchChange]);
 
   return (
-    <div className="flex flex-col gap-3">
+    <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm flex flex-col gap-3">
       {/* Top row: search + action buttons */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <div className="relative flex-1 max-w-md">
@@ -71,7 +72,7 @@ export function WorkflowFilterToolbar({
             placeholder="Search workflows by title, definition, or ID..."
             value={localSearch}
             onChange={(e) => setLocalSearch(e.target.value)}
-            className="pl-9 pr-9 h-11 sm:h-10 rounded-xl bg-card border-border/80 focus-visible:ring-1 text-sm"
+            className="pl-9 pr-9 h-11 sm:h-10 rounded-xl bg-background border-border/80 focus-visible:ring-1 text-sm"
           />
           {localSearch && (
             <button
@@ -94,7 +95,7 @@ export function WorkflowFilterToolbar({
             size="sm"
             onClick={onRefresh}
             disabled={isRefreshing}
-            className="h-11 sm:h-10 px-3 rounded-xl border-border/80 active:scale-[0.97] transition-transform min-h-[44px] sm:min-h-[40px]"
+            className="h-11 sm:h-10 px-3 rounded-xl border border-border/80 active:scale-[0.97] transition-transform min-h-[44px] sm:min-h-[40px] bg-white dark:bg-card shadow-xs"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh
@@ -138,6 +139,6 @@ export function WorkflowFilterToolbar({
           })}
         </div>
       </div>
-    </div>
+    </Card>
   );
 }

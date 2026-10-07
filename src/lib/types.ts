@@ -223,6 +223,8 @@ export type AutomationTrigger =
   | 'DEAL_CONTRACT_SIGNED'
   | 'DEAL_ACTIVITY_LOGGED'
   | 'DEAL_HEALTH_CHANGED'
+  | 'DEAL_TRANSFERRED'
+  | 'DEAL_COPIED'
   | 'CAMPAIGN_DELIVERED'
   | 'CAMPAIGN_FAILED'
   | 'CAMPAIGN_OPENED'
@@ -931,6 +933,8 @@ export interface Pipeline {
   defaultDealValue?: number;
   /** Custom fields schema defined for all deals belonging to this pipeline. */
   dealCustomFields?: PipelineCustomField[];
+  /** Backoffice policy for handling entity scope conversions when deals are moved/copied into this pipeline (Rule 61). */
+  entityScopeConversionPolicy?: import('./deals/deal-types').EntityScopeConversionPolicy;
 }
 
 export interface StarterStageConfig {
@@ -961,6 +965,8 @@ export interface CreatePipelinePayload {
   initialStages?: StarterStageConfig[];
   /** Optional custom field definitions initialized with the pipeline */
   dealCustomFields?: PipelineCustomField[];
+  /** Backoffice policy for handling entity scope conversions when deals are moved/copied into this pipeline (Rule 61). */
+  entityScopeConversionPolicy?: import('./deals/deal-types').EntityScopeConversionPolicy;
 }
 
 export const APP_PERMISSIONS = [
@@ -2737,7 +2743,10 @@ export type {
   CommercialAnalyticsSummary,
   TransferDealInput,
   TransferDealResult,
-  DealTransferAiSummaryResult
+  DealTransferAiSummaryResult,
+  EntityScopeConversionStrategy,
+  EntityScopeConversionPolicy,
+  EntityScopeResolutionResult
 } from './deals/deal-types';
 
 export type {

@@ -34,6 +34,7 @@ import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { ScriptThumbnailCard } from '@/components/call-centre/ScriptThumbnailCard';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -91,7 +92,8 @@ import {
   Settings,
   Archive,
   UserPlus,
-  Upload
+  Upload,
+  Search
 } from 'lucide-react';
 
 const AddContactsDialog = dynamic(
@@ -117,6 +119,20 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
   const { scripts, isLoading: scriptsLoading } = useCallScripts(activeWorkspaceId);
 
   const [activeTab, setActiveTab] = React.useState(defaultTab);
+  const [campaignSearch, setCampaignSearch] = React.useState('');
+  const [scriptSearch, setScriptSearch] = React.useState('');
+
+  const filteredCampaigns = React.useMemo(() => {
+    if (!campaignSearch.trim()) return campaigns;
+    const q = campaignSearch.toLowerCase();
+    return campaigns.filter(c => c.name.toLowerCase().includes(q) || (c.description || '').toLowerCase().includes(q));
+  }, [campaigns, campaignSearch]);
+
+  const filteredScripts = React.useMemo(() => {
+    if (!scriptSearch.trim()) return scripts;
+    const q = scriptSearch.toLowerCase();
+    return scripts.filter(s => s.name.toLowerCase().includes(q) || (s.description || '').toLowerCase().includes(q));
+  }, [scripts, scriptSearch]);
 
   const wrapHref = (href: string) => {
     if (!activeWorkspaceId) return href;
@@ -375,7 +391,7 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
                   onClick={() => router.push(wrapHref('/admin/messaging/call-centre/campaigns/new'))}
                   disabled={!canCreate}
                   title={!canCreate ? 'Requires Call Centre create permission' : undefined}
-                  className="h-9 px-4 rounded-xl font-bold text-[10px] uppercase tracking-wider gap-2 bg-primary hover:bg-primary/95 text-white disabled:opacity-50"
+                  className="h-10 px-4 rounded-xl font-bold text-xs uppercase tracking-wider gap-2 bg-primary hover:bg-primary/95 text-white shadow-sm active:scale-[0.97] disabled:opacity-50"
                 >
                   <Plus className="h-3.5 w-3.5" /> New Campaign
                 </Button>
@@ -397,7 +413,7 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
                     onClick={() => importInputRef.current?.click()}
                     disabled={isImporting || !canCreate}
                     title={!canCreate ? 'Requires Call Centre create permission' : undefined}
-                    className="h-9 px-4 rounded-xl font-bold text-[10px] uppercase tracking-wider gap-2 border-border bg-muted hover:bg-accent text-muted-foreground disabled:opacity-50"
+                    className="h-10 px-4 rounded-xl font-bold text-xs uppercase tracking-wider gap-2 border border-border/80 bg-white dark:bg-card text-foreground hover:bg-muted/60 shadow-xs active:scale-[0.97] disabled:opacity-50"
                   >
                     {isImporting ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
                     Import Script
@@ -406,7 +422,7 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
                     onClick={() => router.push(wrapHref('/admin/messaging/call-centre/scripts/new'))}
                     disabled={!canCreate}
                     title={!canCreate ? 'Requires Call Centre create permission' : undefined}
-                    className="h-9 px-4 rounded-xl font-bold text-[10px] uppercase tracking-wider gap-2 bg-primary hover:bg-primary/95 text-white disabled:opacity-50"
+                    className="h-10 px-4 rounded-xl font-bold text-xs uppercase tracking-wider gap-2 bg-primary hover:bg-primary/95 text-white shadow-sm active:scale-[0.97] disabled:opacity-50"
                   >
                     <FileText className="h-3.5 w-3.5" /> New Script
                   </Button>
@@ -467,6 +483,23 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
 
           {/* Campaigns View */}
           <TabsContent value="campaigns" className="mt-0 space-y-6 outline-none">
+            {campaigns.length > 0 && (
+              <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50" />
+                  <Input
+                    placeholder="Search campaigns..."
+                    value={campaignSearch}
+                    onChange={(e) => setCampaignSearch(e.target.value)}
+                    className="pl-10 h-10 rounded-xl bg-background border-border/80 text-foreground placeholder:text-muted-foreground text-xs"
+                  />
+                </div>
+                <div className="text-xs font-semibold text-muted-foreground">
+                  {filteredCampaigns.length} {filteredCampaigns.length === 1 ? 'campaign' : 'campaigns'}
+                </div>
+              </Card>
+            )}
+
             {campaignsLoading ? (
               <div className="flex items-center justify-center py-20">
                 <RefreshCw className="h-6 w-6 text-primary animate-spin" />
@@ -486,7 +519,7 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
               </Card>
             ) : (
               <div className="space-y-3">
-                {campaigns.map((camp) => {
+                {filteredCampaigns.map((camp) => {
                   const progressVal = camp.progress?.total 
                     ? Math.round((camp.progress.completed / camp.progress.total) * 100)
                     : 0;
@@ -773,6 +806,23 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
 
           {/* Scripts View */}
           <TabsContent value="scripts" className="mt-0 space-y-6 outline-none">
+            {scripts.length > 0 && (
+              <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50" />
+                  <Input
+                    placeholder="Search scripts by title or description..."
+                    value={scriptSearch}
+                    onChange={(e) => setScriptSearch(e.target.value)}
+                    className="pl-10 h-10 rounded-xl bg-background border-border/80 text-foreground placeholder:text-muted-foreground text-xs"
+                  />
+                </div>
+                <div className="text-xs font-semibold text-muted-foreground">
+                  {filteredScripts.length} {filteredScripts.length === 1 ? 'script' : 'scripts'}
+                </div>
+              </Card>
+            )}
+
             {scriptsLoading ? (
               <div className="flex items-center justify-center py-20">
                 <RefreshCw className="h-6 w-6 text-primary animate-spin" />
@@ -792,7 +842,7 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {scripts.map((script) => (
+                {filteredScripts.map((script) => (
                   <ScriptThumbnailCard
                     key={script.id}
                     mode="library"

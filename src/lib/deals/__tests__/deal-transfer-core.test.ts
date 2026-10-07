@@ -27,8 +27,12 @@ vi.mock('@/lib/activity-logger', () => ({
 }));
 
 // Mock deal event bus
+const { mockEmitDealDomainEvent } = vi.hoisted(() => ({
+  mockEmitDealDomainEvent: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('@/lib/deals/deal-event-bus', () => ({
-  emitDealDomainEvent: vi.fn().mockResolvedValue(undefined),
+  emitDealDomainEvent: mockEmitDealDomainEvent,
 }));
 
 // Mock platform event bus
@@ -69,6 +73,16 @@ const mockSourceDeal: Deal = {
       notes: 'Initial creation',
     },
   ],
+  focalContacts: [
+    {
+      id: 'focal_contact_sarah_1',
+      name: 'Sarah Connor',
+      email: 'sarah@example.com',
+      phone: '+15551234567',
+      role: 'Chief Technology Officer',
+      isPrimary: true,
+    },
+  ],
   createdAt: '2026-10-01T10:00:00.000Z',
   updatedAt: '2026-10-01T10:00:00.000Z',
 };
@@ -76,6 +90,12 @@ const mockSourceDeal: Deal = {
 const mockUpdateFn = vi.fn().mockResolvedValue(undefined);
 let targetOrgId = 'org_main';
 let idempotencyFound = false;
+let targetWorkspaceScope = 'institution';
+let sourceEntityScope = 'institution';
+let pipelineCrossScopeApprovalRequired = false;
+let pipelineDisableAutonomousTransfers = false;
+const deletedDocIds: string[] = [];
+let nextCreatedEntityId = 'ent_person_new_123';
 
 vi.mock('@/lib/crm/deal-core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/crm/deal-core')>();
@@ -109,6 +129,46 @@ vi.mock('@/lib/firebase-admin', () => ({
           })),
         };
       }
+      if (col === 'workspaces') {
+        return {
+          doc: vi.fn().mockImplementation((wsId: string) => ({
+            get: vi.fn().mockResolvedValue({
+              exists: true,
+              data: () => ({ contactScope: wsId === 'ws_dest_person' ? 'person' : targetWorkspaceScope }),
+            }),
+          })),
+        };
+      }
+      if (col === 'entities') {
+        return {
+          doc: vi.fn().mockImplementation((entId?: string) => {
+            const actualId = entId || nextCreatedEntityId;
+            return {
+              id: actualId,
+              get: vi.fn().mockResolvedValue({
+                exists: true,
+                data: () => ({ entityType: sourceEntityScope, name: 'Acme Global Corp' }),
+              }),
+              set: vi.fn().mockResolvedValue(undefined),
+              delete: vi.fn().mockImplementation(async () => {
+                deletedDocIds.push(actualId);
+              }),
+            };
+          }),
+        };
+      }
+      if (col === 'workspace_entities') {
+        return {
+          doc: vi.fn().mockImplementation((weId: string) => ({
+            id: weId,
+            get: vi.fn().mockResolvedValue({ exists: false }),
+            set: vi.fn().mockResolvedValue(undefined),
+            delete: vi.fn().mockImplementation(async () => {
+              deletedDocIds.push(weId);
+            }),
+          })),
+        };
+      }
       if (col === 'onboardingStages') {
         return {
           doc: vi.fn().mockReturnValue({
@@ -131,6 +191,13 @@ vi.mock('@/lib/firebase-admin', () => ({
               data: () => ({
                 name: 'Enterprise Pipeline',
                 targetCloseDays: 30,
+                entityScopeConversionPolicy: {
+                  requireApprovalForCrossScope: pipelineCrossScopeApprovalRequired,
+                  disableAutonomousTransfers: pipelineDisableAutonomousTransfers,
+                  institutionToPersonStrategy: 'promote_primary_focal_contact',
+                  personToInstitutionStrategy: 'derive_from_company_field',
+                  toFamilyStrategy: 'promote_primary_as_guardian',
+                },
               }),
             }),
           }),
@@ -145,6 +212,7 @@ vi.mock('@/lib/firebase-admin', () => ({
         doc: vi.fn().mockReturnValue({
           get: vi.fn().mockResolvedValue({ exists: false }),
           set: vi.fn().mockResolvedValue(undefined),
+          delete: vi.fn().mockResolvedValue(undefined),
         }),
       };
     }),
@@ -281,5 +349,145 @@ describe('transferDealCore (Canonical Engine)', () => {
     expect(result.success).toBe(true);
     expect(result.dealId).toBe('deal_cached_idempotent_123');
     expect(mockUpdateFn).not.toHaveBeenCalled();
+  });
+
+  it('promotes primary focal contact into a Person entity when transferring from Institution to Person workspace (Rule 61 & 64)', async () => {
+    targetWorkspaceScope = 'person';
+    sourceEntityScope = 'institution';
+    pipelineCrossScopeApprovalRequired = false;
+
+    const actor: CrmActor = {
+      kind: 'service',
+      service: 'automations',
+      workspaceId: 'ws_source',
+      allowedWorkspaceIds: ['ws_source', 'ws_dest'],
+    };
+
+    const input: TransferDealInput = {
+      dealId: 'deal_core_test_1',
+      mode: 'move',
+      sourceWorkspaceId: 'ws_source',
+      targetWorkspaceId: 'ws_dest',
+      targetPipelineId: 'pipe_dest',
+      targetStageId: 'stage_dest_1',
+      entityConversionStrategy: 'promote_primary_focal_contact',
+    };
+
+    const result = await transferDealCore(actor, input);
+    expect(result.success).toBe(true);
+    expect(result.entityResolution).toBeDefined();
+    expect(result.entityResolution?.sourceScope).toBe('institution');
+    expect(result.entityResolution?.targetScope).toBe('person');
+    expect(result.entityResolution?.wasCreated).toBe(true);
+    expect(result.entityResolution?.promotedContactId).toBe('focal_contact_sarah_1');
+
+    // Confirm deal document was updated with the promoted person entity ID
+    expect(mockUpdateFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityId: expect.any(String),
+        workspaceId: 'ws_dest',
+        pipelineId: 'pipe_dest',
+        stageId: 'stage_dest_1',
+      })
+    );
+  });
+
+  it('creates Two-Phase PROPOSAL when cross-scope transfer requires approval according to pipeline policy (Rule 21 & 22)', async () => {
+    targetWorkspaceScope = 'person';
+    sourceEntityScope = 'institution';
+    pipelineCrossScopeApprovalRequired = true; // Mandated by Backoffice Pipeline Policy
+
+    const actor: CrmActor = {
+      kind: 'service',
+      service: 'api',
+      workspaceId: 'ws_source',
+      allowedWorkspaceIds: ['ws_source', 'ws_dest'],
+      agentId: 'agent_autonomous_transfer',
+    };
+
+    const input: TransferDealInput = {
+      dealId: 'deal_core_test_1',
+      mode: 'move',
+      sourceWorkspaceId: 'ws_source',
+      targetWorkspaceId: 'ws_dest',
+      targetPipelineId: 'pipe_dest',
+      targetStageId: 'stage_dest_1',
+    };
+
+    const result = await transferDealCore(actor, input);
+    expect(result.success).toBe(true);
+    expect(result.phase).toBe('PROPOSAL');
+    expect(result.requiresProposal).toBe(true);
+    expect(result.approvalId).toBeDefined();
+    // Zero state mutation committed before approval
+    expect(mockUpdateFn).not.toHaveBeenCalled();
+  });
+
+  it('executes Saga compensation rollback and emits compensated event when downstream operation throws an error (Rule 27)', async () => {
+    targetWorkspaceScope = 'person';
+    sourceEntityScope = 'institution';
+    pipelineCrossScopeApprovalRequired = false;
+    deletedDocIds.length = 0;
+
+    mockUpdateFn.mockRejectedValueOnce(new Error('Firestore commit network failure'));
+
+    const actor: CrmActor = {
+      kind: 'service',
+      service: 'automations',
+      workspaceId: 'ws_source',
+      allowedWorkspaceIds: ['ws_source', 'ws_dest'],
+    };
+
+    const input: TransferDealInput = {
+      dealId: 'deal_core_test_1',
+      mode: 'move',
+      sourceWorkspaceId: 'ws_source',
+      targetWorkspaceId: 'ws_dest',
+      targetPipelineId: 'pipe_dest',
+      targetStageId: 'stage_dest_1',
+      entityConversionStrategy: 'promote_primary_focal_contact',
+    };
+
+    const result = await transferDealCore(actor, input);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Firestore commit network failure');
+
+    // Verify Saga compensating transaction purged created entity/projection
+    expect(deletedDocIds.length).toBeGreaterThan(0);
+
+    // Verify compensated domain event was published to the ledger
+    expect(mockEmitDealDomainEvent).toHaveBeenCalledWith(
+      'deal.transfer.compensated',
+      expect.objectContaining({
+        dealId: 'deal_core_test_1',
+      })
+    );
+  });
+
+  it('blocks autonomous transfer when disableAutonomousTransfers dead-man switch is enabled (Rule 60)', async () => {
+    pipelineDisableAutonomousTransfers = true;
+
+    const actor: CrmActor = {
+      kind: 'service',
+      service: 'api',
+      workspaceId: 'ws_source',
+      allowedWorkspaceIds: ['ws_source', 'ws_dest'],
+      agentId: 'agent_autonomous_transfer',
+    };
+
+    const input: TransferDealInput = {
+      dealId: 'deal_core_test_1',
+      mode: 'move',
+      sourceWorkspaceId: 'ws_source',
+      targetWorkspaceId: 'ws_dest',
+      targetPipelineId: 'pipe_dest',
+      targetStageId: 'stage_dest_1',
+    };
+
+    const result = await transferDealCore(actor, input);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Autonomous cross-workspace deal transfers are disabled');
+
+    pipelineDisableAutonomousTransfers = false;
   });
 });

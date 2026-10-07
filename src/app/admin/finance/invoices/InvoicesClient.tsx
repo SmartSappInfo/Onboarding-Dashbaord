@@ -432,7 +432,7 @@ export default function InvoicesClient() {
                                     placeholder={`Search reference or ${singular.toLowerCase()}...`} 
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-9 h-11 min-h-[44px] bg-background border-border/80 text-foreground placeholder:text-muted-foreground rounded-xl text-xs font-medium"
+                                    className="pl-9 h-11 min-h-[44px] bg-white dark:bg-card border-border/80 text-foreground placeholder:text-muted-foreground rounded-xl text-xs font-medium shadow-xs"
                                 />
                             </div>
                         </CardContent>

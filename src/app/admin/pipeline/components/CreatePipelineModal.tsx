@@ -95,6 +95,13 @@ export function CreatePipelineModal({
     defaultCloseDateOffsetValue: 30,
     defaultCloseDateOffsetUnit: 'days',
     dealCustomFields: [],
+    entityScopeConversionPolicy: {
+      institutionToPersonStrategy: 'promote_primary_focal_contact',
+      personToInstitutionStrategy: 'derive_from_company_field',
+      toFamilyStrategy: 'promote_primary_as_guardian',
+      requireApprovalForCrossScope: false,
+      disableAutonomousTransfers: false,
+    },
   });
 
   // Query workspace roles scoped strictly to active organization
@@ -146,6 +153,14 @@ export function CreatePipelineModal({
         assignmentUserIds: [],
         defaultCloseDateOffsetValue: 30,
         defaultCloseDateOffsetUnit: 'days',
+        dealCustomFields: [],
+        entityScopeConversionPolicy: {
+          institutionToPersonStrategy: 'promote_primary_focal_contact',
+          personToInstitutionStrategy: 'derive_from_company_field',
+          toFamilyStrategy: 'promote_primary_as_guardian',
+          requireApprovalForCrossScope: false,
+          disableAutonomousTransfers: false,
+        },
       });
       setNewStageName('');
     }
@@ -225,6 +240,7 @@ export function CreatePipelineModal({
         defaultCloseDateOffsetUnit: formData.defaultCloseDateOffsetUnit,
         initialStages: stages,
         dealCustomFields: formData.dealCustomFields || [],
+        entityScopeConversionPolicy: formData.entityScopeConversionPolicy,
       });
 
       if (res.success && res.id) {

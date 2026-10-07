@@ -15,7 +15,7 @@
  */
 
 import * as React from 'react';
-import type { PipelineType, PipelineCustomField } from '@/lib/types';
+import type { PipelineType, PipelineCustomField, EntityScopeConversionPolicy } from '@/lib/types';
 import { 
     ShieldCheck, 
     Settings2, 
@@ -24,7 +24,8 @@ import {
     Calendar, 
     DollarSign,
     Bookmark,
-    Sliders
+    Sliders,
+    ArrowRightLeft
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -55,6 +56,7 @@ export interface PipelineFormData {
   defaultCloseDateOffsetValue: number | '';
   defaultCloseDateOffsetUnit: 'hours' | 'days' | 'months';
   dealCustomFields?: PipelineCustomField[];
+  entityScopeConversionPolicy?: EntityScopeConversionPolicy;
 }
 
 export interface PipelineConfigOption {
@@ -394,18 +396,180 @@ export function PipelineConfigFields({
     </div>
   );
 
+  // Entity Scope Conversion Policy (Cross-Workspace Transfer Adaptation - Rules 21, 22, 60, 61)
+  const currentPolicy: EntityScopeConversionPolicy = React.useMemo(() => {
+    return formData.entityScopeConversionPolicy || {
+      institutionToPersonStrategy: 'promote_primary_focal_contact',
+      personToInstitutionStrategy: 'derive_from_company_field',
+      toFamilyStrategy: 'promote_primary_as_guardian',
+      requireApprovalForCrossScope: false,
+      disableAutonomousTransfers: false,
+    };
+  }, [formData.entityScopeConversionPolicy]);
+
+  const updatePolicy = React.useCallback(<K extends keyof EntityScopeConversionPolicy>(
+    key: K,
+    val: EntityScopeConversionPolicy[K]
+  ) => {
+    onChange('entityScopeConversionPolicy', {
+      ...currentPolicy,
+      [key]: val,
+    });
+  }, [currentPolicy, onChange]);
+
+  const renderEntityScopeConversionPolicy = () => (
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <p className="text-xs text-muted-foreground font-normal leading-relaxed">
+          Configure how deal entities automatically adapt when opportunities are moved or copied across workspaces with differing scopes (e.g. B2B Institution vs B2C Person vs Family). AI agents and MCP tools autonomously enforce these policies.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Institution -> Person Strategy */}
+        <div className="space-y-2 text-left">
+          <Label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+            Institution &rarr; Person Strategy
+          </Label>
+          <Select
+            value={currentPolicy.institutionToPersonStrategy}
+            onValueChange={(val: 'promote_primary_focal_contact' | 'promote_first_contact' | 'require_human_approval') =>
+              updatePolicy('institutionToPersonStrategy', val)
+            }
+            disabled={disabled}
+          >
+            <SelectTrigger className="min-h-[44px] rounded-xl text-xs font-medium bg-background border-border">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border border-border shadow-xl">
+              <SelectItem value="promote_primary_focal_contact" className="text-xs">
+                Promote Primary Focal Contact (Recommended)
+              </SelectItem>
+              <SelectItem value="promote_first_contact" className="text-xs">
+                Promote First Available Contact
+              </SelectItem>
+              <SelectItem value="require_human_approval" className="text-xs">
+                Require Human Review Proposal
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-[10px] text-muted-foreground leading-normal">
+            When moving from an Institution to a Person workspace, promotes focal contact to an independent Person entity.
+          </p>
+        </div>
+
+        {/* Person -> Institution Strategy */}
+        <div className="space-y-2 text-left">
+          <Label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+            Person &rarr; Institution Strategy
+          </Label>
+          <Select
+            value={currentPolicy.personToInstitutionStrategy}
+            onValueChange={(val: 'derive_from_company_field' | 'require_human_approval') =>
+              updatePolicy('personToInstitutionStrategy', val)
+            }
+            disabled={disabled}
+          >
+            <SelectTrigger className="min-h-[44px] rounded-xl text-xs font-medium bg-background border-border">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border border-border shadow-xl">
+              <SelectItem value="derive_from_company_field" className="text-xs">
+                Derive Company from Email Domain (Recommended)
+              </SelectItem>
+              <SelectItem value="require_human_approval" className="text-xs">
+                Require Human Review Proposal
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-[10px] text-muted-foreground leading-normal">
+            When moving from a Person to an Institution workspace, creates company record linked to contact.
+          </p>
+        </div>
+
+        {/* Destination: Family Strategy */}
+        <div className="space-y-2 text-left sm:col-span-2">
+          <Label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+            Destination: Family Workspace Strategy
+          </Label>
+          <Select
+            value={currentPolicy.toFamilyStrategy}
+            onValueChange={(val: 'promote_primary_as_guardian' | 'require_human_approval') =>
+              updatePolicy('toFamilyStrategy', val)
+            }
+            disabled={disabled}
+          >
+            <SelectTrigger className="min-h-[44px] rounded-xl text-xs font-medium bg-background border-border">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border border-border shadow-xl">
+              <SelectItem value="promote_primary_as_guardian" className="text-xs">
+                Promote Primary Contact as Household Guardian (Recommended)
+              </SelectItem>
+              <SelectItem value="require_human_approval" className="text-xs">
+                Require Human Review Proposal
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Safety Switches */}
+      <div className="space-y-3 pt-2 border-t border-border/50">
+        <div className="flex items-center justify-between p-3.5 rounded-xl bg-muted/20 border border-border/60">
+          <div className="space-y-0.5 pr-4 text-left">
+            <Label htmlFor="requireApprovalForCrossScope" className="text-xs font-bold cursor-pointer text-foreground">
+              Always Require Approval for Cross-Scope Transfers
+            </Label>
+            <p className="text-[11px] text-muted-foreground font-normal leading-relaxed">
+              Forces Two-Phase proposal generation for human sign-off before committing cross-scope moves.
+            </p>
+          </div>
+          <Switch
+            id="requireApprovalForCrossScope"
+            checked={Boolean(currentPolicy.requireApprovalForCrossScope)}
+            onCheckedChange={(val) => updatePolicy('requireApprovalForCrossScope', val)}
+            disabled={disabled}
+            className="shrink-0"
+          />
+        </div>
+
+        <div className="flex items-center justify-between p-3.5 rounded-xl bg-muted/20 border border-border/60">
+          <div className="space-y-0.5 pr-4 text-left">
+            <Label htmlFor="disableAutonomousTransfers" className="text-xs font-bold cursor-pointer text-foreground">
+              Disable Autonomous Agent Transfers (Dead-Man Switch)
+            </Label>
+            <p className="text-[11px] text-muted-foreground font-normal leading-relaxed">
+              Disallows background AI agents and MCP tools from initiating cross-workspace deal transfers.
+            </p>
+          </div>
+          <Switch
+            id="disableAutonomousTransfers"
+            checked={Boolean(currentPolicy.disableAutonomousTransfers)}
+            onCheckedChange={(val) => updatePolicy('disableAutonomousTransfers', val)}
+            disabled={disabled}
+            className="shrink-0"
+          />
+        </div>
+      </div>
+    </div>
+  );
+
   // Variant Branching:
   // "modal" presents a compact segmented tab view optimized for dialog scrolling.
   // "full" presents the multi-card desktop grid layout.
   if (variant === 'modal') {
     return (
       <Tabs defaultValue="blueprint" className="w-full">
-        <TabsList className="grid grid-cols-3 w-full h-11 p-1 bg-muted/30 rounded-xl mb-4">
+        <TabsList className="grid grid-cols-4 w-full h-11 p-1 bg-muted/30 rounded-xl mb-4">
           <TabsTrigger value="blueprint" className="rounded-lg text-xs font-bold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs">
             <Settings2 className="h-3.5 w-3.5 mr-1.5" /> Blueprint
           </TabsTrigger>
           <TabsTrigger value="routing" className="rounded-lg text-xs font-bold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs">
             <Users className="h-3.5 w-3.5 mr-1.5" /> Routing
+          </TabsTrigger>
+          <TabsTrigger value="policy" className="rounded-lg text-xs font-bold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs">
+            <ArrowRightLeft className="h-3.5 w-3.5 mr-1.5" /> Policy
           </TabsTrigger>
           <TabsTrigger value="customFields" className="rounded-lg text-xs font-bold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs">
             <Sliders className="h-3.5 w-3.5 mr-1.5" /> Custom Fields
@@ -416,6 +580,9 @@ export function PipelineConfigFields({
         </TabsContent>
         <TabsContent value="routing" className="mt-0 focus-visible:outline-none">
           {renderAccessAndRouting()}
+        </TabsContent>
+        <TabsContent value="policy" className="mt-0 focus-visible:outline-none">
+          {renderEntityScopeConversionPolicy()}
         </TabsContent>
         <TabsContent value="customFields" className="mt-0 focus-visible:outline-none">
           <PipelineDealCustomFieldsCard
@@ -455,6 +622,25 @@ export function PipelineConfigFields({
         </CardHeader>
         <CardContent className="p-6 sm:p-8">
           {renderAccessAndRouting()}
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+        <CardHeader className="p-6 pb-2">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-primary/5 text-primary shrink-0">
+              <ArrowRightLeft size={18} />
+            </div>
+            <div>
+              <CardTitle className="text-sm font-semibold tracking-tight text-foreground">Cross-Workspace Entity Conversion Policy</CardTitle>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Governs polymorphic entity adaptation when moving deals across workspaces with different scopes (Rule 61).
+              </p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-6 sm:p-8">
+          {renderEntityScopeConversionPolicy()}
         </CardContent>
       </Card>
 

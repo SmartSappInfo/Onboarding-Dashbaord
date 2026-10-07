@@ -291,9 +291,6 @@ export function ApprovalsClient() {
               <CardInfoTooltip text="Central operator console for adjudicating high-risk agent proposals, managing dual-control compliance, and inspecting two-phase execution payloads." />
             </h1>
           </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            Review, verify, and authorize two-phase human-in-the-loop proposals from autonomous swarms and workflows.
-          </p>
         </div>
 
         {/* Global Refresh Button */}
@@ -302,7 +299,7 @@ export function ApprovalsClient() {
           size="sm"
           onClick={() => void loadData()}
           disabled={isRefreshing}
-          className="rounded-xl min-h-[44px] px-4 self-start sm:self-auto active:scale-[0.97]"
+          className="rounded-xl min-h-[44px] px-5 self-start sm:self-auto bg-white dark:bg-card text-foreground border border-border/80 shadow-xs hover:bg-muted/60 active:scale-[0.97]"
         >
           <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
           Refresh
@@ -390,7 +387,7 @@ export function ApprovalsClient() {
               className={`px-3 py-1.5 rounded-xl font-medium transition-all shrink-0 min-h-[36px] active:scale-[0.97] border ${
                 categoryFilter === tab.id
                   ? 'bg-primary text-primary-foreground border-primary shadow-sm font-semibold'
-                  : 'bg-background hover:bg-muted text-muted-foreground border-border/80'
+                  : 'bg-white dark:bg-card hover:bg-muted/60 text-muted-foreground hover:text-foreground border-border/80'
               }`}
             >
               {tab.label}

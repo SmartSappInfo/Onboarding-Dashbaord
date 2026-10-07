@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, CalendarPlus, Search, Fingerprint } from 'lucide-react';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { useToast } from '@/hooks/use-toast';
 import { backfillDisplayNameLower } from '@/lib/entities/backfill-display-name-lower';
 import { backfillWorkspaceContacts } from '@/lib/contacts/backfill-workspace-contacts';
@@ -277,12 +278,11 @@ export default function SeedsClient() {
             <div className="space-y-12 pb-32 w-full max-w-4xl">
             
                 {/* Header */}
-                <div className="flex flex-col items-start text-left">
-                    <Badge variant="outline" className="mb-4 bg-primary/5 text-primary border-primary/20 font-bold uppercase tracking-widest text-[9px] px-3 py-1 ring-1 ring-primary/20">System Governance</Badge>
-                    <h1 className="text-3xl font-bold mb-2 text-foreground">Infrastructure Seeding</h1>
-                    <p className="text-muted-foreground text-sm mt-1">
-                        Execute template optimizations and unique link enrichments across all workspaces.
-                    </p>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-center gap-2.5">
+                        <h1 className="text-2xl font-bold tracking-tight text-foreground">Infrastructure Seeding</h1>
+                        <CardInfoTooltip text="Execute template optimizations, sender isolation migrations, and contact projections across all workspaces." />
+                    </div>
                 </div>
 
                 {/* Seeding Section */}
@@ -326,7 +326,7 @@ export default function SeedsClient() {
                                             variant="outline"
                                             onClick={() => handleSenderOrgBackfill('dry-run')}
                                             disabled={isSenderOrgBackfilling}
-                                            className="border-rose-200 text-rose-700 hover:bg-rose-100/50 min-w-[120px]"
+                                            className="border-rose-200 text-rose-700 hover:bg-rose-100/50 min-w-[120px] bg-white dark:bg-card active:scale-[0.97] rounded-xl"
                                         >
                                             {isSenderOrgBackfilling ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
                                             Dry Run
@@ -418,7 +418,7 @@ export default function SeedsClient() {
                                         variant="outline"
                                         onClick={handleReconcileContacts}
                                         disabled={isReconciling || isContactsBackfilling}
-                                        className="border-blue-200 text-blue-700 hover:bg-blue-100/50"
+                                        className="border-blue-200 text-blue-700 hover:bg-blue-100/50 bg-white dark:bg-card active:scale-[0.97] rounded-xl"
                                         title="Heal drift: re-derive every entity's contact rows and delete removed ones"
                                     >
                                         {isReconciling ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}

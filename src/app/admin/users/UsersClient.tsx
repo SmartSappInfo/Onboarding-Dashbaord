@@ -333,7 +333,7 @@ export default function UsersClient() {
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
-          <Button asChild variant="outline" className="rounded-xl h-10 px-4 text-sm font-medium active:scale-[0.97]">
+          <Button asChild variant="outline" className="rounded-xl h-10 px-4 text-sm font-medium active:scale-[0.97] bg-white dark:bg-card border border-border/80 shadow-xs">
             <Link href="/admin/users/roles">
               <ShieldCheck className="h-4 w-4 mr-2 text-primary" /> Roles & Permissions
             </Link>
@@ -393,7 +393,7 @@ export default function UsersClient() {
           />
 
           {/* Search and Filters Bar */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-card p-3 rounded-xl border">
+          <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
@@ -409,7 +409,7 @@ export default function UsersClient() {
                 type="button"
                 variant="outline"
                 onClick={() => setIsFilterDrawerOpen(true)}
-                className="text-sm h-10 px-4 rounded-xl active:scale-[0.97] font-medium"
+                className="text-sm h-10 px-4 rounded-xl active:scale-[0.97] font-medium bg-white dark:bg-card border border-border/80 shadow-xs"
               >
                 <SlidersHorizontal className="w-4 h-4 mr-2" /> Filter Drawer
               </Button>
@@ -421,7 +421,7 @@ export default function UsersClient() {
                 <UserPlus className="w-4 h-4 mr-2" /> Add User
               </Button>
             </div>
-          </div>
+          </Card>
 
           {/* Directory Table */}
           <Card className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm overflow-hidden">

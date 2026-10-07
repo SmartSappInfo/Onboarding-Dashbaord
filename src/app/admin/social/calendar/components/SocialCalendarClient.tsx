@@ -36,6 +36,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { Card, CardContent } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { DndContext, useDraggable, useDroppable, DragEndEvent } from '@dnd-kit/core';
 import type { SocialPost } from '@/lib/types';
 import { updatePostScheduleAction } from '@/app/actions/social-composer-actions';
@@ -270,20 +271,20 @@ export default function SocialCalendarClient() {
           <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/10">
             <CalendarIcon className="h-5 w-5 text-white" />
           </div>
-          <div>
+          <div className="flex items-center gap-2.5">
             <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Content Calendar</h1>
-            <p className="text-muted-foreground text-xs font-medium">Manage and schedule posts via drag-and-drop on the monthly planner grid.</p>
+            <CardInfoTooltip text="Manage and schedule posts via drag-and-drop on the monthly planner grid." />
           </div>
         </div>
 
         <div className="flex items-center gap-2 self-end sm:self-auto">
-          <Button variant="outline" size="icon" onClick={handlePrevMonth} className="rounded-xl h-9 w-9 active:scale-[0.97] transition-all">
+          <Button variant="outline" size="icon" onClick={handlePrevMonth} className="rounded-xl h-9 w-9 active:scale-[0.97] transition-all bg-white dark:bg-card border border-border/80 shadow-xs">
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button variant="outline" onClick={handleToday} className="rounded-xl h-9 px-4 font-semibold text-xs active:scale-[0.97] transition-all">
+          <Button variant="outline" onClick={handleToday} className="rounded-xl h-9 px-4 font-semibold text-xs active:scale-[0.97] transition-all bg-white dark:bg-card border border-border/80 shadow-xs">
             Today
           </Button>
-          <Button variant="outline" size="icon" onClick={handleNextMonth} className="rounded-xl h-9 w-9 active:scale-[0.97] transition-all">
+          <Button variant="outline" size="icon" onClick={handleNextMonth} className="rounded-xl h-9 w-9 active:scale-[0.97] transition-all bg-white dark:bg-card border border-border/80 shadow-xs">
             <ChevronRight className="h-4 w-4" />
           </Button>
           <span className="font-bold text-sm tracking-wide ml-2 bg-muted/40 py-1.5 px-4 rounded-xl border border-border/20">

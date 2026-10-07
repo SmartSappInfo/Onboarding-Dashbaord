@@ -491,7 +491,7 @@ export default function LocationHierarchyEditor() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-xl font-bold border-border/80 bg-white dark:bg-card shadow-xs active:scale-[0.97]">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteRegion}
               className="rounded-xl font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -516,7 +516,7 @@ export default function LocationHierarchyEditor() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-xl font-bold border-border/80 bg-white dark:bg-card shadow-xs active:scale-[0.97]">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteDistrict}
               className="rounded-xl font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90"

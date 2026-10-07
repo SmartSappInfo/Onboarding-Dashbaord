@@ -171,7 +171,7 @@ export default function SettingsClient() {
           </div>
           <div className="w-full sm:w-[320px] shrink-0">
             <Select value={selectedScope} onValueChange={setSelectedScope}>
-              <SelectTrigger className="h-11 rounded-xl bg-background border border-border hover:border-primary/40 focus:ring-primary font-semibold text-xs px-3.5 shadow-sm transition-all">
+              <SelectTrigger className="h-11 rounded-xl bg-white dark:bg-card border border-border/80 hover:border-primary/40 focus:ring-primary font-semibold text-xs px-3.5 shadow-xs transition-all">
                 <SelectValue placeholder="Select Configuration Scope" />
               </SelectTrigger>
               <SelectContent className="rounded-xl border border-border shadow-xl z-50">
@@ -261,7 +261,7 @@ export default function SettingsClient() {
                               variant="outline" 
                               size="sm"
                               onClick={() => setIsOrgDialogOpen(true)} 
-                              className="rounded-xl font-bold text-xs h-10 px-4.5 shrink-0 border-border/80 hover:bg-primary hover:text-white hover:border-primary transition-all duration-200 shadow-sm active:scale-[0.98] self-center md:self-start"
+                              className="rounded-xl font-bold text-xs h-10 px-4.5 shrink-0 border-border/80 bg-white dark:bg-card hover:bg-muted/60 hover:text-foreground transition-all duration-200 shadow-xs active:scale-[0.97] self-center md:self-start"
                             >
                               <Pencil className="w-3.5 h-3.5 mr-1.5" />
                               Edit Profile Details

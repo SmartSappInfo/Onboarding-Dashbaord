@@ -758,6 +758,20 @@ export const DealTransferCapabilityInputSchema = z.object({
   copyCustomFields: z.boolean().default(true).optional(),
   expectedUpdatedAt: z.string().optional().describe('TOCTOU optimistic concurrency timestamp.'),
   idempotencyKey: z.string().optional().describe('Unique token for replay protection.'),
+  entityConversionStrategy: z
+    .enum([
+      'auto',
+      'promote_primary_focal_contact',
+      'promote_first_contact',
+      'derive_from_company_field',
+      'promote_primary_as_guardian',
+      'require_human_approval',
+    ])
+    .optional()
+    .describe('Polymorphic entity conversion strategy across workspace scopes (Rule 61 & 69).'),
+  focalContactId: z.string().optional().describe('Explicit focal contact ID to promote to a Person entity.'),
+  dryRun: z.boolean().default(false).optional().describe('Shadow Mode: dry run simulation without DB write (Rule 42).'),
+  approvalId: z.string().optional().describe('Approval token for committing Two-Phase proposals (Rule 21 & 22).'),
 });
 
 export const DealTransferCapabilityOutputSchema = z.object({
@@ -767,6 +781,20 @@ export const DealTransferCapabilityOutputSchema = z.object({
   targetPipelineId: z.string(),
   targetStageId: z.string(),
   success: z.boolean(),
+  phase: z.enum(['COMMITTED', 'PROPOSAL']).default('COMMITTED'),
+  approvalId: z.string().optional(),
+  entityResolution: z
+    .object({
+      sourceEntityId: z.string(),
+      targetEntityId: z.string(),
+      sourceScope: z.string(),
+      targetScope: z.string(),
+      strategyUsed: z.string(),
+      wasCreated: z.boolean(),
+      promotedContactId: z.string().optional(),
+      auditEvidence: z.string(),
+    })
+    .optional(),
   updatedAt: z.string(),
 });
 
@@ -846,9 +874,13 @@ export const dealTransferCapability: CapabilityDefinition<
       copyCustomFields: input.copyCustomFields,
       idempotencyKey: input.idempotencyKey,
       expectedUpdatedAt: input.expectedUpdatedAt,
+      entityConversionStrategy: input.entityConversionStrategy,
+      focalContactId: input.focalContactId,
+      dryRun: input.dryRun,
+      approvalId: input.approvalId,
     });
 
-    if (!result.success || !result.dealId) {
+    if (!result.success || (!result.dealId && result.phase !== 'PROPOSAL')) {
       return {
         success: false,
         error: {
@@ -871,31 +903,36 @@ export const dealTransferCapability: CapabilityDefinition<
       },
       entity: {
         type: 'deal',
-        id: result.dealId,
+        id: result.dealId || input.dealId,
       },
       workspaceId: input.targetWorkspaceId,
       organizationId: principal.organizationId,
       idempotencyKey: input.idempotencyKey,
       payload: {
-        dealId: result.dealId,
+        dealId: result.dealId || input.dealId,
         originalDealId: input.dealId,
         mode: input.mode,
         sourceWorkspaceId: input.sourceWorkspaceId,
         targetWorkspaceId: input.targetWorkspaceId,
         pipelineId: input.targetPipelineId,
         stageId: input.targetStageId,
+        phase: result.phase || 'COMMITTED',
+        approvalId: result.approvalId,
       },
     });
 
     return {
       success: true,
       data: {
-        dealId: result.dealId,
+        dealId: result.dealId || input.dealId,
         mode: input.mode,
         targetWorkspaceId: input.targetWorkspaceId,
         targetPipelineId: input.targetPipelineId,
         targetStageId: input.targetStageId,
         success: true,
+        phase: result.phase || 'COMMITTED',
+        approvalId: result.approvalId,
+        entityResolution: result.entityResolution,
         updatedAt: new Date().toISOString(),
       },
       executionId: context.correlationId,

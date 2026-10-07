@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { dealTransferTool } from '../tools/deal-tools';
+import { dealTransferTool, dealPreviewTransferTool } from '../tools/deal-tools';
 import type { McpExecutionContext } from '../types';
 
 // Mock transferDealCore
@@ -139,3 +139,77 @@ describe('dealTransferTool (MCP Layer)', () => {
     ).rejects.toThrow(/Destination stage does not belong to target pipeline/);
   });
 });
+
+describe('dealPreviewTransferTool (MCP Layer - Two-Phase / Shadow Mode)', () => {
+  const mockContext: McpExecutionContext = {
+    callerType: 'agent',
+    callerId: 'agent_evaluator_1',
+    workspaceId: 'ws_source_1',
+    organizationId: 'org_enterprise_1',
+    requestId: 'req_preview_123',
+    callDepth: 1,
+    timestamp: '2026-10-07T12:00:00.000Z',
+  };
+
+  it('exposes compliant read-only metadata and zero mutation risk (Rule 11 & 12)', () => {
+    expect(dealPreviewTransferTool.name).toBe('deal.preview_transfer');
+    expect(dealPreviewTransferTool.version).toBe('1.0.0');
+    expect(dealPreviewTransferTool.category).toBe('deal');
+    expect(dealPreviewTransferTool.riskLevel).toBe('read_only');
+  });
+
+  it('invokes transferDealCore in dryRun mode and surfaces polymorphic conversion plan (Rule 21 & 22)', async () => {
+    mockTransferDealCore.mockResolvedValueOnce({
+      success: true,
+      dealId: 'deal_1',
+      mode: 'move',
+      sourceWorkspaceId: 'ws_source_1',
+      targetWorkspaceId: 'ws_target_person',
+      targetPipelineId: 'pipe_target_1',
+      targetStageId: 'stage_target_1',
+      phase: 'PROPOSAL',
+      requiresProposal: true,
+      approvalId: 'prop_cross_scope_456',
+      entityResolution: {
+        sourceEntityId: 'ent_inst_1',
+        targetEntityId: 'ent_inst_1',
+        sourceScope: 'institution',
+        targetScope: 'person',
+        strategyUsed: 'promote_primary_focal_contact',
+        wasCreated: false,
+        auditEvidence: 'Scope mismatch requires Two-Phase human review proposal.',
+      },
+      auditEvidence: 'Dry-run preview simulation completed without state mutation.',
+      updatedAt: '2026-10-07T12:00:00.000Z',
+    });
+
+    const result = await dealPreviewTransferTool.handler(
+      {
+        dealId: 'deal_1',
+        mode: 'move',
+        targetWorkspaceId: 'ws_target_person',
+        targetPipelineId: 'pipe_target_1',
+        targetStageId: 'stage_target_1',
+        entityConversionStrategy: 'promote_primary_focal_contact',
+      },
+      mockContext
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.phase).toBe('PROPOSAL');
+    expect(result.requiresProposal).toBe(true);
+    expect(result.approvalId).toBe('prop_cross_scope_456');
+    expect(result.entityResolution?.sourceScope).toBe('institution');
+    expect(result.entityResolution?.targetScope).toBe('person');
+
+    expect(mockTransferDealCore).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        dealId: 'deal_1',
+        dryRun: true,
+        entityConversionStrategy: 'promote_primary_focal_contact',
+      })
+    );
+  });
+});
+

@@ -14,6 +14,7 @@ import { useTenant } from '@/context/TenantContext';
 import { useUser } from '@/firebase';
 import { useTerminology } from '@/hooks/use-terminology';
 import { useConfirm } from '@/components/ui/confirm-dialog';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 export default function DeveloperClient() {
   const { activeWorkspaceId, activeWorkspace } = useTenant();
@@ -97,14 +98,12 @@ export default function DeveloperClient() {
 
   return (
     <div className="space-y-8 pb-32 w-full">
-      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-2.5">
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
             Developer API Hub
           </h1>
-          <p className="text-muted-foreground font-medium text-sm mt-1">
-            Manage programmatic access and integration endpoints
-          </p>
+          <CardInfoTooltip text="Manage programmatic access and integration endpoints for your workspace." />
         </div>
       </div>
 
@@ -237,7 +236,7 @@ export default function DeveloperClient() {
                     {copiedKey ? 'Copied' : 'Copy'}
                   </Button>
                 </div>
-                <Button variant="outline" className="w-full mt-4 h-12 font-semibold" onClick={() => setGeneratedKey(null)}>
+                <Button variant="outline" className="w-full mt-4 h-12 font-semibold rounded-xl bg-white dark:bg-card border border-border/80 shadow-xs active:scale-[0.97]" onClick={() => setGeneratedKey(null)}>
                   I have safely stored this key
                 </Button>
               </div>

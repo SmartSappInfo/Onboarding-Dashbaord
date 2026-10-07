@@ -73,6 +73,13 @@ export default function PipelineSettingsClient() {
         defaultCloseDateOffsetValue: '',
         defaultCloseDateOffsetUnit: 'days',
         dealCustomFields: [],
+        entityScopeConversionPolicy: {
+            institutionToPersonStrategy: 'promote_primary_focal_contact',
+            personToInstitutionStrategy: 'derive_from_company_field',
+            toFamilyStrategy: 'promote_primary_as_guardian',
+            requireApprovalForCrossScope: false,
+            disableAutonomousTransfers: false,
+        },
     });
 
     const updateField = React.useCallback(<K extends keyof PipelineFormData>(key: K, value: PipelineFormData[K]) => {
@@ -188,6 +195,13 @@ export default function PipelineSettingsClient() {
                 defaultCloseDateOffsetValue: selectedPipeline.defaultCloseDateOffsetValue ?? '',
                 defaultCloseDateOffsetUnit: selectedPipeline.defaultCloseDateOffsetUnit ?? 'days',
                 dealCustomFields: selectedPipeline.dealCustomFields || [],
+                entityScopeConversionPolicy: selectedPipeline.entityScopeConversionPolicy || {
+                    institutionToPersonStrategy: 'promote_primary_focal_contact',
+                    personToInstitutionStrategy: 'derive_from_company_field',
+                    toFamilyStrategy: 'promote_primary_as_guardian',
+                    requireApprovalForCrossScope: false,
+                    disableAutonomousTransfers: false,
+                },
             });
         }
     }, [selectedPipeline, activeWorkspaceId]);
@@ -219,6 +233,7 @@ export default function PipelineSettingsClient() {
             defaultCloseDateOffsetValue: numOffset,
             defaultCloseDateOffsetUnit: unitOffset,
             dealCustomFields: formData.dealCustomFields || [],
+            entityScopeConversionPolicy: formData.entityScopeConversionPolicy || null,
             updatedAt: new Date().toISOString()
         };
 
@@ -293,7 +308,7 @@ export default function PipelineSettingsClient() {
                                 variant="outline" 
                                 onClick={handleClone}
                                 disabled={isCloning}
-                                className="rounded-xl font-bold h-11 px-5 border-indigo-500/30 text-indigo-600 dark:text-indigo-400 bg-card shadow-sm hover:bg-indigo-500/10 active:scale-[0.97] transition-all"
+                                className="rounded-xl font-bold h-11 px-5 border-indigo-500/30 text-indigo-600 dark:text-indigo-400 bg-white dark:bg-card shadow-xs hover:bg-indigo-500/10 active:scale-[0.97] transition-all"
                             >
                                 {isCloning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Copy className="mr-2 h-4 w-4 text-indigo-500" />}
                                 Clone Pipeline
@@ -302,7 +317,7 @@ export default function PipelineSettingsClient() {
                         <Button 
                             variant="outline" 
                             onClick={() => setIsCreateModalOpen(true)}
-                            className="rounded-xl font-bold h-11 px-6 border-primary/20 text-primary bg-card shadow-sm active:scale-[0.97] transition-all"
+                            className="rounded-xl font-bold h-11 px-6 border-primary/20 text-primary bg-white dark:bg-card shadow-xs active:scale-[0.97] transition-all"
                         >
                             <Plus className="mr-2 h-4 w-4" /> New Workflow
                         </Button>

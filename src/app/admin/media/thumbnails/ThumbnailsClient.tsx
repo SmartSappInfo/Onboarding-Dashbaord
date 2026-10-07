@@ -4,7 +4,10 @@ import * as React from 'react';
 import { useState } from 'react';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { Button } from '@/components/ui/button';
+import { RainbowButton } from '@/components/ui/rainbow-button';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
@@ -63,38 +66,36 @@ export default function ThumbnailsClient() {
     <PageContainerFluid>
       <div className="h-full overflow-y-auto w-full text-left space-y-6 pb-24 animate-in fade-in duration-200">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-black tracking-tight bg-gradient-to-r from-emerald-450 via-teal-400 to-blue-500 bg-clip-text text-transparent">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight bg-gradient-to-r from-emerald-450 via-teal-400 to-blue-500 bg-clip-text text-transparent">
               AI Thumbnail Studio
             </h1>
-            <p className="text-xs font-semibold text-slate-400 mt-1">
-              Create scroll-stopping, high-CTR video cover thumbnails with AI.
-            </p>
+            <CardInfoTooltip text="Create scroll-stopping, high-CTR video cover thumbnails with AI." />
           </div>
-          <div className="flex items-center gap-2">
-            <Link href="/admin/creative-studio">
-              <Button variant="outline" className="border-slate-800 bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 active:scale-[0.97] font-bold rounded-xl text-xs h-10 px-4 transition-all">
-                <Sparkles className="w-3.5 h-3.5 mr-1.5 text-emerald-400" /> Explore Creative Studio 2.0
-              </Button>
-            </Link>
-            <Button onClick={handleCreateNew} className="bg-emerald-500 hover:bg-emerald-600 active:scale-[0.97] font-bold rounded-xl text-xs h-10 px-5 transition-all">
+          <div className="flex items-center gap-2.5">
+            <RainbowButton asChild className="h-10 px-4 rounded-xl font-bold text-xs gap-1.5 shadow-md active:scale-[0.97]">
+              <Link href="/admin/creative-studio">
+                <Sparkles className="w-3.5 h-3.5" /> Explore Creative Studio 2.0
+              </Link>
+            </RainbowButton>
+            <Button onClick={handleCreateNew} className="bg-emerald-500 hover:bg-emerald-600 active:scale-[0.97] font-bold rounded-xl text-xs h-10 px-5 transition-all text-white shadow-sm">
               <Plus className="w-4 h-4 mr-1" /> Create Thumbnail
             </Button>
           </div>
         </div>
 
-        {/* Search filter bar */}
-        <div className="flex gap-3 max-w-md">
+        {/* Search filter card */}
+        <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm max-w-md">
           <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-3 h-4.5 w-4.5 text-slate-500" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50" />
             <Input
               placeholder="Search designs..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 h-10 bg-slate-900 border-slate-800 text-xs font-semibold text-slate-200 rounded-xl"
+              className="pl-10 h-10 bg-background border-border/80 text-xs font-semibold text-foreground rounded-xl"
             />
           </div>
-        </div>
+        </Card>
 
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
