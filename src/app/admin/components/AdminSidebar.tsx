@@ -78,7 +78,8 @@ import {
     Wrench,
     Inbox,
     Share2,
-    ShieldAlert
+    ShieldAlert,
+    Scale
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import UnifiedOrgWorkspaceSwitcher from './UnifiedOrgWorkspaceSwitcher';
@@ -256,10 +257,11 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
   const transactNavItems = React.useMemo(() => [
     { href: wrapHref('/admin/finance/contracts'), icon: FileCheck, label: 'Agreements', visible: isFeatureEnabled('agreements') && can('finance', 'agreements', 'view') },
     { href: wrapHref('/admin/finance/invoices'), icon: Receipt, label: 'Invoices', visible: isFeatureEnabled('invoices') && can('finance', 'invoices', 'view') },
+    { href: wrapHref('/admin/finance/reconciliation'), icon: Scale, label: 'Reconciliation', visible: isFeatureEnabled('invoices') && (can('finance', 'invoices', 'view') || isSystemAdmin) },
     { href: wrapHref('/admin/finance/packages'), icon: Package, label: 'Packages', visible: isFeatureEnabled('packages') && can('finance', 'packages', 'view') },
     { href: wrapHref('/admin/finance/periods'), icon: Timer, label: 'Cycles', visible: isFeatureEnabled('billing_periods') && can('finance', 'cycles', 'view') },
     { href: wrapHref('/admin/finance/settings'), icon: Settings2, label: 'Billing Setup', visible: isFeatureEnabled('billing_setup') && can('finance', 'billingSetup', 'view') },
-  ], [wrapHref, isFeatureEnabled, can]);
+  ], [wrapHref, isFeatureEnabled, can, isSystemAdmin]);
 
   // 6. SYSTEM (Users, Permissions, Governance & Config)
   const systemNavItems = React.useMemo(() => [
