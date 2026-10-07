@@ -630,20 +630,20 @@ MIGRATION
   - Create: `src/platform/__tests__/knowledge/knowledge-chaos.test.ts`
   - Create: `docs/agents_mcp/phases/agents_mcp_phase_11_milestone_3_completion_report.md`
 - **Sub-tasks:**
-  - [ ] **Step 1: Write Adversarial Red-Team Suite (Rule 46)**:
+  - [x] **Step 1: Write Adversarial Red-Team Suite (Rule 46)**:
     - Vector 1: Prompt injection in candidate content isolated via `<untrusted_reference_data>`.
     - Vector 2: Sub-agent impersonating human decider rejected by Rule 17 gate (`NON_DELEGABLE_ACTION`).
     - Vector 3: Cross-workspace IDOR probing fails closed (`IDOR_VIOLATION`).
     - Vector 4: Poisoned candidate auto-acceptance blocked when injection flag is active.
     - Vector 5: Graph traversal explosion attack clamped to $\le 80$ nodes (Rule 55).
-  - [ ] **Step 2: Write Chaos & Resilience Suite (Rule 45)**:
+  - [x] **Step 2: Write Chaos & Resilience Suite (Rule 45)**:
     - Scenario 1: Concurrent decision double-spend on candidate rejected cleanly.
     - Scenario 2: Embedding API 429 backoff with exponential retry.
     - Scenario 3: Malformed candidate input rejection.
     - Scenario 4: High-throughput candidate ingestion benchmark (50 concurrent proposals in $< 100$ms).
-  - [ ] **Step 3: Run all Milestone 3 tests**, verify 100% pass rate.
-  - [ ] **Step 4: Author formal completion report** answering all Rule 67 Agent Implementation Gate questions.
-  - [ ] **Step 5: Commit locally**.
+  - [x] **Step 3: Run all Milestone 3 tests**, verify 100% pass rate.
+  - [x] **Step 4: Author formal completion report** answering all Rule 67 Agent Implementation Gate questions.
+  - [x] **Step 5: Commit locally**.
 
 ---
 
@@ -651,12 +651,12 @@ MIGRATION
 
 | ID | Task Description | Status | Evidence / Test Files |
 | :--- | :--- | :---: | :--- |
-| **P11-M3-T0** | Schemas, Types & Structured Error Taxonomy | ☐ | `knowledge-contracts.test.ts` |
-| **P11-M3-T1** | Governed Candidate Ingestion & Capability Registration | ☐ | `knowledge-candidate-capabilities.test.ts` |
-| **P11-M3-T2** | Human-in-the-Loop Review Queue & Non-Delegable Decider (Rule 17) | ☐ | `knowledge-review-queue.test.ts` |
-| **P11-M3-T3** | Multi-Domain Deduplication Engine & Conflict Detection | ☐ | `knowledge-deduplication-and-conflicts.test.ts` |
-| **P11-M3-T4** | Rule 29 Immutable Fact Supersession & Transactional Memory Updates | ☐ | `knowledge-supersession.test.ts` |
-| **P11-M3-T5** | Relationship Graph Projection & Rule 55 Traversal Ceilings | ☐ | `knowledge-graph-projection.test.ts` |
-| **P11-M3-T6** | Offline Embeddings Backfill Migration | ☐ | `knowledge-backfill-migration.test.ts` |
-| **P11-M3-T7** | Server Actions, Review Desk UI & Standardized Modals (`theme.md` §8) | ☐ | `knowledge-inbox-actions.test.ts`, `knowledge-inbox-components.test.tsx` |
-| **P11-M3-T8** | Verification, Adversarial Red-Team & Chaos Resilience Suite | ☐ | `knowledge-red-team.test.ts`, `knowledge-chaos.test.ts`, Completion Report |
+| **P11-M3-T0** | Schemas, Types & Structured Error Taxonomy | ☑ | `knowledge-contracts.test.ts` (10 tests) |
+| **P11-M3-T1** | Governed Candidate Ingestion & Capability Registration | ☑ | `knowledge-candidate-capabilities.test.ts` (10 tests) |
+| **P11-M3-T2** | Human-in-the-Loop Review Queue & Non-Delegable Decider (Rule 17) | ☑ | `knowledge-review-queue.test.ts` (7 tests) |
+| **P11-M3-T3** | Multi-Domain Deduplication Engine & Conflict Detection | ☑ | `knowledge-deduplication-and-conflicts.test.ts` (9 tests) |
+| **P11-M3-T4** | Rule 29 Immutable Fact Supersession & Transactional Memory Updates | ☑ | `knowledge-supersession.test.ts` (4 tests) |
+| **P11-M3-T5** | Relationship Graph Projection & Rule 55 Traversal Ceilings | ☑ | `knowledge-graph-projection.test.ts` (6 tests) |
+| **P11-M3-T6** | Offline Embeddings Backfill Migration | ☑ | `knowledge-backfill-migration.test.ts` (3 tests) |
+| **P11-M3-T7** | Server Actions, Review Desk UI & Standardized Modals (`theme.md` §8) | ☑ | `knowledge-inbox-actions.test.ts` (6 tests), `knowledge-inbox-components.test.tsx` (5 tests) |
+| **P11-M3-T8** | Verification, Adversarial Red-Team & Chaos Resilience Suite | ☑ | `knowledge-red-team.test.ts` (6 tests), `knowledge-chaos.test.ts` (5 tests), Completion Report |

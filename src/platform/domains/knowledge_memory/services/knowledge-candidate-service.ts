@@ -39,6 +39,7 @@ const ADVERSARIAL_DIRECTIVE_PATTERNS: readonly RegExp[] = [
 
 export class KnowledgeCandidateService {
   private inMemoryCandidates = new Map<string, KnowledgeCandidate>();
+  private activeDecisionLocks = new Set<string>();
 
   /**
    * Scans content and title for adversarial prompt injection directives (Rule 30).
@@ -241,76 +242,90 @@ export class KnowledgeCandidateService {
       );
     }
 
-    // 2. Fetch candidate and assert workspace boundary
-    const candidate = await this.getCandidate(input.candidateId, input.workspaceId);
-
-    // 3. Concurrency and state verification
-    if (candidate.status !== 'pending') {
+    // 2. Mutual exclusion lock against concurrent double-spend attempts (Rule 19 & 45)
+    if (this.activeDecisionLocks.has(input.candidateId)) {
       throw new KnowledgeDomainError(
         KNOWLEDGE_ERROR_CODES.CANDIDATE_ALREADY_DECIDED,
-        `Candidate '${input.candidateId}' has already been decided with status '${candidate.status}'.`
+        `Candidate '${input.candidateId}' is currently being decided by another concurrent operation.`
       );
     }
+    this.activeDecisionLocks.add(input.candidateId);
 
-    if (candidate.version !== input.version) {
-      throw new KnowledgeDomainError(
-        KNOWLEDGE_ERROR_CODES.VERSION_MISMATCH,
-        `Version conflict: expected version ${input.version}, but current version is ${candidate.version}.`
-      );
-    }
-
-    const now = new Date().toISOString();
-    const newStatus: KnowledgeCandidateStatus = input.decision === 'reject' ? 'rejected' : 'accepted';
-    const newVerificationState = input.decision === 'reject' ? 'rejected' : 'verified';
-
-    const updated: KnowledgeCandidate = {
-      ...candidate,
-      title: input.editedTitle ?? candidate.title,
-      content: input.editedContent ? this.wrapUntrustedContent(candidate.id, candidate.source.type, candidate.source.id, input.editedContent) : candidate.content,
-      status: newStatus,
-      verificationState: newVerificationState,
-      decidedAt: now,
-      decidedBy: actor.id,
-      decisionReason: input.reason,
-      version: candidate.version + 1,
-      updatedAt: now,
-    };
-
-    const validated = KnowledgeCandidateSchema.parse(updated);
-    this.inMemoryCandidates.set(input.candidateId, validated);
-
-    if (adminDb) {
-      try {
-        await adminDb.collection('knowledge_inbox_candidates').doc(input.candidateId).set(validated);
-      } catch {
-        // In-memory fallback
-      }
-    }
-
-    // Emit domain event (Rule 40)
     try {
-      await defaultEventBus.publish(
-        createDomainEvent({
-          type: 'knowledge.candidate.decided',
-          organizationId: candidate.organizationId,
-          workspaceId: candidate.workspaceId,
-          actor: { id: actor.id, type: 'user' },
-          entity: { type: 'knowledge_candidate', id: input.candidateId },
-          payload: {
-            candidateId: input.candidateId,
-            decision: input.decision,
-            status: newStatus,
-            decidedBy: actor.id,
-          },
-          correlationId: `corr_${input.candidateId}`,
-          source: 'knowledge_candidate_service',
-        })
-      );
-    } catch {
-      // Non-blocking
-    }
+      // 3. Fetch candidate and assert workspace boundary
+      const candidate = await this.getCandidate(input.candidateId, input.workspaceId);
+      const current = this.inMemoryCandidates.get(input.candidateId) ?? candidate;
 
-    return validated;
+      // 4. Concurrency and state verification
+      if (current.status !== 'pending') {
+        throw new KnowledgeDomainError(
+          KNOWLEDGE_ERROR_CODES.CANDIDATE_ALREADY_DECIDED,
+          `Candidate '${input.candidateId}' has already been decided with status '${current.status}'.`
+        );
+      }
+
+      if (current.version !== input.version) {
+        throw new KnowledgeDomainError(
+          KNOWLEDGE_ERROR_CODES.VERSION_MISMATCH,
+          `Version conflict: expected version ${input.version}, but current version is ${current.version}.`
+        );
+      }
+
+      const now = new Date().toISOString();
+      const newStatus: KnowledgeCandidateStatus = input.decision === 'reject' ? 'rejected' : 'accepted';
+      const newVerificationState = input.decision === 'reject' ? 'rejected' : 'verified';
+
+      const updated: KnowledgeCandidate = {
+        ...current,
+        title: input.editedTitle ?? current.title,
+        content: input.editedContent ? this.wrapUntrustedContent(current.id, current.source.type, current.source.id, input.editedContent) : current.content,
+        status: newStatus,
+        verificationState: newVerificationState,
+        decidedAt: now,
+        decidedBy: actor.id,
+        decisionReason: input.reason,
+        version: current.version + 1,
+        updatedAt: now,
+      };
+
+      const validated = KnowledgeCandidateSchema.parse(updated);
+      this.inMemoryCandidates.set(input.candidateId, validated);
+
+      if (adminDb) {
+        try {
+          await adminDb.collection('knowledge_inbox_candidates').doc(input.candidateId).set(validated);
+        } catch {
+          // In-memory fallback
+        }
+      }
+
+      // Emit domain event (Rule 40)
+      try {
+        await defaultEventBus.publish(
+          createDomainEvent({
+            type: 'knowledge.candidate.decided',
+            organizationId: current.organizationId,
+            workspaceId: current.workspaceId,
+            actor: { id: actor.id, type: 'user' },
+            entity: { type: 'knowledge_candidate', id: input.candidateId },
+            payload: {
+              candidateId: input.candidateId,
+              decision: input.decision,
+              status: newStatus,
+              decidedBy: actor.id,
+            },
+            correlationId: `corr_${input.candidateId}`,
+            source: 'knowledge_candidate_service',
+          })
+        );
+      } catch {
+        // Non-blocking
+      }
+
+      return validated;
+    } finally {
+      this.activeDecisionLocks.delete(input.candidateId);
+    }
   }
 }
 
