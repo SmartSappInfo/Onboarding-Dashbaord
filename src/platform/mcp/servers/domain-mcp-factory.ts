@@ -46,6 +46,7 @@ import {
   globalEgressDataPolicyEngine,
   type EgressDestination,
 } from '../security';
+import { createKnowledgeMcpServer } from './knowledge-mcp-server';
 
 export interface CreateDomainMcpServerOptions {
   domain: McpDomain;
@@ -176,6 +177,11 @@ export function createDomainMcpServer(options: CreateDomainMcpServerOptions): Mc
     throw new Error(
       `Access denied: domain 'system' is restricted to the Backoffice control plane surface.`
     );
+  }
+
+  // 1.5. Specialized Domain Server Delegation
+  if (domain === 'knowledge') {
+    return createKnowledgeMcpServer(options);
   }
 
   // 2. Resolve eligible capabilities for domain
