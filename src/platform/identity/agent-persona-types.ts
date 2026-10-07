@@ -48,6 +48,16 @@ export const AGENT_PERSONA_IDS = [
   'meeting_analyst',
   // Knowledge Agent (Phase 11 Milestone 4)
   'knowledge_agent',
+  // Domain Specialist Finance & School Operations Personas (Phase 12 Milestone 2)
+  'billing_analyst',
+  'collections_agent',
+  'reconciliation_agent',
+  'revenue_analyst',
+  'invoice_assistant',
+  'finance_reporter',
+  'school_ops_agent',
+  'attendance_analyst',
+  'fee_collection_agent',
 ] as const;
 
 export type AgentPersonaId = (typeof AGENT_PERSONA_IDS)[number];

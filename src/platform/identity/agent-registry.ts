@@ -24,6 +24,7 @@ import {
 } from './agent-persona-types';
 import { CRM_PERSONA_DEFINITIONS } from '../agents/crm/personas/crm-persona-definitions';
 import { SALES_PERSONA_DEFINITIONS } from '../agents/sales/personas/sales-persona-definitions';
+import { FINANCE_PERSONA_DEFINITIONS } from '../agents/finance/personas/finance-persona-definitions';
 
 export type AgentPersona = AgentPersonaDefinition;
 
@@ -267,6 +268,16 @@ export const BUILT_IN_AGENT_PERSONAS: readonly AgentPersonaDefinition[] = [
   SALES_PERSONA_DEFINITIONS.enrichment_agent,
   SALES_PERSONA_DEFINITIONS.qualification_agent,
   SALES_PERSONA_DEFINITIONS.sales_coach,
+  // Domain Specialist Finance & School Operations Personas (Phase 12 Milestone 2)
+  FINANCE_PERSONA_DEFINITIONS.billing_analyst,
+  FINANCE_PERSONA_DEFINITIONS.collections_agent,
+  FINANCE_PERSONA_DEFINITIONS.reconciliation_agent,
+  FINANCE_PERSONA_DEFINITIONS.revenue_analyst,
+  FINANCE_PERSONA_DEFINITIONS.invoice_assistant,
+  FINANCE_PERSONA_DEFINITIONS.finance_reporter,
+  FINANCE_PERSONA_DEFINITIONS.school_ops_agent,
+  FINANCE_PERSONA_DEFINITIONS.attendance_analyst,
+  FINANCE_PERSONA_DEFINITIONS.fee_collection_agent,
 ];
 
 /** Backward compatibility alias mapping for CompanyBrain 2.0 specialist prototypes and CRM agents */
@@ -288,6 +299,16 @@ const SPECIALIST_ALIAS_MAP: Readonly<Record<string, AgentPersonaId>> = {
   enricher: 'enrichment_agent',
   lead_qualifier: 'qualification_agent',
   pitch_coach: 'sales_coach',
+  // Finance & School Operations specialist aliases
+  billing_specialist: 'billing_analyst',
+  collections_specialist: 'collections_agent',
+  reconciliation_specialist: 'reconciliation_agent',
+  cashflow_analyst: 'revenue_analyst',
+  invoice_copilot: 'invoice_assistant',
+  compliance_reporter: 'finance_reporter',
+  school_operations_specialist: 'school_ops_agent',
+  attendance_specialist: 'attendance_analyst',
+  tuition_collector: 'fee_collection_agent',
 };
 
 export interface RegisterPersonaOptions {
