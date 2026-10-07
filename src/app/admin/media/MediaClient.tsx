@@ -215,10 +215,10 @@ export default function MediaClient() {
       <div className="h-full overflow-y-auto w-full">
         <div className="space-y-6 pb-32 w-full text-left">
           
-          {/* Header Row */}
-          <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+          {/* Header Row with Top-Right Segmented Tabs */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/80 pb-5">
             <div className="flex items-center gap-2.5">
-              <h1 className="text-3xl font-extrabold text-foreground tracking-tight">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
                 {currentView === 'gallery' ? 'Media Hub' : 'PDF Compressor'}
               </h1>
               <CardInfoTooltip
@@ -230,46 +230,49 @@ export default function MediaClient() {
               />
             </div>
             
-            <div className="flex justify-end items-center gap-3 shrink-0">
+            <div className="flex flex-wrap items-center gap-3 shrink-0">
+              {/* Standard Segmented Pill Navigation */}
+              <div className="inline-flex items-center gap-1 bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto">
+                <button
+                  type="button"
+                  onClick={() => setCurrentView('gallery')}
+                  className={cn(
+                    "h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97]",
+                    currentView === 'gallery' 
+                      ? "bg-card text-primary font-bold shadow-sm" 
+                      : "text-muted-foreground hover:text-foreground hover:bg-transparent"
+                  )}
+                >
+                  Gallery Repository
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentView('compressor')}
+                  className={cn(
+                    "h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97]",
+                    currentView === 'compressor' 
+                      ? "bg-card text-primary font-bold shadow-sm" 
+                      : "text-muted-foreground hover:text-foreground hover:bg-transparent"
+                  )}
+                >
+                  <Cpu className="h-3.5 w-3.5" /> PDF Compressor
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push('/admin/media/analytics')}
+                  className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] text-muted-foreground hover:text-foreground hover:bg-transparent"
+                >
+                  <BarChart3 className="h-3.5 w-3.5" /> Share Analytics
+                </button>
+              </div>
+
               {currentView === 'gallery' && (
-                <>
+                <div className="flex items-center gap-2">
                   <AddLinkButton />
                   <UploadButton />
-                </>
+                </div>
               )}
             </div>
-          </div>
-
-          {/* Sub-view Selector Tabs (Emil Kowalski micro-interactions & active taps) */}
-          <div className="flex border-b border-border/80 pb-px gap-6 mb-4">
-            <button
-              onClick={() => setCurrentView('gallery')}
-              className={cn(
-                "pb-3 font-bold text-xs uppercase tracking-wider border-b-2 transition-all active:scale-97 outline-none",
-                currentView === 'gallery' 
-                  ? "border-primary text-primary" 
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Gallery Repository
-            </button>
-            <button
-              onClick={() => setCurrentView('compressor')}
-              className={cn(
-                "pb-3 font-bold text-xs uppercase tracking-wider border-b-2 transition-all active:scale-97 outline-none flex items-center gap-1.5",
-                currentView === 'compressor' 
-                  ? "border-primary text-primary" 
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <Cpu className="h-3.5 w-3.5" /> PDF Compressor
-            </button>
-            <button
-              onClick={() => router.push('/admin/media/analytics')}
-              className="pb-3 font-bold text-xs uppercase tracking-wider border-b-2 border-transparent text-muted-foreground hover:text-foreground transition-all active:scale-97 outline-none flex items-center gap-1.5"
-            >
-              <BarChart3 className="h-3.5 w-3.5" /> Share Analytics
-            </button>
           </div>
 
           {/* Tab Views */}
@@ -321,12 +324,12 @@ export default function MediaClient() {
 
                 {/* Tabs */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="shrink-0 w-full lg:w-auto">
-                  <TabsList className="bg-background h-12 p-1 rounded-2xl border border-border shadow-sm w-full">
+                  <TabsList className="bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto inline-flex items-center gap-1 w-full lg:w-auto">
                     {TABS.map(tab => (
                       <TabsTrigger 
                         key={tab.id} 
                         value={tab.id} 
-                        className="rounded-xl font-bold text-[11px] tracking-wide px-6 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md transition-all active:scale-97"
+                        className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm"
                       >
                         {tab.label}
                       </TabsTrigger>

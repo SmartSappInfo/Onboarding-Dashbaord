@@ -10,6 +10,8 @@ import {
 } from '../../crm/deal-core';
 import type { ExecutionContext } from '../execution-types';
 import { FieldsVariablesService } from '../../services/fields-variables-service-impl';
+import { transferDealCore } from '../../deals/deal-transfer-core';
+import type { TransferDealAutomationConfig } from '../../types';
 
 export interface DealAutomationActionConfig {
     workspaceId?: string;
@@ -370,5 +372,217 @@ export async function handleAddDealNote(config: { content?: string; workspaceId?
         updatedAt: new Date().toISOString(),
     });
 }
+
+/**
+ * Automation Handler: TRANSFER_DEAL
+ * 
+ * Transfers or duplicates an active deal across workspaces, pipelines, and stages.
+ * 
+ * RESOLUTION FLOW:
+ * 1. Checks if context.payload.dealId is present and matches source filters.
+ * 2. Fallback: queries open deal for context.entityId in the effective source workspace matching filters.
+ * 3. Graceful bypass: If no qualifying deal is found, returns { success: true, skipped: true, reason: 'no_qualifying_deal_found' }.
+ * 4. Identical placement guard: If moving and deal is already at target, returns { success: true, skipped: true, reason: 'already_at_destination' }.
+ * 5. Resolves assignee strategy ('preserve_or_unassigned', 'specific_user', 'unassigned').
+ * 6. Interpolates double-brace template variables in newName and summary via FieldsVariablesService.
+ * 7. Calls canonical `transferDealCore(actor, transferInput)` with idempotency key.
+ */
+export async function handleTransferDeal(
+    rawConfig: Partial<TransferDealAutomationConfig> | Record<string, unknown>,
+    context: ExecutionContext
+): Promise<{
+    success: boolean;
+    dealId?: string;
+    mode?: 'move' | 'copy';
+    targetWorkspaceId?: string;
+    targetPipelineId?: string;
+    targetStageId?: string;
+    skipped?: boolean;
+    reason?: string;
+    message?: string;
+}> {
+    const config: TransferDealAutomationConfig = {
+        mode: (rawConfig.mode as 'move' | 'copy') || 'move',
+        sourceWorkspaceId: rawConfig.sourceWorkspaceId as string | undefined,
+        sourcePipelineId: rawConfig.sourcePipelineId as string | undefined,
+        sourceStageId: rawConfig.sourceStageId as string | undefined,
+        targetWorkspaceId: String(rawConfig.targetWorkspaceId || context.workspaceId),
+        targetWorkspaceName: rawConfig.targetWorkspaceName as string | undefined,
+        targetPipelineId: String(rawConfig.targetPipelineId || ''),
+        targetPipelineName: rawConfig.targetPipelineName as string | undefined,
+        targetStageId: String(rawConfig.targetStageId || ''),
+        targetStageName: rawConfig.targetStageName as string | undefined,
+        assignmentMode: (rawConfig.assignmentMode as 'preserve_or_unassigned' | 'specific_user' | 'unassigned') || 'preserve_or_unassigned',
+        targetUserId: rawConfig.targetUserId as string | null | undefined,
+        targetUserName: rawConfig.targetUserName as string | null | undefined,
+        targetUserEmail: rawConfig.targetUserEmail as string | null | undefined,
+        newName: rawConfig.newName as string | undefined,
+        summary: rawConfig.summary as string | undefined,
+        copyLineItems: rawConfig.copyLineItems !== false,
+        copyContacts: rawConfig.copyContacts !== false,
+        copyCustomFields: rawConfig.copyCustomFields !== false,
+    };
+
+    const { resolveWorkspaceGuid } = await import('../workspace-resolver');
+    
+    // Determine effective source workspace
+    const rawSourceWs = (!config.sourceWorkspaceId || config.sourceWorkspaceId === '__current__')
+        ? context.workspaceId
+        : config.sourceWorkspaceId;
+    const { workspaceId: effectiveSourceWorkspaceId } = await resolveWorkspaceGuid(rawSourceWs);
+    
+    // Determine effective target workspace
+    const { workspaceId: effectiveTargetWorkspaceId } = await resolveWorkspaceGuid(config.targetWorkspaceId);
+
+    // 1. Resolve source deal
+    let qualifyingDealId: string | null = null;
+    let qualifyingDealData: Record<string, unknown> | null = null;
+
+    if (context.payload && typeof context.payload.dealId === 'string' && context.payload.dealId) {
+        const dealSnap = await adminDb.collection('deals').doc(context.payload.dealId).get();
+        if (dealSnap.exists) {
+            const data = dealSnap.data() as Record<string, unknown> | undefined;
+            const matchesWorkspace = !config.sourceWorkspaceId || config.sourceWorkspaceId === '__current__' || data?.workspaceId === effectiveSourceWorkspaceId;
+            const matchesPipeline = !config.sourcePipelineId || config.sourcePipelineId === '__all__' || data?.pipelineId === config.sourcePipelineId;
+            const matchesStage = !config.sourceStageId || config.sourceStageId === '__all__' || data?.stageId === config.sourceStageId;
+
+            if (matchesWorkspace && matchesPipeline && matchesStage) {
+                qualifyingDealId = dealSnap.id;
+                qualifyingDealData = data || null;
+            }
+        }
+    }
+
+    if (!qualifyingDealId && context.entityId) {
+        let query: FirebaseFirestore.Query = adminDb.collection('deals')
+            .where('entityId', '==', context.entityId)
+            .where('workspaceId', '==', effectiveSourceWorkspaceId)
+            .where('status', '==', 'open');
+
+        if (config.sourcePipelineId && config.sourcePipelineId !== '__all__') {
+            query = query.where('pipelineId', '==', config.sourcePipelineId);
+        }
+        if (config.sourceStageId && config.sourceStageId !== '__all__') {
+            query = query.where('stageId', '==', config.sourceStageId);
+        }
+
+        const snap = await query.orderBy('updatedAt', 'desc').limit(1).get();
+        if (!snap.empty) {
+            qualifyingDealId = snap.docs[0].id;
+            qualifyingDealData = snap.docs[0].data() as Record<string, unknown>;
+        }
+    }
+
+    // Graceful skip if no qualifying deal found
+    if (!qualifyingDealId) {
+        return {
+            success: true,
+            skipped: true,
+            reason: 'no_qualifying_deal_found',
+            message: 'No qualifying deal found matching the source workspace, pipeline, and stage filters.',
+        };
+    }
+
+    // Infinite recursion guard: moving deal to identical location
+    if (config.mode === 'move') {
+        const isSameWorkspace = qualifyingDealData?.workspaceId === effectiveTargetWorkspaceId;
+        const isSamePipeline = qualifyingDealData?.pipelineId === config.targetPipelineId;
+        const isSameStage = qualifyingDealData?.stageId === config.targetStageId;
+
+        if (isSameWorkspace && isSamePipeline && isSameStage) {
+            return {
+                success: true,
+                skipped: true,
+                reason: 'already_at_destination',
+                message: 'Deal is already present in the target workspace, pipeline, and stage.',
+            };
+        }
+    }
+
+    // 2. Resolve Assignee Strategy
+    let resolvedAssignee: { userId: string | null; name: string | null; email: string | null } | null | undefined = undefined;
+    if (config.assignmentMode === 'specific_user') {
+        resolvedAssignee = {
+            userId: config.targetUserId || null,
+            name: config.targetUserName || null,
+            email: config.targetUserEmail || null,
+        };
+    } else if (config.assignmentMode === 'unassigned') {
+        resolvedAssignee = null;
+    } else {
+        // 'preserve_or_unassigned' or undefined: undefined signals transferDealCore to preserve if staying in same workspace, else null
+        resolvedAssignee = undefined;
+    }
+
+    // 3. Resolve Template Tokens in newName and summary (Rule: Fields & Variables Single Source of Truth)
+    let resolvedNewName = config.newName;
+    if (resolvedNewName && resolvedNewName.includes('{{')) {
+        resolvedNewName = await FieldsVariablesService.resolveTemplateVariables(resolvedNewName, {
+            workspaceId: effectiveTargetWorkspaceId,
+            entityId: context.entityId,
+            extraVars: {
+                ...(context.payload as Record<string, string | number | boolean | undefined | null>),
+                deal_name: String(qualifyingDealData?.name || ''),
+                deal_id: qualifyingDealId,
+            },
+        });
+    }
+
+    let resolvedSummary = config.summary;
+    if (resolvedSummary && resolvedSummary.includes('{{')) {
+        resolvedSummary = await FieldsVariablesService.resolveTemplateVariables(resolvedSummary, {
+            workspaceId: effectiveTargetWorkspaceId,
+            entityId: context.entityId,
+            extraVars: {
+                ...(context.payload as Record<string, string | number | boolean | undefined | null>),
+                deal_name: String(qualifyingDealData?.name || ''),
+                deal_id: qualifyingDealId,
+            },
+        });
+    }
+
+    // 4. Idempotency Key (Rule 19 & 20)
+    const idempotencyKey = context.runId ? `auto_${context.runId}_${context.stepId || qualifyingDealId}` : undefined;
+
+    // 5. Construct Service Actor with Cross-Workspace Permission (Rule 16)
+    const actor: CrmActor = {
+        kind: 'service',
+        service: 'automations',
+        workspaceId: effectiveSourceWorkspaceId,
+        allowedWorkspaceIds: [effectiveSourceWorkspaceId, effectiveTargetWorkspaceId],
+        runId: context.runId,
+    };
+
+    // 6. Execute Transfer Core
+    const result = await transferDealCore(actor, {
+        dealId: qualifyingDealId,
+        mode: config.mode,
+        sourceWorkspaceId: effectiveSourceWorkspaceId,
+        targetWorkspaceId: effectiveTargetWorkspaceId,
+        targetPipelineId: config.targetPipelineId,
+        targetStageId: config.targetStageId,
+        assignedTo: resolvedAssignee,
+        newName: resolvedNewName,
+        summary: resolvedSummary,
+        copyLineItems: config.copyLineItems !== false,
+        copyContacts: config.copyContacts !== false,
+        copyCustomFields: config.copyCustomFields !== false,
+        idempotencyKey,
+    });
+
+    if (!result.success || !result.dealId) {
+        throw new Error(result.error || 'Failed to transfer deal');
+    }
+
+    return {
+        success: true,
+        dealId: result.dealId,
+        mode: config.mode,
+        targetWorkspaceId: effectiveTargetWorkspaceId,
+        targetPipelineId: config.targetPipelineId,
+        targetStageId: config.targetStageId,
+    };
+}
+
 
 

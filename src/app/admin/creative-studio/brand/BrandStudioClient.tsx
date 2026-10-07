@@ -19,6 +19,7 @@ import type { BrandKit } from '@/lib/creative/creative-types';
 import { THUMBNAIL_FONT_OPTIONS } from '@/lib/creative/creative-types';
 import { saveBrandKitAction } from '@/app/actions/brand-kit-actions';
 import { Button } from '@/components/ui/button';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
@@ -75,22 +76,18 @@ export function BrandStudioClient({
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-8 animate-in fade-in duration-300">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-6">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
-            <Link
-              href="/admin/creative-studio/projects"
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </Link>
-            <div className="p-1.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-              <Palette className="w-5 h-5" />
-            </div>
-            <h1 className="text-xl md:text-2xl font-black text-foreground">Brand Studio</h1>
+        <div className="flex items-center gap-2.5">
+          <Link
+            href="/admin/creative-studio/projects"
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
+          <div className="p-1.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+            <Palette className="w-5 h-5" />
           </div>
-          <p className="text-xs md:text-sm text-muted-foreground max-w-2xl">
-            Configure workspace brand design tokens, display typography, logos, and AI compliance rules.
-          </p>
+          <h1 className="text-xl md:text-2xl font-black text-foreground">Brand Studio</h1>
+          <CardInfoTooltip text="Configure workspace brand design tokens, display typography, logos, and AI compliance rules." />
         </div>
 
         <div className="flex items-center gap-3">

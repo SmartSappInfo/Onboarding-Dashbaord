@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import {
   Select,
   SelectContent,
@@ -70,6 +71,7 @@ import {
   Share2,
   Sparkles,
   Split,
+  ArrowLeft,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import CreateQRButton from '@/components/qr-studio/create-qr-button';
@@ -351,12 +353,21 @@ export default function FormsClient() {
             <PageContainer>
                 <div className="space-y-8 pb-32 w-full">
                     {/* Header */}
-                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                        <div className="flex flex-col">
-                            <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                                Forms Hub
-                            </h1>
-                            <p className="text-muted-foreground font-medium text-sm mt-1">Design and deploy data capture forms</p>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/80 pb-5">
+                        <div className="flex items-center gap-3">
+                            <Link
+                                href="/admin"
+                                className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border/80 bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-all active:scale-[0.97]"
+                                aria-label="Back to dashboard"
+                            >
+                                <ArrowLeft className="w-4 h-4" />
+                            </Link>
+                            <div className="flex items-center gap-2">
+                                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+                                    Forms Hub
+                                </h1>
+                                <CardInfoTooltip text="Design and deploy data capture forms for lead generation and surveys." />
+                            </div>
                         </div>
             <div className="flex justify-end items-center gap-3 shrink-0 flex-wrap">
               <Button

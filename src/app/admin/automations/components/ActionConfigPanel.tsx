@@ -10,7 +10,11 @@ import {
   Trash2,
   Table,
   Search,
-  UserCheck
+  UserCheck,
+  ArrowRightLeft,
+  Copy,
+  Sliders,
+  GitBranch
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -28,8 +32,9 @@ import { MappableInputField } from './MappableInputField';
 import type { UserProfile, OnboardingStage, VariableDefinition, Pipeline, Automation, Tag, AppField, Workspace, MessageResendConfig, MessageTemplate } from '@/lib/types';
 import { ResendConfigSection } from './ResendConfigSection';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import { useUser, useFirestore } from '@/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { doc, getDoc, collection, query, where, orderBy } from 'firebase/firestore';
+import { useWorkspaceUsers } from '@/hooks/use-workspace-users';
 import { useCallCampaigns } from '@/lib/call-centre-hooks';
 import {
   getMessagingCategory,
@@ -702,8 +707,538 @@ interface AutomationConfig {
   notificationUserIds?: string[];
   tagIds?: string[];
   customData?: Record<string, unknown>;
+  mode?: 'move' | 'copy';
+  sourceWorkspaceId?: string;
+  sourcePipelineId?: string;
+  sourceStageId?: string;
+  targetWorkspaceId?: string;
+  targetWorkspaceName?: string;
+  targetPipelineId?: string;
+  targetPipelineName?: string;
+  targetStageId?: string;
+  targetStageName?: string;
+  assignmentMode?: 'preserve_or_unassigned' | 'specific_user' | 'unassigned';
+  targetUserId?: string | null;
+  targetUserName?: string | null;
+  targetUserEmail?: string | null;
+  newName?: string;
+  summary?: string;
+  copyLineItems?: boolean;
+  copyContacts?: boolean;
+  copyCustomFields?: boolean;
   [key: string]: unknown;
 }
+
+interface TransferDealConfigPanelProps {
+  config: AutomationConfig;
+  updateConfig: (updates: Partial<AutomationConfig>) => void;
+  activeWorkspace?: Workspace;
+  accessibleWorkspaces?: Workspace[];
+  pipelines: Pipeline[];
+  stages: OnboardingStage[];
+  appFields?: EntityField[];
+}
+
+/**
+ * TransferDealConfigPanel
+ * 
+ * Single source of truth configuration inspector for the TRANSFER_DEAL automation action.
+ * Allows workspace operators and admins to move or duplicate deals across pipelines and workspaces.
+ * 
+ * ARCHITECTURAL INVARIANTS (Rule 10):
+ * 1. Strict Typing: Zero 'any' or 'any[]'.
+ * 2. Mobile & Accessibility First: All touch targets min-h-[44px], active:scale-[0.97].
+ * 3. Reactive Cascades: Changing target workspace resets pipeline and stage selection cleanly.
+ * 4. Scoped Assignee Resolution: Assignees are queried specifically for the destination workspace.
+ */
+const TransferDealConfigPanel = React.memo(function TransferDealConfigPanel({
+  config,
+  updateConfig,
+  activeWorkspace,
+  accessibleWorkspaces = [],
+  pipelines,
+  stages,
+  appFields = [],
+}: TransferDealConfigPanelProps) {
+  const firestore = useFirestore();
+  const mode = (config.mode as 'move' | 'copy') || 'move';
+
+  // 1. Source workspace resolution
+  const sourceWorkspaceId = (config.sourceWorkspaceId as string) || '__current__';
+  const effectiveSourceWsId = sourceWorkspaceId === '__current__' ? activeWorkspace?.id : sourceWorkspaceId;
+
+  // Query pipelines for source workspace if not the active workspace
+  const sourcePipelinesQuery = useMemoFirebase(() => {
+    if (!firestore || !effectiveSourceWsId) return null;
+    return query(
+      collection(firestore, 'pipelines'),
+      where('workspaceIds', 'array-contains', effectiveSourceWsId),
+      orderBy('name', 'asc')
+    );
+  }, [firestore, effectiveSourceWsId]);
+  const { data: rawSourcePipelines } = useCollection<Pipeline>(sourcePipelinesQuery);
+  const availableSourcePipelines = React.useMemo(() => {
+    if (sourceWorkspaceId === '__current__' || sourceWorkspaceId === activeWorkspace?.id) {
+      return (pipelines || []).filter((p) => !p.isArchived);
+    }
+    return (rawSourcePipelines || []).filter((p) => !p.isArchived);
+  }, [sourceWorkspaceId, activeWorkspace?.id, pipelines, rawSourcePipelines]);
+
+  // Query stages for source pipeline
+  const sourcePipelineId = config.sourcePipelineId as string | undefined;
+  const sourceStagesQuery = useMemoFirebase(() => {
+    if (!firestore || !sourcePipelineId || sourcePipelineId === '__all__') return null;
+    return query(
+      collection(firestore, 'onboardingStages'),
+      where('pipelineId', '==', sourcePipelineId),
+      orderBy('order', 'asc')
+    );
+  }, [firestore, sourcePipelineId]);
+  const { data: rawSourceStages } = useCollection<OnboardingStage>(sourceStagesQuery);
+  const availableSourceStages = React.useMemo(() => {
+    if (sourcePipelineId && sourcePipelineId !== '__all__') {
+      if (rawSourceStages && rawSourceStages.length > 0) return rawSourceStages;
+      return (stages || []).filter((s) => s.pipelineId === sourcePipelineId);
+    }
+    return [];
+  }, [sourcePipelineId, rawSourceStages, stages]);
+
+  // 2. Target Workspace Resolution
+  const targetWorkspaceId = (config.targetWorkspaceId as string) || activeWorkspace?.id || '';
+
+  // Query pipelines for target workspace
+  const targetPipelinesQuery = useMemoFirebase(() => {
+    if (!firestore || !targetWorkspaceId) return null;
+    return query(
+      collection(firestore, 'pipelines'),
+      where('workspaceIds', 'array-contains', targetWorkspaceId),
+      orderBy('name', 'asc')
+    );
+  }, [firestore, targetWorkspaceId]);
+  const { data: rawTargetPipelines } = useCollection<Pipeline>(targetPipelinesQuery);
+  const availableTargetPipelines = React.useMemo(() => {
+    return (rawTargetPipelines || []).filter((p) => !p.isArchived);
+  }, [rawTargetPipelines]);
+
+  // Query stages for target pipeline
+  const targetPipelineId = config.targetPipelineId as string | undefined;
+  const targetStagesQuery = useMemoFirebase(() => {
+    if (!firestore || !targetPipelineId) return null;
+    return query(
+      collection(firestore, 'onboardingStages'),
+      where('pipelineId', '==', targetPipelineId),
+      orderBy('order', 'asc')
+    );
+  }, [firestore, targetPipelineId]);
+  const { data: rawTargetStages } = useCollection<OnboardingStage>(targetStagesQuery);
+  const availableTargetStages = React.useMemo(() => {
+    return rawTargetStages || [];
+  }, [rawTargetStages]);
+
+  // Query members of target workspace for specific assignment
+  const { data: targetWorkspaceUsers } = useWorkspaceUsers(targetWorkspaceId);
+
+  // Initialize target workspace defaults if empty
+  React.useEffect(() => {
+    if (!config.targetWorkspaceId && activeWorkspace?.id) {
+      updateConfig({
+        targetWorkspaceId: activeWorkspace.id,
+        targetWorkspaceName: activeWorkspace.name || '',
+      });
+    }
+  }, [config.targetWorkspaceId, activeWorkspace, updateConfig]);
+
+  // Auto-select first pipeline if not set or invalid
+  React.useEffect(() => {
+    if (!targetPipelineId && availableTargetPipelines.length > 0) {
+      const firstPipe = availableTargetPipelines[0];
+      updateConfig({
+        targetPipelineId: firstPipe.id,
+        targetPipelineName: firstPipe.name,
+      });
+    }
+  }, [targetPipelineId, availableTargetPipelines, updateConfig]);
+
+  // Auto-select first stage if not set or invalid
+  React.useEffect(() => {
+    if (!config.targetStageId && availableTargetStages.length > 0) {
+      const firstStage = availableTargetStages[0];
+      updateConfig({
+        targetStageId: firstStage.id,
+        targetStageName: firstStage.name,
+      });
+    }
+  }, [config.targetStageId, availableTargetStages, updateConfig]);
+
+  const assignmentMode = (config.assignmentMode as string) || 'preserve_or_unassigned';
+
+  return (
+    <div className="space-y-6">
+      {/* 1. Operation Mode Switcher (Move vs Duplicate) */}
+      <div className="space-y-2">
+        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Transfer Action Mode</Label>
+        <div className="grid grid-cols-2 p-1 bg-muted/40 rounded-2xl border border-border/60 gap-1">
+          <button
+            type="button"
+            onClick={() => updateConfig({ mode: 'move' })}
+            className={cn(
+              "flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all min-h-[44px]",
+              "active:scale-[0.97]",
+              mode === 'move'
+                ? "bg-card text-foreground shadow-sm border border-border/80"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <ArrowRightLeft className="h-4 w-4 text-primary" />
+            Move Deal
+          </button>
+          <button
+            type="button"
+            onClick={() => updateConfig({ mode: 'copy' })}
+            className={cn(
+              "flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all min-h-[44px]",
+              "active:scale-[0.97]",
+              mode === 'copy'
+                ? "bg-card text-foreground shadow-sm border border-border/80"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Copy className="h-4 w-4 text-primary" />
+            Duplicate Deal
+          </button>
+        </div>
+        <p className="text-[10px] text-muted-foreground leading-relaxed ml-1">
+          {mode === 'move'
+            ? 'Moves the active deal to the destination pipeline and stage, recalculating stage velocity while preserving historical activity.'
+            : 'Creates a full duplicate copy of the deal in the destination pipeline. The original deal remains untouched.'}
+        </p>
+      </div>
+
+      {/* 2. Source Deal Scope Filters */}
+      <div className="space-y-4 p-5 rounded-2xl bg-muted/20 border border-border/50 text-left">
+        <div className="flex items-center justify-between">
+          <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
+            <Sliders className="h-4 w-4 text-primary" /> Source Deal Scope
+          </h4>
+          <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">
+            Matching Criteria
+          </span>
+        </div>
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          Determines which deal qualifies for this action. If triggered by an entity or contact, the active open deal matching these filters will be targeted. If no deal matches, this step skips gracefully.
+        </p>
+
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Source Workspace</Label>
+            <Select
+              value={sourceWorkspaceId}
+              onValueChange={(val) => updateConfig({ sourceWorkspaceId: val, sourcePipelineId: '__all__', sourceStageId: '__all__' })}
+            >
+              <SelectTrigger className="min-h-[44px] rounded-xl bg-card border font-semibold text-xs">
+                <SelectValue placeholder="Current Trigger Workspace" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border shadow-md text-xs font-medium max-h-[300px]">
+                <SelectItem value="__current__">Current Trigger Workspace (Default)</SelectItem>
+                {(accessibleWorkspaces || []).map((w) => (
+                  <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Source Pipeline</Label>
+              <Select
+                value={(config.sourcePipelineId as string) || '__all__'}
+                onValueChange={(val) => updateConfig({ sourcePipelineId: val, sourceStageId: '__all__' })}
+              >
+                <SelectTrigger className="min-h-[44px] rounded-xl bg-card border font-semibold text-xs">
+                  <SelectValue placeholder="Any Pipeline" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border shadow-md text-xs font-medium max-h-[300px]">
+                  <SelectItem value="__all__">Any Pipeline</SelectItem>
+                  {availableSourcePipelines.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Source Stage</Label>
+              <Select
+                value={(config.sourceStageId as string) || '__all__'}
+                onValueChange={(val) => updateConfig({ sourceStageId: val })}
+                disabled={!sourcePipelineId || sourcePipelineId === '__all__'}
+              >
+                <SelectTrigger className="min-h-[44px] rounded-xl bg-card border font-semibold text-xs">
+                  <SelectValue placeholder="Any Stage" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border shadow-md text-xs font-medium max-h-[300px]">
+                  <SelectItem value="__all__">Any Stage in Pipeline</SelectItem>
+                  {availableSourceStages.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Destination Placement Card */}
+      <div className="space-y-4 p-5 rounded-2xl bg-muted/20 border border-border/50 text-left">
+        <div className="flex items-center justify-between">
+          <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
+            <GitBranch className="h-4 w-4 text-primary" /> Destination Placement
+          </h4>
+          <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">
+            Target Location
+          </span>
+        </div>
+
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Destination Workspace</Label>
+            <Select
+              value={targetWorkspaceId}
+              onValueChange={(val) => {
+                const ws = accessibleWorkspaces.find((w) => w.id === val);
+                updateConfig({
+                  targetWorkspaceId: val,
+                  targetWorkspaceName: ws?.name || '',
+                  targetPipelineId: '',
+                  targetPipelineName: '',
+                  targetStageId: '',
+                  targetStageName: '',
+                  targetUserId: null,
+                  targetUserName: null,
+                  targetUserEmail: null,
+                });
+              }}
+            >
+              <SelectTrigger className="min-h-[44px] rounded-xl bg-card border font-semibold text-xs">
+                <SelectValue placeholder="Select Destination Workspace..." />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border shadow-md text-xs font-medium max-h-[300px]">
+                {(accessibleWorkspaces || []).map((w) => (
+                  <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Destination Pipeline</Label>
+              <Select
+                value={(config.targetPipelineId as string) || ''}
+                onValueChange={(val) => {
+                  const pipe = availableTargetPipelines.find((p) => p.id === val);
+                  updateConfig({
+                    targetPipelineId: val,
+                    targetPipelineName: pipe?.name || '',
+                    targetStageId: '',
+                    targetStageName: '',
+                  });
+                }}
+                disabled={!targetWorkspaceId}
+              >
+                <SelectTrigger className="min-h-[44px] rounded-xl bg-card border font-semibold text-xs">
+                  <SelectValue placeholder="Select Pipeline..." />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border shadow-md text-xs font-medium max-h-[300px]">
+                  {availableTargetPipelines.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                  {availableTargetPipelines.length === 0 && (
+                    <SelectItem value="none" disabled className="text-xs">No pipelines found</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Destination Stage</Label>
+              <Select
+                value={(config.targetStageId as string) || ''}
+                onValueChange={(val) => {
+                  const st = availableTargetStages.find((s) => s.id === val);
+                  updateConfig({
+                    targetStageId: val,
+                    targetStageName: st?.name || '',
+                  });
+                }}
+                disabled={!targetPipelineId}
+              >
+                <SelectTrigger className="min-h-[44px] rounded-xl bg-card border font-semibold text-xs">
+                  <SelectValue placeholder="Select Stage..." />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border shadow-md text-xs font-medium max-h-[300px]">
+                  {availableTargetStages.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                  {availableTargetStages.length === 0 && (
+                    <SelectItem value="none" disabled className="text-xs">No stages found</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. Target Assignee Strategy */}
+      <div className="space-y-4 p-5 rounded-2xl bg-muted/20 border border-border/50 text-left">
+        <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
+          <UserCheck className="h-4 w-4 text-primary" /> Deal Ownership & Assignment
+        </h4>
+
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Assignee Handling</Label>
+            <Select
+              value={assignmentMode}
+              onValueChange={(val) => updateConfig({
+                assignmentMode: val as 'preserve_or_unassigned' | 'specific_user' | 'unassigned',
+                targetUserId: val !== 'specific_user' ? null : config.targetUserId,
+                targetUserName: val !== 'specific_user' ? null : config.targetUserName,
+                targetUserEmail: val !== 'specific_user' ? null : config.targetUserEmail,
+              })}
+            >
+              <SelectTrigger className="min-h-[44px] rounded-xl bg-card border font-semibold text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border shadow-md text-xs font-medium">
+                <SelectItem value="preserve_or_unassigned">Preserve owner if member of target workspace (otherwise Unassigned)</SelectItem>
+                <SelectItem value="specific_user">Assign to specific team member in destination workspace</SelectItem>
+                <SelectItem value="unassigned">Set as Unassigned</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {assignmentMode === 'specific_user' && (
+            <div className="space-y-1.5 pt-2 animate-in fade-in duration-200">
+              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Select Destination Assignee</Label>
+              <Select
+                value={(config.targetUserId as string) || ''}
+                onValueChange={(val) => {
+                  const user = targetWorkspaceUsers?.find((u) => u.id === val);
+                  updateConfig({
+                    targetUserId: val,
+                    targetUserName: user?.name || '',
+                    targetUserEmail: user?.email || '',
+                  });
+                }}
+              >
+                <SelectTrigger className="min-h-[44px] rounded-xl bg-card border font-semibold text-xs">
+                  <SelectValue placeholder="Select team member..." />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border shadow-md text-xs font-medium max-h-[300px]">
+                  {(targetWorkspaceUsers || []).map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.name} {u.email ? `(${u.email})` : ''}
+                    </SelectItem>
+                  ))}
+                  {(!targetWorkspaceUsers || targetWorkspaceUsers.length === 0) && (
+                    <SelectItem value="none" disabled className="text-xs">No confirmed members in destination workspace</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 5. Duplication Options (only when mode === 'copy') */}
+      {mode === 'copy' && (
+        <div className="space-y-4 p-5 rounded-2xl bg-muted/20 border border-border/50 text-left animate-in fade-in duration-200">
+          <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
+            <Copy className="h-4 w-4 text-primary" /> Duplication Options
+          </h4>
+
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
+                New Deal Name (Variables &amp; Slash &apos;/&apos; Supported)
+              </Label>
+              <MappableInputField
+                placeholder="e.g. {{deal_name}} (Cloned)"
+                value={(config.newName as string) || ''}
+                onChange={(val) => updateConfig({ newName: val })}
+                inputClassName="min-h-[44px] rounded-xl font-bold text-xs"
+                appFields={appFields}
+              />
+              <span className="text-[9px] font-medium text-muted-foreground leading-none ml-1 opacity-70 block">
+                Leave blank to automatically use &quot;[Original Deal Name] (Copy)&quot;.
+              </span>
+            </div>
+
+            <div className="space-y-2 pt-2 border-t border-border/40">
+              <label className="flex items-center gap-2.5 cursor-pointer select-none min-h-[44px]">
+                <input
+                  type="checkbox"
+                  checked={config.copyLineItems !== false}
+                  onChange={(e) => updateConfig({ copyLineItems: e.target.checked })}
+                  className="h-4 w-4 rounded border-border text-primary focus:ring-primary mt-0.5"
+                />
+                <div className="flex flex-col text-left">
+                  <span className="text-xs font-bold leading-none mb-0.5 text-foreground">Copy Line Items</span>
+                  <span className="text-[9px] font-medium text-muted-foreground leading-none">Duplicate all commercial line items, products, and prices</span>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-2.5 cursor-pointer select-none min-h-[44px]">
+                <input
+                  type="checkbox"
+                  checked={config.copyContacts !== false}
+                  onChange={(e) => updateConfig({ copyContacts: e.target.checked })}
+                  className="h-4 w-4 rounded border-border text-primary focus:ring-primary mt-0.5"
+                />
+                <div className="flex flex-col text-left">
+                  <span className="text-xs font-bold leading-none mb-0.5 text-foreground">Copy Associated Contacts</span>
+                  <span className="text-[9px] font-medium text-muted-foreground leading-none">Retain links to all decision makers and stakeholders</span>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-2.5 cursor-pointer select-none min-h-[44px]">
+                <input
+                  type="checkbox"
+                  checked={config.copyCustomFields !== false}
+                  onChange={(e) => updateConfig({ copyCustomFields: e.target.checked })}
+                  className="h-4 w-4 rounded border-border text-primary focus:ring-primary mt-0.5"
+                />
+                <div className="flex flex-col text-left">
+                  <span className="text-xs font-bold leading-none mb-0.5 text-foreground">Copy Custom Fields</span>
+                  <span className="text-[9px] font-medium text-muted-foreground leading-none">Carry over all custom attributes and properties</span>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 6. Handover Note / Activity Audit */}
+      <div className="space-y-2 p-5 rounded-2xl bg-muted/20 border border-border/50 text-left">
+        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
+          Handover Note / Decision Log (Optional)
+        </Label>
+        <MappableInputField
+          placeholder="e.g. Transferred via workflow: {{automation_name}}"
+          value={(config.summary as string) || ''}
+          onChange={(val) => updateConfig({ summary: val })}
+          inputClassName="min-h-[44px] rounded-xl text-xs font-medium"
+          appFields={appFields}
+        />
+        <span className="text-[9px] font-medium text-muted-foreground leading-none ml-1 opacity-70 block">
+          Appended as a timeline note to the deal&apos;s append-only activity ledger.
+        </span>
+      </div>
+    </div>
+  );
+});
 
 interface ActionConfigPanelProps {
   actionType: string;
@@ -2612,6 +3147,18 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
             </span>
           </div>
         </div>
+      ) : null}
+
+      {actionType === 'TRANSFER_DEAL' ? (
+        <TransferDealConfigPanel
+          config={config}
+          updateConfig={updateConfig}
+          activeWorkspace={activeWorkspace}
+          accessibleWorkspaces={accessibleWorkspaces}
+          pipelines={pipelines}
+          stages={stages}
+          appFields={appFields}
+        />
       ) : null}
 
       {actionType === 'END_AUTOMATION' ? (

@@ -19,6 +19,7 @@ import type { CreativeExperiment } from '@/lib/creative/creative-types';
 import { calculateStatisticalSignificance } from '@/lib/creative/creative-experiments-engine';
 import { promoteWinningVariantAction } from '@/app/actions/creative-experiment-actions';
 import { Button } from '@/components/ui/button';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { useToast } from '@/hooks/use-toast';
 import {
   FlaskConical,
@@ -75,23 +76,19 @@ export function ExperimentsClient({
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10 space-y-8">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-850 pb-6">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
-            <Link
-              href="/admin/creative-studio/projects"
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-900 transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </Link>
-            <div className="p-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              <FlaskConical className="w-5 h-5" />
-            </div>
-            <h1 className="text-xl md:text-2xl font-black text-white">Experiments & Creative Analytics</h1>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/80 pb-6">
+        <div className="flex items-center gap-2.5">
+          <Link
+            href="/admin/creative-studio/projects"
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
+          <div className="p-1.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+            <FlaskConical className="w-5 h-5" />
           </div>
-          <p className="text-xs md:text-sm text-slate-400 max-w-2xl">
-            Scientifically optimize CTR and conversion performance across visual variants with two-proportion z-tests.
-          </p>
+          <h1 className="text-xl md:text-2xl font-black text-foreground">Experiments & Creative Analytics</h1>
+          <CardInfoTooltip text="Scientifically optimize CTR and conversion performance across visual variants with two-proportion z-tests." />
         </div>
       </div>
 

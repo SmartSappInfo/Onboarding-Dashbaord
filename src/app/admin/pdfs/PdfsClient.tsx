@@ -12,6 +12,7 @@ import type { PDFForm } from '@/lib/types';
 import { deletePdfForm, updatePdfFormStatus, clonePdfForm } from '@/lib/pdf-actions';
 
 import { Button } from '@/components/ui/button';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import {
   Table,
   TableBody,
@@ -254,13 +255,11 @@ export default function PdfsClient() {
             <div className="h-full overflow-y-auto w-full">
                 <div className="space-y-8 pb-32 w-full p-8">
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                        <div className="flex flex-col items-start">
+                        <div className="flex items-center gap-2.5">
                             <h1 className="text-3xl font-bold text-foreground">
                                 Signing Studio
                             </h1>
-                            <p className="text-muted-foreground text-sm mt-1">
-                                Manage interactive institutional agreements and tracking
-                            </p>
+                            <CardInfoTooltip text="Manage interactive institutional agreements and tracking." />
                         </div>
                         <Button asChild className="rounded-xl font-bold shadow-lg h-11 px-8 transition-all active:scale-95">
                             <Link href="/admin/pdfs/new">

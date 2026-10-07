@@ -10,7 +10,9 @@ import type {
     DealDuplicateOptions, 
     DealMergeOptions, 
     DealMergeResult, 
-    DealLineItem 
+    DealLineItem,
+    TransferDealInput,
+    TransferDealResult
 } from '@/lib/types';
 import { logActivity } from '@/lib/activity-logger';
 import { canUser } from '@/lib/workspace-permissions';
@@ -29,6 +31,7 @@ import type {
     CreateDealWithNewEntityParams,
     CreateDealWithNewEntityResult,
 } from '@/lib/deals/deal-types';
+import { transferDealCore } from '@/lib/deals/deal-transfer-core';
 import { z } from 'zod';
 import { createEntityCore } from '@/lib/crm/entity-core';
 import type { OnboardingStage } from '@/lib/types';
@@ -1243,6 +1246,18 @@ export async function duplicateDealAction(
         console.error('❌ Failed to duplicate deal:', error);
         return { success: false, error };
     }
+}
+
+/**
+ * ARCHITECTURAL POINTER (Cross-Workspace Deal Transfer & Cloning - Rule 10, Rule 69 & agents_mcp_rules):
+ * Moves or copies a Deal across pipelines and workspaces.
+ * Delegates directly to canonical transferDealCore (Single Source of Truth shared with Automations & MCP).
+ */
+export async function transferDealAction(
+    input: TransferDealInput
+): Promise<TransferDealResult> {
+    const actor = await sessionActor();
+    return transferDealCore(actor, input);
 }
 
 /**

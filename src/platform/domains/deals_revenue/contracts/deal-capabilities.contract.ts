@@ -24,6 +24,7 @@ import {
   updateDealValueCore,
   type CrmActor,
 } from '@/lib/crm/deal-core';
+import { transferDealCore } from '@/lib/deals/deal-transfer-core';
 
 interface RawDealDoc {
   name?: string;
@@ -734,3 +735,173 @@ export const dealAssignOwnerCapability: CapabilityDefinition<
     };
   },
 };
+
+// ============================================================================
+// 7. deal.transfer (L2_STATE_MUTATION)
+// ============================================================================
+
+export const DealTransferCapabilityInputSchema = z.object({
+  dealId: z.string().min(1).describe('The unique ID of the deal to transfer or duplicate.'),
+  mode: z.enum(['move', 'copy']).default('move').describe('Whether to move the deal or duplicate it.'),
+  sourceWorkspaceId: z.string().min(1).describe('Source workspace ID.'),
+  targetWorkspaceId: z.string().min(1).describe('Destination workspace ID.'),
+  targetPipelineId: z.string().min(1).describe('Destination pipeline ID.'),
+  targetStageId: z.string().min(1).describe('Destination stage ID in the target pipeline.'),
+  targetStageName: z.string().optional().describe('Display stage name.'),
+  targetUserId: z.string().nullable().optional().describe('Target assignee user ID (must belong to target workspace).'),
+  targetUserName: z.string().nullable().optional(),
+  targetUserEmail: z.string().nullable().optional(),
+  newName: z.string().optional().describe('New deal name when mode === copy.'),
+  summary: z.string().optional().describe('Commercial or operational note for transfer.'),
+  copyLineItems: z.boolean().default(true).optional(),
+  copyContacts: z.boolean().default(true).optional(),
+  copyCustomFields: z.boolean().default(true).optional(),
+  expectedUpdatedAt: z.string().optional().describe('TOCTOU optimistic concurrency timestamp.'),
+  idempotencyKey: z.string().optional().describe('Unique token for replay protection.'),
+});
+
+export const DealTransferCapabilityOutputSchema = z.object({
+  dealId: z.string(),
+  mode: z.enum(['move', 'copy']),
+  targetWorkspaceId: z.string(),
+  targetPipelineId: z.string(),
+  targetStageId: z.string(),
+  success: z.boolean(),
+  updatedAt: z.string(),
+});
+
+export type DealTransferCapabilityInput = z.infer<typeof DealTransferCapabilityInputSchema>;
+export type DealTransferCapabilityOutput = z.infer<typeof DealTransferCapabilityOutputSchema>;
+
+export const dealTransferCapability: CapabilityDefinition<
+  DealTransferCapabilityInput,
+  DealTransferCapabilityOutput
+> = {
+  id: 'deal.transfer',
+  version: '1.0.0',
+  name: 'Transfer or Duplicate Deal',
+  description: 'Transfers or duplicates a commercial deal across workspaces, pipelines, and stages with entity projection and idempotency protection.',
+  domain: 'deals_revenue',
+  operation: 'update',
+  inputSchema: DealTransferCapabilityInputSchema,
+  outputSchema: DealTransferCapabilityOutputSchema,
+  permissions: ['sales:pipeline:edit', 'app:deals_edit', 'deal:transfer', 'deal:create'],
+  workspaceScoped: true,
+  tenantScoped: true,
+  risk: {
+    level: 'L2_STATE_MUTATION',
+    destructive: false,
+    idempotent: true,
+    openWorld: false,
+    requiresHumanApproval: false,
+    nonDelegable: false,
+  },
+  execution: {
+    synchronous: true,
+    maxDurationMs: 15000,
+    supportsDryRun: true,
+    supportsCancellation: false,
+    supportsCompensation: false,
+    maxPayloadSizeBytes: 1024 * 1024,
+  },
+  policies: {
+    requiresIdempotencyKey: false,
+    requiresExpectedVersion: false,
+    auditRequired: true,
+    defaultEnabled: true,
+  },
+  async handler(
+    input: DealTransferCapabilityInput,
+    context: CapabilityExecutionContext
+  ): Promise<CapabilityExecutionResult<DealTransferCapabilityOutput>> {
+    const { principal } = context;
+    const actor: CrmActor = principal.actorType === 'agent'
+      ? {
+          kind: 'service',
+          service: 'api',
+          workspaceId: input.sourceWorkspaceId,
+          allowedWorkspaceIds: [input.sourceWorkspaceId, input.targetWorkspaceId],
+          onBehalfOf: principal.userId,
+          agentId: principal.agentId,
+          toolInvocationId: context.correlationId,
+        }
+      : { kind: 'user', uid: principal.userId };
+
+    const result = await transferDealCore(actor, {
+      dealId: input.dealId,
+      mode: input.mode,
+      sourceWorkspaceId: input.sourceWorkspaceId,
+      targetWorkspaceId: input.targetWorkspaceId,
+      targetPipelineId: input.targetPipelineId,
+      targetStageId: input.targetStageId,
+      assignedTo: input.targetUserId !== undefined
+        ? (input.targetUserId
+            ? { userId: input.targetUserId, name: input.targetUserName || null, email: input.targetUserEmail || null }
+            : null)
+        : undefined,
+      summary: input.summary,
+      newName: input.newName,
+      copyLineItems: input.copyLineItems,
+      copyContacts: input.copyContacts,
+      copyCustomFields: input.copyCustomFields,
+      idempotencyKey: input.idempotencyKey,
+      expectedUpdatedAt: input.expectedUpdatedAt,
+    });
+
+    if (!result.success || !result.dealId) {
+      return {
+        success: false,
+        error: {
+          code: 'VALIDATION',
+          message: result.error || 'Failed to transfer deal.',
+          stateChanged: 'no',
+          retryable: false,
+        },
+        executionId: context.correlationId,
+      };
+    }
+
+    const domainEvent = createDomainEvent({
+      type: input.mode === 'copy' ? 'deal.duplicated' : 'deal.transferred',
+      source: 'capability:deal.transfer',
+      correlationId: context.correlationId,
+      actor: {
+        type: principal.actorType,
+        id: principal.userId || principal.agentId || 'unknown',
+      },
+      entity: {
+        type: 'deal',
+        id: result.dealId,
+      },
+      workspaceId: input.targetWorkspaceId,
+      organizationId: principal.organizationId,
+      idempotencyKey: input.idempotencyKey,
+      payload: {
+        dealId: result.dealId,
+        originalDealId: input.dealId,
+        mode: input.mode,
+        sourceWorkspaceId: input.sourceWorkspaceId,
+        targetWorkspaceId: input.targetWorkspaceId,
+        pipelineId: input.targetPipelineId,
+        stageId: input.targetStageId,
+      },
+    });
+
+    return {
+      success: true,
+      data: {
+        dealId: result.dealId,
+        mode: input.mode,
+        targetWorkspaceId: input.targetWorkspaceId,
+        targetPipelineId: input.targetPipelineId,
+        targetStageId: input.targetStageId,
+        success: true,
+        updatedAt: new Date().toISOString(),
+      },
+      executionId: context.correlationId,
+      emittedEvents: [domainEvent],
+      durationMs: 0,
+    };
+  },
+};
+

@@ -18,6 +18,8 @@ import { ApprovalProposalCard } from '@/components/approvals/ApprovalProposalCar
 import { AgentPolicyMatrix } from '@/components/approvals/AgentPolicyMatrix';
 import { EmergencyPauseBanner } from '@/components/approvals/EmergencyPauseBanner';
 import { Input } from '@/components/ui/input';
+import Link from 'next/link';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import {
   ShieldCheck,
   Wifi,
@@ -26,6 +28,7 @@ import {
   Clock,
   Layers,
   Sparkles,
+  ArrowLeft,
 } from 'lucide-react';
 import type { ApprovalView } from '@/platform/policy/approval-view';
 import {
@@ -229,23 +232,74 @@ export function ApprovalsClient() {
     <div className="h-full overflow-y-auto w-full">
       <PageContainerFluid>
         <div className="space-y-6 pb-28 w-full max-w-7xl mx-auto">
-          {/* Zone 1: Demarcated Header & Live State */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-5">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/20">
-                  <ShieldCheck className="h-5 w-5" />
-                </div>
-                <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                  Agent Approval Center
-                </h1>
+          {/* Zone 1: Demarcated Header & Navigation */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/80 pb-5">
+            <div className="flex items-center gap-2.5">
+              <Link
+                href="/admin/intelligence"
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                aria-label="Back to Intelligence"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </Link>
+              <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/20">
+                <ShieldCheck className="h-5 w-5" />
               </div>
-              <p className="text-sm text-muted-foreground">
-                Review high-risk autonomous agent action proposals, audit blast radiuses, and manage workspace policy.
-              </p>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                Agent Approval Center
+              </h1>
+              <CardInfoTooltip text="Review high-risk autonomous agent action proposals, audit blast radiuses, and manage workspace policy." />
             </div>
 
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="flex flex-wrap items-center gap-3 shrink-0">
+              {/* Standard Segmented Pill Navigation */}
+              <div className="inline-flex items-center gap-1 bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('pending')}
+                  className={`h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] ${
+                    activeTab === 'pending'
+                      ? 'bg-card text-primary font-bold shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
+                  }`}
+                >
+                  <Clock className="h-3.5 w-3.5" />
+                  <span>Pending</span>
+                  {proposals.length > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[10px]">
+                      {proposals.length}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('history')}
+                  className={`h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] ${
+                    activeTab === 'history'
+                      ? 'bg-card text-primary font-bold shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
+                  }`}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  <span>History</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('matrix')}
+                  className={`h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] ${
+                    activeTab === 'matrix'
+                      ? 'bg-card text-primary font-bold shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
+                  }`}
+                >
+                  <Layers className="h-3.5 w-3.5" />
+                  <span>Policy Matrix</span>
+                </button>
+              </div>
+
+              {/* Live Proposals Badge */}
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-emerald-500/20 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 text-xs font-medium">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
@@ -266,55 +320,12 @@ export function ApprovalsClient() {
           {/* Zone 2: KPI Metrics Strip */}
           <ApprovalMetricsCards metrics={metrics} />
 
-          {/* Zone 3: Navigation Tabs & Controls */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/80 pb-3">
-            <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/30 border border-border/60">
-              <button
-                type="button"
-                onClick={() => setActiveTab('pending')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 active:scale-[0.97] ${
-                  activeTab === 'pending'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Clock className="h-3.5 w-3.5" />
-                <span>Pending</span>
-                {proposals.length > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[10px]">
-                    {proposals.length}
-                  </span>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('history')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 active:scale-[0.97] ${
-                  activeTab === 'history'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                <span>History</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('matrix')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 active:scale-[0.97] ${
-                  activeTab === 'matrix'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Layers className="h-3.5 w-3.5" />
-                <span>Policy Matrix</span>
-              </button>
-            </div>
-
-            {activeTab === 'pending' && (
+          {/* Zone 3: Search / Filter Toolbar (when pending) */}
+          {activeTab === 'pending' && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/80 pb-3">
+              <div className="text-xs text-muted-foreground font-medium">
+                Showing {filteredProposals.length} proposal{filteredProposals.length === 1 ? '' : 's'} awaiting review
+              </div>
               <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
@@ -325,8 +336,8 @@ export function ApprovalsClient() {
                   className="pl-8 text-xs h-9 rounded-xl border-border/80 bg-background"
                 />
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Tab Content Display */}
           {activeTab === 'pending' && (

@@ -13,6 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageContainerFluid } from '@/components/ui/page-container';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { collection, query, where, doc, setDoc, getDocs, limit } from 'firebase/firestore';
 import { 
   Radio, 
@@ -246,51 +247,61 @@ export default function ListeningClient() {
 
   return (
     <PageContainerFluid className="space-y-6 max-w-6xl mx-auto py-8">
-      {/* Header Panel */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/50 pb-6">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/10">
-            <Radio className="h-5 w-5 text-white" />
+      <Tabs defaultValue="alert-logs" className="w-full space-y-6">
+        {/* Header Panel */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50 pb-5">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/10">
+              <Radio className="h-5 w-5 text-white" />
+            </div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Listening Engine</h1>
+              <CardInfoTooltip text="Track public mentions, hashtags, and competitor actions to protect your brand reputation." />
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Listening Engine</h1>
-            <p className="text-muted-foreground text-xs font-medium">Track public mentions, hashtags, and competitor actions to protect your brand reputation.</p>
+
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <TabsList className="inline-flex items-center gap-1 bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto">
+              <TabsTrigger 
+                value="alert-logs" 
+                className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
+              >
+                <Activity className="h-3.5 w-3.5" /> Alert Feed ({alerts.length})
+              </TabsTrigger>
+              <TabsTrigger 
+                value="rules-config" 
+                className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
+              >
+                <Settings className="h-3.5 w-3.5" /> Listening Rules
+              </TabsTrigger>
+            </TabsList>
+
+            <Button 
+              onClick={handleSimulateMention}
+              disabled={isSimulating}
+              className="rounded-xl h-8.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs tracking-wide active:scale-[0.97] transition-all gap-1.5 shadow-lg shadow-emerald-500/10"
+            >
+              {isSimulating ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="h-3.5 w-3.5" />
+              )}
+              Simulate Mention
+            </Button>
           </div>
         </div>
 
-        <Button 
-          onClick={handleSimulateMention}
-          disabled={isSimulating}
-          className="rounded-xl h-10 px-5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs tracking-wide active:scale-[0.97] transition-all gap-1.5 shadow-lg shadow-emerald-500/10 self-end sm:self-auto"
-        >
-          {isSimulating ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Sparkles className="h-4 w-4" />
-          )}
-          Simulate Brand Mention
-        </Button>
-      </div>
-
-      {isLoadingRule ? (
-        <Card className="border border-border/30 rounded-3xl bg-card/40 backdrop-blur-md">
-          <CardContent className="h-96 flex items-center justify-center">
-            <div className="flex flex-col items-center gap-2 text-muted-foreground">
-              <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
-              <span className="text-xs font-bold uppercase tracking-widest">Loading engine parameters...</span>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <Tabs defaultValue="alert-logs" className="w-full">
-          <TabsList className="grid grid-cols-2 max-w-sm rounded-2xl bg-muted/40 p-1 border border-border/20 h-11">
-            <TabsTrigger value="alert-logs" className="rounded-xl text-xs font-bold tracking-wider gap-1.5 data-[state=active]:bg-background/80">
-              <Activity className="h-4 w-4" /> Alert Feed ({alerts.length})
-            </TabsTrigger>
-            <TabsTrigger value="rules-config" className="rounded-xl text-xs font-bold tracking-wider gap-1.5 data-[state=active]:bg-background/80">
-              <Settings className="h-4 w-4" /> Listening Rules
-            </TabsTrigger>
-          </TabsList>
+        {isLoadingRule ? (
+          <Card className="border border-border/30 rounded-3xl bg-card/40 backdrop-blur-md">
+            <CardContent className="h-96 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+                <span className="text-xs font-bold uppercase tracking-widest">Loading engine parameters...</span>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
 
           {/* Tab 1: Alert Logs Feed */}
           <TabsContent value="alert-logs" className="pt-4 space-y-4">
@@ -492,8 +503,9 @@ export default function ListeningClient() {
               </Card>
             </form>
           </TabsContent>
-        </Tabs>
+        </>
       )}
+      </Tabs>
     </PageContainerFluid>
   );
 }

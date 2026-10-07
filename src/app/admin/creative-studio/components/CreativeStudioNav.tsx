@@ -15,9 +15,10 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Sparkles, LayoutGrid, Palette, FolderOpen, Wand2, Shield } from 'lucide-react';
+import { Sparkles, LayoutGrid, Palette, FolderOpen, Shield, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 interface NavItem {
   label: string;
@@ -61,28 +62,25 @@ export function CreativeStudioNav() {
   };
 
   return (
-    <header className="w-full border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-30 transition-colors">
+    <header className="w-full border-b border-border/80 bg-background/80 backdrop-blur-md sticky top-0 z-30 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-        {/* Left Brand Badge */}
+        {/* Left Title with Back Button */}
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-emerald-500/20 text-white dark:text-slate-950 font-black">
-            <Wand2 className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-black tracking-tight text-foreground">Creative Studio</span>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                2.0
-              </span>
-            </div>
-            <p className="text-[11px] font-medium text-muted-foreground hidden sm:block">
-              AI-Native Creative Production
-            </p>
+          <Link
+            href="/admin"
+            className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border/80 bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-all active:scale-[0.97]"
+            aria-label="Back to dashboard"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
+          <div className="flex items-center gap-2">
+            <span className="text-base font-bold tracking-tight text-foreground">Creative Studio</span>
+            <CardInfoTooltip text="AI-Native visual creative production, CTR formula optimization, and brand governance platform." />
           </div>
         </div>
 
         {/* Center Desktop Navigation Tabs */}
-        <nav className="hidden md:flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border">
+        <nav className="hidden md:flex items-center gap-1 bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto">
           {NAV_ITEMS.map((item) => {
             const active = isNavActive(item);
             const Icon = item.icon;
@@ -91,13 +89,13 @@ export function CreativeStudioNav() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all min-h-[36px] active:scale-[0.97]',
+                  'h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97]',
                   active
-                    ? 'bg-emerald-600 dark:bg-emerald-500 text-white dark:text-slate-950 shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                 )}
               >
-                <Icon className={cn('w-4 h-4', active ? 'text-white dark:text-slate-950' : 'text-muted-foreground')} />
+                <Icon className={cn('w-3.5 h-3.5', active ? 'text-primary' : 'text-muted-foreground')} />
                 {item.label}
               </Link>
             );

@@ -452,6 +452,29 @@ const LIBRARY_ITEMS = [
     nodeType: 'actionNode',
     payload: { type: 'actionNode', label: 'Update Task', actionType: 'UPDATE_TASK' }
   },
+  {
+    id: 'transfer_deal',
+    title: 'Move or Duplicate Deal',
+    description: 'Transfer or duplicate an active deal across pipelines and workspaces.',
+    category: 'crm_sales',
+    icon: ArrowRightLeft,
+    nodeType: 'actionNode',
+    payload: {
+      type: 'actionNode',
+      label: 'Move or Duplicate Deal',
+      actionType: 'TRANSFER_DEAL',
+      config: {
+        mode: 'move',
+        sourceWorkspaceId: '__current__',
+        sourcePipelineId: '__all__',
+        sourceStageId: '__all__',
+        assignmentMode: 'preserve_or_unassigned',
+        copyLineItems: true,
+        copyContacts: true,
+        copyCustomFields: true,
+      },
+    },
+  },
 
   // Integrations
   {

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Handle, Position } from 'reactflow';
-import { Mail, Zap, Bell, BellOff, Smartphone, Plus, Sparkles, StickyNote, MessageSquare, CheckSquare, Building2, DollarSign, UserPlus, PhoneCall, StopCircle, Globe } from 'lucide-react';
+import { Mail, Zap, Bell, BellOff, Smartphone, Plus, Sparkles, StickyNote, MessageSquare, CheckSquare, Building2, DollarSign, UserPlus, PhoneCall, StopCircle, Globe, ArrowRightLeft, Copy } from 'lucide-react';
 import { NodeActionToolbar } from './NodeActionToolbar';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -46,6 +46,7 @@ const ACTION_NAMES: Record<string, string> = {
     UPDATE_DEAL_VALUE: 'Update Deal Value',
     UPDATE_DEAL_STATUS: 'Update Deal Status',
     UPDATE_LEAD_SCORE: 'Adjust Lead Score',
+    TRANSFER_DEAL: 'Move or Duplicate Deal',
 };
 
 function formatActionName(actionType?: string): string {
@@ -120,6 +121,8 @@ export function ActionNode({ id, data, selected }: { id: string; data: ActionNod
             case 'UPDATE_DEAL_VALUE':
             case 'UPDATE_DEAL_STATUS':
                 return DollarSign;
+            case 'TRANSFER_DEAL':
+                return config.mode === 'copy' ? Copy : ArrowRightLeft;
             case 'ADD_CONTACT_TO_ENTITY':
             case 'UPDATE_CONTACT':
                 return UserPlus;
@@ -143,6 +146,9 @@ export function ActionNode({ id, data, selected }: { id: string; data: ActionNod
 
     const _getResourceDetail = () => {
         if (!actionType) return 'Action';
+        if (actionType === 'TRANSFER_DEAL') {
+            return config.mode === 'copy' ? 'Duplicate' : 'Move';
+        }
         if (actionType === 'SEND_MESSAGE' || actionType?.startsWith('SEND_NOTIFICATION_')) {
             return config.templateName || (config.templateId ? 'Active Template' : 'Select Template');
         }
@@ -333,6 +339,15 @@ export function ActionNode({ id, data, selected }: { id: string; data: ActionNod
                 const criteriaStr = searchCriteria.length > 0 ? searchCriteria.join(', ') : 'Phone/Email';
                 const fallbackStr = config.createIfNotFound !== false ? 'Auto-Create if missing' : 'Halt if missing';
                 return `Find: ${criteriaStr} • ${fallbackStr}`;
+            }
+            case 'TRANSFER_DEAL': {
+                const mode = config.mode === 'copy' ? 'Duplicate Deal' : 'Move Deal';
+                const targetStage = config.targetStageName || (config.targetStageId ? 'Target Stage' : 'Select Stage');
+                const targetWs = config.targetWorkspaceName || '';
+                if (targetWs) {
+                    return `${mode} → ${targetStage} (${targetWs})`;
+                }
+                return `${mode} → ${targetStage}`;
             }
             default:
                 return actionType.replace(/_/g, ' ');

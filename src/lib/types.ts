@@ -2734,7 +2734,10 @@ export type {
   UnifiedCatalogItem,
   SkuPerformanceMetric,
   CategoryRevenueMetric,
-  CommercialAnalyticsSummary
+  CommercialAnalyticsSummary,
+  TransferDealInput,
+  TransferDealResult,
+  DealTransferAiSummaryResult
 } from './deals/deal-types';
 
 export type {
@@ -4891,7 +4894,7 @@ export interface AutomationEventPayload {
 }
 
 export interface AutomationAction {
-  type: 'SEND_MESSAGE' | 'CREATE_TASK' | 'UPDATE_FIELD' | 'WEBHOOK' | 'CREATE_DEAL' | 'SEND_NOTIFICATION_EMAIL' | 'SEND_NOTIFICATION_SMS' | 'SEND_NOTIFICATION_WHATSAPP' | 'SEND_NOTIFICATION_IN_APP' | 'SEND_NOTIFICATION_PUSH' | 'DIRECT_EMAIL' | 'DIRECT_SMS' | 'SEND_WHATSAPP' | 'DIRECT_WHATSAPP' | 'DIRECT_NOTIFICATION_EMAIL' | 'DIRECT_NOTIFICATION_SMS';
+  type: 'SEND_MESSAGE' | 'CREATE_TASK' | 'UPDATE_FIELD' | 'WEBHOOK' | 'CREATE_DEAL' | 'TRANSFER_DEAL' | 'SEND_NOTIFICATION_EMAIL' | 'SEND_NOTIFICATION_SMS' | 'SEND_NOTIFICATION_WHATSAPP' | 'SEND_NOTIFICATION_IN_APP' | 'SEND_NOTIFICATION_PUSH' | 'DIRECT_EMAIL' | 'DIRECT_SMS' | 'SEND_WHATSAPP' | 'DIRECT_WHATSAPP' | 'DIRECT_NOTIFICATION_EMAIL' | 'DIRECT_NOTIFICATION_SMS';
   // Legacy template ID (for backward compatibility)
   templateId?: string;
   // New template resolution by category/type (Task 15.2)
@@ -4934,6 +4937,32 @@ export interface AutomationAction {
     resendDelayHours: number; // >= 1
     triggerCondition: 'no_open' | 'no_click';
   };
+}
+
+/**
+ * Configuration payload for cross-workspace deal move and duplication automation steps
+ */
+export interface TransferDealAutomationConfig {
+  mode: 'move' | 'copy';
+  sourceWorkspaceId?: string; // '__current__' or specific workspace ID
+  sourcePipelineId?: string;  // '__all__' or specific pipeline ID
+  sourceStageId?: string;     // '__all__' or specific stage ID
+  targetWorkspaceId: string;
+  targetWorkspaceName?: string;
+  targetPipelineId: string;
+  targetPipelineName?: string;
+  targetStageId: string;
+  targetStageName?: string;
+  assignmentMode?: 'preserve_or_unassigned' | 'specific_user' | 'unassigned';
+  targetUserId?: string | null;
+  targetUserName?: string | null;
+  targetUserEmail?: string | null;
+  newName?: string;
+  summary?: string;
+  copyLineItems?: boolean;
+  copyContacts?: boolean;
+  copyCustomFields?: boolean;
+  isDisabled?: boolean;
 }
 
 export interface CampaignSession {

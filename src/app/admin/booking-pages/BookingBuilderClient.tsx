@@ -19,6 +19,9 @@ import {
   deleteBookingPageAction, 
   ensureWorkspaceAvailabilityAction 
 } from '@/app/actions/scheduler-actions';
+import Link from 'next/link';
+import { PageContainerFluid } from '@/components/ui/page-container';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { 
   Plus, 
   Trash2, 
@@ -31,7 +34,8 @@ import {
   Calendar, 
   Sparkles,
   Eye,
-  PlusCircle
+  PlusCircle,
+  ArrowLeft
 } from 'lucide-react';
 
 export default function BookingBuilderClient() {
@@ -200,36 +204,43 @@ export default function BookingBuilderClient() {
   };
 
   return (
-    <div className="space-y-8 pb-12 w-full text-left">
-      
-      {/* Header section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
-            <Sparkles className="h-6 w-6 text-emerald-500" />
-            Public Booking Pages Builder
-          </h1>
-          <p className="text-sm text-muted-foreground font-medium">
-            Configure Calendly-like booking page links, customize forms, and embed them in emails or websites.
-          </p>
+    <PageContainerFluid>
+      <div className="space-y-8 pb-28 w-full text-left font-figtree max-w-7xl mx-auto">
+        {/* Header section */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-5">
+          <div className="flex items-center gap-2.5">
+            <Link
+              href="/admin"
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+              aria-label="Back to Dashboard"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
+            <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/20">
+              <Sparkles className="h-5 w-5 text-emerald-500" />
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              Public Booking Pages Builder
+            </h1>
+            <CardInfoTooltip text="Configure Calendly-like booking page links, customize forms, and embed them in emails or websites." />
+          </div>
+          <Button 
+            onClick={openCreateDialog}
+            className="rounded-xl font-bold min-h-[44px] px-5 active:scale-[0.97] transition-all bg-primary hover:bg-primary-hover text-white flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Create Booking Page
+          </Button>
         </div>
-        <Button 
-          onClick={openCreateDialog}
-          className="rounded-2xl font-bold h-12 px-6 active:scale-[0.97] transition-all bg-primary hover:bg-primary-hover text-white flex items-center gap-2"
-        >
-          <Plus className="h-5 w-5" />
-          Create Booking Page
-        </Button>
-      </div>
 
-      {/* Pages List */}
-      {loadingPages ? (
-        <div className="flex flex-col items-center justify-center p-24 min-h-[300px]">
-          <Loader2 className="h-8 w-8 text-primary animate-spin" />
-          <p className="text-sm font-semibold text-muted-foreground mt-4">Syncing Booking Templates...</p>
-        </div>
-      ) : !bookingPages || bookingPages.length === 0 ? (
-        <Card className="border-none bg-background/40 ring-1 ring-border rounded-[2.5rem] p-12 text-center flex flex-col items-center justify-center space-y-4">
+        {/* Pages List */}
+        {loadingPages ? (
+          <div className="flex flex-col items-center justify-center p-24 min-h-[300px]">
+            <Loader2 className="h-8 w-8 text-primary animate-spin" />
+            <p className="text-sm font-semibold text-muted-foreground mt-4">Syncing Booking Templates...</p>
+          </div>
+        ) : !bookingPages || bookingPages.length === 0 ? (
+          <Card className="border-none bg-background/40 ring-1 ring-border rounded-2xl p-12 text-center flex flex-col items-center justify-center space-y-4">
           <Calendar className="h-12 w-12 text-muted-foreground/30" />
           <div className="space-y-1">
             <h3 className="text-sm font-bold text-foreground">No Booking Pages Configuration</h3>
@@ -671,6 +682,7 @@ export default function BookingBuilderClient() {
           </div>
         )}
       </AnimatePresence>
-    </div>
+      </div>
+    </PageContainerFluid>
   );
 }

@@ -22,10 +22,11 @@ import {
   Clock, 
   CheckSquare, 
   Video, 
-  Sparkles, 
   AlertCircle,
-  Loader2
+  Loader2,
+  ArrowLeft
 } from 'lucide-react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
@@ -33,6 +34,8 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+import { PageContainer } from '@/components/ui/page-container';
 import { Badge } from '@/components/ui/badge';
 import type { Meeting, Task } from '@/lib/types';
 
@@ -138,17 +141,25 @@ export default function CalendarClient() {
   const isLoading = loadingMeetings || loadingTasks;
 
   return (
-    <div className="space-y-8 pb-12 w-full text-left">
+    <PageContainer>
+      <div className="space-y-8 pb-12 w-full text-left">
       {/* Header section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
-            <Sparkles className="h-6 w-6 text-emerald-500" />
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/80 pb-5">
+        <div className="flex items-center gap-2.5">
+          <Link
+            href="/admin"
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+            aria-label="Back to Dashboard"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
+          <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/20">
+            <CalendarIcon className="h-5 w-5" />
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
             Workspace Calendar & Timeline
           </h1>
-          <p className="text-sm text-muted-foreground font-medium">
-            Monitor meetings, tasks, and scheduling velocity across your team.
-          </p>
+          <CardInfoTooltip text="Monitor meetings, tasks, and scheduling velocity across your team." />
         </div>
         <div className="flex items-center gap-2">
           <Button 
@@ -317,6 +328,7 @@ export default function CalendarClient() {
           </Card>
         </div>
       </div>
-    </div>
+      </div>
+    </PageContainer>
   );
 }

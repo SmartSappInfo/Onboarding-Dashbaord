@@ -30,6 +30,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { useToast } from '@/hooks/use-toast';
 import { 
   BookOpen, Plus, Search, Eye, Sparkles, ExternalLink,
@@ -269,14 +270,12 @@ export default function DocumentStudioClient() {
           
           {/* Header Row */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
+            <div className="flex items-center gap-2.5">
               <h1 className="text-3xl font-black text-foreground tracking-tight flex items-center gap-2.5">
                 <Layers className="h-8 w-8 text-primary" />
                 Document Studio
               </h1>
-              <p className="text-muted-foreground text-sm mt-1 leading-relaxed">
-                Enterprise digital experience platform for interactive brochures, prospectuses, magazines, and flipbooks.
-              </p>
+              <CardInfoTooltip text="Enterprise digital experience platform for interactive brochures, prospectuses, magazines, and flipbooks." />
             </div>
             
             <div className="flex items-center gap-2.5 shrink-0">

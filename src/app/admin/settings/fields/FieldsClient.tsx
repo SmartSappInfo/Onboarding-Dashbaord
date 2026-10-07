@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
 import { PageContainer } from '@/components/ui/page-container';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { getErrorMessage } from '@/lib/errors/report-error';
 
 // ────────────────────────────────────────────
@@ -792,33 +793,40 @@ export default function FieldsClient() {
   return (
     <PageContainer>
       <div className="space-y-8 pb-32 w-full">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Fields & Variables Hub</h1>
-          <p className="text-muted-foreground font-medium text-sm mt-1">Manage entity attributes, custom data collection, and system variables.</p>
-        </div>
-      </div>
-
+      {/* Header with Top-Right Segmented Tabs */}
       <Tabs defaultValue="custom" className="space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <TabsList className="bg-muted/50 border border-border rounded-xl p-1 h-auto flex flex-wrap gap-1">
-            <TabsTrigger value="custom" className="rounded-lg text-sm font-semibold data-[state=active]:bg-blue-500/15 data-[state=active]:text-blue-400 cursor-pointer flex-1 sm:flex-none">
-              <LucideIcons.Database className="h-4 w-4 mr-2" /> Custom Fields
-            </TabsTrigger>
-            <TabsTrigger value="system" className="rounded-lg text-sm font-semibold data-[state=active]:bg-blue-500/15 data-[state=active]:text-blue-400 cursor-pointer flex-1 sm:flex-none">
-              <LucideIcons.Terminal className="h-4 w-4 mr-2" /> System Variables
-            </TabsTrigger>
-          </TabsList>
-          <div className="flex items-center gap-2">
-            <Link href="/admin/settings/fields/diagnostics">
-              <Button variant="outline" className="border-blue-500/20 text-blue-600 hover:bg-blue-50/50 gap-2">
-                <LucideIcons.ShieldAlert className="h-4 w-4" /> Audit Templates
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/80 pb-5">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Fields & Variables Hub</h1>
+            <CardInfoTooltip text="Manage entity attributes, custom data collection, and system variables." />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <TabsList className="bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto inline-flex items-center gap-1">
+              <TabsTrigger 
+                value="custom" 
+                className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
+              >
+                <LucideIcons.Database className="h-3.5 w-3.5" /> Custom Fields
+              </TabsTrigger>
+              <TabsTrigger 
+                value="system" 
+                className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
+              >
+                <LucideIcons.Terminal className="h-3.5 w-3.5" /> System Variables
+              </TabsTrigger>
+            </TabsList>
+
+            <div className="flex items-center gap-2">
+              <Link href="/admin/settings/fields/diagnostics">
+                <Button variant="outline" className="h-8.5 px-3 rounded-xl border-border/80 active:scale-[0.97] transition-all gap-1.5 text-xs font-semibold">
+                  <LucideIcons.ShieldAlert className="h-3.5 w-3.5 text-blue-500" /> Audit Templates
+                </Button>
+              </Link>
+              <Button onClick={openNewGroup} className="h-8.5 px-3 rounded-xl active:scale-[0.97] transition-all gap-1.5 text-xs font-semibold">
+                <LucideIcons.Plus className="h-3.5 w-3.5" /> New Group
               </Button>
-            </Link>
-            <Button onClick={openNewGroup}>
-              <LucideIcons.Plus className="h-4 w-4 mr-2" /> New Group
-            </Button>
+            </div>
           </div>
         </div>
 

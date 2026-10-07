@@ -16,7 +16,9 @@
  */
 
 import * as React from 'react';
+import Link from 'next/link';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+import { PageContainerFluid } from '@/components/ui/page-container';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -329,7 +331,8 @@ export function AgentBuilderClient() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <PageContainerFluid>
+      <div className="flex flex-col min-h-screen bg-background font-figtree">
       {/* Toast Notification Banner */}
       {notification && (
         <div
@@ -517,56 +520,58 @@ export function AgentBuilderClient() {
         /* VIEW 2: PERSONA CATALOG GRID */
         <div className="flex-1 flex flex-col p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
           {/* Executive Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-                  Agent Persona Studio & Policy Editor
-                </h1>
-                <CardInfoTooltip text="Build, configure, govern, and test autonomous agent personas. Enforces Rule 16 least privilege, Rule 23 budget ceilings, and Rule 42 shadow mode testing." />
-              </div>
-              <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                Visual no-code builder, 5-tier memory configuration, risk ceilings, and shadow simulation test lab.
-              </p>
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6 border-b border-border/80 pb-5">
+            <div className="flex items-center gap-2.5">
+              <Link
+                href="/admin/intelligence"
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </Link>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+                Agent Persona Studio & Policy Editor
+              </h1>
+              <CardInfoTooltip text="Build, configure, govern, and test autonomous agent personas. Enforces Rule 16 least privilege, Rule 23 budget ceilings, and Rule 42 shadow mode testing." />
             </div>
 
-            <Button
-              className="rounded-xl min-h-[44px] active:scale-[0.97] text-xs font-medium gap-2 shadow-sm"
-              onClick={handleCreateNewPersona}
-            >
-              <Plus className="h-4 w-4" />
-              New Agent Persona
-            </Button>
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Filter Tabs - Standard Segmented Pill Navigation at Top Right */}
+              <div className="inline-flex items-center gap-1 bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto shrink-0">
+                {(
+                  [
+                    { id: 'ALL', label: 'All Personas' },
+                    { id: 'CUSTOM', label: 'Custom' },
+                    { id: 'SYSTEM', label: 'Built-in' },
+                    { id: 'DRAFTS', label: 'Drafts' },
+                  ] as const
+                ).map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setFilterTab(tab.id)}
+                    className={`h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] ${
+                      filterTab === tab.id
+                        ? 'bg-card text-primary font-bold shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              <Button
+                className="rounded-xl min-h-[44px] active:scale-[0.97] text-xs font-medium gap-2 shadow-sm"
+                onClick={handleCreateNewPersona}
+              >
+                <Plus className="h-4 w-4" />
+                New Agent Persona
+              </Button>
+            </div>
           </div>
 
-          {/* Filter Toolbar & Search */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-6">
-            {/* Filter Tabs */}
-            <div className="flex rounded-xl border border-border/80 p-1 bg-muted/20">
-              {(
-                [
-                  { id: 'ALL', label: 'All Personas' },
-                  { id: 'CUSTOM', label: 'Custom' },
-                  { id: 'SYSTEM', label: 'Built-in' },
-                  { id: 'DRAFTS', label: 'Drafts' },
-                ] as const
-              ).map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setFilterTab(tab.id)}
-                  className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    filterTab === tab.id
-                      ? 'bg-background text-foreground shadow-sm font-semibold'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Search Input */}
+          {/* Search Toolbar */}
+          <div className="flex items-center justify-end mb-6">
             <div className="relative w-full sm:w-72">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -640,6 +645,7 @@ export function AgentBuilderClient() {
         onConfirmPublish={activePersona && !activePersona.isBuiltIn ? handlePublishRelease : undefined}
         isPublishing={isPublishing}
       />
-    </div>
+      </div>
+    </PageContainerFluid>
   );
 }

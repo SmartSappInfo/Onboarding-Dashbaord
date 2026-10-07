@@ -29,6 +29,7 @@ import { PageContainer } from '@/components/ui/page-container';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
@@ -400,6 +401,7 @@ export default function SalesPerformanceClient() {
               <h1 className="text-2xl font-black tracking-tight flex items-center gap-2 text-foreground">
                 <Sliders className="h-6 w-6 text-primary animate-pulse" /> Performance Policy Studio
               </h1>
+              <CardInfoTooltip text="No-code sales performance governance: customize point rules, enforce anti-gaming safeguards, and test commission impact." />
               <Badge variant="outline" className="text-xs font-mono font-bold bg-primary/10 text-primary border-primary/20">
                 v{policy.version} Active
               </Badge>
@@ -409,9 +411,6 @@ export default function SalesPerformanceClient() {
                 </Badge>
               )}
             </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              No-code sales performance governance: customize point rules, enforce anti-gaming safeguards, and test commission impact.
-            </p>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
@@ -512,36 +511,36 @@ export default function SalesPerformanceClient() {
         {/* 5-Tab Operational Studio Tabs */}
         {/* ───────────────────────────────────────────────────────────── */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="bg-muted/40 p-1 rounded-2xl border flex flex-wrap sm:flex-nowrap gap-1 h-auto">
+          <TabsList className="bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto flex flex-wrap sm:flex-nowrap gap-1">
             <TabsTrigger
               value="scoring"
-              className="min-h-[40px] text-xs font-semibold rounded-xl flex-1 active:scale-[0.97] transition-all"
+              className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent flex-1"
             >
-              <Award className="h-3.5 w-3.5 mr-1.5 text-primary" /> Scoring Rules
+              <Award className="h-3.5 w-3.5 text-primary" /> Scoring Rules
             </TabsTrigger>
             <TabsTrigger
               value="antigaming"
-              className="min-h-[40px] text-xs font-semibold rounded-xl flex-1 active:scale-[0.97] transition-all"
+              className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent flex-1"
             >
-              <Flame className="h-3.5 w-3.5 mr-1.5 text-amber-500" /> Anti-Gaming
+              <Flame className="h-3.5 w-3.5 text-amber-500" /> Anti-Gaming
             </TabsTrigger>
             <TabsTrigger
               value="dimensions"
-              className="min-h-[40px] text-xs font-semibold rounded-xl flex-1 active:scale-[0.97] transition-all"
+              className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent flex-1"
             >
-              <PieChart className="h-3.5 w-3.5 mr-1.5 text-indigo-500" /> Dimension Weights
+              <PieChart className="h-3.5 w-3.5 text-indigo-500" /> Dimension Weights
             </TabsTrigger>
             <TabsTrigger
               value="leaderboard"
-              className="min-h-[40px] text-xs font-semibold rounded-xl flex-1 active:scale-[0.97] transition-all"
+              className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent flex-1"
             >
-              <Trophy className="h-3.5 w-3.5 mr-1.5 text-purple-500" /> Leaderboard Policy
+              <Trophy className="h-3.5 w-3.5 text-purple-500" /> Leaderboard Policy
             </TabsTrigger>
             <TabsTrigger
               value="simulation"
-              className="min-h-[40px] text-xs font-semibold rounded-xl flex-1 active:scale-[0.97] transition-all"
+              className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent flex-1"
             >
-              <Play className="h-3.5 w-3.5 mr-1.5 text-emerald-500" /> Simulation & History
+              <Play className="h-3.5 w-3.5 text-emerald-500" /> Simulation & History
             </TabsTrigger>
           </TabsList>
 

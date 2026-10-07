@@ -296,25 +296,37 @@ export default function MessagingClient() {
         <PageContainerFluid>
         <div className="h-full overflow-y-auto w-full">
             <div className="space-y-8 pb-32 w-full">
-                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                    <div className="flex items-center gap-2.5">
-                        <h1 className="text-3xl font-bold text-foreground">
-                            Messaging Hub
-                        </h1>
-                        <CardInfoTooltip text="Send and manage multichannel outreach across email, SMS, and WhatsApp channels." />
-                    </div>
+        <Tabs defaultValue="overview" className="space-y-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-4">
+                <div className="flex items-center gap-2.5">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+                        Messaging Hub
+                    </h1>
+                    <CardInfoTooltip text="Send and manage multichannel outreach across email, SMS, and WhatsApp channels." />
                 </div>
 
-        <Tabs defaultValue="overview" className="space-y-8">
-            <TabsList className="bg-muted/40 border border-border/80 shadow-xs h-12 p-1 rounded-xl">
-                <TabsTrigger value="overview" className="rounded-lg font-semibold text-[10px] px-6">Hub Overview</TabsTrigger>
-                <TabsTrigger value="jobs" className="rounded-lg font-semibold text-[10px] px-6 gap-2">
-                    <Layers className="h-4 w-4" /> Bulk Jobs
-                </TabsTrigger>
-                <TabsTrigger value="analytics" className="rounded-lg font-semibold text-[10px] px-6 gap-2">
-                    <BarChart3 className="h-4 w-4" /> Performance
-                </TabsTrigger>
-            </TabsList>
+                {/* Top-Right Segmented Tabs */}
+                <TabsList className="inline-flex items-center gap-1 bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto self-start sm:self-auto">
+                    <TabsTrigger
+                        value="overview"
+                        className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground active:scale-[0.97]"
+                    >
+                        Hub Overview
+                    </TabsTrigger>
+                    <TabsTrigger
+                        value="jobs"
+                        className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground active:scale-[0.97]"
+                    >
+                        <Layers className="h-3.5 w-3.5" /> Bulk Jobs
+                    </TabsTrigger>
+                    <TabsTrigger
+                        value="analytics"
+                        className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground active:scale-[0.97]"
+                    >
+                        <BarChart3 className="h-3.5 w-3.5" /> Performance
+                    </TabsTrigger>
+                </TabsList>
+            </div>
 
  <TabsContent value="overview" className="space-y-16 animate-in fade-in slide-in-from-bottom-2">
                         {/* Operational Intelligence Row */}

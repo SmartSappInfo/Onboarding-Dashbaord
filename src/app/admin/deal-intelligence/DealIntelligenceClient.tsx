@@ -28,8 +28,10 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import Link from 'next/link';
+import { PageContainerFluid } from '@/components/ui/page-container';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import {
-  Compass,
   Zap,
   Activity,
   Users,
@@ -37,6 +39,7 @@ import {
   RefreshCw,
   Loader2,
   ShieldAlert,
+  ArrowLeft,
 } from 'lucide-react';
 import type { DealIntelligenceOverview } from '@/lib/deal-intelligence/types';
 import { getDealIntelligenceOverviewAction } from '@/app/actions/deal-intelligence-actions';
@@ -121,22 +124,22 @@ export default function DealIntelligenceClient() {
   }
 
   return (
-    <div className="space-y-8 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+    <PageContainerFluid className="space-y-6">
       {/* Cockpit Title Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-6">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-primary/10 text-primary">
-              <Compass className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-black tracking-tight text-foreground">
-                Buyer & Deal Intelligence
-              </h1>
-              <p className="text-xs text-muted-foreground">
-                Understand deal risk, capture real-time buyer intent signals, map buying committees, and streamline meeting briefings.
-              </p>
-            </div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-5">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin"
+            className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border/80 bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-all active:scale-[0.97]"
+            aria-label="Back to dashboard"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+              Buyer & Deal Intelligence
+            </h1>
+            <CardInfoTooltip text="Understand deal risk, capture real-time buyer intent signals, map buying committees, and streamline meeting briefings." />
           </div>
         </div>
 
@@ -244,33 +247,33 @@ export default function DealIntelligenceClient() {
 
       {/* Tabs Navigation */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid grid-cols-2 md:grid-cols-4 h-auto p-1 bg-muted/60 min-h-[48px]">
+        <TabsList className="inline-flex items-center gap-1 bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto">
           <TabsTrigger
             value="signals"
-            className="min-h-[44px] text-xs font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
           >
-            <Zap className="w-3.5 h-3.5 mr-2 text-amber-500" />
+            <Zap className="w-3.5 h-3.5 text-amber-500" />
             Buyer Signals ({overview?.activeSignalsCount || 0})
           </TabsTrigger>
           <TabsTrigger
             value="health"
-            className="min-h-[44px] text-xs font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
           >
-            <Activity className="w-3.5 h-3.5 mr-2 text-primary" />
+            <Activity className="w-3.5 h-3.5 text-primary" />
             Deal Health & Risk
           </TabsTrigger>
           <TabsTrigger
             value="stakeholders"
-            className="min-h-[44px] text-xs font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
           >
-            <Users className="w-3.5 h-3.5 mr-2 text-purple-500" />
+            <Users className="w-3.5 h-3.5 text-purple-500" />
             Stakeholder Map
           </TabsTrigger>
           <TabsTrigger
             value="meetings"
-            className="min-h-[44px] text-xs font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
           >
-            <Calendar className="w-3.5 h-3.5 mr-2 text-blue-500" />
+            <Calendar className="w-3.5 h-3.5 text-blue-500" />
             Meeting Studio
           </TabsTrigger>
         </TabsList>
@@ -319,6 +322,6 @@ export default function DealIntelligenceClient() {
           />
         </TabsContent>
       </Tabs>
-    </div>
+    </PageContainerFluid>
   );
 }

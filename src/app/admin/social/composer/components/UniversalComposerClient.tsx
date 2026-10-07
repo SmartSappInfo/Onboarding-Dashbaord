@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageContainerFluid } from '@/components/ui/page-container';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { 
   Sparkles, 
   Linkedin, 
@@ -256,13 +257,11 @@ export default function UniversalComposerClient() {
     <PageContainerFluid className="space-y-8 max-w-6xl mx-auto py-8">
       {/* Header Panel */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50 pb-6">
-        <div>
+        <div className="flex items-center gap-2.5">
           <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-400 to-teal-500 bg-clip-text text-transparent">
             Universal Composer
           </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Draft once and generate tailored, channel-specific variations utilizing your AI brand voice profile.
-          </p>
+          <CardInfoTooltip text="Draft once and generate tailored, channel-specific variations utilizing your AI brand voice profile." />
         </div>
 
         <div className="flex items-center gap-2">
@@ -467,12 +466,18 @@ export default function UniversalComposerClient() {
         {/* Right Column: Previews & Settings tabs */}
         <div className="lg:col-span-5 space-y-6">
           <Tabs defaultValue="previews" className="w-full">
-            <TabsList className="grid grid-cols-2 rounded-2xl bg-muted/40 p-1 border border-border/20 h-11">
-              <TabsTrigger value="previews" className="rounded-xl text-xs font-bold tracking-wider gap-1.5 data-[state=active]:bg-background/80">
-                <Eye className="h-4 w-4" /> Live Previews
+            <TabsList className="inline-flex items-center gap-1 bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto w-full">
+              <TabsTrigger 
+                value="previews" 
+                className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center justify-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent flex-1"
+              >
+                <Eye className="h-3.5 w-3.5" /> Live Previews
               </TabsTrigger>
-              <TabsTrigger value="voice-settings" className="rounded-xl text-xs font-bold tracking-wider gap-1.5 data-[state=active]:bg-background/80">
-                <Settings className="h-4 w-4" /> Tone Config
+              <TabsTrigger 
+                value="voice-settings" 
+                className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center justify-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent flex-1"
+              >
+                <Settings className="h-3.5 w-3.5" /> Tone Config
               </TabsTrigger>
             </TabsList>
 

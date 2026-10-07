@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -130,16 +131,14 @@ export function PredictiveIntelligenceClient() {
             <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-600">
               <Sparkles className="h-6 w-6" />
             </div>
-            <div>
+            <div className="flex items-center gap-2">
               <h1 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
                 Predictive Survey Intelligence Hub
                 <Badge variant="outline" className="text-[10px] font-mono text-indigo-600 border-indigo-300">
                   Phase 9 (Apex)
                 </Badge>
               </h1>
-              <p className="text-xs text-muted-foreground">
-                Cross-system predictive convergence of Survey Sentiment + CRM Pipeline + Engagement Signals.
-              </p>
+              <CardInfoTooltip text="Cross-system predictive convergence of Survey Sentiment + CRM Pipeline + Engagement Signals." />
             </div>
           </div>
         </div>

@@ -18,11 +18,13 @@ import * as React from 'react';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { ActivityTimeline2 } from '@/components/activity/ActivityTimeline2';
 import { DeadLetterQueueDrawer } from '@/components/activity/DeadLetterQueueDrawer';
+import Link from 'next/link';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { listDeadLetterEventsAction } from '@/app/actions/activity-actions';
-import { Activity as ActivityIcon, ShieldAlert, Wifi } from 'lucide-react';
+import { Activity as ActivityIcon, ShieldAlert, Wifi, ArrowLeft } from 'lucide-react';
 
 export function GlobalActivityClient() {
   const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
@@ -60,18 +62,21 @@ export function GlobalActivityClient() {
         <div className="space-y-6 pb-28 w-full max-w-7xl mx-auto">
           {/* Zone 1: Demarcated Header & Operator Controls */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-5">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/20">
-                  <ActivityIcon className="h-5 w-5" />
-                </div>
-                <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                  Global Activity & Audit Console
-                </h1>
+            <div className="flex items-center gap-2.5">
+              <Link
+                href="/admin"
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                aria-label="Back to Dashboard"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </Link>
+              <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/20">
+                <ActivityIcon className="h-5 w-5" />
               </div>
-              <p className="text-sm text-muted-foreground">
-                Unified real-time activity timeline, actor attribution, distributed tracing, and operator recovery tools.
-              </p>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                Global Activity & Audit Console
+              </h1>
+              <CardInfoTooltip text="Unified real-time activity timeline, actor attribution, distributed tracing, and operator recovery tools." />
             </div>
 
             {/* Operator Actions & Live Indicators */}

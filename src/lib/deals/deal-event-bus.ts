@@ -25,6 +25,7 @@ import type { AutomationTrigger } from '../types';
 export type DealEventType =
   | 'deal.created'
   | 'deal.updated'
+  | 'deal.moved'
   | 'deal.deleted'
   | 'deal.archived'
   | 'deal.stage.changed'
@@ -98,6 +99,7 @@ export function mapEventToAutomationTrigger(eventType: DealEventType): Automatio
   switch (eventType) {
     case 'deal.created':
       return 'DEAL_CREATED';
+    case 'deal.moved':
     case 'deal.stage.changed':
       return 'DEAL_STAGE_CHANGED';
     case 'deal.status.changed':

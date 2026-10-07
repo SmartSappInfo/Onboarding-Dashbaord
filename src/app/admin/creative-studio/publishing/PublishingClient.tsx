@@ -22,6 +22,8 @@ import type {
 } from '@/lib/creative/creative-types';
 import { CHANNEL_SPECS } from '@/lib/creative/creative-publishing-engine';
 import { Button } from '@/components/ui/button';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+import { PageContainerFluid } from '@/components/ui/page-container';
 import {
   Globe,
   ArrowLeft,
@@ -59,53 +61,54 @@ export function PublishingClient({
   const [activeTab, setActiveTab] = useState<'history' | 'channels'>('history');
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10 space-y-8">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-850 pb-6">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
+    <PageContainerFluid>
+      <div className="space-y-8 pb-32 w-full">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/80 pb-6">
+          <div className="flex items-center gap-2.5">
             <Link
               href="/admin/creative-studio/projects"
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-900 transition-colors"
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
             </Link>
-            <div className="p-1.5 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+            <div className="p-1.5 rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20">
               <Globe className="w-5 h-5" />
             </div>
-            <h1 className="text-xl md:text-2xl font-black text-white">Publishing & Distribution Center</h1>
+            <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">
+              Publishing & Distribution Center
+            </h1>
+            <CardInfoTooltip text="Monitor multi-platform syndications, scheduled queue timeline, and connected marketing accounts." />
           </div>
-          <p className="text-xs md:text-sm text-slate-400 max-w-2xl">
-            Monitor multi-platform syndications, scheduled queue timeline, and connected marketing accounts.
-          </p>
-        </div>
 
-        {/* Tab Switcher */}
-        <div className="flex items-center gap-1.5 bg-slate-900/80 p-1 rounded-2xl border border-slate-800">
-          <button
-            onClick={() => setActiveTab('history')}
-            className={cn(
-              'px-4 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-[0.97]',
-              activeTab === 'history'
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-white'
-            )}
-          >
-            Syndication History & Queue ({publications.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('channels')}
-            className={cn(
-              'px-4 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-[0.97]',
-              activeTab === 'channels'
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-white'
-            )}
-          >
-            Connected Channels ({channels.length})
-          </button>
+          {/* Standard Segmented Pill Navigation */}
+          <div className="inline-flex items-center gap-1 bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto shrink-0">
+            <button
+              type="button"
+              onClick={() => setActiveTab('history')}
+              className={cn(
+                'h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97]',
+                activeTab === 'history'
+                  ? 'bg-card text-primary font-bold shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
+              )}
+            >
+              Syndication History & Queue ({publications.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('channels')}
+              className={cn(
+                'h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97]',
+                activeTab === 'channels'
+                  ? 'bg-card text-primary font-bold shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
+              )}
+            >
+              Connected Channels ({channels.length})
+            </button>
+          </div>
         </div>
-      </div>
 
       {activeTab === 'history' ? (
         /* History & Queue View */
@@ -234,5 +237,6 @@ export function PublishingClient({
         </div>
       )}
     </div>
-  );
+  </PageContainerFluid>
+);
 }

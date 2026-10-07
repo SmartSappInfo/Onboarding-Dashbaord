@@ -349,13 +349,13 @@ export async function getModel(
               ).catch((e: unknown) => console.error('[AI] Telemetry logging failed:', e));
 
               // Ordered fallback candidate models on current key:
-              // 1. Stable Production Workhorse: Gemini 2.5 Flash (highest resilience against branching limits & quotas)
-              // 2. Flagship Preview: Gemini 3 Flash (High speed, balanced)
-              // 3. High-Capacity Fast: Gemini 3.1 Flash-Lite (High throughput, unaffected by Pro quota locks)
+              // 1. Flagship Production Workhorse: Gemini 3 Flash (highest speed, high resilience & active availability)
+              // 2. High-Capacity Fast: Gemini 3.1 Flash-Lite (high throughput, isolated quota pool, unaffected by Pro quota locks)
+              // 3. Stable Legacy Fallback: Gemini 2.5 Flash
               const fallbackCandidates: string[] = [
-                'googleai/gemini-2.5-flash',
                 'googleai/gemini-3-flash-preview',
                 'googleai/gemini-3.1-flash-lite-preview',
+                'googleai/gemini-2.5-flash',
               ].filter((candidate) => candidate !== resolvedOptions.model);
 
               // Step 1: If current instance is already Google AI, attempt fallback models on current key
@@ -370,69 +370,118 @@ export async function getModel(
                   } catch (candidateErr) {
                     const candidateMsg = candidateErr instanceof Error ? candidateErr.message : String(candidateErr);
                     console.warn(`[AI] Fallback candidate "${candidate}" unavailable (${candidateMsg.slice(0, 80)}). Trying next candidate...`);
+                    if (candidateMsg.includes('503') || candidateMsg.includes('high demand') || candidateMsg.includes('429')) {
+                      await new Promise((resolve) => setTimeout(resolve, 300));
+                    }
                   }
                 }
               }
 
-              // Step 2: Cross-Provider Fallback (Rule 10 & Multi-Tenancy):
+              // Step 2: Cross-Provider Fallback to Google AI (Rule 10 & Multi-Tenancy):
               // If current provider is NOT googleai (e.g. Anthropic or OpenRouter key failed with 401/404/quota),
               // we CANNOT execute 'googleai/*' models on the Anthropic-only instance.
               // We must resolve a valid Gemini key and route to a Google AI Genkit instance:
               //   (a) Organization custom Gemini key from Firestore
               //   (b) Backoffice Global Gemini key from system_settings/ai_keys
               //   (c) Environment GEMINI_API_KEY
-              try {
-                let geminiKey: string | undefined;
+              if (finalProvider !== 'googleai') {
+                try {
+                  let geminiKey: string | undefined;
 
+                  if (organizationId) {
+                    try {
+                      const orgDoc = await adminDb.collection('organizations').doc(organizationId).get();
+                      if (orgDoc.exists) {
+                        geminiKey = openSecret(orgDoc.data()?.geminiApiKey);
+                      }
+                    } catch (orgKeyErr) {
+                      console.warn(`[AI] Failed to read organization Gemini fallback key:`, orgKeyErr);
+                    }
+                  }
+
+                  if (!geminiKey) {
+                    const globalKeys = await getGlobalBackofficeKeys();
+                    geminiKey = globalKeys.geminiApiKey;
+                  }
+
+                  if (!geminiKey) {
+                    geminiKey = process.env.GEMINI_API_KEY;
+                  }
+
+                  if (geminiKey) {
+                    const fallbackInstance = getOrCreateGenkitInstance('googleai', geminiKey);
+                    for (const candidate of fallbackCandidates) {
+                      try {
+                        console.log(`[AI] Attempting cross-provider fallback to "${candidate}" on Google AI instance`);
+                        return await fallbackInstance.generate({
+                          ...resolvedOptions,
+                          model: candidate,
+                        });
+                      } catch (crossErr) {
+                        const crossMsg = crossErr instanceof Error ? crossErr.message : String(crossErr);
+                        console.warn(`[AI] Cross-provider fallback candidate "${candidate}" failed (${crossMsg.slice(0, 80)}). Trying next...`);
+                        if (crossMsg.includes('503') || crossMsg.includes('high demand') || crossMsg.includes('429')) {
+                          await new Promise((resolve) => setTimeout(resolve, 300));
+                        }
+                      }
+                    }
+                  }
+                } catch (crossProviderErr) {
+                  console.warn('[AI] Cross-provider fallback resolution notice:', crossProviderErr);
+                }
+              }
+
+              // Step 3: Cross-Provider Fallback to OpenRouter (Multi-Cloud High Availability)
+              // If Google AI models fail or hit rate limits, attempt OpenRouter if a key exists
+              try {
+                let openRouterKey: string | undefined;
                 if (organizationId) {
                   try {
                     const orgDoc = await adminDb.collection('organizations').doc(organizationId).get();
                     if (orgDoc.exists) {
-                      geminiKey = openSecret(orgDoc.data()?.geminiApiKey);
+                      openRouterKey = openSecret(orgDoc.data()?.openRouterApiKey);
                     }
-                  } catch (orgKeyErr) {
-                    console.warn(`[AI] Failed to read organization Gemini fallback key:`, orgKeyErr);
-                  }
+                  } catch {}
                 }
-
-                if (!geminiKey) {
+                if (!openRouterKey) {
                   const globalKeys = await getGlobalBackofficeKeys();
-                  geminiKey = globalKeys.geminiApiKey;
+                  openRouterKey = globalKeys.openRouterApiKey || process.env.OPENROUTER_API_KEY;
                 }
-
-                if (!geminiKey) {
-                  geminiKey = process.env.GEMINI_API_KEY;
-                }
-
-                if (geminiKey) {
-                  const fallbackInstance = getOrCreateGenkitInstance('googleai', geminiKey);
-                  for (const candidate of fallbackCandidates) {
+                if (openRouterKey) {
+                  const openRouterInstance = getOrCreateGenkitInstance('openrouter', openRouterKey);
+                  const openRouterCandidates = [
+                    'openrouter/meta-llama/llama-3.3-70b-instruct:free',
+                    'openrouter/google/gemini-2.0-flash-001',
+                  ];
+                  for (const orCandidate of openRouterCandidates) {
                     try {
-                      console.log(`[AI] Attempting cross-provider fallback to "${candidate}" on Google AI instance`);
-                      return await fallbackInstance.generate({
+                      console.log(`[AI] Attempting cross-provider fallback to OpenRouter "${orCandidate}"`);
+                      return await openRouterInstance.generate({
                         ...resolvedOptions,
-                        model: candidate,
+                        model: orCandidate,
                       });
-                    } catch (crossErr) {
-                      const crossMsg = crossErr instanceof Error ? crossErr.message : String(crossErr);
-                      console.warn(`[AI] Cross-provider fallback candidate "${candidate}" failed (${crossMsg.slice(0, 80)}). Trying next...`);
+                    } catch (orErr) {
+                      const orMsg = orErr instanceof Error ? orErr.message : String(orErr);
+                      console.warn(`[AI] OpenRouter candidate "${orCandidate}" failed (${orMsg.slice(0, 80)}).`);
                     }
                   }
                 }
-              } catch (crossProviderErr) {
-                console.warn('[AI] Cross-provider fallback resolution notice:', crossProviderErr);
+              } catch (orCatch) {
+                console.warn('[AI] OpenRouter cross-provider fallback notice:', orCatch);
               }
 
-              // Step 3: Final attempt with ambient system default instance (has both Google AI and Anthropic plugins)
-              for (const candidate of fallbackCandidates) {
-                try {
-                  console.log(`[AI] Attempting final system default instance fallback: "${candidate}"`);
-                  return await ai.generate({
-                    ...resolvedOptions,
-                    model: candidate,
-                  });
-                } catch {
-                  // Continue to next candidate
+              // Step 4: Final attempt with ambient system default instance
+              if (finalProvider !== 'googleai') {
+                for (const candidate of fallbackCandidates) {
+                  try {
+                    console.log(`[AI] Attempting final system default instance fallback: "${candidate}"`);
+                    return await ai.generate({
+                      ...resolvedOptions,
+                      model: candidate,
+                    });
+                  } catch {
+                    // Continue to next candidate
+                  }
                 }
               }
             }

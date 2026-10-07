@@ -9,10 +9,19 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/context/TenantContext';
-import { Loader2, Save, Mail, Info, ShieldAlert, Sparkles } from 'lucide-react';
+import { Loader2, Save, Mail, Info, ShieldAlert, Sparkles, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+import { PageContainer } from '@/components/ui/page-container';
 import { getErrorMessage } from '@/lib/errors/report-error';
+
+interface TemplateSettings {
+    [category: string]: {
+        [field: string]: string | undefined;
+    } | undefined;
+}
 
 export default function OrganizationInvitationSettings() {
     const firestore = useFirestore();
@@ -20,8 +29,8 @@ export default function OrganizationInvitationSettings() {
     const { activeOrganizationId } = useTenant();
     const [isLoading, setIsLoading] = React.useState(true);
     const [isSaving, setIsSaving] = React.useState(false);
-    const [systemDefaults, setSystemDefaults] = React.useState<any>(null);
-    const [overrides, setOverrides] = React.useState<any>(null);
+    const [systemDefaults, setSystemDefaults] = React.useState<TemplateSettings | null>(null);
+    const [overrides, setOverrides] = React.useState<TemplateSettings | null>(null);
 
     React.useEffect(() => {
         const fetchData = async () => {
@@ -85,20 +94,20 @@ export default function OrganizationInvitationSettings() {
                     <Textarea 
                         placeholder={placeholder}
                         value={value}
-                        onChange={(e) => setOverrides({
-                            ...overrides,
-                            [type]: { ...overrides[type] || {}, [field]: e.target.value }
-                        })}
+                        onChange={(e) => setOverrides((prev) => ({
+                            ...(prev || {}),
+                            [type]: { ...(prev?.[type] || {}), [field]: e.target.value }
+                        }))}
                         className="rounded-xl min-h-[120px]"
                     />
                 ) : (
                     <Input 
                         placeholder={placeholder}
                         value={value}
-                        onChange={(e) => setOverrides({
-                            ...overrides,
-                            [type]: { ...overrides[type] || {}, [field]: e.target.value }
-                        })}
+                        onChange={(e) => setOverrides((prev) => ({
+                            ...(prev || {}),
+                            [type]: { ...(prev?.[type] || {}), [field]: e.target.value }
+                        }))}
                         className="rounded-xl h-11"
                     />
                 )}
@@ -107,16 +116,24 @@ export default function OrganizationInvitationSettings() {
     };
 
     return (
-        <div className="space-y-8 pb-32 w-full">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-4 md:px-0">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-3">
-                        <Mail className="h-7 w-7 text-primary" />
-                        Messaging Hub
-                    </h1>
-                    <p className="text-muted-foreground font-medium text-sm mt-1">
-                        Customize how new members are welcomed to your organization
-                    </p>
+        <PageContainer>
+            <div className="space-y-8 pb-32 w-full">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-4 md:px-0 border-b border-border/80 pb-5">
+                <div className="flex items-center gap-3">
+                    <Link
+                        href="/admin"
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                        aria-label="Back to Dashboard"
+                    >
+                        <ArrowLeft className="w-4 h-4" />
+                    </Link>
+                    <Mail className="h-7 w-7 text-primary" />
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                            Messaging Hub
+                        </h1>
+                        <CardInfoTooltip text="Customize how new members are welcomed to your organization." />
+                    </div>
                 </div>
                 <Button onClick={handleSave} disabled={isSaving} className="rounded-xl font-bold px-8 shadow-lg shadow-primary/20">
                     {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
@@ -179,6 +196,7 @@ export default function OrganizationInvitationSettings() {
                     </div>
                 </div>
             </div>
-        </div>
+            </div>
+        </PageContainer>
     );
 }

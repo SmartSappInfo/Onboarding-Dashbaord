@@ -1,5 +1,6 @@
 import {
   handleCreateDeal,
+  handleTransferDeal,
   handleUpdateDealStage,
   handleUpdateDealValue,
   handleUpdateDealStatus,
@@ -100,6 +101,8 @@ export async function processActionNode(
       return await handleRunAutomation(resolvedConfig, context);
     case 'CREATE_DEAL':
       return await handleCreateDeal(resolvedConfig, context);
+    case 'TRANSFER_DEAL':
+      return await handleTransferDeal(resolvedConfig, context);
     case 'UPDATE_DEAL_STAGE':
       return await handleUpdateDealStage(resolvedConfig, context);
     case 'UPDATE_DEAL_VALUE':

@@ -334,6 +334,54 @@ export interface DealMergeResult {
 }
 
 /**
+ * ARCHITECTURAL POINTER (Cross-Workspace Deal Transfer & Copy - Rule 10):
+ * Input options for transferring (moving) or copying a Deal across pipelines and workspaces.
+ */
+export interface TransferDealInput {
+  dealId: string;
+  mode: 'move' | 'copy';
+  sourceWorkspaceId: string;
+  targetWorkspaceId: string;
+  targetPipelineId: string;
+  targetStageId: string;
+  assignedTo?: {
+    userId: string | null;
+    name: string | null;
+    email: string | null;
+  } | null;
+  summary?: string;
+  nextStep?: DealNextStep | null;
+  // Copy mode specific options:
+  newName?: string;
+  copyLineItems?: boolean;
+  copyContacts?: boolean;
+  copyCustomFields?: boolean;
+  idempotencyKey?: string;
+  expectedUpdatedAt?: string;
+}
+
+/**
+ * Result payload returned upon executing a deal transfer or copy
+ */
+export interface TransferDealResult {
+  success: boolean;
+  dealId?: string;
+  error?: string;
+}
+
+/**
+ * Result payload from AI deal transfer summary and next-step recommendation
+ */
+export interface DealTransferAiSummaryResult {
+  success: boolean;
+  summary?: string;
+  nextStep?: DealNextStep;
+  activityCount?: number;
+  error?: string;
+  isFallback?: boolean;
+}
+
+/**
  * KPI Summary for Executive Deals Overview Dashboard
  */
 export interface DealsOverviewMetrics {

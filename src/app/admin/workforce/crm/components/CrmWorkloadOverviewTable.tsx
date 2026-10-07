@@ -12,11 +12,12 @@
  */
 
 import * as React from 'react';
-import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowRightLeft, Briefcase } from 'lucide-react';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import type { CrmWorkloadSummary } from '@/lib/types';
 
 interface CrmWorkloadOverviewTableProps {
@@ -35,11 +36,9 @@ export function CrmWorkloadOverviewTable({
       <CardHeader className="p-4 pb-3 border-b bg-muted/20">
         <div className="flex items-center gap-2">
           <Briefcase className="w-5 h-5 text-primary" />
-          <div>
+          <div className="flex items-center gap-2">
             <CardTitle className="text-sm font-bold">Representative Asset Allocation</CardTitle>
-            <CardDescription className="text-xs">
-              Deals pipeline value, contact volumes, and operational workload distribution
-            </CardDescription>
+            <CardInfoTooltip text="Deals pipeline value, contact volumes, and operational workload distribution." />
           </div>
         </div>
       </CardHeader>

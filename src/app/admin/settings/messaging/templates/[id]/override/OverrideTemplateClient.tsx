@@ -11,6 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+import { PageContainer } from '@/components/ui/page-container';
 import { ArrowLeft, Save, Copy, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/context/TenantContext';
@@ -263,36 +265,48 @@ export default function OverrideTemplateClient({ templateId }: Props) {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">
-              {existingOverride ? 'Edit Override' : 'Create Override'}
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              {existingOverride ? 'Update your organization template override' : 'Customize this template for your organization'}
-            </p>
-          </div>
-        </div>
-
-        <Badge variant="outline" className="text-[9px] uppercase font-bold px-2 h-5 bg-emerald-500/15 text-emerald-400 border-emerald-500/20 flex items-center gap-1">
-          <Copy className="h-2.5 w-2.5" />
-          Overriding Global Template
-        </Badge>
-      </div>
-
-      {/* Form */}
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <PageContainer>
+      <div className="space-y-6 pb-24">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full max-w-md grid-cols-2">
-            <TabsTrigger value="edit">Edit</TabsTrigger>
-            <TabsTrigger value="diff">Compare</TabsTrigger>
-          </TabsList>
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-5">
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-9 w-9 rounded-xl active:scale-[0.97]">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                  {existingOverride ? 'Edit Override' : 'Create Override'}
+                </h1>
+                <CardInfoTooltip text={existingOverride ? 'Update your organization template override.' : 'Customize this template for your organization.'} />
+                <Badge variant="outline" className="text-[9px] uppercase font-bold px-2 h-5 bg-emerald-500/15 text-emerald-400 border-emerald-500/20 flex items-center gap-1">
+                  <Copy className="h-2.5 w-2.5" />
+                  Overriding Global
+                </Badge>
+              </div>
+            </div>
+
+            {/* Standard Segmented Pill Navigation on Top-Right */}
+            <div className="flex items-center gap-2 shrink-0">
+              <TabsList className="bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto inline-flex items-center gap-1">
+                <TabsTrigger 
+                  value="edit"
+                  className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
+                >
+                  Edit
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="diff"
+                  className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
+                >
+                  Compare
+                </TabsTrigger>
+              </TabsList>
+            </div>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 mt-6">
 
           <TabsContent value="edit" className="space-y-6 mt-6">
             <Card>
@@ -392,30 +406,31 @@ export default function OverrideTemplateClient({ templateId }: Props) {
               </CardContent>
             </Card>
           </TabsContent>
-        </Tabs>
 
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.back()}
-            disabled={saving}
-          >
-            Cancel
-          </Button>
-          <Button type="submit" disabled={saving}>
-            {saving ? (
-              <>Saving...</>
-            ) : (
-              <>
-                <Save className="h-4 w-4 mr-2" />
-                {existingOverride ? 'Update Override' : 'Create Override'}
-              </>
-            )}
-          </Button>
-        </div>
-      </form>
+          {/* Actions */}
+          <div className="flex items-center justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.back()}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? (
+                <>Saving...</>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  {existingOverride ? 'Update Override' : 'Create Override'}
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      </Tabs>
     </div>
-  );
+  </PageContainer>
+);
 }

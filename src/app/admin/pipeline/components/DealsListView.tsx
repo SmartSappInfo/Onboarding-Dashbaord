@@ -51,7 +51,11 @@ import {
   RotateCcw,
   MoreVertical,
   Eye,
+  UserCheck,
+  Move,
 } from 'lucide-react';
+import AssignDealModal from './AssignDealModal';
+import TransferDealModal from './TransferDealModal';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -138,9 +142,16 @@ export default function DealsListView({
   const [quickEditDeal, setQuickEditDeal] = React.useState<Deal | null>(null);
   const [isQuickEditOpen, setIsQuickEditOpen] = React.useState(false);
 
+  // Assign deal modal state for single deal
+  const [assignDeal, setAssignDeal] = React.useState<Deal | null>(null);
+  const [isAssignOpen, setIsAssignOpen] = React.useState(false);
+
   // Duplication and Merge Modal States
   const [duplicateDeal, setDuplicateDeal] = React.useState<Deal | null>(null);
   const [isDuplicateOpen, setIsDuplicateOpen] = React.useState(false);
+  const [transferDeal, setTransferDeal] = React.useState<Deal | null>(null);
+  const [isTransferOpen, setIsTransferOpen] = React.useState(false);
+  const [transferInitialMode, setTransferInitialMode] = React.useState<'move' | 'copy'>('move');
   const [mergeDealA, setMergeDealA] = React.useState<Deal | null>(null);
   const [mergeDealB, setMergeDealB] = React.useState<Deal | null>(null);
   const [isMergeOpen, setIsMergeOpen] = React.useState(false);
@@ -706,6 +717,18 @@ export default function DealsListView({
                       <DropdownMenuItem
                         onClick={(e) => {
                           e.stopPropagation();
+                          setAssignDeal(deal);
+                          setIsAssignOpen(true);
+                        }}
+                        className="rounded-lg p-2 gap-2 text-xs font-semibold cursor-pointer"
+                      >
+                        <UserCheck className="h-3.5 w-3.5 text-primary" />
+                        <span>{deal.assignedTo?.userId ? 'Reassign Deal' : 'Assign Deal'}</span>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setQuickEditDeal(deal);
                           setIsQuickEditOpen(true);
                         }}
@@ -725,6 +748,32 @@ export default function DealsListView({
                       >
                         <Copy className="h-3.5 w-3.5 text-primary" />
                         <span>Duplicate Deal</span>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTransferDeal(deal);
+                          setTransferInitialMode('move');
+                          setIsTransferOpen(true);
+                        }}
+                        className="rounded-lg p-2 gap-2 text-xs font-semibold cursor-pointer"
+                      >
+                        <Move className="h-3.5 w-3.5 text-primary" />
+                        <span>Move to Pipeline</span>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTransferDeal(deal);
+                          setTransferInitialMode('copy');
+                          setIsTransferOpen(true);
+                        }}
+                        className="rounded-lg p-2 gap-2 text-xs font-semibold cursor-pointer"
+                      >
+                        <Copy className="h-3.5 w-3.5 text-indigo-500" />
+                        <span>Copy to Pipeline</span>
                       </DropdownMenuItem>
 
                       <DropdownMenuItem
@@ -909,6 +958,16 @@ export default function DealsListView({
         )}
       </AnimatePresence>
 
+      {/* Assign Deal Modal */}
+      <AssignDealModal
+        deal={assignDeal}
+        open={isAssignOpen}
+        onOpenChange={(open) => {
+          setIsAssignOpen(open);
+          if (!open) setAssignDeal(null);
+        }}
+      />
+
       {/* Quick Edit Deal Modal */}
       <QuickEditDealModal
         deal={quickEditDeal}
@@ -926,6 +985,20 @@ export default function DealsListView({
           setDuplicateDeal(null);
         }}
         stages={stages || []}
+      />
+
+      {/* Transfer / Move / Copy Modal */}
+      <TransferDealModal
+        deal={transferDeal}
+        open={isTransferOpen}
+        onOpenChange={(open) => {
+          setIsTransferOpen(open);
+          if (!open) setTransferDeal(null);
+        }}
+        initialMode={transferInitialMode}
+        onTransferred={() => {
+          setSelectedDealIds([]);
+        }}
       />
 
       {/* Merge Deals Modal */}

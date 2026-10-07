@@ -24,6 +24,7 @@ import { FORMAT_PRESETS } from '@/lib/creative/creative-types';
 import { createCreativeProjectAction, deleteCreativeProjectAction } from '@/app/actions/creative-project-actions';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Input } from '@/components/ui/input';
 import {
   Search,
@@ -129,12 +130,10 @@ export function ProjectsClient() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-6 animate-in fade-in duration-300">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border/80 pb-5">
+        <div className="flex items-center gap-2.5">
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">Creative Projects</h1>
-          <p className="text-xs sm:text-sm font-medium text-muted-foreground mt-1">
-            Manage, edit, and organize all visual assets and campaign creative projects.
-          </p>
+          <CardInfoTooltip text="Manage, edit, and organize all visual assets and campaign creative projects." />
         </div>
 
         {/* Create Project Dropdown */}
@@ -179,16 +178,16 @@ export function ProjectsClient() {
       {/* Filter and Search Controls */}
       <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
         {/* Type Tabs */}
-        <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 scrollbar-none bg-muted/60 p-1 rounded-xl border border-border">
+        <div className="inline-flex items-center gap-1 bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
           {TYPE_TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setSelectedType(tab.id)}
               className={cn(
-                'px-3.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all min-h-[36px] active:scale-[0.97]',
+                'h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] whitespace-nowrap',
                 selectedType === tab.id
-                  ? 'bg-emerald-600 dark:bg-emerald-500 text-white dark:text-slate-950 shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'bg-card text-primary font-bold shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
               )}
             >
               {tab.label}

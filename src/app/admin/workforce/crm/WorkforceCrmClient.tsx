@@ -31,6 +31,7 @@ import { getPeopleDirectoryAction } from '@/app/actions/identity-actions';
 
 import { CrmWorkloadOverviewTable } from './components/CrmWorkloadOverviewTable';
 import { OwnershipTransferModal } from './components/OwnershipTransferModal';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 export function WorkforceCrmClient() {
   const { toast: _toast } = useToast();
@@ -74,14 +75,17 @@ export function WorkforceCrmClient() {
   return (
     <div className="space-y-6 pb-32 w-full p-4 md:p-8 max-w-7xl mx-auto">
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
-            <Briefcase className="w-6 h-6 text-primary" /> CRM-Aware Workforce Allocation
-          </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Representative portfolio distribution, pipeline capacity, and deterministic ownership transfers
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-4">
+        <div className="flex items-center gap-2.5">
+          <div className="p-2 rounded-xl bg-primary/10 text-primary">
+            <Briefcase className="w-5 h-5" />
+          </div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-black tracking-tight text-foreground">
+              CRM-Aware Workforce Allocation
+            </h1>
+            <CardInfoTooltip text="Representative portfolio distribution, pipeline capacity, and deterministic ownership transfers." />
+          </div>
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">

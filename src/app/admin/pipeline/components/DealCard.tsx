@@ -27,6 +27,7 @@ import {
     Edit,
     Trash2,
     UserCircle2,
+    UserCheck,
     AlertCircle,
     Clock,
     CalendarCheck,
@@ -36,7 +37,8 @@ import {
     RotateCcw,
     Crown,
     Building2,
-    Phone
+    Phone,
+    Move
 } from 'lucide-react';
 import { cn, toTitleCase } from '@/lib/utils';
 import { getForecastUrgency, type UrgencyLevel } from '../utils/deal-urgency';
@@ -62,6 +64,8 @@ import { formatCurrency } from '@/lib/currency-utils';
 import { calculateDealHealth } from '@/lib/deals/deal-health-engine';
 import QuickEditDealModal from './QuickEditDealModal';
 import DuplicateDealModal from './DuplicateDealModal';
+import AssignDealModal from './AssignDealModal';
+import TransferDealModal from './TransferDealModal';
 import { useCallModal } from '@/context/CallModalContext';
 
 const URGENCY_ICON: Record<UrgencyLevel, React.ComponentType<{ className?: string }>> = {
@@ -110,6 +114,9 @@ export default function DealCard({ deal, stage, isOverlay, onDelete, clientName,
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [isQuickEditOpen, setIsQuickEditOpen] = React.useState(false);
   const [isDuplicateOpen, setIsDuplicateOpen] = React.useState(false);
+  const [isAssignModalOpen, setIsAssignModalOpen] = React.useState(false);
+  const [isTransferModalOpen, setIsTransferModalOpen] = React.useState(false);
+  const [transferInitialMode, setTransferInitialMode] = React.useState<'move' | 'copy'>('move');
   const [isArchiving, setIsArchiving] = React.useState(false);
 
   const handleArchiveDeal = async (e: React.MouseEvent) => {
@@ -379,6 +386,16 @@ export default function DealCard({ deal, stage, isOverlay, onDelete, clientName,
                     <DropdownMenuItem 
                         onClick={(e) => {
                             e.stopPropagation();
+                            setIsAssignModalOpen(true);
+                        }}
+                        className="rounded-lg p-2 gap-2.5 cursor-pointer"
+                    >
+                        <UserCheck className="h-3.5 w-3.5 text-primary" />
+                        <span className="font-bold text-xs">{deal.assignedTo?.userId ? 'Reassign Deal' : 'Assign Deal'}</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                        onClick={(e) => {
+                            e.stopPropagation();
                             setIsQuickEditOpen(true);
                         }}
                         className="rounded-lg p-2 gap-2.5 cursor-pointer"
@@ -392,10 +409,37 @@ export default function DealCard({ deal, stage, isOverlay, onDelete, clientName,
                             e.stopPropagation();
                             setIsDuplicateOpen(true);
                         }}
+                        onPointerDown={(e) => e.stopPropagation()}
                         className="rounded-lg p-2 gap-2.5 cursor-pointer"
                     >
                         <Copy className="h-3.5 w-3.5 text-primary" />
                         <span className="font-bold text-xs">Duplicate Deal</span>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setTransferInitialMode('move');
+                            setIsTransferModalOpen(true);
+                        }}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        className="rounded-lg p-2 gap-2.5 cursor-pointer"
+                    >
+                        <Move className="h-3.5 w-3.5 text-primary" />
+                        <span className="font-bold text-xs">Move to Pipeline</span>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setTransferInitialMode('copy');
+                            setIsTransferModalOpen(true);
+                        }}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        className="rounded-lg p-2 gap-2.5 cursor-pointer"
+                    >
+                        <Copy className="h-3.5 w-3.5 text-indigo-500" />
+                        <span className="font-bold text-xs">Copy to Pipeline</span>
                     </DropdownMenuItem>
 
                     <DropdownMenuItem 
@@ -446,15 +490,28 @@ export default function DealCard({ deal, stage, isOverlay, onDelete, clientName,
             <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/40 text-xs">
                 {/* Left: Assignee followed by Days / Urgency (all left-aligned) */}
                 <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
-                    <div className="flex items-center gap-1 min-w-0 shrink-0">
-                        <UserCircle2 className="h-2.5 w-2.5 text-primary/60 shrink-0" />
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsAssignModalOpen(true);
+                        }}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        className="flex items-center gap-1 min-w-0 shrink-0 group/assignee hover:bg-muted/70 px-1.5 py-0.5 -ml-1 rounded-md transition-all active:scale-[0.97] cursor-pointer text-left focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                        title={deal.assignedTo?.name ? `Assigned to: ${toTitleCase(deal.assignedTo.name)} (Click to reassign)` : 'Unassigned (Click to assign)'}
+                    >
+                        <UserCircle2 className={cn("h-3 w-3 shrink-0 transition-colors", deal.assignedTo?.userId ? "text-primary/70 group-hover/assignee:text-primary" : "text-amber-500 group-hover/assignee:text-amber-600")} />
                         <span 
-                            className="text-[10px] font-semibold text-foreground truncate max-w-[100px] sm:max-w-[120px]" 
-                            title={deal.assignedTo?.name ? `Assigned to: ${toTitleCase(deal.assignedTo.name)}` : 'Unassigned'}
+                            className={cn(
+                                "text-[10px] font-semibold truncate max-w-[100px] sm:max-w-[120px] transition-colors",
+                                deal.assignedTo?.userId 
+                                    ? "text-foreground group-hover/assignee:text-primary group-hover/assignee:underline" 
+                                    : "text-amber-600 dark:text-amber-400 group-hover/assignee:underline font-bold"
+                            )} 
                         >
                             {deal.assignedTo?.name ? toTitleCase(deal.assignedTo.name) : 'Unassigned'}
                         </span>
-                    </div>
+                    </button>
 
                     {deal.expectedCloseDate && (
                         <>
@@ -489,6 +546,11 @@ export default function DealCard({ deal, stage, isOverlay, onDelete, clientName,
             </div>
         </CardContent>
         </Card>
+        <AssignDealModal
+            deal={deal}
+            open={isAssignModalOpen}
+            onOpenChange={setIsAssignModalOpen}
+        />
         <QuickEditDealModal
             deal={deal}
             open={isQuickEditOpen}
@@ -498,6 +560,12 @@ export default function DealCard({ deal, stage, isOverlay, onDelete, clientName,
             deal={deal}
             isOpen={isDuplicateOpen}
             onClose={() => setIsDuplicateOpen(false)}
+        />
+        <TransferDealModal
+            deal={deal}
+            open={isTransferModalOpen}
+            onOpenChange={setIsTransferModalOpen}
+            initialMode={transferInitialMode}
         />
         </div>
     </TooltipProvider>

@@ -189,30 +189,30 @@ export default function SettingsClient() {
         </div>
 
         <Tabs defaultValue="profile" className="space-y-8">
-          <TabsList className="bg-muted/60 p-1.5 rounded-2xl border border-border/70 w-full md:w-auto flex flex-wrap md:inline-flex items-center gap-1.5 shadow-sm">
+          <TabsList className="bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto w-full md:w-auto flex flex-wrap md:inline-flex items-center gap-1">
             <TabsTrigger 
               value="profile" 
-              className="rounded-xl font-semibold text-xs h-9 px-5 gap-2 text-muted-foreground hover:text-foreground transition-all duration-200 cursor-pointer data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:font-bold"
+              className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
             >
-              <Building className="h-4 w-4 shrink-0" /> Profile & Workspaces
+              <Building className="h-3.5 w-3.5 shrink-0" /> Profile & Workspaces
             </TabsTrigger>
             <TabsTrigger 
               value="branding" 
-              className="rounded-xl font-semibold text-xs h-9 px-5 gap-2 text-muted-foreground hover:text-foreground transition-all duration-200 cursor-pointer data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:font-bold"
+              className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
             >
-              <Sparkles className="h-4 w-4 shrink-0" /> Brand & Styling
+              <Sparkles className="h-3.5 w-3.5 shrink-0" /> Brand & Styling
             </TabsTrigger>
             <TabsTrigger 
               value="regional" 
-              className="rounded-xl font-semibold text-xs h-9 px-5 gap-2 text-muted-foreground hover:text-foreground transition-all duration-200 cursor-pointer data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:font-bold"
+              className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
             >
-              <Sliders className="h-4 w-4 shrink-0" /> Localization Settings
+              <Sliders className="h-3.5 w-3.5 shrink-0" /> Localization Settings
             </TabsTrigger>
             <TabsTrigger 
               value="integrations" 
-              className="rounded-xl font-semibold text-xs h-9 px-5 gap-2 text-muted-foreground hover:text-foreground transition-all duration-200 cursor-pointer data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:font-bold"
+              className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
             >
-              <Key className="h-4 w-4 shrink-0" /> AI & Integrations
+              <Key className="h-3.5 w-3.5 shrink-0" /> AI & Integrations
             </TabsTrigger>
           </TabsList>
 

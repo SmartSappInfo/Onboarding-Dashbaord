@@ -9,6 +9,7 @@ export interface ExecutionContext {
   payload: Record<string, unknown>;
   automationId: string;
   runId: string;
+  stepId?: string;
   chainDepth?: number;
   isTerminated?: boolean;
 }

@@ -33,13 +33,20 @@ export type CrmActor =
   | {
       kind: 'service';
       service: CrmService;
-      /** The only workspace this service call may read or write. */
+      /** The primary workspace this service call acts in. */
       workspaceId: string;
+      /** Optional allowed workspaces for cross-workspace operations (Rule 16 & Rule 69) */
+      allowedWorkspaceIds?: string[];
       /** The user the service is working for, if any. Used for attribution only, never for access. */
       onBehalfOf?: string;
+      /** Agent identity metadata for governed audit trail (Rule 16) */
+      agentId?: string;
+      agentVersion?: string;
+      runId?: string;
+      toolInvocationId?: string;
     };
 
-export type DealPermissionAction = 'create' | 'edit' | 'delete';
+export type DealPermissionAction = 'view' | 'create' | 'edit' | 'delete';
 
 export type PermissionOutcome = { granted: true } | { granted: false; reason: string };
 
@@ -59,7 +66,10 @@ export async function checkPipelinePermission(
 ): Promise<PermissionOutcome> {
   if (!workspaceId) return { granted: false, reason: 'Deal not found.' };
   if (actor.kind === 'service') {
-    return actor.workspaceId === workspaceId
+    const isAllowed =
+      actor.workspaceId === workspaceId ||
+      (Array.isArray(actor.allowedWorkspaceIds) && actor.allowedWorkspaceIds.includes(workspaceId));
+    return isAllowed
       ? { granted: true }
       : { granted: false, reason: 'Deal not found.' };
   }

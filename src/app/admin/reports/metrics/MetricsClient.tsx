@@ -22,7 +22,9 @@ import {
   Share2,
   TrendingUp,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+import { PageContainerFluid } from '@/components/ui/page-container';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -171,108 +173,127 @@ export default function MetricsClient() {
 
   return (
     <div className="h-full overflow-y-auto text-left w-full">
-      <div className="space-y-12 pb-32 w-full">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">
-              Contact Metrics
-            </h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              Distinct metrics for entities, workspace memberships, and shared contacts.
-            </p>
+      <PageContainerFluid>
+        <div className="space-y-8 pb-32 w-full">
+        <Tabs defaultValue="overview" className="space-y-8">
+          {/* Header with Top-Right Segmented Tabs */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/80 pb-5">
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+                Contact Metrics
+              </h1>
+              <CardInfoTooltip text="Distinct metrics for entities, workspace memberships, and shared contacts across workspaces." />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 shrink-0">
+              <TabsList className="bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto inline-flex items-center gap-1">
+                <TabsTrigger 
+                  value="overview"
+                  className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
+                >
+                  Overview
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="workspaces"
+                  className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
+                >
+                  By Workspace
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="shared"
+                  className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
+                >
+                  Shared Contacts
+                </TabsTrigger>
+              </TabsList>
+            </div>
           </div>
 
           {/* Filters */}
- <div className="flex items-center gap-3">
-            <Select value={selectedWorkspace} onValueChange={setSelectedWorkspace}>
- <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="All Workspaces" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Workspaces</SelectItem>
-                {workspaceMetrics.map((w) => (
-                  <SelectItem key={w.workspaceId} value={w.workspaceId}>
-                    {w.workspaceName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-xs text-muted-foreground font-medium">
+              Filter analytics by scope and entity classification
+            </div>
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <Select value={selectedWorkspace} onValueChange={setSelectedWorkspace}>
+                <SelectTrigger className="w-full sm:w-[200px] h-10 rounded-xl">
+                  <SelectValue placeholder="All Workspaces" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="all">All Workspaces</SelectItem>
+                  {workspaceMetrics.map((w) => (
+                    <SelectItem key={w.workspaceId} value={w.workspaceId}>
+                      {w.workspaceName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            <Select
-              value={selectedEntityType}
-              onValueChange={(v) => setSelectedEntityType(v as EntityType | 'all')}
-            >
- <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="All Types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="institution">Institutions</SelectItem>
-                <SelectItem value="family">Families</SelectItem>
-                <SelectItem value="person">People</SelectItem>
-              </SelectContent>
-            </Select>
+              <Select
+                value={selectedEntityType}
+                onValueChange={(v) => setSelectedEntityType(v as EntityType | 'all')}
+              >
+                <SelectTrigger className="w-full sm:w-[200px] h-10 rounded-xl">
+                  <SelectValue placeholder="All Types" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="institution">Institutions</SelectItem>
+                  <SelectItem value="family">Families</SelectItem>
+                  <SelectItem value="person">People</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        </div>
 
-        {/* KPI Cards - Requirement 21.1 */}
- <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard
-            label="Unique Entities"
-            value={entityMetrics?.totalUnique || 0}
-            sub="Total distinct contacts"
-            icon={Users}
-            color="text-primary"
-            bg="bg-primary/10"
-          />
-          <StatCard
-            label="Workspace Memberships"
-            value={workspaceMetrics.reduce((sum, w) => sum + w.totalMemberships, 0)}
-            sub="Total workspace links"
-            icon={Building2}
-            color="text-blue-600"
-            bg="bg-blue-50"
-          />
-          <StatCard
-            label="Active in Pipeline"
-            value={pipelineMetrics.reduce((sum, p) => sum + p.activeInPipeline, 0)}
-            sub="Entities with pipeline stage"
-            icon={TrendingUp}
-            color="text-emerald-600"
-            bg="bg-emerald-50"
-          />
-          <StatCard
-            label="Shared Contacts"
-            value={sharedContacts.length}
-            sub="In 2+ workspaces"
-            icon={Share2}
-            color="text-purple-600"
-            bg="bg-purple-50"
-          />
-        </div>
-
- <Tabs defaultValue="overview" className="space-y-8">
-          <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="workspaces">By Workspace</TabsTrigger>
-            <TabsTrigger value="shared">Shared Contacts</TabsTrigger>
-          </TabsList>
+          {/* KPI Cards - Requirement 21.1 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <StatCard
+              label="Unique Entities"
+              value={entityMetrics?.totalUnique || 0}
+              sub="Total distinct contacts"
+              icon={Users}
+              color="text-primary"
+              bg="bg-primary/10"
+            />
+            <StatCard
+              label="Workspace Memberships"
+              value={workspaceMetrics.reduce((sum, w) => sum + w.totalMemberships, 0)}
+              sub="Total workspace links"
+              icon={Building2}
+              color="text-blue-600"
+              bg="bg-blue-50"
+            />
+            <StatCard
+              label="Active in Pipeline"
+              value={pipelineMetrics.reduce((sum, p) => sum + p.activeInPipeline, 0)}
+              sub="Entities with pipeline stage"
+              icon={TrendingUp}
+              color="text-emerald-600"
+              bg="bg-emerald-50"
+            />
+            <StatCard
+              label="Shared Contacts"
+              value={sharedContacts.length}
+              sub="In 2+ workspaces"
+              icon={Share2}
+              color="text-purple-600"
+              bg="bg-purple-50"
+            />
+          </div>
 
           {/* Overview Tab */}
- <TabsContent value="overview" className="space-y-8">
+          <TabsContent value="overview" className="space-y-8">
  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Unique Entities by Type */}
- <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-card">
- <CardHeader className="bg-background border-b pb-6 px-8 pt-8">
- <CardTitle className="text-sm font-semibold tracking-wide">
+              <Card className="rounded-2xl border border-border/80 shadow-sm overflow-hidden bg-card">
+                <CardHeader className="bg-background border-b border-border/80 pb-4 px-6 pt-5 flex flex-row items-center justify-between">
+                  <CardTitle className="text-sm font-semibold tracking-wide">
                     Unique Entities by Type
                   </CardTitle>
- <CardDescription className="text-xs">
-                    Total distinct entities in the system
-                  </CardDescription>
+                  <CardInfoTooltip text="Total distinct entities in the system" />
                 </CardHeader>
- <CardContent className="p-8 h-[350px]">
+                <CardContent className="p-8 h-[350px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -297,14 +318,12 @@ export default function MetricsClient() {
               </Card>
 
               {/* Workspace Memberships */}
- <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-card">
- <CardHeader className="bg-background border-b pb-6 px-8 pt-8">
- <CardTitle className="text-sm font-semibold tracking-wide">
+              <Card className="rounded-2xl border border-border/80 shadow-sm overflow-hidden bg-card">
+                <CardHeader className="bg-background border-b border-border/80 pb-4 px-6 pt-5 flex flex-row items-center justify-between">
+                  <CardTitle className="text-sm font-semibold tracking-wide">
                     Workspace Memberships
                   </CardTitle>
- <CardDescription className="text-xs">
-                    Total workspace_entities records per workspace
-                  </CardDescription>
+                  <CardInfoTooltip text="Total workspace_entities records per workspace" />
                 </CardHeader>
  <CardContent className="p-8 h-[350px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -326,16 +345,14 @@ export default function MetricsClient() {
  <TabsContent value="workspaces" className="space-y-8">
  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Pipeline Activity */}
- <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-card">
- <CardHeader className="bg-background border-b pb-6 px-8 pt-8">
- <CardTitle className="text-sm font-semibold tracking-wide">
+              <Card className="rounded-2xl border border-border/80 shadow-sm overflow-hidden bg-card">
+                <CardHeader className="bg-background border-b border-border/80 pb-4 px-6 pt-5 flex flex-row items-center justify-between">
+                  <CardTitle className="text-sm font-semibold tracking-wide">
                     Active in Pipeline
                   </CardTitle>
- <CardDescription className="text-xs">
-                    Entities with assigned pipeline stages
-                  </CardDescription>
+                  <CardInfoTooltip text="Entities with assigned pipeline stages" />
                 </CardHeader>
- <CardContent className="p-8 h-[350px]">
+                <CardContent className="p-8 h-[350px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={pipelineChartData}>
                       <CartesianGrid vertical={false} strokeDasharray="3 3" strokeOpacity={0.1} />
@@ -350,44 +367,42 @@ export default function MetricsClient() {
               </Card>
 
               {/* Workspace Details Table */}
- <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-card">
- <CardHeader className="bg-background border-b pb-6 px-8 pt-8">
- <CardTitle className="text-sm font-semibold tracking-wide">
+              <Card className="rounded-2xl border border-border/80 shadow-sm overflow-hidden bg-card">
+                <CardHeader className="bg-background border-b border-border/80 pb-4 px-6 pt-5 flex flex-row items-center justify-between">
+                  <CardTitle className="text-sm font-semibold tracking-wide">
                     Workspace Details
                   </CardTitle>
- <CardDescription className="text-xs">
-                    Breakdown by entity type
-                  </CardDescription>
+                  <CardInfoTooltip text="Breakdown by entity type across workspaces" />
                 </CardHeader>
- <CardContent className="p-8">
- <div className="space-y-4">
+                <CardContent className="p-8">
+                  <div className="space-y-4">
                     {workspaceMetrics.map((workspace) => (
                       <div
                         key={workspace.workspaceId}
- className="flex items-center justify-between p-4 bg-background rounded-xl"
+                        className="flex items-center justify-between p-4 bg-background rounded-xl"
                       >
                         <div>
- <p className="font-bold text-sm">{workspace.workspaceName}</p>
- <div className="flex gap-3 mt-2">
+                          <p className="font-bold text-sm">{workspace.workspaceName}</p>
+                          <div className="flex gap-3 mt-2">
                             <Badge variant="outline" className="text-xs">
- <Building2 className="h-3 w-3 mr-1" />
+                              <Building2 className="h-3 w-3 mr-1" />
                               {workspace.byType.institution} Institutions
                             </Badge>
                             <Badge variant="outline" className="text-xs">
- <Home className="h-3 w-3 mr-1" />
+                              <Home className="h-3 w-3 mr-1" />
                               {workspace.byType.family} Families
                             </Badge>
                             <Badge variant="outline" className="text-xs">
- <UserCircle className="h-3 w-3 mr-1" />
+                              <UserCircle className="h-3 w-3 mr-1" />
                               {workspace.byType.person} People
                             </Badge>
                           </div>
                         </div>
- <div className="text-right">
- <p className="text-2xl font-semibold text-primary">
+                        <div className="text-right">
+                          <p className="text-2xl font-semibold text-primary">
                             {workspace.totalMemberships}
                           </p>
- <p className="text-xs text-muted-foreground">Total</p>
+                          <p className="text-xs text-muted-foreground">Total</p>
                         </div>
                       </div>
                     ))}
@@ -398,15 +413,13 @@ export default function MetricsClient() {
           </TabsContent>
 
           {/* Shared Contacts Tab - Requirement 21.5 */}
- <TabsContent value="shared" className="space-y-8">
- <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-card">
- <CardHeader className="bg-background border-b pb-6 px-8 pt-8">
- <CardTitle className="text-sm font-semibold tracking-wide">
+          <TabsContent value="shared" className="space-y-8">
+            <Card className="rounded-2xl border border-border/80 shadow-sm overflow-hidden bg-card">
+              <CardHeader className="bg-background border-b border-border/80 pb-4 px-6 pt-5 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm font-semibold tracking-wide">
                   Shared Contacts Report
                 </CardTitle>
- <CardDescription className="text-xs">
-                  Entities appearing in multiple workspaces with per-workspace details
-                </CardDescription>
+                <CardInfoTooltip text="Entities appearing in multiple workspaces with per-workspace details" />
               </CardHeader>
  <CardContent className="p-8">
                 {sharedContacts.length === 0 ? (
@@ -470,8 +483,9 @@ export default function MetricsClient() {
           </TabsContent>
         </Tabs>
       </div>
-    </div>
-  );
+    </PageContainerFluid>
+  </div>
+);
 }
 
 function StatCard({
@@ -485,7 +499,7 @@ function StatCard({
   label: string;
   value: string | number;
   sub: string;
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   color: string;
   bg: string;
 }) {

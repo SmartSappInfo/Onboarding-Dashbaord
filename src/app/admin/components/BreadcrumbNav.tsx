@@ -15,44 +15,105 @@ import { useTerminology } from '@/hooks/use-terminology';
  * are automatically suppressed unless they have a resolved custom label (e.g. School Name).
  */
 
+interface BreadcrumbItem {
+  label: string;
+  path: string;
+  isLast: boolean;
+  isCollapsed?: boolean;
+}
+
 const segmentMap: Record<string, string> = {
+  admin: 'Dashboard',
+  intelligence: 'Intelligence',
+  agents: 'Agent Persona Studio',
+  runs: 'Mission Control',
+  webhooks: 'Webhooks',
+  approvals: 'Approvals',
+  workflows: 'Workflows',
+  tasks: 'Tasks',
+  calendar: 'Calendar',
+  forms: 'Forms',
+  workforce: 'AI Workforce',
+  'command-center': 'Command Center',
+  'creative-studio': 'Creative Studio',
+  projects: 'Projects',
+  brand: 'Brand Studio',
+  publishing: 'Publishing',
+  experiments: 'Experiments',
+  social: 'Social',
+  listening: 'Social Listening',
+  composer: 'Composer',
+  coaching: 'Coaching',
+  documents: 'Documents',
+  governance: 'Governance',
+  'sales-performance': 'Sales Performance',
+  'sales-orchestration': 'Sales Orchestration',
+  'lead-intelligence': 'Lead Intelligence',
+  'deal-intelligence': 'Deal Intelligence',
+  'verify-studio': 'Verify Studio',
+  'qr-studio': 'QR Studio',
+  mcp: 'MCP',
+  seeds: 'Seeds',
+  knowledge: 'Knowledge',
+  roles: 'Roles',
+  organizations: 'Organizations',
+  developer: 'Developer',
+  invitation: 'Invitations',
+  whatsapp: 'WhatsApp',
+  fields: 'Fields & Variables',
+  optimize: 'Optimize',
+  tags: 'Tags',
+  contacts: 'Contacts',
+  metrics: 'Contact Metrics',
+  imports: 'Imports',
+  upload: 'Bulk Upload',
   entities: 'Directory',
   schools: 'Directory',
   prospects: 'Lead Pipeline',
   pipeline: 'Onboarding Pipeline',
   deals: 'Onboarding Pipeline',
-  meetings: 'Session Registry',
-  portals: 'Public Portals',
-  media: 'Media Repository',
-  surveys: 'Survey Intelligence',
-  pdfs: 'Doc Signing Studio',
-  messaging: 'Communications Centre',
-  templates: 'Messaging Template',
+  meetings: 'Meetings',
+  portals: 'Portals',
+  media: 'Media',
+  surveys: 'Surveys',
+  pdfs: 'PDF Studio',
+  messaging: 'Messaging',
+  templates: 'Templates',
   'call-centre': 'Call Centre',
-  activities: 'Platform Audit Trail',
-  users: 'Team Access Control',
-  profile: 'Account Profile',
-  settings: 'System Configuration',
-  new: 'Initialization',
-  edit: 'Design Studio',
+  activities: 'Audit Trail',
+  users: 'Users',
+  profile: 'Profile',
+  settings: 'Settings',
+  new: 'New',
+  edit: 'Edit',
   results: 'Analytics',
-  composer: 'Message Composer',
-  logs: 'Audit Logs',
-  scheduled: 'Delivery Queue',
-  variables: 'Contextual Registry',
-  styles: 'Visual Styles',
-  profiles: 'Sender Profiles',
+  logs: 'Logs',
+  scheduled: 'Queue',
+  variables: 'Variables',
+  styles: 'Styles',
+  profiles: 'Profiles',
   ai: 'AI Architect',
   submissions: 'Records',
-  finance: 'Finance Hub',
+  finance: 'Finance',
   automations: 'Automations',
-  reports: 'Intelligence',
+  reports: 'Reports',
   invoices: 'Invoices',
   packages: 'Pricing Tiers',
   periods: 'Billing Cycles',
   pages: 'Landing Pages',
-  builder: 'Edit'
+  builder: 'Builder',
 };
+
+function formatSegmentTitle(segment: string): string {
+  if (/^[a-zA-Z0-9_-]{20,}$/.test(segment)) return '';
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}/i.test(segment)) return '';
+  if (/^[0-9]+$/.test(segment)) return '';
+  return segment
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
 
 export function BreadcrumbNav() {
   const pathname = usePathname();
@@ -67,7 +128,7 @@ export function BreadcrumbNav() {
   
   // LOGIC: Build items while filtering out technical IDs
   const breadcrumbItems = React.useMemo(() => {
-    const items = [];
+    const rawItems: BreadcrumbItem[] = [];
     let currentPath = '';
     
     for (let i = 0; i < segments.length; i++) {
@@ -75,11 +136,14 @@ export function BreadcrumbNav() {
       currentPath += `/${segment}`;
       
       const customLabel = customLabels[currentPath];
-      const mapLabel = (segment === 'schools' || segment === 'entities') ? `${plural} Directory` : segmentMap[segment];
+      const fallbackLabel = (segment === 'schools' || segment === 'entities') 
+        ? `${plural} Directory` 
+        : (segmentMap[segment] || formatSegmentTitle(segment));
       
-      // If we have a human-readable label (from map or resolved from DB), include it.
-      // Technical IDs (Firestore UIDs) that don't have a label are skipped.
-      if (customLabel || mapLabel) {
+      const resolvedLabel = customLabel || fallbackLabel;
+      
+      // If we have a human-readable label (from map or resolved from DB/slug), include it.
+      if (resolvedLabel) {
         let path = currentPath;
         if (currentPath === '/admin/deals') {
           path = '/admin/pipeline';
@@ -95,28 +159,33 @@ export function BreadcrumbNav() {
           path = `${path}${separator}track=${track}`;
         }
 
-        items.push({
-          label: customLabel || mapLabel,
+        rawItems.push({
+          label: resolvedLabel,
           path,
-          isLast: false // Calculated later
+          isLast: false,
         });
       }
     }
 
     const mode = searchParams.get('mode');
     if (pathname === '/admin/messaging/templates' && (mode === 'edit' || mode === 'new')) {
-      items.push({
+      rawItems.push({
         label: mode === 'new' ? 'New' : 'Edit',
         path: pathname + '?' + searchParams.toString(),
-        isLast: false
+        isLast: false,
       });
     }
 
-    if (items.length > 0) {
-      items[items.length - 1].isLast = true;
+    // Filter out root '/admin' segment when we are deeper in the hierarchy
+    const visibleItems = rawItems.length > 1 && rawItems[0].path === '/admin'
+      ? rawItems.slice(1)
+      : rawItems;
+
+    if (visibleItems.length > 0) {
+      visibleItems[visibleItems.length - 1].isLast = true;
     }
 
-    return items;
+    return visibleItems;
   }, [segments, customLabels, pathname, track, plural, searchParams]);
 
   // ADAPTIVE LOGIC: Collapse intermediate steps on mobile if path is deep
@@ -143,45 +212,42 @@ export function BreadcrumbNav() {
   };
 
   if (pathname === '/admin') {
-    return <span className="text-[10px] font-semibold text-foreground opacity-40 truncate whitespace-nowrap block">System Dashboard</span>;
+    return <span className="text-xs font-semibold text-foreground opacity-40 truncate whitespace-nowrap block">System Dashboard</span>;
   }
 
   return (
- <nav className="flex items-center gap-2 sm:gap-3 overflow-hidden">
+    <nav className="flex items-center gap-2 sm:gap-3 overflow-hidden">
       <Button 
         variant="ghost" 
         size="icon" 
         type="button"
         onClick={handleBack}
- className="h-8 w-8 rounded-lg shrink-0 hover:bg-primary/5 text-muted-foreground hover:text-primary transition-all active:scale-95"
+        className="h-8 w-8 rounded-lg shrink-0 hover:bg-primary/5 text-muted-foreground hover:text-primary transition-all active:scale-[0.97]"
         aria-label="Go back"
       >
- <ArrowLeft className="h-4 w-4" />
+        <ArrowLeft className="h-4 w-4" />
       </Button>
       
- <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] font-semibold overflow-hidden">
+      <div className="flex items-center gap-1.5 sm:gap-2 text-xs font-semibold overflow-hidden">
         {displayItems.map((item, index) => {
-          // Hide 'admin' segment in breadcrumbs if we're deeper
-          if (item.path === '/admin' && breadcrumbItems.length > 1) return null;
-
-          const showSeparator = index > 0 && !(item.path === '/admin' && index === 0);
+          const showSeparator = index > 0;
 
           return (
-            <React.Fragment key={index}>
+            <React.Fragment key={`${item.path}-${index}`}>
               {showSeparator && (
- <ChevronRight className="h-3 w-3 text-muted-foreground/30 shrink-0" />
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 shrink-0" />
               )}
               
               {item.isLast ? (
- <span className="truncate text-foreground max-w-[120px] sm:max-w-md">
+                <span className="truncate text-foreground max-w-[120px] sm:max-w-md font-medium">
                   {item.label}
                 </span>
-              ) : (item as any).isCollapsed ? (
- <span className="text-muted-foreground/30"><MoreHorizontal className="h-3 w-3" /></span>
+              ) : item.isCollapsed ? (
+                <span className="text-muted-foreground/30"><MoreHorizontal className="h-3.5 w-3.5" /></span>
               ) : (
                 <Link 
                   href={item.path}
- className="text-muted-foreground/60 hover:text-primary transition-colors whitespace-nowrap"
+                  className="text-muted-foreground/60 hover:text-primary transition-colors whitespace-nowrap font-medium"
                 >
                   {item.label}
                 </Link>

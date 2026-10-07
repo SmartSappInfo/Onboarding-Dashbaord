@@ -25,6 +25,7 @@ import {
   dealGetCapability,
   dealSearchCapability,
   dealAdvanceStageCapability,
+  dealTransferCapability,
 } from '@/platform/domains/deals_revenue/contracts/deal-capabilities.contract';
 
 // ==========================================
@@ -367,7 +368,93 @@ export const dealUpdateStageTool: McpToolDefinition<
   },
 };
 
+// ==========================================
+// 4. deal.transfer (High-Risk Mutation / Cross-Workspace)
+// ==========================================
+
+const transferDealInputSchema = z.object({
+  dealId: z.string().min(1).describe('The unique ID of the deal to transfer or duplicate.'),
+  mode: z.enum(['move', 'copy']).describe('Whether to move the deal or duplicate it.'),
+  targetWorkspaceId: z.string().min(1).describe('Destination workspace ID.'),
+  targetPipelineId: z.string().min(1).describe('Destination pipeline ID.'),
+  targetStageId: z.string().min(1).describe('Destination stage ID in the target pipeline.'),
+  targetUserId: z.string().nullable().optional().describe('Target assignee user ID (must belong to target workspace).'),
+  newName: z.string().optional().describe('New deal name (used when mode === copy).'),
+  summary: z.string().optional().describe('Commercial or operational note for transfer.'),
+  copyLineItems: z.boolean().optional(),
+  copyContacts: z.boolean().optional(),
+  copyCustomFields: z.boolean().optional(),
+  expectedUpdatedAt: z.string().optional().describe('TOCTOU optimistic concurrency timestamp.'),
+  idempotencyKey: z.string().optional().describe('Unique token for replay protection.'),
+});
+
+const transferDealOutputSchema = z.object({
+  dealId: z.string(),
+  mode: z.enum(['move', 'copy']),
+  targetWorkspaceId: z.string(),
+  targetPipelineId: z.string(),
+  targetStageId: z.string(),
+  success: z.boolean(),
+  updatedAt: z.string(),
+});
+
+export const dealTransferTool: McpToolDefinition<
+  z.infer<typeof transferDealInputSchema>,
+  z.infer<typeof transferDealOutputSchema>
+> = {
+  name: 'deal.transfer',
+  version: '1.0.0',
+  category: 'deal',
+  description: 'Transfers or duplicates a commercial deal across workspaces, pipelines, and stages with entity projection and idempotency protection.',
+  riskLevel: 'high_risk',
+  requiresApproval: false,
+  parameters: transferDealInputSchema,
+  responseSchema: transferDealOutputSchema,
+  handler: async (params, context) => {
+    const callerUserId = context.callerType === 'agent' ? `system-${context.callerId}` : context.callerId;
+
+    const result = await dealTransferCapability.handler(
+      {
+        dealId: params.dealId,
+        mode: params.mode,
+        sourceWorkspaceId: context.workspaceId,
+        targetWorkspaceId: params.targetWorkspaceId,
+        targetPipelineId: params.targetPipelineId,
+        targetStageId: params.targetStageId,
+        targetUserId: params.targetUserId,
+        newName: params.newName,
+        summary: params.summary,
+        copyLineItems: params.copyLineItems,
+        copyContacts: params.copyContacts,
+        copyCustomFields: params.copyCustomFields,
+        expectedUpdatedAt: params.expectedUpdatedAt,
+        idempotencyKey: params.idempotencyKey,
+      },
+      {
+        principal: {
+          actorType: context.callerType === 'agent' ? 'agent' : 'user',
+          userId: callerUserId,
+          agentId: context.callerType === 'agent' ? context.callerId : undefined,
+          workspaceId: context.workspaceId,
+          organizationId: context.organizationId,
+          grantedScopes: ['sales:pipeline:edit', 'app:deals_edit', 'deal:transfer', 'deal:create'],
+          effectiveRole: 'mcp_caller',
+        },
+        correlationId: context.requestId,
+        timestamp: context.timestamp,
+      }
+    );
+
+    if (!result.success) {
+      throw new Error(`[deal.transfer] ${result.error.message}`);
+    }
+
+    return result.data;
+  },
+};
+
 // In-place upgrade of canonical capability definitions into unified registry (Decision D1 / Rule 69)
 registerCapability(dealGetCapability, { allowOverride: true });
 registerCapability(dealSearchCapability, { allowOverride: true });
 registerCapability(dealAdvanceStageCapability, { allowOverride: true });
+registerCapability(dealTransferCapability, { allowOverride: true });

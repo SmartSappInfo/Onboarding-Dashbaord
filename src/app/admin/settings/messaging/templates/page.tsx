@@ -1,5 +1,7 @@
 import { Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+import { PageContainer } from '@/components/ui/page-container';
 import OrgTemplateListClient from './components/OrgTemplateListClient';
 
 export const metadata = {
@@ -9,13 +11,12 @@ export const metadata = {
 
 export default function OrgTemplatesPage() {
   return (
-    <div className="flex-1 space-y-6 p-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Message Templates</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          View global templates and create organization-specific overrides
-        </p>
-      </div>
+    <PageContainer>
+      <div className="space-y-6 pb-24">
+        <div className="flex items-center gap-2.5 border-b border-border/80 pb-5">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Message Templates</h1>
+          <CardInfoTooltip text="View global templates and create organization-specific overrides." />
+        </div>
 
       <Suspense
         fallback={
@@ -26,6 +27,7 @@ export default function OrgTemplatesPage() {
       >
         <OrgTemplateListClient />
       </Suspense>
-    </div>
+      </div>
+    </PageContainer>
   );
 }

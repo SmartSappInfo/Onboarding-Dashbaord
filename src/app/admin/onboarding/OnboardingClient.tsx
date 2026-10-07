@@ -15,6 +15,7 @@ import * as React from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
@@ -92,56 +93,62 @@ export function OnboardingClient() {
 
   return (
     <div className="space-y-6 pb-32 w-full p-4 md:p-8 max-w-7xl mx-auto">
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
-            <Layers className="w-6 h-6 text-primary" /> Onboarding Journey Engine
-          </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Configure dynamic multi-step onboarding paths, adaptive rules, and monitor member progression
-          </p>
+      {/* Main Tabs Wrapper */}
+      <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'library' | 'active' | 'analytics')} className="space-y-6">
+        {/* Top Header Bar: Page Name on Top-Left, Segmented Tabs on Top-Right */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-primary/10 text-primary">
+              <Layers className="w-5 h-5" />
+            </div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-black tracking-tight text-foreground">
+                Onboarding Journey Engine
+              </h1>
+              <CardInfoTooltip text="Configure dynamic multi-step onboarding paths, adaptive rules, and monitor member progression." />
+            </div>
+          </div>
+
+          {/* Top-Right Segmented Tabs */}
+          <TabsList className="inline-flex items-center gap-1 bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto self-start sm:self-auto">
+            <TabsTrigger
+              value="library"
+              className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground active:scale-[0.97]"
+            >
+              <Layers className="w-3.5 h-3.5" /> Blueprints ({journeys.length})
+            </TabsTrigger>
+            <TabsTrigger
+              value="active"
+              className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground active:scale-[0.97]"
+            >
+              <Users className="w-3.5 h-3.5" /> Active Queue ({instances.length})
+            </TabsTrigger>
+            <TabsTrigger
+              value="analytics"
+              className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground active:scale-[0.97]"
+            >
+              <BarChart3 className="w-3.5 h-3.5" /> Analytics
+            </TabsTrigger>
+          </TabsList>
         </div>
 
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <Button asChild variant="outline" className="rounded-xl h-10 px-4 text-sm font-medium active:scale-[0.97]">
+        {/* Action Row */}
+        <div className="flex items-center justify-end gap-2.5 flex-wrap">
+          <Button asChild variant="outline" size="sm" className="rounded-xl h-9 px-3.5 text-xs font-semibold active:scale-[0.97]">
             <Link href="/admin/users">
-              <Users className="h-4 w-4 mr-2 text-primary" /> People & Workforce Hub
+              <Users className="h-3.5 w-3.5 mr-1.5 text-primary" /> People & Workforce Hub
             </Link>
           </Button>
 
           <Button
             type="button"
+            size="sm"
             onClick={handleOpenCreate}
-            className="rounded-xl font-semibold h-10 px-4 shadow-sm transition-all hover:shadow-md active:scale-[0.97] text-sm"
+            className="rounded-xl font-semibold h-9 px-4 shadow-sm transition-all hover:shadow-md active:scale-[0.97] text-xs"
           >
-            <Plus className="h-4 w-4 mr-2" /> Create Journey Blueprint
+            <Plus className="h-3.5 w-3.5 mr-1.5" /> Create Journey Blueprint
           </Button>
         </div>
-      </div>
-
-      {/* Main Tabs */}
-      <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'library' | 'active' | 'analytics')}>
-        <TabsList className="h-10 bg-muted/60 border border-border/60 p-1 rounded-xl gap-1">
-          <TabsTrigger
-            value="library"
-            className="text-xs font-semibold px-4 h-8 rounded-lg transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
-          >
-            <Layers className="w-3.5 h-3.5 mr-1.5" /> Journey Blueprint Library ({journeys.length})
-          </TabsTrigger>
-          <TabsTrigger
-            value="active"
-            className="text-xs font-semibold px-4 h-8 rounded-lg transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
-          >
-            <Users className="w-3.5 h-3.5 mr-1.5" /> Active Onboarding Queue ({instances.length})
-          </TabsTrigger>
-          <TabsTrigger
-            value="analytics"
-            className="text-xs font-semibold px-4 h-8 rounded-lg transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
-          >
-            <BarChart3 className="w-3.5 h-3.5 mr-1.5" /> Analytics & SLAs
-          </TabsTrigger>
-        </TabsList>
 
         {/* Tab 1: Journey Library */}
         <TabsContent value="library" className="pt-2 m-0">

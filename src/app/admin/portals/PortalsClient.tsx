@@ -42,6 +42,7 @@ import { cn } from '@/lib/utils';
 import { useTenant } from '@/context/TenantContext';
 import { useEntityResolver } from '@/context/EntityCacheContext';
 import { PageContainerFluid } from '@/components/ui/page-container';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { PortalCard } from './components/PortalCard';
 import { ExperiencePortalCard } from './components/ExperiencePortalCard';
 import { CreatePortalModal } from './components/CreatePortalModal';
@@ -521,133 +522,138 @@ export default function PortalsClient() {
 
   return (
     <PageContainerFluid>
-      <div className="space-y-8 pb-32 w-full">
-        {/* ── Header Bar ─────────────────────────────────────────────────── */}
-        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1 text-primary">
-              <Sparkles className="w-5 h-5" />
-              <span className="text-xs font-bold uppercase tracking-wider">
-                {orgName} Experience Platform
-              </span>
+      <div className="space-y-6 pb-32 w-full">
+        {/* ── Hub Tabs Wrapper ── */}
+        <Tabs value={activeTab} onValueChange={(val: string) => setActiveTab(val as 'experience' | 'launchpad')} className="w-full space-y-6">
+          {/* ── Top Header Bar: Page Name on Left, Segmented Tabs on Right ────── */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1 text-primary">
+                <Sparkles className="w-4 h-4" />
+                <span className="text-xs font-bold uppercase tracking-wider">
+                  {orgName} Experience Platform
+                </span>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">Experience Portals</h1>
+                <CardInfoTooltip text={`Design, publish, and manage intelligent branded portals for the ${activeWorkspaceId || 'global'} track.`} />
+              </div>
             </div>
-            <h1 className="text-3xl font-extrabold text-foreground tracking-tight">Experience Portals</h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              Design, publish, and manage intelligent branded portals for the{' '}
-              <strong className="text-foreground">{activeWorkspaceId || 'global'}</strong> track.
-            </p>
+
+            {/* Top-Right Segmented Tabs */}
+            <TabsList className="inline-flex items-center gap-1 bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto self-start sm:self-auto">
+              <TabsTrigger
+                value="experience"
+                className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground active:scale-[0.97]"
+              >
+                <Globe className="w-3.5 h-3.5" /> Experience Portals ({totalExperiencePortals})
+              </TabsTrigger>
+              <TabsTrigger
+                value="launchpad"
+                className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground active:scale-[0.97]"
+              >
+                <Rocket className="w-3.5 h-3.5" /> Quick Launchpad
+              </TabsTrigger>
+            </TabsList>
           </div>
 
-          <div className="flex items-center gap-3 w-full md:w-auto">
-            <div className="relative flex-1 md:w-[320px]">
+          {/* ── Action Bar: Search & Primary Triggers ───────────────────────── */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="relative flex-1 md:max-w-xs">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50" />
               <Input
                 placeholder="Search portals by title or slug..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="pl-10 h-11 rounded-xl bg-background border-border shadow-xs font-medium text-xs"
+                className="pl-10 h-10 rounded-xl bg-background border-border shadow-xs font-medium text-xs"
               />
             </div>
 
-            <Button
-              variant="outline"
-              onClick={handleRunMasterSeed}
-              disabled={isSeeding}
-              className="h-11 px-4 rounded-xl font-bold text-xs gap-2 shrink-0 bg-background border-border shadow-2xs hover:bg-muted/60"
-            >
-              <Zap className={cn('w-4 h-4 text-amber-500', isSeeding && 'animate-spin')} />
-              {isSeeding ? 'Seeding Demo...' : 'Seed Demo Data'}
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={() => setIsMarketplaceOpen(true)}
-              className="h-11 px-4 rounded-xl font-bold text-xs gap-2 shrink-0 bg-background border-border shadow-2xs"
-            >
-              <Sparkles className="w-4 h-4 text-primary" /> Template Marketplace
-            </Button>
-
-            <Button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="h-11 px-5 rounded-xl font-bold text-xs gap-2 bg-primary text-white hover:bg-primary/90 shadow-sm shrink-0"
-            >
-              <Plus className="w-4 h-4" /> Create Portal
-            </Button>
-          </div>
-        </div>
-
-        {/* ── Stats Summary Row ─────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            label="Experience Portals"
-            value={isLoading ? '…' : totalExperiencePortals}
-            icon={Globe}
-          />
-          <StatCard
-            label="Live Published"
-            value={isLoading ? '…' : publishedExperiencePortals}
-            icon={Rocket}
-          />
-          <StatCard
-            label="Surveys & Doc Portals"
-            value={isLoading ? '…' : (surveys?.length ?? 0) + (pdfs?.length ?? 0)}
-            icon={ClipboardList}
-          />
-          <StatCard
-            label="Meeting Session Rooms"
-            value={isLoading ? '…' : meetings?.length ?? 0}
-            icon={Calendar}
-          />
-        </div>
-
-        {/* ── Hub Tabs (Experience Portals vs Quick Launchpad) ───────────── */}
-        <Tabs value={activeTab} onValueChange={(val: string) => setActiveTab(val as 'experience' | 'launchpad')} className="w-full">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
-            <TabsList className="h-11 p-1 bg-muted/60 rounded-xl border border-border">
-              <TabsTrigger
-                value="experience"
-                className="rounded-lg text-xs font-bold px-4 py-2 gap-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-xs"
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRunMasterSeed}
+                disabled={isSeeding}
+                className="h-9 px-3.5 rounded-xl font-bold text-xs gap-1.5 shrink-0 bg-background border-border shadow-2xs hover:bg-muted/60 active:scale-[0.97]"
               >
-                <Globe className="w-4 h-4" /> Experience Portals ({totalExperiencePortals})
-              </TabsTrigger>
-              <TabsTrigger
-                value="launchpad"
-                className="rounded-lg text-xs font-bold px-4 py-2 gap-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-xs"
-              >
-                <Rocket className="w-4 h-4" /> Quick Launchpad
-              </TabsTrigger>
-            </TabsList>
+                <Zap className={cn('w-3.5 h-3.5 text-amber-500', isSeeding && 'animate-spin')} />
+                {isSeeding ? 'Seeding Demo...' : 'Seed Demo Data'}
+              </Button>
 
-            {activeTab === 'experience' && (
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
-                <span className="text-xs font-bold text-muted-foreground flex items-center gap-1 shrink-0">
-                  <SlidersHorizontal className="w-3.5 h-3.5" /> Mode:
-                </span>
-                {[
-                  { id: 'all', label: 'All Modes' },
-                  { id: 'academy', label: 'Academy' },
-                  { id: 'documentation', label: 'Docs' },
-                  { id: 'membership', label: 'Membership' },
-                  { id: 'community', label: 'Community' },
-                  { id: 'resource_center', label: 'Resources' },
-                  { id: 'blog', label: 'Blog' },
-                ].map(tab => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setSelectedModeFilter(tab.id)}
-                    className={`text-xs px-3 py-1.5 rounded-lg font-bold transition-all shrink-0 ${
-                      selectedModeFilter === tab.id
-                        ? 'bg-primary text-white shadow-xs'
-                        : 'bg-card text-muted-foreground border border-border hover:border-primary/40'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-            )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsMarketplaceOpen(true)}
+                className="h-9 px-3.5 rounded-xl font-bold text-xs gap-1.5 shrink-0 bg-background border-border shadow-2xs active:scale-[0.97]"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-primary" /> Template Marketplace
+              </Button>
+
+              <Button
+                size="sm"
+                onClick={() => setIsCreateModalOpen(true)}
+                className="h-9 px-4 rounded-xl font-bold text-xs gap-1.5 bg-primary text-white hover:bg-primary/90 shadow-sm shrink-0 active:scale-[0.97]"
+              >
+                <Plus className="w-3.5 h-3.5" /> Create Portal
+              </Button>
+            </div>
           </div>
+
+          {/* ── Stats Summary Row ─────────────────────────────────────────── */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              label="Experience Portals"
+              value={isLoading ? '…' : totalExperiencePortals}
+              icon={Globe}
+            />
+            <StatCard
+              label="Live Published"
+              value={isLoading ? '…' : publishedExperiencePortals}
+              icon={Rocket}
+            />
+            <StatCard
+              label="Surveys & Doc Portals"
+              value={isLoading ? '…' : (surveys?.length ?? 0) + (pdfs?.length ?? 0)}
+              icon={ClipboardList}
+            />
+            <StatCard
+              label="Meeting Session Rooms"
+              value={isLoading ? '…' : meetings?.length ?? 0}
+              icon={Calendar}
+            />
+          </div>
+
+          {/* Mode Filters (visible in experience tab) */}
+          {activeTab === 'experience' && (
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-border/40 pb-3">
+              <span className="text-xs font-bold text-muted-foreground flex items-center gap-1 shrink-0">
+                <SlidersHorizontal className="w-3.5 h-3.5" /> Mode:
+              </span>
+              {[
+                { id: 'all', label: 'All Modes' },
+                { id: 'academy', label: 'Academy' },
+                { id: 'documentation', label: 'Docs' },
+                { id: 'membership', label: 'Membership' },
+                { id: 'community', label: 'Community' },
+                { id: 'resource_center', label: 'Resources' },
+                { id: 'blog', label: 'Blog' },
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setSelectedModeFilter(tab.id)}
+                  className={`text-xs px-3 py-1.5 rounded-lg font-bold transition-all shrink-0 active:scale-[0.97] ${
+                    selectedModeFilter === tab.id
+                      ? 'bg-primary text-white shadow-xs'
+                      : 'bg-card text-muted-foreground border border-border hover:border-primary/40'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* ── Tab 1: Experience Portals Grid ──────────────────────────── */}
           <TabsContent value="experience" className="pt-6 space-y-6">

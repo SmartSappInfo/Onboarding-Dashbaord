@@ -31,6 +31,8 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PageContainerFluid } from '@/components/ui/page-container';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import {
   Bot,
   Zap,
@@ -43,6 +45,7 @@ import {
   Sliders,
   AlertTriangle,
   Loader2,
+  ArrowLeft,
 } from 'lucide-react';
 import type {
   AiAgentProfile,
@@ -179,62 +182,68 @@ export default function AiSalesWorkforceClient() {
   }
 
   return (
-    <div className="space-y-6 pb-12 max-w-7xl mx-auto px-4 sm:px-6">
-      {/* Top Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-2">
-        <div className="space-y-1">
+    <PageContainerFluid>
+      <div className="space-y-6 pb-28 max-w-7xl mx-auto font-figtree">
+        {/* Top Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/80 pb-5">
           <div className="flex items-center gap-2.5 flex-wrap">
-            <h1 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2.5">
-              <Bot className="h-7 w-7 text-primary" />
+            <Link
+              href="/admin/intelligence"
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+              aria-label="Back to Intelligence"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
+            <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/20">
+              <Bot className="h-5 w-5" />
+            </div>
+            <h1 className="text-2xl font-black tracking-tight text-foreground">
               AI Sales Workforce
             </h1>
             <Badge className="bg-primary/10 text-primary border-primary/20 text-xs font-bold">
               Domain 9 • Enterprise Swarm
             </Badge>
+            <CardInfoTooltip text="Specialized autonomous sales agents, next-best-action prioritization, human-in-the-loop approvals, and CRM hygiene." />
           </div>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            Specialized autonomous sales agents, next-best-action prioritization, human-in-the-loop approvals, and CRM hygiene.
-          </p>
-        </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={loadData}
-            disabled={isRefreshing}
-            className="h-10 rounded-xl text-xs font-semibold min-h-[44px] active:scale-[0.97] transition-transform gap-1.5"
-          >
-            <RotateCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-            <span>Refresh</span>
-          </Button>
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleReseed}
-            disabled={isRefreshing}
-            className="h-10 rounded-xl text-xs font-semibold min-h-[44px] active:scale-[0.97] transition-transform gap-1.5"
-          >
-            <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-            <span>Reseed Agents</span>
-          </Button>
-
-          <Link href="/backoffice/ai-sales-workforce">
+          <div className="flex items-center gap-2 flex-wrap">
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="h-10 rounded-xl text-xs font-semibold min-h-[44px] active:scale-[0.97] transition-transform gap-1.5 text-muted-foreground hover:text-foreground"
+              onClick={loadData}
+              disabled={isRefreshing}
+              className="h-10 rounded-xl text-xs font-semibold min-h-[44px] active:scale-[0.97] transition-transform gap-1.5"
             >
-              <Sliders className="h-3.5 w-3.5 text-primary" />
-              <span>Backoffice</span>
+              <RotateCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span>Refresh</span>
             </Button>
-          </Link>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleReseed}
+              disabled={isRefreshing}
+              className="h-10 rounded-xl text-xs font-semibold min-h-[44px] active:scale-[0.97] transition-transform gap-1.5"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+              <span>Reseed Agents</span>
+            </Button>
+
+            <Link href="/backoffice/ai-sales-workforce">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-10 rounded-xl text-xs font-semibold min-h-[44px] active:scale-[0.97] transition-transform gap-1.5 text-muted-foreground hover:text-foreground"
+              >
+                <Sliders className="h-3.5 w-3.5 text-primary" />
+                <span>Backoffice</span>
+              </Button>
+            </Link>
+          </div>
         </div>
-      </div>
 
       {/* Emergency Circuit Breaker Banner if Active */}
       {governance?.emergencyKillSwitch && (
@@ -314,20 +323,20 @@ export default function AiSalesWorkforceClient() {
 
       {/* 6 Responsive Navigation Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="bg-muted/60 p-1 rounded-2xl h-auto flex flex-wrap gap-1 border border-border/50">
+        <TabsList className="inline-flex items-center gap-1 bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto flex-wrap">
           <TabsTrigger
             value="fleet"
-            className="rounded-xl text-xs font-semibold px-4 py-2 min-h-[40px] data-[state=active]:bg-card data-[state=active]:shadow-xs gap-2"
+            className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
           >
-            <Bot className="h-4 w-4 text-primary" />
+            <Bot className="h-3.5 w-3.5 text-primary" />
             <span>Agent Fleet ({agents.length})</span>
           </TabsTrigger>
 
           <TabsTrigger
             value="recommendations"
-            className="rounded-xl text-xs font-semibold px-4 py-2 min-h-[40px] data-[state=active]:bg-card data-[state=active]:shadow-xs gap-2"
+            className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
           >
-            <Zap className="h-4 w-4 text-amber-500" />
+            <Zap className="h-3.5 w-3.5 text-amber-500" />
             <span>Next-Best Actions</span>
             {recommendations.length > 0 && (
               <Badge className="bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30 text-2xs px-1.5 py-0">
@@ -338,9 +347,9 @@ export default function AiSalesWorkforceClient() {
 
           <TabsTrigger
             value="approvals"
-            className="rounded-xl text-xs font-semibold px-4 py-2 min-h-[40px] data-[state=active]:bg-card data-[state=active]:shadow-xs gap-2"
+            className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
           >
-            <Lock className="h-4 w-4 text-purple-500" />
+            <Lock className="h-3.5 w-3.5 text-purple-500" />
             <span>Approvals Queue</span>
             {approvals.length > 0 && (
               <Badge className="bg-purple-500 text-white text-2xs px-1.5 py-0">
@@ -351,9 +360,9 @@ export default function AiSalesWorkforceClient() {
 
           <TabsTrigger
             value="hygiene"
-            className="rounded-xl text-xs font-semibold px-4 py-2 min-h-[40px] data-[state=active]:bg-card data-[state=active]:shadow-xs gap-2"
+            className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
           >
-            <ShieldCheck className="h-4 w-4 text-cyan-500" />
+            <ShieldCheck className="h-3.5 w-3.5 text-cyan-500" />
             <span>CRM Hygiene</span>
             {hygieneIssues.length > 0 && (
               <Badge className="bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border-cyan-500/30 text-2xs px-1.5 py-0">
@@ -364,17 +373,17 @@ export default function AiSalesWorkforceClient() {
 
           <TabsTrigger
             value="activity"
-            className="rounded-xl text-xs font-semibold px-4 py-2 min-h-[40px] data-[state=active]:bg-card data-[state=active]:shadow-xs gap-2"
+            className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
           >
-            <Activity className="h-4 w-4 text-primary" />
+            <Activity className="h-3.5 w-3.5 text-primary" />
             <span>Agent Activity</span>
           </TabsTrigger>
 
           <TabsTrigger
             value="impact"
-            className="rounded-xl text-xs font-semibold px-4 py-2 min-h-[40px] data-[state=active]:bg-card data-[state=active]:shadow-xs gap-2"
+            className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
           >
-            <TrendingUp className="h-4 w-4 text-emerald-500" />
+            <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
             <span>ROI & Impact</span>
           </TabsTrigger>
         </TabsList>
@@ -430,6 +439,7 @@ export default function AiSalesWorkforceClient() {
           <AiImpactTab metrics={metrics} />
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </PageContainerFluid>
   );
 }

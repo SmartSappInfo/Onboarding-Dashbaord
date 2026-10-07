@@ -33,6 +33,7 @@ import {
   Settings,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { GlobalMeetingSearchModal } from './GlobalMeetingSearchModal';
 import { AISchedulingAssistantModal } from './AISchedulingAssistantModal';
 import { NewMeetingModal } from './NewMeetingModal';
@@ -148,72 +149,84 @@ export function MeetingsNavigation({ className, actions }: MeetingsNavigationPro
   return (
     <>
       <div className={cn('space-y-3 mb-6', className)}>
-        {/* Top Header Bar: Primary Pillars + Quick Actions */}
+        {/* Top Header Bar: Page Name on Top-Left, Primary Pillars Segmented Tabs on Top-Right + Quick Actions */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-border/80 pb-3">
-          {/* 5 Primary Pillars */}
-          <nav className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-none" aria-label="Meetings Pillars">
-            {primaryPillars.map(pillar => {
-              const Icon = pillar.icon;
-              const isActive = activePillar === pillar.key;
-              return (
-                <Link key={pillar.key} href={pillar.href}>
-                  <Button
-                    variant={isActive ? 'default' : 'ghost'}
-                    size="sm"
-                    className={cn(
-                      'rounded-2xl text-xs font-bold gap-2 min-h-[44px] px-3.5 transition-all active:scale-[0.97]',
-                      isActive
-                        ? 'shadow-sm text-white'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                    )}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span>{pillar.label}</span>
-                  </Button>
-                </Link>
-              );
-            })}
-          </nav>
+          {/* Top-Left Page Anchor */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Meetings Workspace</h1>
+            <CardInfoTooltip text="Unified operational workspace for scheduling, webinars, office hours, and AI intelligence." />
+          </div>
 
-          {/* Right Global Actions */}
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Search (Cmd+K) */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setSearchOpen(true)}
-              className="rounded-2xl text-xs font-semibold gap-2 min-h-[44px] px-3 text-muted-foreground hover:text-foreground border-border/80 bg-background active:scale-[0.97]"
+          {/* Right Controls: Standard Segmented Tabs Container + Quick Actions */}
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            {/* 5 Primary Pillars in Segmented Pill Tabs */}
+            <nav
+              className="inline-flex items-center gap-1 bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner overflow-x-auto scrollbar-none"
+              aria-label="Meetings Pillars"
             >
-              <Search className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Search meetings...</span>
-              <kbd className="hidden sm:inline-flex items-center text-[10px] font-mono bg-muted px-1.5 py-0.5 rounded border border-border">
-                ⌘K
-              </kbd>
-            </Button>
+              {primaryPillars.map(pillar => {
+                const Icon = pillar.icon;
+                const isActive = activePillar === pillar.key;
+                return (
+                  <Link key={pillar.key} href={pillar.href}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        'h-8.5 rounded-lg text-xs font-semibold px-3 transition-all flex items-center gap-1.5 active:scale-[0.97]',
+                        isActive
+                          ? 'bg-card text-primary font-bold shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
+                      )}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      <span>{pillar.label}</span>
+                    </Button>
+                  </Link>
+                );
+              })}
+            </nav>
 
-            {/* AI Copilot */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setAiAssistantOpen(true)}
-              className="rounded-2xl text-xs font-bold gap-1.5 min-h-[44px] px-3 text-purple-600 bg-purple-500/10 border-purple-200/50 hover:bg-purple-500/15 active:scale-[0.97]"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-              <span className="hidden sm:inline">AI Copilot</span>
-            </Button>
+            {/* Quick Actions */}
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Search (Cmd+K) */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSearchOpen(true)}
+                className="rounded-xl text-xs font-semibold gap-2 h-9 px-3 text-muted-foreground hover:text-foreground border-border/80 bg-background active:scale-[0.97]"
+              >
+                <Search className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Search...</span>
+                <kbd className="hidden sm:inline-flex items-center text-[10px] font-mono bg-muted px-1.5 py-0.5 rounded border border-border">
+                  ⌘K
+                </kbd>
+              </Button>
 
-            {/* Custom Slot Actions */}
-            {actions}
+              {/* AI Copilot */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setAiAssistantOpen(true)}
+                className="rounded-xl text-xs font-bold gap-1.5 h-9 px-3 text-purple-600 bg-purple-500/10 border-purple-200/50 hover:bg-purple-500/15 active:scale-[0.97]"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                <span className="hidden sm:inline">AI Copilot</span>
+              </Button>
 
-            {/* + New Meeting Primary CTA */}
-            <Button
-              size="sm"
-              onClick={() => setNewMeetingOpen(true)}
-              className="rounded-2xl text-xs font-bold gap-1.5 min-h-[44px] px-4 shadow-sm active:scale-[0.97]"
-            >
-              <Plus className="w-4 h-4" />
-              <span>New Meeting</span>
-            </Button>
+              {/* Custom Slot Actions */}
+              {actions}
+
+              {/* + New Meeting Primary CTA */}
+              <Button
+                size="sm"
+                onClick={() => setNewMeetingOpen(true)}
+                className="rounded-xl text-xs font-bold gap-1.5 h-9 px-4 shadow-sm active:scale-[0.97]"
+              >
+                <Plus className="w-4 h-4" />
+                <span>New Meeting</span>
+              </Button>
+            </div>
           </div>
         </div>
 

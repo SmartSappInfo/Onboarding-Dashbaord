@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { PageContainer } from '@/components/ui/page-container';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import type { WorkspaceExecutiveReportData, ReportDateRange } from '@/lib/forms/form-report-types';
 import { getWorkspaceFormsExecutiveReportAction } from '@/lib/forms/form-reports-actions';
 import { sanitizeCsvCell } from '@/lib/forms/form-utils';
@@ -105,24 +106,21 @@ export default function FormsExecutiveReportClient({
         {/* ── Top Header Navigation & Controls ── */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/40 pb-5">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5 flex-wrap">
               <Button asChild variant="ghost" size="sm" className="h-8 px-2 text-xs font-bold gap-1 text-muted-foreground hover:text-foreground">
                 <Link href="/admin/forms">
-                  <ArrowLeft className="h-3.5 w-3.5" /> Back to Forms
+                  <ArrowLeft className="h-3.5 w-3.5" /> Back
                 </Link>
               </Button>
-              <span className="text-muted-foreground/40">•</span>
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
+                <FileText className="h-5 w-5 text-primary" />
+                Workspace Forms Executive Analytics
+              </h1>
+              <CardInfoTooltip text={`Cross-form conversion intelligence, revenue attribution, and cohort performance across ${report.totalForms} active forms.`} />
               <Badge variant="outline" className="text-[10px] font-bold bg-primary/10 text-primary border-primary/30">
                 Executive Command Center
               </Badge>
             </div>
-            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-foreground flex items-center gap-2.5">
-              <FileText className="h-6 w-6 text-primary" />
-              Workspace Forms Executive Analytics
-            </h1>
-            <p className="text-xs text-muted-foreground">
-              Cross-form conversion intelligence, revenue attribution, and cohort performance across {report.totalForms} active forms.
-            </p>
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap">

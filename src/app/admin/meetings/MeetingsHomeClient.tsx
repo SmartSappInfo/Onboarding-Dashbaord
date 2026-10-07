@@ -26,7 +26,6 @@ import { MyDayTimeline } from './components/MyDayTimeline';
 import { NeedsAttentionPanel } from './components/NeedsAttentionPanel';
 import { UpcomingSessionsCard } from './components/UpcomingSessionsCard';
 import { BookingDetailDrawer } from './bookings/components/BookingDetailDrawer';
-import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { useWorkspaceSchedule } from '@/lib/meetings/hooks/use-workspace-schedule';
 
 export default function MeetingsHomeClient() {
@@ -66,16 +65,12 @@ export default function MeetingsHomeClient() {
 
   return (
     <>
-      <div className="space-y-8 pb-16">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Meetings Workspace</h1>
-            <CardInfoTooltip text="Manage your daily schedule, client appointments, webinars, and meeting intelligence." />
-            <Badge variant="outline" className="text-xs font-semibold bg-muted/40 text-muted-foreground border-border/80">
-              {currentDateDisplay}
-            </Badge>
-          </div>
+      <div className="space-y-6 pb-16">
+        {/* Date Context Indicator */}
+        <div className="flex items-center justify-end -mt-2">
+          <Badge variant="outline" className="text-xs font-semibold bg-muted/40 text-muted-foreground border-border/80">
+            {currentDateDisplay}
+          </Badge>
         </div>
 
         {/* Operational KPI Row (4 Cards) */}

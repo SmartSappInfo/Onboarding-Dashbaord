@@ -35,6 +35,8 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+import { PageContainerFluid } from '@/components/ui/page-container';
 import { getErrorMessage } from '@/lib/errors/report-error';
 
 // bundle-dynamic-imports: Lazy-load the heavy editor sheet
@@ -163,15 +165,16 @@ export default function WebhooksClient() {
 
   return (
     <TooltipProvider>
+      <PageContainerFluid>
         <div className="space-y-8 pb-32 w-full">
 
           {/* Page Header */}
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">Webhook Hub</h1>
-              <p className="text-muted-foreground font-medium text-sm mt-1">
-                Manage real-time data flows and external system integrations.
-              </p>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold tracking-tight text-foreground">Webhook Hub</h1>
+                <CardInfoTooltip text="Manage real-time data flows and external system integrations." />
+              </div>
             </div>
             <Button
               onClick={() => { setEditingWebhook(null); setIsEditorOpen(true); }}
@@ -217,7 +220,7 @@ export default function WebhooksClient() {
                 />
               </div>
               <div className="flex items-center gap-3 w-full md:w-auto">
-                <Select value={typeFilter} onValueChange={(v: any) => setTypeFilter(v)}>
+                <Select value={typeFilter} onValueChange={(v: string) => setTypeFilter(v as 'all' | WebhookType)}>
                   <SelectTrigger className="w-full md:w-36 rounded-xl border-border bg-background h-10 font-bold text-xs">
                     <SelectValue placeholder="Type" />
                   </SelectTrigger>
@@ -227,7 +230,7 @@ export default function WebhooksClient() {
                     <SelectItem value="outbound">Outbound</SelectItem>
                   </SelectContent>
                 </Select>
-                <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
+                <Select value={statusFilter} onValueChange={(v: string) => setStatusFilter(v as 'all' | 'active' | 'paused' | 'failed')}>
                   <SelectTrigger className="w-full md:w-36 rounded-xl border-border bg-background h-10 font-bold text-xs">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
@@ -437,6 +440,7 @@ export default function WebhooksClient() {
             webhook={editingWebhook}
           />
         </div>
+      </PageContainerFluid>
     </TooltipProvider>
   );
 }

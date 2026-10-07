@@ -46,6 +46,7 @@ import {
     Upload
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -724,62 +725,80 @@ export default function AutomationsClient() {
     return (
         <PageContainerFluid>
         <div className="h-full overflow-y-auto w-full">
-            <div className="space-y-8 pb-32 w-full">
-                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                    <div className="flex flex-col items-start">
-                        <h1 className="text-3xl font-bold text-foreground">
-                            Automation Hub
-                        </h1>
-                        <p className="text-muted-foreground text-sm mt-1">
-                            Proactive relationship logic and event-driven protocols
-                        </p>
+            <div className="space-y-6 pb-32 w-full">
+                <Tabs defaultValue="blueprints" className="space-y-6">
+                    {/* Top Header Bar: Page Name on Top-Left, Segmented Tabs on Top-Right */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-4">
+                        <div className="flex items-center gap-2.5">
+                            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+                                Automation Hub
+                            </h1>
+                            <CardInfoTooltip text="Proactive relationship logic and event-driven protocols." />
+                        </div>
+
+                        {/* Top-Right Segmented Tabs */}
+                        <TabsList className="inline-flex items-center gap-1 bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto self-start sm:self-auto">
+                            <TabsTrigger
+                                value="blueprints"
+                                className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground active:scale-[0.97]"
+                            >
+                                Active Blueprints
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="archived"
+                                className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground active:scale-[0.97]"
+                            >
+                                Archived
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="runs"
+                                className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground active:scale-[0.97]"
+                            >
+                                <History className="h-3.5 w-3.5" /> Run Ledger
+                            </TabsTrigger>
+                        </TabsList>
                     </div>
-                    <div className="flex items-center gap-3">
+
+                    {/* Action Bar */}
+                    <div className="flex items-center justify-end gap-3 flex-wrap">
                         <Button 
                             variant="outline" 
+                            size="sm"
                             onClick={() => setIsDlqModalOpen(true)}
-                            className="rounded-xl font-bold h-11 px-5 border-destructive/30 text-destructive bg-destructive/5 hover:bg-destructive/10 shadow-sm ring-1 ring-destructive/20 transition-all active:scale-95 min-h-[44px]"
+                            className="rounded-xl font-bold h-9 px-4 border-destructive/30 text-destructive bg-destructive/5 hover:bg-destructive/10 shadow-sm ring-1 ring-destructive/20 transition-all active:scale-[0.97]"
                         >
-                            <ShieldAlert className="h-4 w-4 mr-2 text-destructive" />
+                            <ShieldAlert className="h-4 w-4 mr-1.5 text-destructive" />
                             Dead-Letter Queue
                         </Button>
                         <Button 
                             variant="outline" 
+                            size="sm"
                             onClick={handlePulseEngine} 
                             disabled={isPulsing}
-                            className="rounded-xl font-bold h-11 px-6 border-border text-foreground bg-transparent shadow-sm ring-1 ring-border transition-all active:scale-95 min-h-[44px]"
+                            className="rounded-xl font-bold h-9 px-4 border-border text-foreground bg-transparent shadow-sm ring-1 ring-border transition-all active:scale-[0.97]"
                         >
-                            {isPulsing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                            {isPulsing ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <RefreshCw className="h-4 w-4 mr-1.5" />}
                             Pulse Engine
                         </Button>
                         <Button 
                             variant="outline" 
+                            size="sm"
                             onClick={() => {
                                 setImportError(null);
                                 setImportEnvelope(null);
                                 setImportStep(1);
                                 setShowImportDialog(true);
                             }}
-                            className="rounded-xl font-bold h-11 px-6 border-border text-foreground bg-transparent shadow-sm ring-1 ring-border transition-all active:scale-95 min-h-[44px]"
+                            className="rounded-xl font-bold h-9 px-4 border-border text-foreground bg-transparent shadow-sm ring-1 ring-border transition-all active:scale-[0.97]"
                         >
-                            <Upload className="mr-2 h-4 w-4" /> Import Workflow
+                            <Upload className="mr-1.5 h-4 w-4" /> Import Workflow
                         </Button>
-                        <Button asChild className="rounded-xl font-semibold h-11 px-6 shadow-xl animate-pulse active:scale-97 min-h-[44px]">
+                        <Button asChild size="sm" className="rounded-xl font-semibold h-9 px-4 shadow-sm active:scale-[0.97]">
                             <Link href="/admin/automations/new">
-                                <Plus className="mr-2 h-4 w-4" /> New Workflow
+                                <Plus className="mr-1.5 h-4 w-4" /> New Workflow
                             </Link>
                         </Button>
                     </div>
-                </div>
-
-        <Tabs defaultValue="blueprints" className="space-y-6">
-            <TabsList className="bg-transparent border border-border shadow-sm p-1 h-12 rounded-xl w-fit ring-1 ring-border">
-                <TabsTrigger value="blueprints" className="rounded-lg font-semibold text-[10px] px-8">Active Blueprints</TabsTrigger>
-                <TabsTrigger value="archived" className="rounded-lg font-semibold text-[10px] px-8">Archived</TabsTrigger>
-                <TabsTrigger value="runs" className="rounded-lg font-semibold text-[10px] px-8 gap-2">
-                    <History className="h-4 w-4" /> Run Ledger
-                </TabsTrigger>
-            </TabsList>
 
  <TabsContent value="blueprints" className="space-y-8 animate-in fade-in slide-in-from-bottom-2">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

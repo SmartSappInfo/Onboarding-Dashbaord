@@ -28,8 +28,9 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+import { PageContainerFluid } from '@/components/ui/page-container';
 import {
-  TrendingUp,
   BarChart3,
   Layers,
   Target,
@@ -37,6 +38,7 @@ import {
   RefreshCw,
   Loader2,
   AlertTriangle,
+  ArrowLeft,
 } from 'lucide-react';
 import type { RevenueForecastOverview } from '@/lib/revenue-forecasting/types';
 import { getRevenueForecastOverviewAction } from '@/app/actions/revenue-forecasting-actions';
@@ -152,22 +154,22 @@ export default function RevenueForecastingClient() {
   ).length;
 
   return (
-    <div className="space-y-8 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+    <PageContainerFluid className="space-y-6">
       {/* Cockpit Title Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-6">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-              <TrendingUp className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-black tracking-tight text-foreground">
-                Revenue Attribution & Predictive Forecasting
-              </h1>
-              <p className="text-xs text-muted-foreground">
-                Multi-touch attribution, 10,000-run Monte Carlo simulation, Clari categories, and close-date slippage velocity.
-              </p>
-            </div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-5">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin"
+            className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border/80 bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-all active:scale-[0.97]"
+            aria-label="Back to dashboard"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+              Revenue Attribution & Predictive Forecasting
+            </h1>
+            <CardInfoTooltip text="Multi-touch attribution, 10,000-run Monte Carlo simulation, Clari categories, and close-date slippage velocity." />
           </div>
         </div>
 
@@ -279,36 +281,36 @@ export default function RevenueForecastingClient() {
 
       {/* Main Tabs Navigation */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="bg-muted/40 p-1 rounded-2xl border flex flex-wrap gap-1 w-full justify-start h-auto">
+        <TabsList className="inline-flex items-center gap-1 bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner flex-wrap h-auto">
           <TabsTrigger
             value="overview"
-            className="rounded-xl px-4 py-2.5 text-xs font-bold gap-2 min-h-[44px] active:scale-[0.97] transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground active:scale-[0.97]"
           >
-            <BarChart3 className="w-4 h-4 text-primary" />
+            <BarChart3 className="w-3.5 h-3.5 text-primary" />
             <span>Predictive Forecast & Clari</span>
           </TabsTrigger>
 
           <TabsTrigger
             value="attribution"
-            className="rounded-xl px-4 py-2.5 text-xs font-bold gap-2 min-h-[44px] active:scale-[0.97] transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground active:scale-[0.97]"
           >
-            <Layers className="w-4 h-4 text-emerald-600" />
+            <Layers className="w-3.5 h-3.5 text-emerald-600" />
             <span>Multi-Touch Attribution</span>
           </TabsTrigger>
 
           <TabsTrigger
             value="pace"
-            className="rounded-xl px-4 py-2.5 text-xs font-bold gap-2 min-h-[44px] active:scale-[0.97] transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground active:scale-[0.97]"
           >
-            <Target className="w-4 h-4 text-blue-600" />
+            <Target className="w-3.5 h-3.5 text-blue-600" />
             <span>Daily Pace Tracker</span>
           </TabsTrigger>
 
           <TabsTrigger
             value="slippage"
-            className="rounded-xl px-4 py-2.5 text-xs font-bold gap-2 min-h-[44px] active:scale-[0.97] transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground active:scale-[0.97]"
           >
-            <Compass className="w-4 h-4 text-amber-600" />
+            <Compass className="w-3.5 h-3.5 text-amber-600" />
             <span>Slippage Velocity Radar</span>
           </TabsTrigger>
         </TabsList>
@@ -343,6 +345,6 @@ export default function RevenueForecastingClient() {
           <DealSlippageRadarTab overview={overview} />
         </TabsContent>
       </Tabs>
-    </div>
+    </PageContainerFluid>
   );
 }

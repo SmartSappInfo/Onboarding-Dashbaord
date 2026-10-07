@@ -36,6 +36,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { motion, AnimatePresence, type Transition } from 'framer-motion';
 import { 
   getLeadSettingsAction, 
@@ -817,12 +818,12 @@ export default function LeadIntelligenceClient() {
       {/* Page Title & Status Header (intelligence_ui Section 4) */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10 border-b border-border/40 pb-5">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-sky-400 to-indigo-500">
-            Lead Intelligence Platform
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Discover local businesses, audit tech footprints, generate AI sales strategies, and sync directly to CRM.
-          </p>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-sky-400 to-indigo-500">
+              Lead Intelligence Platform
+            </h1>
+            <CardInfoTooltip text="Discover local businesses, audit tech footprints, generate AI sales strategies, and sync directly to CRM." />
+          </div>
 
           {/* Live Metric Counters Ribbon (intelligence_ui Section 4) */}
           <div className="flex items-center gap-3 pt-3 flex-wrap">
@@ -896,16 +897,16 @@ export default function LeadIntelligenceClient() {
 
       {/* Main Tabs Navigation */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 w-full max-w-6xl bg-muted/40 backdrop-blur-md border border-border/60 p-1 rounded-xl h-auto gap-1">
-          <TabsTrigger value="inbox" className="rounded-lg text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary py-2 relative">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 w-full max-w-6xl bg-muted/40 backdrop-blur-md border border-border/60 p-1 rounded-xl h-auto gap-1 shadow-inner">
+          <TabsTrigger value="inbox" className="rounded-lg text-xs font-semibold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:font-bold text-muted-foreground hover:text-foreground transition-all py-2 relative active:scale-[0.97]">
             <Inbox className="w-3.5 h-3.5 mr-1 hidden sm:inline" />
             <span>Inbox</span>
           </TabsTrigger>
-          <TabsTrigger value="finder" className="rounded-lg text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary py-2">
+          <TabsTrigger value="finder" className="rounded-lg text-xs font-semibold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:font-bold text-muted-foreground hover:text-foreground transition-all py-2 active:scale-[0.97]">
             <Search className="w-3.5 h-3.5 mr-1 hidden sm:inline" />
             Prospect Finder
           </TabsTrigger>
-          <TabsTrigger value="signals" className="rounded-lg text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary py-2 relative">
+          <TabsTrigger value="signals" className="rounded-lg text-xs font-semibold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:font-bold text-muted-foreground hover:text-foreground transition-all py-2 relative active:scale-[0.97]">
             <Radio className="w-3.5 h-3.5 mr-1 hidden sm:inline text-rose-500" />
             <span>Signals</span>
             {unreadSignalsCount > 0 && (
@@ -914,11 +915,11 @@ export default function LeadIntelligenceClient() {
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="lists" className="rounded-lg text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary py-2">
+          <TabsTrigger value="lists" className="rounded-lg text-xs font-semibold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:font-bold text-muted-foreground hover:text-foreground transition-all py-2 active:scale-[0.97]">
             <Folder className="w-3.5 h-3.5 mr-1 hidden sm:inline" />
             Lead Lists
           </TabsTrigger>
-          <TabsTrigger value="dedup" className="rounded-lg text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary py-2 relative">
+          <TabsTrigger value="dedup" className="rounded-lg text-xs font-semibold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:font-bold text-muted-foreground hover:text-foreground transition-all py-2 relative active:scale-[0.97]">
             <GitMerge className="w-3.5 h-3.5 mr-1 hidden sm:inline" />
             <span>Deduplication</span>
             {pendingCollisionsCount > 0 && (
@@ -927,19 +928,19 @@ export default function LeadIntelligenceClient() {
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="scanner" className="rounded-lg text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary py-2">
+          <TabsTrigger value="scanner" className="rounded-lg text-xs font-semibold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:font-bold text-muted-foreground hover:text-foreground transition-all py-2 active:scale-[0.97]">
             <Globe className="w-3.5 h-3.5 mr-1 hidden sm:inline" />
             Domain Scanner
           </TabsTrigger>
-          <TabsTrigger value="searches" className="rounded-lg text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary py-2">
+          <TabsTrigger value="searches" className="rounded-lg text-xs font-semibold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:font-bold text-muted-foreground hover:text-foreground transition-all py-2 active:scale-[0.97]">
             <BookmarkCheck className="w-3.5 h-3.5 mr-1 hidden sm:inline" />
             Saved Searches
           </TabsTrigger>
-          <TabsTrigger value="dashboard" className="rounded-lg text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary py-2">
+          <TabsTrigger value="dashboard" className="rounded-lg text-xs font-semibold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:font-bold text-muted-foreground hover:text-foreground transition-all py-2 active:scale-[0.97]">
             <LayoutGrid className="w-3.5 h-3.5 mr-1 hidden sm:inline" />
             Overview
           </TabsTrigger>
-          <TabsTrigger value="settings" className="rounded-lg text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary py-2">
+          <TabsTrigger value="settings" className="rounded-lg text-xs font-semibold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:font-bold text-muted-foreground hover:text-foreground transition-all py-2 active:scale-[0.97]">
             <Settings className="w-3.5 h-3.5 mr-1 hidden sm:inline" />
             Extension & Keys
           </TabsTrigger>

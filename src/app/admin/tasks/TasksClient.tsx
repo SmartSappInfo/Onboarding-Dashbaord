@@ -35,7 +35,9 @@ import {
     Target,
     LayoutList,
     Filter,
+    ArrowLeft,
 } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -973,6 +975,13 @@ export default function TasksClient() {
             >
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/80 pb-6">
                     <div className="flex items-center gap-3">
+                        <Link
+                            href="/admin"
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                            aria-label="Back to Dashboard"
+                        >
+                            <ArrowLeft className="w-4 h-4" />
+                        </Link>
                         <div className="flex items-center gap-2.5">
                             <h1 className="text-3xl font-bold text-foreground tracking-tight">
                                 Operations Hub
@@ -983,16 +992,25 @@ export default function TasksClient() {
                         </div>
                         <CardInfoTooltip text="Action items, global workflows, and execution protocols across all operations." />
                     </div>
-                    {/* Header Tabs matching Reference Image */}
-                    <TabsList className="bg-muted/40 border border-border/80 shadow-xs p-1 h-12 min-h-[44px] rounded-xl ring-1 ring-border/50 shrink-0">
-                        <TabsTrigger value="list" className="rounded-lg font-semibold text-xs px-5 py-2 min-h-[36px] gap-2 active:scale-[0.97] transition-all">
-                            <LayoutList className="h-4 w-4" /> List ({filteredTasks.length})
+                    {/* Header Tabs conforming to standard segmented pill */}
+                    <TabsList className="inline-flex items-center gap-1 bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto shrink-0">
+                        <TabsTrigger 
+                            value="list" 
+                            className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
+                        >
+                            <LayoutList className="h-3.5 w-3.5" /> List ({filteredTasks.length})
                         </TabsTrigger>
-                        <TabsTrigger value="board" className="rounded-lg font-semibold text-xs px-5 py-2 min-h-[36px] gap-2 active:scale-[0.97] transition-all">
-                            <Layers className="h-4 w-4" /> Board
+                        <TabsTrigger 
+                            value="board" 
+                            className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
+                        >
+                            <Layers className="h-3.5 w-3.5" /> Board
                         </TabsTrigger>
-                        <TabsTrigger value="calendar" className="rounded-lg font-semibold text-xs px-5 py-2 min-h-[36px] gap-2 active:scale-[0.97] transition-all">
-                            <Calendar className="h-4 w-4" /> Calendar
+                        <TabsTrigger 
+                            value="calendar" 
+                            className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
+                        >
+                            <Calendar className="h-3.5 w-3.5" /> Calendar
                         </TabsTrigger>
                     </TabsList>
                 </div>

@@ -19,8 +19,10 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { GlobalCommandBar } from '@/components/command/GlobalCommandBar';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+import { PageContainerFluid } from '@/components/ui/page-container';
 import { useEventStream } from '@/hooks/useEventStream';
 import {
   type CommandIntent,
@@ -29,12 +31,12 @@ import {
 import { generateCommandSuggestions } from '@/platform/ui/command/command-suggestions';
 import { getCommandSuggestionsAction } from '@/app/actions/command-actions';
 import {
-  Sparkles,
   Search,
   Bot,
   Workflow,
   TrendingUp,
   ArrowRight,
+  ArrowLeft,
   Clock,
   Command,
   Filter,
@@ -42,7 +44,6 @@ import {
   Activity,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import Link from 'next/link';
 
 interface RecentCommandItem {
   id: string;
@@ -144,27 +145,26 @@ export function IntelligenceClient() {
   });
 
   return (
-    <div className="space-y-6 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto font-figtree">
-      {/* ========================================================================= */}
-      {/* ZONE 1: EXECUTIVE KPI & OMNI-BAR LAUNCHER BANNER */}
-      {/* ========================================================================= */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-card via-card to-primary/5 p-6 sm:p-8 shadow-sm">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold">
-              <Sparkles className="h-3.5 w-3.5" />
-              <span>SmartSapp Autonomous Intelligence</span>
-            </div>
+    <PageContainerFluid>
+      <div className="space-y-6 max-w-7xl mx-auto font-figtree pb-32">
+        {/* ========================================================================= */}
+        {/* ZONE 1: DEMARCATED PAGE HEADER */}
+        {/* ========================================================================= */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-5">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/admin"
+              className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border/80 bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-all active:scale-[0.97]"
+              aria-label="Back to dashboard"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
                 AI Command Center
               </h1>
               <CardInfoTooltip text="Unified orchestration surface for the 5 canonical intent engines: Search, Analyze, Execute, Delegate, and Automate." />
             </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Transform natural language requests into verified CRM searches, deep analytical reports,
-              atomic state mutations, autonomous multi-step agent missions, and durable workflows.
-            </p>
           </div>
 
           {/* Quick Launch Omni-Bar CTA */}
@@ -174,15 +174,15 @@ export function IntelligenceClient() {
               setActivePrompt('');
               setIsCommandBarOpen(true);
             }}
-            className="inline-flex items-center justify-between gap-4 px-5 py-3.5 rounded-xl border border-primary/30 bg-primary/10 hover:bg-primary/20 text-foreground transition-all duration-200 active:scale-[0.98] shadow-sm min-h-[48px] group"
+            className="inline-flex items-center justify-between gap-4 px-4 py-2 rounded-xl border border-primary/30 bg-primary/10 hover:bg-primary/20 text-foreground transition-all duration-200 active:scale-[0.98] shadow-sm min-h-[44px] group"
           >
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
-                <Command className="h-4 w-4" />
+            <div className="flex items-center gap-2.5">
+              <div className="h-7 w-7 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
+                <Command className="h-3.5 w-3.5" />
               </div>
-              <span className="text-sm font-semibold">Open ⌘K Omni-Bar</span>
+              <span className="text-xs sm:text-sm font-semibold">Open ⌘K Omni-Bar</span>
             </div>
-            <div className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground bg-background/80 px-2.5 py-1 rounded-md border">
+            <div className="flex items-center gap-1 font-mono text-[11px] text-muted-foreground bg-background/80 px-2 py-0.5 rounded-md border">
               <span>⌘</span>
               <span>K</span>
             </div>
@@ -190,8 +190,8 @@ export function IntelligenceClient() {
         </div>
 
         {/* 4 Executive Metric Counters */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mt-6 pt-6 border-t border-border/60">
-          <div className="p-3 rounded-xl bg-background/60 border border-border/60">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+          <div className="p-4 rounded-2xl bg-card border border-border/80 shadow-sm">
             <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
               <Search className="h-3.5 w-3.5 text-blue-500" />
               <span>Search & Memory</span>
@@ -200,7 +200,7 @@ export function IntelligenceClient() {
             <div className="text-[11px] text-muted-foreground">Hybrid Dense/BM25</div>
           </div>
 
-          <div className="p-3 rounded-xl bg-background/60 border border-border/60">
+          <div className="p-4 rounded-2xl bg-card border border-border/80 shadow-sm">
             <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
               <TrendingUp className="h-3.5 w-3.5 text-purple-500" />
               <span>Model Routing</span>
@@ -209,7 +209,7 @@ export function IntelligenceClient() {
             <div className="text-[11px] text-muted-foreground">5-State Breakers</div>
           </div>
 
-          <div className="p-3 rounded-xl bg-background/60 border border-border/60">
+          <div className="p-4 rounded-2xl bg-card border border-border/80 shadow-sm">
             <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
               <Bot className="h-3.5 w-3.5 text-amber-500" />
               <span>Autonomous Agents</span>
@@ -218,7 +218,7 @@ export function IntelligenceClient() {
             <div className="text-[11px] text-muted-foreground">Topological DAG</div>
           </div>
 
-          <div className="p-3 rounded-xl bg-background/60 border border-border/60">
+          <div className="p-4 rounded-2xl bg-card border border-border/80 shadow-sm">
             <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
               <Workflow className="h-3.5 w-3.5 text-cyan-500" />
               <span>Durable Workflows</span>
@@ -227,37 +227,36 @@ export function IntelligenceClient() {
             <div className="text-[11px] text-muted-foreground">Deterministic Replay</div>
           </div>
         </div>
-      </div>
 
-      {/* ========================================================================= */}
-      {/* ZONE 2: INTENT CATEGORY FILTER TOOLBAR & QUICK LAUNCH */}
-      {/* ========================================================================= */}
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-base font-semibold text-foreground">Intent Categories</h2>
-          </div>
+        {/* ========================================================================= */}
+        {/* ZONE 2: INTENT CATEGORY FILTER TOOLBAR & QUICK LAUNCH */}
+        {/* ========================================================================= */}
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <h2 className="text-base font-semibold text-foreground">Intent Categories</h2>
+            </div>
 
-          {/* 5-Intent Category Filter Pills */}
-          <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-xl bg-muted/30 border border-border/60">
-            {['ALL', 'SEARCH', 'ANALYZE', 'EXECUTE', 'DELEGATE', 'AUTOMATE'].map((intentKey) => (
-              <button
-                key={intentKey}
-                type="button"
-                onClick={() => setSelectedIntentFilter(intentKey)}
-                className={cn(
-                  'px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all min-h-[36px] active:scale-[0.97]',
-                  selectedIntentFilter === intentKey
-                    ? 'bg-background text-foreground shadow-sm border border-border/80'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                {intentKey}
-              </button>
-            ))}
+            {/* Standard Segmented Pill Navigation */}
+            <div className="inline-flex items-center gap-1 bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto">
+              {['ALL', 'SEARCH', 'ANALYZE', 'EXECUTE', 'DELEGATE', 'AUTOMATE'].map((intentKey) => (
+                <button
+                  key={intentKey}
+                  type="button"
+                  onClick={() => setSelectedIntentFilter(intentKey)}
+                  className={cn(
+                    'h-8.5 rounded-lg text-xs font-semibold px-3.5 uppercase tracking-wider transition-all flex items-center gap-1.5 active:scale-[0.97]',
+                    selectedIntentFilter === intentKey
+                      ? 'bg-card text-primary font-bold shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
+                  )}
+                >
+                  {intentKey}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
 
         {/* Suggested Action Blueprints Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
@@ -372,5 +371,6 @@ export function IntelligenceClient() {
         workspaceId="default_workspace"
       />
     </div>
-  );
+  </PageContainerFluid>
+);
 }

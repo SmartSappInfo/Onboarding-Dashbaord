@@ -69,6 +69,7 @@ const LEGACY_PERMISSION_MAP: ReadonlyMap<string, ParsedPermissionRef> = new Map<
   ['deal:edit', { kind: 'rbac', section: 'operations', feature: 'pipeline', action: 'edit' }],
   ['deal:stage_update', { kind: 'rbac', section: 'operations', feature: 'pipeline', action: 'edit' }],
   ['deal:assign', { kind: 'rbac', section: 'operations', feature: 'pipeline', action: 'edit' }],
+  ['deal:transfer', { kind: 'rbac', section: 'operations', feature: 'pipeline', action: 'edit' }],
   ['pipeline:read', { kind: 'rbac', section: 'operations', feature: 'pipeline', action: 'view' }],
 
   // Tasks & Productivity

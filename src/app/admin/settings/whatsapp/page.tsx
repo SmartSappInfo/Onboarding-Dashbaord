@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { ArrowLeft, MessageCircle } from 'lucide-react';
 import { getBaseUrl } from '@/lib/utils/url-helpers';
 import { PageContainer } from '@/components/ui/page-container';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import WhatsAppCredentialForm from '../components/WhatsAppCredentialForm';
 import WhatsAppGuidePanel from '../components/WhatsAppGuidePanel';
 
@@ -30,13 +31,12 @@ export default function WhatsAppSetupPage() {
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Back to Settings
           </Link>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-            <MessageCircle className="h-6 w-6 text-primary" /> WhatsApp Business Setup
-          </h1>
-          <p className="text-sm text-muted-foreground max-w-2xl">
-            Connect your organization&apos;s own WhatsApp Business Account via the Meta Cloud API. Enter your
-            credentials on the left; follow the guide on the right.
-          </p>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+              <MessageCircle className="h-6 w-6 text-primary" /> WhatsApp Business Setup
+            </h1>
+            <CardInfoTooltip text="Connect your organization's own WhatsApp Business Account via the Meta Cloud API. Enter your credentials on the left; follow the guide on the right." />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">

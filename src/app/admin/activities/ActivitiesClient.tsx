@@ -3,13 +3,15 @@
 import * as React from 'react';
 import ActivityTimeline from '../components/ActivityTimeline';
 import { Card, CardContent } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { collection, query, orderBy, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { UserProfile, Activity, Zone } from '@/lib/types';
 import { EntityCombobox } from '@/components/entities/EntityCombobox';
-import { X, Building, User, Tag, MapPin } from 'lucide-react';
+import { X, Building, User, Tag, MapPin, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -83,14 +85,19 @@ export default function ActivitiesClient() {
         <div className="h-full overflow-y-auto w-full">
             <PageContainerFluid>
                 <div className="space-y-8 pb-32 w-full">
-                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                    <div className="flex flex-col items-start">
-                        <h1 className="text-3xl font-bold text-foreground">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/80 pb-5">
+                    <div className="flex items-center gap-2.5">
+                        <Link
+                            href="/admin"
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                            aria-label="Back to Dashboard"
+                        >
+                            <ArrowLeft className="w-4 h-4" />
+                        </Link>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
                             Activities Audit
                         </h1>
-                        <p className="text-muted-foreground text-sm mt-1">
-                            Review operational events and user actions securely
-                        </p>
+                        <CardInfoTooltip text="Review operational events and user actions securely across your workspace." />
                     </div>
                     <div className="flex items-center gap-3">
                         {hasActiveFilters && (

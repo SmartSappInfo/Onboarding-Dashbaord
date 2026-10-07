@@ -113,28 +113,30 @@ export function WorkflowFilterToolbar({
       </div>
 
       {/* Bottom row: status filter pills */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-        <div className="flex items-center gap-1 text-xs text-muted-foreground mr-1.5 shrink-0">
-          <Filter className="h-3 w-3" />
-          <span>Status:</span>
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <div className="flex items-center gap-1 text-xs text-muted-foreground mr-1 shrink-0">
+          <Filter className="h-3.5 w-3.5" />
+          <span className="font-medium">Status:</span>
         </div>
-        {STATUS_FILTERS.map((filter) => {
-          const isSelected = statusFilter === filter.id;
-          return (
-            <button
-              key={filter.id}
-              type="button"
-              onClick={() => onStatusFilterChange(filter.id)}
-              className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition-colors shrink-0 active:scale-[0.97] ${
-                isSelected
-                  ? 'bg-primary text-primary-foreground border-primary shadow-xs'
-                  : 'bg-card text-muted-foreground border-border/80 hover:bg-muted/40 hover:text-foreground'
-              }`}
-            >
-              {filter.label}
-            </button>
-          );
-        })}
+        <div className="inline-flex items-center gap-1 bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto shrink-0">
+          {STATUS_FILTERS.map((filter) => {
+            const isSelected = statusFilter === filter.id;
+            return (
+              <button
+                key={filter.id}
+                type="button"
+                onClick={() => onStatusFilterChange(filter.id)}
+                className={`h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] shrink-0 ${
+                  isSelected
+                    ? 'bg-card text-primary font-bold shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
+                }`}
+              >
+                {filter.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

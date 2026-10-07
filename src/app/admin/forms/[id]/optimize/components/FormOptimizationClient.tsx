@@ -18,6 +18,7 @@ import {
   Inbox,
 } from 'lucide-react';
 import { PageContainer } from '@/components/ui/page-container';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -63,13 +64,17 @@ export default function FormOptimizationClient({
         {/* ── Top Header Navigation & Controls ── */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/40 pb-5">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5 flex-wrap">
               <Button asChild variant="ghost" size="sm" className="h-8 px-2 text-xs font-bold gap-1 text-muted-foreground hover:text-foreground">
                 <Link href={`/admin/forms/${form.id}`}>
-                  <ArrowLeft className="h-3.5 w-3.5" /> Back to Form
+                  <ArrowLeft className="h-3.5 w-3.5" /> Back
                 </Link>
               </Button>
-              <span className="text-muted-foreground/40">•</span>
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                Conversion & Optimization Studio
+              </h1>
+              <CardInfoTooltip text={`A/B split testing, 7-dimensional health scoring, and automatic anomaly monitoring for ${form.title || 'Form'}.`} />
               <Badge variant="outline" className="text-[10px] font-bold bg-primary/10 text-primary border-primary/30">
                 Optimization Engine
               </Badge>
@@ -84,13 +89,6 @@ export default function FormOptimizationClient({
                 Health: {initialHealthScore.overallScore}/100
               </Badge>
             </div>
-            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-foreground flex items-center gap-2.5">
-              <Sparkles className="h-6 w-6 text-primary" />
-              Conversion & Optimization Studio
-            </h1>
-            <p className="text-xs text-muted-foreground">
-              A/B split testing, 7-dimensional health scoring, and automatic anomaly monitoring for {form.title || 'Form'}.
-            </p>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
