@@ -282,9 +282,15 @@ export class FinanceShadowRunner {
         organizationId: options.organizationId,
         workspaceId: options.workspaceId,
         actor: {
-          type: 'system',
-          id: `shadow_runner:${options.personaId}`,
+          type: 'agent',
+          id: options.personaId,
         },
+        entity: {
+          type: 'finance_simulation',
+          id: runId,
+        },
+        source: 'finance_shadow_runner',
+        correlationId: options.correlationId ?? runId,
         payload: {
           runId,
           personaId: options.personaId,

@@ -20,7 +20,7 @@ import {
   FinanceShadowSimulationResultSchema,
   SimulatedFinanceStepInput,
 } from '@/platform/agents/finance/evaluation/finance-shadow-mode';
-import { clearDeadManSwitchOverride } from '@/platform/policy/governance-dead-man';
+import { setGovernanceDeadManStateForTests } from '@/platform/policy/governance-dead-man';
 
 describe('FinanceShadowRunner (Phase 12 Milestone 2)', () => {
   const orgId = 'org_test_school';
@@ -28,7 +28,7 @@ describe('FinanceShadowRunner (Phase 12 Milestone 2)', () => {
   let runner: FinanceShadowRunner;
 
   beforeEach(() => {
-    clearDeadManSwitchOverride();
+    setGovernanceDeadManStateForTests(null);
     runner = getFinanceShadowRunner();
   });
 
