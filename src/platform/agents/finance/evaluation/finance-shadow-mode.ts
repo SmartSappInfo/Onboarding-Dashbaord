@@ -132,6 +132,7 @@ export interface FinanceShadowSimulationOptions {
   goalPrompt: string;
   simulatedSteps: readonly SimulatedFinanceStepInput[];
   signal?: AbortSignal;
+  correlationId?: string;
 }
 
 const RISK_LEVEL_ORDER: Readonly<Record<RiskLevel, number>> = {
