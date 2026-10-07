@@ -9,3 +9,4 @@ export * from './services/knowledge-candidate-service';
 export * from './services/knowledge-deduplication-service';
 export * from './services/knowledge-conflict-service';
 export * from './services/knowledge-memory-bridge';
+export * from './services/knowledge-graph-projection-service';

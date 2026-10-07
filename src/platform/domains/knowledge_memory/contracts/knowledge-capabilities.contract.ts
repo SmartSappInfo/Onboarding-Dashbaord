@@ -23,15 +23,20 @@ import {
   ReviewQueueDecideInputSchema,
   KnowledgeConflictSchema,
   ResolveConflictInputSchema,
+  GraphNeighborQuerySchema,
+  GraphFindPathQuerySchema,
   type KnowledgeCandidate,
   type ProposeCandidateInput,
   type ReviewQueueDecideInput,
   type KnowledgeConflict,
   type ResolveConflictInput,
+  type GraphNeighborQuery,
+  type GraphFindPathQuery,
 } from './knowledge-schemas';
 import { getKnowledgeCandidateService } from '../services/knowledge-candidate-service';
 import { getKnowledgeDeduplicationService } from '../services/knowledge-deduplication-service';
 import { getKnowledgeConflictService } from '../services/knowledge-conflict-service';
+import { getKnowledgeGraphProjectionService } from '../services/knowledge-graph-projection-service';
 
 // ============================================================================
 // 1. knowledge.propose_candidate (L1_INTERNAL_DRAFT)
@@ -532,6 +537,165 @@ export const knowledgeConflictResolveCapability: CapabilityDefinition<
 };
 
 // ============================================================================
+// 8. knowledge.graph.get_neighbors (L0_READ, Rule 55 Clamped)
+// ============================================================================
+
+export const KnowledgeGraphGetNeighborsOutputSchema = z.object({
+  nodes: z.array(
+    z.object({
+      id: z.string(),
+      label: z.string(),
+      type: z.string(),
+    })
+  ),
+  edges: z.array(
+    z.object({
+      id: z.string(),
+      source: z.string(),
+      target: z.string(),
+      relationship: z.string(),
+    })
+  ),
+});
+export type KnowledgeGraphGetNeighborsOutput = z.infer<typeof KnowledgeGraphGetNeighborsOutputSchema>;
+
+export const knowledgeGraphGetNeighborsCapability: CapabilityDefinition<
+  GraphNeighborQuery,
+  KnowledgeGraphGetNeighborsOutput
+> = {
+  id: 'knowledge.graph.get_neighbors',
+  version: '1.0.0',
+  name: 'Get Knowledge Graph Neighbors',
+  description: 'Traverses neighboring nodes in the knowledge graph. Clamped to <= 80 nodes, <= 150 edges, depth <= 2 (Rule 55).',
+  domain: 'knowledge_memory',
+  operation: 'read',
+  inputSchema: GraphNeighborQuerySchema,
+  outputSchema: KnowledgeGraphGetNeighborsOutputSchema,
+  permissions: ['knowledge:read'],
+  workspaceScoped: true,
+  tenantScoped: true,
+  risk: {
+    level: 'L0_READ',
+    destructive: false,
+    idempotent: true,
+    openWorld: false,
+    requiresHumanApproval: false,
+    nonDelegable: false,
+  },
+  execution: {
+    synchronous: true,
+    maxDurationMs: 5_000,
+    supportsDryRun: true,
+    supportsCancellation: false,
+    supportsCompensation: false,
+    maxPayloadSizeBytes: 512 * 1024,
+  },
+  policies: {
+    requiresIdempotencyKey: false,
+    requiresExpectedVersion: false,
+    auditRequired: false,
+    defaultEnabled: true,
+  },
+  async handler(
+    rawInput: GraphNeighborQuery,
+    _context: CapabilityExecutionContext
+  ): Promise<CapabilityExecutionResult<KnowledgeGraphGetNeighborsOutput>> {
+    const startTime = Date.now();
+    const input = GraphNeighborQuerySchema.parse(rawInput);
+    const graphService = getKnowledgeGraphProjectionService();
+    const result = await graphService.getNeighbors(input);
+
+    return {
+      success: true,
+      output: result,
+      metadata: {
+        durationMs: Date.now() - startTime,
+      },
+    };
+  },
+};
+
+// ============================================================================
+// 9. knowledge.graph.find_path (L0_READ, Rule 55 Clamped)
+// ============================================================================
+
+export const KnowledgeGraphFindPathOutputSchema = z.object({
+  pathFound: z.boolean(),
+  nodes: z.array(
+    z.object({
+      id: z.string(),
+      label: z.string(),
+      type: z.string(),
+    })
+  ),
+  edges: z.array(
+    z.object({
+      id: z.string(),
+      source: z.string(),
+      target: z.string(),
+      relationship: z.string(),
+    })
+  ),
+});
+export type KnowledgeGraphFindPathOutput = z.infer<typeof KnowledgeGraphFindPathOutputSchema>;
+
+export const knowledgeGraphFindPathCapability: CapabilityDefinition<
+  GraphFindPathQuery,
+  KnowledgeGraphFindPathOutput
+> = {
+  id: 'knowledge.graph.find_path',
+  version: '1.0.0',
+  name: 'Find Path in Knowledge Graph',
+  description: 'Finds connection path between two graph nodes. MaxDepth <= 3, MaxNodes <= 80 (Rule 55).',
+  domain: 'knowledge_memory',
+  operation: 'read',
+  inputSchema: GraphFindPathQuerySchema,
+  outputSchema: KnowledgeGraphFindPathOutputSchema,
+  permissions: ['knowledge:read'],
+  workspaceScoped: true,
+  tenantScoped: true,
+  risk: {
+    level: 'L0_READ',
+    destructive: false,
+    idempotent: true,
+    openWorld: false,
+    requiresHumanApproval: false,
+    nonDelegable: false,
+  },
+  execution: {
+    synchronous: true,
+    maxDurationMs: 8_000,
+    supportsDryRun: true,
+    supportsCancellation: false,
+    supportsCompensation: false,
+    maxPayloadSizeBytes: 512 * 1024,
+  },
+  policies: {
+    requiresIdempotencyKey: false,
+    requiresExpectedVersion: false,
+    auditRequired: false,
+    defaultEnabled: true,
+  },
+  async handler(
+    rawInput: GraphFindPathQuery,
+    _context: CapabilityExecutionContext
+  ): Promise<CapabilityExecutionResult<KnowledgeGraphFindPathOutput>> {
+    const startTime = Date.now();
+    const input = GraphFindPathQuerySchema.parse(rawInput);
+    const graphService = getKnowledgeGraphProjectionService();
+    const result = await graphService.findPath(input);
+
+    return {
+      success: true,
+      output: result,
+      metadata: {
+        durationMs: Date.now() - startTime,
+      },
+    };
+  },
+};
+
+// ============================================================================
 // Auto-registration on module load (Rule 69)
 // ============================================================================
 
@@ -542,3 +706,5 @@ registerCapability(knowledgeReviewQueueDecideCapability, { allowOverride: true }
 registerCapability(knowledgeDeduplicateCandidateCapability, { allowOverride: true });
 registerCapability(knowledgeConflictListCapability, { allowOverride: true });
 registerCapability(knowledgeConflictResolveCapability, { allowOverride: true });
+registerCapability(knowledgeGraphGetNeighborsCapability, { allowOverride: true });
+registerCapability(knowledgeGraphFindPathCapability, { allowOverride: true });
