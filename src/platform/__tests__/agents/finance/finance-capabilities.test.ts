@@ -347,8 +347,6 @@ describe('Canonical Finance Capabilities (finance.*) (Phase 12 Milestone 1)', ()
           organizationId: 'org_test_edu',
           workspaceId: 'ws_test_main',
           paymentId: 'pay_incoming_001',
-          entityId: 'ent_gis',
-          amount: 2000,
           allocations: [{ invoiceId: 'inv_to_reconcile', amount: 2000 }],
           idempotencyKey: 'idemp_rec_001',
         },

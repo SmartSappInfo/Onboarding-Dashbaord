@@ -164,13 +164,19 @@ export class ReceivablesAgingService {
     // Emit domain event (Rule 40)
     try {
       await defaultEventBus.publish(
-        createDomainEvent('finance.aging.computed', {
+        createDomainEvent({
+          type: 'finance.aging.computed',
           organizationId: params.organizationId,
           workspaceId: params.workspaceId,
-          entityId: params.entityId,
-          debtRiskBand: calculated.debtRiskBand,
-          totalOverdue: calculated.totalOverdue,
-          timestamp: new Date().toISOString(),
+          actor: { type: 'system', id: 'receivables-aging-service' },
+          entity: { type: 'receivables_aging', id: params.entityId },
+          correlationId: `aging_${params.entityId}_${Date.now()}`,
+          source: 'receivables-aging-service',
+          payload: {
+            debtRiskBand: calculated.debtRiskBand,
+            totalOverdue: calculated.totalOverdue,
+            timestamp: new Date().toISOString(),
+          },
         })
       );
     } catch {

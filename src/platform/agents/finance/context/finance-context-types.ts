@@ -211,7 +211,11 @@ export const AssembleAccountFinanceContextInputSchema = z.object({
   referenceDate: z.string().optional(),
 });
 
-export type AssembleAccountFinanceContextInput = z.infer<
+export type AssembleAccountFinanceContextInput = z.input<
+  typeof AssembleAccountFinanceContextInputSchema
+>;
+
+export type AssembleAccountFinanceContextOptions = z.output<
   typeof AssembleAccountFinanceContextInputSchema
 >;
 
@@ -302,7 +306,8 @@ export const SearchPaymentsInputSchema = z.object({
   limit: z.number().int().positive().default(20),
 });
 
-export type SearchPaymentsInput = z.infer<typeof SearchPaymentsInputSchema>;
+export type SearchPaymentsInput = z.input<typeof SearchPaymentsInputSchema>;
+export type SearchPaymentsOptions = z.output<typeof SearchPaymentsInputSchema>;
 
 export const ReconcilePaymentInputSchema = z.object({
   organizationId: z.string().min(1),
