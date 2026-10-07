@@ -16,7 +16,7 @@
  */
 
 import { z } from 'zod';
-import { McpToolDefinition } from '../types';
+import { McpToolDefinition, McpExecutionContext } from '../types';
 import type { UserProfile } from '@/lib/types';
 import { isUserWorkspaceAdmin } from '@/lib/workspace-admin-utils';
 import { adminDb } from '@/lib/firebase-admin';
@@ -429,6 +429,65 @@ const transferDealOutputSchema = z.object({
   updatedAt: z.string(),
 });
 
+async function executeDealTransfer(
+  params: z.infer<typeof transferDealInputSchema>,
+  context: McpExecutionContext
+): Promise<z.infer<typeof transferDealOutputSchema>> {
+  const callerUserId = context.callerType === 'agent' ? `system-${context.callerId}` : context.callerId;
+  const actor: CrmActor = context.callerType === 'agent'
+    ? {
+        kind: 'service',
+        service: 'api',
+        workspaceId: context.workspaceId,
+        allowedWorkspaceIds: [context.workspaceId, params.targetWorkspaceId],
+        onBehalfOf: callerUserId,
+        agentId: context.callerId,
+        toolInvocationId: context.requestId,
+      }
+    : { kind: 'user', uid: context.callerId };
+
+  const result = await transferDealCore(actor, {
+    dealId: params.dealId,
+    mode: params.mode,
+    sourceWorkspaceId: context.workspaceId,
+    targetWorkspaceId: params.targetWorkspaceId,
+    targetPipelineId: params.targetPipelineId,
+    targetStageId: params.targetStageId,
+    assignedTo: params.targetUserId !== undefined
+      ? (params.targetUserId ? { userId: params.targetUserId, name: null, email: null } : null)
+      : undefined,
+    newName: params.newName,
+    summary: params.summary,
+    copyLineItems: params.copyLineItems,
+    copyContacts: params.copyContacts,
+    copyCustomFields: params.copyCustomFields,
+    expectedUpdatedAt: params.expectedUpdatedAt,
+    idempotencyKey: params.idempotencyKey,
+    entityConversionStrategy: params.entityConversionStrategy,
+    focalContactId: params.focalContactId,
+    dryRun: params.dryRun,
+    approvalId: params.approvalId,
+  });
+
+  if (!result.success || (!result.dealId && result.phase !== 'PROPOSAL')) {
+    throw new Error(`[deal.transfer] ${result.error || 'Failed to transfer deal'}`);
+  }
+
+  return {
+    dealId: result.dealId || params.dealId,
+    mode: params.mode,
+    targetWorkspaceId: params.targetWorkspaceId,
+    targetPipelineId: params.targetPipelineId,
+    targetStageId: params.targetStageId,
+    success: true,
+    phase: result.phase || 'COMMITTED',
+    requiresProposal: result.requiresProposal,
+    approvalId: result.approvalId,
+    entityResolution: result.entityResolution,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 export const dealTransferTool: McpToolDefinition<
   z.infer<typeof transferDealInputSchema>,
   z.infer<typeof transferDealOutputSchema>
@@ -442,59 +501,7 @@ export const dealTransferTool: McpToolDefinition<
   parameters: transferDealInputSchema,
   responseSchema: transferDealOutputSchema,
   handler: async (params, context) => {
-    const callerUserId = context.callerType === 'agent' ? `system-${context.callerId}` : context.callerId;
-    const actor: CrmActor = context.callerType === 'agent'
-      ? {
-          kind: 'service',
-          service: 'api',
-          workspaceId: context.workspaceId,
-          allowedWorkspaceIds: [context.workspaceId, params.targetWorkspaceId],
-          onBehalfOf: callerUserId,
-          agentId: context.callerId,
-          toolInvocationId: context.requestId,
-        }
-      : { kind: 'user', uid: context.callerId };
-
-    const result = await transferDealCore(actor, {
-      dealId: params.dealId,
-      mode: params.mode,
-      sourceWorkspaceId: context.workspaceId,
-      targetWorkspaceId: params.targetWorkspaceId,
-      targetPipelineId: params.targetPipelineId,
-      targetStageId: params.targetStageId,
-      assignedTo: params.targetUserId !== undefined
-        ? (params.targetUserId ? { userId: params.targetUserId, name: null, email: null } : null)
-        : undefined,
-      newName: params.newName,
-      summary: params.summary,
-      copyLineItems: params.copyLineItems,
-      copyContacts: params.copyContacts,
-      copyCustomFields: params.copyCustomFields,
-      expectedUpdatedAt: params.expectedUpdatedAt,
-      idempotencyKey: params.idempotencyKey,
-      entityConversionStrategy: params.entityConversionStrategy,
-      focalContactId: params.focalContactId,
-      dryRun: params.dryRun,
-      approvalId: params.approvalId,
-    });
-
-    if (!result.success || (!result.dealId && result.phase !== 'PROPOSAL')) {
-      throw new Error(`[deal.transfer] ${result.error || 'Failed to transfer deal'}`);
-    }
-
-    return {
-      dealId: result.dealId || params.dealId,
-      mode: params.mode,
-      targetWorkspaceId: params.targetWorkspaceId,
-      targetPipelineId: params.targetPipelineId,
-      targetStageId: params.targetStageId,
-      success: true,
-      phase: result.phase || 'COMMITTED',
-      requiresProposal: result.requiresProposal,
-      approvalId: result.approvalId,
-      entityResolution: result.entityResolution,
-      updatedAt: new Date().toISOString(),
-    };
+    return executeDealTransfer(params, context);
   },
 };
 
@@ -511,7 +518,7 @@ export const dealPreviewTransferTool: McpToolDefinition<
   parameters: transferDealInputSchema,
   responseSchema: transferDealOutputSchema,
   handler: async (params, context) => {
-    return dealTransferTool.handler({ ...params, dryRun: true }, context);
+    return executeDealTransfer({ ...params, dryRun: true }, context);
   },
 };
 
