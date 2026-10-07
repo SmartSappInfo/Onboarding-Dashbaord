@@ -31,6 +31,7 @@ import type { Firestore } from 'firebase-admin/firestore';
 import { z } from 'zod/v4';
 import type { CrmActionType, CrmProposedAction } from '@/platform/agents/crm/actions/crm-action-types';
 import type { ProposeCrmActionInput } from '@/platform/agents/crm/actions/crm-proposal-bridge';
+import { readMeetingControls } from '@/platform/policy/ai-data-policy';
 import { readIntelligenceV2 } from './intelligence-store';
 
 export const MEETING_CRM_PROPOSALS = 'meeting_crm_proposals';
@@ -98,6 +99,10 @@ export async function proposeMeetingCrmUpdate(
     expectedVersion?: number;
   }
 ): Promise<{ proposalId: string; replayed: boolean; executable: boolean }> {
+  const controls = await readMeetingControls(db);
+  if (controls.proposalsPaused) {
+    throw new MeetingCrmProposalError('IN_PROGRESS', 'CRM proposals from meetings are temporarily paused by an administrator.');
+  }
   const target = MeetingCrmTargetSchema.parse(params.target);
   const stored = await readIntelligenceV2(db, params.meetingId, params.workspaceId);
   if (!stored) throw new MeetingCrmProposalError('NOT_FOUND', 'This meeting has no analysis yet.');

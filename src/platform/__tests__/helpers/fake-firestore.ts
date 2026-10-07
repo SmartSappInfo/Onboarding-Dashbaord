@@ -131,6 +131,12 @@ export class FakeCollectionRef extends FakeQuery {
     autoId += 1;
     return new FakeDocRef(this.store, `${this.path}/${id ?? `auto-${autoId}`}`);
   }
+
+  async add(data: Data): Promise<FakeDocRef> {
+    const docRef = this.doc();
+    await docRef.set(data);
+    return docRef;
+  }
 }
 
 export interface FakeSnapshot {

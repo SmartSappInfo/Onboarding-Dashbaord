@@ -37,6 +37,10 @@ export type AiDataPolicy = z.infer<typeof AiDataPolicySchema>;
 const MeetingControlsSchema = z.object({
   blockAudioEgress: z.boolean().optional(),
   transcriptionPaused: z.boolean().optional(),
+  meetingAnalystPaused: z.boolean().optional(),
+  pipelineQueuePaused: z.boolean().optional(),
+  autoTriggerDisabled: z.boolean().optional(),
+  proposalsPaused: z.boolean().optional(),
 }).loose();
 export type MeetingControls = z.infer<typeof MeetingControlsSchema>;
 
@@ -83,7 +87,14 @@ export function providersAllowedFor(policy: EffectiveAiDataPolicy, dataClass: Da
 export async function readMeetingControls(db: Firestore): Promise<MeetingControls> {
   const snap = await db.collection('platform_config').doc('meeting_controls').get();
   const parsed = MeetingControlsSchema.safeParse(snap.exists ? snap.data() : {});
-  return parsed.success ? parsed.data : { blockAudioEgress: true, transcriptionPaused: true };
+  return parsed.success ? parsed.data : {
+    blockAudioEgress: true,
+    transcriptionPaused: true,
+    meetingAnalystPaused: true,
+    pipelineQueuePaused: true,
+    autoTriggerDisabled: true,
+    proposalsPaused: true,
+  };
 }
 
 /**

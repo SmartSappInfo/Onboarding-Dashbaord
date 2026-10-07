@@ -30,16 +30,34 @@ import { scheduleTaskWithKey } from '@/lib/gcp-tasks-client';
 import { defaultAuditSink } from '@/platform/capabilities/storage/audit-store';
 import { sha256Hex } from '@/platform/capabilities/contracts/canonical-json';
 import { randomUUID } from 'node:crypto';
+import type { Firestore } from 'firebase-admin/firestore';
+import { INTELLIGENCE_ENDPOINT, INTELLIGENCE_QUEUE } from '@/lib/meetings/intelligence/pipeline';
+import { RUNS } from '@/lib/meetings/intelligence/intelligence-store';
+import { EXTRACT_PROMPT_VERSION, FOLLOWUP_DRAFT_PROMPT_VERSION, SUMMARY_PROMPT_VERSION, promptHash } from '@/lib/meetings/intelligence/prompts';
+import { SHADOW_RUNS } from '@/lib/meetings/intelligence/shadow';
 
 type Result<T> = { success: true; data: T } | { success: false; error: string };
 
 export interface MeetingOpsSnapshot {
-  controls: { transcriptionPaused: boolean; blockAudioEgress: boolean };
+  controls: {
+    transcriptionPaused: boolean;
+    blockAudioEgress: boolean;
+    meetingAnalystPaused: boolean;
+    pipelineQueuePaused: boolean;
+    autoTriggerDisabled: boolean;
+    proposalsPaused: boolean;
+  };
   queue: Array<{ transcriptId: string; workspaceId: string; meetingId: string; status: string; attempts: number; updatedAt: string }>;
   deadLetters: Array<{ transcriptId: string; code: string; message: string; at: string }>;
   usageToday: Array<{ workspaceId: string; minutes: number }>;
   retentionRuns: Array<{ workspaceId: string; mode: string; planned: Record<string, number>; deleted: Record<string, number>; verified: boolean; at: string }>;
   defaultDailyMinutes: number;
+  pipelineRuns: Array<{ runId: string; workspaceId: string; meetingId: string; status: string; step: string; attempts: number; updatedAt: string }>;
+  pipelineDlq: Array<{ runId: string; code: string; message: string; at: string }>;
+  shadowRuns: Array<{ runId: string; workspaceId: string; meetingId: string; promptVersion: string; comparison: unknown; createdAt: string }>;
+  securityFeed: Array<{ alertId: string; type: string; workspaceId: string; meetingId: string; reason: string; timestamp: string }>;
+  promptVersions: Array<{ name: string; version: string; hash: string }>;
+  workspaceOverrides: Array<{ workspaceId: string; promptVersion: string; updatedAt: string }>;
 }
 
 const num = (v: unknown) => (typeof v === 'number' ? v : 0);
@@ -49,17 +67,40 @@ export async function getMeetingOpsSnapshotAction(idToken: string): Promise<Resu
   try {
     await authorizeBackoffice(idToken, 'meetings_monitor', 'view');
     const today = new Date().toISOString().slice(0, 10);
-    const [controls, queueSnap, dlqSnap, usageSnap, runsSnap] = await Promise.all([
+    const [
+      controls,
+      queueSnap,
+      dlqSnap,
+      usageSnap,
+      runsSnap,
+      pipelineRunsSnap,
+      pipelineDlqSnap,
+      shadowSnap,
+      secSnap,
+      overridesSnap,
+    ] = await Promise.all([
       readMeetingControls(adminDb),
       adminDb.collection('meeting_transcripts').where('status', 'in', ['pending', 'processing']).orderBy('updatedAt', 'desc').limit(50).get(),
       adminDb.collection('meeting_transcription_dlq').where('resolved', '==', false).limit(50).get(),
       adminDb.collection('meeting_transcription_usage').where('day', '==', today).orderBy('minutes', 'desc').limit(20).get(),
       adminDb.collection('meeting_retention_runs').orderBy('at', 'desc').limit(20).get(),
+      adminDb.collection(RUNS).orderBy('updatedAt', 'desc').limit(50).get(),
+      adminDb.collection('meeting_intelligence_dlq').where('resolved', '==', false).limit(50).get(),
+      adminDb.collection(SHADOW_RUNS).limit(20).get(),
+      adminDb.collection('meeting_agent_security_feed').limit(20).get(),
+      adminDb.collection('meeting_prompt_overrides').limit(20).get(),
     ]);
     return {
       success: true,
       data: {
-        controls: { transcriptionPaused: controls.transcriptionPaused === true, blockAudioEgress: controls.blockAudioEgress === true },
+        controls: {
+          transcriptionPaused: controls.transcriptionPaused === true,
+          blockAudioEgress: controls.blockAudioEgress === true,
+          meetingAnalystPaused: controls.meetingAnalystPaused === true,
+          pipelineQueuePaused: controls.pipelineQueuePaused === true,
+          autoTriggerDisabled: controls.autoTriggerDisabled === true,
+          proposalsPaused: controls.proposalsPaused === true,
+        },
         queue: queueSnap.docs.flatMap((d) => {
           const h = TranscriptHeaderSchema.safeParse(d.data());
           return h.success ? [{ transcriptId: d.id, workspaceId: h.data.workspaceId, meetingId: h.data.meetingId, status: h.data.status, attempts: h.data.attempts ?? 0, updatedAt: h.data.updatedAt }] : [];
@@ -75,6 +116,62 @@ export async function getMeetingOpsSnapshotAction(idToken: string): Promise<Resu
           };
         }),
         defaultDailyMinutes: DEFAULT_DAILY_MINUTES,
+        pipelineRuns: pipelineRunsSnap.docs.map((d) => {
+          const data = d.data() ?? {};
+          return {
+            runId: d.id,
+            workspaceId: str(data.workspaceId),
+            meetingId: str(data.meetingId),
+            status: str(data.status),
+            step: str(data.step),
+            attempts: num(data.attempts),
+            updatedAt: str(data.updatedAt),
+          };
+        }),
+        pipelineDlq: pipelineDlqSnap.docs.map((d) => {
+          const data = d.data() ?? {};
+          return {
+            runId: d.id,
+            code: str(data.code),
+            message: str(data.message),
+            at: str(data.at),
+          };
+        }),
+        shadowRuns: shadowSnap.docs.map((d) => {
+          const data = d.data() ?? {};
+          return {
+            runId: d.id,
+            workspaceId: str(data.workspaceId),
+            meetingId: str(data.meetingId),
+            promptVersion: str(data.promptVersion),
+            comparison: data.comparison ?? null,
+            createdAt: str(data.createdAt),
+          };
+        }),
+        securityFeed: secSnap.docs.map((d) => {
+          const data = d.data() ?? {};
+          return {
+            alertId: d.id,
+            type: str(data.type),
+            workspaceId: str(data.workspaceId),
+            meetingId: str(data.meetingId),
+            reason: str(data.reason),
+            timestamp: str(data.timestamp),
+          };
+        }),
+        promptVersions: [
+          { name: 'Chunk Extraction', version: EXTRACT_PROMPT_VERSION, hash: promptHash(EXTRACT_PROMPT_VERSION) },
+          { name: 'Summary Synthesis', version: SUMMARY_PROMPT_VERSION, hash: promptHash(SUMMARY_PROMPT_VERSION) },
+          { name: 'Follow-up Draft', version: FOLLOWUP_DRAFT_PROMPT_VERSION, hash: promptHash(FOLLOWUP_DRAFT_PROMPT_VERSION) },
+        ],
+        workspaceOverrides: overridesSnap.docs.map((d) => {
+          const data = d.data() ?? {};
+          return {
+            workspaceId: str(data.workspaceId || d.id),
+            promptVersion: str(data.promptVersion),
+            updatedAt: str(data.updatedAt),
+          };
+        }),
       },
     };
   } catch (err) {
@@ -82,10 +179,27 @@ export async function getMeetingOpsSnapshotAction(idToken: string): Promise<Resu
   }
 }
 
-const ControlsSchema = z.object({ transcriptionPaused: z.boolean().optional(), blockAudioEgress: z.boolean().optional() });
+const ControlsSchema = z.object({
+  transcriptionPaused: z.boolean().optional(),
+  blockAudioEgress: z.boolean().optional(),
+  meetingAnalystPaused: z.boolean().optional(),
+  pipelineQueuePaused: z.boolean().optional(),
+  autoTriggerDisabled: z.boolean().optional(),
+  proposalsPaused: z.boolean().optional(),
+});
 
-/** Kill switches (Rule 60): pause the worker and/or block all audio leaving SmartSapp. */
-export async function setMeetingControlsAction(idToken: string, controls: { transcriptionPaused?: boolean; blockAudioEgress?: boolean }): Promise<Result<{ saved: true }>> {
+/** Kill switches (Rule 60): pause transcription, agent, pipeline, auto-trigger or CRM proposals. */
+export async function setMeetingControlsAction(
+  idToken: string,
+  controls: {
+    transcriptionPaused?: boolean;
+    blockAudioEgress?: boolean;
+    meetingAnalystPaused?: boolean;
+    pipelineQueuePaused?: boolean;
+    autoTriggerDisabled?: boolean;
+    proposalsPaused?: boolean;
+  }
+): Promise<Result<{ saved: true }>> {
   try {
     const actor = await authorizeBackoffice(idToken, 'meetings_monitor', 'execute');
     const parsed = ControlsSchema.parse(controls);
@@ -212,5 +326,96 @@ export async function runWorkspaceRetentionNowAction(idToken: string, workspaceI
     return { success: true, data: { deleted: run.deleted, mode: run.mode } };
   } catch (err) {
     return { success: false, error: getErrorMessage(err) };
+  }
+}
+
+/** Manual recovery for meeting intelligence (Rule 25): requeue a dead-lettered analysis run. */
+export async function reprocessPipelineDeadLetterAction(idToken: string, runId: string): Promise<Result<{ requeued: boolean }>> {
+  try {
+    const actor = await authorizeBackoffice(idToken, 'meetings_monitor', 'execute');
+    const id = z.string().min(1).max(200).regex(/^[^/]+$/).parse(runId);
+    const ref = adminDb.collection(RUNS).doc(id);
+    const version = await adminDb.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const r = snap.exists ? snap.data() : null;
+      if (!r || r.status !== 'dead_lettered') return null;
+      const next = (Number(r.version) || 0) + 1;
+      const { error: _prevError, ...rest } = r;
+      tx.set(ref, { ...rest, status: 'pending', attempts: 0, version: next, updatedAt: new Date().toISOString() });
+      return next;
+    });
+    if (version === null) return { success: true, data: { requeued: false } };
+    await scheduleTaskWithKey(`${id}-v${version}`, INTELLIGENCE_QUEUE, INTELLIGENCE_ENDPOINT, { runId: id });
+    await adminDb.collection('meeting_intelligence_dlq').doc(id).set({ resolved: true, resolution: 'reprocessed', resolvedAt: new Date().toISOString() }, { merge: true });
+    await logBackofficeAction(actor, 'intelligence_dlq.reprocess', 'meeting_intelligence_run', id, { scope: 'platform' });
+    return { success: true, data: { requeued: true } };
+  } catch (err) {
+    return { success: false, error: getErrorMessage(err) };
+  }
+}
+
+export async function discardPipelineDeadLetterAction(idToken: string, runId: string): Promise<Result<{ discarded: true }>> {
+  try {
+    const actor = await authorizeBackoffice(idToken, 'meetings_monitor', 'execute');
+    const id = z.string().min(1).max(200).regex(/^[^/]+$/).parse(runId);
+    await adminDb.collection('meeting_intelligence_dlq').doc(id).set({ resolved: true, resolution: 'discarded', resolvedAt: new Date().toISOString() }, { merge: true });
+    await logBackofficeAction(actor, 'intelligence_dlq.discard', 'meeting_intelligence_run', id, { scope: 'platform' });
+    return { success: true, data: { discarded: true } };
+  } catch (err) {
+    return { success: false, error: getErrorMessage(err) };
+  }
+}
+
+/** Pin a workspace to a specific extraction/summary prompt version (Rules 58, 65). */
+export async function pinMeetingPromptVersionAction(idToken: string, workspaceId: string, promptVersion: string): Promise<Result<{ pinned: true }>> {
+  try {
+    const actor = await authorizeBackoffice(idToken, 'meetings_monitor', 'edit');
+    const ws = z.string().min(1).max(200).regex(/^[^/]+$/).parse(workspaceId);
+    const pv = z.string().min(1).max(100).parse(promptVersion);
+    const ref = adminDb.collection('meeting_prompt_overrides').doc(ws);
+    const before = (await ref.get()).data() ?? null;
+    const after = { workspaceId: ws, promptVersion: pv, updatedAt: new Date().toISOString() };
+    await ref.set(after);
+    await logBackofficeAction(actor, 'meeting_prompt_override.pin', 'workspace', ws, { scope: 'workspace', scopeId: ws, before, after });
+    return { success: true, data: { pinned: true } };
+  } catch (err) {
+    return { success: false, error: getErrorMessage(err) };
+  }
+}
+
+/** Unpin/reset a workspace's prompt version override back to canonical default. */
+export async function unpinMeetingPromptVersionAction(idToken: string, workspaceId: string): Promise<Result<{ unpinned: true }>> {
+  try {
+    const actor = await authorizeBackoffice(idToken, 'meetings_monitor', 'edit');
+    const ws = z.string().min(1).max(200).regex(/^[^/]+$/).parse(workspaceId);
+    const ref = adminDb.collection('meeting_prompt_overrides').doc(ws);
+    const before = (await ref.get()).data() ?? null;
+    await ref.delete();
+    await logBackofficeAction(actor, 'meeting_prompt_override.unpin', 'workspace', ws, { scope: 'workspace', scopeId: ws, before, after: null });
+    return { success: true, data: { unpinned: true } };
+  } catch (err) {
+    return { success: false, error: getErrorMessage(err) };
+  }
+}
+
+/** Records a security event to the meeting agent security feed (Rule 62). */
+export async function recordMeetingSecurityAlert(
+  db: Firestore,
+  alert: {
+    type: 'injection_flagged' | 'fabrication_detected' | 'egress_blocked' | 'recipient_refused' | 'self_approval_blocked' | 'tampering_detected';
+    workspaceId: string;
+    meetingId: string;
+    reason: string;
+  }
+): Promise<void> {
+  try {
+    const alertId = `sec_${randomUUID().replace(/-/g, '')}`;
+    await db.collection('meeting_agent_security_feed').doc(alertId).set({
+      alertId,
+      ...alert,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.warn('[meeting-security] could not write security alert', err);
   }
 }

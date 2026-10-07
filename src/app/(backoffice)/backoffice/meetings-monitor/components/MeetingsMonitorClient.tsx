@@ -35,6 +35,7 @@ import ActiveRoomsGrid from './ActiveRoomsGrid';
 import MagicLinkDeliveryInspector from './MagicLinkDeliveryInspector';
 import IntegrationSentinelInspector from './IntegrationSentinelInspector';
 import TranscriptionOpsPanel from './TranscriptionOpsPanel';
+import MeetingAgentOpsPanel from './MeetingAgentOpsPanel';
 
 export default function MeetingsMonitorClient() {
   const getToken = useBackofficeToken();
@@ -183,6 +184,9 @@ export default function MeetingsMonitorClient() {
 
       {/* Phase 11 M1 · T9: transcription & retention control plane (real data) */}
       <TranscriptionOpsPanel />
+
+      {/* Phase 11 M2 · T7: meeting agent & pipeline operations (real data) */}
+      <MeetingAgentOpsPanel />
 
       {/* Integration Sentinel & Token Health Section */}
       <div className="pt-2">

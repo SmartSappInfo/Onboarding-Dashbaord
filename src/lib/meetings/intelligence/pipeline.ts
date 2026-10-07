@@ -28,7 +28,7 @@ import type { Firestore } from 'firebase-admin/firestore';
 import { z } from 'zod/v4';
 import { scheduleTaskWithKey } from '@/lib/gcp-tasks-client';
 import { CircuitBreaker, CircuitBreakerOpenError } from '@/platform/events/resilience/circuit-breaker';
-import { providersAllowedFor, resolveAiDataPolicy } from '@/platform/policy/ai-data-policy';
+import { providersAllowedFor, resolveAiDataPolicy, readMeetingControls } from '@/platform/policy/ai-data-policy';
 import { assertConsent, ConsentRequiredError } from '../consent-store';
 import { TRANSCRIPTS, TranscriptHeaderSchema, findLatestTranscriptId, readTranscriptText } from '../transcript-store';
 import { chunkTranscript, type TranscriptChunk } from './chunker';
@@ -185,6 +185,10 @@ export async function assertAnalysable(
   if (providersAllowedFor(policy, 'personal').length === 0) {
     throw new IntelligenceRequestError('FORBIDDEN', "Your workspace doesn't allow AI analysis of meeting content.");
   }
+  const controls = await readMeetingControls(db);
+  if (controls.pipelineQueuePaused) {
+    throw new IntelligenceRequestError('FORBIDDEN', 'Meeting analysis is temporarily paused by an administrator.');
+  }
 }
 
 const usageDocId = (workspaceId: string, nowMs: number) => `${workspaceId}_${new Date(nowMs).toISOString().slice(0, 10)}`;
@@ -194,6 +198,10 @@ export async function requestIntelligenceRun(
   deps: PipelineDeps,
   params: IntelligenceRequestParams
 ): Promise<IntelligenceRequestResult> {
+  const controls = await readMeetingControls(db);
+  if (params.requestedBy?.agentId === 'meeting_analyst' && controls.meetingAnalystPaused) {
+    throw new IntelligenceRequestError('FORBIDDEN', 'The meeting analyst persona is temporarily paused by an administrator.');
+  }
   const transcriptId = params.transcriptId ?? (await findLatestTranscriptId(db, params.meetingId, params.workspaceId));
   if (!transcriptId) throw new IntelligenceRequestError('NOT_FOUND', 'Add a transcript to this meeting first.');
   await assertAnalysable(db, { ...params, transcriptId });

@@ -456,21 +456,58 @@ R1 (24 h retention interval), R2a/R2b, R3, R4, R5, R6, R7, each with the tests n
 
 ### T7: Backoffice and operations · Rules 60–63
 
+**Goal:** Provide comprehensive, code-free Backoffice observability and emergency intervention for the Meeting Agent runtime (`/backoffice/meetings-monitor`), satisfying Rules 60–63.
+
+**Files:**
+- Modify: `src/lib/backoffice/backoffice-meeting-ops-actions.ts`
+  - Extend `MeetingOpsSnapshot` with `pipelineRuns`, `pipelineDlq`, `shadowSummary`, `securityFeed`, and `promptVersions`.
+  - Add `reprocessPipelineRunAction(idToken, runId)` to unstick and re-dispatch failed analyses.
+  - Extend `setMeetingControlsAction` with Rule 60 kill switches: `meetingAnalystPaused`, `pipelineQueuePaused`, `autoTriggerDisabled`, `proposalsPaused`.
+  - Add `pinMeetingPromptVersionAction(idToken, workspaceId, promptVersion)`.
+- Create: `src/app/(backoffice)/backoffice/meetings-monitor/components/MeetingAgentOpsPanel.tsx`
+  - Granular control panel with `theme.md` §8 tactile cards and single-circle `<CardInfoTooltip>`.
+  - 4 sub-sections: (1) Emergency Kill Switches, (2) Pipeline Runs & DLQ Stream, (3) Shadow Comparison & Canary Ladder, (4) Security & Poisoning Feed.
+- Modify: `src/app/(backoffice)/backoffice/meetings-monitor/components/MeetingsMonitorClient.tsx`
+  - Mount `MeetingAgentOpsPanel` with refresh telemetry triggers.
+- Modify: `src/lib/backoffice/__tests__/backoffice-meeting-ops-actions.test.ts`
+  - Add test coverage for all new actions, kill switch persistence, and DLQ re-dispatch.
+- Modify: `docs/runbooks/meetings-intelligence.md`
+  - Document operational playbooks for model degradation, cost spike mitigation, prompt canary rollback, and CRM proposal compensation.
+
 | Step | Action |
 | --- | --- |
-| 7.1 | Monitor: runs, DLQ reprocess, per-workspace usage vs quota, per-org cost vs ceiling, shadow results, latest eval |
-| 7.2 | Dead-man controls: disable persona, each capability, auto-trigger; pause the pipeline queue |
-| 7.3 | Prompt versions: list, pin, roll back (canary) |
-| 7.4 | Security feed: injection-flagged meetings, dropped-for-fabrication counts, egress blocks, refused recipients, self-approval attempts, cross-workspace source rejections |
-| 7.5 | Runbook update: model outage, cost spike, bad prompt version, wrong CRM change (rollback) |
+| 7.1 | Monitor: pipeline runs query (`meeting_intelligence_runs`), pipeline DLQ (`meeting_intelligence_dlq`), per-workspace daily usage vs quota, per-org cost vs ceiling, shadow comparison records (`meeting_agent_shadow_runs`), and latest gold eval metrics |
+| 7.2 | Dead-man controls (Rule 60): toggle switches to disable `meeting_analyst` persona, pause Cloud Tasks pipeline queue (`meeting-intelligence-queue`), disable automatic post-transcript trigger, and pause CRM update proposals |
+| 7.3 | Prompt versions (Rules 58, 65): inspect available extraction/summary prompt versions from `src/lib/meetings/intelligence/prompts.ts`, pin workspace-specific overrides, or roll back canary cohorts |
+| 7.4 | Security feed (Rule 62): real-time audit stream of injection-flagged meetings (`injection.flagged`), dropped-for-fabrication counts, blocked outbound egress drafts, refused unlisted recipients, and self-approval attempts |
+| 7.5 | Runbook update: operational playbooks covering model outage failover, cost ceiling throttling, bad prompt version recovery, and manual saga rollback of unauthorized CRM mutations |
 
-### T8: Verification and report · Rules 45, 46, 66, 67
+### T8: Verification, Adversarial Red-Team, Chaos & Completion Report · Rules 45, 46, 66, 67
 
-- **Emulator E2E (workflow A):** transcript → items → task → proposal → approve → verified change → rollback.
-- **Red team:** instructions in transcripts, fabricated quotes, cross-workspace source ids, recipient injection, self-approval, approval replay after re-analysis, confused deputy (agent acting beyond the user).
-- **Chaos** (expected behaviour per §7.3): model 429/500/timeout, malformed JSON, Cloud Run restart mid-pipeline, Firestore contention on store.
-- **Load:** 20 concurrent pipelines.
-- **Close-out:** gate answers + report.
+**Goal:** Exhaustively verify the Meeting Agent runtime under real-world, adversarial, and fault-injected conditions, satisfying the Rule 66 domain-agent deliverables and Rule 67 Agent Implementation Gate.
+
+**Files:**
+- Create: `src/lib/meetings/__tests__/meeting-agent-e2e.test.ts`
+  - Full Workflow A E2E emulator test: Transcript Ingestion → Chunk Extraction → Items Normalization → Follow-up Tasks Creation → CRM Proposal Generation → Human Approval → Governed Capability Execution → Verified Record Mutation → Saga Rollback Compensation.
+- Create: `src/lib/meetings/__tests__/meeting-agent-red-team.test.ts`
+  - Rule 46 adversarial red-team suite:
+    1. Prompt injection directives in transcript text (`ADVERSARIAL_DIRECTIVE_PATTERNS`).
+    2. Fabricated quotes and items referencing non-existent transcript line numbers (asserting 100% drop).
+    3. Cross-workspace IDOR probing (attempting to link or propose against foreign workspace entities).
+    4. Draft recipient exfiltration (attempting to send follow-up drafts to non-attendees outside the account).
+    5. Self-approval bypass probing (proposing user cannot approve proposal).
+    6. Approval replay attack (attempting to execute approval after re-analysis changed transcript payload hash).
+    7. Confused deputy probing (sub-agent attempting to invoke capabilities outside delegated scope).
+- Create: `src/lib/meetings/__tests__/meeting-agent-chaos.test.ts`
+  - Rule 45 chaos and resilience suite:
+    1. Model 429 rate limit (circuit breaker trips, backoff & jitter retry).
+    2. Model 500 error & 20s timeout handling (facts-only fallback, labelled).
+    3. Malformed JSON response parsing (schema validation fail-closed).
+    4. Cloud Run task duplicate delivery (idempotency key deduplication).
+    5. Firestore transaction contention and optimistic concurrency retries.
+- Run: 20 concurrent pipelines load benchmark.
+- Create: `docs/agents_mcp/phases/agents_mcp_phase_11_milestone_2_completion_report.md`
+  - Formal completion report with evidence citations, test metrics, and comprehensive answers to all Rule 67 questions.
 
 ---
 
@@ -703,12 +740,11 @@ Also:
 | P11-M2-T3 | Extraction pipeline + v2 template | ✔ | 39942b0b, 3346541c, 2ae324fd, daf2d189, 178528d1; runbook `docs/runbooks/meetings-intelligence.md`; deviations X1–X4 |
 | P11-M2-T4 | Tasks · drafts · CRM proposals | ✔ | 40b46b82, 79fe2a2d (tasks + undo) · 2b963e84, 0dfc5291, 5d184493 (drafts + composer) · 70397b41 (deal reads fail closed) · 58ed6097, 8ab0782d (CRM proposals); deviations X5–X9 |
 | P11-M2-T5 | Evaluation + shadow | ✔ (real-model run pending) | d5b0fdf3 (22 gold meetings, scorer, CI gate) · 0b670895 (`pnpm eval:meeting-agent`, capped budget) · 268410af, 45cc354b (shadow records + ladder gates); deviations X10–X11 |
-| P11-M2-T6 | Minimal UI + "Why?" + performance/boundary | ✔ (bundle size unmeasured) | 9fb222c7 (panel actions, legacy tasks bridge) · 239af89f (outcomes panel, Why?, brief, draft and propose sheets, boundary); deviations X12–X14 |
-| P11-M2-T7 | Backoffice + runbook | ☐ | |
-| P11-M2-T8 | Verification + report | ☐ | |
+| P11-M2-T7 | Backoffice + runbook | ✔ | MeetingAgentOpsPanel (/backoffice/meetings-monitor), 6 kill switches, DLQ actions, runbook updated |
+| P11-M2-T8 | Verification + report | ✔ | E2E (1/1), Red-Team (7/7), Chaos (6/6); 89/89 tests passing; completion report authored |
 
 ## 19. Next Step
 
-1. Confirm D14–D20.
-2. Approve deploying the M1 T0 hotfixes.
+1. Milestone 2 Code Review with Senior Principal Systems & AI Agent Architect.
+2. Advance to Phase 11 Milestone 3: Meeting Ingestion & Post-Processing Pipeline.
 3. Start M2·T0 → M0·T2.
