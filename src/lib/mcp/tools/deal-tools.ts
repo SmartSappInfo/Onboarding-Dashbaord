@@ -434,7 +434,7 @@ export const dealTransferTool: McpToolDefinition<
       targetPipelineId: params.targetPipelineId,
       targetStageId: params.targetStageId,
       assignedTo: params.targetUserId !== undefined
-        ? (params.targetUserId ? { userId: params.targetUserId } : null)
+        ? (params.targetUserId ? { userId: params.targetUserId, name: null, email: null } : null)
         : undefined,
       newName: params.newName,
       summary: params.summary,
@@ -445,18 +445,18 @@ export const dealTransferTool: McpToolDefinition<
       idempotencyKey: params.idempotencyKey,
     });
 
-    if (!result.success) {
+    if (!result.success || !result.dealId) {
       throw new Error(`[deal.transfer] ${result.error || 'Failed to transfer deal'}`);
     }
 
     return {
       dealId: result.dealId,
-      mode: result.mode,
-      targetWorkspaceId: result.targetWorkspaceId,
-      targetPipelineId: result.targetPipelineId,
-      targetStageId: result.targetStageId,
+      mode: params.mode,
+      targetWorkspaceId: params.targetWorkspaceId,
+      targetPipelineId: params.targetPipelineId,
+      targetStageId: params.targetStageId,
       success: true,
-      updatedAt: result.updatedAt,
+      updatedAt: new Date().toISOString(),
     };
   },
 };
