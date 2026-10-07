@@ -465,7 +465,7 @@ export class AccountFinanceAssembler {
               accountId: typeof data.accountId === 'string' ? data.accountId : `fa_${entityId}`,
               amount: typeof data.amount === 'number' ? data.amount : 0,
               currency: typeof data.currency === 'string' ? data.currency : 'GHS',
-              paymentMethod: typeof data.paymentMethod === 'string' ? data.paymentMethod : 'bank_transfer',
+              paymentMethod: typeof data.paymentMethod === 'string' ? (data.paymentMethod as PaymentSummary['paymentMethod']) : 'bank_transfer',
               status: typeof data.status === 'string' ? (data.status as PaymentSummary['status']) : 'recorded',
               receivedAt: typeof data.receivedAt === 'string' ? data.receivedAt : new Date().toISOString(),
               allocatedAmount: typeof data.allocatedAmount === 'number' ? data.allocatedAmount : 0,
