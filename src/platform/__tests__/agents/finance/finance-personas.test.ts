@@ -15,9 +15,9 @@ import {
   FINANCE_PERSONA_IDS,
   FINANCE_PERSONA_DEFINITIONS,
   isFinancePersonaId,
-} from '../../agents/finance/personas/finance-persona-definitions';
-import { getAgentPersonaRegistry } from '../../identity/agent-registry';
-import { AGENT_PERSONA_IDS } from '../../identity/agent-persona-types';
+} from '@/platform/agents/finance/personas/finance-persona-definitions';
+import { getAgentPersonaRegistry } from '@/platform/identity/agent-registry';
+import { AGENT_PERSONA_IDS } from '@/platform/identity/agent-persona-types';
 
 describe('Finance & School Operations Persona Definitions & Identity Registry', () => {
   it('exposes all 9 canonical persona definitions with valid structures', () => {

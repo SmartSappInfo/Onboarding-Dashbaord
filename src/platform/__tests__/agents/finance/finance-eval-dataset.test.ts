@@ -17,7 +17,7 @@ import {
   getFinanceEvalScenario,
   listFinanceEvalScenarios,
   getFinanceEvalDatasetMetrics,
-} from '../../agents/finance/evaluation/finance-eval-dataset';
+} from '@/platform/agents/finance/evaluation/finance-eval-dataset';
 
 describe('Finance Evaluation Dataset (Phase 12 Milestone 2)', () => {
   it('contains exactly 24 enterprise scenarios conforming to FinanceEvalScenarioSchema', () => {

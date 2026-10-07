@@ -19,7 +19,7 @@ import {
   NON_DELEGABLE_FINANCE_ACTIONS,
   FinanceShadowSimulationResultSchema,
   SimulatedFinanceStepInput,
-} from '../../agents/finance/evaluation/finance-shadow-mode';
+} from '@/platform/agents/finance/evaluation/finance-shadow-mode';
 import { clearDeadManSwitchOverride } from '@/platform/policy/governance-dead-man';
 
 describe('FinanceShadowRunner (Phase 12 Milestone 2)', () => {

@@ -24,8 +24,8 @@ import {
   resolveFinanceFailureStrategy,
   getPersonaAllowedCapabilities,
   getPersonaPermissionList,
-} from '../../agents/finance/personas/finance-agent-matrix';
-import { FINANCE_PERSONA_IDS } from '../../agents/finance/personas/finance-persona-definitions';
+} from '@/platform/agents/finance/personas/finance-agent-matrix';
+import { FINANCE_PERSONA_IDS } from '@/platform/agents/finance/personas/finance-persona-definitions';
 
 describe('Finance & School Operations Governance Matrices', () => {
   it('defines explicit non-wildcard permissions for every persona (Rule 16)', () => {
