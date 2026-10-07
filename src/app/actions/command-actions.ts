@@ -36,6 +36,7 @@ import { checkGovernanceDeadManSwitch } from '@/platform/policy/governance-dead-
 import { defaultEventBus } from '@/platform/events/event-bus';
 import { createDomainEvent } from '@/platform/capabilities/events/domain-event';
 import { getCanonicalMemoryService } from '@/platform/memory';
+import { getKnowledgeAgentService } from '@/platform/domains/knowledge_memory/services/knowledge-agent-service';
 import { getAgentRunStore } from '@/platform/runtime/agent-run-store';
 import { getWorkflowStore } from '@/platform/workflows/workflow-store';
 import { z } from 'zod/v4';
@@ -185,23 +186,28 @@ export async function executeCommandAction(
     // Route command according to its canonical intent taxonomy
     switch (input.intent) {
       case 'SEARCH': {
-        const memoryService = getCanonicalMemoryService();
-        const pkg = await memoryService.retrieveContext({
+        const knowledgeService = getKnowledgeAgentService();
+        const answerContract = await knowledgeService.synthesizeAnswer({
           organizationId: input.organizationId,
           workspaceId: input.workspaceId,
           query: input.prompt,
-          maxTokens: 4000,
         });
 
         executionResult = {
           executionId,
           status: 'completed',
           intent: 'SEARCH',
-          summary: `Found ${pkg.evidencePack.items.length} relevant institutional knowledge items and vectors.`,
+          summary:
+            answerContract.coverage === 'no_evidence'
+              ? 'No relevant knowledge base evidence found for this query.'
+              : answerContract.answer,
           data: {
-            itemCount: pkg.evidencePack.items.length,
-            sources: pkg.evidencePack.citations.map((c) => c.sourceId),
-            confidenceSummary: `Found ${pkg.evidencePack.itemCount} relevant institutional memory items.`,
+            coverage: answerContract.coverage,
+            claims: answerContract.claims,
+            citations: answerContract.citations,
+            itemCount: answerContract.contextSummary.includedCount,
+            sources: answerContract.citations.map((c) => c.sourceId),
+            confidenceSummary: `Found ${answerContract.contextSummary.includedCount} relevant items with ${Math.round(answerContract.citationPrecision * 100)}% citation precision.`,
           },
           redirectUrl: `/admin/brain?q=${encodeURIComponent(input.prompt)}`,
           executedAt: new Date().toISOString(),
@@ -210,22 +216,24 @@ export async function executeCommandAction(
       }
 
       case 'ANALYZE': {
-        const memoryService = getCanonicalMemoryService();
-        const pkg = await memoryService.retrieveContext({
+        const knowledgeService = getKnowledgeAgentService();
+        const answerContract = await knowledgeService.synthesizeAnswer({
           organizationId: input.organizationId,
           workspaceId: input.workspaceId,
           query: input.prompt,
-          maxTokens: 4000,
         });
 
         executionResult = {
           executionId,
           status: 'completed',
           intent: 'ANALYZE',
-          summary: `Synthesized intelligence report with ${pkg.evidencePack.items.length} citations.`,
+          summary: `Synthesized intelligence report with ${answerContract.citations.length} verified citations.`,
           data: {
-            analysis: pkg.evidencePack.promptContext || 'Contextual analysis compiled from workspace data.',
-            citationCount: pkg.evidencePack.citations.length,
+            analysis: answerContract.answer,
+            citationCount: answerContract.citations.length,
+            claims: answerContract.claims,
+            conflictsDetected: answerContract.conflictsDetected,
+            contextSummary: answerContract.contextSummary,
           },
           redirectUrl: `/admin/intelligence?view=analysis&execId=${executionId}`,
           executedAt: new Date().toISOString(),
