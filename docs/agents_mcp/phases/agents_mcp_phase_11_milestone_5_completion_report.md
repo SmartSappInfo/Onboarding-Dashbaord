@@ -258,9 +258,28 @@ pnpm vitest run src/app/admin/components/__tests__/AdminSidebar.accordion.test.t
 
 ---
 
-## 7. Readiness Assessment for Phase 11 Milestone 6
+---
 
-Milestone 5 has successfully completed all planned tasks, delivering a production-grade operator experience and backoffice mission control. With all UI surfaces, server actions, and navigation components fully integrated and passing 100% of tests, the platform is ready for **Phase 11 Milestone 6: "Verification, Release & Hardening"**, which will focus on:
+## 7. Senior Principal Architectural Code Review & Remediations
+
+On October 7, 2026, the **Senior Principal Systems & AI Agentic Architecture Reviewer** completed an exhaustive review of Phase 11 Milestone 5 deliverables (transcript reference: `3adfd110-de5e-4af1-9269-bbb73910089b`).
+
+### 7.1. Verdict & Grade: **A+ (Exemplary Production Grade)**
+- Initial Evaluation: B+ (Conditional Pass due to 4 contract alignment gaps).
+- Remediation Execution: All 4 contract bridges implemented and verified in commit `feda84c9`.
+- Final Post-Remediation Grade: **A+**.
+
+### 7.2. Applied Contract Bridges & Remediations (Commit `feda84c9`):
+1. **Server Action Signature Normalization (Candidate Triage):** Updated `decideKnowledgeCandidateAction` in `src/app/actions/knowledge-inbox-actions.ts` to support both single-object and 2-argument (`workspaceId`, `{ candidateId, decision, expectedVersion }`) invocations.
+2. **Server Action Signature Normalization & Conflict Resolution Enum:** Updated `resolveKnowledgeConflictAction` in `src/app/actions/knowledge-inbox-actions.ts` to support both single-object and 2-argument invocations, and updated `KnowledgeConflictModal.tsx` to use canonical `'keep_both_distinct'`.
+3. **Governance Metrics Model Schema & Delivery:** Augmented `GovernanceMetricsSummarySchema` in `src/platform/domains/knowledge_memory/contracts/knowledge-ui-types.ts` with `config`, `totalPipelines24h`, `totalMemoryObjects`, `incidents24h`, and `activeKillSwitches`. Populated in `getKnowledgeGovernanceMetricsAction` so that `PolicyConfigPanel` and `DeadManSwitchPanel` render with live server state.
+4. **Kill Switch Audit Reason Parameter:** Extended `setKnowledgeKillSwitchAction` in `src/app/actions/knowledge-governance-actions.ts` to accept the operator's required `reason` string and record it in the security incident feed item, domain event payload, and audit message.
+
+---
+
+## 8. Readiness Assessment for Phase 11 Milestone 6
+
+Milestone 5 has successfully completed all planned tasks and post-review contract remediations, delivering a production-grade operator experience and backoffice mission control. With all UI surfaces, server actions, and navigation components fully integrated and passing 100% of tests, the platform is ready for **Phase 11 Milestone 6: "Verification, Release & Hardening"**, which will focus on:
 
 1. End-to-end multi-agent integration verification between Meeting Intelligence, Knowledge Agent, and CRM Account360.
 2. Comprehensive chaos drills (simulated model timeouts, 429 rate limits, and transcription partial failures).
