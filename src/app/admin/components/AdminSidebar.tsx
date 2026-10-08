@@ -82,6 +82,7 @@ import {
     Scale,
     HandCoins,
     LineChart,
+    Activity,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import UnifiedOrgWorkspaceSwitcher from './UnifiedOrgWorkspaceSwitcher';
@@ -223,6 +224,7 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
     { href: wrapHref('/admin/intelligence'), icon: Sparkles, label: 'Command Center', visible: can('operations', 'intelligence', 'view') || isSystemAdmin },
     { href: wrapHref('/admin/intelligence/organization'), icon: Network, label: 'Organization Swarm', visible: can('operations', 'intelligence', 'view') || isSystemAdmin },
     { href: wrapHref('/admin/intelligence/runs'), icon: Play, label: 'Agent Runs', visible: can('operations', 'intelligence', 'view') || isSystemAdmin },
+    { href: wrapHref('/admin/intelligence/health'), icon: Activity, label: 'Agent Health', visible: can('operations', 'intelligence', 'view') || isSystemAdmin },
     { href: wrapHref('/admin/intelligence/agents'), icon: Bot, label: 'Agent Studio', visible: can('operations', 'intelligence', 'view') || isSystemAdmin },
     { href: wrapHref('/admin/intelligence/knowledge/inbox'), icon: Inbox, label: 'Knowledge Inbox', visible: can('operations', 'intelligence', 'view') || isSystemAdmin },
     { href: wrapHref('/admin/intelligence/knowledge/graph'), icon: Share2, label: 'Knowledge Graph', visible: can('operations', 'intelligence', 'view') || isSystemAdmin },

@@ -29,6 +29,8 @@ const ALLOWLIST: Record<string, { count: number; reason: 'gateway' | 'not-a-capa
   // Debt (needs M0 T2 unified approvals): the loop's legacy action-proposal approvals are not yet
   // gateway-verifiable approvals, so routing it now would refuse every approved high-risk step.
   'platform/runtime/execution/agent-execution-loop.ts': { count: 1, reason: 'debt' },
+  // Debt (Phase 14 M3): direct handler execution until unified compensation gateway is integrated.
+  'platform/verification/saga/saga-compensation-service.ts': { count: 1, reason: 'debt' },
 };
 
 function walk(dir: string): string[] {
