@@ -70,9 +70,9 @@ export const ExecuteCompensationInputSchema = z.object({
   organizationId: z.string().min(1, 'Organization ID is required'),
   workspaceId: z.string().min(1, 'Workspace ID is required'),
   reason: z.string().min(1, 'Compensation reason is required'),
-  dryRun: z.boolean().default(false),
+  dryRun: z.boolean().optional().default(false),
 });
-export type ExecuteCompensationInput = z.infer<typeof ExecuteCompensationInputSchema>;
+export type ExecuteCompensationInput = z.input<typeof ExecuteCompensationInputSchema>;
 
 export const ExecuteCompensationOutputSchema = SagaCompensationResultSchema;
 export type ExecuteCompensationOutput = SagaCompensationResult;
@@ -130,8 +130,7 @@ export const sagaExecuteCompensationCapability: CapabilityDefinition<
         workspaceId: input.workspaceId,
         reason: input.reason,
         dryRun: input.dryRun,
-      },
-      { signal: context.signal }
+      }
     );
 
     return {

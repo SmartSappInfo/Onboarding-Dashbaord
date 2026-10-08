@@ -299,7 +299,7 @@ export async function recordSagaStepAction(
 
     // 4. Record Saga Step
     const service = getSagaCompensationService();
-    const stepId = await service.recordStep({
+    const record = await service.recordStep({
       runId: input.runId,
       stepIndex: input.stepIndex,
       capabilityId: input.capabilityId,
@@ -320,7 +320,7 @@ export async function recordSagaStepAction(
       success: true,
       data: {
         recorded: true,
-        stepId,
+        stepId: record.stepId,
       },
     };
   } catch (err: unknown) {

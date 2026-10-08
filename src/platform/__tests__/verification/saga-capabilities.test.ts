@@ -140,13 +140,7 @@ describe('Phase 14 Milestone 3 - Canonical Saga Capabilities', () => {
     });
 
     it('enforces Rule 60 Emergency Dead-Man switch failure', async () => {
-      setGovernanceDeadManStateForTests({
-        active: true,
-        reason: 'Security breach containment',
-        activatedAt: '2026-10-08T12:00:00.000Z',
-        activatedBy: 'sec_admin',
-        scope: 'global',
-      });
+      setGovernanceDeadManStateForTests(true);
 
       await expect(
         sagaExecuteCompensationCapability.handler(

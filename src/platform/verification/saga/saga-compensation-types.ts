@@ -16,7 +16,8 @@
  */
 
 import { z } from 'zod';
-import { ResourceSnapshotSchema } from '../concurrency/state-version-types';
+import { ResourceSnapshotSchema, type ResourceSnapshot } from '../concurrency/state-version-types';
+export { ResourceSnapshotSchema, type ResourceSnapshot };
 
 // ============================================================================
 // 1. SAGA STEP STATUS & REVERSIBILITY ENUMS (Rules 12, 54)
@@ -79,6 +80,9 @@ export const SagaStepExecutionRecordSchema = z.object({
   organizationId: z.string().min(1, 'Organization ID is required'),
   workspaceId: z.string().min(1, 'Workspace ID is required'),
   actorId: z.string().min(1, 'Actor ID is required'),
+  actorType: z.enum(['user', 'agent', 'system']).optional(),
+  domain: z.string().optional(),
+  actionType: z.string().optional(),
   inputPayload: z.record(z.string(), z.unknown()),
   outputPayload: z.record(z.string(), z.unknown()).optional(),
   preStateSnapshot: ResourceSnapshotSchema.optional(),
@@ -162,24 +166,28 @@ export const CompensateRunInputSchema = z.object({
   organizationId: z.string().min(1, 'Organization ID is required'),
   workspaceId: z.string().min(1, 'Workspace ID is required'),
   reason: z.string().min(1, 'Compensation reason is required'),
-  dryRun: z.boolean().default(false),
+  dryRun: z.boolean().optional().default(false),
 });
-export type CompensateRunInput = z.infer<typeof CompensateRunInputSchema>;
+export type CompensateRunInput = z.input<typeof CompensateRunInputSchema>;
 
 export const RecordSagaStepInputSchema = z.object({
+  stepId: z.string().optional(),
   runId: z.string().min(1, 'Run ID is required'),
   stepIndex: z.number().int().nonnegative(),
   capabilityId: z.string().min(1, 'Capability ID is required'),
+  domain: z.string().optional(),
+  actionType: z.enum(['create', 'update', 'delete', 'custom']).optional(),
   organizationId: z.string().min(1, 'Organization ID is required'),
   workspaceId: z.string().min(1, 'Workspace ID is required'),
   actorId: z.string().min(1, 'Actor ID is required'),
+  actorType: z.enum(['user', 'agent', 'system']).optional().default('user'),
   inputPayload: z.record(z.string(), z.unknown()),
   outputPayload: z.record(z.string(), z.unknown()).optional(),
   preStateSnapshot: ResourceSnapshotSchema.optional(),
   postStateSnapshot: ResourceSnapshotSchema.optional(),
-  status: SagaStepStatusSchema.default('COMPLETED'),
+  status: SagaStepStatusSchema.optional().default('COMPLETED'),
 });
-export type RecordSagaStepInput = z.infer<typeof RecordSagaStepInputSchema>;
+export type RecordSagaStepInput = z.input<typeof RecordSagaStepInputSchema>;
 
 // ============================================================================
 // 7. ERROR TAXONOMY & STATUS MAPPINGS (Rule 48)

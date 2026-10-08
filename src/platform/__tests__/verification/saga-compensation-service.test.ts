@@ -109,6 +109,13 @@ describe('Phase 14 Milestone 3 - Universal Saga Compensation Engine', () => {
           const payload = event.payload as { capabilityId: string };
           executionOrder.push(payload.capabilityId);
         }
+        return {
+          eventId: event.id,
+          deliveredCount: 1,
+          failedCount: 0,
+          durationMs: 1,
+          errors: [],
+        };
       });
 
       // Step 0: crm.entity.update
@@ -195,6 +202,13 @@ describe('Phase 14 Milestone 3 - Universal Saga Compensation Engine', () => {
           const payload = event.payload as { compensatingPayload: Record<string, unknown> };
           recordedCompensatingPayload = payload.compensatingPayload;
         }
+        return {
+          eventId: event.id,
+          deliveredCount: 1,
+          failedCount: 0,
+          durationMs: 1,
+          errors: [],
+        };
       });
 
       await service.recordStep({
@@ -287,14 +301,20 @@ describe('Phase 14 Milestone 3 - Universal Saga Compensation Engine', () => {
       });
 
       // Inject custom failing step compensation runner
-      vi.spyOn(service as any, 'executeCompensatingCapability').mockImplementation(
-        async (step: SagaStepExecutionRecord) => {
-          if (step.stepId === failingStep.stepId) {
-            throw new Error('Database locked; simulated compensation failure');
-          }
-          return { success: true };
+      vi.spyOn(
+        service as unknown as {
+          executeCompensatingCapability: (
+            step: SagaStepExecutionRecord,
+            compensatingCapId: string,
+            payload: Record<string, unknown>
+          ) => Promise<void>;
+        },
+        'executeCompensatingCapability'
+      ).mockImplementation(async (step: SagaStepExecutionRecord) => {
+        if (step.stepId === failingStep.stepId) {
+          throw new Error('Database locked; simulated compensation failure');
         }
-      );
+      });
 
       const result = await service.compensateRun({
         runId,

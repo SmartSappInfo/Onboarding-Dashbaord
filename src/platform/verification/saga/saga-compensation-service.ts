@@ -179,7 +179,7 @@ export class SagaCompensationService {
    * Records a mutating execution step into the append-only Saga Journal (Rule 27).
    */
   public async recordStep(input: RecordSagaStepInput): Promise<SagaStepExecutionRecord> {
-    const stepId = `step_${randomUUID().slice(0, 8)}`;
+    const stepId = input.stepId ?? `step_${randomUUID().slice(0, 8)}`;
     const compensatingCapabilityId = getCompensatingCapabilityId(input.capabilityId);
 
     const record: SagaStepExecutionRecord = {
@@ -187,9 +187,12 @@ export class SagaCompensationService {
       stepIndex: input.stepIndex,
       runId: input.runId,
       capabilityId: input.capabilityId,
+      domain: input.domain,
+      actionType: input.actionType,
       organizationId: input.organizationId,
       workspaceId: input.workspaceId,
       actorId: input.actorId,
+      actorType: input.actorType ?? 'user',
       inputPayload: input.inputPayload,
       outputPayload: input.outputPayload,
       preStateSnapshot: input.preStateSnapshot,
@@ -220,6 +223,18 @@ export class SagaCompensationService {
       );
     }
     return SagaExecutionLedgerSchema.parse(ledger);
+  }
+
+  /**
+   * Updates an existing step execution record in the ledger.
+   */
+  public async updateStepStatus(
+    runId: string,
+    stepId: string,
+    tenant: { organizationId: string; workspaceId: string },
+    updates: Partial<SagaStepExecutionRecord>
+  ): Promise<void> {
+    await this.store.updateStepStatus(runId, stepId, tenant, updates);
   }
 
   /**
@@ -328,11 +343,11 @@ export class SagaCompensationService {
         continue;
       }
 
-      // Check for irreversible steps (Rule 25 DLQ Bridge)
+      // Check for irreversible steps or steps requiring manual review (Rule 25 DLQ Bridge)
       if (rollbackEntry.reversibility === 'IRREVERSIBLE' || rollbackEntry.requiresManualReview) {
         const reason = rollbackEntry.reversibility === 'IRREVERSIBLE'
           ? `Capability '${step.capabilityId}' is irreversible and requires manual operator intervention`
-          : `Capability '${step.capabilityId}' is partially reversible; staged in DLQ for operator confirmation`;
+          : `Capability '${step.capabilityId}' requires manual operator review; quarantined to DLQ`;
 
         const dlqEntry = await this.routeStepToDlq(step, input, reason);
         dlqEntryIds.push(dlqEntry.id);
@@ -344,8 +359,13 @@ export class SagaCompensationService {
             status: 'IRREVERSIBLE',
             dlqEntryId: dlqEntry.id,
           });
-          continue;
+        } else {
+          await this.store.updateStepStatus(input.runId, step.stepId, input, {
+            status: 'DLQ_QUARANTINED',
+            dlqEntryId: dlqEntry.id,
+          });
         }
+        continue;
       }
 
       // Formulate Compensating Payload with preStateSnapshot injection (Milestone 2 integration)
@@ -482,7 +502,7 @@ export class SagaCompensationService {
           : 'No mutating steps required compensation',
         residualRisk,
       },
-      dryRun: input.dryRun,
+      dryRun: input.dryRun ?? false,
     };
 
     // Publish compensation completed domain event (Rule 40)
