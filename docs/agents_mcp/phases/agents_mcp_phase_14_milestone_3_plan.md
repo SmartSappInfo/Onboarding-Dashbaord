@@ -2,7 +2,7 @@
 ## Universal Saga Compensation Engine, Reverse-LIFO Coordinator & DLQ Bridge
 ### Fully Conforming to `docs/agents_mcp/agents_mcp_rules.md` (Rules 1–69, Rules 1940–1964, Rules 67–69), `theme.md` §8, and `.agents/AGENTS.md`
 
-**Version:** 3.0.0  
+**Version:** 3.1.0  
 **Status:** DRAFT / PENDING USER APPROVAL (Do not start execution until plan is approved)  
 **Date:** 2026-10-08  
 **Author:** AI Agentic Architecture Team & Principal Systems Architect  
@@ -13,15 +13,15 @@
 
 Milestone 3 implements the **Universal Saga Compensation Engine, Reverse-LIFO Coordinator & DLQ Bridge** for Phase 14 ("Agentic Self-Management & Verification").
 
-It operationalizes **Rule 27 (Formal Saga / Compensation Model)** and **Rule 25 (Dead-Letter and Recovery Queues)** within the **6-Step Responsible Execution Loop**:
+It operationalizes **Rule 27 (Formal Saga / Compensation Model)**, **Rule 25 (Dead-Letter and Recovery Queues)**, and **Rule 1961 (Phase 14 Verification: Compensation)** within the **6-Step Responsible Execution Loop**:
 ```text
 PLAN → PREDICT (Snapshot Pre-State) → EXECUTE → VERIFY (Postconditions) → COMMIT (Assert Version Unchanged) → LEARN / COMPENSATE
 ```
 
-Prior to this milestone, domain agents (CRM, Sales, Finance, Knowledge, Meetings, and Supervisor Swarms) maintained fragmented, domain-specific rollback definitions (`CRM_ROLLBACK_MATRIX`, `FINANCE_ROLLBACK_MATRIX`, `SALES_ROLLBACK_MATRIX`, `MEETING_ROLLBACK_MATRIX`, `SUPERVISOR_ROLLBACK_MATRIX`). There was no universal cross-domain orchestrator to undo multi-step composite operations when a downstream step fails or when postconditions fail. Furthermore, if a compensating step is irreversible (e.g., an external webhook was dispatched) or if the rollback itself encounters an unexpected failure, unverified systems risk leaving orphaned corrupted records.
+Prior to this milestone, domain agents (CRM, Sales, Finance, Knowledge, Meetings, and Supervisor Swarms) maintained fragmented, domain-specific rollback definitions (`CRM_ROLLBACK_MATRIX`, `FINANCE_ROLLBACK_MATRIX`, `SALES_ROLLBACK_MATRIX`, `MEETING_ROLLBACK_MATRIX`, `SUPERVISOR_ROLLBACK_MATRIX`). There was no universal cross-domain orchestrator to undo multi-step composite operations when a downstream step fails or when postconditions fail. Furthermore, if a compensating step is irreversible (e.g., an external email or WhatsApp webhook was dispatched) or if the rollback itself encounters an unexpected failure, unverified systems risk leaving orphaned corrupted records.
 
 Milestone 3 solves this by providing:
-1. **Universal Saga Rollback Matrix (`UNIVERSAL_SAGA_ROLLBACK_MATRIX`)**: A unified, cross-domain registry mapping every mutating capability in SmartSapp to its designated compensating capability, reversal classification, and payload transformer.
+1. **Universal Saga Rollback Matrix (`UNIVERSAL_SAGA_ROLLBACK_MATRIX`)**: An authoritative, cross-domain registry unifying every mutating capability in SmartSapp to its designated compensating capability, reversal classification, and payload transformer.
 2. **Reverse-LIFO Compensation Engine (`SagaCompensationService`)**: Executes compensating operations in strict reverse-chronological order:
    $$\text{Compensate}(S_{k-1}) \circ \text{Compensate}(S_{k-2}) \circ \dots \circ \text{Compensate}(S_1)$$
    Injects exact pre-mutation state attributes from Milestone 2 `ResourceSnapshot` into compensating payloads to guarantee exact rollback fidelity.
@@ -36,27 +36,30 @@ Milestone 3 solves this by providing:
 
 - **Rule 1 (Modern Web Guidance & Canonical Capabilities):** Server Actions ('use server') and Saga services conform to modern Next.js 15 standards, Vercel React best practices, and serverless constraints.
 - **Rule 2 (FMEA Failure Analysis):** Complete FMEA matrix covering partial execution failures, cascading rollback aborts, irreversible side-effects, out-of-band state mutations during rollback, and dead-man freezes.
-- **Rule 3 (Backoffice Governance Impact):** Backoffice operators can inspect active Saga ledgers, review DLQ quarantined compensating steps, and manually retry compensations without code deployments.
-- **Rule 4 (Strict Typing):** Zero `any` or `any[]`. Bounded Zod v4 schemas only (`SagaStepExecutionRecordSchema`, `SagaCompensationResultSchema`, `UniversalRollbackEntrySchema`). `unknown` narrowed immediately at boundaries.
+- **Rule 3 & Rule 61 (Backoffice Governance Impact):** Backoffice operators can inspect active Saga ledgers, review DLQ quarantined compensating steps, and manually retry compensations with mandatory audit justifications ($\ge 5$ characters) without code deployments.
+- **Rule 4 (Strict Typing Protocol):** Zero `any` or `any[]`. Bounded Zod v4 schemas only (`SagaStepExecutionRecordSchema`, `SagaCompensationResultSchema`, `UniversalRollbackEntrySchema`). `unknown` narrowed immediately at boundaries.
 - **Rule 5 (Staged Deployment & Verification):** All Saga contracts, matrices, capabilities, and server actions are validated with rigorous test batteries before staging.
+- **Rule 7 (Tactile Feedback & Usability):** Any action buttons or toast notifications generated for compensation desk or DLQ items feature active scale transformations (`active:scale-[0.97]`) and minimum 44px touch targets.
 - **Rule 8 & 47 (Anti-IDOR Multi-Tenant Lock):** Every Saga compensation run and ledger lookup strictly validates `organizationId` and `workspaceId`. Cross-tenant probes are rejected with HTTP 403 `IDOR_VIOLATION`.
+- **Rule 9 & Rule 23 (Bounded Concurrency & Resource Ceilings):** Saga compensation runs are bounded to $\le 25$ steps and $\le 30,000$ms execution timeout. Parallel sub-compensations are bounded to batches of $\le 4$ operations.
 - **Rule 10 (Inline Architectural Documentation):** Detailed comments explaining Reverse-LIFO choreography, idempotency invariants, and DLQ quarantine models across all source files.
-- **Rule 11 (Mathematical Determinism):** Compensated step counts, failed counts, and retry attempt counters deterministically bounded.
+- **Rule 11 (Mathematical Determinism):** Compensated step counts, failed counts, and retry attempt counters deterministically bounded. Cent-level rounding (`roundCurrency`) ensures double-entry balance during financial rollbacks.
 - **Rule 12 (Risk Vocabulary):** `saga.execute_compensation` classified as `L2_STATE_MUTATION`, non-delegable. `saga.get_execution_ledger` classified as `L0_READ`.
-- **Rule 13 & 30 (Untrusted Data Isolation):** Any untrusted payload or memo in compensation steps is sanitized against `ADVERSARIAL_DIRECTIVE_PATTERNS` and wrapped in `<untrusted_reference_data>`.
+- **Rule 13 & 30 (Untrusted Data Isolation & Injection Defense):** Any untrusted payload or memo in compensation steps is sanitized against `ADVERSARIAL_DIRECTIVE_PATTERNS` and wrapped in `<untrusted_reference_data id="...">`.
 - **Rule 14 (Schema Fingerprinting & Contracts):** Canonical Zod v4 contracts with deterministic property hashes preventing tool definition rug-pulls.
 - **Rule 16 (Explicit Scoped RBAC):** Scoped non-wildcard permissions `saga:compensate` and `saga:read` registered in `permission-refs.ts`.
-- **Rule 17 (Non-Delegable Restrictions):** AI subagents are strictly forbidden from initiating arbitrary un-supervised Saga compensations. Compensation can only be triggered by the supervisor, orchestrator, or authorized operator.
+- **Rule 17 (Non-Delegable Restrictions & Deciders):** AI subagents are strictly forbidden from initiating arbitrary un-supervised Saga compensations. Compensation can only be triggered by the supervisor, orchestrator, or authorized operator. Deciders cannot be delegated to LLMs.
 - **Rule 18 (TOCTOU Optimistic Concurrency Guard):** Before executing a compensating capability, checks the target record's `stateHash` and `version` using `StateVersionService` (Milestone 2) to ensure the state wasn't further mutated out-of-band.
 - **Rule 19 (Deterministic Idempotency):** Every compensating step execution is idempotent; rerunning compensation for an already compensated step is a safe no-op.
 - **Rule 20 (Replay / Duplicate Delivery Protection):** Compensation runs carry unique, immutable `sagaRunId` and correlation tokens preventing replay.
 - **Rule 21 & 22 (Two-Phase Execution & SHA-256 Hash Binding):** Step ledger computes canonical SHA-256 digest (`sha256Hex`) over key-sorted JSON before and after compensation.
-- **Rule 23 (Resource Governance & Quotas):** Saga compensation bounded to $\le 30,000$ms timeout and $\le 25$ steps per execution.
-- **Rule 24 (Circuit Breakers):** Repeated downstream compensation capability failures trip circuit breakers and route remaining steps to DLQ rather than hanging in infinite retry loops.
+- **Rule 24 (Circuit Breakers):** Repeated downstream compensation capability failures (3 consecutive failures) trip circuit breakers and route remaining steps to DLQ rather than hanging in infinite retry loops.
 - **Rule 25 (Dead-Letter and Recovery Queues):** Any step that fails compensation or is marked irreversible is automatically routed to `WorkflowDlqService` with sanitized error context, context snapshot, and alerting events.
-- **Rule 26 (Cooperative Cancellation):** Native `AbortSignal` supported throughout `SagaCompensationService`.
+- **Rule 26 (Cooperative Cancellation):** Native `AbortSignal` supported throughout `SagaCompensationService`, throwing HTTP 504 `SAGA_TIMEOUT` upon cancellation.
 - **Rule 27 (Formal Saga / Compensation Model):** Core platform implementation of Reverse-LIFO compensation for all multi-step agent actions.
+- **Rule 28 & Rule 56 (Stratified Greedy Knapsack Context Budgeting):** Compensation audit summaries and explainability payloads bounded strictly $\le 4,000$ tokens.
 - **Rule 29 (Temporal Fact Supersession):** For knowledge facts, compensation links `supersededBy` back to the previous active fact or restores valid temporal windows.
+- **Rule 31, 32, 33 (Data Minimization & Sensitive Data Isolation):** Rollback logs strip sensitive authorization tokens and personal secrets before persisting to ledgers or DLQ.
 - **Rule 40 (Domain Event Auditing):** Emits `saga.compensation.started`, `saga.step.compensated`, `saga.step.failed`, `saga.compensation.completed`, and `saga.dlq.quarantined` via `defaultEventBus`.
 - **Rule 41 (Explainability Grid):** Compensation reports detail WHAT step failed, WHY compensation was triggered, and EXPECTED STATE CHANGE of every compensated resource.
 - **Rule 42 (Shadow Mode & Simulation):** Supports `dryRun: true` producing 0 live compensating database writes while generating a Blast Radius simulation report.
@@ -65,13 +68,17 @@ Milestone 3 solves this by providing:
 - **Rule 46 (Adversarial Agent Red-Team Battery):** Dedicated red-team suite covering unauthorized compensation invocation, cross-tenant rollback hijacking, dead-man pause bypass, and poisoned rollback payloads.
 - **Rule 47 (Never Trust the Model):** Saga compensation logic is pure, deterministic code; LLMs never determine which steps are compensated or which capabilities are invoked.
 - **Rule 48 (Sanitized Error Taxonomy):** `SagaCompensationError` with mapped HTTP status codes (400, 403, 404, 409, 500, 503, 504).
-- **Rule 50 (Cache Isolation):** In-memory ledger caches strictly partitioned by `organizationId:workspaceId:runId`.
+- **Rule 50 (Cache & State Isolation):** In-memory ledger caches strictly partitioned by `organizationId:workspaceId:runId`.
 - **Rule 51 (Server Actions Security):** `'use server'`, Clerk session authentication (`requireAuth()`), Anti-IDOR tenant lock (`assertTenantAccess`), and emergency dead-man switch evaluation (Rule 60).
+- **Rule 54 (State Machine Invariants):** Explicit status progression: `PENDING` $\rightarrow$ `RUNNING` $\rightarrow$ `COMPENSATING` $\rightarrow$ `COMPENSATED` / `FAILED_PARTIAL` / `FAILED_DLQ`.
+- **Rule 55 (Clamping Ceilings):** Clamps maximum steps per execution to $\le 25$ and maximum duration to $\le 30,000$ms.
 - **Rule 60 (Emergency Dead-Man Switch Evaluation):** Checks `checkGovernanceDeadManSwitch(orgId)` and fails closed immediately with HTTP 503 `SAGA_DEAD_MAN_PAUSED`.
-- **Rule 61 (Backoffice Control Plane):** Operations can inspect Saga execution ledgers, view compensation metrics, and triage DLQ items without code deployments.
+- **Rule 62 (Real-Time SSE Reactivity):** Domain events emitted to `defaultEventBus` are directly streamable to operator HUDs.
 - **Rule 67 (The Agent Implementation Gate):** Fully satisfies Architecture, Authority, Data, Execution, MCP, Failure, Security, Operations, Testing, and Migration checklists.
-- **Rule 68 (The Five Non-Negotiables):** Zero `any`, fail-closed, model is never the boundary, bounded resources, kill switches.
+- **Rule 68 (The Five Non-Negotiables):** Zero `any`, fail-closed security, model is never the boundary, bounded resources, kill switches.
 - **Rule 69 (Strangler Fig Invariant):** Unifies pre-existing domain rollback matrices (`CRM_ROLLBACK_MATRIX`, `FINANCE_ROLLBACK_MATRIX`, `SALES_ROLLBACK_MATRIX`, `MEETING_ROLLBACK_MATRIX`, `SUPERVISOR_ROLLBACK_MATRIX`) without breaking existing workflows or mutating legacy tables.
+- **Rules 1940–1953 (Domain Agents Mandatory Deliverables Gate):** Authoritative 4 Governance Matrices formalized for Saga subsystem.
+- **Rule 1961 (Phase 14 Verification: Compensation Gate):** Platform satisfies the mandatory Phase 14 verification requirement for automated multi-step compensation.
 
 ---
 
@@ -133,7 +140,9 @@ flowchart TD
     subgraph ReverseLIFOLoop["Reverse-LIFO Compensation Loop"]
         StepIter["For each step in Reverse Order"] --> CheckReversible{"Is Step Reversible?"}
         CheckReversible -->|No / Irreversible| DLQRoute["Route to WorkflowDlqService (Rule 25)"]
-        CheckReversible -->|Yes| ResolveComp["Resolve Compensating Capability from Matrix"]
+        CheckReversible -->|Yes| CheckTOCTOU{"TOCTOU Check via StateVersionService"}
+        CheckTOCTOU -->|Drift Detected| ConcurDLQ["Halt & Route to DLQ (Rule 18 & 25)"]
+        CheckTOCTOU -->|Valid| ResolveComp["Resolve Compensating Capability from Matrix"]
         ResolveComp --> FormulatePayload["Formulate Payload using ResourceSnapshot Pre-State"]
         FormulatePayload --> ExecuteComp["Execute Compensating Capability (Rule 1)"]
         ExecuteComp --> CheckSuccess{"Compensation Succeeded?"}
@@ -141,6 +150,8 @@ flowchart TD
         CheckSuccess -->|No| HandleCompFailure["Mark Step FAILED & Route to DLQ (Rule 25)"]
         MarkCompensated --> NextStep["Next Step in Reverse Order"]
         HandleCompFailure --> NextStep
+        ConcurDLQ --> NextStep
+        DLQRoute --> NextStep
     end
     
     ReverseSort --> StepIter
@@ -208,6 +219,7 @@ flowchart TD
 - [ ] **Step 1: Write failing service test**
   - Test Reverse-LIFO execution ordering: `Step 3 -> Step 2 -> Step 1`.
   - Test pre-state snapshot attribute injection into compensating payload.
+  - Test TOCTOU pre-compensation validation via `StateVersionService`.
   - Test DLQ quarantine bridge via `WorkflowDlqService` for irreversible or failed steps.
   - Test anti-IDOR multi-tenant validation and dead-man pause evaluation (HTTP 503).
   - Test cooperative cancellation via `AbortSignal`.
@@ -234,7 +246,7 @@ flowchart TD
 - Test: `src/platform/__tests__/verification/saga-capabilities.test.ts`
 
 - [ ] **Step 1: Write failing capabilities test**
-  - Test `saga.execute_compensation` (`L2_STATE_MUTATION`, Non-Delegable: true).
+  - Test `saga.execute_compensation` (`L2_STATE_MUTATION`, Non-Delegable: true, Rule 17).
   - Test `saga.get_execution_ledger` (`L0_READ`).
   - Test registration in `CapabilityRegistry`.
   - Test Anti-IDOR enforcement.
