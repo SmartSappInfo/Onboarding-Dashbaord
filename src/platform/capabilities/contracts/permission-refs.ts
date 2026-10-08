@@ -144,6 +144,10 @@ const LEGACY_PERMISSION_MAP: ReadonlyMap<string, ParsedPermissionRef> = new Map<
   // Verification & Postcondition Governance (Phase 14 M1)
   ['verification:read', { kind: 'rbac', section: 'operations', feature: 'dashboard', action: 'view' }],
   ['verification:assert', { kind: 'rbac', section: 'operations', feature: 'dashboard', action: 'view' }],
+
+  // State-Version & Optimistic Concurrency (Phase 14 M2)
+  ['concurrency:read', { kind: 'rbac', section: 'operations', feature: 'dashboard', action: 'view' }],
+  ['concurrency:snapshot', { kind: 'rbac', section: 'operations', feature: 'dashboard', action: 'view' }],
 ]);
 
 export function parsePermissionRef(ref: string): ParsedPermissionRef | null {
