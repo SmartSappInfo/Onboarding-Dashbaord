@@ -140,6 +140,10 @@ const LEGACY_PERMISSION_MAP: ReadonlyMap<string, ParsedPermissionRef> = new Map<
   ['rbac:operations.attendance.view', { kind: 'rbac', section: 'operations', feature: 'campuses', action: 'view' }],
   ['rbac:operations.attendance.manage', { kind: 'rbac', section: 'operations', feature: 'campuses', action: 'edit' }],
   ['rbac:communication.templates.manage', { kind: 'rbac', section: 'operations', feature: 'campuses', action: 'edit' }],
+
+  // Verification & Postcondition Governance (Phase 14 M1)
+  ['verification:read', { kind: 'rbac', section: 'operations', feature: 'dashboard', action: 'view' }],
+  ['verification:assert', { kind: 'rbac', section: 'operations', feature: 'dashboard', action: 'view' }],
 ]);
 
 export function parsePermissionRef(ref: string): ParsedPermissionRef | null {
