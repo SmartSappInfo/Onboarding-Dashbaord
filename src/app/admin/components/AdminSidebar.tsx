@@ -221,6 +221,7 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
   // 3. INTELLIGENCE (Autonomous AI Agents, Memory & Telemetry)
   const intelligenceNavItems = React.useMemo(() => [
     { href: wrapHref('/admin/intelligence'), icon: Sparkles, label: 'Command Center', visible: can('operations', 'intelligence', 'view') || isSystemAdmin },
+    { href: wrapHref('/admin/intelligence/organization'), icon: Network, label: 'Organization Swarm', visible: can('operations', 'intelligence', 'view') || isSystemAdmin },
     { href: wrapHref('/admin/intelligence/runs'), icon: Play, label: 'Agent Runs', visible: can('operations', 'intelligence', 'view') || isSystemAdmin },
     { href: wrapHref('/admin/intelligence/agents'), icon: Bot, label: 'Agent Studio', visible: can('operations', 'intelligence', 'view') || isSystemAdmin },
     { href: wrapHref('/admin/intelligence/knowledge/inbox'), icon: Inbox, label: 'Knowledge Inbox', visible: can('operations', 'intelligence', 'view') || isSystemAdmin },
