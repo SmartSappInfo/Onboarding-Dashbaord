@@ -572,6 +572,16 @@ export async function setEmergencyPauseAction(
       };
     }
 
+    if (input.paused && (!input.reason || input.reason.trim().length < 5)) {
+      return {
+        success: false,
+        error: {
+          code: 'INVALID_ARGUMENT',
+          message: 'A justification of at least 5 characters is required to engage the emergency dead-man pause (Rule 60 & 61).',
+        },
+      };
+    }
+
     await updateEmergencyPauseStatus(input.paused, input.reason, auth.uid);
 
     return {

@@ -11,6 +11,9 @@ import {
   CreateDelegationInputSchema,
   SubDelegationInputSchema,
 } from '../../policy/delegation-types';
+import { createDelegationService } from '../../policy/delegation-service';
+import { createMemoryDelegationStore } from '../../policy/delegation-store';
+import { evaluatePrincipalAuthority } from '../../capabilities/policy/principal-evaluator';
 
 describe('Phase 3 Milestone 2: Delegation Types & Schemas', () => {
   it('validates a well-formed delegation grant', () => {
@@ -170,7 +173,6 @@ describe('Phase 3 Milestone 2: Delegation Types & Schemas', () => {
     });
 
     it('cascades revocation to multi-hop child delegations down the chain', async () => {
-      const { createMemoryDelegationStore } = await import('../../policy/delegation-store');
       const store = createMemoryDelegationStore();
       const now = new Date().toISOString();
       const expiry = new Date(Date.now() + 3600000).toISOString();
@@ -240,8 +242,6 @@ describe('Phase 3 Milestone 2: Delegation Types & Schemas', () => {
 
   describe('DelegationService (Monotonic Scope Attenuation & Depth - Rules 8, 16, 17, 23)', () => {
     it('creates root delegation using pure scope intersection and strips wildcards and non-delegables', async () => {
-      const { createDelegationService } = await import('../../policy/delegation-service');
-      const { createMemoryDelegationStore } = await import('../../policy/delegation-store');
       const store = createMemoryDelegationStore();
       const service = createDelegationService({ store });
 
@@ -285,8 +285,6 @@ describe('Phase 3 Milestone 2: Delegation Types & Schemas', () => {
     });
 
     it('creates sub-delegation with downward monotonic attenuation (Child <= Parent)', async () => {
-      const { createDelegationService } = await import('../../policy/delegation-service');
-      const { createMemoryDelegationStore } = await import('../../policy/delegation-store');
       const store = createMemoryDelegationStore();
       const service = createDelegationService({ store });
 
@@ -397,8 +395,6 @@ describe('Phase 3 Milestone 2: Delegation Types & Schemas', () => {
     });
 
     it('validates delegation status and enforces tenant isolation (Anti-IDOR)', async () => {
-      const { createDelegationService } = await import('../../policy/delegation-service');
-      const { createMemoryDelegationStore } = await import('../../policy/delegation-store');
       const store = createMemoryDelegationStore();
       const service = createDelegationService({ store });
 
@@ -443,7 +439,6 @@ describe('Phase 3 Milestone 2: Delegation Types & Schemas', () => {
 
   describe('Policy Evaluator Integration (VerifiedApproval Bypass & Domain Guards - Rules 12, 16, 22)', () => {
     it('bypasses autonomous risk ceiling when a valid human approval is verified', async () => {
-      const { evaluatePrincipalAuthority } = await import('../../capabilities/policy/principal-evaluator');
       const tenant = { organizationId: 'org_1', workspaceId: 'ws_1' };
 
       const agentPrincipal = {

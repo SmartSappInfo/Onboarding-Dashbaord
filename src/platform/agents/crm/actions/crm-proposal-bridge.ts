@@ -347,7 +347,10 @@ export class CrmProposalBridge {
       approvalId: record.approvalId,
       idempotencyKey: invocationId,
       correlationId: invocationId,
-    }, this.options.gatewayDeps);
+    }, {
+      ...this.options.gatewayDeps,
+      nowMs: this.options.gatewayDeps?.nowMs ?? (() => this.now()),
+    });
     if (!result.success) throw new CrmActionError('EXECUTION_REFUSED', `${result.error.message} (${result.error.code})`);
 
     // Postcondition (Rule 31): only a confirmed change counts as applied.
@@ -433,7 +436,10 @@ export class CrmProposalBridge {
       principal: caller,
       idempotencyKey: correlationId,
       correlationId,
-    }, this.options.gatewayDeps);
+    }, {
+      ...this.options.gatewayDeps,
+      nowMs: this.options.gatewayDeps?.nowMs ?? (() => this.now()),
+    });
     if (!result.success) throw new CrmActionError('EXECUTION_REFUSED', `${result.error.message} (${result.error.code})`);
 
     const restored = await this.readState(map, exec.data.input, caller, 'ui', correlationId);

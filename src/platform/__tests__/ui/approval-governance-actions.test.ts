@@ -276,6 +276,13 @@ describe('Approval Governance Server Actions (unified approvals)', () => {
       expect(result.error?.code).toBe('FORBIDDEN');
     });
 
+    it('requires at least 5 characters justification when engaging emergency pause (Rule 60 & 61)', async () => {
+      mockAuthUser = auth({}, 'admin', true);
+      const result = await setEmergencyPauseAction({ paused: true, reason: 'No' });
+      expect(result.error?.code).toBe('INVALID_ARGUMENT');
+      expect(result.error?.message).toContain('at least 5 characters');
+    });
+
     it('allows a system admin to toggle the emergency pause', async () => {
       mockAuthUser = auth({}, 'admin', true);
       const result = await setEmergencyPauseAction({ paused: true, reason: 'Security incident drill' });
