@@ -15,7 +15,6 @@ import {
   checkFinanceEmergencySwitch,
   setFinanceEmergencyControlsForTests,
   FinanceControlEmergencyPausedError,
-  type FinanceControlSwitchKey,
 } from '../../policy/finance-control-policy';
 
 describe('Finance Emergency Control Policy & Multi-Switch Dead-Man Controls', () => {

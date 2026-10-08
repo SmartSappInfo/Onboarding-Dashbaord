@@ -34,17 +34,14 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   type FinanceControlSwitchKey,
   type FinanceEmergencyControls,
-  FINANCE_CONTROL_SWITCH_KEYS,
 } from '@/platform/policy/finance-control-policy';
 import {
   ShieldAlert,
-  ShieldCheck,
   AlertOctagon,
   FileText,
   DollarSign,
   GraduationCap,
   Ban,
-  CheckCircle2,
 } from 'lucide-react';
 
 export interface EmergencyControlModalProps {
@@ -166,7 +163,7 @@ export function EmergencyControlModal({
               <div className="space-y-0.5 text-xs">
                 <p className="font-bold">One or more emergency dead-man switches are ACTIVE</p>
                 <p className="text-destructive/80">
-                  Last updated by {controls.updatedBy}: "{controls.pauseReason}"
+                  Last updated by {controls.updatedBy}: &quot;{controls.pauseReason}&quot;
                 </p>
               </div>
             </div>

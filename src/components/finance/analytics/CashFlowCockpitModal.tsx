@@ -34,11 +34,9 @@ import { type CashFlowForecastResult } from '@/platform/agents/finance/analytics
 import {
   TrendingUp,
   Clock,
-  AlertTriangle,
   Building2,
   DollarSign,
   ArrowUpRight,
-  ShieldCheck,
 } from 'lucide-react';
 
 export interface CashFlowCockpitModalProps {

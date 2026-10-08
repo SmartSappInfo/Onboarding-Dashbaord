@@ -19,7 +19,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   type CashFlowForecastResult,
-  type ForecastCashFlowInput,
 } from '@/platform/agents/finance/analytics/cash-flow-types';
 import {
   type FinanceEmergencyControls,
@@ -34,7 +33,6 @@ import {
   getFinanceEmergencyControlsAction,
 } from '@/app/actions/finance-control-actions';
 import {
-  TrendingUp,
   Clock,
   ShieldAlert,
   GraduationCap,
@@ -43,7 +41,6 @@ import {
   ArrowUpRight,
   Building2,
   Sliders,
-  ExternalLink,
 } from 'lucide-react';
 
 export interface CashFlowClientProps {
@@ -59,9 +56,9 @@ export function CashFlowClient({
 }: CashFlowClientProps) {
   const { toast } = useToast();
 
-  const [forecast, setForecast] = useState<CashFlowForecastResult>(initialForecast);
+  const [forecast] = useState<CashFlowForecastResult>(initialForecast);
   const [controls, setControls] = useState<FinanceEmergencyControls>(initialControls);
-  const [anomalies, setAnomalies] = useState<AttendanceAnomalyResult[]>(initialAnomalies);
+  const [anomalies] = useState<AttendanceAnomalyResult[]>(initialAnomalies);
   const [selectedHorizon, setSelectedHorizon] = useState<'30d' | '60d' | '90d'>('30d');
 
   // Modal Open States

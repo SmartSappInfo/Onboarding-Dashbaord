@@ -33,11 +33,7 @@ import { Badge } from '@/components/ui/badge';
 import { type AttendanceAnomalyResult } from '@/platform/agents/school/school-operations-types';
 import {
   GraduationCap,
-  AlertTriangle,
-  User,
-  Calendar,
   MessageSquare,
-  TrendingDown,
   CheckCircle2,
 } from 'lucide-react';
 

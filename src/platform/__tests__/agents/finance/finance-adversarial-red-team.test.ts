@@ -24,11 +24,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { FinanceProposalBridge } from '@/platform/agents/finance/collections/finance-proposal-bridge';
 import {
   COLLECTIONS_ERROR_CODES,
-  CollectionsError,
 } from '@/platform/agents/finance/collections/collections-types';
 import { SchoolOperationsService } from '@/platform/agents/school/school-operations-service';
 import { FinanceSwarmOrchestrator } from '@/platform/agents/finance/swarm/finance-swarm-orchestrator';
-import { SWARM_ERROR_CODES, FinanceSwarmError } from '@/platform/agents/finance/swarm/finance-swarm-types';
+import { SWARM_ERROR_CODES } from '@/platform/agents/finance/swarm/finance-swarm-types';
 import {
   FinanceControlPolicy,
   setFinanceEmergencyControlsForTests,

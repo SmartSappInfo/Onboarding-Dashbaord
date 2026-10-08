@@ -26,7 +26,6 @@ import {
   StudentAttendanceSummary,
   StudentAttendanceSummarySchema,
   StudentFeeStatus,
-  StudentFeeStatusSchema,
   AttendanceAnomalyResult,
   AttendanceAnomalyResultSchema,
   FeeAttendanceCorrelation,
