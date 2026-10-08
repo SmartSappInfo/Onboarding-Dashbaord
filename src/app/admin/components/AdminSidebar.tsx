@@ -226,6 +226,7 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
     { href: wrapHref('/admin/intelligence/runs'), icon: Play, label: 'Agent Runs', visible: can('operations', 'intelligence', 'view') || isSystemAdmin },
     { href: wrapHref('/admin/intelligence/health'), icon: Activity, label: 'Agent Health', visible: can('operations', 'intelligence', 'view') || isSystemAdmin },
     { href: wrapHref('/admin/intelligence/agents'), icon: Bot, label: 'Agent Studio', visible: can('operations', 'intelligence', 'view') || isSystemAdmin },
+    { href: wrapHref('/admin/settings/ai/agents'), icon: Bot, label: 'Agent Registry', visible: isSystemAdmin || can('management', 'systemSettings', 'view') },
     { href: wrapHref('/admin/intelligence/knowledge/inbox'), icon: Inbox, label: 'Knowledge Inbox', visible: can('operations', 'intelligence', 'view') || isSystemAdmin },
     { href: wrapHref('/admin/intelligence/knowledge/graph'), icon: Share2, label: 'Knowledge Graph', visible: can('operations', 'intelligence', 'view') || isSystemAdmin },
     { href: wrapHref('/admin/intelligence/governance'), icon: ShieldAlert, label: 'Governance & Control', visible: isSystemAdmin || can('management', 'systemSettings', 'view') },
@@ -237,6 +238,7 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
     { href: wrapHref('/admin/workforce/ai'), icon: Sparkles, label: 'AI Advisor', visible: can('workforce', 'advisor', 'view') || isSystemAdmin },
     { href: wrapHref('/admin/ai-prompts'), icon: Bot, label: 'AI Prompts', visible: can('management', 'aiPrompts', 'view') || can('management', 'systemSettings', 'view') },
     { href: wrapHref('/admin/mcp'), icon: Wrench, label: 'MCP Capabilities', visible: isSystemAdmin || can('management', 'systemSettings', 'view') },
+    { href: wrapHref('/admin/settings/ai/capabilities'), icon: Wrench, label: 'Tool Registry', visible: isSystemAdmin || can('management', 'systemSettings', 'view') },
   ], [wrapHref, isFeatureEnabled, can, isSystemAdmin]);
 
   // 4. STUDIOS (Creation, Documents, Media & Social)

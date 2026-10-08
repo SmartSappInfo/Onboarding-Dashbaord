@@ -156,6 +156,25 @@ const LEGACY_PERMISSION_MAP: ReadonlyMap<string, ParsedPermissionRef> = new Map<
   // Agent Health Monitoring & Discrepancy Governance (Phase 14 M4)
   ['health:read', { kind: 'rbac', section: 'operations', feature: 'dashboard', action: 'view' }],
   ['health:manage', { kind: 'rbac', section: 'operations', feature: 'dashboard', action: 'edit' }],
+
+  // Continuous Evaluation & Benchmarking (Phase 15 M1)
+  ['evaluation:read', { kind: 'rbac', section: 'operations', feature: 'dashboard', action: 'view' }],
+  ['evaluation:manage', { kind: 'rbac', section: 'operations', feature: 'dashboard', action: 'edit' }],
+
+  // Cost Intelligence, Token Accounting & Model Routing (Phase 15 M2)
+  ['cost:read', { kind: 'rbac', section: 'operations', feature: 'dashboard', action: 'view' }],
+  ['cost:manage', { kind: 'rbac', section: 'operations', feature: 'dashboard', action: 'edit' }],
+
+  // Adversarial Red-Team, Chaos Injection & Tool Drift (Phase 15 M3)
+  ['security:read', { kind: 'rbac', section: 'operations', feature: 'dashboard', action: 'view' }],
+  ['security:manage', { kind: 'rbac', section: 'operations', feature: 'dashboard', action: 'edit' }],
+  ['chaos:inject', { kind: 'rbac', section: 'operations', feature: 'dashboard', action: 'edit' }],
+
+  // Registry & Progressive Discovery (Phase 15 M4)
+  ['registry:read', { kind: 'rbac', section: 'operations', feature: 'dashboard', action: 'view' }],
+  ['discovery:search', { kind: 'rbac', section: 'operations', feature: 'dashboard', action: 'view' }],
+  ['registry:manage', { kind: 'rbac', section: 'operations', feature: 'dashboard', action: 'edit' }],
+  ['persona:configure', { kind: 'rbac', section: 'management', feature: 'users', action: 'edit' }],
 ]);
 
 export function parsePermissionRef(ref: string): ParsedPermissionRef | null {
