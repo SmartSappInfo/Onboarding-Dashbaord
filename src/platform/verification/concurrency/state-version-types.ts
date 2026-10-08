@@ -77,6 +77,10 @@ export const StateVersionMatrixEntrySchema = z.object({
 
 export type StateVersionMatrixEntry = z.infer<typeof StateVersionMatrixEntrySchema>;
 
+/** Semantic alias for state version policy */
+export const ConcurrencyPolicySchema = StateVersionMatrixEntrySchema;
+export type ConcurrencyPolicy = StateVersionMatrixEntry;
+
 // ============================================================================
 // 5. ERROR TAXONOMY & STATUS MAPPINGS (Rule 48)
 // ============================================================================

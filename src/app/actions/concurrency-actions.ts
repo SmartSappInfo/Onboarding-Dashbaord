@@ -256,3 +256,22 @@ export async function verifyResourceVersionAction(
     };
   }
 }
+
+/**
+ * Server Action: Validates that a resource version has not drifted (assertCurrent: false).
+ */
+export async function validateResourceVersionAction(
+  input: Omit<VerifyVersionActionInput, 'assertCurrent'>
+): Promise<ConcurrencyActionResult<VersionValidationResult>> {
+  return verifyResourceVersionAction({ ...input, assertCurrent: false });
+}
+
+/**
+ * Server Action: Asserts that a resource version is current, throwing if stale (assertCurrent: true).
+ */
+export async function assertResourceVersionCurrentAction(
+  input: Omit<VerifyVersionActionInput, 'assertCurrent'>
+): Promise<ConcurrencyActionResult<VersionValidationResult>> {
+  return verifyResourceVersionAction({ ...input, assertCurrent: true });
+}
+

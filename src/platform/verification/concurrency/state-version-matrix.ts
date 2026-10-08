@@ -134,3 +134,19 @@ export function isHashValidationRequired(resourceType: string): boolean {
   const policy = STATE_VERSION_MATRIX[resourceType];
   return policy ? policy.requiresHashValidation : DEFAULT_CONCURRENCY_POLICY.requiresHashValidation;
 }
+
+/**
+ * Resolves whether optimistic locking is required for a resource type.
+ */
+export function isOptimisticLockingRequired(resourceType: string): boolean {
+  const policy = STATE_VERSION_MATRIX[resourceType];
+  return policy ? true : false;
+}
+
+/**
+ * Resolves whether version validation is required for a resource type.
+ */
+export function isVersionValidationRequired(resourceType: string): boolean {
+  return isOptimisticLockingRequired(resourceType);
+}
+
