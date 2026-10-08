@@ -571,3 +571,12 @@ export function getReconciliationEngine(): ReconciliationEngine {
   }
   return globalThis.__smartsappReconciliationEngine;
 }
+
+/**
+ * Resets in-memory exception and match tracking for test isolation.
+ */
+export function clearReconciliationStoreForTests(): void {
+  inMemoryExceptions.clear();
+  inMemoryMatchedPayoutIds.clear();
+}
+

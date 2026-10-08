@@ -17,6 +17,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   ReconciliationEngine,
   getReconciliationEngine,
+  clearReconciliationStoreForTests,
   roundCurrency,
 } from '@/platform/agents/finance/reconciliation/reconciliation-engine';
 import {
@@ -33,6 +34,7 @@ describe('ReconciliationEngine (Phase 12 Milestone 3)', () => {
 
   beforeEach(() => {
     setGovernanceDeadManStateForTests(null);
+    clearReconciliationStoreForTests();
     engine = getReconciliationEngine();
   });
 

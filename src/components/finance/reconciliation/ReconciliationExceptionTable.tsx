@@ -18,8 +18,6 @@ import {
   CheckCircle2,
   ChevronRight,
   CreditCard,
-  FileQuestion,
-  HelpCircle,
   Smartphone,
   Wallet,
 } from 'lucide-react';

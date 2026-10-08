@@ -21,6 +21,7 @@ import {
 import {
   computePayloadHash,
   getReconciliationEngine,
+  clearReconciliationStoreForTests,
 } from '@/platform/agents/finance/reconciliation/reconciliation-engine';
 import {
   BankPayoutTransaction,
@@ -80,6 +81,7 @@ describe('Finance Reconciliation Server Actions (Phase 12 Milestone 3)', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    clearReconciliationStoreForTests();
 
     const { requireAuth } = await import('@/lib/auth/require-auth');
     vi.mocked(requireAuth).mockResolvedValue({

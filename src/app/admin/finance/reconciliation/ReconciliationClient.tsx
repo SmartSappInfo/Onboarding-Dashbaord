@@ -49,9 +49,6 @@ import {
   RefreshCw,
   Play,
   Filter,
-  CheckCircle2,
-  AlertCircle,
-  Building,
 } from 'lucide-react';
 
 export interface ReconciliationClientProps {

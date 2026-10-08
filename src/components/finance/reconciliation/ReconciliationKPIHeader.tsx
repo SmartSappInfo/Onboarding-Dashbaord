@@ -10,7 +10,7 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { type ReconciliationMetrics } from '@/platform/agents/finance/reconciliation/reconciliation-types';
-import { AlertCircle, CheckCircle2, Clock, DollarSign, TrendingDown } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock, TrendingDown } from 'lucide-react';
 
 export interface ReconciliationKPIHeaderProps {
   metrics?: ReconciliationMetrics | null;

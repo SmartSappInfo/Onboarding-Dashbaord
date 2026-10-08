@@ -105,7 +105,7 @@ describe('Payment Reconciliation Workspace Components (Phase 12 Milestone 3)', (
       expect(screen.getByText('3. Open Invoice')).toBeInTheDocument();
 
       // Amounts and references
-      expect(screen.getByText('4500.00 GHS')).toBeInTheDocument();
+      expect(screen.getAllByText('4500.00 GHS').length).toBeGreaterThanOrEqual(1);
       expect(screen.getByText('WIRE-MTN-TX-88921')).toBeInTheDocument();
       expect(screen.getByText('INV-2026-042')).toBeInTheDocument();
       expect(screen.getByText('Kofi Mensah')).toBeInTheDocument();
@@ -118,7 +118,7 @@ describe('Payment Reconciliation Workspace Components (Phase 12 Milestone 3)', (
     });
 
     it('isolates untrusted external bank wire memo in untrusted_reference_data (Rules 13 & 30)', () => {
-      const { container } = render(
+      render(
         <ReconciliationMatchModal
           isOpen={true}
           onClose={vi.fn()}
@@ -127,7 +127,7 @@ describe('Payment Reconciliation Workspace Components (Phase 12 Milestone 3)', (
         />
       );
 
-      const untrustedElement = container.querySelector('untrusted_reference_data');
+      const untrustedElement = document.querySelector('untrusted_reference_data');
       expect(untrustedElement).toBeInTheDocument();
       expect(untrustedElement?.textContent).toContain('School fees payment for Kofi Mensah Term 1');
     });

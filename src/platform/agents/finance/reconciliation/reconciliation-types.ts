@@ -198,10 +198,10 @@ export const ReconciliationBatchMatchInputSchema = z.object({
   payouts: z.array(BankPayoutTransactionSchema).min(1).max(50),
   invoices: z.array(InvoiceCandidateSchema).min(1).max(100),
   payments: z.array(RecordedPaymentItemSchema).max(100).optional(),
-  toleranceUSD: z.number().nonnegative().default(0.50),
+  toleranceUSD: z.number().nonnegative().optional().default(0.50),
 });
 
-export type ReconciliationBatchMatchInput = z.infer<typeof ReconciliationBatchMatchInputSchema>;
+export type ReconciliationBatchMatchInput = z.input<typeof ReconciliationBatchMatchInputSchema>;
 
 export const ReconciliationBatchMatchResultSchema = z.object({
   batchId: z.string().min(1),
