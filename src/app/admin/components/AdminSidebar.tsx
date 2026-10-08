@@ -79,7 +79,8 @@ import {
     Inbox,
     Share2,
     ShieldAlert,
-    Scale
+    Scale,
+    HandCoins
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import UnifiedOrgWorkspaceSwitcher from './UnifiedOrgWorkspaceSwitcher';
@@ -257,6 +258,7 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
   const transactNavItems = React.useMemo(() => [
     { href: wrapHref('/admin/finance/contracts'), icon: FileCheck, label: 'Agreements', visible: isFeatureEnabled('agreements') && can('finance', 'agreements', 'view') },
     { href: wrapHref('/admin/finance/invoices'), icon: Receipt, label: 'Invoices', visible: isFeatureEnabled('invoices') && can('finance', 'invoices', 'view') },
+    { href: wrapHref('/admin/finance/collections'), icon: HandCoins, label: 'Collections', visible: isFeatureEnabled('invoices') && (can('finance', 'invoices', 'view') || isSystemAdmin) },
     { href: wrapHref('/admin/finance/reconciliation'), icon: Scale, label: 'Reconciliation', visible: isFeatureEnabled('invoices') && (can('finance', 'invoices', 'view') || isSystemAdmin) },
     { href: wrapHref('/admin/finance/packages'), icon: Package, label: 'Packages', visible: isFeatureEnabled('packages') && can('finance', 'packages', 'view') },
     { href: wrapHref('/admin/finance/periods'), icon: Timer, label: 'Cycles', visible: isFeatureEnabled('billing_periods') && can('finance', 'cycles', 'view') },
