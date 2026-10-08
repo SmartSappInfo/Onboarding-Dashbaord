@@ -566,7 +566,7 @@ export class SagaCompensationService {
     input: CompensateRunInput,
     reason: string
   ): Promise<{ id: string }> {
-    return this.dlqService.routeToDlq({
+    const dlqRecord = await this.dlqService.routeToDlq({
       organizationId: input.organizationId,
       workspaceId: input.workspaceId,
       workflowId: input.runId,
@@ -587,6 +587,28 @@ export class SagaCompensationService {
       },
       correlationId: input.runId,
     });
+
+    // Publish explicit saga.dlq.quarantined domain event (Rule 40)
+    await this.eventBus.publish(
+      createDomainEvent({
+        type: 'saga.dlq.quarantined',
+        organizationId: input.organizationId,
+        workspaceId: input.workspaceId,
+        actor: { type: 'agent', id: 'saga_coordinator' },
+        entity: { type: 'saga_step', id: step.stepId },
+        correlationId: input.runId,
+        source: 'verification.saga_compensation',
+        payload: {
+          runId: input.runId,
+          stepId: step.stepId,
+          capabilityId: step.capabilityId,
+          dlqEntryId: dlqRecord.id,
+          reason,
+        },
+      })
+    );
+
+    return dlqRecord;
   }
 }
 

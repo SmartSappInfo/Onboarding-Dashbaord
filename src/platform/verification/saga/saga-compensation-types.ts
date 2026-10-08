@@ -124,6 +124,12 @@ export const SagaExecutionLedgerSchema = z.object({
 });
 export type SagaExecutionLedger = z.infer<typeof SagaExecutionLedgerSchema>;
 
+/**
+ * Nominal alias for SagaExecutionLedgerSchema per Phase 14 Master Plan
+ */
+export const SagaExecutionPlanSchema = SagaExecutionLedgerSchema;
+export type SagaExecutionPlan = SagaExecutionLedger;
+
 // ============================================================================
 // 5. SAGA COMPENSATION RESULT CONTRACT (Rules 11, 25, 41)
 // ============================================================================
