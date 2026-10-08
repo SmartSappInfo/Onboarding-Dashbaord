@@ -11,7 +11,6 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  VERIFICATION_POLICY_MATRIX,
   getVerificationPolicyForCapability,
   getRequiredAssertionsForCapability,
   resolveVerificationFailureStrategy,

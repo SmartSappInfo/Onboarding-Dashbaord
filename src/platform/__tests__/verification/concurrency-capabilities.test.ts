@@ -24,13 +24,15 @@ import { StateConcurrencyError } from '@/platform/verification/concurrency';
 describe('Phase 14 Milestone 2 - Concurrency Capabilities', () => {
   const mockContext: CapabilityExecutionContext = {
     principal: {
+      actorType: 'user',
       userId: 'usr_operator_1',
       organizationId: 'org_test_1',
       workspaceId: 'ws_test_1',
-      role: 'admin',
+      grantedScopes: ['concurrency:snapshot', 'concurrency:read'],
+      effectiveRole: 'admin',
     },
-    runId: 'run_test_100',
-    executionId: 'exec_test_100',
+    correlationId: 'corr_test_100',
+    timestamp: '2026-10-08T12:00:00.000Z',
   };
 
   beforeEach(() => {
@@ -75,9 +77,12 @@ describe('Phase 14 Milestone 2 - Concurrency Capabilities', () => {
       );
 
       expect(result.success).toBe(true);
-      expect(result.data.resourceId).toBe('entity_999');
-      expect(result.data.version).toBe(1);
-      expect(result.data.stateHash).toHaveLength(64);
+      if (result.success) {
+        expect(result.data.resourceId).toBe('entity_999');
+        expect(result.data.version).toBe(1);
+        expect(result.data.stateHash).toHaveLength(64);
+        expect(result.executionId).toBe(mockContext.correlationId);
+      }
     });
 
     it('enforces Anti-IDOR: rejects cross-tenant caller context (Rules 8 & 47)', async () => {
@@ -117,6 +122,9 @@ describe('Phase 14 Milestone 2 - Concurrency Capabilities', () => {
         mockContext
       );
 
+      expect(snapResult.success).toBe(true);
+      if (!snapResult.success) return;
+
       const verifyResult = await concurrencyVerifyVersionCapability.handler(
         {
           expectedSnapshot: snapResult.data,
@@ -129,8 +137,10 @@ describe('Phase 14 Milestone 2 - Concurrency Capabilities', () => {
       );
 
       expect(verifyResult.success).toBe(true);
-      expect(verifyResult.data.isCurrent).toBe(true);
-      expect(verifyResult.data.driftDetected).toBe(false);
+      if (verifyResult.success) {
+        expect(verifyResult.data.isCurrent).toBe(true);
+        expect(verifyResult.data.driftDetected).toBe(false);
+      }
     });
 
     it('assertCurrent: true throws StateConcurrencyError when stale', async () => {
@@ -144,6 +154,9 @@ describe('Phase 14 Milestone 2 - Concurrency Capabilities', () => {
         },
         mockContext
       );
+
+      expect(snapResult.success).toBe(true);
+      if (!snapResult.success) return;
 
       await expect(
         concurrencyVerifyVersionCapability.handler(

@@ -15,7 +15,6 @@ import {
   StateVersionService,
   getStateVersionService,
   StateConcurrencyError,
-  type ResourceSnapshot,
 } from '@/platform/verification/concurrency';
 import { setGovernanceDeadManStateForTests } from '@/platform/policy/governance-dead-man';
 

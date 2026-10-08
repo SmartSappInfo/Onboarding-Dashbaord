@@ -19,6 +19,7 @@ import {
   type ResourceSnapshot,
   type VersionValidationResult,
   type ConcurrencyViolationType,
+  type ConcurrencyErrorCode,
   ResourceSnapshotSchema,
   StateConcurrencyError,
 } from './state-version-types';
@@ -330,7 +331,7 @@ export class StateVersionService {
       }
 
       // Map violation to authoritative error code
-      let errorCode = 'CONCURRENT_MUTATION_CONFLICT' as const;
+      let errorCode: ConcurrencyErrorCode = 'CONCURRENT_MUTATION_CONFLICT';
       if (result.violationType === 'DELETED_RESOURCE') {
         errorCode = 'RESOURCE_NOT_FOUND';
       } else if (result.violationType === 'STALE_READ') {
@@ -353,7 +354,6 @@ export class StateVersionService {
 // ============================================================================
 
 declare global {
-  // eslint-disable-next-line no-var
   var __smartsappStateVersionService: StateVersionService | undefined;
 }
 

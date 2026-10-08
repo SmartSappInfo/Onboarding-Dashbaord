@@ -17,7 +17,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   PostconditionEngine,
-  getPostconditionEngine,
   scanForAdversarialDirectives,
   wrapUntrustedReferenceData,
 } from '@/platform/verification/postcondition-engine';
@@ -25,7 +24,6 @@ import {
   evaluatePostconditionsAction,
 } from '@/app/actions/verification-actions';
 import {
-  AgentVerificationError,
   VERIFICATION_ERROR_CODES,
 } from '@/platform/verification';
 import {

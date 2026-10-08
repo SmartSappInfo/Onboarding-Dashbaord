@@ -32,7 +32,6 @@ import {
 } from '../contracts/capability-definition';
 import { registerCapability } from '../registry/capability-registry';
 import {
-  type ResourceSnapshot,
   type VersionValidationResult,
   ResourceSnapshotSchema,
   VersionValidationResultSchema,
@@ -117,24 +116,25 @@ export const concurrencySnapshotResourceCapability: CapabilityDefinition<
     input: SnapshotResourceInput,
     context: CapabilityExecutionContext
   ): Promise<CapabilityExecutionResult<SnapshotResourceOutput>> => {
+    const startTime = Date.now();
     assertTenantContext(context, input.organizationId);
 
     const service = getStateVersionService();
-    const snapshot = await service.captureSnapshot(
-      {
-        resourceType: input.resourceType,
-        resourceId: input.resourceId,
-        resourceData: input.resourceData,
-        organizationId: input.organizationId,
-        workspaceId: input.workspaceId,
-        actorId: context.principal.userId,
-      },
-      { signal: context.signal }
-    );
+    const snapshot = await service.captureSnapshot({
+      resourceType: input.resourceType,
+      resourceId: input.resourceId,
+      resourceData: input.resourceData,
+      organizationId: input.organizationId,
+      workspaceId: input.workspaceId,
+      actorId: context.principal.userId,
+    });
 
     return {
       success: true,
       data: snapshot,
+      executionId: context.correlationId,
+      emittedEvents: [],
+      durationMs: Date.now() - startTime,
     };
   },
 };
@@ -197,6 +197,7 @@ export const concurrencyVerifyVersionCapability: CapabilityDefinition<
     input: VerifyVersionInput,
     context: CapabilityExecutionContext
   ): Promise<CapabilityExecutionResult<VerifyVersionOutput>> => {
+    const startTime = Date.now();
     assertTenantContext(context, input.organizationId);
 
     const service = getStateVersionService();
@@ -210,18 +211,17 @@ export const concurrencyVerifyVersionCapability: CapabilityDefinition<
 
     let result: VersionValidationResult;
     if (input.assertCurrent) {
-      result = await service.assertVersionCurrent(validationParams, {
-        signal: context.signal,
-      });
+      result = await service.assertVersionCurrent(validationParams);
     } else {
-      result = await service.validateResourceVersion(validationParams, {
-        signal: context.signal,
-      });
+      result = await service.validateResourceVersion(validationParams);
     }
 
     return {
       success: true,
       data: result,
+      executionId: context.correlationId,
+      emittedEvents: [],
+      durationMs: Date.now() - startTime,
     };
   },
 };
