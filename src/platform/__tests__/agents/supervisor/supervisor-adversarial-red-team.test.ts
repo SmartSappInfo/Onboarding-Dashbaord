@@ -37,10 +37,8 @@ import {
   assertCapabilityDelegable,
   isCapabilityDelegable,
   stripNonDelegableCapabilities,
-  stripNonDelegableScopes,
 } from '../../../identity/delegation/non-delegable-guard';
 import {
-  AgentDelegationError,
   DelegationToken,
   MAX_DELEGATION_DEPTH,
 } from '../../../identity/delegation/delegation-types';
@@ -242,8 +240,10 @@ describe('Phase 13 Milestone 5: Supervisor & Delegated Authority Adversarial Red
       });
 
       expect(validation.valid).toBe(false);
-      expect(validation.code).toBe('INVALID_INPUT');
-      expect(validation.reason).toContain('Invalid delegation token structure');
+      if (!validation.valid) {
+        expect(validation.code).toBe('INVALID_INPUT');
+        expect(validation.reason).toContain('Invalid delegation token structure');
+      }
     });
   });
 
@@ -296,8 +296,10 @@ describe('Phase 13 Milestone 5: Supervisor & Delegated Authority Adversarial Red
       });
 
       expect(validation.valid).toBe(false);
-      expect(validation.code).toBe('TENANT_MISMATCH');
-      expect(validation.reason).toContain('does not match target execution context');
+      if (!validation.valid) {
+        expect(validation.code).toBe('TENANT_MISMATCH');
+        expect(validation.reason).toContain('does not match target execution context');
+      }
     });
 
     it('enforces tenant boundary during orchestrator mission execution', async () => {
@@ -406,8 +408,10 @@ describe('Phase 13 Milestone 5: Supervisor & Delegated Authority Adversarial Red
       });
 
       expect(validation.valid).toBe(false);
-      expect(validation.code).toBe('SIGNATURE_TAMPERED');
-      expect(validation.reason).toContain('signature verification failed');
+      if (!validation.valid) {
+        expect(validation.code).toBe('SIGNATURE_TAMPERED');
+        expect(validation.reason).toContain('signature verification failed');
+      }
     });
 
     it('detects tampering of tokenBudget or TTL and rejects with SIGNATURE_TAMPERED', async () => {
@@ -436,8 +440,10 @@ describe('Phase 13 Milestone 5: Supervisor & Delegated Authority Adversarial Red
       });
 
       expect(validation.valid).toBe(false);
-      expect(validation.code).toBe('SIGNATURE_TAMPERED');
-      expect(validation.reason).toContain('signature verification failed');
+      if (!validation.valid) {
+        expect(validation.code).toBe('SIGNATURE_TAMPERED');
+        expect(validation.reason).toContain('signature verification failed');
+      }
     });
 
     it('rejects token with out-of-bounds tokenBudget exceeding 4,000 ceiling at schema level', async () => {
@@ -464,8 +470,10 @@ describe('Phase 13 Milestone 5: Supervisor & Delegated Authority Adversarial Red
       });
 
       expect(validation.valid).toBe(false);
-      expect(validation.code).toBe('INVALID_INPUT');
-      expect(validation.reason).toContain('Invalid delegation token structure');
+      if (!validation.valid) {
+        expect(validation.code).toBe('INVALID_INPUT');
+        expect(validation.reason).toContain('Invalid delegation token structure');
+      }
     });
 
     it('canonicalizeJson produces identical hashes regardless of object key insertion order', () => {

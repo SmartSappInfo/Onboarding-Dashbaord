@@ -98,7 +98,7 @@ export async function validateImportBatch(
   const orgId = organizationId || 'smartsapp-hq';
   try {
     defaultCountryCode = await resolveOrganizationCountryCode(orgId);
-  } catch (_err) {}
+  } catch {}
 
   if (workspaceId) {
     const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
@@ -323,7 +323,7 @@ export async function executeImportBatch(
   let defaultCountryCode: string | undefined = undefined;
   try {
     defaultCountryCode = await resolveOrganizationCountryCode(orgId);
-  } catch (_err) {}
+  } catch {}
 
   let successCount = 0;
   let errorCount = 0;

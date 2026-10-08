@@ -57,8 +57,8 @@ export function DashboardClientWrapper({
     };
 
     return (
-        <PageContainerFluid>
-            <div className="space-y-10">
+        <PageContainerFluid className="pt-2 sm:pt-3 lg:pt-4">
+            <div className="space-y-6 sm:space-y-8">
                 <DashboardHeader 
                     activeWorkspaceId={activeWorkspaceId}
                     activeWorkspace={activeWorkspace}

@@ -324,11 +324,18 @@ export async function getSupervisorTelemetryAction(
       }
     }
 
-    const tokensUsed = activeMissions.reduce((acc, m) => acc + (m.tokensUsed || 0), 0);
+    const tokensUsed = activeMissions.reduce(
+      (acc, m) => acc + m.executedSteps.reduce((stepAcc, s) => stepAcc + (s.maxTokens || 0), 0),
+      0
+    );
+    const activeDelegationsCount = activeMissions.reduce(
+      (acc, m) => acc + m.executedSteps.filter((s) => Boolean(s.delegationToken)).length,
+      0
+    );
 
     const data: SupervisorTelemetryData = {
       activeMissionsCount: activeMissions.length,
-      activeDelegationsCount: activeMissions.reduce((acc, m) => acc + (m.delegationTokens?.length || 0), 0),
+      activeDelegationsCount,
       tokensUsed,
       tokenCeiling: 50000,
       meshHealthy: true,
@@ -391,6 +398,7 @@ export async function resubmitDlqMessageAction(
         actor: { type: 'user', id: auth.uid },
         entity: { type: 'dlq_message', id: messageId },
         source: 'supervisor_actions',
+        correlationId: `corr_dlq_${messageId}`,
         payload: { messageId, resubmittedBy: auth.uid },
       });
       await defaultEventBus.publish(event);
@@ -436,6 +444,7 @@ export async function toggleSupervisorDeadManSwitchAction(
         actor: { type: 'user', id: auth.uid },
         entity: { type: 'kill_switch', id: 'supervisor_dead_man' },
         source: 'supervisor_actions',
+        correlationId: `corr_deadman_${Date.now()}`,
         payload: { emergencyPause: paused, reason: reason.trim() },
       });
       await defaultEventBus.publish(event);

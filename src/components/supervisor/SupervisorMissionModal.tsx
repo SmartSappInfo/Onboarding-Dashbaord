@@ -79,9 +79,9 @@ const PRIORITY_OPTIONS: {
   color: string;
 }[] = [
   { level: 'LOW', label: 'LOW', color: 'border-muted text-muted-foreground hover:bg-muted/50' },
-  { level: 'NORMAL', label: 'NORMAL', color: 'border-primary/40 text-primary hover:bg-primary/10' },
+  { level: 'MEDIUM', label: 'MEDIUM', color: 'border-primary/40 text-primary hover:bg-primary/10' },
   { level: 'HIGH', label: 'HIGH', color: 'border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10' },
-  { level: 'URGENT', label: 'URGENT', color: 'border-destructive/40 text-destructive hover:bg-destructive/10' },
+  { level: 'CRITICAL', label: 'CRITICAL', color: 'border-destructive/40 text-destructive hover:bg-destructive/10' },
 ];
 
 export function SupervisorMissionModal({
@@ -95,7 +95,7 @@ export function SupervisorMissionModal({
   simulateAction = simulateSupervisorShadowGoalAction,
 }: SupervisorMissionModalProps): React.JSX.Element {
   const [goal, setGoal] = React.useState<string>(defaultGoal);
-  const [priorityLevel, setPriorityLevel] = React.useState<SupervisorPriorityLevel>('NORMAL');
+  const [priorityLevel, setPriorityLevel] = React.useState<SupervisorPriorityLevel>('MEDIUM');
   const [budgetCapTokens, setBudgetCapTokens] = React.useState<number>(40000);
   const [targetSubject, setTargetSubject] = React.useState<string>('');
   const [isShadowMode, setIsShadowMode] = React.useState<boolean>(false);
@@ -120,8 +120,8 @@ export function SupervisorMissionModal({
         workspaceId,
         goal: goal.trim(),
         priorityLevel,
-        budgetCapTokens: Math.min(Math.max(1000, budgetCapTokens), 50000),
-        targetSubject: targetSubject.trim() ? targetSubject.trim() : undefined,
+        budgetCapTokens: Math.min(Math.max(1000, budgetCapTokens), 30000),
+        entityId: targetSubject.trim() ? targetSubject.trim() : undefined,
       };
 
       if (isShadowMode) {
@@ -169,7 +169,7 @@ export function SupervisorMissionModal({
 
         toast({
           title: 'Mission Launched',
-          description: `Supervisor mission launched (${res.data.status})`,
+          description: `Supervisor mission ${res.data.missionId} executed successfully`,
           actionConfig: {
             path: '/admin/intelligence/organization',
             label: 'View Missions',

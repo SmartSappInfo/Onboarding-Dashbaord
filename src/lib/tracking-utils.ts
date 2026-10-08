@@ -113,7 +113,7 @@ export function sanitizeRedirectUrl(rawUrl: string): string {
     if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
       return parsed.toString();
     }
-  } catch (_e) {
+  } catch {
     // If URL parsing fails and it's not a relative path, reject it for safety
     return '';
   }
@@ -162,7 +162,7 @@ export function extractTrackingParams(customSearch?: string): Record<string, str
           }
         }
       });
-    } catch (_e) {
+    } catch {
       // Ignore invalid referrer URLs
     }
   }
@@ -186,7 +186,7 @@ export function extractTrackingParams(customSearch?: string): Record<string, str
           }
         }
       }
-    } catch (_e) {
+    } catch {
       // Ignore sessionStorage read errors
     }
   }

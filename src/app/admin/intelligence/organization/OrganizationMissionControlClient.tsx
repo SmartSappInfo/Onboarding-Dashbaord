@@ -133,8 +133,9 @@ export function OrganizationMissionControlClient({
 
   // Real-Time SSE Stream Reactivity (Rule 62)
   const { status: streamStatus } = useEventStream({
-    url: `/api/events/stream?tenant=${encodeURIComponent(organizationId)}`,
-    onEvent: (event: unknown) => {
+    workspaceId,
+    eventTypes: ['supervisor.*', 'mesh.*', 'identity.delegation.*'],
+    onEvent: (event?: unknown) => {
       // Auto-refresh telemetry on relevant supervisor/mesh/delegation events
       const evt = event as { type?: string };
       if (
@@ -519,52 +520,55 @@ export function OrganizationMissionControlClient({
                 Topological Waves Execution Pipeline:
               </span>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {activeMission.topologicalWaves?.map((wave, wIdx) => (
-                  <div
-                    key={wave.waveIndex ?? wIdx}
-                    className="p-3.5 rounded-xl border border-border/60 bg-card space-y-2 shadow-2xs"
-                  >
-                    <div className="flex items-center justify-between border-b border-border/40 pb-2">
-                      <span className="text-xs font-bold text-foreground font-mono">
-                        Wave {wIdx + 1}
-                      </span>
-                      <span className="text-[10px] font-mono text-muted-foreground">
-                        {wave.nodes?.length ?? 0} {wave.nodes?.length === 1 ? 'Step' : 'Steps'}
-                      </span>
-                    </div>
+                {activeMission.dag?.waveGroups?.map((waveStepIds: string[], wIdx: number) => {
+                  const waveNodes = activeMission.dag.nodes.filter((n) => waveStepIds.includes(n.stepId));
+                  return (
+                    <div
+                      key={`wave_${wIdx}`}
+                      className="p-3.5 rounded-xl border border-border/60 bg-card space-y-2 shadow-2xs"
+                    >
+                      <div className="flex items-center justify-between border-b border-border/40 pb-2">
+                        <span className="text-xs font-bold text-foreground font-mono">
+                          Wave {wIdx + 1}
+                        </span>
+                        <span className="text-[10px] font-mono text-muted-foreground">
+                          {waveNodes.length} {waveNodes.length === 1 ? 'Step' : 'Steps'}
+                        </span>
+                      </div>
 
-                    <div className="space-y-2 pt-1">
-                      {wave.nodes?.map((node) => (
-                        <div
-                          key={node.nodeId}
-                          className="p-2.5 rounded-lg border border-border/40 bg-muted/10 space-y-1 text-xs"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="font-semibold text-foreground font-mono">
-                              {node.nodeId}
+                      <div className="space-y-2 pt-1">
+                        {waveNodes.map((node) => (
+                          <div
+                            key={node.stepId}
+                            className="p-2.5 rounded-lg border border-border/40 bg-muted/10 space-y-1 text-xs"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold text-foreground font-mono">
+                                {node.stepId}
+                              </span>
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  'text-[9px] font-mono',
+                                  node.status === 'COMPLETED'
+                                    ? 'border-emerald-500/40 text-emerald-600'
+                                    : node.status === 'RUNNING'
+                                    ? 'border-indigo-500/40 text-indigo-600'
+                                    : 'border-muted text-muted-foreground'
+                                )}
+                              >
+                                {node.status}
+                              </Badge>
+                            </div>
+                            <span className="text-[10px] text-muted-foreground font-mono block">
+                              {node.assignedPersona} &rarr; {node.capabilityId}
                             </span>
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                'text-[9px] font-mono',
-                                node.status === 'COMPLETED'
-                                  ? 'border-emerald-500/40 text-emerald-600'
-                                  : node.status === 'RUNNING'
-                                  ? 'border-indigo-500/40 text-indigo-600'
-                                  : 'border-muted text-muted-foreground'
-                              )}
-                            >
-                              {node.status}
-                            </Badge>
                           </div>
-                          <span className="text-[10px] text-muted-foreground font-mono block">
-                            {node.agentPersona} &rarr; {node.capabilityId}
-                          </span>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>

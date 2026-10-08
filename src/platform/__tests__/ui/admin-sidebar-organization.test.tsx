@@ -12,7 +12,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { AdminSidebar } from '@/app/admin/components/AdminSidebar';
 
-let mockCan = vi.fn(() => true);
+let mockCan = vi.fn((_resource?: string, _action?: string, _scope?: string) => true);
 let mockIsSystemAdmin = true;
 
 vi.mock('next/navigation', () => ({

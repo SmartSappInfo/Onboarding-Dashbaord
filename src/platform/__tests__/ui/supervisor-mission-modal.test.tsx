@@ -144,7 +144,7 @@ describe('SupervisorMissionModal (theme.md §8 Compliance)', () => {
       />
     );
 
-    expect(screen.getByText('NORMAL')).toBeDefined();
+    expect(screen.getByText('MEDIUM')).toBeDefined();
 
     // Check Shadow mode toggle
     const shadowToggle = screen.getByRole('checkbox', { name: /run in shadow mode/i });
@@ -182,7 +182,7 @@ describe('SupervisorMissionModal (theme.md §8 Compliance)', () => {
           organizationId: 'org_test_123',
           workspaceId: 'ws_test_456',
           goal: 'Synthesize quarterly campus revenue report and flag collections risk',
-          priorityLevel: 'NORMAL',
+          priorityLevel: 'MEDIUM',
         })
       );
       expect(onStartedMock).toHaveBeenCalled();

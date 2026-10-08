@@ -24,9 +24,6 @@ import {
   BookmarkCheck, 
   Settings, 
   Activity, 
-  Flame, 
-  Database, 
-  Building2,
   GitMerge,
   Radio,
   Sliders,
@@ -807,8 +804,6 @@ export default function LeadIntelligenceClient() {
   };
 
   const runningJobsCount = jobs.filter(j => j.status === 'running').length;
-  const highIntentCount = prospects.filter(p => (p.scoring?.overallScore ?? 0) >= 75).length;
-  const syncedCount = prospects.filter(p => p.syncStatus === 'synced').length;
 
   return (
     <div className="flex-1 flex flex-col p-4 sm:p-6 space-y-6 max-w-7xl mx-auto w-full relative">
@@ -819,26 +814,10 @@ export default function LeadIntelligenceClient() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10 border-b border-border/40 pb-5">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-sky-400 to-indigo-500">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
               Lead Intelligence Platform
             </h1>
             <CardInfoTooltip text="Discover local businesses, audit tech footprints, generate AI sales strategies, and sync directly to CRM." />
-          </div>
-
-          {/* Live Metric Counters Ribbon (intelligence_ui Section 4) */}
-          <div className="flex items-center gap-3 pt-3 flex-wrap">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/30 border border-border/60 px-2.5 py-1 rounded-lg">
-              <Building2 className="w-3.5 h-3.5 text-primary" />
-              <span><strong>{prospects.length}</strong> Prospects</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-amber-500/5 border border-amber-500/20 px-2.5 py-1 rounded-lg">
-              <Flame className="w-3.5 h-3.5 text-amber-500" />
-              <span><strong className="text-amber-600 dark:text-amber-400">{highIntentCount}</strong> High Intent</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-blue-500/5 border border-blue-500/20 px-2.5 py-1 rounded-lg">
-              <Database className="w-3.5 h-3.5 text-blue-500" />
-              <span><strong className="text-blue-600 dark:text-blue-400">{syncedCount}</strong> Synced in CRM</span>
-            </div>
           </div>
         </div>
 

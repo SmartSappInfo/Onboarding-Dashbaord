@@ -45,7 +45,7 @@ export function getOrCreateVisitorId(): string {
       setVisitorIdCookie(localId.trim());
       return localId.trim();
     }
-  } catch (_e: unknown) {
+  } catch {
     // LocalStorage restricted by browser security settings
   }
 
@@ -60,7 +60,7 @@ export function getOrCreateVisitorId(): string {
   setVisitorIdCookie(newId);
   try {
     window.localStorage.setItem(VISITOR_STORAGE_KEY, newId);
-  } catch (_e: unknown) {
+  } catch {
     // Ignore storage quota or restricted access errors
   }
 

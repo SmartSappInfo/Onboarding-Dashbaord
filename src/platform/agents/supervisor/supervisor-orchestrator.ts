@@ -142,6 +142,24 @@ export class SupervisorOrchestrator {
   }
 
   /**
+   * Lists active missions for an organization.
+   */
+  public listActiveMissions(organizationId: string): SupervisorMissionState[] {
+    return Array.from(this.missions.values()).filter(
+      (m) =>
+        m.organizationId === organizationId &&
+        (m.status === 'RUNNING' || m.status === 'WAITING_FOR_APPROVAL' || m.status === 'PLANNING')
+    );
+  }
+
+  /**
+   * Lists all missions for an organization.
+   */
+  public listMissions(organizationId: string): SupervisorMissionState[] {
+    return Array.from(this.missions.values()).filter((m) => m.organizationId === organizationId);
+  }
+
+  /**
    * Cooperatively cancels an active mission.
    */
   public async cancelMission(missionId: string, reason?: string): Promise<boolean> {

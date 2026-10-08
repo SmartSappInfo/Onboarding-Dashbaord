@@ -61,7 +61,7 @@ const MOCK_TOKENS: DelegationToken[] = [
 
 // Mock revoke action
 vi.mock('@/app/actions/delegation-actions', () => ({
-  revokeDelegationTokenAction: vi.fn(async (input: { tokenId: string; reason: string }) => ({
+  revokeDelegationTokenAction: vi.fn(async (_input: { tokenId: string; reason: string }) => ({
     success: true,
     data: { revokedCount: 1 },
   })),

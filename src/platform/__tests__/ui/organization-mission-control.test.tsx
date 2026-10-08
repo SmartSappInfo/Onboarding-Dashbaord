@@ -22,7 +22,7 @@ import { OrganizationMissionControlClient } from '@/app/admin/intelligence/organ
 
 // Mock useEventStream
 vi.mock('@/hooks/useEventStream', () => ({
-  useEventStream: vi.fn(({ onEvent }: { onEvent?: (event: unknown) => void }) => ({
+  useEventStream: vi.fn((_opts?: { onEvent?: (event: unknown) => void }) => ({
     status: 'connected',
     reconnect: vi.fn(),
   })),
@@ -52,7 +52,62 @@ vi.mock('@/app/actions/supervisor-actions', () => ({
           completedSteps: 2,
           failedSteps: 0,
           tokensUsed: 8400,
-          budgetCapTokens: 40000,
+          dag: {
+            missionType: 'CUSTOM' as const,
+            nodes: [
+              {
+                stepId: 'step_query_invoices',
+                title: 'Query Invoices',
+                description: 'Search for unpaid student invoices',
+                assignedPersona: 'billing_analyst' as const,
+                capabilityId: 'finance.invoice.search',
+                input: {},
+                dependentOnStepIds: [],
+                delegatedScopes: ['finance:read'],
+                maxTokens: 5000,
+                timeoutMs: 30000,
+                riskLevel: 'L0_READ' as const,
+                status: 'COMPLETED' as const,
+                output: { count: 12 },
+                error: null,
+                executionDurationMs: 340,
+                delegationToken: null,
+                idempotencyKey: 'idemp_01',
+                proposalId: null,
+              },
+              {
+                stepId: 'step_reconcile_payments',
+                title: 'Reconcile Payments',
+                description: 'Match payments to invoices',
+                assignedPersona: 'reconciliation_agent' as const,
+                capabilityId: 'finance.reconciliation.match',
+                input: {},
+                dependentOnStepIds: ['step_query_invoices'],
+                delegatedScopes: ['finance:write'],
+                maxTokens: 5000,
+                timeoutMs: 30000,
+                riskLevel: 'L2_STATE_MUTATION' as const,
+                status: 'RUNNING' as const,
+                output: null,
+                error: null,
+                executionDurationMs: 120,
+                delegationToken: null,
+                idempotencyKey: 'idemp_02',
+                proposalId: null,
+              },
+            ],
+            edges: [
+              { from: 'step_query_invoices', to: 'step_reconcile_payments' },
+            ],
+            topologicalOrder: ['step_query_invoices', 'step_reconcile_payments'],
+            waveGroups: [
+              ['step_query_invoices'],
+              ['step_reconcile_payments'],
+            ],
+            estimatedDurationMs: 60000,
+            totalTokenBudget: 10000,
+            hasCycles: false,
+          },
           topologicalWaves: [
             {
               waveIndex: 0,
