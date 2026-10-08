@@ -274,18 +274,19 @@ Milestone 3 is **100% structurally ready** to support Milestone 4 without breaki
 
 While Phase 14 Milestone 3 is approved for production, the following four enhancements are recommended for future hardening:
 
-### Recommendation 1 (Priority: Medium — Contract Nominal Parity)
+### Recommendation 1 (Priority: Medium — Contract Nominal Parity) — **RESOLVED (Commit `aaea1471`)**
 - **Observation:** `docs/agents_mcp/phases/agents_mcp_phase_14_milestone_3_plan.md` mentions `SagaExecutionPlanSchema`, but the canonical schema in [`saga-compensation-types.ts`](file:///Users/josephaidoo/Desktop/Codes/vibe%20Coding/Onboarding-Dashbaord-main/src/platform/verification/saga/saga-compensation-types.ts) was authored as `SagaExecutionLedgerSchema`.
-- **Action:** Add a type and schema alias in `saga-compensation-types.ts`:
+- **Action:** Added type and schema aliases in `saga-compensation-types.ts`:
   ```typescript
   export const SagaExecutionPlanSchema = SagaExecutionLedgerSchema;
   export type SagaExecutionPlan = SagaExecutionLedger;
   ```
-- **Rationale:** Guarantees 100% nominal compatibility with all planning documentation and future callers.
+- **Status:** **Resolved in commit `aaea1471`**; 100% nominal parity verified.
 
-### Recommendation 2 (Priority: Low — Observability Event Symmetry)
+### Recommendation 2 (Priority: Low — Observability Event Symmetry) — **RESOLVED (Commit `aaea1471`)**
 - **Observation:** When a step is quarantined, `WorkflowDlqService` emits `workflow.dlq_routed`. However, emitting a dedicated `saga.dlq.quarantined` event directly from `SagaCompensationService` will provide domain-scoped saga audit symmetry.
-- **Action:** Add `await this.eventBus.publish(createDomainEvent({ type: 'saga.dlq.quarantined', ... }))` in `routeStepToDlq`.
+- **Action:** Added `await this.eventBus.publish(createDomainEvent({ type: 'saga.dlq.quarantined', ... }))` in `routeStepToDlq`.
+- **Status:** **Resolved in commit `aaea1471`**; explicit event published on every DLQ routing.
 
 ### Recommendation 3 (Priority: Medium — Distributed Firestore Store)
 - **Observation:** `MemorySagaLedgerStore` is in-memory. In multi-pod production deployments, execution ledgers must persist across serverless instances.
