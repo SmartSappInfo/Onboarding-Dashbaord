@@ -64,8 +64,9 @@ describe('Phase 15 Milestone 5 - Governed Evaluation UI Server Actions', () => {
     expect(res.data?.kpis.policyViolationsCount).toBe(0);
     expect(res.data?.kpis.humanCorrectionRate).toBe(4.8);
     expect(res.data?.kpis.medianRuntimeSeconds).toBe(18);
-    expect(res.data?.humanComparison.humanTaskTimeMinutes).toBe(17.0);
-    expect(res.data?.humanComparison.agentTaskTimeMinutes).toBe(2.0);
+    expect(res.data?.humanComparison.humanTimeSeconds).toBe(1020);
+    expect(res.data?.humanComparison.agentTimeSeconds).toBe(120);
+    expect(res.data?.humanComparison.speedupFactor).toBe(8.5);
   });
 
   it('rejects cross-tenant requests with IDOR_VIOLATION (Rules 8 & 47)', async () => {

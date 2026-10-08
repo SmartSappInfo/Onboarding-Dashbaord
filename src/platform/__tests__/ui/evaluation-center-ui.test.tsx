@@ -86,15 +86,17 @@ describe('Phase 15 Milestone 5 - Evaluation Center UI & Components Suite', () =>
   };
 
   const sampleBaseline: HumanVsAgentBaseline = {
-    humanTaskTimeMinutes: 17.0,
-    agentTaskTimeMinutes: 2.0,
+    scenarioId: 'eval_composite_01',
+    domain: 'crm',
+    humanTimeSeconds: 1020,
+    agentTimeSeconds: 120,
     speedupFactor: 8.5,
-    humanErrorRatePercent: 8.0,
-    agentErrorRatePercent: 1.1,
-    errorReductionFactor: 7.3,
-    humanSourcesConsultedRatio: '4/9',
-    agentSourcesConsultedRatio: '9/9',
-    contextBreadthImprovementFactor: 2.25,
+    humanErrorRate: 8.0,
+    agentErrorRate: 1.1,
+    errorReductionPercentage: 86.3,
+    humanSourcesConsulted: 4,
+    agentSourcesConsulted: 9,
+    contextBreadthFactor: 2.25,
   };
 
   const sampleRuns: BenchmarkRunSummary[] = [

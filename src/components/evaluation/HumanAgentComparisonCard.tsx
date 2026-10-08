@@ -90,14 +90,14 @@ export function HumanAgentComparisonCard({
             <div className="text-left">
               <span className="text-[10px] text-muted-foreground block">Human</span>
               <span className="text-base font-bold font-mono text-muted-foreground line-through">
-                {baseline.humanTaskTimeMinutes}m
+                {Math.round(baseline.humanTimeSeconds / 60)}m
               </span>
             </div>
             <span className="text-xs text-muted-foreground font-bold">→</span>
             <div className="text-right">
               <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold block">Agent</span>
               <span className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
-                {baseline.agentTaskTimeMinutes}m
+                {Math.round(baseline.agentTimeSeconds / 60)}m
               </span>
             </div>
           </div>
@@ -117,21 +117,21 @@ export function HumanAgentComparisonCard({
               variant="outline"
               className="text-[10px] font-mono border-emerald-500/30 text-emerald-600 bg-emerald-500/10"
             >
-              {baseline.errorReductionFactor.toFixed(1)}x REDUCTION
+              {(baseline.humanErrorRate / Math.max(0.001, baseline.agentErrorRate)).toFixed(1)}x REDUCTION
             </Badge>
           </div>
           <div className="flex items-center justify-between pt-1">
             <div className="text-left">
               <span className="text-[10px] text-muted-foreground block">Human</span>
               <span className="text-base font-bold font-mono text-muted-foreground line-through">
-                {baseline.humanErrorRatePercent.toFixed(1)}%
+                {baseline.humanErrorRate.toFixed(1)}%
               </span>
             </div>
             <span className="text-xs text-muted-foreground font-bold">→</span>
             <div className="text-right">
               <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold block">Agent</span>
               <span className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
-                {baseline.agentErrorRatePercent.toFixed(1)}%
+                {baseline.agentErrorRate.toFixed(1)}%
               </span>
             </div>
           </div>
@@ -151,21 +151,21 @@ export function HumanAgentComparisonCard({
               variant="outline"
               className="text-[10px] font-mono border-blue-500/30 text-blue-600 bg-blue-500/10"
             >
-              {baseline.contextBreadthImprovementFactor.toFixed(2)}x BREADTH
+              {baseline.contextBreadthFactor.toFixed(2)}x BREADTH
             </Badge>
           </div>
           <div className="flex items-center justify-between pt-1">
             <div className="text-left">
               <span className="text-[10px] text-muted-foreground block">Human</span>
               <span className="text-base font-bold font-mono text-muted-foreground">
-                {baseline.humanSourcesConsultedRatio}
+                {baseline.humanSourcesConsulted}/9
               </span>
             </div>
             <span className="text-xs text-muted-foreground font-bold">→</span>
             <div className="text-right">
               <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold block">Agent</span>
               <span className="text-xl font-bold font-mono text-blue-600 dark:text-blue-400">
-                {baseline.agentSourcesConsultedRatio}
+                {baseline.agentSourcesConsulted}/9
               </span>
             </div>
           </div>
