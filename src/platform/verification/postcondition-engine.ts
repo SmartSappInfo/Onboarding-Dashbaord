@@ -34,6 +34,7 @@ import {
 import { checkGovernanceDeadManSwitch } from '@/platform/policy/governance-dead-man';
 import { defaultEventBus } from '@/platform/events/event-bus';
 import { createDomainEvent } from '@/platform/capabilities/events/domain-event';
+import { getRequiredAssertionsForCapability } from './verification-matrix';
 
 // ============================================================================
 // 1. MATHEMATICAL DETERMINISM & ADVERSARIAL DIRECTIVE PATTERNS
@@ -708,25 +709,7 @@ export class PostconditionEngine {
    * Helper to map capability to default assertion rules.
    */
   private getDefaultRulesForCapability(capabilityId: string): string[] {
-    switch (capabilityId) {
-      case 'crm.deal.advance_stage':
-        return ['crm:deal_stage_advanced'];
-      case 'crm.entity.update':
-        return ['crm:entity_updated'];
-      case 'crm.note.create':
-        return ['crm:note_created'];
-      case 'sdr.dispatch_whatsapp':
-      case 'sdr.dispatch_email':
-        return ['sales:outreach_sent'];
-      case 'collections.execute_proposal':
-        return ['finance:remainder_balanced'];
-      case 'knowledge.candidate.decide':
-        return ['knowledge:fact_superseded'];
-      case 'supervisor.mesh.route_handoff':
-        return ['supervisor:delegation_bounded'];
-      default:
-        return [];
-    }
+    return [...getRequiredAssertionsForCapability(capabilityId)];
   }
 }
 

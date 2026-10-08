@@ -4,3 +4,4 @@
 
 export * from './verification-types';
 export * from './postcondition-engine';
+export * from './verification-matrix';
