@@ -143,6 +143,8 @@ export class PostconditionEngine {
 
     const assertions: PostconditionAssertion[] = [];
 
+    const executionId = options?.executionId ?? `exec_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+
     // 5. Evaluate Each Assertion
     for (const ruleName of ruleNames) {
       if (options?.signal?.aborted) {
@@ -160,11 +162,18 @@ export class PostconditionEngine {
         defaultEventBus.publish(
           createDomainEvent({
             type: 'verification.assertion.evaluated',
-            aggregateId: assertion.targetId,
-            aggregateType: assertion.targetResource,
+            source: 'verification_engine',
+            correlationId: executionId,
             organizationId: validContext.organizationId,
             workspaceId: validContext.workspaceId,
-            actorId: validContext.actorId,
+            actor: {
+              id: validContext.actorId,
+              type: 'user',
+            },
+            entity: {
+              id: assertion.targetId,
+              type: assertion.targetResource,
+            },
             payload: {
               capabilityId,
               assertionId: assertion.assertionId,
@@ -198,7 +207,6 @@ export class PostconditionEngine {
     }
 
     const durationMs = Date.now() - startTime;
-    const executionId = options?.executionId ?? `exec_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
     const result: VerificationResult = {
       executionId,
@@ -217,11 +225,18 @@ export class PostconditionEngine {
       defaultEventBus.publish(
         createDomainEvent({
           type: 'verification.execution.completed',
-          aggregateId: executionId,
-          aggregateType: 'verification_execution',
+          source: 'verification_engine',
+          correlationId: executionId,
           organizationId: validContext.organizationId,
           workspaceId: validContext.workspaceId,
-          actorId: validContext.actorId,
+          actor: {
+            id: validContext.actorId,
+            type: 'user',
+          },
+          entity: {
+            id: executionId,
+            type: 'verification_execution',
+          },
           payload: {
             capabilityId,
             overallStatus: result.overallStatus,
@@ -717,11 +732,11 @@ export class PostconditionEngine {
 // 4. GLOBAL SINGLETON PRESERVATION (Rule 69)
 // ============================================================================
 
-interface GlobalWithPostconditionEngine {
+type GlobalWithPostconditionEngine = typeof globalThis & {
   __smartsappPostconditionEngine?: PostconditionEngine;
-}
+};
 
-const globalForVerification = globalThis as unknown as GlobalWithPostconditionEngine;
+const globalForVerification = globalThis as GlobalWithPostconditionEngine;
 
 export function getPostconditionEngine(): PostconditionEngine {
   if (!globalForVerification.__smartsappPostconditionEngine) {

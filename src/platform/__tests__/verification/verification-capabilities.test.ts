@@ -23,14 +23,15 @@ describe('Phase 14 Milestone 1 - Canonical Verification Capabilities', () => {
 
   const mockPrincipalContext: CapabilityExecutionContext = {
     principal: {
-      id: 'usr_operator_1',
-      type: 'user',
+      userId: 'usr_operator_1',
+      actorType: 'user',
+      effectiveRole: 'admin',
       organizationId: 'org_enterprise',
+      workspaceId: 'ws_sales',
       grantedScopes: ['verification:assert', 'verification:read', 'workspace:read'],
     },
-    organizationId: 'org_enterprise',
-    workspaceId: 'ws_sales',
-    executionId: 'exec_test_1',
+    correlationId: 'exec_test_1',
+    timestamp: new Date().toISOString(),
   };
 
   beforeEach(() => {
@@ -67,10 +68,12 @@ describe('Phase 14 Milestone 1 - Canonical Verification Capabilities', () => {
       };
 
       const result = await assertPostconditionsCapability.handler(input, mockPrincipalContext);
-      expect(result.status).toBe('SUCCESS');
-      expect(result.data).toBeDefined();
-      expect(result.data.overallStatus).toBe('PASS');
-      expect(result.data.assertionsCount).toBeGreaterThanOrEqual(1);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toBeDefined();
+        expect(result.data.overallStatus).toBe('PASS');
+        expect(result.data.assertionsCount).toBeGreaterThanOrEqual(1);
+      }
     });
 
     it('enforces Anti-IDOR and rejects cross-tenant caller context', async () => {
@@ -109,6 +112,8 @@ describe('Phase 14 Milestone 1 - Canonical Verification Capabilities', () => {
       };
 
       const evalResult = await assertPostconditionsCapability.handler(input, mockPrincipalContext);
+      expect(evalResult.success).toBe(true);
+      if (!evalResult.success) return;
       const executionId = evalResult.data.executionId;
 
       const fetchResult = await getExecutionVerificationCapability.handler(
@@ -120,9 +125,11 @@ describe('Phase 14 Milestone 1 - Canonical Verification Capabilities', () => {
         mockPrincipalContext
       );
 
-      expect(fetchResult.status).toBe('SUCCESS');
-      expect(fetchResult.data?.executionId).toBe(executionId);
-      expect(fetchResult.data?.overallStatus).toBe('PASS');
+      expect(fetchResult.success).toBe(true);
+      if (fetchResult.success) {
+        expect(fetchResult.data?.executionId).toBe(executionId);
+        expect(fetchResult.data?.overallStatus).toBe('PASS');
+      }
     });
 
     it('returns null data when execution ID is not found', async () => {
@@ -135,8 +142,10 @@ describe('Phase 14 Milestone 1 - Canonical Verification Capabilities', () => {
         mockPrincipalContext
       );
 
-      expect(fetchResult.status).toBe('SUCCESS');
-      expect(fetchResult.data).toBeNull();
+      expect(fetchResult.success).toBe(true);
+      if (fetchResult.success) {
+        expect(fetchResult.data).toBeNull();
+      }
     });
   });
 });

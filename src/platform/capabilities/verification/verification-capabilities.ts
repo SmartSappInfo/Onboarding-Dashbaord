@@ -139,21 +139,21 @@ export const assertPostconditionsCapability: CapabilityDefinition<
   ): Promise<CapabilityExecutionResult<AssertPostconditionsOutput>> => {
     assertTenantContext(context, input.organizationId);
 
+    const startTime = Date.now();
     const engine = getPostconditionEngine();
     const result = await engine.evaluatePostconditions(
       input.capabilityId,
       {
         organizationId: input.organizationId,
         workspaceId: input.workspaceId,
-        actorId: context.principal.id,
+        actorId: context.principal.userId,
         preStateSnapshot: input.preStateSnapshot,
         postStateSnapshot: input.postStateSnapshot,
         mutationPayload: input.mutationPayload,
       },
       {
-        executionId: input.executionId,
+        executionId: input.executionId ?? context.correlationId,
         customAssertions: input.customAssertions,
-        signal: context.signal,
       }
     );
 
@@ -161,19 +161,11 @@ export const assertPostconditionsCapability: CapabilityDefinition<
     cacheVerificationResult(result);
 
     return {
-      status: 'SUCCESS',
+      success: true,
       data: result,
-      events: [
-        {
-          type: 'verification.execution.completed',
-          payload: {
-            capabilityId: input.capabilityId,
-            overallStatus: result.overallStatus,
-            passedCount: result.passedCount,
-            failedCount: result.failedCount,
-          },
-        },
-      ],
+      executionId: result.executionId,
+      emittedEvents: [],
+      durationMs: Date.now() - startTime,
     };
   },
 };
@@ -238,8 +230,11 @@ export const getExecutionVerificationCapability: CapabilityDefinition<
 
     const result = getCachedVerificationResult(input.executionId);
     return {
-      status: 'SUCCESS',
+      success: true,
       data: result,
+      executionId: input.executionId,
+      emittedEvents: [],
+      durationMs: 0,
     };
   },
 };
