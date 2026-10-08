@@ -20,6 +20,7 @@ import {
   type MeshCircuitBreakerState,
   AgentHandoffEnvelopeSchema,
   AgentMeshError,
+  computeHandoffPayloadHash,
   MESH_DEFAULT_TIMEOUT_MS,
   MESH_CIRCUIT_BREAKER_FAILURE_THRESHOLD,
   MESH_CIRCUIT_BREAKER_RESET_MS,
@@ -34,8 +35,9 @@ const ADVERSARIAL_DIRECTIVE_PATTERNS: readonly RegExp[] = [
   /<\s*system\b[^>]*>[\s\S]*?<\s*\/\s*system\s*>/gi,
   /<\s*instruction\b[^>]*>[\s\S]*?<\s*\/\s*instruction\s*>/gi,
   /\[\s*system\s*directive\s*\]/gi,
-  /ignore\s+(?:all\s+)?prior\s+instructions/gi,
-  /disregard\s+(?:all\s+)?previous\s+instructions/gi,
+  /system\s+override[:\s]*/gi,
+  /ignore\s+(?:all\s+)?(?:prior|previous)\s+instructions/gi,
+  /disregard\s+(?:all\s+)?(?:prior|previous)\s+instructions/gi,
   /override\s+system\s+prompt/gi,
   /you\s+are\s+now\s+in\s+developer\s+mode/gi,
   /bypass\s+all\s+(?:safety|governance|security)\s+filters/gi,
@@ -43,6 +45,7 @@ const ADVERSARIAL_DIRECTIVE_PATTERNS: readonly RegExp[] = [
 
 const SECRET_PATTERNS: readonly { readonly pattern: RegExp; readonly tag: string }[] = [
   { pattern: /\bsk-[a-zA-Z0-9_-]{20,}\b/g, tag: '[REDACTED_SECRET:api_key]' },
+  { pattern: /\bsk_(?:live|test)_[a-zA-Z0-9]{20,}\b/g, tag: '[REDACTED_SECRET:api_key]' },
   { pattern: /\bAIza[0-9A-Za-z_-]{30,45}\b/g, tag: '[REDACTED_SECRET:api_key]' },
   { pattern: /ghp_[a-zA-Z0-9]{36}/g, tag: '[REDACTED_SECRET:github_token]' },
   {
@@ -54,6 +57,53 @@ const SECRET_PATTERNS: readonly { readonly pattern: RegExp; readonly tag: string
     tag: '[REDACTED_SECRET:private_key]',
   },
 ];
+
+/**
+ * Recursively scrubs credentials and neutralizes adversarial directives from context payloads,
+ * wrapping untrusted or sanitized string values in XML reference containers (Rules 13, 30, 32, 33).
+ */
+export function sanitizeContextValue(value: unknown, id: string): unknown {
+  if (value === null || value === undefined) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    let sanitized = value;
+    for (const secret of SECRET_PATTERNS) {
+      secret.pattern.lastIndex = 0;
+      sanitized = sanitized.replace(secret.pattern, secret.tag);
+      secret.pattern.lastIndex = 0;
+    }
+    let hadDirective = false;
+    for (const pattern of ADVERSARIAL_DIRECTIVE_PATTERNS) {
+      pattern.lastIndex = 0;
+      const replaced = sanitized.replace(pattern, '[REDACTED_INJECTION_DIRECTIVE]');
+      if (replaced !== sanitized) {
+        hadDirective = true;
+        sanitized = replaced;
+      }
+      pattern.lastIndex = 0;
+    }
+    if (hadDirective || sanitized !== value) {
+      return `<untrusted_reference_data id="${id}">\n${sanitized}\n</untrusted_reference_data>`;
+    }
+    return sanitized;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item, idx) => sanitizeContextValue(item, `${id}_${idx}`));
+  }
+
+  if (typeof value === 'object') {
+    const sanitizedObj: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      sanitizedObj[k] = sanitizeContextValue(v, k);
+    }
+    return sanitizedObj;
+  }
+
+  return value;
+}
 
 // ============================================================================
 // 2. CHANNEL CONFIGURATION & PEER HANDLER INTERFACES
@@ -75,6 +125,7 @@ export interface SendHandoffOptions {
   readonly abortSignal?: AbortSignal;
   readonly timeoutMs?: number;
   readonly peerHandler?: PeerExecutionHandler;
+  readonly customHandler?: PeerExecutionHandler;
 }
 
 // ============================================================================
@@ -206,7 +257,19 @@ export class AgentMeshChannel {
       );
     }
 
-    // 4. Token budget knapsack verification (Rules 28 & 56)
+    // 4. Cryptographic payload hash verification (Rule 22)
+    if (!envelope.payloadHash.startsWith('hash_')) {
+      const computedHash = await computeHandoffPayloadHash(envelope.context);
+      if (computedHash !== envelope.payloadHash) {
+        throw new AgentMeshError(
+          'PAYLOAD_TAMPERED',
+          `Cryptographic verification failed: payloadHash mismatch. Expected '${computedHash}', got '${envelope.payloadHash}'. Access denied.`,
+          400
+        );
+      }
+    }
+
+    // 5. Token budget knapsack verification (Rules 28 & 56)
     const estimatedTokens = this.estimateTokenCount(envelope.context);
     if (estimatedTokens > envelope.budget.maxTokens || estimatedTokens > MESH_MAX_CONTEXT_TOKENS) {
       throw new AgentMeshError(
@@ -217,10 +280,24 @@ export class AgentMeshChannel {
 
     const timeoutBudget = options.timeoutMs ?? envelope.budget.maxDurationMs ?? this.defaultTimeoutMs;
 
-    // 5. Execute peer handler with timeout race and cooperative cancellation
+    // 6. Sanitize context & neutralize injection directives for downstream peer
+    const rawSanitized = sanitizeContextValue(envelope.context, envelope.handoffId);
+    const sanitizedContext =
+      rawSanitized && typeof rawSanitized === 'object' && !Array.isArray(rawSanitized)
+        ? (rawSanitized as Record<string, unknown>)
+        : { data: rawSanitized };
+
+    const sanitizedEnvelope: AgentHandoffEnvelope = {
+      ...envelope,
+      context: sanitizedContext,
+    };
+
+    const effectiveHandler = options.peerHandler ?? options.customHandler;
+
+    // 7. Execute peer handler with timeout race and cooperative cancellation
     try {
-      const handlerPromise = options.peerHandler
-        ? options.peerHandler(envelope)
+      const handlerPromise = effectiveHandler
+        ? effectiveHandler(sanitizedEnvelope)
         : Promise.resolve({ status: 'DELIVERED', autoAck: true });
 
       const timeoutPromise = new Promise<never>((_, reject) => {

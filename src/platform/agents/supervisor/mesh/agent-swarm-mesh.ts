@@ -100,25 +100,32 @@ export class AgentSwarmMesh {
       );
     }
 
-    // 3. Emergency Dead-Man Switch Evaluation (Rule 60)
-    try {
-      await checkGovernanceDeadManSwitch(envelope.organizationId);
-    } catch {
-      throw new AgentMeshError(
-        'DEAD_MAN_PAUSED',
-        `Emergency dead-man switch is engaged for organization '${envelope.organizationId}'. Multi-agent handoff blocked.`
-      );
-    }
-
-    // 4. Update Peer Registry active count
+    // 3. Update Peer Registry active count and enforce concurrency limit (Rules 9 & 23)
     const targetPeer = this.peers.get(envelope.targetAgentPersona);
     if (targetPeer) {
+      if (targetPeer.activeHandoffsCount >= targetPeer.concurrencyLimit) {
+        throw new AgentMeshError(
+          'RATE_LIMITED',
+          `Concurrency limit of ${targetPeer.concurrencyLimit} exceeded for peer '${envelope.targetAgentPersona}'. Current active: ${targetPeer.activeHandoffsCount}.`,
+          429
+        );
+      }
       targetPeer.activeHandoffsCount += 1;
       targetPeer.lastHeartbeat = new Date().toISOString();
     }
     this.inFlightHandoffsCount += 1;
 
     try {
+      // 4. Emergency Dead-Man Switch Evaluation (Rule 60)
+      try {
+        await checkGovernanceDeadManSwitch(envelope.organizationId);
+      } catch {
+        throw new AgentMeshError(
+          'DEAD_MAN_PAUSED',
+          `Emergency dead-man switch is engaged for organization '${envelope.organizationId}'. Multi-agent handoff blocked.`
+        );
+      }
+
       const channel = this.getChannel(envelope.sourceAgentPersona, envelope.targetAgentPersona);
       const receipt = await channel.sendHandoff(envelope, options);
 
@@ -151,6 +158,32 @@ export class AgentSwarmMesh {
         targetPeer.consecutiveFailures += 1;
         targetPeer.lastFailureTimestamp = new Date().toISOString();
       }
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      this.deadLetterRecords.push({
+        deadLetterId: `dlq_${envelope.handoffId}_${Date.now()}`,
+        envelope,
+        reason: errorMessage,
+        droppedAt: new Date().toISOString(),
+        attemptCount: 1,
+      });
+
+      // Publish Dead-Letter domain event (Rule 25 & 40)
+      void this.eventBus.publish(
+        createDomainEvent({
+          type: 'supervisor.mesh.dead_letter',
+          organizationId: envelope.organizationId,
+          workspaceId: envelope.workspaceId,
+          actor: { type: 'agent', id: envelope.sourceAgentPersona },
+          entity: { type: 'mesh.handoff', id: envelope.handoffId },
+          correlationId: envelope.missionId,
+          source: 'supervisor.swarm_mesh.dlq',
+          payload: {
+            handoffId: envelope.handoffId,
+            reason: errorMessage,
+            targetPersona: envelope.targetAgentPersona,
+          },
+        })
+      );
       throw err;
     } finally {
       if (targetPeer && targetPeer.activeHandoffsCount > 0) {
@@ -384,6 +417,16 @@ export class AgentSwarmMesh {
       compensationsExecuted: this.compensationsExecutedCount,
       deadLetterCount: this.deadLetterRecords.length,
     };
+  }
+
+  /**
+   * Retrieves dead-letter records, optionally filtered by organizationId (Rule 25).
+   */
+  public getDeadLetterRecords(organizationId?: string): readonly MeshDeadLetterRecord[] {
+    if (!organizationId) {
+      return [...this.deadLetterRecords];
+    }
+    return this.deadLetterRecords.filter((r) => r.envelope.organizationId === organizationId);
   }
 }
 
