@@ -109,6 +109,7 @@ const LEGACY_PERMISSION_MAP: ReadonlyMap<string, ParsedPermissionRef> = new Map<
   ['identity:read', { kind: 'rbac', section: 'workforce', feature: 'users', action: 'view' }],
   ['identity:access:list', { kind: 'rbac', section: 'workforce', feature: 'users', action: 'view' }],
   ['workspace:read', { kind: 'rbac', section: 'operations', feature: 'dashboard', action: 'view' }],
+  ['workspace:write', { kind: 'rbac', section: 'operations', feature: 'tasks', action: 'edit' }],
   ['app:portal_view', { kind: 'app', id: 'portals_view' }],
   ['test.execute', { kind: 'rbac', section: 'operations', feature: 'tasks', action: 'view' }],
 

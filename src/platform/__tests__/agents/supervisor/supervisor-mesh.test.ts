@@ -20,6 +20,13 @@ import {
   type AgentHandoffEnvelope,
 } from '@/platform/agents/supervisor/mesh/agent-swarm-mesh-types';
 import { AgentMeshChannel } from '@/platform/agents/supervisor/mesh/agent-mesh-channel';
+import {
+  supervisorMeshHandoffCapability,
+  supervisorMeshGetTopologyCapability,
+  supervisorMeshCompensateCapability,
+} from '@/platform/capabilities/supervisor/mesh-capabilities';
+import { getCapability } from '@/platform/capabilities/registry/capability-registry';
+import { type CapabilityExecutionContext } from '@/platform/capabilities/contracts/capability-definition';
 
 describe('Multi-Agent Swarm Mesh Contracts & Error Taxonomy', () => {
   const validDelegationToken = {
@@ -414,4 +421,86 @@ describe('Multi-Agent Swarm Mesh Contracts & Error Taxonomy', () => {
       await expect(channel.sendHandoff(oversizedEnvelope)).rejects.toThrowError(/Context payload exceeds token budget/);
     });
   });
+
+  describe('Canonical Swarm Mesh Capabilities (supervisor.mesh.*)', () => {
+    const mockContext: CapabilityExecutionContext = {
+      principal: {
+        id: 'user_123',
+        type: 'user',
+        organizationId: 'org_test_1',
+      },
+      audit: {
+        actorId: 'user_123',
+        ipAddress: '127.0.0.1',
+        userAgent: 'test-agent',
+      },
+    };
+
+    it('verifies all 3 swarm mesh capabilities are registered in CapabilityRegistry', () => {
+      expect(getCapability('supervisor.mesh.handoff')).toBeDefined();
+      expect(getCapability('supervisor.mesh.get_topology')).toBeDefined();
+      expect(getCapability('supervisor.mesh.compensate')).toBeDefined();
+    });
+
+    it('executes supervisor.mesh.get_topology capability successfully', async () => {
+      const result = await supervisorMeshGetTopologyCapability.handler(
+        { organizationId: 'org_test_1', workspaceId: 'ws_test_1' },
+        mockContext
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.data.organizationId).toBe('org_test_1');
+      expect(result.data.activeNodes).toBeGreaterThanOrEqual(20);
+    });
+
+    it('executes supervisor.mesh.handoff capability successfully', async () => {
+      const result = await supervisorMeshHandoffCapability.handler(validEnvelope, mockContext);
+
+      expect(result.success).toBe(true);
+      expect(result.data.handoffId).toBe(validEnvelope.handoffId);
+      expect(result.data.deliveryStatus).toBe('ACKNOWLEDGED');
+      expect(result.emittedEvents).toContain('supervisor.mesh.handoff_routed');
+    });
+
+    it('executes supervisor.mesh.compensate capability in dryRun mode', async () => {
+      const result = await supervisorMeshCompensateCapability.handler(
+        {
+          organizationId: 'org_test_1',
+          workspaceId: 'ws_test_1',
+          missionId: 'mis_cap_test_1',
+          dryRun: true,
+          reason: 'Test compensation',
+        },
+        mockContext
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.data.missionId).toBe('mis_cap_test_1');
+      expect(result.data.totalStepsToCompensate).toBe(0);
+      expect(result.emittedEvents).toContain('supervisor.mesh.compensated');
+    });
+
+    it('rejects cross-tenant capability execution with TENANT_MISMATCH (Rule 8)', async () => {
+      const attackerContext: CapabilityExecutionContext = {
+        principal: {
+          id: 'user_attacker',
+          type: 'user',
+          organizationId: 'org_attacker',
+        },
+        audit: {
+          actorId: 'user_attacker',
+          ipAddress: '127.0.0.1',
+          userAgent: 'test-agent',
+        },
+      };
+
+      await expect(
+        supervisorMeshGetTopologyCapability.handler(
+          { organizationId: 'org_victim', workspaceId: 'ws_victim' },
+          attackerContext
+        )
+      ).rejects.toThrowError(/Anti-IDOR Violation/);
+    });
+  });
 });
+
