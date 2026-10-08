@@ -3,3 +3,4 @@
  */
 
 export * from './saga-compensation-types';
+export * from './universal-saga-rollback-matrix';
