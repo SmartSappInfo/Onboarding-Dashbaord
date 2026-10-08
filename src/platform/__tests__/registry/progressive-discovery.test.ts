@@ -11,7 +11,23 @@ import {
   getProgressiveDiscoveryService,
 } from '@/platform/registry/discovery/progressive-discovery-service';
 import { createCapabilityRegistryStore } from '@/platform/capabilities/registry/capability-registry';
-import { z } from 'zod';
+import { z } from 'zod/v4';
+
+const defaultExecution = {
+  synchronous: true,
+  maxDurationMs: 10000,
+  supportsDryRun: true,
+  supportsCancellation: true,
+  supportsCompensation: false,
+  maxPayloadSizeBytes: 524288,
+};
+
+const defaultPolicies = {
+  requiresIdempotencyKey: false,
+  requiresExpectedVersion: false,
+  auditRequired: false,
+  defaultEnabled: true,
+};
 
 describe('Phase 15 Milestone 4 - Progressive Capability Discovery Engine', () => {
   let mockStore: ReturnType<typeof createCapabilityRegistryStore>;
@@ -23,50 +39,126 @@ describe('Phase 15 Milestone 4 - Progressive Capability Discovery Engine', () =>
     // Register a suite of sample capabilities across domains
     mockStore.register({
       id: 'crm.contact.get',
+      name: 'Get CRM Contact',
       domain: 'crm_contacts',
+      operation: 'read',
       version: '1.0.0',
       description: 'Fetches full customer contact profile, notes, and activity timeline.',
-      risk: { level: 'L0_READ', requiresHumanApproval: false },
+      risk: {
+        level: 'L0_READ',
+        destructive: false,
+        idempotent: true,
+        openWorld: false,
+        requiresHumanApproval: false,
+        nonDelegable: false,
+      },
+      execution: defaultExecution,
+      policies: defaultPolicies,
+      workspaceScoped: false,
+      tenantScoped: true,
       permissions: ['workspace:read'],
       inputSchema: z.object({ contactId: z.string() }),
       outputSchema: z.object({ id: z.string(), name: z.string() }),
-      execute: async () => ({ id: '123', name: 'John Doe' }),
+      handler: async () => ({
+        success: true,
+        data: { id: '123', name: 'John Doe' },
+        executionId: 'mock-1',
+        emittedEvents: [],
+        durationMs: 1,
+      }),
     });
 
     mockStore.register({
       id: 'crm.contact.update',
+      name: 'Update CRM Contact',
       domain: 'crm_contacts',
+      operation: 'update',
       version: '1.0.0',
       description: 'Updates customer contact properties, email, and metadata.',
-      risk: { level: 'L2_STATE_MUTATION', requiresHumanApproval: false },
+      risk: {
+        level: 'L2_STATE_MUTATION',
+        destructive: false,
+        idempotent: true,
+        openWorld: false,
+        requiresHumanApproval: false,
+        nonDelegable: false,
+      },
+      execution: defaultExecution,
+      policies: defaultPolicies,
+      workspaceScoped: false,
+      tenantScoped: true,
       permissions: ['workspace:write'],
       inputSchema: z.object({ contactId: z.string(), updates: z.record(z.string(), z.unknown()) }),
       outputSchema: z.object({ success: z.boolean() }),
-      execute: async () => ({ success: true }),
+      handler: async () => ({
+        success: true,
+        data: { success: true },
+        executionId: 'mock-2',
+        emittedEvents: [],
+        durationMs: 1,
+      }),
     });
 
     mockStore.register({
       id: 'meetings.search',
+      name: 'Search Meetings',
       domain: 'meetings_conversations',
+      operation: 'search',
       version: '1.0.0',
       description: 'Searches scheduled meetings by participant or date range.',
-      risk: { level: 'L0_READ', requiresHumanApproval: false },
+      risk: {
+        level: 'L0_READ',
+        destructive: false,
+        idempotent: true,
+        openWorld: false,
+        requiresHumanApproval: false,
+        nonDelegable: false,
+      },
+      execution: defaultExecution,
+      policies: defaultPolicies,
+      workspaceScoped: false,
+      tenantScoped: true,
       permissions: ['workspace:read'],
       inputSchema: z.object({ query: z.string() }),
       outputSchema: z.object({ items: z.array(z.unknown()) }),
-      execute: async () => ({ items: [] }),
+      handler: async () => ({
+        success: true,
+        data: { items: [] },
+        executionId: 'mock-3',
+        emittedEvents: [],
+        durationMs: 1,
+      }),
     });
 
     mockStore.register({
       id: 'finance.invoice.get',
-      domain: 'finance_billing',
+      name: 'Get Invoice',
+      domain: 'finance_subscriptions',
+      operation: 'read',
       version: '1.0.0',
       description: 'Fetches open customer invoices, line items, and payment status.',
-      risk: { level: 'L0_READ', requiresHumanApproval: false },
+      risk: {
+        level: 'L0_READ',
+        destructive: false,
+        idempotent: true,
+        openWorld: false,
+        requiresHumanApproval: false,
+        nonDelegable: false,
+      },
+      execution: defaultExecution,
+      policies: defaultPolicies,
+      workspaceScoped: false,
+      tenantScoped: true,
       permissions: ['workspace:read'],
       inputSchema: z.object({ invoiceId: z.string() }),
       outputSchema: z.object({ id: z.string(), amount: z.number() }),
-      execute: async () => ({ id: 'inv_1', amount: 100 }),
+      handler: async () => ({
+        success: true,
+        data: { id: 'inv_1', amount: 100 },
+        executionId: 'mock-4',
+        emittedEvents: [],
+        durationMs: 1,
+      }),
     });
 
     service = new ProgressiveDiscoveryService(mockStore);

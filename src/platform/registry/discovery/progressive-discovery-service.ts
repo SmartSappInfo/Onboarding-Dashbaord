@@ -241,7 +241,7 @@ export class ProgressiveDiscoveryService {
       const verification = await monitor.verifyToolFingerprint(
         cap.id,
         liveDef,
-        organizationId ? { organizationId } : undefined
+        { organizationId: organizationId || 'system' }
       );
       driftStatus = verification.status;
     } catch {

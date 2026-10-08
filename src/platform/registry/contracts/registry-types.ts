@@ -8,7 +8,7 @@
  * Strict Typing Policy: Zero `any` or `any[]`.
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v4';
 import { RISK_LEVELS, type RiskLevel } from '../../capabilities/contracts/risk-levels';
 
 // ============================================================================

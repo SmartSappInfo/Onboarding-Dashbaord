@@ -80,7 +80,6 @@ export const searchCapabilitiesCapability: CapabilityDefinition<
     const startTime = Date.now();
     const service = getProgressiveDiscoveryService();
     const result = await service.searchCapabilities(input, {
-      signal: context.signal,
       organizationId: context.principal.organizationId,
       workspaceId: context.principal.workspaceId,
     });

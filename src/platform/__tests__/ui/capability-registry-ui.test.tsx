@@ -62,7 +62,7 @@ describe('Phase 15 Milestone 4 - Registry Operator UI Surfaces', () => {
       requiresApproval: true,
       permissions: ['finance:reconcile'],
       isDelegable: false,
-      driftStatus: 'DRIFT_DETECTED',
+      driftStatus: 'DRIFTED',
       lastVerifiedAt: '2026-10-08T00:00:00.000Z',
       schema: {
         input: { type: 'object', properties: { batchId: { type: 'string' } } },
