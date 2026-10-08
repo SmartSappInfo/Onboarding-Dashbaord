@@ -148,6 +148,10 @@ const LEGACY_PERMISSION_MAP: ReadonlyMap<string, ParsedPermissionRef> = new Map<
   // State-Version & Optimistic Concurrency (Phase 14 M2)
   ['concurrency:read', { kind: 'rbac', section: 'operations', feature: 'dashboard', action: 'view' }],
   ['concurrency:snapshot', { kind: 'rbac', section: 'operations', feature: 'dashboard', action: 'view' }],
+
+  // Universal Saga Compensation & DLQ Governance (Phase 14 M3)
+  ['saga:read', { kind: 'rbac', section: 'operations', feature: 'dashboard', action: 'view' }],
+  ['saga:compensate', { kind: 'rbac', section: 'operations', feature: 'dashboard', action: 'edit' }],
 ]);
 
 export function parsePermissionRef(ref: string): ParsedPermissionRef | null {
