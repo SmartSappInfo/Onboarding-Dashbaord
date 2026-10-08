@@ -39,7 +39,73 @@ src/platform/__tests__/agents/supervisor/
 
 ---
 
-## 2. Implementation Tasks & Verification Gates
+## 2. The Rule 68 Five Non-Negotiables Integration
+
+1. **The Model is Never the Security Boundary (Rule 68.1 & Rule 16):**
+   - All authorization checks, permission intersections ($\text{User} \cap \text{Supervisor} \cap \text{SubAgent} \cap \text{Workspace}$), and non-delegable action guards (Rule 17) are enforced in deterministic TypeScript code before any model invocation or tool dispatch.
+2. **Tool & Subagent Output is Untrusted Data (Rule 68.2, Rules 13 & 30):**
+   - Output from subagents is sanitized, scanned for injection directives (`ADVERSARIAL_DIRECTIVE_PATTERNS`), and isolated inside `<untrusted_reference_data id="...">` containers before rendering in the UI.
+3. **Every Mutation is Idempotent, Authorized, Version-Checked, and Auditable (Rule 68.3, Rules 18, 19, 21, 22, 61):**
+   - Proposals route through `ApprovalStore` with SHA-256 `payloadHash` binding. Token revocations require $\ge 5$ character audit logs.
+4. **Bounded Authority & Bounded Resources (Rule 68.4, Rules 9, 23, 28, 55, 56):**
+   - Concurrency $\le 4$, delegation depth $\le 3$, token budget $\le 4,000$ per subagent step, graph traversal $\le 80$ nodes and $\le 150$ edges.
+5. **Every Autonomous Capability is Operable Without Code (Rule 68.5, Rules 60 & 61):**
+   - The Organization Cockpit empowers operators to inspect, pause, reprocess DLQ messages, and revoke delegation tokens without redeploying code.
+
+---
+
+## 3. The Rule 67 Agent Implementation Gate
+
+| Gate Category | Compliance Standard | Architectural Evidence in Milestone 5 |
+| :--- | :--- | :--- |
+| **Architecture** | Governed capability layer underneath SmartSapp (Rule 69); zero duplicated services. | Integrates `supervisor.mission.*`, `supervisor.mesh.*`, `graph.reasoning.*`, and `supervisor.delegation.*` capabilities via `CapabilityRegistry`. |
+| **Authority** | Mathematical Authority Intersection Algebra; subagents cannot inherit admin or non-delegable permissions. | `DelegationTreeModal` displays effective permissions; `DelegatedAuthorityService` enforces non-delegable stripping (Rule 17). |
+| **Data** | Untrusted data isolated; PII/secrets redacted. | All subagent logs and DAG step outputs in `OrganizationMissionControlClient` wrapped in `<untrusted_reference_data id="...">` containers; secrets redacted (Rules 32 & 33). |
+| **Execution** | Idempotent, retriable, cancellable, TOCTOU version-checked. | Real-time DAG execution displays state transitions (`PENDING` $\to$ `RUNNING` $\to$ `COMPLETED` / `FAILED` / `CANCELLED`); cancel action triggers cooperative `AbortSignal` (Rule 26). |
+| **MCP** | Protocol revision 2026-07-28 compliant; client/server identity separation. | Subagent tokens pass through `DelegationContext`; tool fingerprints validated against drift (Rule 14). |
+| **Failure** | Fast-failing circuit breakers, dead-letter queue, reverse-LIFO rollback visualizer. | Zone 3 displays circuit breaker states (`CLOSED`, `OPEN`, `HALF_OPEN`) and provides a 1-click DLQ resubmission interface. Zone 2 visualizes the reverse-LIFO compensation sequence. |
+| **Security** | Neutralizes prompt injection, SSRF, confused deputy, and cross-tenant IDOR. | 6-vector red-team test battery in `supervisor-adversarial-red-team.test.ts`. |
+| **Operations** | Operable without code; emergency dead-man pause; audit logs $\ge 5$ chars. | Emergency Dead-Man Switch Panel with double-confirmation dialog and mandatory $\ge 5$ char reason (Rules 60 & 61). |
+| **Testing** | 100% Vitest coverage: Unit, Integration, UI, Chaos, and Red-Team. | 5 dedicated Milestone 5 test suites. |
+| **Migration** | Strangler Fig preservation: 100% preservation of all 52 preexisting routes in `AdminSidebar.tsx`. | Accordion regression test suite `admin-sidebar-organization.test.tsx`. |
+
+---
+
+## 4. Master 69-Rules Compliance Matrix for Milestone 5
+
+| Rule # | Requirement | Milestone 5 Implementation Standard | Verification Test Suite |
+| :--- | :--- | :--- | :--- |
+| **Rule 1** | Skill Conformance | Conforms to `frontend-design`, `vercel-react-best-practices`, `emilkowal-animations`, `next-best-practices`. | Static Analysis & Code Review |
+| **Rule 4** | Zero-`any` Policy | 100% strict TypeScript types across all schemas, contracts, UI props, and test files. | `pnpm typecheck` & `pnpm lint` |
+| **Rule 7** | Mobile-First & Touch Targets | Minimum 44px touch targets (`min-h-[44px]`), tactile buttons (`active:scale-[0.97]`), responsive layout. | `supervisor-mission-modal.test.tsx`, `organization-mission-control.test.tsx` |
+| **Rule 8 & 47** | Multi-Tenant Anti-IDOR | `assertTenantContext` and `requireAuth` boundary validation across all operator actions. | `organization-mission-control.test.tsx`, `supervisor-adversarial-red-team.test.ts` |
+| **Rule 9 & 23** | Bounded Resources & Concurrency | Concurrency bounded to $\le 4$ operations, delegation depth $\le 3$, mission timeout $\le 120$s. | `delegation-tree-modal.test.tsx`, `supervisor-adversarial-red-team.test.ts` |
+| **Rule 13 & 30** | Untrusted Data XML Isolation | `<untrusted_reference_data>` containerization for subagent notes, prompt injection neutralization. | `graph-reasoning-modal.test.tsx`, `organization-mission-control.test.tsx` |
+| **Rule 16** | Explicit RBAC Scoping | Requires explicit `supervisor:orchestrate` and `supervisor:read` scopes; zero wildcard permissions. | `delegation-tree-modal.test.tsx` |
+| **Rule 17** | Non-Delegable Actions Guard | Mandatory stripping of L4 / administrative capabilities from delegation tokens. | `delegation-tree-modal.test.tsx`, `supervisor-adversarial-red-team.test.ts` |
+| **Rule 18** | TOCTOU Optimistic Concurrency | Enforces `expectedVersion` and live state verification before mutating or revoking tokens. | `delegation-tree-modal.test.tsx` |
+| **Rule 19** | Deterministic Idempotency Keys | Idempotency key derivation on mission launch: `sup_mission_${orgId}_${hash}`. | `supervisor-mission-modal.test.tsx` |
+| **Rule 21 & 22** | Two-Phase Approval Binding | Mutating supervisor plans route to `ApprovalStore` with key-sorted SHA-256 `payloadHash`. | `organization-mission-control.test.tsx` |
+| **Rule 24** | Tri-State Circuit Breakers | Live circuit breaker indicators (`CLOSED` / `OPEN` / `HALF_OPEN`) on Zone 1 and Zone 3. | `organization-mission-control.test.tsx` |
+| **Rule 25** | Dead-Letter Queue (DLQ) | DLQ triage desk in Zone 3 with 1-click tactile [Resubmit to Swarm] action. | `organization-mission-control.test.tsx` |
+| **Rule 26** | Cooperative Cancellation | Root `AbortSignal` checks before every DAG step; cancel action halts execution. | `organization-mission-control.test.tsx` |
+| **Rule 27** | Reverse-LIFO Saga Rollback | Zone 2 renders the exact reverse-LIFO rollback sequence when a mission fails. | `organization-mission-control.test.tsx` |
+| **Rule 28 & 56** | Knapsack Context Budgeting | Token usage telemetry gauges in Zone 1; subagent steps clamped to $\le 4,000$ tokens. | `organization-mission-control.test.tsx` |
+| **Rule 32 & 33** | Credential & Secret Scrubbing | Bearer tokens, API keys, and passwords masked in step logs (`[REDACTED_SECRET]`). | `organization-mission-control.test.tsx` |
+| **Rule 40** | Domain Event Publishing | Listens to `supervisor.*`, `mesh.*`, and `delegation.*` via `defaultEventBus`. | `organization-mission-control.test.tsx` |
+| **Rule 41** | Structured Explainability Grid | 4-part explainability breakdown (WHAT / WHY / IMPACT / RISK) in Graph and Step Drawers. | `graph-reasoning-modal.test.tsx` |
+| **Rule 42** | Shadow Mode Simulation | Simulation toggle badge "Run in Shadow Mode (0 Live Mutations)" producing Blast Radius Report. | `supervisor-mission-modal.test.tsx` |
+| **Rule 51** | Next.js 15 Server Actions | All UI actions route through typed Server Actions marked `'use server'`. | Action integration tests |
+| **Rule 55** | Clamped Graph Traversals | SVG canvas clamped to $\le 80$ nodes, $\le 150$ edges, depth $\le 2$ with warning banner. | `graph-reasoning-modal.test.tsx` |
+| **Rule 60** | Emergency Dead-Man Switch | Emergency kill switch in Zone 3 fails closed with HTTP 503 (`SUPERVISOR_DEAD_MAN_PAUSED`). | `organization-mission-control.test.tsx`, `supervisor-adversarial-red-team.test.ts` |
+| **Rule 61** | Operational Control & Audit | Mandatory audit justification notes $\ge 5$ characters; Three-Zone mission control layout. | `organization-mission-control.test.tsx` |
+| **Rule 62** | Real-Time SSE Reactivity | `useEventStream` subscribing to `supervisor.*`, `mesh.*`, and `delegation.*` events. | `organization-mission-control.test.tsx` |
+| **Rule 69** | Strangler Fig Invariant | Preserves 100% of preexisting 52 routes and permissions in `AdminSidebar.tsx`. | `admin-sidebar-organization.test.tsx` |
+| **theme.md §8** | Standardized Modal System | Demarcated header/footer, single-circle info tooltip at `z-[10050]`, sr-only description. | All modal unit tests |
+
+---
+
+## 5. Implementation Tasks & Verification Gates
 
 ### Task 1: Supervisor Mission Modal & Launcher (`SupervisorMissionModal.tsx`)
 
