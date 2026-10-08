@@ -80,7 +80,8 @@ import {
     Share2,
     ShieldAlert,
     Scale,
-    HandCoins
+    HandCoins,
+    LineChart,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import UnifiedOrgWorkspaceSwitcher from './UnifiedOrgWorkspaceSwitcher';
@@ -256,6 +257,7 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
 
   // 5. TRANSACT (Agreements, Billing & Financials)
   const transactNavItems = React.useMemo(() => [
+    { href: wrapHref('/admin/finance/cockpit'), icon: LineChart, label: 'Cash Flow Cockpit', visible: isFeatureEnabled('invoices') && (can('finance', 'invoices', 'view') || isSystemAdmin) },
     { href: wrapHref('/admin/finance/contracts'), icon: FileCheck, label: 'Agreements', visible: isFeatureEnabled('agreements') && can('finance', 'agreements', 'view') },
     { href: wrapHref('/admin/finance/invoices'), icon: Receipt, label: 'Invoices', visible: isFeatureEnabled('invoices') && can('finance', 'invoices', 'view') },
     { href: wrapHref('/admin/finance/collections'), icon: HandCoins, label: 'Collections', visible: isFeatureEnabled('invoices') && (can('finance', 'invoices', 'view') || isSystemAdmin) },

@@ -49,6 +49,13 @@ import {
   FinanceError,
 } from '../../agents/finance/context/finance-context-types';
 import { getAccountFinanceAssembler } from '../../agents/finance/context/account-finance-assembler';
+import {
+  type ForecastCashFlowInput,
+  ForecastCashFlowInputSchema,
+  type CashFlowForecastResult,
+  CashFlowForecastResultSchema,
+} from '../../agents/finance/analytics/cash-flow-types';
+import { getCashFlowForecastingService } from '../../agents/finance/analytics/cash-flow-forecasting-service';
 
 // In-memory test store for hermetic fallback
 const inMemoryDraftInvoices = new Map<string, InvoiceSummary>();
@@ -845,6 +852,90 @@ export const financeReceivablesGetAgingCapability: CapabilityDefinition<
 };
 
 // ============================================================================
+// 9. finance.analytics.get_cashflow_forecast (L0_READ)
+// ============================================================================
+
+export const financeAnalyticsGetCashflowForecastCapability: CapabilityDefinition<
+  ForecastCashFlowInput,
+  CashFlowForecastResult
+> = {
+  id: 'finance.analytics.get_cashflow_forecast',
+  version: '1.0.0',
+  name: 'Get Predictive Cash Flow Forecast',
+  description: 'Calculates 30/60/90-day cash runway projection, DSO metrics, and debtor concentration with cent-level precision.',
+  domain: 'finance_subscriptions',
+  operation: 'analyze',
+  inputSchema: ForecastCashFlowInputSchema,
+  outputSchema: CashFlowForecastResultSchema,
+  permissions: ['rbac:finance.invoices.view'],
+  workspaceScoped: true,
+  tenantScoped: true,
+  risk: {
+    level: 'L0_READ',
+    destructive: false,
+    idempotent: true,
+    openWorld: false,
+    requiresHumanApproval: false,
+    nonDelegable: false,
+  },
+  execution: {
+    synchronous: true,
+    maxDurationMs: 15000,
+    supportsDryRun: true,
+    supportsCancellation: true,
+    supportsCompensation: false,
+    maxPayloadSizeBytes: 1048576,
+  },
+  policies: {
+    requiresIdempotencyKey: false,
+    requiresExpectedVersion: false,
+    auditRequired: false,
+    defaultEnabled: true,
+  },
+  handler: async (
+    input: ForecastCashFlowInput,
+    context: CapabilityExecutionContext
+  ): Promise<CapabilityExecutionResult<CashFlowForecastResult>> => {
+    const startTime = Date.now();
+    if (context.principal.organizationId && context.principal.organizationId !== input.organizationId) {
+      throw new Error(`Anti-IDOR Violation: Access denied across organizational boundary`);
+    }
+    await checkGovernanceDeadManSwitch(context.principal.organizationId);
+
+    const forecastingService = getCashFlowForecastingService();
+    const forecast = await forecastingService.forecastCashFlow(input);
+
+    const emittedEvents = [
+      createDomainEvent({
+        type: 'finance.cashflow.forecast_generated',
+        organizationId: context.principal.organizationId,
+        workspaceId: context.principal.workspaceId,
+        actor: {
+          type: context.principal.actorType === 'user' ? 'user' : 'agent',
+          id: context.principal.userId,
+        },
+        entity: { type: 'cashflow_forecast', id: `${input.organizationId}_forecast` },
+        correlationId: context.correlationId,
+        source: 'finance_capability',
+        payload: {
+          currentCashOnHand: forecast.currentCashOnHand,
+          dsoDays: forecast.dsoMetrics.dsoDays,
+          topDebtor: forecast.debtorConcentration.topDebtorName,
+        },
+      }),
+    ];
+
+    return {
+      success: true,
+      data: forecast,
+      executionId: `exec_${Date.now()}`,
+      emittedEvents,
+      durationMs: Date.now() - startTime,
+    };
+  },
+};
+
+// ============================================================================
 // Canonical Registrar for Platform Capabilities Registry (Rule 69)
 // ============================================================================
 
@@ -857,6 +948,7 @@ export function registerFinanceCapabilities(): void {
   registerCapability(financePaymentReconcileCapability, { allowOverride: true });
   registerCapability(financeAccountGetBalanceCapability, { allowOverride: true });
   registerCapability(financeReceivablesGetAgingCapability, { allowOverride: true });
+  registerCapability(financeAnalyticsGetCashflowForecastCapability, { allowOverride: true });
 }
 
 // Auto-register upon module load

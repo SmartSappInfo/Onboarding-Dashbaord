@@ -132,6 +132,13 @@ const LEGACY_PERMISSION_MAP: ReadonlyMap<string, ParsedPermissionRef> = new Map<
   ['finance:payments:reconcile', { kind: 'rbac', section: 'finance', feature: 'invoices', action: 'edit' }],
   ['finance:accounts:read', { kind: 'rbac', section: 'finance', feature: 'invoices', action: 'view' }],
   ['finance:aging:read', { kind: 'rbac', section: 'finance', feature: 'invoices', action: 'view' }],
+
+  // School Operations & Attendance (Phase 12 M5)
+  ['school:attendance:view', { kind: 'rbac', section: 'operations', feature: 'campuses', action: 'view' }],
+  ['school:attendance:manage', { kind: 'rbac', section: 'operations', feature: 'campuses', action: 'edit' }],
+  ['rbac:operations.attendance.view', { kind: 'rbac', section: 'operations', feature: 'campuses', action: 'view' }],
+  ['rbac:operations.attendance.manage', { kind: 'rbac', section: 'operations', feature: 'campuses', action: 'edit' }],
+  ['rbac:communication.templates.manage', { kind: 'rbac', section: 'operations', feature: 'campuses', action: 'edit' }],
 ]);
 
 export function parsePermissionRef(ref: string): ParsedPermissionRef | null {
