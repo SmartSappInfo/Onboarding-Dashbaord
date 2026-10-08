@@ -181,6 +181,19 @@ export const EvaluateDiscrepancyInputSchema = z.object({
 });
 export type EvaluateDiscrepancyInput = z.input<typeof EvaluateDiscrepancyInputSchema>;
 
+export const GetHealthScorecardInputSchema = z.object({
+  personaId: z.string().min(1, 'Persona ID is required'),
+  organizationId: z.string().min(1, 'Organization ID is required'),
+  workspaceId: z.string().min(1, 'Workspace ID is required'),
+});
+export type GetHealthScorecardInput = z.infer<typeof GetHealthScorecardInputSchema>;
+
+export const ListHealthScorecardsInputSchema = z.object({
+  organizationId: z.string().min(1, 'Organization ID is required'),
+  workspaceId: z.string().min(1, 'Workspace ID is required'),
+});
+export type ListHealthScorecardsInput = z.infer<typeof ListHealthScorecardsInputSchema>;
+
 // ============================================================================
 // 6. ERROR TAXONOMY (Rules 2, 48)
 // ============================================================================

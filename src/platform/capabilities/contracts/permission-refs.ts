@@ -152,6 +152,10 @@ const LEGACY_PERMISSION_MAP: ReadonlyMap<string, ParsedPermissionRef> = new Map<
   // Universal Saga Compensation & DLQ Governance (Phase 14 M3)
   ['saga:read', { kind: 'rbac', section: 'operations', feature: 'dashboard', action: 'view' }],
   ['saga:compensate', { kind: 'rbac', section: 'operations', feature: 'dashboard', action: 'edit' }],
+
+  // Agent Health Monitoring & Discrepancy Governance (Phase 14 M4)
+  ['health:read', { kind: 'rbac', section: 'operations', feature: 'dashboard', action: 'view' }],
+  ['health:manage', { kind: 'rbac', section: 'operations', feature: 'dashboard', action: 'edit' }],
 ]);
 
 export function parsePermissionRef(ref: string): ParsedPermissionRef | null {
