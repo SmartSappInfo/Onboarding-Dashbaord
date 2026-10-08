@@ -387,14 +387,15 @@ export class AgentSwarmMesh {
   }
 }
 
-// Global singleton preservation for HMR and cross-module use
-const globalForSwarmMesh = globalThis as unknown as {
-  __smartsappAgentSwarmMesh?: AgentSwarmMesh;
-};
+// Global singleton preservation for HMR and cross-module use (Rule 69)
+declare global {
+  var __smartsappAgentSwarmMesh: AgentSwarmMesh | undefined;
+}
 
 export function getAgentSwarmMesh(): AgentSwarmMesh {
-  if (!globalForSwarmMesh.__smartsappAgentSwarmMesh) {
-    globalForSwarmMesh.__smartsappAgentSwarmMesh = new AgentSwarmMesh();
+  if (!globalThis.__smartsappAgentSwarmMesh) {
+    globalThis.__smartsappAgentSwarmMesh = new AgentSwarmMesh();
   }
-  return globalForSwarmMesh.__smartsappAgentSwarmMesh;
+  return globalThis.__smartsappAgentSwarmMesh;
 }
+

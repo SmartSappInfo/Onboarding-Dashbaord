@@ -682,9 +682,9 @@ export class SupervisorOrchestrator {
 // ============================================================================
 
 declare global {
-  // eslint-disable-next-line no-var
   var __smartsappSupervisorOrchestrator: SupervisorOrchestrator | undefined;
 }
+
 
 export function getSupervisorOrchestrator(): SupervisorOrchestrator {
   if (!globalThis.__smartsappSupervisorOrchestrator) {

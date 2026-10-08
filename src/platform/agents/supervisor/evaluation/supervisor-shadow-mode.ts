@@ -155,14 +155,15 @@ export class SupervisorShadowRunner {
   }
 }
 
-// Global singleton preservation for HMR and cross-module use
-const globalForSupervisorShadow = globalThis as unknown as {
-  __smartsappSupervisorShadowRunner?: SupervisorShadowRunner;
-};
+// Global singleton preservation for HMR and cross-module use (Rule 69)
+declare global {
+  var __smartsappSupervisorShadowRunner: SupervisorShadowRunner | undefined;
+}
 
 export function getSupervisorShadowRunner(): SupervisorShadowRunner {
-  if (!globalForSupervisorShadow.__smartsappSupervisorShadowRunner) {
-    globalForSupervisorShadow.__smartsappSupervisorShadowRunner = new SupervisorShadowRunner();
+  if (!globalThis.__smartsappSupervisorShadowRunner) {
+    globalThis.__smartsappSupervisorShadowRunner = new SupervisorShadowRunner();
   }
-  return globalForSupervisorShadow.__smartsappSupervisorShadowRunner;
+  return globalThis.__smartsappSupervisorShadowRunner;
 }
+

@@ -8,8 +8,12 @@
  */
 
 import { z } from 'zod/v4';
-import { AGENT_PERSONA_IDS, type AgentPersonaId } from '../../../identity/agent-persona-types';
-import { DelegationTokenSchema, type DelegationToken } from '../../../identity/delegation/delegation-types';
+import { AGENT_PERSONA_IDS } from '../../../identity/agent-persona-types';
+import { DelegationTokenSchema } from '../../../identity/delegation/delegation-types';
+
+export type { AgentPersonaId } from '../../../identity/agent-persona-types';
+export type { DelegationToken } from '../../../identity/delegation/delegation-types';
+
 
 // ============================================================================
 // 1. CONSTANTS & BOUNDS

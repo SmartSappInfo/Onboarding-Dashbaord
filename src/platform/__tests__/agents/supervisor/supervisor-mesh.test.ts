@@ -4,7 +4,8 @@
  * Implements Rules 4, 8, 9, 10, 12, 13, 16, 17, 18, 19, 21, 22, 24, 25, 26, 27, 28, 30, 32, 40, 48, 60, and 69.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
+
 import {
   AgentHandoffEnvelopeSchema,
   MeshDeliveryReceiptSchema,
@@ -210,7 +211,38 @@ describe('Multi-Agent Swarm Mesh Contracts & Error Taxonomy', () => {
     });
   });
 
+  describe('MeshTopologySchema (Rule 61)', () => {
+    it('validates mesh topology telemetry contract', () => {
+      const topology = {
+        organizationId: 'org_test_1',
+        workspaceId: 'ws_test_1',
+        activeNodes: 26,
+        peers: [],
+        inFlightHandoffs: 2,
+        completedHandoffs: 15,
+        compensationsExecuted: 1,
+        deadLetterCount: 0,
+      };
+      const parsed = MeshTopologySchema.parse(topology);
+      expect(parsed.organizationId).toBe('org_test_1');
+      expect(parsed.activeNodes).toBe(26);
+      expect(parsed.deadLetterCount).toBe(0);
+    });
+  });
+
   describe('AgentMeshError & Error Taxonomy (Rule 48)', () => {
+    it('verifies all canonical error codes are enumerated', () => {
+      expect(AGENT_MESH_ERROR_CODES).toContain('IDOR_VIOLATION');
+      expect(AGENT_MESH_ERROR_CODES).toContain('HANDOFF_TIMEOUT');
+      expect(AGENT_MESH_ERROR_CODES).toContain('CIRCUIT_BREAKER_OPEN');
+      expect(AGENT_MESH_ERROR_CODES).toContain('DEAD_MAN_PAUSED');
+      expect(AGENT_MESH_ERROR_CODES).toContain('DELEGATION_DEPTH_EXCEEDED');
+      expect(AGENT_MESH_ERROR_CODES).toContain('SAGA_COMPENSATION_FAILED');
+      expect(AGENT_MESH_ERROR_CODES).toContain('PAYLOAD_TAMPERED');
+      expect(AGENT_MESH_ERROR_CODES).toContain('CONTEXT_OVERFLOW');
+      expect(AGENT_MESH_ERROR_CODES).toContain('EXECUTION_ABORTED');
+    });
+
     it('instantiates AgentMeshError with correct HTTP status codes', () => {
       const idorErr = new AgentMeshError('IDOR_VIOLATION', 'Cross-tenant access forbidden');
       expect(idorErr.code).toBe('IDOR_VIOLATION');
@@ -262,8 +294,9 @@ describe('Multi-Agent Swarm Mesh Contracts & Error Taxonomy', () => {
       });
 
       const receipt = await channel.sendHandoff(validEnvelope, {
-        peerHandler: async (env) => ({ status: 'ACKNOWLEDGED', processedRecords: 1 }),
+        peerHandler: async (_env) => ({ status: 'ACKNOWLEDGED', processedRecords: 1 }),
       });
+
 
       expect(receipt.deliveryStatus).toBe('ACKNOWLEDGED');
       expect(receipt.handoffId).toBe('hnd_test_001');
