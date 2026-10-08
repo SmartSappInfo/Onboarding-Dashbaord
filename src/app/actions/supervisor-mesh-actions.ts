@@ -63,8 +63,7 @@ function assertTenantContext(auth: AuthContext, requestedOrgId: string): void {
   if (!auth.isSystemAdmin && sessionOrgId !== requestedOrgId) {
     throw new AgentMeshError(
       'TENANT_MISMATCH',
-      `Anti-IDOR Violation: Authenticated principal from tenant '${sessionOrgId}' cannot access tenant '${requestedOrgId}' (Rules 8 & 47).`,
-      403
+      `Anti-IDOR Violation: Authenticated principal from tenant '${sessionOrgId}' cannot access tenant '${requestedOrgId}' (Rules 8 & 47).`
     );
   }
 }
@@ -91,10 +90,8 @@ function handleMeshActionError<T>(error: unknown): MeshActionResult<T> {
     };
   }
 
-  if (error instanceof z.ZodError || (error instanceof Error && error.name === 'ZodError')) {
-    const issues = 'issues' in (error as Record<string, unknown>) && Array.isArray((error as z.ZodError).issues)
-      ? (error as z.ZodError).issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')
-      : error instanceof Error ? error.message : 'Invalid input schema';
+  if (error instanceof z.ZodError) {
+    const issues = error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
     return {
       success: false,
       error: `Validation error: ${issues}`,
@@ -151,8 +148,7 @@ export async function getMeshTopologyAction(
     if (!organizationId || !workspaceId) {
       throw new AgentMeshError(
         'INVALID_INPUT',
-        'Both organizationId and workspaceId are required for topology inspection.',
-        400
+        'Both organizationId and workspaceId are required for topology inspection.'
       );
     }
 
@@ -187,8 +183,7 @@ export async function triggerMeshRollbackAction(
     if (!organizationId || !workspaceId || !missionId) {
       throw new AgentMeshError(
         'INVALID_INPUT',
-        'organizationId, workspaceId, and missionId are required for saga rollback.',
-        400
+        'organizationId, workspaceId, and missionId are required for saga rollback.'
       );
     }
 
@@ -199,7 +194,7 @@ export async function triggerMeshRollbackAction(
     const mesh = getAgentSwarmMesh();
     const plan = await mesh.compensateMission(missionId, {
       dryRun: options.dryRun,
-      reason: options.reason ?? `Rollback requested by operator '${auth.userId}'`,
+      reason: options.reason ?? `Rollback requested by operator '${auth.uid}'`,
     });
 
     return {

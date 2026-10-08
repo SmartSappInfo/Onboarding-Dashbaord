@@ -263,8 +263,7 @@ export class AgentMeshChannel {
       if (computedHash !== envelope.payloadHash) {
         throw new AgentMeshError(
           'PAYLOAD_TAMPERED',
-          `Cryptographic verification failed: payloadHash mismatch. Expected '${computedHash}', got '${envelope.payloadHash}'. Access denied.`,
-          400
+          `Cryptographic verification failed: payloadHash mismatch. Expected '${computedHash}', got '${envelope.payloadHash}'. Access denied.`
         );
       }
     }

@@ -85,6 +85,7 @@ describe('Swarm Mesh Server Actions (Phase 13 Milestone 4)', () => {
 
     const { requireAuth } = await import('@/lib/auth/require-auth');
     vi.mocked(requireAuth).mockImplementation(async () => ({
+      uid: 'user_operator_1',
       userId: 'user_operator_1',
       orgId: 'org_enterprise_1',
       orgRole: 'org:admin',

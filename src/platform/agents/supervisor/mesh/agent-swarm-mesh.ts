@@ -106,8 +106,7 @@ export class AgentSwarmMesh {
       if (targetPeer.activeHandoffsCount >= targetPeer.concurrencyLimit) {
         throw new AgentMeshError(
           'RATE_LIMITED',
-          `Concurrency limit of ${targetPeer.concurrencyLimit} exceeded for peer '${envelope.targetAgentPersona}'. Current active: ${targetPeer.activeHandoffsCount}.`,
-          429
+          `Concurrency limit of ${targetPeer.concurrencyLimit} exceeded for peer '${envelope.targetAgentPersona}'. Current active: ${targetPeer.activeHandoffsCount}.`
         );
       }
       targetPeer.activeHandoffsCount += 1;
@@ -354,9 +353,12 @@ export class AgentSwarmMesh {
   }
 
   /**
-   * Retrieves dead-letter records for an organization (Rule 25).
+   * Retrieves dead-letter records, optionally filtered by organizationId (Rule 25).
    */
-  public getDeadLetterRecords(organizationId: string): MeshDeadLetterRecord[] {
+  public getDeadLetterRecords(organizationId?: string): readonly MeshDeadLetterRecord[] {
+    if (!organizationId) {
+      return [...this.deadLetterRecords];
+    }
     return this.deadLetterRecords.filter(
       (r) => r.envelope.organizationId === organizationId
     );
@@ -391,7 +393,7 @@ export class AgentSwarmMesh {
     const peerEntries: MeshPeerRegistryEntry[] = [];
     let activeNodes = 0;
 
-    for (const [personaId, entry] of this.peers.entries()) {
+    for (const [personaId, entry] of Array.from(this.peers.entries())) {
       const channel = this.channels.get(`supervisor:${personaId}`);
       const circuitBreakerState = channel ? channel.getCircuitBreakerState() : entry.circuitBreakerState;
       const status = circuitBreakerState === 'OPEN' ? 'DRAINING' : entry.status;
@@ -417,16 +419,6 @@ export class AgentSwarmMesh {
       compensationsExecuted: this.compensationsExecutedCount,
       deadLetterCount: this.deadLetterRecords.length,
     };
-  }
-
-  /**
-   * Retrieves dead-letter records, optionally filtered by organizationId (Rule 25).
-   */
-  public getDeadLetterRecords(organizationId?: string): readonly MeshDeadLetterRecord[] {
-    if (!organizationId) {
-      return [...this.deadLetterRecords];
-    }
-    return this.deadLetterRecords.filter((r) => r.envelope.organizationId === organizationId);
   }
 }
 

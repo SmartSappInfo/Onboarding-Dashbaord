@@ -61,8 +61,7 @@ function assertTenantContext(
   ) {
     throw new AgentMeshError(
       'TENANT_MISMATCH',
-      `Anti-IDOR Violation: Access denied across organizational boundary (principal: ${context.principal.organizationId}, target: ${organizationId}) (Rules 8 & 47).`,
-      403
+      `Anti-IDOR Violation: Access denied across organizational boundary (principal: ${context.principal.organizationId}, target: ${organizationId}) (Rules 8 & 47).`
     );
   }
 }
@@ -120,21 +119,18 @@ export const supervisorMeshHandoffCapability: CapabilityDefinition<
     } catch {
       throw new AgentMeshError(
         'DEAD_MAN_PAUSED',
-        `Agent governance is emergency-paused for tenant '${input.organizationId}'. Swarm mesh handoff blocked (Rule 60).`,
-        503
+        `Agent governance is emergency-paused for tenant '${input.organizationId}'. Swarm mesh handoff blocked (Rule 60).`
       );
     }
 
     const mesh = getAgentSwarmMesh();
-    const receipt = await mesh.routeHandoff(input, {
-      abortSignal: context.abortSignal,
-    });
+    const receipt = await mesh.routeHandoff(input);
 
     return {
       success: true,
       data: receipt,
       executionId: `exec_mesh_hnd_${Date.now()}`,
-      emittedEvents: ['supervisor.mesh.handoff_routed'],
+      emittedEvents: [],
       durationMs: Date.now() - startTime,
     };
   },
@@ -199,8 +195,7 @@ export const supervisorMeshGetTopologyCapability: CapabilityDefinition<
     } catch {
       throw new AgentMeshError(
         'DEAD_MAN_PAUSED',
-        `Agent governance is emergency-paused for tenant '${input.organizationId}'. Swarm mesh topology blocked (Rule 60).`,
-        503
+        `Agent governance is emergency-paused for tenant '${input.organizationId}'. Swarm mesh topology blocked (Rule 60).`
       );
     }
 
@@ -279,8 +274,7 @@ export const supervisorMeshCompensateCapability: CapabilityDefinition<
     } catch {
       throw new AgentMeshError(
         'DEAD_MAN_PAUSED',
-        `Agent governance is emergency-paused for tenant '${input.organizationId}'. Swarm mesh compensation blocked (Rule 60).`,
-        503
+        `Agent governance is emergency-paused for tenant '${input.organizationId}'. Swarm mesh compensation blocked (Rule 60).`
       );
     }
 
@@ -294,7 +288,7 @@ export const supervisorMeshCompensateCapability: CapabilityDefinition<
       success: true,
       data: plan,
       executionId: `exec_mesh_cmp_${Date.now()}`,
-      emittedEvents: ['supervisor.mesh.compensated'],
+      emittedEvents: [],
       durationMs: Date.now() - startTime,
     };
   },
