@@ -13,7 +13,7 @@ import {
   type AgentHandoffEnvelope,
   AgentMeshError,
 } from '@/platform/agents/supervisor/mesh/agent-swarm-mesh-types';
-import type { DomainEvent } from '@/platform/events/event-bus';
+import type { DomainEvent } from '@/platform/capabilities/events/domain-event';
 import { checkGovernanceDeadManSwitch } from '@/platform/policy/governance-dead-man';
 
 // Mock governance dead man switch
@@ -42,6 +42,10 @@ describe('AgentSwarmMesh & Reverse-LIFO Saga Coordinator', () => {
     delegationChain: ['supervisor', 'crm_assistant'],
     depth: 1,
     allowedScopes: ['crm:contacts:read', 'crm:contacts:write'],
+    tokenBudget: 4000,
+    timeoutMs: 30000,
+    policyVersion: '1.0.0',
+    status: 'active' as const,
     issuedAt: '2026-10-08T00:00:00.000Z',
     expiresAt: '2026-10-08T01:00:00.000Z',
   };

@@ -33,6 +33,10 @@ describe('Multi-Agent Swarm Mesh Contracts & Error Taxonomy', () => {
     delegationChain: ['supervisor', 'crm_assistant'],
     depth: 1,
     allowedScopes: ['crm:contacts:read', 'crm:contacts:write'],
+    tokenBudget: 4000,
+    timeoutMs: 30000,
+    policyVersion: '1.0.0',
+    status: 'active' as const,
     issuedAt: '2026-10-08T00:00:00.000Z',
     expiresAt: '2026-10-08T01:00:00.000Z',
   };
