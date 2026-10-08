@@ -8,3 +8,4 @@
 
 export * from './health-types';
 export * from './agent-health-policy-matrix';
+export * from './discrepancy-service';
