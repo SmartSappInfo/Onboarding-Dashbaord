@@ -251,12 +251,14 @@ describe('Phase 15 Milestone 2: The 4 Mandatory Governance Matrices (Rules 1940-
   });
 
   it('should verify COST_FAILURE_MATRIX recovery strategies (Rule 2)', () => {
+    expect(COST_FAILURE_MATRIX).toBeDefined();
     expect(resolveCostFailureStrategy('COST_RATE_LIMIT_429')).toBe('FAILOVER_TO_NEXT_PROVIDER');
     expect(resolveCostFailureStrategy('COST_BUDGET_EXCEEDED')).toBe('ENFORCE_HARD_CAP_POLICY');
     expect(resolveCostFailureStrategy('COST_DEAD_MAN_PAUSED')).toBe('FAIL_CLOSED');
   });
 
   it('should verify COST_ROLLBACK_MATRIX reverse-LIFO saga compensation (Rule 27)', () => {
+    expect(COST_ROLLBACK_MATRIX).toBeDefined();
     expect(getCostRollbackCapability('cost.set_budget_policy')).toBe('cost.revert_budget_policy');
     expect(getCostRollbackCapability('cost.record_usage')).toBeNull();
     expect(getCostRollbackCapability('cost.route_model')).toBeNull();

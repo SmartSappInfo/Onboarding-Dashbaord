@@ -25,7 +25,6 @@ import {
   GenerateDocumentationInputSchema,
   DocumentationExportFormatSchema,
   type ProgressiveDiscoveryResult,
-  type CapabilityCatalogItem,
 } from '../../registry/contracts/registry-types';
 import { getProgressiveDiscoveryService } from '../../registry/discovery/progressive-discovery-service';
 import { getPlatformDocGenerator } from '../../registry/docs/platform-doc-generator';

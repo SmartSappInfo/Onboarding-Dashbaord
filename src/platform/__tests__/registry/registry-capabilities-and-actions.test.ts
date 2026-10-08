@@ -5,7 +5,7 @@
  * Strict Typing Policy: Zero `any` or `any[]`.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { canonicalCapabilityRegistryStore } from '@/platform/capabilities/registry/capability-registry';
 import '@/platform/capabilities/registry/registry-capabilities';
 import {

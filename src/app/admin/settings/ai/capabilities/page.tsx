@@ -36,6 +36,9 @@ export default async function CapabilitiesPage(): Promise<React.JSX.Element> {
     }
   }
 
+  // Ensure pure plain JSON serializability across the Server -> Client Component boundary (RSC Invariant)
+  const plainCapabilities = JSON.parse(JSON.stringify(capabilities)) as CapabilityCatalogItem[];
+
   return (
     <React.Suspense
       fallback={
@@ -44,7 +47,7 @@ export default async function CapabilitiesPage(): Promise<React.JSX.Element> {
         </div>
       }
     >
-      <CapabilityRegistryClient initialCapabilities={capabilities} />
+      <CapabilityRegistryClient initialCapabilities={plainCapabilities} />
     </React.Suspense>
   );
 }

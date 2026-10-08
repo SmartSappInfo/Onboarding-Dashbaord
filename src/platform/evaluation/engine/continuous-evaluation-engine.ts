@@ -340,7 +340,6 @@ export class ContinuousEvaluationEngine {
 // ============================================================================
 
 declare global {
-  // eslint-disable-next-line no-var
   var __smartsappContinuousEvaluationEngine: ContinuousEvaluationEngine | undefined;
 }
 

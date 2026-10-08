@@ -14,8 +14,8 @@ import { z } from 'zod/v4';
 import {
   EvaluationDomainSchema,
   HumanVsAgentBaselineSchema,
-  type HumanVsAgentBaseline,
 } from '../contracts/evaluation-types';
+export type { HumanVsAgentBaseline } from '../contracts/evaluation-types';
 
 // ============================================================================
 // 1. 7 Canonical Evaluation Views (agents_mcp_ui.md 3645–3653)

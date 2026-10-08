@@ -28,6 +28,7 @@ import {
 } from '@/platform/security/contracts/security-types';
 import {
   SecurityScanTextInput,
+  SecurityScanTextInputRaw,
   SecurityScanTextInputSchema,
   SecurityRunAdversarialSuiteInput,
   SecurityRunAdversarialSuiteInputSchema,
@@ -79,7 +80,7 @@ function assertTenantAccess(
  * 1. Scans untrusted input text for adversarial directives and credential leakage.
  */
 export async function scanTextAction(
-  input: SecurityScanTextInput
+  input: SecurityScanTextInputRaw
 ): Promise<SecurityActionResult<AdversarialScanResult>> {
   try {
     await requireAuth();

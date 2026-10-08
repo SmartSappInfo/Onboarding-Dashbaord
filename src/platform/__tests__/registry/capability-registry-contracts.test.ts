@@ -92,11 +92,11 @@ describe('Phase 15 Milestone 4 - Registry Contracts & Governance Matrices', () =
 
   it('verifies typed RegistryDomainError mapping to HTTP status', () => {
     const error = new RegistryDomainError(
-      'REGISTRY_CAPABILITY_NOT_FOUND',
+      REGISTRY_ERROR_CODES.CAPABILITY_NOT_FOUND,
       'Capability unknown.tool not found',
       404
     );
-    expect(error.code).toBe('REGISTRY_CAPABILITY_NOT_FOUND');
+    expect(error.code).toBe(REGISTRY_ERROR_CODES.CAPABILITY_NOT_FOUND);
     expect(error.httpStatus).toBe(404);
     expect(error.name).toBe('RegistryDomainError');
   });

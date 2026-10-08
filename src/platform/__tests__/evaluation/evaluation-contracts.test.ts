@@ -143,6 +143,14 @@ describe('Phase 15 Milestone 1: Evaluation Contracts & Schemas', () => {
       contextBreadthFactor: 2.0,
     };
     expect(HumanVsAgentBaselineSchema.safeParse(baseline).success).toBe(true);
+
+    const batchInput = {
+      organizationId: 'org_test',
+      workspaceId: 'ws_test',
+      domain: 'crm' as const,
+      dryRun: true,
+    };
+    expect(EvaluationBatchRunInputSchema.safeParse(batchInput).success).toBe(true);
   });
 
   it('validates AgentEvaluationError and structured taxonomy', () => {

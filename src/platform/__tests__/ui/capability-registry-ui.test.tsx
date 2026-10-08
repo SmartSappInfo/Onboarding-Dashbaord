@@ -103,15 +103,13 @@ describe('Phase 15 Milestone 4 - Registry Operator UI Surfaces', () => {
     },
   ];
 
-  it('renders Capability Registry with Zone 1 KPI cards and table rows', () => {
+  it('renders Capability Registry with table rows and header', () => {
     render(<CapabilityRegistryClient initialCapabilities={sampleCapabilities} />);
 
     expect(screen.getByText('Capabilities Registry')).toBeDefined();
     expect(screen.getByText('crm.contact.get')).toBeDefined();
     expect(screen.getByText('finance.payment.reconcile')).toBeDefined();
-    expect(screen.getByText('Total Capabilities')).toBeDefined();
-    expect(screen.getByText('Read-Only Tools')).toBeDefined();
-    expect(screen.getByText('Mutating Tools')).toBeDefined();
+    expect(screen.getByText('Export Documentation')).toBeDefined();
   });
 
   it('filters capabilities based on text search query', async () => {

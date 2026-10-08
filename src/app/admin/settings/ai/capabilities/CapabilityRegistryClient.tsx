@@ -11,18 +11,13 @@
 
 import * as React from 'react';
 import {
-  Wrench,
   Search,
-  Filter,
   Download,
   FileCode,
-  ShieldCheck,
   AlertTriangle,
   CheckCircle2,
   Lock,
-  Layers,
   Sparkles,
-  ExternalLink,
   ChevronRight,
   RefreshCw,
   Copy,
@@ -31,6 +26,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { PageContainerFluid } from '@/components/ui/page-container';
 import {
   Dialog,
   DialogContent,
@@ -83,23 +79,6 @@ export function CapabilityRegistryClient({
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
-  // Derived KPI metrics
-  const totalCount = capabilities.length;
-  const readOnlyCount = React.useMemo(
-    () => capabilities.filter((c) => c.riskLevel === 'L0_READ').length,
-    [capabilities]
-  );
-  const mutatingCount = React.useMemo(
-    () => capabilities.filter((c) => c.riskLevel !== 'L0_READ').length,
-    [capabilities]
-  );
-  const driftDetectedCount = React.useMemo(
-    () =>
-      capabilities.filter(
-        (c) => c.driftStatus === 'DRIFTED' || (c.driftStatus as string) === 'DRIFT_DETECTED'
-      ).length,
-    [capabilities]
-  );
 
   // Unique domains list
   const availableDomains = React.useMemo(() => {
@@ -229,87 +208,31 @@ export function CapabilityRegistryClient({
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header & Page Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
+    <PageContainerFluid>
+      <div className="space-y-6 pb-20 w-full text-left">
+        {/* Header & Page Title */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20">
-              <Wrench className="h-5 w-5" />
-            </div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
               Capabilities Registry
             </h1>
             <CardInfoTooltip text="Centralized inventory of canonical platform tool capabilities with cryptographic drift verification, parameter schemas, and auto-generated documentation manifests." />
           </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            Backoffice strategic asset catalog governing autonomous agents, tools, and execution boundaries.
-          </p>
+
+          <div className="flex items-center gap-2.5 shrink-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsExportModalOpen(true)}
+              className="rounded-xl font-bold h-11 px-5 gap-2 border border-border/80 bg-background hover:bg-muted/60 text-foreground active:scale-[0.97] shadow-xs"
+            >
+              <Download className="h-4 w-4 text-primary" />
+              Export Documentation
+            </Button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setIsExportModalOpen(true)}
-            className="rounded-xl active:scale-[0.97] min-h-[44px] gap-2 border-border/80"
-          >
-            <Download className="h-4 w-4 text-primary" />
-            Export Documentation
-          </Button>
-        </div>
-      </div>
-
-      {/* Zone 1: Executive KPI Header */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
-            <span>Total Capabilities</span>
-            <Layers className="h-4 w-4 text-muted-foreground/70" />
-          </div>
-          <div className="text-2xl font-bold text-foreground">{totalCount}</div>
-          <div className="text-xs text-muted-foreground">Across {availableDomains.length} domains</div>
-        </div>
-
-        <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
-            <span>Read-Only Tools</span>
-            <ShieldCheck className="h-4 w-4 text-emerald-500" />
-          </div>
-          <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-            {readOnlyCount}
-          </div>
-          <div className="text-xs text-muted-foreground">L0_READ risk ceiling</div>
-        </div>
-
-        <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
-            <span>Mutating Tools</span>
-            <Lock className="h-4 w-4 text-amber-500" />
-          </div>
-          <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
-            {mutatingCount}
-          </div>
-          <div className="text-xs text-muted-foreground">Governed by Two-Phase Proposals</div>
-        </div>
-
-        <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
-            <span>Drift Status</span>
-            {driftDetectedCount > 0 ? (
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
-            ) : (
-              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-            )}
-          </div>
-          <div className="text-2xl font-bold text-foreground">
-            {driftDetectedCount > 0 ? `${driftDetectedCount} Flagged` : '0 Drifts'}
-          </div>
-          <div className="text-xs text-muted-foreground">Cryptographically verified</div>
-        </div>
-      </div>
-
-      {/* Zone 2: Filter Toolbar */}
+        {/* Zone 2: Filter Toolbar */}
       <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm space-y-3.5">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <div className="relative flex-1">
@@ -384,7 +307,10 @@ export function CapabilityRegistryClient({
             <tbody className="divide-y divide-border/60">
               {filteredCapabilities.length > 0 ? (
                 filteredCapabilities.map((cap) => (
-                  <tr key={cap.id} className="hover:bg-muted/10 transition-colors">
+                  <tr
+                    key={cap.id}
+                    className="transition-colors hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15"
+                  >
                     <td className="px-5 py-3.5 max-w-sm">
                       <div className="font-mono font-semibold text-xs text-foreground">
                         {cap.id}
@@ -622,6 +548,7 @@ export function CapabilityRegistryClient({
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </PageContainerFluid>
   );
 }

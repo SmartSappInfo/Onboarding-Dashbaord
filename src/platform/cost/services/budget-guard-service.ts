@@ -242,7 +242,6 @@ export class BudgetGuardService {
 
 // Global HMR singleton preservation (Rule 69)
 declare global {
-  // eslint-disable-next-line no-var
   var __smartsappBudgetGuardService: BudgetGuardService | undefined;
 }
 

@@ -244,6 +244,21 @@ describe('Phase 15 Milestone 4 - Progressive Capability Discovery Engine', () =>
     expect(Array.isArray(results.stubs)).toBe(true);
   });
 
+  it('returns serializable plain JSON schema objects for RSC boundary compliance', async () => {
+    const details = await service.getCapabilityDetails('crm.contact.get');
+    expect(details).toBeDefined();
+    expect(details?.schema?.input).toBeDefined();
+    expect(typeof details?.schema?.input).toBe('object');
+    // Must be a plain object, not a Zod class instance with ~standard or parse methods
+    expect(details?.schema?.input).not.toHaveProperty('~standard');
+    expect(details?.schema?.input).not.toHaveProperty('parse');
+    expect(details?.schema?.input).not.toHaveProperty('safeParse');
+    expect(typeof (details?.schema?.input as Record<string, unknown>).type).toBe('string');
+
+    // Must be 100% JSON serializable without non-plain classes or null prototypes
+    expect(() => JSON.stringify(details)).not.toThrow();
+  });
+
   it('provides singleton instance with HMR safety', () => {
     const singleton = getProgressiveDiscoveryService();
     expect(singleton).toBeInstanceOf(ProgressiveDiscoveryService);

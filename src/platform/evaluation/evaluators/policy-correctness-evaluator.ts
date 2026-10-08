@@ -15,7 +15,6 @@ import {
   EvaluationScenario,
   EvaluationMetricScore,
   EvaluationRiskLevel,
-  EVALUATION_PASS_THRESHOLD_SCORE,
 } from '../contracts/evaluation-types';
 
 export interface PolicyEvaluationTrace {

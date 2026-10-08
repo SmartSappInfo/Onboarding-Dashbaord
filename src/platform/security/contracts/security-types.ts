@@ -8,7 +8,7 @@
  */
 
 import { z } from 'zod/v4';
-import { CAPABILITY_RISK_LEVELS, CapabilityRiskLevel } from '@/platform/cost/contracts/cost-types';
+import { type CapabilityRiskLevel } from '@/platform/cost/contracts/cost-types';
 
 // ============================================================================
 // 1. 10-Vector Adversarial Ingress Taxonomy (Rule 46 & §2.3)

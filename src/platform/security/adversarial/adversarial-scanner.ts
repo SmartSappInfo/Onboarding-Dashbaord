@@ -118,7 +118,6 @@ export class AdversarialScanner {
 
 // Global singleton preservation (Rule 69)
 declare global {
-  // eslint-disable-next-line no-var
   var __smartsappAdversarialScanner: AdversarialScanner | undefined;
 }
 

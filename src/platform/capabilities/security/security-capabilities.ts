@@ -67,6 +67,7 @@ export const SecurityScanTextInputSchema = z.object({
   sanitizeSecrets: z.boolean().default(true),
 });
 export type SecurityScanTextInput = z.infer<typeof SecurityScanTextInputSchema>;
+export type SecurityScanTextInputRaw = z.input<typeof SecurityScanTextInputSchema>;
 
 export const securityScanTextCapability: CapabilityDefinition<
   SecurityScanTextInput,
@@ -74,27 +75,43 @@ export const securityScanTextCapability: CapabilityDefinition<
 > = {
   id: 'security.scan_text',
   version: '1.0.0',
-  domain: 'ai_governance',
+  name: 'Scan Untrusted Text',
   description:
     'Scans untrusted input text across 10 ingress vectors for prompt injection directives, isolates malicious text in XML containers, and masks sensitive credentials in flight.',
+  domain: 'ai_governance',
+  operation: 'read',
+  permissions: ['security:read'],
+  inputSchema: SecurityScanTextInputSchema,
+  outputSchema: AdversarialScanResultSchema,
+  workspaceScoped: true,
+  tenantScoped: true,
   risk: {
     level: 'L0_READ',
     destructive: false,
     idempotent: true,
+    openWorld: false,
     requiresHumanApproval: false,
     nonDelegable: false,
   },
-  permissions: ['security:read'],
-  inputSchema: SecurityScanTextInputSchema,
-  outputSchema: AdversarialScanResultSchema,
+  execution: {
+    synchronous: true,
+    maxDurationMs: 10000,
+    supportsDryRun: true,
+    supportsCancellation: false,
+    supportsCompensation: false,
+    maxPayloadSizeBytes: 1048576,
+  },
   policies: {
     requiresIdempotencyKey: false,
+    requiresExpectedVersion: false,
     auditRequired: false,
+    defaultEnabled: true,
   },
-  async execute(
+  handler: async (
     input: SecurityScanTextInput,
-    _context: CapabilityExecutionContext
-  ): Promise<CapabilityExecutionResult<AdversarialScanResult>> {
+    context: CapabilityExecutionContext
+  ): Promise<CapabilityExecutionResult<AdversarialScanResult>> => {
+    const startTime = Date.now();
     const scanner = getAdversarialScanner();
     const result = scanner.scanText({
       text: input.text,
@@ -104,11 +121,11 @@ export const securityScanTextCapability: CapabilityDefinition<
     });
 
     return {
-      status: 'SUCCESS',
+      success: true,
       data: result,
-      audit: {
-        summary: `Scanned text from ${input.source} (injection detected: ${result.isInjectionDetected})`,
-      },
+      executionId: context.correlationId,
+      emittedEvents: [],
+      durationMs: Date.now() - startTime,
     };
   },
 };
@@ -148,27 +165,43 @@ export const securityRunAdversarialSuiteCapability: CapabilityDefinition<
 > = {
   id: 'security.run_adversarial_suite',
   version: '1.0.0',
-  domain: 'ai_governance',
+  name: 'Run Adversarial Suite',
   description:
     'Executes automated red-team adversarial injection suite across all 10 canonical ingress vectors in dry-run mode, verifying 100% neutralization.',
+  domain: 'ai_governance',
+  operation: 'read',
+  permissions: ['security:read'],
+  inputSchema: SecurityRunAdversarialSuiteInputSchema,
+  outputSchema: AdversarialBatteryReportSchema,
+  workspaceScoped: true,
+  tenantScoped: true,
   risk: {
     level: 'L0_READ',
     destructive: false,
     idempotent: true,
+    openWorld: false,
     requiresHumanApproval: false,
     nonDelegable: false,
   },
-  permissions: ['security:read'],
-  inputSchema: SecurityRunAdversarialSuiteInputSchema,
-  outputSchema: AdversarialBatteryReportSchema,
+  execution: {
+    synchronous: true,
+    maxDurationMs: 30000,
+    supportsDryRun: true,
+    supportsCancellation: true,
+    supportsCompensation: false,
+    maxPayloadSizeBytes: 1048576,
+  },
   policies: {
     requiresIdempotencyKey: false,
+    requiresExpectedVersion: false,
     auditRequired: true,
+    defaultEnabled: true,
   },
-  async execute(
+  handler: async (
     input: SecurityRunAdversarialSuiteInput,
     context: CapabilityExecutionContext
-  ): Promise<CapabilityExecutionResult<AdversarialBatteryReport>> {
+  ): Promise<CapabilityExecutionResult<AdversarialBatteryReport>> => {
+    const startTime = Date.now();
     assertTenantContext(context, input.organizationId);
 
     const runner = getAdversarialInjectionRunner();
@@ -179,11 +212,11 @@ export const securityRunAdversarialSuiteCapability: CapabilityDefinition<
     });
 
     return {
-      status: 'SUCCESS',
+      success: true,
       data: report,
-      audit: {
-        summary: `Executed 10-vector red-team battery for org ${input.organizationId} (success rate: ${report.successRatePercent}%)`,
-      },
+      executionId: context.correlationId,
+      emittedEvents: [],
+      durationMs: Date.now() - startTime,
     };
   },
 };
@@ -202,39 +235,55 @@ export const chaosInjectFaultCapability: CapabilityDefinition<
 > = {
   id: 'chaos.inject_fault',
   version: '1.0.0',
-  domain: 'ai_governance',
+  name: 'Inject Chaos Fault',
   description:
     'Registers and activates synthetic chaos fault injection rule for resilience testing against 429 rate limits, 500 downtime, latency jitter, concurrency collisions, or partial saga failures.',
+  domain: 'ai_governance',
+  operation: 'create',
+  permissions: ['chaos:inject'],
+  inputSchema: ChaosFaultRuleSchema,
+  outputSchema: ChaosInjectFaultOutputSchema,
+  workspaceScoped: true,
+  tenantScoped: true,
   risk: {
     level: 'L2_STATE_MUTATION',
     destructive: false,
     idempotent: true,
+    openWorld: false,
     requiresHumanApproval: true,
     nonDelegable: false,
   },
-  permissions: ['chaos:inject'],
-  inputSchema: ChaosFaultRuleSchema,
-  outputSchema: ChaosInjectFaultOutputSchema,
+  execution: {
+    synchronous: true,
+    maxDurationMs: 10000,
+    supportsDryRun: false,
+    supportsCancellation: false,
+    supportsCompensation: true,
+    maxPayloadSizeBytes: 1048576,
+  },
   policies: {
     requiresIdempotencyKey: true,
+    requiresExpectedVersion: false,
     auditRequired: true,
+    defaultEnabled: true,
   },
-  async execute(
+  handler: async (
     input: ChaosFaultRule,
-    _context: CapabilityExecutionContext
-  ): Promise<CapabilityExecutionResult<ChaosInjectFaultOutput>> {
+    context: CapabilityExecutionContext
+  ): Promise<CapabilityExecutionResult<ChaosInjectFaultOutput>> => {
+    const startTime = Date.now();
     const engine = getChaosInjectionEngine();
     engine.registerRule(input);
 
     return {
-      status: 'SUCCESS',
+      success: true,
       data: {
         ruleId: input.id,
         success: true,
       },
-      audit: {
-        summary: `Injected chaos fault '${input.faultType}' on capability '${input.targetCapabilityId}' (rule: ${input.id})`,
-      },
+      executionId: context.correlationId,
+      emittedEvents: [],
+      durationMs: Date.now() - startTime,
     };
   },
 };
@@ -276,27 +325,43 @@ export const securityVerifyToolDriftCapability: CapabilityDefinition<
 > = {
   id: 'security.verify_tool_drift',
   version: '1.0.0',
-  domain: 'ai_governance',
+  name: 'Verify Tool Drift',
   description:
     'Verifies live tool definition against approved cryptographic SHA-256 fingerprint baseline to detect definition drift and rug-pulls.',
+  domain: 'ai_governance',
+  operation: 'read',
+  permissions: ['security:read'],
+  inputSchema: SecurityVerifyToolDriftInputSchema,
+  outputSchema: SecurityVerifyToolDriftOutputSchema,
+  workspaceScoped: true,
+  tenantScoped: true,
   risk: {
     level: 'L0_READ',
     destructive: false,
     idempotent: true,
+    openWorld: false,
     requiresHumanApproval: false,
     nonDelegable: false,
   },
-  permissions: ['security:read'],
-  inputSchema: SecurityVerifyToolDriftInputSchema,
-  outputSchema: SecurityVerifyToolDriftOutputSchema,
+  execution: {
+    synchronous: true,
+    maxDurationMs: 10000,
+    supportsDryRun: true,
+    supportsCancellation: false,
+    supportsCompensation: false,
+    maxPayloadSizeBytes: 1048576,
+  },
   policies: {
     requiresIdempotencyKey: false,
+    requiresExpectedVersion: false,
     auditRequired: false,
+    defaultEnabled: true,
   },
-  async execute(
+  handler: async (
     input: SecurityVerifyToolDriftInput,
     context: CapabilityExecutionContext
-  ): Promise<CapabilityExecutionResult<SecurityVerifyToolDriftOutput>> {
+  ): Promise<CapabilityExecutionResult<SecurityVerifyToolDriftOutput>> => {
+    const startTime = Date.now();
     assertTenantContext(context, input.organizationId);
 
     const monitor = getToolDriftMonitor();
@@ -307,16 +372,16 @@ export const securityVerifyToolDriftCapability: CapabilityDefinition<
     );
 
     return {
-      status: 'SUCCESS',
+      success: true,
       data: {
         toolId: result.toolId,
         status: result.status,
         hasDrift: result.hasDrift,
         isExecutionPermitted: result.isExecutionPermitted,
       },
-      audit: {
-        summary: `Verified tool fingerprint for '${input.toolId}' (status: ${result.status}, drift: ${result.hasDrift})`,
-      },
+      executionId: context.correlationId,
+      emittedEvents: [],
+      durationMs: Date.now() - startTime,
     };
   },
 };
@@ -349,34 +414,50 @@ export const securityApproveToolFingerprintCapability: CapabilityDefinition<
 > = {
   id: 'security.approve_tool_fingerprint',
   version: '1.0.0',
-  domain: 'ai_governance',
+  name: 'Approve Tool Fingerprint',
   description:
     'Approves updated tool fingerprint baseline snapshot. Strictly non-delegable: only human administrators may approve (Rule 17).',
+  domain: 'ai_governance',
+  operation: 'update',
+  permissions: ['security:manage'],
+  inputSchema: SecurityApproveToolFingerprintInputSchema,
+  outputSchema: ToolFingerprintRecordSchema,
+  workspaceScoped: true,
+  tenantScoped: true,
   risk: {
     level: 'L2_STATE_MUTATION',
     destructive: false,
     idempotent: true,
+    openWorld: false,
     requiresHumanApproval: true,
     nonDelegable: true,
   },
-  permissions: ['security:manage'],
-  inputSchema: SecurityApproveToolFingerprintInputSchema,
-  outputSchema: ToolFingerprintRecordSchema,
+  execution: {
+    synchronous: true,
+    maxDurationMs: 15000,
+    supportsDryRun: false,
+    supportsCancellation: false,
+    supportsCompensation: true,
+    maxPayloadSizeBytes: 1048576,
+  },
   policies: {
     requiresIdempotencyKey: true,
+    requiresExpectedVersion: false,
     auditRequired: true,
+    defaultEnabled: true,
   },
-  async execute(
+  handler: async (
     input: SecurityApproveToolFingerprintInput,
     context: CapabilityExecutionContext
-  ): Promise<CapabilityExecutionResult<ToolFingerprintRecord>> {
+  ): Promise<CapabilityExecutionResult<ToolFingerprintRecord>> => {
+    const startTime = Date.now();
     assertTenantContext(context, input.organizationId);
 
     // Rule 17 Non-Delegable Check
-    if (context.principal.type !== 'user') {
+    if (context.principal.actorType !== 'user') {
       throw new SecurityDomainError(
         'SECURITY_UNAUTHORIZED_APPROVAL',
-        `Agent principal '${context.principal.id}' cannot approve tool fingerprint. Only human administrators can re-approve tool baselines.`,
+        `Agent principal '${context.principal.userId}' cannot approve tool fingerprint. Only human administrators can re-approve tool baselines.`,
         403
       );
     }
@@ -385,17 +466,17 @@ export const securityApproveToolFingerprintCapability: CapabilityDefinition<
     const record = await monitor.approveToolFingerprint({
       toolId: input.toolId,
       definition: input.definition,
-      actor: { type: context.principal.type, id: context.principal.id },
+      actor: { type: context.principal.actorType, id: context.principal.userId },
       organizationId: input.organizationId,
       workspaceId: input.workspaceId,
     });
 
     return {
-      status: 'SUCCESS',
+      success: true,
       data: record,
-      audit: {
-        summary: `Approved tool fingerprint baseline for '${input.toolId}' (fingerprint: ${record.compositeFingerprint.slice(0, 12)}...)`,
-      },
+      executionId: context.correlationId,
+      emittedEvents: [],
+      durationMs: Date.now() - startTime,
     };
   },
 };

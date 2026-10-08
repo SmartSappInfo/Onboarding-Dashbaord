@@ -41,6 +41,7 @@ describe('Phase 15 Milestone 3: ChaosInjectionEngine', () => {
       durationMs: 60000,
       active: true,
       createdAt: new Date().toISOString(),
+      createdByUserId: 'user_test_ops',
     };
 
     engine.registerRule(rule);
@@ -155,6 +156,7 @@ describe('Phase 15 Milestone 3: ChaosInjectionEngine', () => {
       durationMs: 60000,
       active: true,
       createdAt: new Date().toISOString(),
+      createdByUserId: 'user_test_ops',
     });
 
     await expect(

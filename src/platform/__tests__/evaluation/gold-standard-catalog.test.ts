@@ -31,7 +31,6 @@ describe('Phase 15 Milestone 1: 35 Multi-Domain Gold-Standard Benchmark Catalog'
     for (const scenario of GOLD_STANDARD_SCENARIOS) {
       const parseResult = EvaluationScenarioSchema.safeParse(scenario);
       if (!parseResult.success) {
-        // eslint-disable-next-line no-console
         console.error(`Scenario schema failure for ${scenario.id}:`, parseResult.error.format());
       }
       expect(parseResult.success).toBe(true);

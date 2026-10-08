@@ -99,6 +99,15 @@ describe('Phase 15 Milestone 5 - Governed Evaluation UI Server Actions', () => {
     expect(res.data?.every((r) => r.domain === 'crm')).toBe(true);
   });
 
+  it('triggers gold standard run action and returns benchmark summary', async () => {
+    const res = await triggerGoldStandardRunAction({
+      scenarioId: 'eval_crm_01',
+      organizationId: 'org_test_123',
+    });
+    expect(res.success).toBe(true);
+    expect(res.data?.scenarioId).toBe('eval_crm_01');
+  });
+
   it('fetches run details including explainability grid and XML isolated proofs (Rules 13, 30, 41)', async () => {
     const runsRes = await listBenchmarkRunsAction({ organizationId: 'org_test_123' });
     const firstRun = runsRes.data?.[0];

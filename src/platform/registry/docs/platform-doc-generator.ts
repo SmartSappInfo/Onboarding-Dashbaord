@@ -14,7 +14,6 @@ import {
   canonicalCapabilityRegistryStore,
   type CapabilityRegistryStore,
 } from '../../capabilities/registry/capability-registry';
-import { type AnyCapabilityDefinition } from '../../capabilities/contracts/capability-definition';
 import { REGISTRY_FAILURE_MATRIX } from '../contracts/registry-types';
 
 /** Regex patterns for scrubbing exposed credentials or internal secrets (Rules 32 & 33) */
@@ -289,7 +288,6 @@ export class PlatformDocGenerator {
 
 // Global Singleton Store with HMR Preservation (Rule 69)
 declare global {
-  // eslint-disable-next-line no-var
   var __smartsappPlatformDocGenerator: PlatformDocGenerator | undefined;
 }
 

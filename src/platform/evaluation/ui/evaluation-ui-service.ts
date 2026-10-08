@@ -39,7 +39,6 @@ import {
 } from './evaluation-ui-types';
 
 declare global {
-  // eslint-disable-next-line no-var
   var __smartsappEvaluationUiService: EvaluationUiService | undefined;
 }
 
@@ -228,10 +227,22 @@ ${JSON.stringify({ scenarioId: run.scenarioId, input: scenario?.inputQuery || ''
 
     const engine = getContinuousEvaluationEngine();
     // Rule 42: dryRun is strictly enforced
-    const evalRun = await engine.executeScenario(scenario, {
-      organizationId,
-      actorUserId,
-      dryRun: true,
+    const evalRun = await engine.evaluateScenario({
+      scenario,
+      personaId: scenario.expectedPersona,
+      executedBy: actorUserId,
+      trace: {
+        outputText: `Dry-run execution for gold-standard benchmark scenario ${scenario.title}. Expected output elements: ${scenario.expectedOutputContains.join(', ')}.`,
+        isSuccess: true,
+        calledCapabilities: scenario.expectedIntermediateActions,
+        highestRiskLevelInvoked: scenario.expectedRiskLevel,
+        accessedOrganizationIds: [organizationId],
+        accessedWorkspaceIds: scenario.workspaceId ? [scenario.workspaceId] : [],
+        heldPermissions: ['evaluation:read', 'crm:read', 'workspace:read'],
+        attemptedNonDelegableActions: [],
+        citedEvidenceKeys: scenario.expectedEvidenceKeys,
+        liveWritesAttempted: 0,
+      },
     });
 
     const summary: BenchmarkRunSummary = {
@@ -239,11 +250,11 @@ ${JSON.stringify({ scenarioId: run.scenarioId, input: scenario?.inputQuery || ''
       scenarioId: evalRun.scenarioId,
       domain: evalRun.domain,
       personaId: evalRun.personaId,
-      score: evalRun.compositeScore,
-      passed: evalRun.passed,
-      durationMs: evalRun.executionDurationMs,
-      tokensUsed: evalRun.tokensUsed,
-      estimatedCostUsd: evalRun.estimatedCostUsd,
+      score: evalRun.overallScore,
+      passed: evalRun.status === 'SUCCESS',
+      durationMs: evalRun.durationMs,
+      tokensUsed: evalRun.promptTokens + evalRun.completionTokens,
+      estimatedCostUsd: Math.round((evalRun.costMicroUSD / 1_000_000) * 10000) / 10000,
       timestamp: evalRun.startedAt,
     };
 

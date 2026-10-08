@@ -209,7 +209,6 @@ export class AdversarialInjectionRunner {
 
 // Global singleton preservation (Rule 69)
 declare global {
-  // eslint-disable-next-line no-var
   var __smartsappAdversarialInjectionRunner: AdversarialInjectionRunner | undefined;
 }
 

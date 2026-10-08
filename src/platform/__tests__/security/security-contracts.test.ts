@@ -201,6 +201,8 @@ describe('Phase 15 Milestone 3: The 4 Mandatory Governance Matrices (Rules 1940-
   });
 
   it('should verify SECURITY_CHAOS_FAILURE_MATRIX recovery strategies (Rule 2)', () => {
+    expect(TOOL_FINGERPRINT_STATUSES).toBeDefined();
+    expect(SECURITY_CHAOS_FAILURE_MATRIX).toBeDefined();
     expect(resolveSecurityFailureStrategy('SECURITY_PROMPT_INJECTION_DETECTED')).toBe(
       'NEUTRALIZE_AND_ISOLATE'
     );
@@ -213,6 +215,7 @@ describe('Phase 15 Milestone 3: The 4 Mandatory Governance Matrices (Rules 1940-
   });
 
   it('should verify SECURITY_CHAOS_ROLLBACK_MATRIX reverse-LIFO saga compensation (Rule 27)', () => {
+    expect(SECURITY_CHAOS_ROLLBACK_MATRIX).toBeDefined();
     expect(getSecurityRollbackCapability('security.approve_tool_fingerprint')).toBe(
       'security.revoke_tool_fingerprint'
     );

@@ -136,7 +136,6 @@ export class HumanAgentBaselineService {
 // ============================================================================
 
 declare global {
-  // eslint-disable-next-line no-var
   var __smartsappHumanAgentBaselineService: HumanAgentBaselineService | undefined;
 }
 

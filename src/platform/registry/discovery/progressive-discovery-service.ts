@@ -25,6 +25,29 @@ import { type RiskLevel } from '../../capabilities/contracts/risk-levels';
 import { defaultEventBus } from '../../events/event-bus';
 import { createDomainEvent } from '../../capabilities/events/domain-event';
 import { getToolDriftMonitor } from '../../security/drift/tool-drift-monitor';
+import { toMcpToolSchema } from '../../mcp/to-mcp-tool-schema';
+import type { SchemaParser } from '../../capabilities/contracts/capability-definition';
+import { z } from 'zod/v4';
+
+/**
+ * Safely converts a Zod schema or SchemaParser into a pure JSON-serializable plain object (RSC Invariant).
+ */
+function extractJsonSchema(
+  schema: unknown,
+  direction: 'input' | 'output'
+): Record<string, unknown> | undefined {
+  if (!schema) return undefined;
+  try {
+    const std = toMcpToolSchema(schema as z.ZodType<unknown> | SchemaParser<unknown>);
+    const json =
+      direction === 'input'
+        ? std['~standard'].jsonSchema.input({ target: 'draft-2020-12' })
+        : std['~standard'].jsonSchema.output({ target: 'draft-2020-12' });
+    return JSON.parse(JSON.stringify(json)) as Record<string, unknown>;
+  } catch {
+    return { type: 'object' };
+  }
+}
 
 /**
  * Adversarial prompt injection signatures for search query sanitization (Rules 13 & 30).
@@ -249,6 +272,9 @@ export class ProgressiveDiscoveryService {
       driftStatus = 'APPROVED';
     }
 
+    const inputJson = extractJsonSchema(cap.inputSchema, 'input');
+    const outputJson = extractJsonSchema(cap.outputSchema, 'output');
+
     return {
       id: cap.id,
       domain: cap.domain || 'general',
@@ -260,11 +286,20 @@ export class ProgressiveDiscoveryService {
       isDelegable: !cap.risk.requiresHumanApproval,
       driftStatus,
       lastVerifiedAt: new Date().toISOString(),
+      inputSchemaJson: inputJson ? JSON.stringify(inputJson, null, 2) : undefined,
+      outputSchemaJson: outputJson ? JSON.stringify(outputJson, null, 2) : undefined,
       schema: {
-        input: cap.inputSchema ? (cap.inputSchema as unknown as Record<string, unknown>) : undefined,
-        output: cap.outputSchema ? (cap.outputSchema as unknown as Record<string, unknown>) : undefined,
+        input: inputJson,
+        output: outputJson,
       },
-      policies: cap.policies,
+      policies: cap.policies
+        ? {
+            requiresIdempotencyKey: !!cap.policies.requiresIdempotencyKey,
+            requiresExpectedVersion: !!cap.policies.requiresExpectedVersion,
+            auditRequired: !!cap.policies.auditRequired,
+            defaultEnabled: cap.policies.defaultEnabled,
+          }
+        : undefined,
     };
   }
 
@@ -278,7 +313,6 @@ export class ProgressiveDiscoveryService {
 
 // Global Singleton Store with HMR Preservation (Rule 69)
 declare global {
-  // eslint-disable-next-line no-var
   var __smartsappProgressiveDiscoveryService: ProgressiveDiscoveryService | undefined;
 }
 
