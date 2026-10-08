@@ -3,3 +3,4 @@
  */
 
 export * from './state-version-types';
+export * from './state-version-matrix';
