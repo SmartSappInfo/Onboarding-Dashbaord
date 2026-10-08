@@ -18,7 +18,6 @@
  */
 
 import { requireAuth, type AuthContext } from '@/lib/auth/require-auth';
-import { checkGovernanceDeadManSwitch } from '@/platform/policy/governance-dead-man';
 import { getCollectionsEngine } from '@/platform/agents/finance/collections/collections-engine';
 import { getFinanceProposalBridge } from '@/platform/agents/finance/collections/finance-proposal-bridge';
 import {

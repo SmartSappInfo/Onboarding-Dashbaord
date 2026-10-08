@@ -16,7 +16,7 @@
  * - .agents/AGENTS.md: Actionable toast navigation with relative paths.
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTenant } from '@/context/TenantContext';
 import { useEventStream } from '@/hooks/useEventStream';
 import { useToast } from '@/hooks/use-toast';
@@ -55,13 +55,9 @@ import {
   getCollectionsMetricsAction,
 } from '@/app/actions/finance-collections-actions';
 import {
-  AlertTriangle,
   Search,
   RefreshCw,
   HandCoins,
-  CheckCircle2,
-  Calendar,
-  Sparkles,
 } from 'lucide-react';
 
 export interface CollectionsClientProps {
@@ -149,12 +145,16 @@ export function CollectionsClient({
   }, [loadData]);
 
   // Real-time SSE reactivity (Rule 62)
-  useEventStream(
-    ['finance.collections.*', 'finance.payment.*', 'finance.invoice.*'],
-    () => {
-      loadData();
+  const { lastActivity } = useEventStream({
+    workspaceId: workspaceId || undefined,
+    eventTypes: ['finance.collections.*', 'finance.payment.*', 'finance.invoice.*'],
+  });
+
+  useEffect(() => {
+    if (lastActivity) {
+      void loadData();
     }
-  );
+  }, [lastActivity, loadData]);
 
   // Handler: Evaluate debtor next action and open proposal modal
   const handleEvaluateDebtor = async (debtor: DebtorAccount) => {
@@ -413,10 +413,7 @@ export function CollectionsClient({
 
       {/* Standardized Promise-to-Pay Recording Dialog (theme.md §8) */}
       <Dialog open={isPromiseModalOpen} onOpenChange={(open) => !open && setIsPromiseModalOpen(false)}>
-        <DialogContent
-          className="max-w-md border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl p-0 overflow-hidden"
-          demarcated
-        >
+        <DialogContent className="max-w-md border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl p-0 overflow-hidden">
           <DialogHeader demarcated className="px-6 py-3.5 sm:py-4 min-h-[52px] sm:min-h-[56px] border-b border-border/80 bg-muted/20">
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">

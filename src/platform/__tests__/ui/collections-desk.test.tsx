@@ -113,6 +113,7 @@ describe('Collections Action Desk UI (Phase 12 Milestone 4)', () => {
     entityId: 'ent_debtor_001',
     entityName: 'St. Peter International Academy',
     workspaceId: 'ws_finance_test',
+    organizationId: 'org_finance_test',
     studentId: 'STU-9921',
     primaryContactName: 'Dr. Joseph Mensah',
     primaryContactEmail: 'jmensah@stpeters.edu.gh',
@@ -122,13 +123,12 @@ describe('Collections Action Desk UI (Phase 12 Milestone 4)', () => {
     oldestInvoiceDueDate: '2026-08-15',
     daysOverdue: 45,
     agingBucket: '31_60_DAYS',
-    currentDunningStage: 'STAGE_2_FIRM_CALL',
-    lastContactDate: '2026-09-20',
+    lastContactedAt: '2026-09-20',
     promiseToPayDate: '2026-10-15',
     promiseToPayAmount: 5000,
     brokenPromisesCount: 1,
     relationshipHealth: 'FAIR',
-    notes: 'Requested milestone adjustment due to mid-term fees collection delay.',
+    remarks: 'Requested milestone adjustment due to mid-term fees collection delay.',
     currentTagIds: ['tag_vip_debtor'],
   };
 
@@ -140,12 +140,6 @@ describe('Collections Action Desk UI (Phase 12 Milestone 4)', () => {
     plansActiveCount: 5,
     plansRecoveredThisMonth: 18500,
     currency: 'GHS',
-    agingBreakdown: {
-      '0_14_DAYS': 45000,
-      '15_30_DAYS': 32000,
-      '31_60_DAYS': 35400,
-      OVER_60_DAYS: 13000,
-    },
   };
 
   const mockPlan: InstallmentPaymentPlan = {
@@ -155,7 +149,7 @@ describe('Collections Action Desk UI (Phase 12 Milestone 4)', () => {
     organizationId: 'org_finance_test',
     totalAmount: 12500,
     currency: 'GHS',
-    frequency: 'MONTHLY',
+    frequency: 'monthly',
     startDate: '2026-10-15',
     status: 'PROPOSED',
     createdAt: '2026-09-30T10:00:00.000Z',
@@ -167,29 +161,37 @@ describe('Collections Action Desk UI (Phase 12 Milestone 4)', () => {
   };
 
   const mockNextAction: CollectionsNextBestAction = {
+    actionId: 'act_test_001',
     entityId: 'ent_debtor_001',
-    actionType: 'PROPOSE_PAYMENT_PLAN',
+    actionType: 'PROPOSE_INSTALLMENT_PLAN',
     priority: 'HIGH',
     riskLevel: 'L2_STATE_MUTATION',
-    urgencyDays: 2,
     explainability: {
       what: 'Propose structured 3-month installment payment plan',
       why: 'Account has 1 broken promise but maintains FAIR relationship health and large overdue balance.',
       recoveryProbability: 82,
-      blastRadiusRisk: 'MODERATE',
+      riskLevel: 'L2_STATE_MUTATION',
+      financialExposure: 12500,
     },
-    suggestedChannel: 'WHATSAPP',
     dunningDraft: {
-      stage: 'STAGE_2_FIRM_CALL',
-      channel: 'WHATSAPP',
-      recipientPhone: '+233200000001',
+      draftId: 'draft_test_001',
+      entityId: 'ent_debtor_001',
+      channel: 'whatsapp',
+      tier: 'INSTALLMENT_PROPOSAL',
       recipientName: 'Dr. Joseph Mensah',
+      recipientAddress: '+233200000001',
       subject: 'Installment Recovery Option for St. Peter International Academy',
       body: 'Dear Dr. Joseph Mensah, we have formulated an installment schedule of 3 payments...',
-      proposedPlanSummary: '3 monthly installments of 4,166.67 GHS',
+      paymentLink: 'https://portal.smartsapp.com/pay/ent_debtor_001',
+      currency: 'GHS',
+      amountDue: 12500,
+      daysOverdue: 45,
+      generatedAt: '2026-09-30T10:00:00.000Z',
     },
     proposedPlan: mockPlan,
-    requiresHumanReview: true,
+    idempotencyKey: 'col_act_ent_debtor_001_45_PROPOSE_INSTALLMENT_PLAN',
+    requiresHumanApproval: true,
+    nonDelegable: false,
   };
 
   beforeEach(() => {
@@ -390,7 +392,7 @@ describe('Collections Action Desk UI (Phase 12 Milestone 4)', () => {
         expect(handleConfirm).toHaveBeenCalled();
         const callArg = handleConfirm.mock.calls[0][0];
         expect(callArg.entityId).toBe('ent_debtor_001');
-        expect(callArg.actionType).toBe('PROPOSE_PAYMENT_PLAN');
+        expect(callArg.actionType).toBe('PROPOSE_INSTALLMENT_PLAN');
       });
     });
   });

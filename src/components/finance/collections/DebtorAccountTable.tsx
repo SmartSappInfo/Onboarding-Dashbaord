@@ -12,7 +12,7 @@
  * - .agents/AGENTS.md (Tag Selection SSOT via <TagSelector> in client/draft mode)
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import {
   type DebtorAccount,
   type AgingBucket,
@@ -21,16 +21,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { TagSelector } from '@/components/tags/TagSelector';
 import {
-  Calendar,
-  AlertTriangle,
   FileSpreadsheet,
   HandCoins,
   Sparkles,
   User,
   Phone,
   Mail,
-  ShieldAlert,
-  Clock,
   CheckCircle2,
 } from 'lucide-react';
 

@@ -7,3 +7,4 @@ export * from './personas';
 export * from './evaluation';
 export * from './reconciliation';
 export * from './collections';
+export { roundCurrency } from './collections';

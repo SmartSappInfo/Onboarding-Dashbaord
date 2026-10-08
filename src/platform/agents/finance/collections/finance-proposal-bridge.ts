@@ -18,10 +18,9 @@ import crypto from 'crypto';
 import { checkGovernanceDeadManSwitch } from '@/platform/policy/governance-dead-man';
 import { defaultEventBus } from '@/platform/events/event-bus';
 import { createDomainEvent } from '@/platform/capabilities/events/domain-event';
-import { canonicalizeJson, computePayloadHashAsync } from '../reconciliation/reconciliation-hash';
+import { computePayloadHashAsync } from '../reconciliation/reconciliation-hash';
 import {
   type RiskLevel,
-  type InstallmentPaymentPlan,
   roundCurrency,
   COLLECTIONS_ERROR_CODES,
   CollectionsError,

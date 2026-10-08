@@ -32,8 +32,6 @@ import {
 } from '@/platform/agents/finance/collections/collections-types';
 import {
   Calendar,
-  DollarSign,
-  CheckCircle2,
   Clock,
   ShieldCheck,
   FileSpreadsheet,
@@ -78,10 +76,7 @@ export function InstallmentPlanDrawer({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent
-        className="max-w-xl border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl p-0 overflow-hidden"
-        demarcated
-      >
+      <DialogContent className="max-w-xl border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl p-0 overflow-hidden">
         {/* Demarcated Header (theme.md §8) */}
         <DialogHeader demarcated className="px-6 py-3.5 sm:py-4 min-h-[52px] sm:min-h-[56px] border-b border-border/80 bg-muted/20">
           <div className="flex items-center justify-between gap-3 w-full pr-6">
