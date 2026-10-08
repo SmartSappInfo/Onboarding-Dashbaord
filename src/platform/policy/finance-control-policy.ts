@@ -109,17 +109,18 @@ export async function getFinanceEmergencyControls(
     const snap = await adminDb.collection('platform_config').doc('finance_controls').get();
 
     if (snap.exists) {
-      const data = snap.data();
+      const rawData = snap.data() as Record<string, unknown> | undefined;
+      const rawSwitches = rawData?.switches as Record<string, boolean> | undefined;
       const loaded: FinanceEmergencyControls = {
         switches: {
-          agent_finance_paused: data?.switches?.agent_finance_paused === true,
-          agent_collections_paused: data?.switches?.agent_collections_paused === true,
-          agent_school_ops_paused: data?.switches?.agent_school_ops_paused === true,
-          financial_mutation_halt: data?.switches?.financial_mutation_halt === true,
+          agent_finance_paused: rawSwitches?.agent_finance_paused === true,
+          agent_collections_paused: rawSwitches?.agent_collections_paused === true,
+          agent_school_ops_paused: rawSwitches?.agent_school_ops_paused === true,
+          financial_mutation_halt: rawSwitches?.financial_mutation_halt === true,
         },
-        updatedAt: data?.updatedAt ?? new Date().toISOString(),
-        updatedBy: data?.updatedBy ?? 'system',
-        pauseReason: data?.pauseReason ?? null,
+        updatedAt: typeof rawData?.updatedAt === 'string' ? rawData.updatedAt : new Date().toISOString(),
+        updatedBy: typeof rawData?.updatedBy === 'string' ? rawData.updatedBy : 'system',
+        pauseReason: typeof rawData?.pauseReason === 'string' ? rawData.pauseReason : null,
       };
       cachedControls = { data: loaded, timestamp: now };
       return loaded;

@@ -40,7 +40,7 @@ async function CashFlowDataFetcher() {
     const schoolService = getSchoolOperationsService();
     const records = await schoolService.getAttendanceReport({ organizationId, workspaceId });
     for (const record of records.slice(0, 5)) {
-      const anomaly = await schoolService.evaluateAttendanceAnomalies(record);
+      const anomaly = await schoolService.analyzeAttendanceAnomaly(record);
       if (anomaly.isAnomalyFlagged) {
         initialAnomalies.push(anomaly);
       }

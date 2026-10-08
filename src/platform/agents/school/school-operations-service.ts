@@ -70,6 +70,16 @@ export class SchoolOperationsService {
   }
 
   /**
+   * Evaluates student attendance velocity and detects anomalous absentee patterns (alias for analyzeAttendanceAnomaly).
+   */
+  public async evaluateAttendanceAnomalies(
+    student: StudentAttendanceSummary,
+    fees?: StudentFeeStatus
+  ): Promise<AttendanceAnomalyResult> {
+    return this.analyzeAttendanceAnomaly(student, fees);
+  }
+
+  /**
    * Analyzes student attendance velocity and detects anomalous absentee patterns (Rule 11).
    */
   public async analyzeAttendanceAnomaly(
@@ -213,12 +223,17 @@ export class SchoolOperationsService {
         {
           studentId: input.studentId,
           studentName: 'Student ' + input.studentId,
+          gradeLevel: 'Grade 10',
+          className: 'Grade 10A',
+          workspaceId: input.workspaceId,
+          organizationId: input.organizationId,
           totalSchoolDays: 60,
+          presentDays: 56,
+          excusedAbsences: 0,
           unexcusedAbsences: 4,
           unexcusedAbsences14d: 2,
           unexcusedAbsences60d: 4,
           consecutiveUnexcusedDays: 1,
-          className: 'Grade 10A',
           remarks: 'Regular attendance with minor occasional absence.',
         },
       ];
@@ -228,12 +243,17 @@ export class SchoolOperationsService {
       {
         studentId: 'stud_sample_01',
         studentName: 'Kwame Mensah',
+        gradeLevel: 'Grade 11',
+        className: 'Grade 11B',
+        workspaceId: input.workspaceId,
+        organizationId: input.organizationId,
         totalSchoolDays: 60,
+        presentDays: 52,
+        excusedAbsences: 2,
         unexcusedAbsences: 6,
         unexcusedAbsences14d: 3,
         unexcusedAbsences60d: 6,
         consecutiveUnexcusedDays: 2,
-        className: 'Grade 11B',
         remarks: 'Recent attendance dip noted after midterm.',
       },
     ];
