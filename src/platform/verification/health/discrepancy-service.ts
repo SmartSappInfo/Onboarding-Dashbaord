@@ -424,7 +424,6 @@ export class DiscrepancyService {
 // ============================================================================
 
 declare global {
-  // eslint-disable-next-line no-var
   var __smartsappDiscrepancyService: DiscrepancyService | undefined;
 }
 

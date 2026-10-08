@@ -25,7 +25,7 @@
  * Strict Typing Policy: Zero `any` or `any[]`. Bounded Zod v4 schemas only.
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v4';
 import {
   type CapabilityDefinition,
   type CapabilityExecutionContext,
@@ -249,8 +249,8 @@ export const healthResetCircuitBreakerCapability: CapabilityDefinition<
     const result = await service.resetCircuitBreaker({
       ...input,
       actor: {
-        type: context.principal.type ?? 'user',
-        id: context.principal.id,
+        type: context.principal.actorType,
+        id: context.principal.userId,
       },
     });
 

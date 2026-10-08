@@ -210,6 +210,24 @@ describe('Phase 14 Milestone 4 - Health & Discrepancy Contracts', () => {
     });
   });
 
+  describe('RecordExecutionTelemetryInputSchema', () => {
+    it('validates execution telemetry input payloads', () => {
+      const validTelemetry = {
+        personaId: 'lead_sdr',
+        executionId: 'exec_123',
+        capabilityId: 'sdr.draft_outreach',
+        organizationId: 'org_123',
+        workspaceId: 'ws_123',
+        success: true,
+        durationMs: 1200,
+        tokenUsage: 350,
+        tokenCostUSD: 0.005,
+      };
+
+      expect(RecordExecutionTelemetryInputSchema.safeParse(validTelemetry).success).toBe(true);
+    });
+  });
+
   describe('ResetCircuitBreakerInputSchema', () => {
     it('validates reset requests with >= 5 chars justification', () => {
       const validReset = {

@@ -28,7 +28,6 @@ import {
   evaluateDiscrepancyAction,
 } from '@/app/actions/agent-health-actions';
 import { getAgentHealthService } from '@/platform/verification/health/agent-health-service';
-import { getDiscrepancyService } from '@/platform/verification/health/discrepancy-service';
 import '@/platform/capabilities/health';
 
 vi.mock('@/lib/auth/require-auth', () => ({
@@ -109,21 +108,21 @@ describe('Phase 14 Milestone 4 - Health Capabilities & Server Actions', () => {
           workspaceId: validWsId,
         },
         {
-          capabilityId: 'health.get_scorecard',
           correlationId: 'corr_test_1',
-          source: 'test',
-          organizationId: validOrgId,
-          workspaceId: validWsId,
+          timestamp: new Date().toISOString(),
           principal: {
-            type: 'user',
-            id: callerUid,
+            actorType: 'user',
+            userId: callerUid,
             organizationId: validOrgId,
+            workspaceId: validWsId,
+            effectiveRole: 'admin',
             grantedScopes: ['health:read'],
           },
         }
       );
 
       expect(result.success).toBe(true);
+      if (!result.success) throw new Error('Handler failed');
       expect(result.data).toBeDefined();
       expect((result.data as { personaId: string }).personaId).toBe('lead_sdr');
     });

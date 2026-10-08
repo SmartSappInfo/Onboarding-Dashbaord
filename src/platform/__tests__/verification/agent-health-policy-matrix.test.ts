@@ -25,6 +25,7 @@ import { AGENT_PERSONA_IDS } from '../../identity/agent-persona-types';
 describe('Phase 14 Milestone 4 - Agent Health Policy Matrix', () => {
   describe('AGENT_HEALTH_POLICY_MATRIX Registrations', () => {
     it('defines authoritative policies for every built-in persona in AGENT_PERSONA_IDS', () => {
+      expect(AGENT_HEALTH_POLICY_MATRIX).toBeDefined();
       for (const personaId of AGENT_PERSONA_IDS) {
         const policy = getPersonaHealthPolicy(personaId);
         expect(policy).toBeDefined();

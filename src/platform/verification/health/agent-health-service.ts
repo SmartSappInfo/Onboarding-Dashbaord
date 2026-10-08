@@ -518,7 +518,6 @@ export class AgentHealthService {
 // ============================================================================
 
 declare global {
-  // eslint-disable-next-line no-var
   var __smartsappAgentHealthService: AgentHealthService | undefined;
 }
 
