@@ -105,6 +105,7 @@ export function CapabilityDetailModal({
             Approved Signature
           </Badge>
         );
+      case 'DRIFTED':
       case 'DRIFT_DETECTED':
         return (
           <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 gap-1 text-xs">
@@ -112,11 +113,18 @@ export function CapabilityDetailModal({
             Drift Detected
           </Badge>
         );
+      case 'LOCKED':
+        return (
+          <Badge variant="outline" className="border-purple-500/30 bg-purple-500/10 text-purple-600 dark:text-purple-400 gap-1 text-xs">
+            <Lock className="h-3 w-3" />
+            Locked Baseline
+          </Badge>
+        );
       default:
         return (
           <Badge variant="outline" className="border-destructive/30 bg-destructive/10 text-destructive gap-1 text-xs">
             <ShieldAlert className="h-3 w-3" />
-            Suspended
+            Revoked / Suspended
           </Badge>
         );
     }

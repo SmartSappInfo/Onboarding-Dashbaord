@@ -12,6 +12,7 @@ import {
   type CapabilityCatalogItem,
   type DiscoveryStub,
   type ProgressiveDiscoveryQuery,
+  type ProgressiveDiscoveryQueryInput,
   type ProgressiveDiscoveryResult,
   ProgressiveDiscoveryQuerySchema,
   RegistryDomainError,
@@ -94,7 +95,7 @@ export class ProgressiveDiscoveryService {
    * Stage 1: Intent Search with Knapsack Token Pruning (Roadmap §21 & Rule 28).
    */
   public async searchCapabilities(
-    rawQuery: ProgressiveDiscoveryQuery,
+    rawQuery: ProgressiveDiscoveryQueryInput | ProgressiveDiscoveryQuery,
     options: DiscoveryExecutionOptions = {}
   ): Promise<ProgressiveDiscoveryResult> {
     if (options.signal?.aborted) {
@@ -237,7 +238,11 @@ export class ProgressiveDiscoveryService {
         permissions: cap.permissions || [],
         risk: cap.risk,
       };
-      const verification = await monitor.verifyToolFingerprint(cap.id, liveDef, organizationId);
+      const verification = await monitor.verifyToolFingerprint(
+        cap.id,
+        liveDef,
+        organizationId ? { organizationId } : undefined
+      );
       driftStatus = verification.status;
     } catch {
       // Fallback gracefully if drift monitor has not baselined this tool yet
@@ -255,6 +260,11 @@ export class ProgressiveDiscoveryService {
       isDelegable: !cap.risk.requiresHumanApproval,
       driftStatus,
       lastVerifiedAt: new Date().toISOString(),
+      schema: {
+        input: cap.inputSchema ? (cap.inputSchema as unknown as Record<string, unknown>) : undefined,
+        output: cap.outputSchema ? (cap.outputSchema as unknown as Record<string, unknown>) : undefined,
+      },
+      policies: cap.policies,
     };
   }
 

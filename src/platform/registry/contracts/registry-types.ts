@@ -37,6 +37,20 @@ export const CapabilityCatalogItemSchema = z.object({
   lastVerifiedAt: z.string().optional(),
   inputSchemaJson: z.string().optional(),
   outputSchemaJson: z.string().optional(),
+  schema: z
+    .object({
+      input: z.record(z.string(), z.unknown()).optional(),
+      output: z.record(z.string(), z.unknown()).optional(),
+    })
+    .optional(),
+  policies: z
+    .object({
+      requiresIdempotencyKey: z.boolean().optional(),
+      requiresExpectedVersion: z.boolean().optional(),
+      auditRequired: z.boolean().optional(),
+      defaultEnabled: z.boolean().optional(),
+    })
+    .optional(),
 });
 export type CapabilityCatalogItem = z.infer<typeof CapabilityCatalogItemSchema>;
 
@@ -71,6 +85,7 @@ export const ProgressiveDiscoveryQuerySchema = z.object({
   allowedRiskCeiling: z.enum(RISK_LEVELS).optional(),
 });
 export type ProgressiveDiscoveryQuery = z.infer<typeof ProgressiveDiscoveryQuerySchema>;
+export type ProgressiveDiscoveryQueryInput = z.input<typeof ProgressiveDiscoveryQuerySchema>;
 
 export const DiscoveryStubSchema = z.object({
   id: z.string().min(1),

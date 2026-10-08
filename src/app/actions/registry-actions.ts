@@ -13,7 +13,7 @@
  */
 
 import { requireAuth, type AuthContext } from '@/lib/auth/require-auth';
-import { checkGovernanceDeadManSwitch } from '@/platform/governance/governance-dead-man-switch';
+import { checkGovernanceDeadManSwitch } from '@/platform/policy/governance-dead-man';
 import {
   type CapabilityCatalogItem,
   type ProgressiveDiscoveryResult,
@@ -38,7 +38,7 @@ export type RegistryActionResult<T> =
  * Validates authenticated user organizational boundary against target entity (Rules 8 & 47).
  */
 function assertTenantAccess(auth: AuthContext, targetOrgId: string): void {
-  const sessionOrgId = auth.profile?.organizationId || auth.organizationId;
+  const sessionOrgId = auth.profile?.organizationId;
   if (!sessionOrgId) {
     throw new RegistryDomainError(
       REGISTRY_ERROR_CODES.IDOR_VIOLATION,
@@ -72,6 +72,7 @@ export async function searchCapabilitiesAction(params: {
     const targetOrgId = params.organizationId || actorOrgId;
 
     assertTenantAccess(auth, targetOrgId);
+    await checkGovernanceDeadManSwitch(targetOrgId);
 
     const query = ProgressiveDiscoveryQuerySchema.parse({
       intent: params.intent,
@@ -83,7 +84,7 @@ export async function searchCapabilitiesAction(params: {
     const service = getProgressiveDiscoveryService();
     const result = await service.searchCapabilities(query, {
       organizationId: targetOrgId,
-      workspaceId: auth.profile?.workspaceId,
+      workspaceId: auth.profile?.workspaceIds?.[0],
     });
 
     return { success: true, data: result };
@@ -105,6 +106,7 @@ export async function getCapabilityDetailsAction(
     const targetOrgId = organizationId || actorOrgId;
 
     assertTenantAccess(auth, targetOrgId);
+    await checkGovernanceDeadManSwitch(targetOrgId);
 
     const service = getProgressiveDiscoveryService();
     const capability = await service.getCapabilityDetails(capabilityId, targetOrgId);
@@ -131,6 +133,7 @@ export async function listAllCapabilitiesAction(options?: {
     const targetOrgId = options?.organizationId || actorOrgId;
 
     assertTenantAccess(auth, targetOrgId);
+    await checkGovernanceDeadManSwitch(targetOrgId);
 
     const allCaps = canonicalCapabilityRegistryStore.list();
     const service = getProgressiveDiscoveryService();
@@ -168,6 +171,7 @@ export async function generatePlatformDocsAction(params: {
     const actorOrgId = auth.profile?.organizationId || 'default_org';
 
     assertTenantAccess(auth, actorOrgId);
+    await checkGovernanceDeadManSwitch(actorOrgId);
 
     const validatedInput = GenerateDocumentationInputSchema.parse(params);
     const generator = getPlatformDocGenerator();
@@ -212,6 +216,7 @@ export async function getAgentPersonasAction(): Promise<
     const actorOrgId = auth.profile?.organizationId || 'default_org';
 
     assertTenantAccess(auth, actorOrgId);
+    await checkGovernanceDeadManSwitch(actorOrgId);
 
     const summaries: AgentPersonaSummary[] = BUILT_IN_AGENT_PERSONAS.map((p) => ({
       id: p.id,
@@ -247,6 +252,7 @@ export async function getAgentPersonaDetailsAction(
     const actorOrgId = auth.profile?.organizationId || 'default_org';
 
     assertTenantAccess(auth, actorOrgId);
+    await checkGovernanceDeadManSwitch(actorOrgId);
 
     const persona = getPersona(personaId);
     if (!persona) {
@@ -308,7 +314,12 @@ function handleError<T>(error: unknown): RegistryActionResult<T> {
     };
   }
 
-  if (err.code === 'GOVERNANCE_DEAD_MAN_SWITCH_TRIPPED') {
+  if (
+    err.code === 'AGENT_GOVERNANCE_EMERGENCY_PAUSED' ||
+    err.name === 'AgentGovernanceEmergencyPausedError' ||
+    err.code === 'GOVERNANCE_DEAD_MAN_SWITCH_TRIPPED' ||
+    err.message?.includes('emergency pause')
+  ) {
     return {
       success: false,
       error: {

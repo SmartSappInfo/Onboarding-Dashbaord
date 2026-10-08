@@ -11,7 +11,12 @@
  * Strict Typing Policy: Zero `any` or `any[]`.
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v4';
+import {
+  type CapabilityDefinition,
+  type CapabilityExecutionContext,
+  type CapabilityExecutionResult,
+} from '../contracts/capability-definition';
 import { registerCapability } from './capability-registry';
 import {
   ProgressiveDiscoveryQuerySchema,
@@ -19,6 +24,8 @@ import {
   CapabilityCatalogItemSchema,
   GenerateDocumentationInputSchema,
   DocumentationExportFormatSchema,
+  type ProgressiveDiscoveryResult,
+  type CapabilityCatalogItem,
 } from '../../registry/contracts/registry-types';
 import { getProgressiveDiscoveryService } from '../../registry/discovery/progressive-discovery-service';
 import { getPlatformDocGenerator } from '../../registry/docs/platform-doc-generator';
@@ -26,25 +33,65 @@ import { getPlatformDocGenerator } from '../../registry/docs/platform-doc-genera
 // ============================================================================
 // 1. discovery.search_capabilities (L0_READ)
 // ============================================================================
-export const searchCapabilitiesCapability = {
+export type SearchCapabilitiesInput = z.infer<typeof ProgressiveDiscoveryQuerySchema>;
+
+export const searchCapabilitiesCapability: CapabilityDefinition<
+  SearchCapabilitiesInput,
+  ProgressiveDiscoveryResult
+> = {
   id: 'discovery.search_capabilities',
-  domain: 'registry_discovery',
   version: '1.0.0',
-  description: 'Searches capability catalog using hierarchical intent matching and returns token-pruned discovery stubs.',
-  risk: {
-    level: 'L0_READ' as const,
-    requiresHumanApproval: false,
-  },
-  permissions: ['discovery:search', 'workspace:read'],
+  name: 'Search Capabilities',
+  description:
+    'Searches capability catalog using hierarchical intent matching and returns token-pruned discovery stubs.',
+  domain: 'ai_governance',
+  operation: 'search',
   inputSchema: ProgressiveDiscoveryQuerySchema,
   outputSchema: ProgressiveDiscoveryResultSchema,
-  execute: async (input: z.infer<typeof ProgressiveDiscoveryQuerySchema>, context?: { signal?: AbortSignal; organizationId?: string; workspaceId?: string }) => {
+  permissions: ['discovery:search', 'workspace:read'],
+  workspaceScoped: false,
+  tenantScoped: true,
+  risk: {
+    level: 'L0_READ',
+    destructive: false,
+    idempotent: true,
+    openWorld: false,
+    requiresHumanApproval: false,
+    nonDelegable: false,
+  },
+  execution: {
+    synchronous: true,
+    maxDurationMs: 10000,
+    supportsDryRun: true,
+    supportsCancellation: true,
+    supportsCompensation: false,
+    maxPayloadSizeBytes: 524288,
+  },
+  policies: {
+    requiresIdempotencyKey: false,
+    requiresExpectedVersion: false,
+    auditRequired: false,
+    defaultEnabled: true,
+  },
+  handler: async (
+    input: SearchCapabilitiesInput,
+    context: CapabilityExecutionContext
+  ): Promise<CapabilityExecutionResult<ProgressiveDiscoveryResult>> => {
+    const startTime = Date.now();
     const service = getProgressiveDiscoveryService();
-    return service.searchCapabilities(input, {
-      signal: context?.signal,
-      organizationId: context?.organizationId,
-      workspaceId: context?.workspaceId,
+    const result = await service.searchCapabilities(input, {
+      signal: context.signal,
+      organizationId: context.principal.organizationId,
+      workspaceId: context.principal.workspaceId,
     });
+
+    return {
+      success: true,
+      data: result,
+      executionId: context.correlationId,
+      emittedEvents: [],
+      durationMs: Date.now() - startTime,
+    };
   },
 };
 
@@ -54,71 +101,153 @@ export const searchCapabilitiesCapability = {
 const GetCapabilityDetailsInputSchema = z.object({
   capabilityId: z.string().min(1),
 });
+export type GetCapabilityDetailsInput = z.infer<typeof GetCapabilityDetailsInputSchema>;
 
 const GetCapabilityDetailsOutputSchema = z.object({
   capability: CapabilityCatalogItemSchema.optional(),
 });
+export type GetCapabilityDetailsOutput = z.infer<typeof GetCapabilityDetailsOutputSchema>;
 
-export const getCapabilityDetailsCapability = {
+export const getCapabilityDetailsCapability: CapabilityDefinition<
+  GetCapabilityDetailsInput,
+  GetCapabilityDetailsOutput
+> = {
   id: 'discovery.get_capability_details',
-  domain: 'registry_discovery',
   version: '1.0.0',
+  name: 'Get Capability Details',
   description: 'Expands full schema, policy, and drift metadata for a specific capability ID.',
-  risk: {
-    level: 'L0_READ' as const,
-    requiresHumanApproval: false,
-  },
-  permissions: ['registry:read', 'workspace:read'],
+  domain: 'ai_governance',
+  operation: 'read',
   inputSchema: GetCapabilityDetailsInputSchema,
   outputSchema: GetCapabilityDetailsOutputSchema,
-  execute: async (input: z.infer<typeof GetCapabilityDetailsInputSchema>, context?: { organizationId?: string }) => {
+  permissions: ['registry:read', 'workspace:read'],
+  workspaceScoped: false,
+  tenantScoped: true,
+  risk: {
+    level: 'L0_READ',
+    destructive: false,
+    idempotent: true,
+    openWorld: false,
+    requiresHumanApproval: false,
+    nonDelegable: false,
+  },
+  execution: {
+    synchronous: true,
+    maxDurationMs: 10000,
+    supportsDryRun: true,
+    supportsCancellation: false,
+    supportsCompensation: false,
+    maxPayloadSizeBytes: 524288,
+  },
+  policies: {
+    requiresIdempotencyKey: false,
+    requiresExpectedVersion: false,
+    auditRequired: false,
+    defaultEnabled: true,
+  },
+  handler: async (
+    input: GetCapabilityDetailsInput,
+    context: CapabilityExecutionContext
+  ): Promise<CapabilityExecutionResult<GetCapabilityDetailsOutput>> => {
+    const startTime = Date.now();
     const service = getProgressiveDiscoveryService();
-    const capability = await service.getCapabilityDetails(input.capabilityId, context?.organizationId);
-    return { capability };
+    const capability = await service.getCapabilityDetails(
+      input.capabilityId,
+      context.principal.organizationId
+    );
+
+    return {
+      success: true,
+      data: { capability: capability || undefined },
+      executionId: context.correlationId,
+      emittedEvents: [],
+      durationMs: Date.now() - startTime,
+    };
   },
 };
 
 // ============================================================================
 // 3. registry.generate_documentation (L0_READ)
 // ============================================================================
+export type GenerateDocumentationInput = z.infer<typeof GenerateDocumentationInputSchema>;
+
 const GenerateDocumentationOutputSchema = z.object({
   format: DocumentationExportFormatSchema,
   content: z.string(),
 });
+export type GenerateDocumentationOutput = z.infer<typeof GenerateDocumentationOutputSchema>;
 
-export const generateDocumentationCapability = {
+export const generateDocumentationCapability: CapabilityDefinition<
+  GenerateDocumentationInput,
+  GenerateDocumentationOutput
+> = {
   id: 'registry.generate_documentation',
-  domain: 'registry_discovery',
   version: '1.0.0',
-  description: 'Compiles runtime capability definitions into OpenAPI 3.1.0 or Markdown reference dossiers.',
-  risk: {
-    level: 'L0_READ' as const,
-    requiresHumanApproval: false,
-  },
-  permissions: ['registry:read', 'workspace:read'],
-  policies: {
-    auditRequired: true,
-    requiresIdempotencyKey: false,
-  },
+  name: 'Generate Platform Documentation',
+  description:
+    'Compiles runtime capability definitions into OpenAPI 3.1.0 or Markdown reference dossiers.',
+  domain: 'ai_governance',
+  operation: 'read',
   inputSchema: GenerateDocumentationInputSchema,
   outputSchema: GenerateDocumentationOutputSchema,
-  execute: async (input: z.infer<typeof GenerateDocumentationInputSchema>) => {
+  permissions: ['registry:read', 'workspace:read'],
+  workspaceScoped: false,
+  tenantScoped: true,
+  risk: {
+    level: 'L0_READ',
+    destructive: false,
+    idempotent: true,
+    openWorld: false,
+    requiresHumanApproval: false,
+    nonDelegable: false,
+  },
+  execution: {
+    synchronous: true,
+    maxDurationMs: 15000,
+    supportsDryRun: true,
+    supportsCancellation: false,
+    supportsCompensation: false,
+    maxPayloadSizeBytes: 2097152,
+  },
+  policies: {
+    requiresIdempotencyKey: false,
+    requiresExpectedVersion: false,
+    auditRequired: true,
+    defaultEnabled: true,
+  },
+  handler: async (
+    input: GenerateDocumentationInput,
+    context: CapabilityExecutionContext
+  ): Promise<CapabilityExecutionResult<GenerateDocumentationOutput>> => {
+    const startTime = Date.now();
     const generator = getPlatformDocGenerator();
     let content = '';
 
     if (input.format === 'OPENAPI_3_1') {
-      const spec = generator.generateOpenApiSpec({ domain: input.domain, capabilityId: input.capabilityId });
+      const spec = generator.generateOpenApiSpec({
+        domain: input.domain,
+        capabilityId: input.capabilityId,
+      });
       content = JSON.stringify(spec, null, 2);
     } else if (input.format === 'MCP_MANIFEST') {
-      const manifest = generator.generateMcpManifest({ domain: input.domain, capabilityId: input.capabilityId });
+      const manifest = generator.generateMcpManifest({
+        domain: input.domain,
+        capabilityId: input.capabilityId,
+      });
       content = JSON.stringify(manifest, null, 2);
     } else {
       content = generator.generateDomainMarkdown(input.domain || 'general');
     }
 
     return {
-      format: input.format,
-      content,
+      success: true,
+      data: {
+        format: input.format,
+        content,
+      },
+      executionId: context.correlationId,
+      emittedEvents: [],
+      durationMs: Date.now() - startTime,
     };
   },
 };
@@ -129,6 +258,7 @@ export const generateDocumentationCapability = {
 const ExportMcpManifestInputSchema = z.object({
   domain: z.string().optional(),
 });
+export type ExportMcpManifestInput = z.infer<typeof ExportMcpManifestInputSchema>;
 
 const ExportMcpManifestOutputSchema = z.object({
   manifest: z.object({
@@ -141,26 +271,60 @@ const ExportMcpManifestOutputSchema = z.object({
     ),
   }),
 });
+export type ExportMcpManifestOutput = z.infer<typeof ExportMcpManifestOutputSchema>;
 
-export const exportMcpManifestCapability = {
+export const exportMcpManifestCapability: CapabilityDefinition<
+  ExportMcpManifestInput,
+  ExportMcpManifestOutput
+> = {
   id: 'registry.export_mcp_manifest',
-  domain: 'registry_discovery',
   version: '1.0.0',
+  name: 'Export MCP Manifest',
   description: 'Exports runtime capabilities as an MCP 2026-07-28 compliant tools manifest.',
-  risk: {
-    level: 'L0_READ' as const,
-    requiresHumanApproval: false,
-  },
-  permissions: ['registry:read', 'workspace:read'],
-  policies: {
-    auditRequired: true,
-  },
+  domain: 'ai_governance',
+  operation: 'read',
   inputSchema: ExportMcpManifestInputSchema,
   outputSchema: ExportMcpManifestOutputSchema,
-  execute: async (input: z.infer<typeof ExportMcpManifestInputSchema>) => {
+  permissions: ['registry:read', 'workspace:read'],
+  workspaceScoped: false,
+  tenantScoped: true,
+  risk: {
+    level: 'L0_READ',
+    destructive: false,
+    idempotent: true,
+    openWorld: false,
+    requiresHumanApproval: false,
+    nonDelegable: false,
+  },
+  execution: {
+    synchronous: true,
+    maxDurationMs: 15000,
+    supportsDryRun: true,
+    supportsCancellation: false,
+    supportsCompensation: false,
+    maxPayloadSizeBytes: 2097152,
+  },
+  policies: {
+    requiresIdempotencyKey: false,
+    requiresExpectedVersion: false,
+    auditRequired: true,
+    defaultEnabled: true,
+  },
+  handler: async (
+    input: ExportMcpManifestInput,
+    context: CapabilityExecutionContext
+  ): Promise<CapabilityExecutionResult<ExportMcpManifestOutput>> => {
+    const startTime = Date.now();
     const generator = getPlatformDocGenerator();
     const manifest = generator.generateMcpManifest({ domain: input.domain });
-    return { manifest };
+
+    return {
+      success: true,
+      data: { manifest },
+      executionId: context.correlationId,
+      emittedEvents: [],
+      durationMs: Date.now() - startTime,
+    };
   },
 };
 

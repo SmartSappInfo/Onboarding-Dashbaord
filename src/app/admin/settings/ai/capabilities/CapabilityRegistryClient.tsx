@@ -94,7 +94,10 @@ export function CapabilityRegistryClient({
     [capabilities]
   );
   const driftDetectedCount = React.useMemo(
-    () => capabilities.filter((c) => c.driftStatus === 'DRIFT_DETECTED').length,
+    () =>
+      capabilities.filter(
+        (c) => c.driftStatus === 'DRIFTED' || (c.driftStatus as string) === 'DRIFT_DETECTED'
+      ).length,
     [capabilities]
   );
 
@@ -356,8 +359,9 @@ export function CapabilityRegistryClient({
             >
               <option value="ALL">All Drift Statuses</option>
               <option value="APPROVED">Approved Signature</option>
-              <option value="DRIFT_DETECTED">Drift Detected</option>
-              <option value="SUSPENDED">Suspended</option>
+              <option value="DRIFTED">Drift Detected</option>
+              <option value="LOCKED">Locked Baseline</option>
+              <option value="REVOKED">Revoked / Suspended</option>
             </select>
           </div>
         </div>
@@ -421,15 +425,20 @@ export function CapabilityRegistryClient({
                           <CheckCircle2 className="h-3 w-3" />
                           Approved
                         </Badge>
-                      ) : cap.driftStatus === 'DRIFT_DETECTED' ? (
+                      ) : cap.driftStatus === 'DRIFTED' || (cap.driftStatus as string) === 'DRIFT_DETECTED' ? (
                         <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 gap-1 text-[11px]">
                           <AlertTriangle className="h-3 w-3" />
                           Drift
                         </Badge>
+                      ) : cap.driftStatus === 'LOCKED' ? (
+                        <Badge variant="outline" className="border-purple-500/30 bg-purple-500/10 text-purple-600 dark:text-purple-400 gap-1 text-[11px]">
+                          <Lock className="h-3 w-3" />
+                          Locked
+                        </Badge>
                       ) : (
                         <Badge variant="outline" className="border-destructive/30 bg-destructive/10 text-destructive gap-1 text-[11px]">
                           <AlertTriangle className="h-3 w-3" />
-                          Suspended
+                          Revoked
                         </Badge>
                       )}
                     </td>

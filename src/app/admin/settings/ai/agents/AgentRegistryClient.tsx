@@ -91,7 +91,7 @@ export function AgentRegistryClient({
         const matchesId = persona.id.toLowerCase().includes(q);
         const matchesName = persona.name.toLowerCase().includes(q);
         const matchesRole = persona.role.toLowerCase().includes(q);
-        const matchesDesc = persona.description.toLowerCase().includes(q);
+        const matchesDesc = (persona.description || '').toLowerCase().includes(q);
         if (!matchesId && !matchesName && !matchesRole && !matchesDesc) {
           return false;
         }
