@@ -4795,6 +4795,15 @@ export interface Task {
   dealId?: string | null;
   createdBy?: string;
   tagIds?: string[];
+  checklist?: TaskChecklistItem[];
+}
+
+export interface TaskChecklistItem {
+  id: string;
+  title: string;
+  completed: boolean;
+  completedAt?: string | null;
+  completedBy?: string | null;
 }
 
 export interface TaskNote {
@@ -4813,9 +4822,12 @@ export interface TaskAttachment {
 }
 
 export interface TaskReminder {
+  id?: string;
   reminderTime: string;
   channels: ('notification' | 'email' | 'sms')[];
   sent: boolean;
+  status?: 'scheduled' | 'sent' | 'failed' | 'cancelled';
+  error?: string | null;
 }
 
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
