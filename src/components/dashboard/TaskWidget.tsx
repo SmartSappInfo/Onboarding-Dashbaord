@@ -146,9 +146,11 @@ export function TaskWidget({
     };
 
     const handleRetrySync = async (taskId: string) => {
+        if (!activeWorkspaceId) return;
+        const targetTask = rawTasks?.find((t) => t.id === taskId);
         setRetryingSyncIds((prev) => new Set(prev).add(taskId));
         try {
-            const res = await retryTaskObligationSyncAction(taskId);
+            const res = await retryTaskObligationSyncAction(activeWorkspaceId, taskId, targetTask?.updatedAt);
             if (res.success) {
                 // Optimistically clear failed status
                 setOptimisticOverrides((prev) => ({

@@ -157,7 +157,11 @@ describe('TaskWidget with Canonical CompactTaskCard (Phase 5 / Roadmap §77)', (
     fireEvent.click(retryBtn);
 
     await waitFor(() => {
-      expect(mockRetryTaskObligationSyncAction).toHaveBeenCalledWith('task-c-2');
+      expect(mockRetryTaskObligationSyncAction).toHaveBeenCalledWith(
+        'ws-test-compact',
+        'task-c-2',
+        '2026-10-01T00:00:00Z'
+      );
       expect(mockToast).toHaveBeenCalledWith(
         expect.objectContaining({
           title: 'Sync Succeeded',

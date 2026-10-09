@@ -485,9 +485,11 @@ export default function DealDetailsPage() {
     };
 
     const handleRetryTaskSync = async (taskId: string) => {
+        if (!deal?.workspaceId) return;
+        const targetTask = dealTasks?.find((t) => t.id === taskId);
         setRetryingSyncTaskIds((prev) => new Set(prev).add(taskId));
         try {
-            const res = await retryTaskObligationSyncAction(taskId);
+            const res = await retryTaskObligationSyncAction(deal.workspaceId, taskId, targetTask?.updatedAt);
             if (res.success) {
                 toast({
                     title: 'Sync Succeeded',

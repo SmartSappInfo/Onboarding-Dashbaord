@@ -72,7 +72,11 @@ describe('TaskDetailDrawer Contract Obligation Recovery (Roadmap §78)', () => {
     fireEvent.click(retryBtn);
 
     await waitFor(() => {
-      expect(mockRetryTaskObligationSyncAction).toHaveBeenCalledWith('task-sync-fail-1');
+      expect(mockRetryTaskObligationSyncAction).toHaveBeenCalledWith(
+        'ws-recovery-1',
+        'task-sync-fail-1',
+        '2026-10-01T00:00:00Z'
+      );
       expect(handleUpdate).toHaveBeenCalledWith(
         'task-sync-fail-1',
         expect.objectContaining({
@@ -105,7 +109,11 @@ describe('TaskDetailDrawer Contract Obligation Recovery (Roadmap §78)', () => {
     fireEvent.click(retryBtn);
 
     await waitFor(() => {
-      expect(mockRetryTaskObligationSyncAction).toHaveBeenCalledWith('task-sync-fail-1');
+      expect(mockRetryTaskObligationSyncAction).toHaveBeenCalledWith(
+        'ws-recovery-1',
+        'task-sync-fail-1',
+        '2026-10-01T00:00:00Z'
+      );
       expect(mockToast).toHaveBeenCalledWith(
         expect.objectContaining({
           variant: 'destructive',

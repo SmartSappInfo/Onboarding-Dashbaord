@@ -103,7 +103,11 @@ describe('Deals Detail Upcoming Tasks Harmonization (Roadmap §77)', () => {
     });
 
     const handleRetry = async (taskId: string) => {
-      const res = await mockRetryTaskObligationSyncAction(taskId);
+      const res = await mockRetryTaskObligationSyncAction(
+        sampleDealTask.workspaceId,
+        taskId,
+        sampleDealTask.updatedAt
+      );
       if (res.success) {
         mockToast({ title: 'Sync Succeeded' });
       }
@@ -121,7 +125,11 @@ describe('Deals Detail Upcoming Tasks Harmonization (Roadmap §77)', () => {
     fireEvent.click(retryBtn);
 
     await waitFor(() => {
-      expect(mockRetryTaskObligationSyncAction).toHaveBeenCalledWith('deal-task-1');
+      expect(mockRetryTaskObligationSyncAction).toHaveBeenCalledWith(
+        'ws-deal-1',
+        'deal-task-1',
+        '2026-10-01T00:00:00Z'
+      );
       expect(mockToast).toHaveBeenCalledWith({ title: 'Sync Succeeded' });
     });
   });

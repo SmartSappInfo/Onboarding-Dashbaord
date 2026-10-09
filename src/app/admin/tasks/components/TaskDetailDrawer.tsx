@@ -111,7 +111,7 @@ export function TaskDetailDrawer({
         if (!task) return;
         setIsRetryingSync(true);
         try {
-            const res = await retryTaskObligationSyncAction(task.id);
+            const res = await retryTaskObligationSyncAction(task.workspaceId, task.id, task.updatedAt);
             if (res.success) {
                 toast({
                     title: 'Sync Succeeded',

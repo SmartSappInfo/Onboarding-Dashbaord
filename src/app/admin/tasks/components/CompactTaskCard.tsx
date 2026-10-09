@@ -96,7 +96,7 @@ export function CompactTaskCard({
       className={cn(
         "group relative flex flex-col p-3.5 sm:p-4 rounded-xl border border-border/70 bg-card hover:bg-muted/30 transition-all select-none text-left cursor-pointer",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
-        "active:scale-[0.99] duration-150",
+        "active:scale-[0.97] duration-150",
         isDone && "opacity-65",
         isPending && "pointer-events-none opacity-50",
         className
@@ -105,24 +105,29 @@ export function CompactTaskCard({
       {/* Top Row: Complete Checkbox / Circle + Title + Priority */}
       <div className="flex items-start gap-3 justify-between">
         <div className="flex items-start gap-2.5 min-w-0 flex-1">
-          {/* 44px touch target container for toggle circle */}
-          <div className="flex items-center justify-center shrink-0 min-h-[44px] min-w-[32px] -mt-1">
-            <button
-              type="button"
-              disabled={isPending}
-              aria-label={isDone ? 'Reopen task' : 'Mark complete'}
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleComplete?.(task);
-              }}
+          {/* Accessible 44px touch target toggle button */}
+          <button
+            type="button"
+            disabled={isPending}
+            aria-label={isDone ? 'Reopen task' : 'Mark complete'}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleComplete?.(task);
+            }}
+            className={cn(
+              "flex items-center justify-center shrink-0 min-h-[44px] min-w-[44px] -ml-2 -mt-2.5 rounded-full cursor-pointer transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+              isPending && "pointer-events-none opacity-50"
+            )}
+          >
+            <span
               className={cn(
-                "h-6 w-6 rounded-full border border-border/90 hover:border-emerald-500 hover:bg-emerald-500/10 flex items-center justify-center transition-all shrink-0 cursor-pointer active:scale-90",
+                "h-6 w-6 rounded-full border border-border/90 hover:border-emerald-500 hover:bg-emerald-500/10 flex items-center justify-center transition-all shrink-0",
                 isDone && "border-emerald-500 bg-emerald-500/10 text-emerald-600"
               )}
             >
               {isDone && <CheckCircle2 className="h-4 w-4" />}
-            </button>
-          </div>
+            </span>
+          </button>
 
           <div className="min-w-0 flex-1 pt-0.5">
             <h4

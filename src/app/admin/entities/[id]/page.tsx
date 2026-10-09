@@ -485,9 +485,11 @@ export default function EntityDetailPage() {
     };
 
     const handleRetryTaskSync = async (taskId: string) => {
+        if (!activeWorkspaceId) return;
+        const targetTask = entityTasks?.find((t) => t.id === taskId);
         setRetryingSyncIds((prev) => new Set(prev).add(taskId));
         try {
-            const res = await retryTaskObligationSyncAction(taskId);
+            const res = await retryTaskObligationSyncAction(activeWorkspaceId, taskId, targetTask?.updatedAt);
             if (res.success) {
                 toast({
                     title: 'Sync Succeeded',
