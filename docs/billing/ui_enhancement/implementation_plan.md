@@ -130,21 +130,25 @@ src/app/admin/finance/contracts/
 
 ---
 
-### Phase 3: Contextual AI Contract Assistant Action Layer
+### Phase 3: Contextual AI Contract Assistant Action Layer [CURRENT MILESTONE - IN PLANNING]
+**Status:** In Planning — Detailed Plan in `docs/billing/ui_enhancement/phase_3_ai_assistant_plan.md`
 **Goal:** Introduce an AI-assisted action layer directly above the institutional register that surfaces gaps, suggests follow-ups, and drafts reminders with human review.
 
 * **3.1. Desktop AI Assistant Hero Banner (`AgreementsAiAssistantBanner.tsx`):**
-  * Card with bot avatar, header: *"AI Contract Assistant"*, and subtitle: *"Find gaps, prioritize follow-ups or prepare a draft from an approved template."*
+  * Soft blue/indigo themed card with bot avatar, header: *"AI Contract Assistant"*, and subtitle: *"Find gaps, prioritize follow-ups or prepare a draft from an approved template."*
   * Quick-action chips:
-    * `[Find missing contracts]`: Automatically filters to institutions without contracts and suggests batch template preparation.
-    * `[Prioritize overdue signatures]`: Filters to `sent` contracts overdue for signature and ranks by days pending.
-    * `[Draft a reminder]`: Contextually drafts follow-up messages using existing reminder settings.
-  * Direct action trigger button (blue circular arrow button).
-* **3.2. Mobile AI Assistant Compact Card:**
-  * Compact card with bot icon, concise everyday UI English, and a right chevron `>` that expands into an AI recommendations sheet on tap.
-* **3.3. Human-in-the-Loop Safeguards (Rules 13, 17, 21, 22):**
-  * All AI chips route through a two-phase model (`Plan -> Preview -> Approve -> Execute`).
-  * Operations generate preview drafts or open drawers (`DocumentAiCopilotDrawer`, `ReminderSettingsDrawer`, `ContractWizard`) requiring explicit human approval before any message is sent or contract is generated.
+    * `[Find missing contracts]`: Automatically filters to institutions without contracts (`statusFilter = 'no_contract'`) and highlights the batch preparation workflow.
+    * `[Prioritize overdue signatures]`: Filters to `sent` contracts (`statusFilter = 'sent'`) and sorts by oldest pending signatures.
+    * `[Draft a reminder]`: Contextually opens the `ReminderSettingsDrawer` for user review and customization before dispatch.
+  * Direct action trigger button (blue circular arrow button) opening the comprehensive AI analysis drawer.
+* **3.2. Mobile AI Assistant Compact Card & Action Sheet (`AgreementsAiActionSheet.tsx`):**
+  * Compact card with bot icon, concise everyday UI English, and a right chevron `>` that expands into an accessible bottom sheet on tap.
+  * Tactile mobile action cards (`min-h-[56px]`, `active:scale-[0.97]`).
+* **3.3. Human-in-the-Loop Safeguards (Rules 13, 16, 17, 21, 22):**
+  * All AI chips route strictly through a two-phase model (`Plan -> Preview -> Approve -> Execute`).
+  * AI quick chips only preview filters or open interactive drawers (`ReminderSettingsDrawer`, `ContractWizard`); legally consequential mutations require explicit human review and click confirmation.
+  * Prompt outputs treated as untrusted data (escaped React text nodes, no XSS).
+  * Strict typing (`AiAssistantActionKey`, `AgreementsAiAssistantBannerProps`, `AgreementsAiActionSheetProps`).
 
 ---
 

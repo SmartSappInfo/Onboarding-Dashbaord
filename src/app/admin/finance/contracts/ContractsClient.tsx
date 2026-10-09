@@ -102,6 +102,8 @@ import { Bell } from 'lucide-react';
 import { AgreementsHubNav, type AgreementsTabKey, type ContractsSubViewKey } from './components/AgreementsHubNav';
 import { AgreementsMobileBottomNav } from './components/AgreementsMobileBottomNav';
 import { AgreementsKpiGrid, type AgreementsKpiStats, type AgreementsFilterStatus } from './components/AgreementsKpiGrid';
+import { AgreementsAiAssistantBanner } from './components/AgreementsAiAssistantBanner';
+import type { AiAssistantActionKey } from './components/AgreementsAiActionSheet';
 
 export type EntityWithContract = WorkspaceEntity & { contract: Contract | null };
 
@@ -275,6 +277,30 @@ export default function AgreementsClient() {
         toast({ title: 'Link Copied', description: 'Unique signing URL is ready to share.' });
     };
 
+    // AI Assistant action dispatcher (Phase 3 - Conforming to agents_mcp_rules.md Rules 13, 21)
+    const handleAiAssistantAction = React.useCallback((action: AiAssistantActionKey) => {
+        switch (action) {
+            case 'find_missing':
+                setStatusFilter('no_contract');
+                toast({
+                    title: 'Missing Contracts Filtered',
+                    description: `Showing ${stats.noContract} institutions needing contract preparation.`,
+                });
+                break;
+            case 'overdue_signatures':
+                setStatusFilter('sent');
+                toast({
+                    title: 'Awaiting Signatures Filtered',
+                    description: `Showing ${stats.awaitingSignature} agreements awaiting counterparty signature.`,
+                });
+                break;
+            case 'draft_reminder':
+            case 'open_analysis':
+                setIsReminderSettingsOpen(true);
+                break;
+        }
+    }, [stats.noContract, stats.awaitingSignature, toast]);
+
     const handleDownload = async (contract: Contract) => {
         if (!contract.pdfId || !contract.submissionId) return;
         setDownloadingId(contract.id);
@@ -396,6 +422,14 @@ export default function AgreementsClient() {
                                         stats={stats}
                                         currentFilter={statusFilter}
                                         onFilterChange={setStatusFilter}
+                                        isLoading={isLoading}
+                                    />
+
+                                    {/* Contextual AI Contract Assistant Action Layer (Phase 3 - Conforming to agents_mcp_rules.md) */}
+                                    <AgreementsAiAssistantBanner
+                                        missingCount={stats.noContract}
+                                        pendingCount={stats.awaitingSignature}
+                                        onAction={handleAiAssistantAction}
                                         isLoading={isLoading}
                                     />
 
