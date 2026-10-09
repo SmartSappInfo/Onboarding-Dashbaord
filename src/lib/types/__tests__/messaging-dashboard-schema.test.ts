@@ -243,6 +243,7 @@ describe('Messaging Dashboard Zod Schemas & Domain Models', () => {
           lastMessageTimestamp: '2026-10-09T02:00:00.000Z',
           unreadCount: 24,
           isGroup: true,
+          isDirect: false,
         },
       ],
     };

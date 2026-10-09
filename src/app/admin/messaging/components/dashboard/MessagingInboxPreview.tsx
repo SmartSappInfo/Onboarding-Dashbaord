@@ -41,7 +41,7 @@ export function MessagingInboxPreview({
       all: items.length,
       unread: items.filter((i) => i.unreadCount > 0).length,
       groups: items.filter((i) => i.isGroup).length,
-      direct: items.filter((i) => !i.isGroup).length,
+      direct: items.filter((i) => (i.isDirect ?? !i.isGroup)).length,
     };
   }, [items]);
 
@@ -49,7 +49,7 @@ export function MessagingInboxPreview({
     return items.filter((item) => {
       if (filter === 'unread' && item.unreadCount === 0) return false;
       if (filter === 'groups' && !item.isGroup) return false;
-      if (filter === 'direct' && item.isGroup) return false;
+      if (filter === 'direct' && !(item.isDirect ?? !item.isGroup)) return false;
       if (search.trim()) {
         const query = search.toLowerCase();
         return (
