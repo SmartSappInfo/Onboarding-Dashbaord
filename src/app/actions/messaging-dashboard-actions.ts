@@ -6,10 +6,11 @@
  * Conforms to SmartSapp Agentic Development Rules (MCP Edition):
  * - Rule 1 & Rule 4: Strict typing, zero any, schema-narrowed unknown.
  * - Rule 8 & Rule 18: Fail-closed multi-tenancy & session checks.
- * - Rule 9: High-load anti-exhaustion: in-memory 3-minute TTL cache, bounded queries.
+ * - Rule 9: High-load anti-exhaustion: bounded memory cache (max 500 entries), bounded queries.
  * - Rule 10: Inline architectural documentation and maintainer warnings.
+ * - Rule 11 & Rule 14: MCP Tool Input Schema boundary enforcement & versioning.
  * - Rule 13: Trust Boundary Matrix validation before returning data.
- * - Rule 21: Graceful degradation for external provider handshakes.
+ * - Rule 21: Graceful degradation for external provider handshakes with unhandled rejection protection.
  * - Rule 22: Structured observability logging.
  */
 
@@ -17,8 +18,10 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireWorkspace } from '@/lib/auth/require-auth';
 import { subDays, formatISO } from 'date-fns';
 import {
+  GetMessagingDashboardSummaryInputSchema,
   MessagingDashboardSummarySchema,
   calculateTrendDeltaPercentage,
+  type GetMessagingDashboardSummaryInput,
   type MessagingDashboardSummary,
   type ProviderHealthStatus,
   type RecentCampaignItem,
@@ -28,11 +31,7 @@ import {
 import { fetchSmsBalanceAction } from '@/lib/mnotify-actions';
 import { WhatsAppCredentialRepository } from '@/lib/whatsapp/whatsapp-credential-repository';
 
-export interface GetMessagingDashboardSummaryInput {
-  organizationId: string;
-  workspaceId: string;
-  forceRefresh?: boolean;
-}
+export { type GetMessagingDashboardSummaryInput };
 
 export type MessagingDashboardActionResult =
   | { success: true; data: MessagingDashboardSummary }
@@ -47,9 +46,11 @@ interface CacheEntry {
  * In-memory TTL cache for dashboard summaries to protect Firestore
  * from query storms when users switch tabs or refresh pages frequently.
  * Key format: `dashboard:${organizationId}:${workspaceId}`
+ * Capacity capped at 500 entries to prevent unbounded memory growth (Rule 9).
  */
 const dashboardSummaryCache = new Map<string, CacheEntry>();
 const CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutes
+const MAX_CACHE_ENTRIES = 500;
 
 /** Test utility to clear memory cache between runs */
 export function clearDashboardSummaryCacheForTests(): void {
@@ -58,6 +59,8 @@ export function clearDashboardSummaryCacheForTests(): void {
 
 /**
  * Wraps an asynchronous task with a strict timeout to guarantee bounded latency.
+ * Attaches a catch handler to the input promise to prevent unhandled rejections
+ * if the underlying external operation rejects after the timeout window has closed (Rule 21).
  */
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallbackValue: T): Promise<T> {
   let timer: NodeJS.Timeout | null = null;
@@ -65,8 +68,16 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallbackVa
     timer = setTimeout(() => resolve(fallbackValue), timeoutMs);
   });
 
+  // Prevent unhandled promise rejection in the Node runtime if the caller rejects late
+  const safePromise = promise.catch((err) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[withTimeout] Swallowed late promise rejection:', err instanceof Error ? err.message : err);
+    }
+    return fallbackValue;
+  });
+
   try {
-    return await Promise.race([promise, timeoutPromise]);
+    return await Promise.race([safePromise, timeoutPromise]);
   } finally {
     if (timer) clearTimeout(timer);
   }
@@ -101,6 +112,13 @@ interface RawCampaignDoc {
   createdAt?: string;
   deliveryRate?: number;
   clickRate?: number;
+  stats?: {
+    totalTargeted?: number;
+    totalSent?: number;
+    totalFailed?: number;
+    totalOpened?: number;
+    totalClicked?: number;
+  };
 }
 
 interface RawScheduledDoc {
@@ -115,12 +133,21 @@ interface RawScheduledDoc {
  * thread previews for the SmartSapp Messaging Hub.
  */
 export async function getMessagingDashboardSummaryAction(
-  input: GetMessagingDashboardSummaryInput
+  rawInput: GetMessagingDashboardSummaryInput
 ): Promise<MessagingDashboardActionResult> {
   const startTime = Date.now();
+
+  // 1. Validate Input at System Boundary (Rules 4, 11, 13)
+  let input: GetMessagingDashboardSummaryInput;
+  try {
+    input = GetMessagingDashboardSummaryInputSchema.parse(rawInput);
+  } catch (validationErr) {
+    const errorMsg = validationErr instanceof Error ? validationErr.message : 'Invalid request payload';
+    return { success: false, error: errorMsg, code: 'VALIDATION_FAILED' };
+  }
   const { organizationId, workspaceId, forceRefresh } = input;
 
-  // 1. Fail-Closed Authentication & Multi-Tenant Authorization (Rule 8 & 18)
+  // 2. Fail-Closed Authentication & Multi-Tenant Authorization (Rules 8 & 18)
   let authContext: Awaited<ReturnType<typeof requireWorkspace>>;
   try {
     authContext = await requireWorkspace(workspaceId);
@@ -138,7 +165,7 @@ export async function getMessagingDashboardSummaryAction(
     };
   }
 
-  // 2. Check In-Memory TTL Cache (Rule 9)
+  // 3. Check In-Memory TTL Cache (Rule 9)
   const cacheKey = `dashboard:${organizationId}:${workspaceId}`;
   const nowMs = Date.now();
   if (!forceRefresh) {
@@ -153,9 +180,9 @@ export async function getMessagingDashboardSummaryAction(
     const sevenDaysAgoIso = formatISO(subDays(nowDate, 7));
     const fourteenDaysAgoIso = formatISO(subDays(nowDate, 14));
 
-    // 3. Parallel Bounded Firestore Queries
+    // 4. Parallel Bounded Firestore Queries
     const [logsSnap, campaignsSnap, scheduledSnap, providerResults] = await Promise.all([
-      // Logs query: bounded to 500 records by workspace
+      // Logs query: bounded to 500 records by workspace (uses indexed: workspaceIds array-contains, sentAt desc)
       adminDb
         .collection('message_logs')
         .where('workspaceIds', 'array-contains', workspaceId)
@@ -171,9 +198,10 @@ export async function getMessagingDashboardSummaryAction(
         .limit(5)
         .get(),
 
-      // Scheduled queue query: up to 50 pending messages
+      // Scheduled queue query: up to 50 pending messages strictly scoped to this organization (Rule 8 & 18)
       adminDb
         .collection('scheduled_messages')
+        .where('organizationId', '==', organizationId)
         .where('status', '==', 'pending')
         .limit(50)
         .get(),
@@ -188,27 +216,27 @@ export async function getMessagingDashboardSummaryAction(
         withTimeout(
           WhatsAppCredentialRepository.getPublic(organizationId),
           3500,
-          null
+          { status: 'error' } as unknown as Awaited<ReturnType<typeof WhatsAppCredentialRepository.getPublic>>
         ),
       ]),
     ]);
 
-    // 4. Extract and filter logs
+    // 5. Extract and filter logs
     let rawLogs: RawMessageLogDoc[] = logsSnap.docs.map((doc) => ({
       id: doc.id,
       ...(doc.data() as Omit<RawMessageLogDoc, 'id'>),
     }));
 
-    // If no logs matched the workspaceIds array, check by organizationId as fallback
+    // Fallback for legacy logs with single workspaceId field (uses indexed: workspaceId asc, sentAt desc)
     if (rawLogs.length === 0) {
-      const orgLogsSnap = await adminDb
+      const legacyLogsSnap = await adminDb
         .collection('message_logs')
-        .where('organizationId', '==', organizationId)
+        .where('workspaceId', '==', workspaceId)
         .orderBy('sentAt', 'desc')
         .limit(500)
         .get();
 
-      rawLogs = orgLogsSnap.docs.map((doc) => ({
+      rawLogs = legacyLogsSnap.docs.map((doc) => ({
         id: doc.id,
         ...(doc.data() as Omit<RawMessageLogDoc, 'id'>),
       }));
@@ -245,7 +273,7 @@ export async function getMessagingDashboardSummaryAction(
     const messagesSentDelta = calculateTrendDeltaPercentage(currentSentCount, previousSentCount);
     const deliveryRateDelta = Number((deliveryRate - previousDeliveryRate).toFixed(1));
 
-    // 5. Channel Breakdown Calculation
+    // 6. Channel Breakdown Calculation (aligned with active window)
     const channelCounts: Record<MessagingDashboardChannel, number> = {
       sms: 0,
       whatsapp: 0,
@@ -253,9 +281,8 @@ export async function getMessagingDashboardSummaryAction(
       in_app: 0,
     };
 
-    // Aggregate channel counts across active window (or all recent logs if window is empty)
-    const logsForChannels = currentWindowLogs.length > 0 ? currentWindowLogs : rawLogs;
-    for (const log of logsForChannels) {
+    // Aggregate channel counts across active window
+    for (const log of currentWindowLogs) {
       const ch = (log.channel ?? 'sms').toLowerCase();
       if (ch === 'whatsapp') channelCounts.whatsapp++;
       else if (ch === 'email') channelCounts.email++;
@@ -295,7 +322,7 @@ export async function getMessagingDashboardSummaryAction(
       },
     ];
 
-    // 6. Provider Health Resolution (Rule 21)
+    // 7. Provider Health Resolution (Rule 21)
     let smsBalance = 0;
     let smsSuccess = false;
     let waSuccess = false;
@@ -309,7 +336,8 @@ export async function getMessagingDashboardSummaryAction(
 
     if (waSettled.status === 'fulfilled') {
       const waConn = waSettled.value;
-      waSuccess = !waConn || waConn.status !== 'error';
+      // If WhatsApp is configured, it must be in connected state; if not configured, it is considered healthy
+      waSuccess = !waConn || waConn.status === 'connected';
     }
 
     let providerStatus: ProviderHealthStatus = 'healthy';
@@ -323,7 +351,7 @@ export async function getMessagingDashboardSummaryAction(
       providerStatusLabel = 'Degraded Performance';
     }
 
-    // 7. Recent Campaigns
+    // 8. Recent Campaigns (with stats normalization)
     const rawCampaigns: RawCampaignDoc[] = campaignsSnap.docs.map((d) => ({
       id: d.id,
       ...(d.data() as Omit<RawCampaignDoc, 'id'>),
@@ -335,18 +363,32 @@ export async function getMessagingDashboardSummaryAction(
       else if (camp.status === 'sent' || camp.status === 'completed') mappedStatus = 'completed';
       else if (camp.status === 'scheduled') mappedStatus = 'scheduled';
 
+      const stats = camp.stats;
+      const targeted = stats?.totalTargeted || camp.estimatedRecipientCount || camp.recipientCount || 0;
+      const sent = stats?.totalSent || 0;
+      const failed = stats?.totalFailed || 0;
+      const clicked = stats?.totalClicked || 0;
+
+      const deliveryRate = targeted > 0
+        ? Math.round(((sent - failed) / targeted) * 100)
+        : (camp.deliveryRate ?? 100);
+
+      const clickRate = sent > 0
+        ? Number(((clicked / sent) * 100).toFixed(1))
+        : camp.clickRate;
+
       return {
         id: camp.id,
         name: camp.internalName || camp.name || 'Untitled Outreach',
         status: mappedStatus,
-        recipientCount: camp.estimatedRecipientCount || camp.recipientCount || 0,
+        recipientCount: targeted,
         sentAt: camp.sentAt || camp.createdAt || new Date().toISOString(),
-        deliveryRate: camp.deliveryRate ?? 100,
-        clickRate: camp.clickRate,
+        deliveryRate: Math.min(100, Math.max(0, deliveryRate)),
+        clickRate: clickRate !== undefined ? Math.min(100, Math.max(0, clickRate)) : undefined,
       };
     });
 
-    // 8. Active Queues
+    // 9. Active Queues
     const rawScheduled: RawScheduledDoc[] = scheduledSnap.docs.map((d) => ({
       id: d.id,
       ...(d.data() as Omit<RawScheduledDoc, 'id'>),
@@ -355,7 +397,7 @@ export async function getMessagingDashboardSummaryAction(
     const scheduledCount = rawScheduled.length;
     const failedCount = rawLogs.filter((l) => l.status === 'failed').length;
 
-    // 9. Inbox Thread Previews (Grouped by entityId or recipient)
+    // 10. Inbox Thread Previews (Grouped by entityId or recipient)
     const threadMap = new Map<string, InboxThreadPreviewItem>();
     for (const log of rawLogs) {
       const threadKey = log.entityId || log.recipient || log.id;
@@ -380,8 +422,9 @@ export async function getMessagingDashboardSummaryAction(
     }
     const inboxPreview = Array.from(threadMap.values());
 
-    // 10. Assemble and Validate against Schema (Rule 4 & 13)
+    // 11. Assemble and Validate against Schema (Rule 4, 13, 14)
     const payload: MessagingDashboardSummary = {
+      version: 1,
       organizationId,
       workspaceId,
       calculatedAt: new Date().toISOString(),
@@ -413,7 +456,19 @@ export async function getMessagingDashboardSummaryAction(
 
     const validatedSummary = MessagingDashboardSummarySchema.parse(payload);
 
-    // 11. Cache Result (Rule 9)
+    // 12. Cache Result with Bounded Capacity Guard (Rule 9)
+    if (dashboardSummaryCache.size >= MAX_CACHE_ENTRIES) {
+      for (const [k, v] of dashboardSummaryCache.entries()) {
+        if (v.expiresAt <= nowMs) {
+          dashboardSummaryCache.delete(k);
+        }
+      }
+      if (dashboardSummaryCache.size >= MAX_CACHE_ENTRIES) {
+        const oldestKey = dashboardSummaryCache.keys().next().value;
+        if (oldestKey) dashboardSummaryCache.delete(oldestKey);
+      }
+    }
+
     dashboardSummaryCache.set(cacheKey, {
       data: validatedSummary,
       expiresAt: nowMs + CACHE_TTL_MS,

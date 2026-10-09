@@ -369,4 +369,50 @@ describe('getMessagingDashboardSummaryAction', () => {
     expect(result3.success).toBe(true);
     expect(mockFetchSmsBalanceAction).toHaveBeenCalledTimes(2);
   });
+
+  it('correctly normalizes MessageCampaign stats object and computes delivery and click rates', async () => {
+    mockMessageCampaigns = [
+      {
+        id: 'camp-complex-1',
+        internalName: 'Q4 Promotion',
+        status: 'completed',
+        stats: {
+          totalTargeted: 1000,
+          totalSent: 950,
+          totalFailed: 50,
+          totalOpened: 400,
+          totalClicked: 95,
+        },
+        sentAt: '2026-10-08T10:00:00.000Z',
+      },
+    ];
+
+    const result = await getMessagingDashboardSummaryAction({
+      organizationId: orgId,
+      workspaceId: wsId,
+      forceRefresh: true,
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.recentCampaigns).toHaveLength(1);
+      const camp = result.data.recentCampaigns[0];
+      expect(camp.name).toBe('Q4 Promotion');
+      expect(camp.recipientCount).toBe(1000);
+      // (950 - 50) / 1000 = 90%
+      expect(camp.deliveryRate).toBe(90);
+      // 95 clicked / 950 sent = 10%
+      expect(camp.clickRate).toBe(10);
+    }
+  });
+
+  it('rejects malformed input missing organizationId or workspaceId', async () => {
+    // @ts-expect-error Testing missing mandatory property
+    const result = await getMessagingDashboardSummaryAction({
+      organizationId: '',
+      workspaceId: wsId,
+    });
+
+    expect(result.success).toBe(false);
+  });
 });
