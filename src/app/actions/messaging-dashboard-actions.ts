@@ -32,6 +32,7 @@ import { fetchSmsBalanceAction } from '@/lib/mnotify-actions';
 import { WhatsAppCredentialRepository } from '@/lib/whatsapp/whatsapp-credential-repository';
 import { getWorkspaceMessagingSettingsAction } from './messaging-settings-actions';
 import { DEFAULT_MESSAGING_SETTINGS } from '@/lib/types/messaging-settings';
+import { resolveMessagePreviewSnippet } from '@/lib/messaging/preview-utils';
 
 export { type GetMessagingDashboardSummaryInput };
 
@@ -85,6 +86,9 @@ interface RawMessageLogDoc {
   displayName?: string;
   entityName?: string;
   entityId?: string;
+  title?: string;
+  subject?: string | null;
+  previewText?: string | null;
   body?: string;
 }
 
@@ -465,11 +469,20 @@ export async function getMessagingDashboardSummaryAction(
           ch = rawCh;
         }
 
+        const snippet = resolveMessagePreviewSnippet({
+          channel: ch,
+          title: log.title,
+          subject: log.subject,
+          previewText: log.previewText,
+          body: log.body,
+          maxLength: 120,
+        });
+
         threadMap.set(threadKey, {
           threadId: threadKey,
           entityId: log.entityId,
           entityName: log.displayName || log.entityName || log.recipient || 'Unknown Contact',
-          lastMessageSnippet: (log.body || 'No message content').slice(0, 120),
+          lastMessageSnippet: snippet,
           lastMessageChannel: ch,
           lastMessageTimestamp: log.sentAt || new Date().toISOString(),
           unreadCount: 0,

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { ThreadGroup } from '../ConversationsClient';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { resolveMessagePreviewSnippet } from '@/lib/messaging/preview-utils';
 import Link from 'next/link';
 
 export interface ThreadListProps {
@@ -259,7 +260,14 @@ export default function ThreadList({
                           : 'text-muted-foreground'
                       )}
                     >
-                      {thread.lastMessage.subject || thread.lastMessage.body || 'New message'}
+                      {resolveMessagePreviewSnippet({
+                        channel: thread.lastMessage.channel,
+                        title: thread.lastMessage.title,
+                        subject: thread.lastMessage.subject,
+                        previewText: thread.lastMessage.previewText,
+                        body: thread.lastMessage.body,
+                        maxLength: 100,
+                      })}
                     </p>
                   </div>
                 </div>

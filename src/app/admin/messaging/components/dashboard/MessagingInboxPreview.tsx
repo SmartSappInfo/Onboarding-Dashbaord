@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { toDisplayText } from '@/lib/utils/display-text';
 import type { InboxThreadPreviewItem } from '@/lib/types/messaging-dashboard';
 
 export interface MessagingInboxPreviewProps {
@@ -52,9 +53,10 @@ export function MessagingInboxPreview({
       if (filter === 'direct' && !(item.isDirect ?? !item.isGroup)) return false;
       if (search.trim()) {
         const query = search.toLowerCase();
+        const cleanSnippet = toDisplayText(item.lastMessageSnippet);
         return (
           item.entityName.toLowerCase().includes(query) ||
-          item.lastMessageSnippet.toLowerCase().includes(query)
+          cleanSnippet.toLowerCase().includes(query)
         );
       }
       return true;
@@ -143,7 +145,9 @@ export function MessagingInboxPreview({
                     <p className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors truncate">
                       {thread.entityName}
                     </p>
-                    <p className="text-[11px] text-muted-foreground truncate">{thread.lastMessageSnippet}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      {toDisplayText(thread.lastMessageSnippet) || 'No message content'}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 ml-2">

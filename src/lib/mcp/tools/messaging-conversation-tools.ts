@@ -13,6 +13,7 @@
 import { z } from 'zod';
 import type { McpToolDefinition } from '../types';
 import { adminDb } from '@/lib/firebase-admin';
+import { toDisplayText } from '@/lib/utils/display-text';
 
 // ==========================================
 // 1. messaging.get_conversation_thread
@@ -146,7 +147,7 @@ export const messagingSuggestReplyTool: McpToolDefinition<
     }
 
     const tone = params.tone ?? 'friendly';
-    const snippet = params.lastMessage.slice(0, 50).trim();
+    const snippet = toDisplayText(params.lastMessage).slice(0, 50).trim();
     let draft = '';
 
     switch (tone) {
