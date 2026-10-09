@@ -68,6 +68,8 @@ import {
 import TaskEditor from './components/TaskEditor';
 import TaskBoard from './components/TaskBoard';
 import TaskCalendar from './components/TaskCalendar';
+import { TaskScopeSwitcher, type TaskScope } from './components/TaskScopeSwitcher';
+import { TaskFilterChips, type FilterChipItem } from './components/TaskFilterChips';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TaskListRow } from './components/TaskListRow';
 import { TaskEmptyState } from './components/primitives/TaskEmptyState';
@@ -609,6 +611,41 @@ export default function TasksClient() {
         return { active, resolved, overdue, efficiency };
     }, [statsScopedTasks]);
 
+    const canViewAllTasks = isWorkspaceAdmin || !restrictTasksToAssigned;
+
+    const handleScopeChange = (newScope: TaskScope) => {
+        if (newScope === 'all' && !canViewAllTasks) {
+            toast({
+                variant: 'destructive',
+                title: 'Access Restricted',
+                description: 'You do not have permission to view all workspace tasks.',
+                actionConfig: {
+                    path: '/admin/settings/permissions',
+                    label: 'View Permissions',
+                },
+            });
+            return;
+        }
+        setTaskScope(newScope);
+    };
+
+    const scopeCounts = React.useMemo(() => {
+        if (!allTasks) return { my: 0, team: 0, all: 0 };
+        const uid = currentUser?.uid;
+        const myCount = allTasks.filter(t => {
+            if (!uid) return false;
+            return Array.isArray(t.assignedTo) ? t.assignedTo.includes(uid) : t.assignedTo === uid;
+        }).length;
+        const teamCount = allTasks.filter(t => {
+            return Array.isArray(t.assignedTo) ? t.assignedTo.length > 0 : Boolean(t.assignedTo);
+        }).length;
+        return {
+            my: myCount,
+            team: teamCount,
+            all: allTasks.length,
+        };
+    }, [allTasks, currentUser?.uid]);
+
     const activeFilterCount = React.useMemo(() => {
         let count = 0;
         if (taskScope !== 'all') count++;
@@ -616,8 +653,71 @@ export default function TasksClient() {
         if (priorityFilter !== 'all') count++;
         if (selectedTagId !== 'all') count++;
         if (dateFilterType !== 'day') count++;
+        if (searchTerm.trim()) count++;
         return count;
-    }, [taskScope, statusFilter, priorityFilter, selectedTagId, dateFilterType]);
+    }, [taskScope, statusFilter, priorityFilter, selectedTagId, dateFilterType, searchTerm]);
+
+    const filterChips: FilterChipItem[] = React.useMemo(() => {
+        const chips: FilterChipItem[] = [];
+        if (taskScope !== 'all') {
+            chips.push({
+                key: 'scope',
+                label: `Scope: ${taskScope === 'my' ? 'My Tasks' : 'Team Tasks'}`,
+                value: taskScope,
+            });
+        }
+        if (statusFilter !== 'all') {
+            chips.push({
+                key: 'status',
+                label: `Status: ${STATUS_LABELS[statusFilter as TaskStatus] || statusFilter}`,
+                value: statusFilter,
+            });
+        }
+        if (priorityFilter !== 'all') {
+            chips.push({
+                key: 'priority',
+                label: `Priority: ${priorityFilter.charAt(0).toUpperCase() + priorityFilter.slice(1)}`,
+                value: priorityFilter,
+            });
+        }
+        if (selectedTagId !== 'all') {
+            const tag = workspaceTags?.find(t => t.id === selectedTagId);
+            chips.push({
+                key: 'tag',
+                label: `Tag: ${tag ? tag.name : selectedTagId}`,
+                value: selectedTagId,
+            });
+        }
+        if (dateFilterType !== 'day') {
+            let dateLabel = `Date: ${dateFilterType}`;
+            if (dateFilterType === 'all') dateLabel = 'Date: All Time';
+            else if (dateFilterType === 'month') dateLabel = `Month: ${selectedMonth}`;
+            else if (dateFilterType === 'week') dateLabel = `Week: ${selectedWeek}`;
+            else if (dateFilterType === 'range') dateLabel = 'Date: Custom Range';
+            chips.push({
+                key: 'date',
+                label: dateLabel,
+                value: dateFilterType,
+            });
+        }
+        if (searchTerm.trim()) {
+            chips.push({
+                key: 'search',
+                label: `Search: "${searchTerm.trim()}"`,
+                value: searchTerm.trim(),
+            });
+        }
+        return chips;
+    }, [taskScope, statusFilter, priorityFilter, selectedTagId, dateFilterType, selectedMonth, selectedWeek, searchTerm, workspaceTags]);
+
+    const handleRemoveChip = (chip: FilterChipItem) => {
+        if (chip.key === 'scope') handleScopeChange('all');
+        else if (chip.key === 'status') setStatusFilter('all');
+        else if (chip.key === 'priority') setPriorityFilter('all');
+        else if (chip.key === 'tag') setSelectedTagId('all');
+        else if (chip.key === 'date') setDateFilterType('all');
+        else if (chip.key === 'search') setSearchTerm('');
+    };
 
     const handleClearFilters = () => {
         setStatusFilter('all');
@@ -626,6 +726,23 @@ export default function TasksClient() {
         setSearchTerm('');
         setDateFilterType('all');
         setTaskScope('all');
+    };
+
+    const handleCreateNewTask = () => {
+        if (!canCreate) {
+            toast({
+                variant: 'destructive',
+                title: 'Permission Denied',
+                description: 'You do not have permission to create tasks in this workspace.',
+                actionConfig: {
+                    path: '/admin/settings/permissions',
+                    label: 'View Permissions',
+                },
+            });
+            return;
+        }
+        setEditingTask(null);
+        setEditorOpen(true);
     };
 
     const handleQuickComplete = async (task: Task) => {
@@ -746,6 +863,30 @@ export default function TasksClient() {
 
     const handleSaveTask = async (payload: { title: string; description?: string; priority?: TaskPriority; dueDate?: string; entityId?: string; category?: string; [key: string]: unknown }) => {
         if (!currentUser) return;
+        if (!canCreate && !editingTask) {
+            toast({
+                variant: 'destructive',
+                title: 'Permission Denied',
+                description: 'You do not have permission to create tasks in this workspace.',
+                actionConfig: {
+                    path: '/admin/settings/permissions',
+                    label: 'View Permissions',
+                },
+            });
+            return;
+        }
+        if (!canEdit && editingTask) {
+            toast({
+                variant: 'destructive',
+                title: 'Permission Denied',
+                description: 'You do not have permission to edit tasks in this workspace.',
+                actionConfig: {
+                    path: '/admin/settings/permissions',
+                    label: 'View Permissions',
+                },
+            });
+            return;
+        }
         setIsSaving(true);
         setCapabilityError(null);
         try {
@@ -861,13 +1002,33 @@ export default function TasksClient() {
 
     const handleDelete = async (task: Task) => {
         if (!currentUser) return;
+        if (!canDelete) {
+            toast({
+                variant: 'destructive',
+                title: 'Permission Denied',
+                description: 'You do not have permission to delete tasks in this workspace.',
+                actionConfig: {
+                    path: '/admin/settings/permissions',
+                    label: 'View Permissions',
+                },
+            });
+            return;
+        }
         setPendingTaskIds(prev => new Set(prev).add(task.id));
         try {
             const res = await deleteTaskAction(task.id);
             if (res.success) {
                 toast({ title: 'Record Purged', description: `Task "${task.title}" deleted.` });
             } else {
-                toast({ variant: 'destructive', title: 'Delete Failed', description: res.error });
+                toast({ 
+                    variant: 'destructive', 
+                    title: 'Delete Failed', 
+                    description: res.error,
+                    actionConfig: {
+                        path: '/admin/settings/permissions',
+                        label: 'Check Permissions',
+                    },
+                });
             }
         } catch (e: unknown) {
             toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
@@ -1122,7 +1283,7 @@ export default function TasksClient() {
                     />
                 )}
                 {activeTab === 'list' && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 p-3 sm:p-4 rounded-2xl bg-card border border-border/80 shadow-2xs">
                         <StatCard 
                             label="Active Actions" 
                             value={isLoading ? '...' : stats.active} 
@@ -1164,24 +1325,12 @@ export default function TasksClient() {
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="flex flex-wrap items-center gap-3">
                             <h2 className="text-xl font-bold text-foreground tracking-tight">Tasks</h2>
-                            {/* Scope Tabs (All Tasks | My Tasks | Team Tasks) */}
-                            <div className="inline-flex items-center p-1 bg-muted/40 rounded-xl border border-border">
-                                {(['all', 'my', 'team'] as const).map((scope) => (
-                                    <button
-                                        key={scope}
-                                        type="button"
-                                        onClick={() => setTaskScope(scope)}
-                                        className={cn(
-                                            "px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all active:scale-[0.97]",
-                                            taskScope === scope
-                                                ? "bg-card text-foreground shadow-sm"
-                                                : "text-muted-foreground hover:text-foreground"
-                                        )}
-                                    >
-                                        {scope === 'all' ? 'All Tasks' : scope === 'my' ? 'My Tasks' : 'Team Tasks'}
-                                    </button>
-                                ))}
-                            </div>
+                            <TaskScopeSwitcher
+                                currentScope={taskScope}
+                                onScopeChange={handleScopeChange}
+                                canViewAllTasks={canViewAllTasks}
+                                counts={scopeCounts}
+                            />
                         </div>
 
                         {/* Mobile Search and Filter Button */}
@@ -1210,7 +1359,7 @@ export default function TasksClient() {
                             </Button>
                             {canCreate && (
                                 <Button 
-                                    onClick={() => setEditorOpen(true)} 
+                                    onClick={handleCreateNewTask} 
                                     className="rounded-xl font-bold h-11 min-h-[44px] px-4 shadow-md bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.97] text-xs shrink-0"
                                 >
                                     + Add
@@ -1464,13 +1613,23 @@ export default function TasksClient() {
  
                         {canCreate && (
                             <Button 
-                                onClick={() => setEditorOpen(true)} 
+                                onClick={handleCreateNewTask} 
                                 className="rounded-xl font-bold h-11 min-h-[44px] px-6 shadow-md bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.97] text-xs"
                             >
                                 + Add Task
                             </Button>
                         )}
                     </div>
+
+                    {filterChips.length > 0 && (
+                        <TaskFilterChips
+                            chips={filterChips}
+                            totalMatching={filteredTasks.length}
+                            onRemoveChip={handleRemoveChip}
+                            onClearAll={handleClearFilters}
+                            className="mt-1"
+                        />
+                    )}
                 </div>
 
                 {/* Mobile Filter Sheet */}
@@ -1484,19 +1643,13 @@ export default function TasksClient() {
                             {/* Scope */}
                             <div className="space-y-1.5">
                                 <label className="text-xs font-semibold text-muted-foreground">Scope</label>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {(['all', 'my', 'team'] as const).map((scope) => (
-                                        <Button
-                                            key={scope}
-                                            type="button"
-                                            variant={taskScope === scope ? "default" : "outline"}
-                                            onClick={() => setTaskScope(scope)}
-                                            className="min-h-[44px] rounded-xl text-xs font-semibold capitalize active:scale-[0.97]"
-                                        >
-                                            {scope === 'all' ? 'All' : scope === 'my' ? 'My' : 'Team'}
-                                        </Button>
-                                    ))}
-                                </div>
+                                <TaskScopeSwitcher
+                                    currentScope={taskScope}
+                                    onScopeChange={handleScopeChange}
+                                    canViewAllTasks={canViewAllTasks}
+                                    counts={scopeCounts}
+                                    className="w-full justify-between"
+                                />
                             </div>
 
                             {/* Status */}
@@ -1751,10 +1904,7 @@ export default function TasksClient() {
                             <TaskEmptyState 
                                 isFiltered={activeFilterCount > 0} 
                                 onClearFilters={handleClearFilters} 
-                                onCreateTask={() => { 
-                                    setEditingTask(null); 
-                                    setEditorOpen(true); 
-                                }} 
+                                onCreateTask={handleCreateNewTask} 
                             />
                         ) : (
                             /* Grouped Lists by Accordions */
@@ -1854,6 +2004,18 @@ export default function TasksClient() {
                             userMap={userMap}
                             onTaskUpdate={handleCalendarTaskUpdate}
                             onDateClick={(date) => {
+                                if (!canCreate) {
+                                    toast({
+                                        variant: 'destructive',
+                                        title: 'Permission Denied',
+                                        description: 'You do not have permission to create tasks in this workspace.',
+                                        actionConfig: {
+                                            path: '/admin/settings/permissions',
+                                            label: 'View Permissions',
+                                        },
+                                    });
+                                    return;
+                                }
                                 setEditingTask({
                                     id: '',
                                     workspaceId: activeWorkspaceId,
@@ -1944,16 +2106,16 @@ export default function TasksClient() {
 
 function StatCard({ label, value, icon: Icon, color, bg, info }: { label: string, value: string | number, sub?: string, icon: React.ComponentType<{ className?: string }>, color: string, bg: string, info?: string }) {
     return (
-        <div className="p-5 rounded-2xl border border-border/80 shadow-sm bg-card hover:shadow-md transition-all duration-200 flex items-center gap-3 group">
-            <div className={cn("p-2.5 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105", bg, color)}>
-                <Icon className="h-5 w-5" />
+        <div className="p-3 sm:p-3.5 rounded-xl border border-border/50 shadow-2xs bg-muted/20 hover:bg-muted/30 transition-all flex items-center gap-3 group">
+            <div className={cn("p-2 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-105", bg, color)}>
+                <Icon className="h-4 w-4" />
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1">
-                    <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">{label}</p>
+                    <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground truncate">{label}</p>
                     {info && <CardInfoTooltip text={info} />}
                 </div>
-                <p className="text-2xl font-bold text-foreground tracking-tight tabular-nums">{value}</p>
+                <p className="text-xl sm:text-2xl font-bold text-foreground tracking-tight tabular-nums leading-none mt-0.5">{value}</p>
             </div>
         </div>
     );
