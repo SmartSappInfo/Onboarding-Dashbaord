@@ -182,6 +182,7 @@ describe('Messaging Dashboard Zod Schemas & Domain Models', () => {
 
   it('validates the complete unified MessagingDashboardSummary schema', () => {
     const summary: MessagingDashboardSummary = {
+      version: 1,
       organizationId: 'org-test-123',
       workspaceId: 'ws-test-456',
       calculatedAt: '2026-10-09T03:00:00.000Z',

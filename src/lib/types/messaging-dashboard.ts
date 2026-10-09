@@ -34,7 +34,7 @@ export const GetMessagingDashboardSummaryInputSchema = z.object({
   workspaceId: z.string().min(1).describe('The active operational workspace identifier'),
   forceRefresh: z.boolean().optional().default(false).describe('Bypass the 3-minute in-memory cache if true'),
 });
-export type GetMessagingDashboardSummaryInput = z.infer<typeof GetMessagingDashboardSummaryInputSchema>;
+export type GetMessagingDashboardSummaryInput = z.input<typeof GetMessagingDashboardSummaryInputSchema>;
 
 /**
  * Primary KPI metric cards displayed at the top of the Messaging Hub.
