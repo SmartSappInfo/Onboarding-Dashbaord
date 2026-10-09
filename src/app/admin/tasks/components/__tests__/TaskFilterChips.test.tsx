@@ -63,4 +63,16 @@ describe('TaskFilterChips (Roadmap §29, UI Spec §507, 513)', () => {
     );
     expect(container.firstChild).toBeNull();
   });
+
+  it('satisfies min-h-[44px] touch target on dismiss buttons for mobile accessibility', () => {
+    render(
+      <TaskFilterChips
+        chips={sampleChips}
+        onRemoveChip={vi.fn()}
+        onClearAll={vi.fn()}
+      />
+    );
+    const removeButtons = screen.getAllByRole('button', { name: /remove filter/i });
+    expect(removeButtons[0].className).toMatch(/min-h-\[44px\]/);
+  });
 });

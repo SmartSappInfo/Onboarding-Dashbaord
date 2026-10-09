@@ -55,14 +55,14 @@ export function TaskFilterChips({
                     <Badge
                         key={`${chip.key}-${chip.value}`}
                         variant="secondary"
-                        className="inline-flex items-center gap-1.5 pl-2.5 pr-1 py-1 rounded-lg text-xs font-semibold bg-card border border-border/80 text-foreground shadow-2xs hover:bg-muted/40 transition-colors"
+                        className="inline-flex items-center gap-1.5 pl-2.5 pr-1 py-1 rounded-lg text-xs font-semibold bg-card border border-border/80 text-foreground shadow-2xs hover:bg-muted/40 transition-colors min-h-[44px] sm:min-h-0"
                     >
                         <span>{chip.label}</span>
                         <button
                             type="button"
                             aria-label={`Remove filter ${chip.label}`}
                             onClick={() => onRemoveChip(chip)}
-                            className="h-6 w-6 rounded-md flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground active:scale-[0.95] transition-all cursor-pointer"
+                            className="min-h-[44px] min-w-[44px] sm:min-h-[24px] sm:min-w-[24px] sm:h-6 sm:w-6 rounded-md flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground active:scale-[0.95] transition-all cursor-pointer"
                         >
                             <X className="h-3.5 w-3.5" />
                         </button>
