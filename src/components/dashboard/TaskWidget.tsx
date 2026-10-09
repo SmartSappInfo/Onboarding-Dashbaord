@@ -1,24 +1,27 @@
 'use client';
 
+/**
+ * @fileOverview Remodeled Task Widget: "Critical Focus".
+ * Standardized with canonical CompactTaskCard, limit(10) bound,
+ * and downstream contract obligation recovery affordances (Roadmap §77, §78).
+ *
+ * Strict Typing Policy: Zero `any` or `any[]`.
+ */
+
 import * as React from 'react';
 import DashboardCard from "./DashboardCard";
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy, limit } from 'firebase/firestore';
-import type { Task } from '@/lib/types';
-import { Badge } from '@/components/ui/badge';
+import type { Task, UserProfile } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { format, isToday, isPast } from 'date-fns';
-import { CheckCircle2, Circle, Clock, ArrowRight, Zap } from 'lucide-react';
-import { updateTaskAction } from '@/lib/task-server-actions';
+import { CheckCircle2, ArrowRight } from 'lucide-react';
+import { updateTaskAction, retryTaskObligationSyncAction } from '@/lib/task-server-actions';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useTenant } from '@/context/TenantContext';
+import { CompactTaskCard } from '@/app/admin/tasks/components/CompactTaskCard';
 
-/**
- * @fileOverview Remodeled Task Widget: "Critical Focus".
- * Contextualized to the active workspace.
- */
 export function TaskWidget({ 
     initialTasks,
     terminology = { singular: 'Entity', plural: 'Entities' } 
@@ -27,52 +30,91 @@ export function TaskWidget({
     terminology?: { singular: string, plural: string } 
 }) {
     const firestore = useFirestore();
+    const router = useRouter();
     const { activeWorkspaceId } = useTenant();
     const { toast } = useToast();
 
-    // Query for unresolved tasks strictly within this workspace
+    // Query for unresolved tasks strictly within this workspace (Roadmap §77: limit 10)
     const tasksQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId || initialTasks) return null;
-        return query(
-            collection(firestore, 'tasks'),
-            where('workspaceId', '==', activeWorkspaceId),
-            where('status', '!=', 'done'),
-            orderBy('status'), 
-            orderBy('dueDate', 'asc'),
-            limit(5)
-        );
+        try {
+            return query(
+                collection(firestore, 'tasks'),
+                where('workspaceId', '==', activeWorkspaceId),
+                where('status', '!=', 'done'),
+                orderBy('status'), 
+                orderBy('dueDate', 'asc'),
+                limit(10)
+            );
+        } catch {
+            return null;
+        }
     }, [firestore, activeWorkspaceId, initialTasks]);
 
+    // Users query to resolve assignees for CompactTaskCard
+    const usersQuery = useMemoFirebase(() => {
+        if (!firestore || !activeWorkspaceId) return null;
+        try {
+            return query(
+                collection(firestore, 'users'),
+                where('workspaceId', '==', activeWorkspaceId)
+            );
+        } catch {
+            return null;
+        }
+    }, [firestore, activeWorkspaceId]);
+
     const { data: fetchedTasks, isLoading: isFetching } = useCollection<Task>(tasksQuery);
+    const { data: fetchedUsers } = useCollection<UserProfile>(usersQuery);
+
+    const userMap = React.useMemo(() => {
+        const map = new Map<string, UserProfile>();
+        fetchedUsers?.forEach((u) => map.set(u.id, u));
+        return map;
+    }, [fetchedUsers]);
     
     const rawTasks = initialTasks || fetchedTasks;
     const isLoading = initialTasks ? false : isFetching;
 
+    // Track optimistic updates
+    const [optimisticOverrides, setOptimisticOverrides] = React.useState<Record<string, Partial<Task>>>({});
+    const [pendingIds, setPendingIds] = React.useState<Set<string>>(new Set());
+    const [retryingSyncIds, setRetryingSyncIds] = React.useState<Set<string>>(new Set());
+
     const tasks = React.useMemo(() => {
         if (!rawTasks) return null;
-        return rawTasks.map(task => {
-            const dueDateObj = task.dueDate ? new Date(task.dueDate) : null;
-            const isValidDueDate = Boolean(dueDateObj && !isNaN(dueDateObj.getTime()));
-            return {
-                ...task,
-                dueDateObj,
-                isValidDueDate,
-                isOverdue: Boolean(isValidDueDate && dueDateObj && isPast(dueDateObj) && !isToday(dueDateObj)),
-                isTodayDue: Boolean(isValidDueDate && dueDateObj && isToday(dueDateObj)),
-                isUrgent: task.priority === 'urgent' || task.priority === 'high'
-            };
-        });
-    }, [rawTasks]);
+        return rawTasks
+            .map((task) => {
+                const override = optimisticOverrides[task.id];
+                return override ? { ...task, ...override } : task;
+            })
+            .filter((task) => task.status !== 'done');
+    }, [rawTasks, optimisticOverrides]);
 
-    const handleComplete = async (id: string) => {
+    const handleToggleComplete = async (task: Task) => {
+        const nextStatus = task.status === 'done' ? 'todo' : 'done';
+        
+        // Apply optimistic update immediately
+        setOptimisticOverrides((prev) => ({
+            ...prev,
+            [task.id]: { status: nextStatus },
+        }));
+        setPendingIds((prev) => new Set(prev).add(task.id));
+
         try {
-            const res = await updateTaskAction(id, { status: 'done' });
+            const res = await updateTaskAction(task.id, { status: nextStatus });
             if (res.success) {
                 toast({
-                    title: 'Task Completed',
-                    description: 'Task marked as resolved.',
+                    title: nextStatus === 'done' ? 'Task Completed' : 'Task Reopened',
+                    description: nextStatus === 'done' ? 'Task marked as resolved.' : 'Task marked as unresolved.',
                 });
             } else {
+                // Revert optimistic override on server failure
+                setOptimisticOverrides((prev) => {
+                    const next = { ...prev };
+                    delete next[task.id];
+                    return next;
+                });
                 toast({
                     variant: 'destructive',
                     title: 'Update Failed',
@@ -84,10 +126,61 @@ export function TaskWidget({
                 });
             }
         } catch (err: unknown) {
+            setOptimisticOverrides((prev) => {
+                const next = { ...prev };
+                delete next[task.id];
+                return next;
+            });
             toast({
                 variant: 'destructive',
                 title: 'Update Failed',
                 description: err instanceof Error ? err.message : 'An unexpected error occurred.',
+            });
+        } finally {
+            setPendingIds((prev) => {
+                const next = new Set(prev);
+                next.delete(task.id);
+                return next;
+            });
+        }
+    };
+
+    const handleRetrySync = async (taskId: string) => {
+        setRetryingSyncIds((prev) => new Set(prev).add(taskId));
+        try {
+            const res = await retryTaskObligationSyncAction(taskId);
+            if (res.success) {
+                // Optimistically clear failed status
+                setOptimisticOverrides((prev) => ({
+                    ...prev,
+                    [taskId]: { obligationSyncStatus: 'synced', obligationSyncError: undefined },
+                }));
+                toast({
+                    title: 'Sync Succeeded',
+                    description: res.message || 'Downstream contract obligation synchronized successfully.',
+                });
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Sync Failed',
+                    description: res.error || 'Could not synchronize obligation.',
+                    actionConfig: {
+                        path: '/admin/finance/agreements',
+                        label: 'View Agreements',
+                    },
+                });
+            }
+        } catch (err: unknown) {
+            toast({
+                variant: 'destructive',
+                title: 'Sync Failed',
+                description: err instanceof Error ? err.message : 'An unexpected error occurred during sync retry.',
+            });
+        } finally {
+            setRetryingSyncIds((prev) => {
+                const next = new Set(prev);
+                next.delete(taskId);
+                return next;
             });
         }
     };
@@ -103,55 +196,19 @@ export function TaskWidget({
                         <div key={i} className="h-16 w-full bg-muted/20 animate-pulse rounded-2xl" />
                     ))
                 ) : tasks && tasks.length > 0 ? (
-                    <div className="space-y-3">
-                        {tasks.map((task) => {
-                            return (
-                                <div key={task.id} className={cn(
-                                    "group flex items-center gap-4 p-3.5 rounded-[1.2rem] border transition-all duration-300",
-                                    task.isUrgent ? "bg-rose-500/5 border-rose-500/20 shadow-[0_0_15px_rgba(225,29,72,0.05)]" : "bg-black/[0.02] dark:bg-white/[0.02] border-transparent hover:border-black/5 dark:hover:border-white/10 hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
-                                )}>
-                                    <button 
-                                        onClick={() => handleComplete(task.id)}
-                                        aria-label={`Complete task: ${task.title}`}
-                                        className="shrink-0 flex items-center justify-center min-h-[44px] min-w-[44px] text-muted-foreground hover:text-emerald-500 active:scale-[0.97] transition-all"
-                                    >
-                                        <Circle className="h-5 w-5" />
-                                    </button>
-                                    
-                                    <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <p className="text-sm font-medium truncate leading-none">{task.title}</p>
-                                            {task.isUrgent && <Zap className="h-3 w-3 text-rose-600 animate-pulse" />}
-                                        </div>
-                                        
-                                        <div className="flex items-center gap-3">
-                                            {task.isValidDueDate && task.dueDateObj && (
-                                                <div className={cn(
-                                                    "flex items-center gap-1 text-[9px] font-medium tracking-tighter transition-colors",
-                                                    task.isOverdue ? "text-rose-600 font-bold" : task.isTodayDue ? "text-orange-600 font-bold" : "text-muted-foreground opacity-60"
-                                                )}>
-                                                    <Clock className="h-2.5 w-2.5" />
-                                                    {task.isTodayDue ? 'Today' : task.isOverdue ? 'Overdue' : format(task.dueDateObj, 'MMM d')}
-                                                </div>
-                                            )}
-                                            {task.entityName && (
-                                                <span className="text-[9px] font-medium text-muted-foreground opacity-40 truncate">
-                                                    {task.entityName}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="shrink-0">
-                                        {task.isUrgent ? (
-                                            <Badge className="bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 border-rose-500/20 shadow-none text-[7px] font-semibold h-4 px-1.5 capitalize">{task.priority}</Badge>
-                                        ) : (
-                                            <Badge variant="outline" className="text-[7px] font-medium h-4 px-1.5 border-black/10 dark:border-white/20 text-muted-foreground capitalize">{task.category}</Badge>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })}
+                    <div className="space-y-2.5">
+                        {tasks.map((task) => (
+                            <CompactTaskCard
+                                key={task.id}
+                                task={task}
+                                userMap={userMap}
+                                isPending={pendingIds.has(task.id)}
+                                isRetryingSync={retryingSyncIds.has(task.id)}
+                                onToggleComplete={handleToggleComplete}
+                                onRetrySync={handleRetrySync}
+                                onClick={() => router.push('/admin/tasks')}
+                            />
+                        ))}
                     </div>
                 ) : (
                     <div className="py-12 text-center flex flex-col items-center gap-4 rounded-[1.5rem] bg-gradient-to-b from-emerald-500/5 to-transparent border border-emerald-500/10 shadow-[inset_0_1px_0_rgba(16,185,129,0.1)] relative overflow-hidden">
@@ -164,7 +221,7 @@ export function TaskWidget({
                     </div>
                 )}
 
-                <Button variant="outline" asChild className="w-full rounded-xl font-medium h-10 border-primary/10 hover:bg-primary/5 hover:text-primary transition-all group mt-2">
+                <Button variant="outline" asChild className="w-full rounded-xl font-medium h-10 border-primary/10 hover:bg-primary/5 hover:text-primary transition-all group mt-2 active:scale-[0.97]">
                     <Link href="/admin/tasks">
                         Command Hub
                         <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -174,3 +231,5 @@ export function TaskWidget({
         </DashboardCard>
     );
 }
+
+export default TaskWidget;

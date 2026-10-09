@@ -20,6 +20,11 @@ vi.mock('@/context/TenantContext', () => ({
   useTenant: () => ({ activeWorkspaceId: 'ws-test-widget' }),
 }));
 
+// Mock next/navigation
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 // Mock Firebase provider & hooks
 vi.mock('@/firebase', () => ({
   useFirestore: () => ({}),

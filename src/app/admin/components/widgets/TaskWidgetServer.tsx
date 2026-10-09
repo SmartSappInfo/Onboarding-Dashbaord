@@ -10,7 +10,7 @@ export async function TaskWidgetServer({ workspaceId }: { workspaceId: string })
         .where('status', '!=', 'done')
         .orderBy('status')
         .orderBy('dueDate', 'asc')
-        .limit(5)
+        .limit(10)
         .get();
 
     const tasks = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
