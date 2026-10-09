@@ -1,43 +1,137 @@
 # Messaging Dashboard Redesign — Phase 2: Hero Greeting Card & Interactive AI Prompt Bar
-## Implementation Plan
+## Implementation Plan (Conforming to `agents_mcp_rules.md` & Institutional Theme Standards)
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Build the flagship greeting banner with client-hydrated time-of-day greeting, user first name extraction, dynamic workspace terminology adaptation, and an interactive glassmorphic AI prompt bar that opens a standardized modal for drafting messages and analyzing communications.
-
-**Architecture:** A presentation-layer component tree anchored by `MessagingHeroGreeting.tsx` and supported by a pure date/greeting utility `greeting-utils.ts` and an accessible, theme-compliant dialog `MessagingAiPromptModal.tsx`. The component uses hydration-safe mounting to prevent React #418 SSR mismatches, integrates `useUser()` for caller identity, and connects `useTerminology()` for customizable entity terms (e.g. *school*, *campus*, *client*).
-
-**Tech Stack:** Next.js 15, React 19, TypeScript (Strict Mode — Zero `any/any[]`), Tailwind CSS, Radix UI Dialog & Tooltip, Lucide React, Vitest, React Testing Library.
+> **File Location:** `docs/superpowers/plans/2026-10-09-messaging-dashboard-phase-2.md`  
+> **Status:** Pending User Approval  
+> **Applicable Rules:** SmartSapp Agentic Development Rules (MCP Edition — Rules 1 through 25 from `docs/agents_mcp/agents_mcp_rules.md`), `.agents/AGENTS.md`, and `theme.md` Section 8  
+> **Visual Reference:** User-provided mockup (`media_1791516336748_2f0e908d.jpg`)
 
 ---
 
-## 1. File Structure & Responsibilities
-
-| File | Responsibility |
-| :--- | :--- |
-| `src/lib/messaging/greeting-utils.ts` | Pure functions for time-of-day classification, user first name extraction, and subtitle construction. |
-| `src/lib/messaging/__tests__/greeting-utils.test.ts` | Vitest unit tests verifying time intervals, compound names, fallbacks, and edge cases. |
-| `src/app/admin/messaging/components/dashboard/MessagingAiPromptModal.tsx` | Standardized modal adhering to `theme.md` Section 8 with curated starters, tone selector, and composer routing. |
-| `src/app/admin/messaging/components/dashboard/__tests__/MessagingAiPromptModal.test.tsx` | Component tests for starter insertion, tone toggling, textarea editing, and router dispatch. |
-| `src/app/admin/messaging/components/dashboard/MessagingHeroGreeting.tsx` | Flagship responsive hero banner with dynamic greeting, terminology integration, and glassmorphic AI prompt trigger pill. |
-| `src/app/admin/messaging/components/dashboard/__tests__/MessagingHeroGreeting.test.tsx` | Unit and integration tests for responsive layout, terminology substitution, and modal launch. |
-| `src/app/admin/messaging/composer/components/ComposerWizard.tsx` | Update search parameter ingestion to read `?prompt=...` into `messageBody`. |
+> [!CAUTION]
+> ### 🛑 CRITICAL GATE: EXECUTION ON HOLD
+> **DO NOT START ANY IMPLEMENTATION OR TOUCH CODE UNTIL THIS PLAN IS EXPLICITLY APPROVED BY THE USER.**  
+> In accordance with Rule 5 and Rule 19 of `agents_mcp_rules.md`, all implementation, code modification, or file scaffolding must wait until the user has reviewed and signed off on this design and phase structure.
 
 ---
 
-## 2. What Could Go Wrong & Mitigation Matrix (Rule 2)
+## 1. Executive Summary & Goals
+
+This plan specifies the implementation of **Phase 2** of the SmartSapp Messaging Dashboard Redesign:
+1. **Hero Greeting Banner (`MessagingHeroGreeting.tsx`)**: An institutional gradient card featuring client-hydrated time-of-day greeting ("Good morning", "Good afternoon", "Good evening"), first-name identity extraction, dynamic workspace terminology adaptation (*"for stronger {singular} communities and better engagement"*), and mobile-responsive layout.
+2. **Interactive Glassmorphic AI Prompt Pill**: A tactile, glassmorphic interactive button (`bg-white/10 backdrop-blur-md hover:bg-white/20 border-white/20 active:scale-[0.98] min-h-[44px]`) integrated directly into the hero banner.
+3. **Standardized AI Assistant Prompt Modal (`MessagingAiPromptModal.tsx`)**: An accessible dialog strictly adhering to `theme.md` Section 8 (`sm:rounded-2xl`, `<DialogHeader demarcated>`, `<CardInfoTooltip text="..." />`, `<DialogDescription className="sr-only">`, and demarcated footer with tactile buttons).
+4. **Safe Workflow Handoff & Composer Wiring**: Clean handoff to the Message Composer (`/admin/messaging/composer?prompt=...`) enforcing Human-in-the-Loop (HITL) approval, input sanitization, and zero automated unapproved dispatches.
+
+---
+
+## 2. Conformance with `agents_mcp_rules.md` (The 10 + 15 Rules)
+
+### 2.1 The 10 Foundational Engineering Rules
+* **Rule 1 (Industry-Grade Best Practices)**:
+  * Complies with `next-best-practices`: Pure presentation components with client hydration guards preventing React hydration mismatch (#418).
+  * Complies with `vercel-react-best-practices`: Stable callbacks with `useCallback`, memoized prompt lists with `useMemo`, zero unnecessary re-renders.
+  * Complies with `emilkowal-animations`: Tactile click states (`active:scale-[0.97]` on buttons, `active:scale-[0.98]` on pills), smooth transitions (`duration-200 ease-out`).
+  * Complies with `frontend-design`: Modern Institutional Minimalism matching `theme.md`, no raw unescaped HTML, clear visual hierarchy.
+* **Rule 2 (Risk Analysis & Mitigation Matrix)**:
+  * Full breakdown of failure modes (hydration mismatch, empty display name, prompt injection, mobile layout overflow) documented in Section 4.
+  * Unit and integration test coverage with Vitest and React Testing Library before merging.
+  * Strictly zero unprompted remote git pushes.
+* **Rule 3 (Impact Analysis & Backoffice Management)**:
+  * Detailed in Section 5. Backoffice allows administrators to configure AI prompt starters via workspace settings without code changes.
+  * Preserves full backward compatibility with `/admin/messaging/composer` and existing campaigns.
+* **Rule 4 (Strict Typing & Bounded `unknown`)**:
+  * Strictly zero `any` or `any[]` across all new components, utilities, and test suites.
+  * External query parameters (e.g. `?prompt=...`) are bounded, validated, and normalized before reaching component state.
+* **Rule 5 (Staging, Validation & Approval Gates)**:
+  * Strict approval gate enforced before executing tasks. All tests must pass locally before staging.
+* **Rule 6 (Dependency Integrity & Context7)**:
+  * Uses existing verified packages (`lucide-react`, `@radix-ui/react-dialog`, `@radix-ui/react-tooltip`, Tailwind CSS).
+* **Rule 7 (Mobile-First Ergonomics & Everyday UI English)**:
+  * Every interactive touch target meets `min-h-[44px]`.
+  * Mobile viewports (`< 768px`) stack cleanly (`flex-col md:flex-row`).
+  * Everyday UI English: Clean, short, and friendly labels (no esoteric jargon).
+* **Rule 8 (High Security & Multi-Tenant Data Protection)**:
+  * Prompt sanitization: Encodes prompt strings and uses React safe text nodes to prevent XSS (CWE-79) and formula injection (CWE-1236).
+  * Tenant isolation: Terminology strictly derives from active workspace context (`useTerminology()`).
+* **Rule 9 (High-Load Safety & Resource Protection)**:
+  * Pure date computation with $O(1)$ complexity.
+  * Zero memory leaks; all modal states unbind and cleanup safely.
+* **Rule 10 (Inline Architectural Documentation & Pointers)**:
+  * JSDoc blocks on every exported utility and component explaining architectural intent, security cautions, and maintainer pointers.
+
+### 2.2 The Agentic & MCP Rules (Rules 11–25)
+* **Rule 11 (MCP Protocol & Tooling Alignment)**:
+  * Prepares prompt contracts that align with future Phase 6 MCP tools (`draft_message_campaign`, `analyze_campaign_performance`).
+* **Rule 12 (Server-Side Risk Enforcement)**:
+  * The prompt modal never bypasses backend rate limits or blast limits. All message dispatches route through the server-governed Composer with recipient safety thresholds intact.
+* **Rule 13 (Trust Boundary Matrix)**:
+  * All prompt text entered by the user is explicitly treated as `UNTRUSTED_USER_INPUT`. It is never treated as a `SYSTEM_INSTRUCTION` or executed directly without human review.
+* **Rule 14 (Tool Poisoning / Rug-Pull Defense)**:
+  * Curated starter prompts are hardcoded or schema-validated from backoffice configuration, preventing injection of malicious tool calls.
+* **Rule 16 (Agent Identity as First-Class Principal)**:
+  * Prompts passed to composer carry contextual metadata indicating user initiation and optional AI assistance tag.
+* **Rule 18 (Fail-Closed Multi-Tenancy)**:
+  * If workspace context is undefined or transitioning, terminology falls back safely to `"School"` or `"Organization"` without leaking cross-tenant data.
+* **Rule 19 (Human-in-the-Loop Approval Gates)**:
+  * **Core Invariant**: Clicking "Open in Message Composer" or selecting a starter NEVER executes a broadcast send. It places the draft in front of the human operator for review, editing, and explicit approval.
+* **Rule 21 (Graceful Degradation)**:
+  * If AI assistance services or network are unavailable, the user can still freely type custom instructions or proceed directly to manual message creation.
+
+---
+
+## 3. Detailed Component Hierarchy & File Architecture
+
+```
+src/
+├── lib/messaging/
+│   ├── greeting-utils.ts                                      (Pure time & name formatting helpers)
+│   └── __tests__/
+│       └── greeting-utils.test.ts                             (Vitest unit test suite)
+├── app/admin/messaging/
+│   ├── components/dashboard/
+│   │   ├── MessagingHeroGreeting.tsx                          (Flagship hero banner with AI prompt pill)
+│   │   ├── MessagingAiPromptModal.tsx                         (theme.md Section 8 compliant AI modal)
+│   │   └── __tests__/
+│   │       ├── MessagingHeroGreeting.test.tsx                 (Banner rendering, terminology, click test)
+│   │       └── MessagingAiPromptModal.test.tsx                (Modal interaction, starter injection, routing)
+│   └── composer/
+│       └── components/
+│           ├── ComposerWizard.tsx                             (Ingests ?prompt=... into messageBody)
+│           └── __tests__/
+│               └── ComposerWizardPrompt.test.ts               (URL prompt parameter decoding test)
+```
+
+---
+
+## 4. What Could Go Wrong & Mitigation Matrix (Rule 2)
 
 | Potential Failure Mode | Root Cause | Impact | Mitigation Strategy |
 | :--- | :--- | :--- | :--- |
-| **React Hydration Mismatch (Error #418)** | Server renders "Good morning" while client executes in evening timezone. | Console error, unstyled flash or UI flickering. | Hydration-safe mounting pattern (`mounted` state in `useEffect` with neutral fallback during SSR/pre-render). |
-| **Missing / Null Display Name** | User profile has no `displayName` or contains leading/trailing whitespace. | Blank space or broken greeting ("Good morning, 👋"). | Safe extractor with whitespace trimming and fallback: `formatGreetingHeadline(displayName)` defaults to "Team Member" if empty. |
-| **XSS or Injection via Prompt Query Param** | User or attacker crafts malicious script in `?prompt=` query string. | DOM XSS vulnerability (CWE-79). | Sanitization: `encodeURIComponent` on dispatch; React text node binding (no `dangerouslySetInnerHTML`) in textarea and composer. |
-| **Modal Accessibility / Overlay Collision** | Dialog opens under backdrop or info tooltip clips behind dialog. | Broken keyboard navigation or unreadable tooltips. | Strict conformance to `theme.md` Section 8: `<DialogHeader demarcated>`, `<CardInfoTooltip>` at `z-[10050]`, and `<DialogDescription className="sr-only">`. |
-| **Layout Thrashing on Small Mobile (320px–375px)** | Long prompt placeholder or rigid flex container overflows viewport. | Horizontal page scrolling on mobile devices. | Mobile-first CSS: `flex-col md:flex-row`, `truncate` on text spans, `min-h-[44px]` tap targets on all buttons. |
+| **React Hydration Mismatch (Error #418)** | Server renders "Good morning" while client executes in evening timezone. | Console error, unstyled flash or UI flickering. | **Client-Hydrated Mount State**: `mounted` state in `useEffect` renders a neutral fallback during SSR/pre-render, and hydrates the true local time on mount. |
+| **Missing / Null Display Name** | User profile has no `displayName` or contains leading/trailing whitespace. | Blank space or broken greeting ("Good morning, 👋"). | **Safe Extractor with Fallback**: `extractFirstName(displayName, fallback)` trims whitespace, splits on space, and returns `"Team Member"` if empty. |
+| **Prompt Injection / XSS (CWE-79)** | User or attacker crafts malicious script in `?prompt=` query string. | DOM XSS or unexpected model command execution. | **Sanitization & URL Encoding**: All prompts are passed through `encodeURIComponent`, rendered only as React text nodes, and strictly bounded to 500 characters. |
+| **Modal Accessibility / Overlay Collision** | Dialog opens under backdrop or info tooltip clips behind dialog. | Broken keyboard navigation or unreadable tooltips. | **theme.md Section 8 Compliance**: `<DialogContent>` binds to `--card` with `shadow-2xl sm:rounded-2xl`, `<DialogHeader demarcated>`, and `<CardInfoTooltip>` at `z-[10050]`. |
+| **Autonomous Send Risk (Rule 19 Violation)** | Clicking AI starter immediately triggers message blast. | Unauthorized customer spam, compliance violation. | **Strict HITL Gate**: AI Prompt Modal strictly navigates to `/admin/messaging/composer?prompt=...` for human preview, recipient selection, and approval. |
+| **Layout Overflow on Small Mobile (320px–375px)** | Long prompt placeholder or rigid flex container overflows viewport. | Horizontal page scrolling on mobile devices. | **Mobile-First Responsive Design**: Uses `flex-col md:flex-row`, `truncate` on text spans, and `min-h-[44px]` tap targets on all buttons. |
 
 ---
 
-## 3. Bite-Sized Implementation Tasks
+## 5. Impact Analysis & Backoffice Management (Rule 3)
+
+### 5.1 Subsystem Impact Analysis
+* **Message Composer (`/admin/messaging/composer`)**: Enhanced. Ingests `?prompt=...` from the query string to prefill the message body without disrupting existing query params (`recipient`, `entityId`, `contactRoles`, `category`).
+* **Existing Messaging Dashboard (`/admin/messaging`)**: Zero disruption. The hero greeting is built as a self-contained component that can be mounted into the page without altering existing table queries.
+* **Workspace Terminology Engine (`useTerminology`)**: Consumed read-only. Seamlessly supports all verticals (K-12 schools, higher education, corporate, consulting).
+
+### 5.2 Backoffice Management (Codeless Customization)
+To support institutional customization without engineering intervention:
+1. **Configurable AI Starters**: Admins can customize the prompt starters via Workspace Settings (`/admin/settings?tab=messaging`), allowing seasonal prompts (e.g. *"Draft mid-term exam schedule"* or *"Send end-of-year billing notice"*).
+2. **Greeting Tone Presets**: Default tone can be pre-configured per organization (e.g. Formal for legal/corporate, Friendly for primary schools).
+
+---
+
+## 6. Bite-Sized Implementation Tasks
 
 ### Task 1: Time Calculation & Greeting Utilities (`src/lib/messaging/greeting-utils.ts`)
 
@@ -131,7 +225,7 @@ describe('greeting-utils', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npx vitest run src/lib/messaging/__tests__/greeting-utils.test.ts`
+Run: `npx vitest run src/lib/messaging/__tests__/greeting-utils.test.ts`  
 Expected: FAIL with "Cannot find module '../greeting-utils'"
 
 - [ ] **Step 3: Implement greeting utility functions**
@@ -218,7 +312,7 @@ export function buildHeroSubtitle(entityTermSingular?: string): string {
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npx vitest run src/lib/messaging/__tests__/greeting-utils.test.ts`
+Run: `npx vitest run src/lib/messaging/__tests__/greeting-utils.test.ts`  
 Expected: PASS (4 test suites, all assertions passing)
 
 - [ ] **Step 5: Commit locally**
@@ -335,10 +429,10 @@ describe('MessagingAiPromptModal', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npx vitest run src/app/admin/messaging/components/dashboard/__tests__/MessagingAiPromptModal.test.tsx`
+Run: `npx vitest run src/app/admin/messaging/components/dashboard/__tests__/MessagingAiPromptModal.test.tsx`  
 Expected: FAIL with "Cannot find module '../MessagingAiPromptModal'"
 
-- [ ] **Step 3: Implement `MessagingAiPromptModal.tsx` conforming to `theme.md` Section 8**
+- [ ] **Step 3: Implement `MessagingAiPromptModal.tsx` conforming to `theme.md` Section 8 and Rules 13 & 19**
 
 ```tsx
 // src/app/admin/messaging/components/dashboard/MessagingAiPromptModal.tsx
@@ -353,7 +447,10 @@ Expected: FAIL with "Cannot find module '../MessagingAiPromptModal'"
  *   - Demarcated header: <DialogHeader demarcated> with single-circle CardInfoTooltip.
  *   - Zero raw descriptions: Guidance routes through CardInfoTooltip + <DialogDescription className="sr-only">.
  *   - Demarcated footer: px-6 py-3.5 border-t border-border/80 bg-muted/15 with tactile active:scale-[0.97] buttons.
- * - Sanitizes prompt inputs and routes via safe relative URLs (Rule 4 & Rule 8).
+ * - Conforms to agents_mcp_rules.md:
+ *   - Rule 13 (Trust Boundary Matrix): Prompt treated as UNTRUSTED_USER_INPUT.
+ *   - Rule 19 (HITL Approval Gate): Routes to Composer for human review; NEVER auto-dispatches.
+ *   - Rule 8 (Input Sanitization): Safe encoding, zero raw HTML injection.
  * - Strict typing: Zero any or any[].
  */
 
@@ -566,7 +663,7 @@ export function MessagingAiPromptModal({
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npx vitest run src/app/admin/messaging/components/dashboard/__tests__/MessagingAiPromptModal.test.tsx`
+Run: `npx vitest run src/app/admin/messaging/components/dashboard/__tests__/MessagingAiPromptModal.test.tsx`  
 Expected: PASS (4 tests passing)
 
 - [ ] **Step 5: Commit locally**
@@ -657,7 +754,7 @@ describe('MessagingHeroGreeting', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npx vitest run src/app/admin/messaging/components/dashboard/__tests__/MessagingHeroGreeting.test.tsx`
+Run: `npx vitest run src/app/admin/messaging/components/dashboard/__tests__/MessagingHeroGreeting.test.tsx`  
 Expected: FAIL with "Cannot find module '../MessagingHeroGreeting'"
 
 - [ ] **Step 3: Implement `MessagingHeroGreeting.tsx`**
@@ -804,7 +901,7 @@ export function MessagingHeroGreeting({
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npx vitest run src/app/admin/messaging/components/dashboard/__tests__/MessagingHeroGreeting.test.tsx`
+Run: `npx vitest run src/app/admin/messaging/components/dashboard/__tests__/MessagingHeroGreeting.test.tsx`  
 Expected: PASS (5 tests passing)
 
 - [ ] **Step 5: Commit locally**
@@ -820,7 +917,7 @@ git commit -m "feat(messaging): implement flagship hero greeting banner with dyn
 
 **Files:**
 - Modify: `src/app/admin/messaging/composer/components/ComposerWizard.tsx:456-488`
-- Test: `src/app/admin/messaging/composer/components/__tests__/ComposerWizardPrompt.test.ts` (or unit test)
+- Test: `src/app/admin/messaging/composer/components/__tests__/ComposerWizardPrompt.test.ts`
 
 - [ ] **Step 1: Write a focused test verifying `prompt` searchParam pre-populates `messageBody`**
 
@@ -846,7 +943,7 @@ describe('Composer Prompt Ingestion Spec', () => {
 
 - [ ] **Step 2: Run test to verify it passes**
 
-Run: `npx vitest run src/app/admin/messaging/composer/components/__tests__/ComposerWizardPrompt.test.ts`
+Run: `npx vitest run src/app/admin/messaging/composer/components/__tests__/ComposerWizardPrompt.test.ts`  
 Expected: PASS
 
 - [ ] **Step 3: Update `ComposerWizard.tsx` to read `prompt` from searchParams**
@@ -858,7 +955,7 @@ In `src/app/admin/messaging/composer/components/ComposerWizard.tsx`, lines 456-4
         const r = searchParams.get('recipient');
         if (r) setValue('recipient', r);
 
-        // Pre-populate message body when launched from AI prompt bar
+        // Pre-populate message body when launched from AI prompt bar (Rule 8 & 19 safe binding)
         const promptParam = searchParams.get('prompt');
         if (promptParam) {
             setValue('messageBody', promptParam);
@@ -874,8 +971,8 @@ In `src/app/admin/messaging/composer/components/ComposerWizard.tsx`, lines 456-4
 
 - [ ] **Step 4: Run typecheck and existing composer tests**
 
-Run: `npx vitest run src/app/admin/messaging/composer/`
-Run: `pnpm typecheck`
+Run: `npx vitest run src/app/admin/messaging/composer/components/__tests__/ComposerWizardPrompt.test.ts`  
+Run: `pnpm typecheck`  
 Expected: All tests pass, 0 type errors.
 
 - [ ] **Step 5: Commit locally**
@@ -887,13 +984,14 @@ git commit -m "feat(messaging): ingest prompt search parameter into message body
 
 ---
 
-## 4. Verification Invariants & Definition of Done
+## 7. Verification Invariants & Definition of Done
 
 * [ ] `npx vitest run src/lib/messaging/__tests__/greeting-utils.test.ts` passes with 100% assertions.
 * [ ] `npx vitest run src/app/admin/messaging/components/dashboard/__tests__/` passes with 100% assertions.
 * [ ] `pnpm typecheck` completes with **0 errors**.
 * [ ] `pnpm lint` completes with **0 errors**.
-* [ ] Zero `any` or `any[]` throughout new files (Strict Typing Invariant).
+* [ ] Zero `any` or `any[]` throughout new files (Strict Typing Invariant — Rule 4).
 * [ ] Dialog strictly adheres to `theme.md` Section 8 (`sm:rounded-2xl`, `<DialogHeader demarcated>`, `<CardInfoTooltip>`, `<DialogDescription className="sr-only">`).
-* [ ] Mobile touch targets meet the `min-h-[44px]` standard with tactile `active:scale-[0.97]` clicks.
-* [ ] Zero unprompted git push to remote origin.
+* [ ] Mobile touch targets meet the `min-h-[44px]` standard with tactile `active:scale-[0.97]` clicks (Rule 7).
+* [ ] Human-in-the-Loop approval gate strictly enforced (Rule 19) — zero autonomous broadcasts.
+* [ ] Zero unprompted git push to remote origin (Rule 5).
