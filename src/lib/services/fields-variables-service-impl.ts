@@ -708,6 +708,8 @@ export class FieldsVariablesService {
             valuesMap.set('entity_console_link', `${baseUrl}/admin/entities/${targetEntityId}`);
             valuesMap.set('entity_link', `${baseUrl}/admin/entities/${targetEntityId}`);
             valuesMap.set('entity_dashboard_link', `${baseUrl}/admin/entities/${targetEntityId}`);
+            valuesMap.set('lead_link', `${baseUrl}/admin/entities/${targetEntityId}`);
+            valuesMap.set('lead_url', `${baseUrl}/admin/entities/${targetEntityId}`);
 
             try {
               const { resolveTagVariables } = await import('../messaging-actions');
@@ -1292,6 +1294,18 @@ export class FieldsVariablesService {
         valuesMap.set('deal_id', dealIdVal);
         valuesMap.set('deal_link', `${baseUrl}/admin/deals/${dealIdVal}`);
         valuesMap.set('deal_url', `${baseUrl}/admin/deals/${dealIdVal}`);
+      }
+      const targetEntityId = dealData.entityId || context.entityId || (typeof context.extraVars?.entityId === 'string' ? context.extraVars.entityId : '');
+      if (targetEntityId) {
+        valuesMap.set('lead_id', targetEntityId);
+        valuesMap.set('lead_link', `${baseUrl}/admin/entities/${targetEntityId}`);
+        valuesMap.set('lead_url', `${baseUrl}/admin/entities/${targetEntityId}`);
+        if (!valuesMap.has('entity_link')) {
+          valuesMap.set('entity_link', `${baseUrl}/admin/entities/${targetEntityId}`);
+        }
+      } else if (dealIdVal) {
+        valuesMap.set('lead_link', `${baseUrl}/admin/deals/${dealIdVal}`);
+        valuesMap.set('lead_url', `${baseUrl}/admin/deals/${dealIdVal}`);
       }
       if (dealData.name) {
         valuesMap.set('deal_name', dealData.name);

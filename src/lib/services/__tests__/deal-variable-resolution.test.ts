@@ -242,6 +242,7 @@ describe('Deal and Assignment Variable Resolution Suite', () => {
       exists: true,
       data: () => ({
         id: 'deal_555',
+        entityId: 'ent_lead_999',
         name: 'University Contract',
         value: 50000,
         pipelineId: 'pipe_1',
@@ -282,6 +283,8 @@ describe('Deal and Assignment Variable Resolution Suite', () => {
     expect(emailBody).toContain('Deal Value: 50000');
     expect(emailBody).toContain('Pipeline: Enterprise Pipeline');
     expect(emailBody).toContain('Stage: Negotiation');
+    expect(emailBody).toContain('/admin/entities/ent_lead_999');
+    expect(emailBody).toContain('/admin/deals/deal_555');
     expect(emailBody).not.toMatch(/\{\{.*?\}\}/);
 
     const smsBody = await FieldsVariablesService.resolveTemplateVariables(
@@ -297,6 +300,7 @@ describe('Deal and Assignment Variable Resolution Suite', () => {
     expect(smsBody).toContain('Hi Kofi Annan');
     expect(smsBody).toContain('University Contract');
     expect(smsBody).toContain('50000');
+    expect(smsBody).toContain('/admin/entities/ent_lead_999');
     expect(smsBody).not.toMatch(/\{\{.*?\}\}/);
 
     const waBody = await FieldsVariablesService.resolveTemplateVariables(
@@ -312,7 +316,19 @@ describe('Deal and Assignment Variable Resolution Suite', () => {
     expect(waBody).toContain('Hi Kofi Annan');
     expect(waBody).toContain('*University Contract*');
     expect(waBody).toContain('*Pipeline:* Enterprise Pipeline');
+    expect(waBody).toContain('/admin/entities/ent_lead_999');
     expect(waBody).not.toMatch(/\{\{.*?\}\}/);
+  });
+
+  it('registers lead_link and lead_url in template variables registry', async () => {
+    const { STATIC_VARIABLES } = await import('../../template-variable-registry-data');
+    const leadLink = STATIC_VARIABLES.find(v => v.name === 'lead_link');
+    const leadUrl = STATIC_VARIABLES.find(v => v.name === 'lead_url');
+
+    expect(leadLink).toBeDefined();
+    expect(leadLink?.dataType).toBe('url');
+    expect(leadUrl).toBeDefined();
+    expect(leadUrl?.dataType).toBe('url');
   });
 
   it('unwraps assignedTo object in extraVars and actorUserId for assigner resolution', async () => {

@@ -7,6 +7,7 @@ import {
   checkWorkspaceCapability,
   checkFullWorkspacePermission,
   getUserWorkspaceIds,
+  canUser,
 } from '../workspace-permissions';
 import { adminDb } from '../firebase-admin';
 import type { UserProfile, Role, Workspace, WorkspaceEntity } from '../types';
@@ -784,6 +785,111 @@ describe('workspace-permissions', () => {
       const result = await getUserWorkspaceIds(mockUserId);
 
       expect(result).toEqual([]);
+    });
+  });
+
+  describe('canUser', () => {
+    it('should grant access dynamically from assigned role document in Firestore', async () => {
+      const userWithoutSchema = {
+        ...mockUser,
+        workspaceIds: [mockWorkspaceId],
+        roles: ['role-pipeline-editor'],
+        permissionsSchema: undefined,
+        workspacePermissionsSchemas: undefined,
+      };
+
+      const pipelineRole = {
+        id: 'role-pipeline-editor',
+        organizationId: mockOrganizationId,
+        name: 'Pipeline Editor',
+        workspaceIds: [],
+        permissionsSchema: {
+          operations: {
+            enabled: true,
+            features: {
+              pipeline: { view: true, create: true, edit: true, delete: true },
+            },
+          },
+        },
+      };
+
+      (adminDb.collection as any).mockImplementation((collectionName: string) => {
+        if (collectionName === 'users') {
+          return {
+            doc: () => ({
+              get: async () => ({
+                exists: true,
+                data: () => userWithoutSchema,
+              }),
+            }),
+          };
+        }
+        if (collectionName === 'workspaces') {
+          return {
+            doc: () => ({
+              get: async () => ({
+                exists: true,
+                data: () => mockWorkspace,
+              }),
+            }),
+          };
+        }
+        if (collectionName === 'roles') {
+          return {
+            doc: (docId: string) => ({
+              get: async () => ({
+                exists: docId === 'role-pipeline-editor',
+                id: 'role-pipeline-editor',
+                data: () => pipelineRole,
+              }),
+            }),
+            where: () => ({
+              get: async () => ({ docs: [] }),
+            }),
+          };
+        }
+      });
+
+      const editResult = await canUser(mockUserId, 'operations', 'pipeline', 'edit', mockWorkspaceId);
+      expect(editResult.granted).toBe(true);
+
+      const deleteResult = await canUser(mockUserId, 'operations', 'pipeline', 'delete', mockWorkspaceId);
+      expect(deleteResult.granted).toBe(true);
+    });
+
+    it('should grant access to workspace admin bypass', async () => {
+      const workspaceAdminUser = {
+        ...mockUser,
+        workspaceIds: [mockWorkspaceId],
+        role: 'admin',
+      };
+
+      (adminDb.collection as any).mockImplementation((collectionName: string) => {
+        if (collectionName === 'users') {
+          return {
+            doc: () => ({
+              get: async () => ({
+                exists: true,
+                data: () => workspaceAdminUser,
+              }),
+            }),
+          };
+        }
+        if (collectionName === 'workspaces') {
+          return {
+            doc: () => ({
+              get: async () => ({
+                exists: true,
+                data: () => mockWorkspace,
+              }),
+            }),
+          };
+        }
+      });
+
+      const result = await canUser(mockUserId, 'operations', 'pipeline', 'edit', mockWorkspaceId);
+      expect(result.granted).toBe(true);
+      expect(result.reason).toBe('Workspace admin bypass');
     });
   });
 });

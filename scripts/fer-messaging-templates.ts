@@ -71,6 +71,33 @@ async function run() {
         } else {
           skippedCount++;
         }
+      } else if (data.templateType === 'deal_assigned') {
+        // Enforce lead_link and redirect link in Deal Assignment templates
+        const matchingDef = TEMPLATES.find(t => t.templateType === 'deal_assigned' && t.channel === data.channel);
+        if (matchingDef) {
+          const declared = (data.declaredVariables as string[]) || [];
+          const missingVars = matchingDef.declaredVariables.filter(v => !declared.includes(v));
+          const needsBodyUpdate = !String(data.body || '').includes('lead_link');
+
+          if (missingVars.length > 0 || needsBodyUpdate) {
+            if (!DRY_RUN) {
+              enrichBatch.update(doc.ref, {
+                body: matchingDef.body,
+                declaredVariables: Array.from(new Set([...declared, ...matchingDef.declaredVariables])),
+                recipientType: 'internal_alert',
+                target: 'internal_team',
+                updatedAt: new Date().toISOString(),
+              });
+              enrichOpCount++;
+            }
+            enrichedCount++;
+            console.log(`   Enriched deal_assigned template "${data.name || doc.id}" with lead_link and variables: ${matchingDef.declaredVariables.join(', ')}`);
+          } else {
+            skippedCount++;
+          }
+        } else {
+          skippedCount++;
+        }
       } else {
         skippedCount++;
       }

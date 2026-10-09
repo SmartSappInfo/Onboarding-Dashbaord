@@ -449,6 +449,41 @@ export async function createDealCore(actor: CrmActor, data: DealCreationData): P
         value: newDeal.value || 0,
         assignedTo: newDeal.assignedTo,
       });
+
+      // ARCHITECTURAL POINTER:
+      // Dispatch deal_assigned internal notification to assigned team member upon deal creation
+      if (newDeal.assignedTo?.userId) {
+        try {
+          const { triggerInternalNotification } = await import('@/lib/notification-engine');
+          triggerInternalNotification({
+            triggerKey: 'deal_assigned',
+            dealId: docRef.id,
+            entityId: cleanEntityId,
+            specificUserIds: [newDeal.assignedTo.userId],
+            channel: 'all',
+            variables: {
+              workspaceId,
+              organizationId,
+              dealId: docRef.id,
+              deal_id: docRef.id,
+              entityId: cleanEntityId,
+              deal_name: cleanDealName,
+              deal_title: cleanDealName,
+              deal_value: newDeal.value || 0,
+              deal_pipeline: pipelineId || '',
+              deal_stage: stageName || stageId || '',
+              assigned_to: newDeal.assignedTo.name || 'Colleague',
+              assignee_name: newDeal.assignedTo.name || 'Colleague',
+              assigner_name: 'Team Lead',
+              assignerName: 'Team Lead',
+            }
+          }).catch((notifyErr: unknown) => {
+            console.warn('[deal-core] Failed to send deal assignment notification on create:', notifyErr);
+          });
+        } catch (err: unknown) {
+          console.warn('[deal-core] Failed to invoke triggerInternalNotification on create:', err);
+        }
+      }
     }
 
     return { id: docRef.id };
@@ -840,6 +875,41 @@ export async function updateDealOwnerCore(
         deal_url: `/admin/deals/${dealId}`,
       },
     });
+
+    // ARCHITECTURAL POINTER:
+    // Dispatch deal_assigned internal notification to assigned team member with direct link to lead details
+    if (userId && userId !== deal.assignedTo?.userId) {
+      try {
+        const { triggerInternalNotification } = await import('@/lib/notification-engine');
+        triggerInternalNotification({
+          triggerKey: 'deal_assigned',
+          dealId,
+          entityId: deal.entityId,
+          specificUserIds: [userId],
+          channel: 'all',
+          variables: {
+            workspaceId: deal.workspaceId,
+            organizationId: deal.organizationId,
+            dealId,
+            deal_id: dealId,
+            entityId: deal.entityId,
+            deal_name: deal.name,
+            deal_title: deal.name,
+            deal_value: deal.value || 0,
+            deal_pipeline: deal.pipelineId || '',
+            deal_stage: deal.stageName || deal.stageId || '',
+            assigned_to: userName || 'Colleague',
+            assignee_name: userName || 'Colleague',
+            assigner_name: assignerName,
+            assignerName,
+          }
+        }).catch((notifyErr: unknown) => {
+          console.warn('[deal-core] Failed to send deal assignment notification:', notifyErr);
+        });
+      } catch (err: unknown) {
+        console.warn('[deal-core] Failed to invoke triggerInternalNotification on owner update:', err);
+      }
+    }
 
     await logActivity({
       organizationId: deal.organizationId,

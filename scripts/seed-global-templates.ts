@@ -846,6 +846,7 @@ _{{org_name}}_`,
     category: 'general',
     templateType: 'deal_assigned',
     channel: 'email',
+    recipientType: 'internal_alert',
     subject: 'Deal {{deal_name}} has been assigned to you',
     body: `Hi {{assigned_to}},
 
@@ -855,12 +856,13 @@ Deal Value: {{deal_value}}
 Pipeline: {{deal_pipeline}}
 Stage: {{deal_stage}}
 
-Review deal details here: {{deal_link}}
+🔗 View Lead Details: [View Lead Details]({{lead_link}})
+Review Deal Details: [View Deal]({{deal_link}})
 
 Best regards,
 {{org_name}}`,
     variableContext: 'deal',
-    declaredVariables: ['assigned_to', 'deal_name', 'deal_value', 'deal_pipeline', 'deal_stage', 'assigner_name', 'deal_link', 'org_name'],
+    declaredVariables: ['assigned_to', 'deal_name', 'deal_value', 'deal_pipeline', 'deal_stage', 'assigner_name', 'lead_link', 'deal_link', 'org_name'],
   },
 
   {
@@ -868,9 +870,10 @@ Best regards,
     category: 'general',
     templateType: 'deal_assigned',
     channel: 'sms',
-    body: 'Hi {{assigned_to}}, you have been assigned to deal {{deal_name}} ({{deal_value}}) by {{assigner_name}}. View: {{deal_link}}',
+    recipientType: 'internal_alert',
+    body: 'Hi {{assigned_to}}, you have been assigned to deal {{deal_name}} ({{deal_value}}) by {{assigner_name}}. View Lead: {{lead_link}}',
     variableContext: 'deal',
-    declaredVariables: ['assigned_to', 'deal_name', 'deal_value', 'assigner_name', 'deal_link'],
+    declaredVariables: ['assigned_to', 'deal_name', 'deal_value', 'assigner_name', 'lead_link', 'deal_link'],
   },
 
   {
@@ -878,6 +881,7 @@ Best regards,
     category: 'general',
     templateType: 'deal_assigned',
     channel: 'whatsapp',
+    recipientType: 'internal_alert',
     body: `Hi {{assigned_to}},
 
 You have been assigned to deal *{{deal_name}}* ({{deal_value}}) by {{assigner_name}}.
@@ -885,11 +889,12 @@ You have been assigned to deal *{{deal_name}}* ({{deal_value}}) by {{assigner_na
 *Pipeline:* {{deal_pipeline}}
 *Stage:* {{deal_stage}}
 
-Review details: {{deal_link}}
+🔗 *Lead Details:* {{lead_link}}
+*Deal Details:* {{deal_link}}
 
 _{{org_name}}_`,
     variableContext: 'deal',
-    declaredVariables: ['assigned_to', 'deal_name', 'deal_value', 'deal_pipeline', 'deal_stage', 'assigner_name', 'deal_link', 'org_name'],
+    declaredVariables: ['assigned_to', 'deal_name', 'deal_value', 'deal_pipeline', 'deal_stage', 'assigner_name', 'lead_link', 'deal_link', 'org_name'],
   },
 
   {

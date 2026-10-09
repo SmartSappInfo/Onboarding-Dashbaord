@@ -673,19 +673,22 @@ export const TEMPLATES: TemplateDef[] = [
   },
   {
     name: 'Deal Assignment (Email)', category: 'general', templateType: 'deal_assigned', channel: 'email',
+    recipientType: 'internal_alert',
     subject: 'Deal {{deal_name}} has been assigned to you',
-    body: `Hi {{assigned_to}},\n\nYou have been assigned to deal {{deal_name}} by {{assigner_name}}.\n\nDeal Value: {{deal_value}}\nPipeline: {{deal_pipeline}}\nStage: {{deal_stage}}\n\nReview deal details here: {{deal_link}}\n\nBest regards,\n{{org_name}}`,
-    variableContext: 'deal', declaredVariables: ['assigned_to', 'deal_name', 'deal_value', 'deal_pipeline', 'deal_stage', 'assigner_name', 'deal_link', 'org_name'],
+    body: `Hi {{assigned_to}},\n\nYou have been assigned to deal {{deal_name}} by {{assigner_name}}.\n\nDeal Value: {{deal_value}}\nPipeline: {{deal_pipeline}}\nStage: {{deal_stage}}\n\n🔗 View Lead Details: [View Lead Details]({{lead_link}})\nReview Deal Details: [View Deal]({{deal_link}})\n\nBest regards,\n{{org_name}}`,
+    variableContext: 'deal', declaredVariables: ['assigned_to', 'deal_name', 'deal_value', 'deal_pipeline', 'deal_stage', 'assigner_name', 'lead_link', 'deal_link', 'org_name'],
   },
   {
     name: 'Deal Assignment (SMS)', category: 'general', templateType: 'deal_assigned', channel: 'sms',
-    body: 'Hi {{assigned_to}}, you have been assigned to deal {{deal_name}} ({{deal_value}}) by {{assigner_name}}. View: {{deal_link}}',
-    variableContext: 'deal', declaredVariables: ['assigned_to', 'deal_name', 'deal_value', 'assigner_name', 'deal_link'],
+    recipientType: 'internal_alert',
+    body: 'Hi {{assigned_to}}, you have been assigned to deal {{deal_name}} ({{deal_value}}) by {{assigner_name}}. View Lead: {{lead_link}}',
+    variableContext: 'deal', declaredVariables: ['assigned_to', 'deal_name', 'deal_value', 'assigner_name', 'lead_link', 'deal_link'],
   },
   {
     name: 'Deal Assignment (WhatsApp)', category: 'general', templateType: 'deal_assigned', channel: 'whatsapp',
-    body: `Hi {{assigned_to}},\n\nYou have been assigned to deal *{{deal_name}}* ({{deal_value}}) by {{assigner_name}}.\n\n*Pipeline:* {{deal_pipeline}}\n*Stage:* {{deal_stage}}\n\nReview details: {{deal_link}}\n\n_{{org_name}}_`,
-    variableContext: 'deal', declaredVariables: ['assigned_to', 'deal_name', 'deal_value', 'deal_pipeline', 'deal_stage', 'assigner_name', 'deal_link', 'org_name'],
+    recipientType: 'internal_alert',
+    body: `Hi {{assigned_to}},\n\nYou have been assigned to deal *{{deal_name}}* ({{deal_value}}) by {{assigner_name}}.\n\n*Pipeline:* {{deal_pipeline}}\n*Stage:* {{deal_stage}}\n\n🔗 *Lead Details:* {{lead_link}}\n*Deal Details:* {{deal_link}}\n\n_{{org_name}}_`,
+    variableContext: 'deal', declaredVariables: ['assigned_to', 'deal_name', 'deal_value', 'deal_pipeline', 'deal_stage', 'assigner_name', 'lead_link', 'deal_link', 'org_name'],
   },
   {
     name: 'Status Update (Email)', category: 'general', templateType: 'status_update', channel: 'email',

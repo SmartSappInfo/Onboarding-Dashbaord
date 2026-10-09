@@ -89,9 +89,29 @@ export async function requireAuth(): Promise<AuthContext> {
 export async function requireWorkspace(workspaceId: string): Promise<AuthContext> {
   const ctx = await requireAuth();
   if (ctx.isSystemAdmin) return ctx;
-  if (!(ctx.profile.workspaceIds ?? []).includes(workspaceId)) {
+
+  // 1. Direct workspace membership on user profile
+  if ((ctx.profile.workspaceIds ?? []).includes(workspaceId)) {
+    return ctx;
+  }
+
+  // 2. Workspace-specific role assignment
+  if (
+    ctx.profile.workspaceRoles &&
+    typeof ctx.profile.workspaceRoles === 'object' &&
+    Array.isArray(ctx.profile.workspaceRoles[workspaceId]) &&
+    ctx.profile.workspaceRoles[workspaceId].length > 0
+  ) {
+    return ctx;
+  }
+
+  // 3. Fall back to complete role evaluation via checkWorkspaceAccess
+  const { checkWorkspaceAccess } = await import('@/lib/workspace-permissions');
+  const access = await checkWorkspaceAccess(ctx.uid, workspaceId);
+  if (!access.granted) {
     throw new ForbiddenError('No access to this workspace.');
   }
+
   return ctx;
 }
 

@@ -596,8 +596,11 @@ export async function deleteDealAction(
             return { success: false, error: 'Missing dealId or workspaceId' };
         }
 
-        // SECURITY (N1): authorized against the deal's STORED workspace, not the one in the request.
-        const loaded = await loadAuthorizedDeal(actor, dealId, 'edit');
+        // SECURITY (N1): authorized against the deal's STORED workspace, with delete or edit permission.
+        let loaded = await loadAuthorizedDeal(actor, dealId, 'delete');
+        if (!loaded.ok) {
+            loaded = await loadAuthorizedDeal(actor, dealId, 'edit');
+        }
         if (!loaded.ok) return { success: false, error: loaded.error };
         const { deal, ref: dealRef } = loaded;
 
