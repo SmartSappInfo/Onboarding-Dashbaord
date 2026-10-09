@@ -72,6 +72,7 @@ import { TaskScopeSwitcher, type TaskScope } from './components/TaskScopeSwitche
 import { TaskFilterChips, type FilterChipItem } from './components/TaskFilterChips';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TaskListRow } from './components/TaskListRow';
+import { TaskDetailDrawer } from './components/TaskDetailDrawer';
 import { TaskEmptyState } from './components/primitives/TaskEmptyState';
 import { TaskErrorState } from './components/primitives/TaskErrorState';
 import { TaskSkeleton } from './components/primitives/TaskSkeleton';
@@ -274,6 +275,16 @@ export default function TasksClient() {
     const [editorOpen, setEditorOpen] = React.useState(false);
     const [editingTask, setEditingTask] = React.useState<Task | null>(null);
     const [isSaving, setIsSaving] = React.useState(false);
+
+    // Detail Drawer State (Phase 3)
+    const [selectedDetailTask, setSelectedDetailTask] = React.useState<Task | null>(null);
+    const [detailDrawerOpen, setDetailDrawerOpen] = React.useState(false);
+
+    // Active detail task stays synced with latest allTasks Firestore stream
+    const activeDetailTask = React.useMemo(() => {
+        if (!selectedDetailTask) return null;
+        return allTasks?.find(t => t.id === selectedDetailTask.id) || selectedDetailTask;
+    }, [allTasks, selectedDetailTask]);
 
     // Confirmation State
     const [taskToComplete, setTaskToComplete] = React.useState<Task | null>(null);
@@ -858,6 +869,39 @@ export default function TasksClient() {
         } catch (e: unknown) {
             toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) || 'Failed to reschedule task' });
             return false;
+        }
+    const handleOpenDetailDrawer = (task: Task) => {
+        setSelectedDetailTask(task);
+        setDetailDrawerOpen(true);
+    };
+
+    const handleUpdateTaskFromDrawer = async (taskId: string, updates: Partial<Task>) => {
+        if (!currentUser) return;
+        setPendingTaskIds(prev => new Set(prev).add(taskId));
+        try {
+            const targetTask = allTasks?.find(t => t.id === taskId) || selectedDetailTask;
+            if (!targetTask) return;
+            const merged: Task = { ...targetTask, ...updates, updatedAt: new Date().toISOString() };
+            const res = await updateTaskAction(taskId, merged);
+            if (res.success) {
+                setSelectedDetailTask(merged);
+                toast({ title: 'Task updated successfully' });
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Update Failed',
+                    description: res.error || 'Failed to update task.',
+                    actionConfig: { path: '/admin/settings/permissions', label: 'Check Permissions' }
+                });
+            }
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) || 'Failed to update task' });
+        } finally {
+            setPendingTaskIds(prev => {
+                const next = new Set(prev);
+                next.delete(taskId);
+                return next;
+            });
         }
     };
 
@@ -1969,7 +2013,7 @@ export default function TasksClient() {
                                                                 onEdit={(t) => { setEditingTask(t); setEditorOpen(true); }}
                                                                 onDelete={(t) => setTaskToDelete(t)}
                                                                 onPostpone={(t, days) => handlePostponeTask(t, days)}
-                                                                onClick={(t) => { setEditingTask(t); setEditorOpen(true); }}
+                                                                onClick={handleOpenDetailDrawer}
                                                             />
                                                         ))
                                                     ) : (
@@ -1991,7 +2035,7 @@ export default function TasksClient() {
                         <TaskBoard 
                             tasks={filteredTasks} 
                             entityLogoMap={entityLogoMap} 
-                            onTaskClick={(t) => { setEditingTask(t); setEditorOpen(true); }} 
+                            onTaskClick={handleOpenDetailDrawer} 
                             userMap={userMap}
                             pendingTaskIds={pendingTaskIds}
                         />
@@ -2000,7 +2044,7 @@ export default function TasksClient() {
                     <TabsContent value="calendar" className="m-0">
                         <TaskCalendar 
                             tasks={calendarFilteredTasks} 
-                            onTaskClick={(t) => { setEditingTask(t); setEditorOpen(true); }} 
+                            onTaskClick={handleOpenDetailDrawer} 
                             userMap={userMap}
                             onTaskUpdate={handleCalendarTaskUpdate}
                             onDateClick={(date) => {
@@ -2046,6 +2090,23 @@ export default function TasksClient() {
                 task={editingTask}
                 onSave={handleSaveTask}
                 isSaving={isSaving}
+            />
+
+            {/* Slide-Over Task Detail Inspection Drawer (Phase 3) */}
+            <TaskDetailDrawer
+                task={activeDetailTask}
+                isOpen={detailDrawerOpen}
+                onClose={() => setDetailDrawerOpen(false)}
+                onUpdateTask={handleUpdateTaskFromDrawer}
+                onEditFull={(t) => {
+                    setDetailDrawerOpen(false);
+                    setEditingTask(t);
+                    setEditorOpen(true);
+                }}
+                userMap={userMap}
+                currentUserId={currentUser?.uid}
+                currentUserName={currentUser?.displayName || 'Current User'}
+                isUpdating={activeDetailTask ? pendingTaskIds.has(activeDetailTask.id) : false}
             />
 
             {/* Standardized Single Task Resolve Modal */}

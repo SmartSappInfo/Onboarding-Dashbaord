@@ -24,6 +24,7 @@ import { TaskPriorityBadge } from './primitives/TaskPriorityBadge';
 import { TaskDueDate } from './primitives/TaskDueDate';
 import { TaskRelationshipBadge } from './primitives/TaskRelationshipBadge';
 import { TaskSourceBadge } from './primitives/TaskSourceBadge';
+import { TaskChecklistProgress } from './primitives/TaskChecklistProgress';
 
 export interface TaskCardProps {
     task: Task;
@@ -128,6 +129,12 @@ export function TaskCard({
                                         <Bell className="h-2.5 w-2.5" /> {task.reminders.length}
                                     </Badge>
                                 )}
+                                {task.checklist && task.checklist.length > 0 && (
+                                    <TaskChecklistProgress
+                                        completedCount={task.checklist.filter(c => c.completed).length}
+                                        totalCount={task.checklist.length}
+                                    />
+                                )}
                             </div>
                             <h4 className={cn(
                                 "font-semibold text-xs tracking-tight leading-normal text-foreground whitespace-normal break-words text-left",
@@ -177,6 +184,9 @@ export function TaskCard({
                             <TaskRelationshipBadge
                                 entityName={task.entityName}
                                 entityType={task.entityType}
+                                dealId={task.dealId}
+                                relatedParentId={task.relatedParentId}
+                                relatedEntityId={task.relatedEntityId}
                                 relatedEntityType={task.relatedEntityType}
                                 obligationSyncStatus={obligationSyncStatus}
                             />

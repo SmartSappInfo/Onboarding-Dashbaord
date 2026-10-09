@@ -9,6 +9,7 @@ import { TaskAssignee } from './primitives/TaskAssignee';
 import { TaskDueDate } from './primitives/TaskDueDate';
 import { TaskRelationshipBadge } from './primitives/TaskRelationshipBadge';
 import { TaskSourceBadge } from './primitives/TaskSourceBadge';
+import { TaskChecklistProgress } from './primitives/TaskChecklistProgress';
 import { 
     CheckCircle2, 
     Loader2, 
@@ -17,7 +18,8 @@ import {
     MoreVertical, 
     Pencil, 
     Trash2, 
-    Clock 
+    Clock,
+    Bell 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -82,6 +84,12 @@ export function TaskListRow({
         const ids = Array.isArray(task.assignedTo) ? task.assignedTo : [task.assignedTo];
         return ids.map(id => userMap.get(id)).filter(Boolean) as UserProfile[];
     }, [task.assignedTo, userMap]);
+
+    const checklistTotal = task.checklist?.length || 0;
+    const checklistCompleted = React.useMemo(() => {
+        return task.checklist?.filter(c => c.completed).length || 0;
+    }, [task.checklist]);
+    const remindersCount = task.reminders?.length || 0;
 
     const handleRowClick = (e: React.MouseEvent) => {
         if (isPending) return;
@@ -186,8 +194,26 @@ export function TaskListRow({
                             <TaskRelationshipBadge
                                 entityName={task.entityName}
                                 entityType={task.entityType}
+                                dealId={task.dealId}
+                                relatedParentId={task.relatedParentId}
+                                relatedEntityId={task.relatedEntityId}
                                 relatedEntityType={task.relatedEntityType}
                             />
+                        )}
+                        {checklistTotal > 0 && (
+                            <TaskChecklistProgress
+                                completedCount={checklistCompleted}
+                                totalCount={checklistTotal}
+                            />
+                        )}
+                        {remindersCount > 0 && (
+                            <span 
+                                className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/70 shrink-0"
+                                title={`${remindersCount} scheduled reminder${remindersCount > 1 ? 's' : ''}`}
+                            >
+                                <Bell className="h-3 w-3 text-amber-500" />
+                                <span className="tabular-nums">{remindersCount}</span>
+                            </span>
                         )}
                         {task.notes && task.notes.length > 0 && (
                             <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/70 shrink-0">
