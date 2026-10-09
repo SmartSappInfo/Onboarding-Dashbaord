@@ -23,7 +23,7 @@ export async function executeVariablesFERMigrationAction(
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error during FER migration';
-    console.error('[executeVariablesFERMigrationAction] Error:', error);
+    console.error('[executeVariablesFERMigrationAction] Error:', message, error);
     return {
       success: false,
       dryRun: params?.dryRun ?? false,

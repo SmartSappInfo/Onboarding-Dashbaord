@@ -16,6 +16,9 @@ import {
   type ArchiveEntityInput,
   type BulkArchiveEntitiesInput,
   type BulkDeleteEntitiesInput,
+  type BulkLinkEntitiesInput,
+  type BulkUnlinkEntitiesInput,
+  type BulkWorkspaceOperationResult,
   type DeleteEntityPermanentlyInput,
   type LinkEntityToWorkspaceInput,
   type UnlinkEntityFromWorkspaceInput,
@@ -23,6 +26,8 @@ import {
   archiveEntityCore,
   bulkArchiveEntitiesCore,
   bulkDeleteEntitiesCore,
+  bulkLinkEntitiesToWorkspacesCore,
+  bulkUnlinkEntitiesFromWorkspacesCore,
   deleteEntityPermanentlyCore,
   linkEntityToWorkspaceCore,
   unlinkEntityFromWorkspaceCore,
@@ -70,6 +75,30 @@ export async function bulkArchiveEntitiesAction(input: Omit<BulkArchiveEntitiesI
 export async function bulkDeleteEntitiesAction(input: Omit<BulkDeleteEntitiesInput, SessionIdentity>) {
   const { actor, userName, userEmail } = await sessionCaller(input.workspaceId);
   return bulkDeleteEntitiesCore(actor, { ...input, userId: '', userName, userEmail });
+}
+
+export type { BulkWorkspaceOperationResult };
+
+/**
+ * Bulk assigns entities to multiple target workspaces.
+ * Skips entities already linked to a target workspace (idempotent).
+ */
+export async function bulkLinkEntitiesToWorkspacesAction(
+  input: Omit<BulkLinkEntitiesInput, SessionIdentity>
+): Promise<BulkWorkspaceOperationResult> {
+  const { actor, userName, userEmail } = await sessionCaller();
+  return bulkLinkEntitiesToWorkspacesCore(actor, { ...input, userId: actor.uid, userName, userEmail });
+}
+
+/**
+ * Bulk unlinks entities from multiple workspaces.
+ * Removes the workspace_entities record and updates entity.workspaceIds.
+ */
+export async function bulkUnlinkEntitiesFromWorkspacesAction(
+  input: Omit<BulkUnlinkEntitiesInput, SessionIdentity>
+): Promise<BulkWorkspaceOperationResult> {
+  const { actor, userName, userEmail } = await sessionCaller();
+  return bulkUnlinkEntitiesFromWorkspacesCore(actor, { ...input, userId: actor.uid, userName, userEmail });
 }
 
 /**

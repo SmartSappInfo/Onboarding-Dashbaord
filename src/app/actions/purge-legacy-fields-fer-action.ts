@@ -104,7 +104,7 @@ export async function executePurgeLegacyFieldsFerAction(): Promise<{
       const ws = doc.data() as Workspace;
       const workspaceId = ws.id!;
       const organizationId = ws.organizationId;
-      const industry = 'education'; // Defaulting to education or we can try to infer
+      const _industry = 'education'; // Defaulting to education or we can try to infer
 
       // Call the seeder
       try {

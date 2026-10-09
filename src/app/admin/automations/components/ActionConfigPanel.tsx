@@ -104,7 +104,7 @@ const UpdateEntityConfigPanel = React.memo(function UpdateEntityConfigPanel({
   appFields,
   fieldGroups,
 }: UpdateEntityConfigPanelProps) {
-  const updates = config.updates || {};
+  const updates = React.useMemo(() => config.updates || {}, [config.updates]);
 
   const nativeFields = React.useMemo(() => [
     { key: 'displayName', label: 'Display Name', type: 'text' },
@@ -363,7 +363,7 @@ const CreateEntityConfigPanel = React.memo(function CreateEntityConfigPanel({
   allTags = [],
   automations = [],
 }: CreateEntityConfigPanelProps) {
-  const customData = (config.customData || {}) as Record<string, unknown>;
+  const customData = React.useMemo(() => (config.customData || {}) as Record<string, unknown>, [config.customData]);
   const selectedType = config.entityType || 'institution';
   const { activeWorkspace } = useWorkspace() as { activeWorkspace?: Workspace };
   const { user } = useUser();

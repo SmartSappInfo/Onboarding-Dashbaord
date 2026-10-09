@@ -27,7 +27,6 @@ import {
   SecurityDomainError,
 } from '@/platform/security/contracts/security-types';
 import {
-  SecurityScanTextInput,
   SecurityScanTextInputRaw,
   SecurityScanTextInputSchema,
   SecurityRunAdversarialSuiteInput,

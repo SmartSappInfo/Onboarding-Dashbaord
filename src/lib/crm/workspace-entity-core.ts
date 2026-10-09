@@ -15,7 +15,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { withEntitySearchFields } from '@/lib/entities/entity-cache-domain';
 import { deleteContactProjectionForEntity, syncContactProjectionForWE } from '@/lib/contacts/contact-projection-writer';
 import { logActivity } from '@/lib/activity-logger';
-import { validateScopeMatch } from '@/lib/scope-guard';
+import { validateScopeMatch, areScopesCompatible } from '@/lib/scope-guard';
 import { revalidatePath } from 'next/cache';
 import {
   logWorkspaceEntityCreated,
@@ -1391,6 +1391,385 @@ export async function ensureEntitySharedToWorkspace(
       alreadyShared: false,
       workspaceEntityId: '',
       error: msg,
+    };
+  }
+}
+
+// ─── Bulk Multi-Workspace Management ─────────────────────────────────────────
+
+export interface BulkLinkEntitiesInput {
+  entityIds: string[];
+  workspaceIds: string[];
+  userId: string;
+  userName?: string;
+  userEmail?: string;
+}
+
+export interface BulkUnlinkEntitiesInput {
+  entityIds: string[];
+  workspaceIds: string[];
+  userId: string;
+  userName?: string;
+  userEmail?: string;
+}
+
+export interface BulkWorkspaceOperationResult {
+  success: boolean;
+  totalProcessed: number;
+  assignedCount: number;
+  removedCount: number;
+  skippedExistingCount: number;
+  skippedIncompatibleCount: number;
+  error?: string;
+}
+
+/**
+ * Links a batch of entities to multiple target workspaces.
+ *
+ * ARCHITECTURAL GUIDANCE (Rule 10 Maintainer Guidance):
+ * - Rule 8 (Multi-Tenancy): Strict validation that entity.organizationId === workspace.organizationId.
+ * - Rule 19 (Idempotency): If an entity is already linked to a workspace, it is skipped safely.
+ * - Rule 9 (Scalability): Batch writes are chunked into sets of <= 100 items (<= 200 ops per batch),
+ *   guaranteeing total operations stay safely below Firestore's 500-write transaction threshold.
+ * - Projections: Asynchronously projects contact records into workspace_contacts via syncContactProjectionForWE.
+ */
+export async function bulkLinkEntitiesToWorkspacesCore(
+  actor: CrmActor,
+  input: BulkLinkEntitiesInput
+): Promise<BulkWorkspaceOperationResult> {
+  const { entityIds, workspaceIds, userId, userName = 'Unknown User', userEmail = '' } = input;
+  if (!entityIds.length || !workspaceIds.length) {
+    return {
+      success: true,
+      totalProcessed: 0,
+      assignedCount: 0,
+      removedCount: 0,
+      skippedExistingCount: 0,
+      skippedIncompatibleCount: 0,
+    };
+  }
+
+  try {
+    // 1. Authorize actor against all requested workspaces
+    const permittedWorkspaces = await keepPermitted(
+      actor,
+      workspaceIds.map(wId => ({ workspaceId: wId })),
+      'edit'
+    );
+    const permittedWorkspaceIds = new Set(permittedWorkspaces.map(w => w.workspaceId));
+
+    if (permittedWorkspaceIds.size === 0) {
+      return {
+        success: false,
+        totalProcessed: 0,
+        assignedCount: 0,
+        removedCount: 0,
+        skippedExistingCount: 0,
+        skippedIncompatibleCount: 0,
+        error: 'You do not have permission to edit entities in the selected workspaces.',
+      };
+    }
+
+    // 2. Load workspace documents
+    const workspaceRefs = Array.from(permittedWorkspaceIds).map(id => adminDb.collection('workspaces').doc(id));
+    const workspaceSnaps = await adminDb.getAll(...workspaceRefs);
+    const workspaceMap = new Map<string, Workspace>();
+    for (const snap of workspaceSnaps) {
+      if (snap.exists) {
+        workspaceMap.set(snap.id, { id: snap.id, ...snap.data() } as Workspace);
+      }
+    }
+
+    // 3. Load entity documents
+    const entityRefs = entityIds.map(id => adminDb.collection('entities').doc(id));
+    const entitySnaps = await adminDb.getAll(...entityRefs);
+    const entities = entitySnaps.filter(s => s.exists).map(s => ({ id: s.id, ...s.data() } as Entity));
+
+    let skippedExistingCount = 0;
+    let skippedIncompatibleCount = 0;
+    const timestamp = new Date().toISOString();
+
+    interface PendingLink {
+      weId: string;
+      weData: WorkspaceEntity;
+      entityId: string;
+      workspaceId: string;
+      entityName: string;
+      organizationId: string;
+      entityType: string;
+    }
+
+    const pendingLinks: PendingLink[] = [];
+
+    // 4. Evaluate all entity × workspace pairs
+    for (const entity of entities) {
+      const existingWorkspaceIds = new Set(entity.workspaceIds || []);
+
+      for (const [wsId, workspace] of workspaceMap.entries()) {
+        // Multi-tenant boundary check
+        if (entity.organizationId !== workspace.organizationId) {
+          continue;
+        }
+
+        // Scope compatibility check (Rule 2)
+        if (!areScopesCompatible(entity.entityType, workspace.contactScope)) {
+          skippedIncompatibleCount++;
+          continue;
+        }
+
+        // Idempotency check: skip already assigned entities (Rule 19)
+        const deterministicWeId = `${wsId}_${entity.id}`;
+        if (existingWorkspaceIds.has(wsId)) {
+          skippedExistingCount++;
+          continue;
+        }
+
+        // Construct denormalized WorkspaceEntity document
+        const { primaryContactName, primaryEmail, primaryPhone } = extractPrimaryContact(entity);
+        const workspaceEntityData: WorkspaceEntity = withEntitySearchFields({
+          id: deterministicWeId,
+          organizationId: entity.organizationId,
+          workspaceId: wsId,
+          entityId: entity.id,
+          entityType: entity.entityType,
+          status: 'active',
+          workspaceTags: [],
+          addedAt: timestamp,
+          updatedAt: timestamp,
+          displayName: entity.name,
+          primaryContactName: primaryContactName || primaryEmail || entity.name,
+          primaryEmail,
+          primaryPhone,
+          entityContacts: entity.entityContacts || [],
+        });
+
+        pendingLinks.push({
+          weId: deterministicWeId,
+          weData: workspaceEntityData,
+          entityId: entity.id,
+          workspaceId: wsId,
+          entityName: entity.name,
+          organizationId: entity.organizationId,
+          entityType: entity.entityType,
+        });
+
+        // Mark as existing locally so duplicate loop iterations across same entity don't double add
+        existingWorkspaceIds.add(wsId);
+      }
+    }
+
+    // 5. Commit batch writes in chunks of <= 100 items (<= 200 operations per batch)
+    const BATCH_CHUNK_SIZE = 100;
+    for (let i = 0; i < pendingLinks.length; i += BATCH_CHUNK_SIZE) {
+      const chunk = pendingLinks.slice(i, i + BATCH_CHUNK_SIZE);
+      const batch = adminDb.batch();
+
+      for (const item of chunk) {
+        batch.set(adminDb.collection('workspace_entities').doc(item.weId), item.weData, { merge: true });
+        batch.update(adminDb.collection('entities').doc(item.entityId), {
+          workspaceIds: FieldValue.arrayUnion(item.workspaceId),
+          updatedAt: timestamp,
+        });
+      }
+
+      await batch.commit();
+    }
+
+    // 6. Asynchronous post-commit operations: contact projections & audit logs
+    for (const item of pendingLinks) {
+      syncContactProjectionForWE(item.weData).catch((projErr: Error) => {
+        console.warn('[bulkLinkEntitiesToWorkspacesCore] Contact projection sync error:', projErr.message);
+      });
+
+      logWorkspaceEntityCreated({
+        organizationId: item.organizationId,
+        workspaceId: item.workspaceId,
+        entityId: item.entityId,
+        entityType: item.entityType,
+        userId,
+        userName,
+        userEmail,
+        newValue: item.weData,
+        operationContext: 'manual_edit',
+      }).catch((auditErr: Error) => {
+        console.warn('[bulkLinkEntitiesToWorkspacesCore] Audit log error:', auditErr.message);
+      });
+    }
+
+    // 7. Revalidate paths
+    revalidatePath('/admin/contacts');
+    revalidatePath('/admin/entities');
+    for (const wsId of permittedWorkspaceIds) {
+      revalidatePath(`/admin/workspaces/${wsId}`);
+    }
+
+    return {
+      success: true,
+      totalProcessed: entityIds.length * workspaceIds.length,
+      assignedCount: pendingLinks.length,
+      removedCount: 0,
+      skippedExistingCount,
+      skippedIncompatibleCount,
+    };
+  } catch (err: unknown) {
+    const errorMsg = getErrorMessage(err) || 'Failed to bulk link entities to workspaces';
+    console.error('[bulkLinkEntitiesToWorkspacesCore] Error:', errorMsg);
+    return {
+      success: false,
+      totalProcessed: entityIds.length * workspaceIds.length,
+      assignedCount: 0,
+      removedCount: 0,
+      skippedExistingCount: 0,
+      skippedIncompatibleCount: 0,
+      error: errorMsg,
+    };
+  }
+}
+
+/**
+ * Unlinks a batch of entities from multiple target workspaces.
+ *
+ * ARCHITECTURAL GUIDANCE (Rule 10 Maintainer Guidance):
+ * - Preserves master entity document in `entities` while cleanly deleting `workspace_entities`.
+ * - Calls `deleteContactProjectionForEntity` and logs audit trail.
+ * - Chunked batch writes ensure resilience against Firestore batch limits.
+ */
+export async function bulkUnlinkEntitiesFromWorkspacesCore(
+  actor: CrmActor,
+  input: BulkUnlinkEntitiesInput
+): Promise<BulkWorkspaceOperationResult> {
+  const { entityIds, workspaceIds, userId, userName = 'Unknown User', userEmail = '' } = input;
+  if (!entityIds.length || !workspaceIds.length) {
+    return {
+      success: true,
+      totalProcessed: 0,
+      assignedCount: 0,
+      removedCount: 0,
+      skippedExistingCount: 0,
+      skippedIncompatibleCount: 0,
+    };
+  }
+
+  try {
+    // 1. Authorize actor against all requested workspaces
+    const permittedWorkspaces = await keepPermitted(
+      actor,
+      workspaceIds.map(wId => ({ workspaceId: wId })),
+      'delete'
+    );
+    const permittedWorkspaceIds = new Set(permittedWorkspaces.map(w => w.workspaceId));
+
+    if (permittedWorkspaceIds.size === 0) {
+      return {
+        success: false,
+        totalProcessed: 0,
+        assignedCount: 0,
+        removedCount: 0,
+        skippedExistingCount: 0,
+        skippedIncompatibleCount: 0,
+        error: 'You do not have permission to delete/unlink entities from the selected workspaces.',
+      };
+    }
+
+    // 2. Load entity documents
+    const entityRefs = entityIds.map(id => adminDb.collection('entities').doc(id));
+    const entitySnaps = await adminDb.getAll(...entityRefs);
+    const entities = entitySnaps.filter(s => s.exists).map(s => ({ id: s.id, ...s.data() } as Entity));
+
+    interface PendingUnlink {
+      weId: string;
+      entityId: string;
+      workspaceId: string;
+      organizationId: string;
+      entityType: string;
+      entityName: string;
+    }
+
+    const pendingUnlinks: PendingUnlink[] = [];
+    const timestamp = new Date().toISOString();
+
+    for (const entity of entities) {
+      const activeWsIds = new Set(entity.workspaceIds || []);
+
+      for (const wsId of permittedWorkspaceIds) {
+        if (activeWsIds.has(wsId)) {
+          const deterministicWeId = `${wsId}_${entity.id}`;
+          pendingUnlinks.push({
+            weId: deterministicWeId,
+            entityId: entity.id,
+            workspaceId: wsId,
+            organizationId: entity.organizationId,
+            entityType: entity.entityType,
+            entityName: entity.name,
+          });
+        }
+      }
+    }
+
+    // 3. Batch delete workspace_entities and arrayRemove workspaceIds in chunks of 100
+    const BATCH_CHUNK_SIZE = 100;
+    for (let i = 0; i < pendingUnlinks.length; i += BATCH_CHUNK_SIZE) {
+      const chunk = pendingUnlinks.slice(i, i + BATCH_CHUNK_SIZE);
+      const batch = adminDb.batch();
+
+      for (const item of chunk) {
+        batch.delete(adminDb.collection('workspace_entities').doc(item.weId));
+        batch.update(adminDb.collection('entities').doc(item.entityId), {
+          workspaceIds: FieldValue.arrayRemove(item.workspaceId),
+          updatedAt: timestamp,
+        });
+      }
+
+      await batch.commit();
+    }
+
+    // 4. Asynchronous post-commit operations: clean projections & audit log
+    for (const item of pendingUnlinks) {
+      deleteContactProjectionForEntity(item.workspaceId, item.entityId).catch((projErr: Error) => {
+        console.warn('[bulkUnlinkEntitiesFromWorkspacesCore] Contact projection cleanup error:', projErr.message);
+      });
+
+      logWorkspaceEntityDeleted({
+        organizationId: item.organizationId,
+        workspaceId: item.workspaceId,
+        entityId: item.entityId,
+        entityType: item.entityType,
+        userId,
+        userName,
+        userEmail,
+        oldValue: { id: item.weId, entityId: item.entityId, workspaceId: item.workspaceId, displayName: item.entityName },
+        operationContext: 'manual_edit',
+      }).catch((auditErr: Error) => {
+        console.warn('[bulkUnlinkEntitiesFromWorkspacesCore] Audit log error:', auditErr.message);
+      });
+    }
+
+    // 5. Revalidate paths
+    revalidatePath('/admin/contacts');
+    revalidatePath('/admin/entities');
+    for (const wsId of permittedWorkspaceIds) {
+      revalidatePath(`/admin/workspaces/${wsId}`);
+    }
+
+    return {
+      success: true,
+      totalProcessed: entityIds.length * workspaceIds.length,
+      assignedCount: 0,
+      removedCount: pendingUnlinks.length,
+      skippedExistingCount: 0,
+      skippedIncompatibleCount: 0,
+    };
+  } catch (err: unknown) {
+    const errorMsg = getErrorMessage(err) || 'Failed to bulk unlink entities from workspaces';
+    console.error('[bulkUnlinkEntitiesFromWorkspacesCore] Error:', errorMsg);
+    return {
+      success: false,
+      totalProcessed: entityIds.length * workspaceIds.length,
+      assignedCount: 0,
+      removedCount: 0,
+      skippedExistingCount: 0,
+      skippedIncompatibleCount: 0,
+      error: errorMsg,
     };
   }
 }

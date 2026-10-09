@@ -33,7 +33,6 @@ import {
 } from '@/platform/workflows/dispatcher/workflow-dispatcher';
 import {
   type WorkflowDlqEntry,
-  type DlqStatus,
   type DlqFilter,
 } from '@/platform/workflows/resilience/workflow-resilience-types';
 

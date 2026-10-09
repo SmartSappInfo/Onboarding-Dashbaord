@@ -18,6 +18,7 @@ import {
   PhoneCall,
   Download,
   Sparkles,
+  Building2,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -40,6 +41,7 @@ interface BulkActionDockProps {
   onInviteMeetings: () => void;
   onAddToCampaign: () => void;
   onAddToAutomation?: () => void;
+  onManageWorkspaces?: () => void;
   onArchive: () => void;
   onDelete: () => void;
   onExport: () => void;
@@ -58,6 +60,7 @@ export function BulkActionDock({
   onInviteMeetings,
   onAddToCampaign,
   onAddToAutomation,
+  onManageWorkspaces,
   onArchive,
   onDelete,
   onExport,
@@ -210,6 +213,18 @@ export function BulkActionDock({
 
               <DropdownMenuSeparator className="my-2 border-slate-800" />
               <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-3 py-2">Data Management</DropdownMenuLabel>
+
+              {onManageWorkspaces && selectedCount > 1 && (
+                <DropdownMenuItem 
+                  onClick={onManageWorkspaces}
+                  className="rounded-xl p-2.5 gap-3 hover:bg-slate-800 cursor-pointer focus:bg-primary/25 focus:text-white"
+                >
+                  <div className="p-1.5 bg-blue-500/10 rounded-lg text-blue-400">
+                    <Building2 className="h-3.5 w-3.5" />
+                  </div>
+                  <span className="font-bold text-sm">Manage Workspaces</span>
+                </DropdownMenuItem>
+              )}
 
               <DropdownMenuItem 
                 onClick={onExport}

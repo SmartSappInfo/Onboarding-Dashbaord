@@ -6,17 +6,32 @@
 
 ### Governance & Compliance Review against `agent_mcp_rules.md`
 
-| Rule | Requirement | How This Plan Conforms |
+#### A. Applicable Rules & Specific Adherence
+
+| Rule # | Rule Name | How This Plan Conforms |
 | :--- | :--- | :--- |
-| **Rule 1: Framework & Best Practices** | Conform to `next-best-practices`, `vercel-react-best-practices`, `frontend-design`, `backend-design`. | Clean Server Actions separated from business core (`workspace-entity-core.ts`), zero client hydration mismatch, optimistic state handling. |
-| **Rule 2: What Could Go Wrong & Edge Cases** | Identify failure modes and scalability bottlenecks upfront. | Handled: Scope mismatch validation, cross-tenant leaks, batch write limits (>500 ops), orphaned entities, idempotent skip of existing assignments. |
-| **Rule 3: Downstream & Backoffice Impact** | Verify changes preserve backoffice functionality and cross-workspace projections. | Uses `EntitySyncGateway.unlinkEntityFromWorkspace` and `syncContactProjectionForWE` to keep search indexes, contact projections, and activity logs synchronized. |
-| **Rule 4: Strict Typing Protocol** | Zero `any` or `any[]` across all inputs, state, and server actions. | Strictly typed interfaces: `BulkLinkEntitiesInput`, `BulkUnlinkEntitiesInput`, `BulkWorkspaceOperationResult`, `BulkManageWorkspacesModalProps`. |
-| **Rule 5: Deployment Protocol** | Staging verification before production; no unattended git pushes. | Verification via `pnpm typecheck` and ESLint; no pushing commits to remote branches. |
-| **Rule 7: Mobile & Accessibility First** | Touch targets $\ge$ 44px, screen-reader descriptions, tactile buttons. | Standardized Modal Architecture in `theme.md` (Section 8), `<CardInfoTooltip>` alongside titles, `min-h-[44px]` targets, `active:scale-[0.97]` buttons. |
-| **Rule 8: Security & Multi-Tenancy** | Enforce tenant isolation and authorization checks. | `requireAuth()`, `requireWorkspace()`, entity and workspace `organizationId` matching, `checkEntityPermission(actor, workspaceId, 'edit')`. |
-| **Rule 9: Load & Batch Scalability** | Prevent resource exhaustion on large bulk sets. | Chunks batch operations in sizes $\le 200$ operations to strictly respect Firestore's 500-write limit per batch. |
-| **Rule 10: Inline Architectural Guides** | Provide clear commentary on why and how code is structured. | Complete architectural docstrings and inline comments in every created and modified file. |
+| **Rule 1** | **Framework & Best Practices** | Conforms to Next.js 16 (App Router), `vercel-react-best-practices`, `frontend-design`, and `backend-design`. Domain core execution logic is placed in `src/lib/crm/workspace-entity-core.ts`, while Server Actions in `src/lib/workspace-entity-actions.ts` handle session authentication and parameter validation. The UI component `<BulkManageWorkspacesModal>` is modular, accessible, and clean. |
+| **Rule 2** | **What Could Go Wrong & Edge Cases** | Identified all failure modes upfront: (1) Cross-tenant organization mismatch; (2) Incompatible contact scope (e.g. assigning person to institution-only workspace); (3) Exceeding Firestore 500-op batch write limit; (4) Duplicate assignments (handled via deterministic ID and skipping); (5) Unlinking from active workspace without warning; (6) Contact projection desynchronization. |
+| **Rule 3** | **Downstream & Backoffice Impact** | Backoffice and directory views rely on `workspace_entities` scoped by `workspaceId` and projections in `workspace_contacts`. Linking automatically calls `syncContactProjectionForWE`. Unlinking uses `EntitySyncGateway.unlinkEntityFromWorkspace` to ensure all search indexes, contact projections, and audit logs remain 100% in sync without breaking any other module. |
+| **Rule 4** | **Strict Typing Protocol** | Strict Zero-Any Invariant. Zero `any`, `any[]`, or unchecked casts. Every input, output, state variable, and callback is strictly typed (`BulkLinkEntitiesInput`, `BulkUnlinkEntitiesInput`, `BulkWorkspaceOperationResult`, `BulkManageWorkspacesModalProps`). |
+| **Rule 5** | **Deployment Protocol** | Staging and local verification before any deployment. No code will be committed or pushed to remote branches (`origin/main`, `origin/deployment`) without explicit user instruction. Verification via `pnpm typecheck` and ESLint. |
+| **Rule 7** | **Mobile & Accessibility First** | Touch targets $\ge 44$px (`min-h-[44px]`). Tactile active feedback (`active:scale-[0.97]`). Adheres to Standardized Modal Architecture in `theme.md` (Section 8) with `<DialogHeader demarcated>`, `<CardInfoTooltip text="..." />`, `<DialogDescription className="sr-only">`, and demarcated footer. Uses simple, everyday English (e.g. "Assign to Workspaces", "Remove from Workspaces"). |
+| **Rule 8** | **Security & Multi-Tenancy** | Strict tenant boundary enforcement: validates `entity.organizationId === workspace.organizationId`. Verifies caller session via `requireAuth()` and checks permissions via `checkEntityPermission(actor, workspaceId, 'edit')`. Never trusts client-supplied tenant or user IDs. |
+| **Rule 9** | **Load & Batch Scalability** | Prevents batch processing overload and write limit exhaustion. Firestore batches are hard-limited to 500 operations. Bulk linking $N$ entities to $M$ workspaces produces up to $N \times M \times 2$ operations. The core divides operations into chunks of $\le 100$ entities (max 200 operations per batch) and commits each sequentially. |
+| **Rule 10** | **Inline Architectural Guides** | Leaves explanatory commentary and JSDoc in every file detailing what changed, why, caution areas (e.g. deterministic key formatting, projection sync, scope locking), and testability pointers. |
+| **Rule 19** | **Idempotency for Mutating Actions** | Defines deterministic key `workspaceEntityId = `${workspaceId}_${entityId}``. If an entity already belongs to a target workspace, the link operation skips it without error and increments `skippedExistingCount`. Retrying the operation is 100% idempotent. |
+| **Rule 21** | **Two-Phase Action Model for High-Risk Operations** | Selection -> Modal Configuration & Impact Preview -> User Confirmation -> Batch Execution -> Detailed Summary Toast. Prevents accidental mass reassignments. |
+| **Rule 26** | **Cancellation & Execution Feedback** | Clean dismissal when cancelled. Action buttons disabled during execution with loading spinners to prevent double-submissions. Returns exact statistics on completion (assigned count, skipped count, removed count, error count). |
+
+#### B. Non-Applicable Rules & Rationale
+
+| Rule # | Rule Name | Rationale for Non-Application |
+| :--- | :--- | :--- |
+| **Rule 11** | MCP Protocol Compliance | This feature is an internal CRM administrative action and UI workflow; it does not author or host an external Model Context Protocol server. |
+| **Rule 14** | MCP Tool Poisoning / Rug-Pull Defense | No external or third-party MCP tool servers are being consumed or evaluated in this workflow. |
+| **Rule 15** | MCP Server Allowlisting | No external MCP server endpoints are being connected. |
+| **Rule 24** | Circuit Breakers for LLM Providers | This feature performs direct Firestore relational transactions and does not invoke external generative AI or LLM completion APIs. |
+| **Rule 28 & 29** | LLM Context Budgeting & Memory Governance | Pertains to LLM semantic memory retrieval and context windows, not relational bulk entity management in Firestore. |
 
 ---
 
@@ -29,87 +44,63 @@ flowchart TD
     C -->|Tab 1: Assign to Workspaces| D["bulkLinkEntitiesToWorkspacesAction"]
     C -->|Tab 2: Remove from Workspaces| E["bulkUnlinkEntitiesFromWorkspacesAction"]
     
-    subgraph Backend Execution
-        D --> D1["Validate Actor & Tenant Orgs"]
+    subgraph Backend Execution (src/lib/crm/workspace-entity-core.ts)
+        D --> D1["Validate Actor Session & Tenant Orgs"]
         D1 --> D2["Filter Scope Compatibility (areScopesCompatible)"]
         D2 --> D3["For Each Entity & Workspace: Check existing `${wsId}_${entId}`"]
-        D3 -->|Already Exists| D4["Skip & Increment skippedCount"]
-        D3 -->|New Link| D5["Batch Write: workspace_entities doc + entities.workspaceIds arrayUnion"]
+        D3 -->|Already Exists| D4["Skip & Increment skippedExistingCount"]
+        D3 -->|New Link| D5["Batch Write (<= 100 docs): workspace_entities doc + entities.workspaceIds arrayUnion"]
         D5 --> D6["Sync Contact Projection (syncContactProjectionForWE)"]
         
-        E --> E1["Validate Actor & Tenant Orgs"]
-        E1 --> E2["Batch Write: Delete workspace_entities doc + entities.workspaceIds arrayRemove"]
-        E2 --> E3["Delete Contact Projection"]
+        E --> E1["Validate Actor Session & Tenant Orgs"]
+        E1 --> E2["Batch Write (<= 100 docs): Delete workspace_entities doc + entities.workspaceIds arrayRemove"]
+        E2 --> E3["Delete Contact Projection (deleteContactProjectionForEntity)"]
     end
     
-    D6 --> F["Return Summary (linked, skipped, failed) + Revalidate Paths"]
+    D6 --> F["Return Summary (assigned, skipped, errors) + Revalidate Paths"]
     E3 --> F
     F --> G["Display Actionable Toast & Clear Selection"]
 ```
 
 ---
 
-### Key Failure Modes & Guardrails
+### Failure Modes & Defensive Guardrails
 
 1. **Idempotent Skip of Existing Assignments**:
    - For an entity $E$ and workspace $W$, the canonical document key in `workspace_entities` is `${W}_${E}`.
-   - If that document exists (or the entity's `workspaceIds` array already contains $W$), the backend **skips** it without throwing an error and increments `skippedExistingCount`.
+   - If that document exists or $W$ is already in `entity.workspaceIds`, the backend **skips** it without throwing an error and increments `skippedExistingCount`.
 2. **Scope Compatibility Guard**:
    - Workspaces have a `contactScope` (`institution`, `person`, `family`). Entities have an `entityType`.
-   - The UI filters out or disables incompatible workspaces using `areScopesCompatible(entityType, workspace.contactScope)`.
+   - The UI disables incompatible workspaces using `areScopesCompatible(entityType, workspace.contactScope)`.
    - The server core validates scope compatibility and skips incompatible pairs if present, recording `skippedIncompatibleCount`.
 3. **Firestore 500-Write Batch Limit**:
    - If 100 entities are assigned to 3 workspaces, up to 300 link operations may execute (each touching 2 docs: `workspace_entities` and `entities` = 600 operations).
-   - The core chunks writes into groups of 100 entities (200 ops max per batch) and commits each sequentially.
+   - The core chunks writes into groups of 50-100 entities (max 200 operations per batch) and commits each sequentially.
 4. **Current Workspace Removal Warning**:
-   - If the user selects the active workspace in the "Remove from Workspaces" tab, the modal displays a clear warning: *"Removing selected contacts from your current workspace will remove them from this view."*
+   - If the user selects the active workspace in the "Remove from Workspaces" tab, the modal displays a clear warning banner: *"Removing selected contacts from your current workspace will remove them from this view."*
 5. **Orphan Safety**:
    - Removing an entity from a workspace does NOT delete its master identity document in the `entities` collection. It only removes the workspace-specific projection (`workspace_entities`) and unlinks the ID from `entity.workspaceIds`.
 
 ---
 
-### File Structure & Responsibility Map
+### Step-by-Step Implementation Tasks
 
-1. `src/lib/crm/workspace-entity-core.ts`
-   - Implement `bulkLinkEntitiesToWorkspacesCore(actor, input)`
-   - Implement `bulkUnlinkEntitiesFromWorkspacesCore(actor, input)`
-2. `src/lib/workspace-entity-actions.ts`
-   - Export server actions:
-     - `bulkLinkEntitiesToWorkspacesAction(input)`
-     - `bulkUnlinkEntitiesFromWorkspacesAction(input)`
-3. `src/app/admin/entities/components/BulkActionDock.tsx`
-   - Add `onManageWorkspaces` prop and render "Manage Workspaces" menu item in More Actions dropdown.
-4. `src/app/admin/entities/components/BulkManageWorkspacesModal.tsx` (New)
-   - Standardized modal adhering to `theme.md` (Section 8).
-   - Header with `<CardInfoTooltip text="..." />` and `<DialogDescription className="sr-only">`.
-   - Tabs: **Assign to Workspaces** and **Remove from Workspaces**.
-   - Workspace selection cards with checkboxes, scope badges, and member counts.
-   - Demarcated footer with tactile action buttons.
-5. `src/app/admin/entities/EntitiesClient.tsx`
-   - Wire `isBulkManageWorkspacesOpen` state.
-   - Pass handler to `BulkActionDock`.
-   - Render `BulkManageWorkspacesModal` with selected entities and accessible workspaces.
+- [ ] **Task 1: Core Backend Functions (`src/lib/crm/workspace-entity-core.ts`)**
+  - Implement `bulkLinkEntitiesToWorkspacesCore(actor, input)`:
+    - Verifies permissions for each workspace via `keepPermitted(actor, ..., 'edit')`.
+    - Validates multi-tenant boundaries (`entity.organizationId === workspace.organizationId`).
+    - Validates scope compatibility via `areScopesCompatible(entity.entityType, workspace.contactScope)`.
+    - Queries existing `workspace_entities` documents to identify already-assigned entities and skips them.
+    - Batches creations in chunks of $\le 100$ entities ($\le 200$ Firestore operations per batch write).
+    - Syncs contact projections via `syncContactProjectionForWE`.
+    - Logs audit trail via `logWorkspaceEntityCreated`.
+  - Implement `bulkUnlinkEntitiesFromWorkspacesCore(actor, input)`:
+    - Verifies permissions for each workspace via `keepPermitted(actor, ..., 'delete')`.
+    - Chunks batch deletions of `workspace_entities` and updates `entities.workspaceIds` using `FieldValue.arrayRemove`.
+    - Cleans contact projections.
+    - Logs audit trail via `logWorkspaceEntityDeleted`.
 
----
-
-### Task Breakdown & Execution Steps
-
-- [ ] **Task 1: Core Backend Functions (`workspace-entity-core.ts`)**
-  - Implement `bulkLinkEntitiesToWorkspacesCore` with:
-    - Actor permission checks (`keepPermitted`).
-    - Scope compatibility verification (`areScopesCompatible`).
-    - Multi-tenant boundary checks (`entity.organizationId === workspace.organizationId`).
-    - Idempotency check: skip already assigned entities.
-    - Chunked batch writes ($\le 200$ ops per batch).
-    - Asynchronous contact projection sync (`syncContactProjectionForWE`).
-    - Audit logging (`logWorkspaceEntityCreated`).
-  - Implement `bulkUnlinkEntitiesFromWorkspacesCore` with:
-    - Actor permission checks.
-    - Chunked batch deletes and `entities.workspaceIds` array removal.
-    - Contact projection cleanup.
-    - Audit logging (`logWorkspaceEntityDeleted`).
-
-- [ ] **Task 2: Server Actions Wrapper (`workspace-entity-actions.ts`)**
+- [ ] **Task 2: Server Actions Wrapper (`src/lib/workspace-entity-actions.ts`)**
   - Define strictly typed inputs and outputs:
     ```typescript
     export interface BulkLinkEntitiesActionInput {
@@ -130,17 +121,17 @@ flowchart TD
       error?: string;
     }
     ```
-  - Export `bulkLinkEntitiesToWorkspacesAction` and `bulkUnlinkEntitiesFromWorkspacesAction` with session validation (`sessionCaller`).
+  - Export `bulkLinkEntitiesToWorkspacesAction` and `bulkUnlinkEntitiesFromWorkspacesAction` authenticated via `sessionCaller`.
 
-- [ ] **Task 3: Unit Tests (`workspace-entity-bulk.test.ts`)**
+- [ ] **Task 3: Unit Tests (`src/lib/crm/__tests__/workspace-entity-bulk.test.ts`)**
   - Write test suite verifying:
-    - Skipping entities already linked to a workspace.
+    - Idempotent skipping when entity is already linked to workspace.
     - Correctly linking unlinked entities.
-    - Rejecting or skipping incompatible scope workspaces.
-    - Safely unlinking entities from workspaces.
-    - Batch chunking integrity.
+    - Respecting scope compatibility.
+    - Correctly unlinking entities from workspaces.
+    - Batch chunking under high item counts.
 
-- [ ] **Task 4: Bulk Action Dock Integration (`BulkActionDock.tsx`)**
+- [ ] **Task 4: Bulk Action Dock Integration (`src/app/admin/entities/components/BulkActionDock.tsx`)**
   - Add `onManageWorkspaces?: () => void;` to `BulkActionDockProps`.
   - Add menu item to "More Actions" dropdown under "Data Management":
     ```tsx
@@ -155,22 +146,22 @@ flowchart TD
     </DropdownMenuItem>
     ```
 
-- [ ] **Task 5: UI Modal: `<BulkManageWorkspacesModal>` (`BulkManageWorkspacesModal.tsx`)**
-  - Standardized Modal Architecture in `theme.md` (Section 8):
+- [ ] **Task 5: UI Modal: `<BulkManageWorkspacesModal>` (`src/app/admin/entities/components/BulkManageWorkspacesModal.tsx`)**
+  - Implement standardized modal adhering to `theme.md` (Section 8):
     - Dialog surface: `border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl`.
-    - Demarcated header: `<DialogHeader demarcated>` with `<CardInfoTooltip>` and `<DialogDescription className="sr-only">`.
+    - Demarcated header: `<DialogHeader demarcated>` with `<CardInfoTooltip text="..." />` and `<DialogDescription className="sr-only">`.
     - Demarcated footer: tactile buttons `active:scale-[0.97]` and `min-h-[44px]`.
   - Tabs:
     - **Tab 1: Assign to Workspaces**:
       - Multi-select list of accessible workspaces.
-      - Shows scope compatibility badge and member status.
-      - Displays live summary: e.g. "Assign 12 selected contacts to 2 workspaces".
+      - Displays scope compatibility badges and active member indicators.
+      - Dynamic action button: `"Assign to X Workspaces"`.
     - **Tab 2: Remove from Workspaces**:
-      - Multi-select list of workspaces where selected contacts currently reside.
-      - Warning banner if active workspace is selected.
-      - Displays live summary: e.g. "Remove selected contacts from 1 workspace".
+      - Multi-select list of workspaces where selected contacts currently exist.
+      - Warning notice if active workspace is selected.
+      - Dynamic action button: `"Remove from X Workspaces"`.
 
-- [ ] **Task 6: Wire Modal in `EntitiesClient.tsx`**
+- [ ] **Task 6: Wire Modal in `src/app/admin/entities/EntitiesClient.tsx`**
   - State: `const [isBulkManageWorkspacesOpen, setIsBulkManageWorkspacesOpen] = useState(false);`
   - Pass `onManageWorkspaces={() => setIsBulkManageWorkspacesOpen(true)}` to `<BulkActionDock>`.
   - Render `<BulkManageWorkspacesModal>` passing:

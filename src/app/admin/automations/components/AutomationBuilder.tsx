@@ -135,6 +135,16 @@ interface AutomationBuilderProps {
     automationId: string;
 }
 
+// Strip ReactFlow internal + runtime-injected properties before emitting
+// so the parent's dirty-check compares clean, persistable data.
+const RUNTIME_DATA_KEYS = new Set([
+    'isDefaultConnected', 'isTrueConnected', 'isFalseConnected',
+    'executionStatus', 'executionError', 'executionMeta',
+    'canMoveUp', 'canMoveDown', 'hasNote',
+    'onAddStep', 'onFilterDiagnostics', 'onAddAbove',
+    'onMoveUp', 'onMoveDown', 'onDuplicate', 'onDelete', 'onToggleNote',
+]);
+
 /**
  * @fileOverview The SmartSapp Visual Automation Architect.
  * Features: drag-and-drop canvas, node inspector, automation step library,
@@ -670,7 +680,7 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [selectedEdgeId, selectedNodeId, deleteEdge, setEdges, setNodes, undo, redo]);
+    }, [selectedEdgeId, selectedNodeId, deleteEdge, setEdges, setNodes, undo, redo, nodes]);
 
     const handleUpdateNodeData = (nodeId: string, newData: any) => {
         setNodes(nds => nds.map(node => {
@@ -694,16 +704,6 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
     // Also pushes to undo history on meaningful changes (debounced 300ms).
     const lastEmittedRef = React.useRef<string>('');
     const historyTimerRef = React.useRef<NodeJS.Timeout | null>(null);
-
-    // Strip ReactFlow internal + runtime-injected properties before emitting
-    // so the parent's dirty-check compares clean, persistable data.
-    const RUNTIME_DATA_KEYS = new Set([
-        'isDefaultConnected', 'isTrueConnected', 'isFalseConnected',
-        'executionStatus', 'executionError', 'executionMeta',
-        'canMoveUp', 'canMoveDown', 'hasNote',
-        'onAddStep', 'onFilterDiagnostics', 'onAddAbove',
-        'onMoveUp', 'onMoveDown', 'onDuplicate', 'onDelete', 'onToggleNote',
-    ]);
 
     const stripForPersistence = React.useCallback((rawNodes: Node[], rawEdges: Edge[]) => {
         const cleanNodes = rawNodes.map(({ id, type, position, data }) => {

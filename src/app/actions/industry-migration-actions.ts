@@ -175,7 +175,7 @@ export async function enrichSchoolsWithSaaSIndustry(): Promise<IndustryMigration
             if (pkgDoc.exists) {
               planType = pkgDoc.data()?.name || 'Standard';
             }
-          } catch (_err) {
+          } catch {
             console.warn(`⚠️ Could not fetch subscription package for entity ${entityId}`);
           }
         }
