@@ -1,6 +1,7 @@
 import { adminDb } from './firebase-admin';
 import type { AppPermissionId, UserProfile, Role, Workspace, WorkspaceEntity, PermissionsSchema, AppPermissionAction } from './types';
 import { evaluatePermission } from './permissions-engine';
+import { isUserWorkspaceAdmin } from './workspace-admin-utils';
 import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
@@ -87,8 +88,35 @@ export async function checkWorkspaceAccess(
       };
     }
 
-    // 4. Check if user has any role that grants access to this workspace
-    // Fetch all roles for the user
+    // 4. Check workspace access across modern and legacy access mechanisms:
+    // a. Direct workspace assignment (user.workspaceIds) - Primary multi-tenant boundary contract
+    if (Array.isArray(user.workspaceIds) && user.workspaceIds.includes(workspaceId)) {
+      return {
+        granted: true,
+      };
+    }
+
+    // b. Workspace-specific role assignment (user.workspaceRoles map)
+    if (
+      user.workspaceRoles &&
+      typeof user.workspaceRoles === 'object' &&
+      Array.isArray(user.workspaceRoles[workspaceId]) &&
+      user.workspaceRoles[workspaceId].length > 0
+    ) {
+      return {
+        granted: true,
+      };
+    }
+
+    // c. Workspace or organization administrator role
+    if (isUserWorkspaceAdmin(user, workspaceId, user.permissionsSchema)) {
+      return {
+        granted: true,
+        reason: 'Workspace administrator access',
+      };
+    }
+
+    // d. Legacy role workspace access (role.workspaceIds)
     const rolesSnap = await adminDb
       .collection('roles')
       .where('organizationId', '==', user.organizationId)
@@ -100,7 +128,7 @@ export async function checkWorkspaceAccess(
 
     // Check if any role grants access to this workspace
     const hasWorkspaceAccess = userRoles.some((role) =>
-      role.workspaceIds.includes(workspaceId)
+      role.workspaceIds.includes(workspaceId) || role.workspaceIds.includes('*')
     );
 
     if (!hasWorkspaceAccess) {
@@ -397,7 +425,19 @@ export async function getUserWorkspaceIds(userId: string): Promise<string[]> {
       return workspacesSnap.docs.map((doc) => doc.id);
     }
 
-    // 2. Fetch all roles for the user
+    const workspaceIds = new Set<string>();
+
+    // Direct workspace assignments
+    if (Array.isArray(user.workspaceIds)) {
+      user.workspaceIds.forEach((wsId) => workspaceIds.add(wsId));
+    }
+
+    // Workspaces with assigned workspaceRoles
+    if (user.workspaceRoles && typeof user.workspaceRoles === 'object') {
+      Object.keys(user.workspaceRoles).forEach((wsId) => workspaceIds.add(wsId));
+    }
+
+    // 2. Fetch all roles for the user (legacy role-based workspaceIds)
     const rolesSnap = await adminDb
       .collection('roles')
       .where('organizationId', '==', user.organizationId)
@@ -408,9 +448,10 @@ export async function getUserWorkspaceIds(userId: string): Promise<string[]> {
       .filter((role) => user.roles?.includes(role.id));
 
     // 3. Collect all workspace IDs from user roles
-    const workspaceIds = new Set<string>();
     userRoles.forEach((role) => {
-      role.workspaceIds.forEach((wsId) => workspaceIds.add(wsId));
+      if (Array.isArray(role.workspaceIds)) {
+        role.workspaceIds.forEach((wsId) => workspaceIds.add(wsId));
+      }
     });
 
     return Array.from(workspaceIds);
@@ -451,16 +492,47 @@ export async function canUser(
       return { granted: true, reason: 'System admin bypass' };
     }
 
-    // 3. Evaluate Hierarchical Permission
-    if (!user.permissionsSchema) {
-      return { granted: false, reason: 'Hierarchical permissions not initialized for user', level: 'feature' };
+    // Workspace Admin Bypass: workspace admins/owners have full operations, studios, and management access within their workspace
+    if (workspaceId && isUserWorkspaceAdmin(user, workspaceId, user.permissionsSchema)) {
+      return { granted: true, reason: 'Workspace admin bypass' };
     }
 
-    const granted = evaluatePermission(user.permissionsSchema, section, feature, action);
+    // 3. Resolve effective schema: workspace-scoped schema first, falling back to global permissionsSchema
+    const effectiveSchema = (workspaceId && user.workspacePermissionsSchemas?.[workspaceId])
+      ? user.workspacePermissionsSchemas[workspaceId]
+      : user.permissionsSchema;
+
+    if (effectiveSchema) {
+      const granted = evaluatePermission(effectiveSchema, section, feature, action);
+      if (granted) {
+        return { granted: true };
+      }
+    }
+
+    // 4. Fallback: check workspace-scoped or legacy flat permissions
+    const effectivePerms = (workspaceId && user.workspacePermissions?.[workspaceId]) || user.permissions || [];
+    if (effectivePerms.length > 0) {
+      for (const perm of effectivePerms) {
+        const coords = mapLegacyPermissionToCoordinates(perm);
+        if (coords && coords.section === section && coords.feature === feature) {
+          if (coords.action === action || (action === 'view' && coords.action === 'edit')) {
+            return { granted: true };
+          }
+        }
+      }
+    }
+
+    // 5. Default operations/pipeline access for verified workspace members if permissionsSchema is not yet populated
+    if (workspaceId && section === 'operations' && feature === 'pipeline') {
+      const hasWorkspace = Array.isArray(user.workspaceIds) && user.workspaceIds.includes(workspaceId);
+      if (hasWorkspace && !effectiveSchema) {
+        return { granted: true };
+      }
+    }
 
     return {
-      granted,
-      reason: granted ? undefined : `Access denied for ${section}/${feature}:${action}`,
+      granted: false,
+      reason: `Access denied for ${section}/${feature}:${action}`,
       level: 'feature'
     };
   } catch (error: unknown) {

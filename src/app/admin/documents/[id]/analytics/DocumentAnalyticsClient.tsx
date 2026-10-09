@@ -14,7 +14,7 @@
  *    Zero `any` or `any[]` types are permitted.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { PageContainerFluid } from '@/components/ui/page-container';
@@ -64,7 +64,7 @@ export default function DocumentAnalyticsClient({ documentId }: DocumentAnalytic
   }, [firestore, documentId]);
 
   // 2. Fetch analytics summary
-  const loadAnalytics = async () => {
+  const loadAnalytics = useCallback(async () => {
     if (!activeWorkspaceId) return;
     setIsLoading(true);
     try {
@@ -84,11 +84,11 @@ export default function DocumentAnalyticsClient({ documentId }: DocumentAnalytic
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [activeWorkspaceId, documentId, period, toast]);
 
   useEffect(() => {
     loadAnalytics();
-  }, [activeWorkspaceId, documentId, period]);
+  }, [loadAnalytics]);
 
   return (
     <PageContainerFluid>

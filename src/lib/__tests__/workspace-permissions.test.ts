@@ -205,7 +205,7 @@ describe('workspace-permissions', () => {
     it('should deny access when user has no role granting workspace access', async () => {
       const userDoc = {
         exists: true,
-        data: () => mockUser,
+        data: () => ({ ...mockUser, workspaceIds: ['different-workspace'] }),
       };
 
       const workspaceDoc = {
@@ -251,6 +251,59 @@ describe('workspace-permissions', () => {
       expect(result.granted).toBe(false);
       expect(result.reason).toBe('User does not have a role that grants access to this workspace');
       expect(result.level).toBe('workspace');
+    });
+
+    it('should grant access when user has workspaceId directly in user.workspaceIds', async () => {
+      const userDoc = {
+        exists: true,
+        data: () => ({ ...mockUser, workspaceIds: [mockWorkspaceId], roles: [] }),
+      };
+
+      const workspaceDoc = {
+        exists: true,
+        data: () => mockWorkspace,
+      };
+
+      (adminDb.collection as any).mockImplementation((collectionName: string) => {
+        if (collectionName === 'users') {
+          return { doc: () => ({ get: async () => userDoc }) };
+        }
+        if (collectionName === 'workspaces') {
+          return { doc: () => ({ get: async () => workspaceDoc }) };
+        }
+      });
+
+      const result = await checkWorkspaceAccess(mockUserId, mockWorkspaceId);
+      expect(result.granted).toBe(true);
+    });
+
+    it('should grant access when user has workspace-specific roles in user.workspaceRoles', async () => {
+      const userDoc = {
+        exists: true,
+        data: () => ({
+          ...mockUser,
+          workspaceIds: [],
+          roles: [],
+          workspaceRoles: { [mockWorkspaceId]: ['custom-role-1'] },
+        }),
+      };
+
+      const workspaceDoc = {
+        exists: true,
+        data: () => mockWorkspace,
+      };
+
+      (adminDb.collection as any).mockImplementation((collectionName: string) => {
+        if (collectionName === 'users') {
+          return { doc: () => ({ get: async () => userDoc }) };
+        }
+        if (collectionName === 'workspaces') {
+          return { doc: () => ({ get: async () => workspaceDoc }) };
+        }
+      });
+
+      const result = await checkWorkspaceAccess(mockUserId, mockWorkspaceId);
+      expect(result.granted).toBe(true);
     });
 
     it('should grant access to system admins regardless of role workspace access', async () => {

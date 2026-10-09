@@ -73,7 +73,8 @@ export default function AssignDealModal({
 }: AssignDealModalProps) {
   const { toast } = useToast();
   const { activeWorkspaceId } = useWorkspace();
-  const { data: workspaceUsers, isLoading: isLoadingUsers } = useWorkspaceUsers(activeWorkspaceId);
+  const targetWorkspaceId = deal?.workspaceId || activeWorkspaceId;
+  const { data: workspaceUsers, isLoading: isLoadingUsers } = useWorkspaceUsers(targetWorkspaceId);
 
   const [searchQuery, setSearchQuery] = React.useState('');
   const [selectedUserId, setSelectedUserId] = React.useState<string | null>(null);

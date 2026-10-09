@@ -33,7 +33,7 @@ import { Card } from '@/components/ui/card';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { useToast } from '@/hooks/use-toast';
 import { 
-  BookOpen, Plus, Search, Eye, Sparkles, ExternalLink,
+  Plus, Search, Eye, Sparkles, ExternalLink,
   Edit3, Trash2, Copy, FileText, Layers, RefreshCw, BarChart3
 } from 'lucide-react';
 import {

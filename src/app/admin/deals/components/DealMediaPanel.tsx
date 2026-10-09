@@ -43,7 +43,7 @@ import {
 import { 
   TrendingUp, Users, FileText, MousePointerClick, 
   Sparkles, CheckCircle2, Share2, Video, Music, 
-  Image as ImageIcon, PieChart, ChevronDown, ChevronUp, Bot, Zap, Package
+  Image as ImageIcon, PieChart, ChevronDown, ChevronUp, Zap, Package
 } from 'lucide-react';
 import { MediaCopilotDrawer } from '@/app/admin/media/components/MediaCopilotDrawer';
 import { cn } from '@/lib/utils';

@@ -42,8 +42,7 @@ import { Card } from '@/components/ui/card';
 import Link from 'next/link';
 import { 
   ArrowLeft, Save, Sparkles, Sliders, Layers, 
-  ExternalLink, Plus, Trash2, Video, Link as _LinkIcon, Eye,
-  History, Shield, Code, CheckCircle, RefreshCw, Copy, TrendingUp, Bot
+  Plus, Eye, History, Shield, RefreshCw, TrendingUp, Bot
 } from 'lucide-react';
 import { updateDocumentAction } from '@/lib/document-actions';
 import { 
@@ -143,7 +142,7 @@ export default function DocumentEditorClient({ documentId }: DocumentEditorClien
       setViewerMode(document.defaultViewerMode || 'flipbook');
       setTags(document.tags || []);
     }
-  }, [document?.id, document?.updatedAt]);
+  }, [document]);
 
   // Fetch Version History
   useEffect(() => {
