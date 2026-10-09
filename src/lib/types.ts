@@ -4834,6 +4834,116 @@ export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type TaskStatus = 'todo' | 'in_progress' | 'waiting' | 'review' | 'done';
 export type TaskCategory = 'call' | 'visit' | 'document' | 'training' | 'follow_up' | 'general';
 
+// ==========================================
+// TASKS PHASE 4: STANDUPS, BLOCKERS & AI COPILOT
+// ==========================================
+
+export type StandupStatus = 'draft' | 'submitted' | 'amended';
+
+export interface StandupWorkItem {
+  id: string;
+  type: 'task' | 'commitment';
+  title: string;
+  taskId?: string | null;
+  taskStatus?: TaskStatus | null;
+  entityId?: string | null;
+  entityName?: string | null;
+  dealId?: string | null;
+  isCarryover?: boolean;
+  originalCommitmentDate?: string;
+  carryoverReason?: string;
+}
+
+export type BlockerCategory = 'technical' | 'external_dependency' | 'client_approval' | 'internal_resource' | 'general';
+export type BlockerSeverity = 'low' | 'medium' | 'high' | 'critical';
+export type BlockerStatus = 'open' | 'acknowledged' | 'escalated' | 'resolved';
+
+export interface StandupBlockerItem {
+  id: string;
+  summary: string;
+  category: BlockerCategory;
+  severity: BlockerSeverity;
+  affectedTaskId?: string | null;
+  affectedTaskTitle?: string | null;
+  neededAction?: string;
+}
+
+export interface StandupSubmission {
+  id: string;
+  workspaceId: string;
+  organizationId?: string;
+  userId: string;
+  userName?: string;
+  userEmail?: string;
+  userPhotoUrl?: string;
+  date: string; // YYYY-MM-DD
+  status: StandupStatus;
+  completedWork: StandupWorkItem[];
+  plannedWork: StandupWorkItem[];
+  blockers: StandupBlockerItem[];
+  helpNeeded?: string;
+  privateManagerNote?: string;
+  submittedAt?: string;
+  updatedAt?: string;
+  version?: number;
+  idempotencyKey?: string;
+}
+
+export interface BlockerRecord {
+  id: string;
+  workspaceId: string;
+  organizationId?: string;
+  standupId?: string;
+  summary: string;
+  category: BlockerCategory;
+  severity: BlockerSeverity;
+  status: BlockerStatus;
+  affectedTaskIds?: string[];
+  raisedBy: string;
+  raisedByName?: string;
+  ownerId?: string | null;
+  ownerName?: string | null;
+  resolutionNote?: string | null;
+  resolvedAt?: string | null;
+  resolvedBy?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  idempotencyKey?: string;
+}
+
+export interface TaskAnalyticsSummary {
+  totalTasks: number;
+  completedTasks: number;
+  openTasks: number;
+  overdueTasks: number;
+  completionRate: number;
+  onTimeRate: number;
+  throughputPerWeek: number;
+  avgCycleTimeDays: number;
+  avgLeadTimeDays: number;
+  totalBlockers: number;
+  resolvedBlockers: number;
+  activeBlockers: number;
+  avgBlockerResolutionHours: number;
+  standupSubmissionRate: number;
+  freshnessTimestamp: string;
+}
+
+export interface AiTaskProposal {
+  title: string;
+  description?: string;
+  priority: TaskPriority;
+  category: TaskCategory;
+  dueDate?: string;
+  assignedTo?: string[];
+  entityId?: string;
+  entityName?: string;
+  confidenceScore?: number;
+  provenanceNotes?: string[];
+  suggestedChecklist?: string[];
+  detectedAmbiguities?: Array<{ field: string; options: string[]; reason: string }>;
+}
+
 export interface Automation {
   id: string;
   workspaceIds: string[]; // Shared
