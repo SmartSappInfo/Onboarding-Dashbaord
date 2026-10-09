@@ -127,7 +127,7 @@ export default function WithdrawContractModal({ entity, open, onOpenChange }: Wi
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-2xl h-[80vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl rounded-[2.5rem]">
+        <DialogContent className="sm:max-w-2xl h-[80vh] flex flex-col p-0 overflow-hidden border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl">
           <DialogHeader className="p-8 bg-muted/30 border-b shrink-0 text-left">
             <div className="flex flex-col items-start gap-2">
               <div className="p-3 bg-destructive/10 text-destructive rounded-2xl shadow-sm mb-2">
