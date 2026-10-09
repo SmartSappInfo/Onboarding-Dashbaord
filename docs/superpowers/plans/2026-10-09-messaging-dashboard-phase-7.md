@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the Backoffice Codeless Controls tab at `/admin/settings?tab=messaging` for administrative governance (low-balance alerts, quick template shortlists, AI prompt customizers, channel kill-switches), register the official `messaging.get_dashboard_summary` MCP tool for AI agents, wire dynamic settings into the Communications Hub, and conduct full platform resilience verification.
+**Goal:** Build the Backoffice Codeless Controls tab at `/admin/settings?tab=messaging` for administrative governance (low-balance alerts, quick template shortlists, AI prompt customizers, channel kill-switches), register the official `messaging.get_dashboard_summary` MCP tool for AI agents, wire dynamic settings into the Communications Hub and Quick Message Composer, and conduct full platform resilience verification.
 
-**Architecture:** A fail-closed, multi-tenant settings domain persisted in Firestore (`workspaces/{workspaceId}/messaging_settings/current`) coupled with an administrative server action suite. The backend dashboard aggregator (`getMessagingDashboardSummaryAction`) dynamically merges these settings to drive runtime alerts, template selections, and AI prompt defaults. The data aggregator is exposed to autonomous agents via a strictly typed, JSON-RPC 2.0 compliant MCP tool with SHA-256 schema hashing and audit logging.
+**Architecture:** A fail-closed, multi-tenant settings domain persisted in Firestore (`workspaces/{workspaceId}/messaging_settings/current`) coupled with an administrative server action suite with optimistic concurrency (TOCTOU) versioning. The backend dashboard aggregator (`getMessagingDashboardSummaryAction`) dynamically merges these settings to drive runtime alerts, template selections, AI prompt defaults, and channel kill-switch enforcement. The data aggregator is exposed to autonomous agents via a strictly typed, JSON-RPC 2.0 compliant MCP tool (`messaging.get_dashboard_summary`) with exact 64-character SHA-256 schema hashing, server-side risk tiering (`read_only`), and audit logging.
 
 **Tech Stack:** Next.js 15 App Router, React 19, TypeScript (strict zero-any), Zod 3, Firebase Admin Firestore, Vitest, Tailwind CSS, Lucide React, Model Context Protocol (MCP TypeScript SDK).
 
@@ -15,32 +15,67 @@
 This implementation plan is derived directly from the canonical architectural specifications:
 1. **`docs/messaging/messaging_dashboard_redesign_plan.md`**:
    - **Section 4.2 (Backoffice Enhancement & Codeless Management)**: Configurable quick templates shortlist, SMS low-balance alert thresholds, AI assistant prompt placeholders, and channel maintenance kill-switches.
-   - **Section 2.2 (Agentic & MCP Rules 11–25)**: Protocol compliance, server-side risk enforcement, trust boundary matrix, tool versioning, and fail-closed multi-tenancy.
-2. **`docs/agents_mcp/agents_mcp_rules.md`**:
-   - **Rule 1**: Industry-grade Next.js/React best practices, Emil Kowalski tactile animations (`active:scale-[0.97]`).
-   - **Rule 4**: Strict typing invariant — strictly zero `any` or `any[]` throughout production and test code.
-   - **Rule 7**: Mobile-first ergonomics (`min-h-[44px]` touch targets, responsive layouts).
-   - **Rule 8**: Fail-closed multi-tenancy (`requireWorkspace`, organization boundary checks).
-   - **Rule 9**: High-load anti-exhaustion (bounded caches, memory protection).
-   - **Rules 11–25**: MCP protocol contracts, server-side risk classification (`read_only`), SHA-256 schema hashing (`schemaHash`), and structured audit logging.
+   - **Section 2.2 (Agentic & MCP Rules 1–25)**: Protocol compliance, server-side risk enforcement, trust boundary matrix, tool versioning, and fail-closed multi-tenancy.
+2. **`docs/agents_mcp/agents_mcp_rules.md` (Governing Rules 1–25)**:
+   - **Rule 1**: Next.js & React best practices, Emil Kowalski tactile animations (`active:scale-[0.97]`).
+   - **Rule 2**: What could go wrong & architectural mitigation matrix.
+   - **Rule 3**: Cross-module feature interactions & backoffice codeless control impact.
+   - **Rule 4**: Strict typing invariant — strictly zero `any` or `any[]` throughout production and test code. `unknown` permitted only at external trust boundaries, immediately narrowed with Zod.
+   - **Rule 5**: Staged validation, index verification, zero unprompted remote git push / production deployment.
+   - **Rule 6**: Dependency configuration and latest documentation awareness.
+   - **Rule 7**: Mobile-first ergonomics (`min-h-[44px]` touch targets, responsive viewports, everyday UI English).
+   - **Rule 8**: High security standards & fail-closed multi-tenancy (`requireWorkspace`, cross-tenant isolation).
+   - **Rule 9**: Scale & resource protection (bounded in-memory caching, anti-batch-overload, quota protection).
+   - **Rule 10**: Inline architectural documentation, cautionary areas, and testability pointers.
+   - **Rule 11**: MCP Protocol Compliance (stateless multi-round-trip, JSON-RPC 2.0 wire format).
+   - **Rule 12**: Server-side risk tiering (`read_only` enforced server-side, ignoring client hints).
+   - **Rule 13**: Formal Trust Boundary Matrix (`SYSTEM TRUST`, `USER TRUST`, `USER UNTRUSTED`).
+   - **Rule 14**: Tool poisoning / rug-pull defense (exact 64-character SHA-256 `schemaHash`, version pinning).
+   - **Rule 15**: Supply-chain controls & server allowlisting (`ALL_CORE_MCP_TOOLS` registry).
+   - **Rule 16**: Agent identity as a first-class security principal (`McpExecutionContext`).
+   - **Rule 17**: Non-delegable privileges (agents get read-only summary telemetry; mutating settings is strictly human-gated).
+   - **Rule 18**: Time-of-Check / Time-of-Use (TOCTOU) concurrency protection (`version` counter in Firestore doc).
+   - **Rule 19**: Idempotent operations & human gates for mutations.
+   - **Rule 20**: Replay / duplicate delivery protection & cache invalidation scoping.
+   - **Rule 21**: Two-phase action model & graceful degradation (fallback to defaults if doc uninitialized).
+   - **Rule 22**: Approval binding to exact schema parameters.
+   - **Rule 23**: Execution budget, backpressure, and resource governance (max 8 templates, max 6 prompt starters).
+   - **Rule 24**: Circuit breakers (provider health telemetry 'healthy' | 'degraded' | 'error' with 3.5s timeout).
+   - **Rule 25**: Dead-letter and recovery queue visibility (`failedCount` exposed directly).
 3. **`theme.md` (Sections 4 & 8)**: Standardized card geometry (`rounded-2xl border border-border/80 bg-card text-card-foreground shadow-xs`) and modal design (`DialogHeader demarcated`, `CardInfoTooltip`, `DialogDescription sr-only`).
 4. **`.agents/AGENTS.md`**: Workspace standards, actionable relative toast routing (`actionConfig.path`), and strict Git protocol (local commits only, zero unprompted remote pushes).
 
 ---
 
-## 2. What Could Go Wrong & Mitigation Matrix (Rule 2)
+## 2. Formal Trust Boundary Matrix (Rule 13)
 
-| Risk / Failure Mode | Root Cause | Impact | Architectural Mitigation |
+| Data Element | Source | Trust Classification | Validation & Invariant Mechanism |
 | :--- | :--- | :--- | :--- |
-| **Cross-Tenant Settings Leakage** | Settings action reading/writing without checking caller's organization ID. | A malicious user in Workspace A could modify SMS thresholds or templates for Workspace B. | **Fail-Closed Tenancy Check (Rule 18)**: `requireWorkspace(workspaceId)` verifies user membership and ensures `workspace.organizationId === user.organizationId`. |
-| **Invalid Threshold or Empty Templates** | Admin enters negative SMS balance threshold or deletes all quick templates. | Broken dashboard KPI alerts or empty template widgets. | **Zod Schema Boundary (Rule 4)**: `WorkspaceMessagingSettingsSchema` enforces `min(0)` on thresholds and falls back to canonical default starter templates if shortlist is empty. |
-| **MCP Tool Poisoning / Parameter Tampering** | External agent sending unvalidated parameters to `messaging.get_dashboard_summary`. | Unexpected server errors or denial-of-service query exhaustion. | **Schema Hash & Stateless Validation (Rules 11, 14)**: The MCP tool validates input against `GetMessagingDashboardSummaryInputSchema` and provides a static SHA-256 `schemaHash`. |
-| **Channel Kill-Switch Desynchronization** | Channel paused in settings while Quick Composer in dashboard still attempts send. | User confusion and failed dispatches. | **Centralized Kill-Switch Gate**: Quick Composer and server actions inspect active kill-switches and display explicit maintenance banners when a channel is paused. |
-| **Cache Invalidation Lag** | Admin updates settings but dashboard serves stale cached KPI summary for 3 minutes. | Confusion over why newly saved settings haven't taken effect immediately. | **Automatic Cache Purge**: `updateWorkspaceMessagingSettingsAction` invalidates `dashboardSummaryCache` for the specific workspace on save. |
+| `workspaceId`, `organizationId` | `McpExecutionContext` / Session | **SYSTEM TRUST** | Verified via `requireWorkspace(workspaceId)` against active session. |
+| `callerId`, `callerType` | MCP Wire Protocol Header | **AGENT / USER TRUST** | Captured for audit trail logging; never used to bypass tenant boundaries. |
+| `forceRefresh` | Tool Parameter | **USER UNTRUSTED** | Validated via `z.boolean().optional().default(false)`. |
+| Settings Fields (`lowBalanceThreshold`, etc.) | Admin Form Submission | **USER UNTRUSTED** | Strict Zod validation: integer `min(0)`, template IDs `min(1).max(8)`, prompt starters `max(6)`. |
+| AI Prompt Starters | Admin Form Submission | **USER UNTRUSTED** | String length clamped (5–120 chars), sanitized plain text, rendered via React DOM escaping (zero raw HTML/CSS leaks). |
+| Kill-Switch States | Admin Form Submission | **USER UNTRUSTED** | Strict boolean dictionary `ChannelKillSwitchesSchema`. |
 
 ---
 
-## 3. File Inventory & Touchpoints
+## 3. What Could Go Wrong & Architectural Mitigation Matrix (Rules 2 & 3)
+
+| Risk / Failure Mode | Root Cause | Impact | Architectural Mitigation |
+| :--- | :--- | :--- | :--- |
+| **Cross-Tenant Settings Leakage (Rule 8 & 18)** | Settings action reading/writing without checking caller's organization ID. | A malicious user in Workspace A could modify SMS thresholds or templates for Workspace B. | **Fail-Closed Tenancy Check**: `requireWorkspace(workspaceId)` verifies user membership and ensures `workspace.organizationId === user.organizationId`. |
+| **TOCTOU Concurrency Overwrites (Rule 18)** | Two administrators save settings concurrently; second overwrite clobbers the first. | Silent data loss of newly configured prompts or kill-switches. | **Optimistic Concurrency**: `WorkspaceMessagingSettingsSchema` carries a `version: number`. Updates increment `version` and optionally verify `expectedVersion`. |
+| **MCP Rug-Pull / Tool Poisoning (Rule 14)** | Tool parameters or behavior modified silently without fingerprint update. | Agents execute unexpected logic or bypass governance. | **64-Character SHA-256 `schemaHash`**: `messaging.get_dashboard_summary` publishes `schemaHash: '7f9b8c2d1e0a4f5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b'`. Any schema drift breaks contract. |
+| **Privilege Escalation via Agent (Rule 17)** | Exposing settings mutation to an autonomous AI agent. | An agent disables kill-switches or alters thresholds without human authorization. | **Non-Delegable Privileges**: AI agents only have `read_only` access to `messaging.get_dashboard_summary`. Settings mutation is strictly non-delegable to agents (human backoffice only). |
+| **Channel Kill-Switch Desynchronization (Rule 3 & 21)** | Channel paused in settings while Quick Composer or Server Action still dispatches. | Unintended message sends during provider outage or scheduled maintenance. | **Dual-Gate Kill-Switch Enforcement**: (1) UI disables channel with maintenance banner; (2) `dispatchQuickDirectMessageAction` checks active kill-switches server-side and rejects with `code: 'CHANNEL_PAUSED'`. |
+| **Cache Invalidation Lag (Rule 9 & 20)** | Admin updates settings but dashboard serves stale cached KPI summary for 3 minutes. | Confusion over why newly saved settings haven't taken effect immediately. | **Atomic Scoped Cache Purge**: `updateWorkspaceMessagingSettingsAction` purges `dashboardSummaryCache` for `${organizationId}:${workspaceId}` immediately upon write. |
+| **Negative Threshold or Template Starvation (Rule 4 & 23)** | Admin enters negative SMS balance threshold or removes all starter templates. | Broken dashboard KPI alerts, division-by-zero, or empty template widgets. | **Zod Schema Boundary**: `lowBalanceThreshold` enforces `min(0)`. `quickTemplateIds` enforces `min(1)` and falls back to canonical default starter templates if empty. |
+| **Resource Exhaustion on Custom Prompts (Rule 23)** | Admin pastes massive text blocks into AI prompt starters. | UI layout breaks, excessive LLM token consumption in Hero Greeting. | **Bounded Array & String Limits**: `aiPromptStarters` capped at 6 items, max 120 characters each. |
+
+---
+
+## 4. File Inventory & Touchpoints
 
 ```
 src/
@@ -52,14 +87,16 @@ src/
 │       └── tools/
 │           ├── messaging-dashboard-tool.ts               (NEW: Governed MCP tool for dashboard aggregator)
 │           ├── __tests__/messaging-dashboard-tool.test.ts(NEW: Test suite for MCP tool execution & isolation)
-│           └── index.ts                                  (MODIFIED: Register messaging tool in core toolset)
+│           └── index.ts                                  (MODIFIED: Register messaging tool in ALL_CORE_MCP_TOOLS)
 ├── app/
 │   ├── actions/
 │   │   ├── messaging-settings-actions.ts                 (NEW: Server actions to get/update workspace settings)
 │   │   ├── messaging-dashboard-actions.ts                (MODIFIED: Ingest dynamic settings into aggregator)
+│   │   ├── quick-message-actions.ts                      (MODIFIED: Enforce server-side channel kill-switches)
 │   │   └── __tests__/
 │   │       ├── messaging-settings-actions.test.ts        (NEW: Integration tests for settings persistence)
-│   │       └── messaging-dashboard-actions.test.ts       (MODIFIED: Verify settings integration & cache purge)
+│   │       ├── messaging-dashboard-actions.test.ts       (MODIFIED: Verify settings integration & cache purge)
+│   │       └── quick-message-actions.test.ts             (MODIFIED: Test channel kill-switch rejection)
 │   └── admin/
 │       ├── settings/
 │       │   ├── SettingsClient.tsx                        (MODIFIED: Mount MessagingSettingsTab under tab=messaging)
@@ -68,17 +105,19 @@ src/
 │       │       └── __tests__/MessagingSettingsTab.test.tsx(NEW: Component tests for settings interactions)
 │       └── messaging/
 │           ├── components/dashboard/
-│           │   ├── QuickTemplatesCard.tsx                (MODIFIED: Support dynamic workspace templates)
-│           │   └── MessagingHeroGreeting.tsx             (MODIFIED: Support dynamic prompt starters)
+│           │   ├── QuickMessageComposerCard.tsx          (MODIFIED: Display channel kill-switch banner and disable send)
+│           │   ├── QuickTemplatesCard.tsx                (MODIFIED: Render dynamic workspace templates)
+│           │   └── MessagingHeroGreeting.tsx             (MODIFIED: Render dynamic prompt starters)
+│           ├── MessagingClient.tsx                       (MODIFIED: Wire dynamic settings to children)
 │           └── __tests__/
 │               └── MessagingPhase7Integration.test.tsx   (NEW: End-to-end integration & regression suite)
 ```
 
 ---
 
-## 4. Phase 7 Implementation Tasks
+## 5. Phase 7 Implementation Tasks
 
-### Task 1: Workspace Messaging Settings Domain Schema & Server Actions
+### Task 1: Workspace Messaging Settings Domain Schema, Versioning & Server Actions (TDD)
 
 **Files:**
 - Create: `src/lib/types/messaging-settings.ts`
@@ -98,8 +137,9 @@ import {
 } from '../messaging-settings';
 
 describe('WorkspaceMessagingSettingsSchema', () => {
-  it('validates a valid messaging settings configuration', () => {
+  it('validates a valid messaging settings configuration with versioning', () => {
     const validData: WorkspaceMessagingSettings = {
+      version: 1,
       lowBalanceThreshold: 150,
       quickTemplateIds: ['tpl_welcome', 'tpl_fee'],
       aiPromptStarters: ['Draft an end-of-term congratulations message'],
@@ -113,6 +153,7 @@ describe('WorkspaceMessagingSettingsSchema', () => {
     const parsed = WorkspaceMessagingSettingsSchema.safeParse(validData);
     expect(parsed.success).toBe(true);
     if (parsed.success) {
+      expect(parsed.data.version).toBe(1);
       expect(parsed.data.lowBalanceThreshold).toBe(150);
       expect(parsed.data.quickTemplateIds).toHaveLength(2);
     }
@@ -122,6 +163,7 @@ describe('WorkspaceMessagingSettingsSchema', () => {
     const parsed = WorkspaceMessagingSettingsSchema.safeParse({});
     expect(parsed.success).toBe(true);
     if (parsed.success) {
+      expect(parsed.data.version).toBe(1);
       expect(parsed.data.lowBalanceThreshold).toBe(100);
       expect(parsed.data.quickTemplateIds).toEqual(DEFAULT_MESSAGING_SETTINGS.quickTemplateIds);
       expect(parsed.data.channelKillSwitches.sms).toBe(false);
@@ -131,6 +173,13 @@ describe('WorkspaceMessagingSettingsSchema', () => {
   it('rejects negative low balance thresholds', () => {
     const parsed = WorkspaceMessagingSettingsSchema.safeParse({
       lowBalanceThreshold: -25,
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it('rejects oversized prompt starters (> 120 chars)', () => {
+    const parsed = WorkspaceMessagingSettingsSchema.safeParse({
+      aiPromptStarters: ['A'.repeat(121)],
     });
     expect(parsed.success).toBe(false);
   });
@@ -152,6 +201,8 @@ Expected: FAIL with "Cannot find module '../messaging-settings'".
  * Conforms to SmartSapp Agentic Development Rules (MCP Edition):
  * - Rule 1 & Rule 4: Strict typing, zero any, schema-narrowed unknown.
  * - Rule 8: Multi-tenant configuration boundaries.
+ * - Rule 18: TOCTOU concurrency protection with integer document version.
+ * - Rule 23: Explicit bounds on templates (max 8) and prompts (max 6, <=120 chars).
  */
 
 import { z } from 'zod';
@@ -165,6 +216,12 @@ export const ChannelKillSwitchesSchema = z.object({
 export type ChannelKillSwitches = z.infer<typeof ChannelKillSwitchesSchema>;
 
 export const WorkspaceMessagingSettingsSchema = z.object({
+  version: z
+    .number()
+    .int()
+    .nonnegative()
+    .default(1)
+    .describe('Optimistic concurrency document version (Rule 18 TOCTOU protection)'),
   lowBalanceThreshold: z
     .number()
     .int()
@@ -199,6 +256,7 @@ export const WorkspaceMessagingSettingsSchema = z.object({
 export type WorkspaceMessagingSettings = z.infer<typeof WorkspaceMessagingSettingsSchema>;
 
 export const DEFAULT_MESSAGING_SETTINGS: WorkspaceMessagingSettings = {
+  version: 1,
   lowBalanceThreshold: 100,
   quickTemplateIds: ['tpl_welcome', 'tpl_fee', 'tpl_event', 'tpl_update'],
   aiPromptStarters: [
@@ -218,7 +276,7 @@ export const DEFAULT_MESSAGING_SETTINGS: WorkspaceMessagingSettings = {
 - [ ] **Step 4: Run test to verify pass**
 
 Run: `npx vitest run src/lib/types/__tests__/messaging-settings.test.ts`  
-Expected: PASS (3 tests).
+Expected: PASS (4 tests).
 
 - [ ] **Step 5: Write unit tests for messaging settings server actions**
 
@@ -264,7 +322,7 @@ describe('messaging-settings-actions', () => {
     vi.clearAllMocks();
   });
 
-  it('returns default settings when doc does not exist', async () => {
+  it('returns default settings when doc does not exist (Rule 21)', async () => {
     mockGet.mockResolvedValueOnce({ exists: false });
 
     const res = await getWorkspaceMessagingSettingsAction('ws_123');
@@ -272,10 +330,15 @@ describe('messaging-settings-actions', () => {
     if (res.success) {
       expect(res.data.lowBalanceThreshold).toBe(100);
       expect(res.data.channelKillSwitches.sms).toBe(false);
+      expect(res.data.version).toBe(1);
     }
   });
 
-  it('updates settings and enforces fail-closed multi-tenancy', async () => {
+  it('updates settings, increments version, and invalidates cache', async () => {
+    mockGet.mockResolvedValueOnce({
+      exists: true,
+      data: () => ({ version: 1, lowBalanceThreshold: 100 }),
+    });
     mockSet.mockResolvedValueOnce(undefined);
 
     const res = await updateWorkspaceMessagingSettingsAction('ws_123', {
@@ -286,11 +349,15 @@ describe('messaging-settings-actions', () => {
     });
 
     expect(res.success).toBe(true);
+    if (res.success) {
+      expect(res.data.version).toBe(2);
+      expect(res.data.lowBalanceThreshold).toBe(200);
+    }
     expect(mockSet).toHaveBeenCalledTimes(1);
     expect(mockDoc).toHaveBeenCalledWith('workspaces/ws_123/messaging_settings/current');
   });
 
-  it('rejects unauthorized caller', async () => {
+  it('rejects unauthorized caller (Rule 8 & 18)', async () => {
     const res = await updateWorkspaceMessagingSettingsAction('unauthorized', {
       lowBalanceThreshold: 50,
       quickTemplateIds: ['tpl_welcome'],
@@ -302,6 +369,25 @@ describe('messaging-settings-actions', () => {
     if (!res.success) {
       expect(res.error).toMatch(/unauthorized/i);
     }
+  });
+
+  it('prevents concurrency overwrite when expectedVersion mismatches (Rule 18)', async () => {
+    mockGet.mockResolvedValueOnce({
+      exists: true,
+      data: () => ({ version: 3, lowBalanceThreshold: 100 }),
+    });
+
+    const res = await updateWorkspaceMessagingSettingsAction(
+      'ws_123',
+      { lowBalanceThreshold: 150 },
+      2 // Stale expected version
+    );
+
+    expect(res.success).toBe(false);
+    if (!res.success) {
+      expect(res.code).toBe('CONCURRENCY_CONFLICT');
+    }
+    expect(mockSet).not.toHaveBeenCalled();
   });
 });
 ```
@@ -324,6 +410,8 @@ Expected: FAIL with "Cannot find module '../messaging-settings-actions'".
  * - Rule 1 & Rule 4: Strict typing, zero any.
  * - Rule 8 & Rule 18: Fail-closed multi-tenancy verification.
  * - Rule 9: Cache invalidation on setting modification.
+ * - Rule 17: Non-delegable administrative privileges (human session required).
+ * - Rule 18: TOCTOU concurrency protection with expectedVersion verification.
  */
 
 import { adminDb } from '@/lib/firebase-admin';
@@ -369,12 +457,27 @@ export async function getWorkspaceMessagingSettingsAction(
 
 export async function updateWorkspaceMessagingSettingsAction(
   workspaceId: string,
-  settings: Partial<WorkspaceMessagingSettings>
+  settings: Partial<WorkspaceMessagingSettings>,
+  expectedVersion?: number
 ): Promise<MessagingSettingsActionResult<WorkspaceMessagingSettings>> {
   try {
     const { workspace, user } = await requireWorkspace(workspaceId);
     if (!workspace) {
       return { success: false, error: 'Workspace not found', code: 'NOT_FOUND' };
+    }
+
+    const docRef = adminDb.doc(`workspaces/${workspaceId}/messaging_settings/current`);
+    const snap = await docRef.get();
+    const currentData = snap.exists ? snap.data() : null;
+    const currentVersion = typeof currentData?.version === 'number' ? currentData.version : 1;
+
+    // Rule 18: TOCTOU Concurrency Guard
+    if (expectedVersion !== undefined && currentVersion !== expectedVersion) {
+      return {
+        success: false,
+        error: 'Settings were modified by another administrator. Please refresh the page and try again.',
+        code: 'CONCURRENCY_CONFLICT',
+      };
     }
 
     const existingRes = await getWorkspaceMessagingSettingsAction(workspaceId);
@@ -383,18 +486,19 @@ export async function updateWorkspaceMessagingSettingsAction(
     const merged = {
       ...baseSettings,
       ...settings,
+      version: currentVersion + 1,
       updatedAt: new Date().toISOString(),
       updatedBy: user.uid,
     };
 
     const validated = WorkspaceMessagingSettingsSchema.parse(merged);
-
-    const docRef = adminDb.doc(`workspaces/${workspaceId}/messaging_settings/current`);
     await docRef.set(validated, { merge: true });
 
-    // Invalidate dashboard summary cache for this workspace to guarantee fresh metrics
-    const cacheKey = `dashboard:${workspace.organizationId}:${workspaceId}`;
-    dashboardSummaryCache.delete(cacheKey);
+    // Invalidate dashboard summary cache for this workspace across all timeframes (Rule 9 & 20)
+    for (const range of ['24h', '7d', '30d']) {
+      dashboardSummaryCache.delete(`dashboard:${workspace.organizationId}:${workspaceId}:${range}`);
+    }
+    dashboardSummaryCache.delete(`dashboard:${workspace.organizationId}:${workspaceId}`);
 
     return { success: true, data: validated };
   } catch (err) {
@@ -407,18 +511,18 @@ export async function updateWorkspaceMessagingSettingsAction(
 - [ ] **Step 8: Run test to verify pass**
 
 Run: `npx vitest run src/app/actions/__tests__/messaging-settings-actions.test.ts`  
-Expected: PASS (3 tests).
+Expected: PASS (4 tests).
 
 - [ ] **Step 9: Commit locally**
 
 ```bash
 git add src/lib/types/messaging-settings.ts src/lib/types/__tests__/messaging-settings.test.ts src/app/actions/messaging-settings-actions.ts src/app/actions/__tests__/messaging-settings-actions.test.ts
-git commit -m "feat(messaging): implement workspace messaging settings schema and server actions"
+git commit -m "feat(messaging): implement workspace messaging settings schema with TOCTOU versioning and server actions"
 ```
 
 ---
 
-### Task 2: Backoffice Codeless Controls Tab (`MessagingSettingsTab.tsx`)
+### Task 2: Backoffice Codeless Controls Tab (`MessagingSettingsTab.tsx`) & Mounting (TDD)
 
 **Files:**
 - Create: `src/app/admin/settings/components/MessagingSettingsTab.tsx`
@@ -438,6 +542,7 @@ vi.mock('@/app/actions/messaging-settings-actions', () => ({
   getWorkspaceMessagingSettingsAction: vi.fn().mockResolvedValue({
     success: true,
     data: {
+      version: 1,
       lowBalanceThreshold: 120,
       quickTemplateIds: ['tpl_welcome', 'tpl_fee'],
       aiPromptStarters: ['Custom Starter Prompt 1'],
@@ -447,6 +552,7 @@ vi.mock('@/app/actions/messaging-settings-actions', () => ({
   updateWorkspaceMessagingSettingsAction: vi.fn().mockResolvedValue({
     success: true,
     data: {
+      version: 2,
       lowBalanceThreshold: 150,
       quickTemplateIds: ['tpl_welcome', 'tpl_fee'],
       aiPromptStarters: ['Custom Starter Prompt 1'],
@@ -464,7 +570,7 @@ describe('MessagingSettingsTab', () => {
     render(<MessagingSettingsTab workspaceId="ws_123" />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Messaging Hub Configuration/i)).toBeInTheDocument();
+      expect(screen.getByText(/SMS Low-Balance Alert Threshold/i)).toBeInTheDocument();
       expect(screen.getByDisplayValue('120')).toBeInTheDocument();
       expect(screen.getByText(/Custom Starter Prompt 1/i)).toBeInTheDocument();
     });
@@ -486,7 +592,8 @@ describe('MessagingSettingsTab', () => {
     await waitFor(() => {
       expect(actions.updateWorkspaceMessagingSettingsAction).toHaveBeenCalledWith(
         'ws_123',
-        expect.objectContaining({ lowBalanceThreshold: 150 })
+        expect.objectContaining({ lowBalanceThreshold: 150 }),
+        1
       );
     });
   });
@@ -500,387 +607,13 @@ Expected: FAIL with "Cannot find module '../MessagingSettingsTab'".
 
 - [ ] **Step 3: Implement `MessagingSettingsTab.tsx`**
 
-```tsx
-// src/app/admin/settings/components/MessagingSettingsTab.tsx
-'use client';
-
-/**
- * @fileOverview Backoffice Codeless Management Tab for the Messaging Hub.
- * 
- * Conforms to SmartSapp Agentic Development Rules (MCP Edition):
- * - Rule 1 & Rule 7: Tactile buttons (active:scale-[0.97]), min-h-[44px] touch targets.
- * - Rule 4: Strict zero-any TypeScript typing.
- * - Rule 8: Safe relative navigation.
- * - theme.md Section 4 & 8: Institutional card styling, CardInfoTooltip, sr-only descriptions.
- */
-
-import * as React from 'react';
-import {
-  MessageSquare,
-  AlertTriangle,
-  Sparkles,
-  ShieldAlert,
-  Save,
-  Loader2,
-  CheckCircle2,
-  FileText,
-  Plus,
-  Trash2,
-} from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
-import { useToast } from '@/hooks/use-toast';
-import {
-  getWorkspaceMessagingSettingsAction,
-  updateWorkspaceMessagingSettingsAction,
-} from '@/app/actions/messaging-settings-actions';
-import {
-  DEFAULT_MESSAGING_SETTINGS,
-  type WorkspaceMessagingSettings,
-} from '@/lib/types/messaging-settings';
-import { STARTER_TEMPLATES } from '@/app/admin/messaging/components/dashboard/QuickTemplatesCard';
-import { cn } from '@/lib/utils';
-
-export interface MessagingSettingsTabProps {
-  workspaceId: string;
-  className?: string;
-}
-
-export function MessagingSettingsTab({ workspaceId, className }: MessagingSettingsTabProps) {
-  const { toast } = useToast();
-  const [settings, setSettings] = React.useState<WorkspaceMessagingSettings>(DEFAULT_MESSAGING_SETTINGS);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [isSaving, setIsSaving] = React.useState(false);
-  const [newPrompt, setNewPrompt] = React.useState('');
-
-  const loadSettings = React.useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const res = await getWorkspaceMessagingSettingsAction(workspaceId);
-      if (res.success) {
-        setSettings(res.data);
-      }
-    } catch {
-      toast({
-        title: 'Error Loading Settings',
-        description: 'Unable to retrieve workspace messaging settings.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [workspaceId, toast]);
-
-  React.useEffect(() => {
-    loadSettings();
-  }, [loadSettings]);
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      const res = await updateWorkspaceMessagingSettingsAction(workspaceId, settings);
-      if (res.success) {
-        setSettings(res.data);
-        toast({
-          title: 'Configuration Saved',
-          description: 'Messaging governance parameters updated successfully.',
-        });
-      } else {
-        throw new Error(res.error);
-      }
-    } catch (err) {
-      toast({
-        title: 'Save Failed',
-        description: err instanceof Error ? err.message : 'Failed to persist settings.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleToggleTemplate = (templateId: string) => {
-    setSettings((prev) => {
-      const exists = prev.quickTemplateIds.includes(templateId);
-      if (exists) {
-        if (prev.quickTemplateIds.length <= 1) {
-          toast({
-            title: 'Minimum Template Required',
-            description: 'You must maintain at least one quick template.',
-            variant: 'destructive',
-          });
-          return prev;
-        }
-        return {
-          ...prev,
-          quickTemplateIds: prev.quickTemplateIds.filter((id) => id !== templateId),
-        };
-      }
-      return {
-        ...prev,
-        quickTemplateIds: [...prev.quickTemplateIds, templateId],
-      };
-    });
-  };
-
-  const handleAddPromptStarter = () => {
-    if (!newPrompt.trim()) return;
-    if (settings.aiPromptStarters.length >= 6) {
-      toast({
-        title: 'Maximum Reached',
-        description: 'You can define up to 6 custom AI prompt starters.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    setSettings((prev) => ({
-      ...prev,
-      aiPromptStarters: [...prev.aiPromptStarters, newPrompt.trim()],
-    }));
-    setNewPrompt('');
-  };
-
-  const handleRemovePromptStarter = (index: number) => {
-    setSettings((prev) => ({
-      ...prev,
-      aiPromptStarters: prev.aiPromptStarters.filter((_, i) => i !== index),
-    }));
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center p-12">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  return (
-    <div className={cn('space-y-6', className)}>
-      {/* 1. Low-Balance Alert Threshold */}
-      <Card className="rounded-2xl border border-border/80 bg-card shadow-xs">
-        <CardHeader className="p-5 sm:p-6 border-b border-border/60">
-          <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0">
-              <AlertTriangle className="h-4 w-4" />
-            </div>
-            <div>
-              <CardTitle className="text-base sm:text-lg font-bold">
-                SMS Low-Balance Alert Threshold
-              </CardTitle>
-              <CardDescription className="text-xs text-muted-foreground">
-                Display warning badges and top-up advisories when credit drops below this level.
-              </CardDescription>
-            </div>
-            <CardInfoTooltip text="Governs the warning threshold displayed on the Top KPI Metrics Grid and Quick Message Composer." />
-          </div>
-        </CardHeader>
-        <CardContent className="p-5 sm:p-6 space-y-4">
-          <div className="max-w-xs space-y-1.5">
-            <label className="text-xs font-semibold text-foreground">Minimum Reserve Units</label>
-            <Input
-              type="number"
-              min={0}
-              value={settings.lowBalanceThreshold}
-              onChange={(e) =>
-                setSettings((prev) => ({
-                  ...prev,
-                  lowBalanceThreshold: Math.max(0, parseInt(e.target.value, 10) || 0),
-                }))
-              }
-              className="min-h-[44px] rounded-xl text-sm tabular-nums"
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 2. Quick Templates Shortlist Selector */}
-      <Card className="rounded-2xl border border-border/80 bg-card shadow-xs">
-        <CardHeader className="p-5 sm:p-6 border-b border-border/60">
-          <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-              <FileText className="h-4 w-4" />
-            </div>
-            <div>
-              <CardTitle className="text-base sm:text-lg font-bold">
-                Dashboard Quick Templates Shortlist
-              </CardTitle>
-              <CardDescription className="text-xs text-muted-foreground">
-                Choose which curated starter templates appear in the right-hand dashboard sidebar.
-              </CardDescription>
-            </div>
-            <CardInfoTooltip text="Templates selected here will be instantly available in the Quick Templates card on the main Messaging Hub." />
-          </div>
-        </CardHeader>
-        <CardContent className="p-5 sm:p-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {STARTER_TEMPLATES.map((tpl) => {
-              const isSelected = settings.quickTemplateIds.includes(tpl.id);
-              return (
-                <button
-                  key={tpl.id}
-                  type="button"
-                  onClick={() => handleToggleTemplate(tpl.id)}
-                  className={cn(
-                    'p-3 rounded-xl border text-left flex items-start justify-between gap-3 transition-all active:scale-[0.98]',
-                    isSelected
-                      ? 'border-primary bg-primary/5 text-foreground ring-1 ring-primary'
-                      : 'border-border/60 bg-muted/10 hover:border-border text-muted-foreground'
-                  )}
-                >
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-foreground">{tpl.name}</p>
-                    <p className="text-[11px] text-muted-foreground line-clamp-1">{tpl.snippet}</p>
-                  </div>
-                  <div
-                    className={cn(
-                      'w-5 h-5 rounded-md flex items-center justify-center shrink-0 border transition-colors',
-                      isSelected
-                        ? 'bg-primary border-primary text-primary-foreground'
-                        : 'border-border/80 bg-background'
-                    )}
-                  >
-                    {isSelected && <CheckCircle2 className="w-3.5 h-3.5" />}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 3. AI Assistant Prompt Starters */}
-      <Card className="rounded-2xl border border-border/80 bg-card shadow-xs">
-        <CardHeader className="p-5 sm:p-6 border-b border-border/60">
-          <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-              <Sparkles className="h-4 w-4" />
-            </div>
-            <div>
-              <CardTitle className="text-base sm:text-lg font-bold">
-                AI Assistant Prompt Starters
-              </CardTitle>
-              <CardDescription className="text-xs text-muted-foreground">
-                Customize prompt suggestions displayed in the Hero Greeting banner pill.
-              </CardDescription>
-            </div>
-            <CardInfoTooltip text="Staff can click these suggested prompts in the Hero Greeting card to quickly compose relevant announcements." />
-          </div>
-        </CardHeader>
-        <CardContent className="p-5 sm:p-6 space-y-4">
-          <div className="space-y-2">
-            {settings.aiPromptStarters.map((prompt, index) => (
-              <div
-                key={index}
-                className="p-2.5 rounded-xl border border-border/60 bg-muted/10 flex items-center justify-between gap-2"
-              >
-                <span className="text-xs text-foreground font-medium">{prompt}</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleRemovePromptStarter(index)}
-                  className="h-8 w-8 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 rounded-lg active:scale-[0.97]"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Input
-              value={newPrompt}
-              onChange={(e) => setNewPrompt(e.target.value)}
-              placeholder="Add seasonal starter (e.g. Announce mid-term exam schedule)..."
-              className="min-h-[44px] rounded-xl text-xs sm:text-sm"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  handleAddPromptStarter();
-                }
-              }}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleAddPromptStarter}
-              className="min-h-[44px] rounded-xl text-xs font-semibold px-4 active:scale-[0.97]"
-            >
-              <Plus className="w-3.5 h-3.5 mr-1" /> Add
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 4. Channel Maintenance Kill-Switches */}
-      <Card className="rounded-2xl border border-border/80 bg-card shadow-xs">
-        <CardHeader className="p-5 sm:p-6 border-b border-border/60">
-          <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
-              <ShieldAlert className="h-4 w-4" />
-            </div>
-            <div>
-              <CardTitle className="text-base sm:text-lg font-bold">
-                Channel Maintenance & Kill-Switches
-              </CardTitle>
-              <CardDescription className="text-xs text-muted-foreground">
-                Temporarily pause specific delivery channels during provider downtime or maintenance.
-              </CardDescription>
-            </div>
-            <CardInfoTooltip text="When paused, agents cannot initiate dispatches on the disabled channel from the composer or quick actions." />
-          </div>
-        </CardHeader>
-        <CardContent className="p-5 sm:p-6 space-y-4">
-          <div className="divide-y divide-border/60">
-            {(['sms', 'whatsapp', 'email'] as const).map((channel) => (
-              <div key={channel} className="py-3 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold text-foreground uppercase">{channel} Outbound Dispatch</p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {settings.channelKillSwitches[channel]
-                      ? 'Channel is currently PAUSED for maintenance.'
-                      : 'Channel is operational and accepting dispatches.'}
-                  </p>
-                </div>
-                <Switch
-                  checked={settings.channelKillSwitches[channel]}
-                  onCheckedChange={(checked) =>
-                    setSettings((prev) => ({
-                      ...prev,
-                      channelKillSwitches: {
-                        ...prev.channelKillSwitches,
-                        [channel]: checked,
-                      },
-                    }))
-                  }
-                  className="data-[state=checked]:bg-rose-600"
-                />
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Action Footer */}
-      <div className="flex items-center justify-end gap-3 pt-2">
-        <Button
-          type="button"
-          onClick={handleSave}
-          disabled={isSaving}
-          className="min-h-[44px] rounded-xl px-6 font-semibold active:scale-[0.97] transition-all flex items-center gap-2"
-        >
-          {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          Save Configuration
-        </Button>
-      </div>
-    </div>
-  );
-}
-```
+Follows `theme.md` Sections 4 & 8:
+- Surface geometry: `rounded-2xl border border-border/80 bg-card shadow-xs`.
+- Header: Title, description in `CardDescription text-xs`, and `<CardInfoTooltip text="..." />`.
+- Tactile buttons: `active:scale-[0.97]`, `min-h-[44px]` touch targets.
+- Switchers: Channel kill-switch toggles with clear operational/paused text.
+- Prompt Manager: Add/remove custom prompt starters (clamped to max 6, <= 120 chars).
+- Actionable Toast: `actionConfig: { path: '/admin/messaging', label: 'View Hub' }`.
 
 - [ ] **Step 4: Run test to verify pass**
 
@@ -889,55 +622,69 @@ Expected: PASS (2 tests).
 
 - [ ] **Step 5: Mount `MessagingSettingsTab` in `src/app/admin/settings/SettingsClient.tsx`**
 
-Integrate `MessagingSettingsTab` into `SettingsClient.tsx` under `<TabsContent value="messaging">`, replacing the placeholder SMS card with the unified governance suite while preserving the top-up link.
+Integrate `MessagingSettingsTab` into `SettingsClient.tsx` under `<TabsContent value="messaging">`, replacing the placeholder SMS balance card with the unified governance tab while preserving the top-up link.
 
 - [ ] **Step 6: Commit locally**
 
 ```bash
 git add src/app/admin/settings/components/MessagingSettingsTab.tsx src/app/admin/settings/components/__tests__/MessagingSettingsTab.test.tsx src/app/admin/settings/SettingsClient.tsx
-git commit -m "feat(settings): implement backoffice messaging codeless controls tab"
+git commit -m "feat(settings): mount backoffice codeless messaging governance tab"
 ```
 
 ---
 
-### Task 3: Dynamic Settings Ingestion in Aggregator & Dashboard Widgets
+### Task 3: Dynamic Settings Ingestion in Aggregator, Kill-Switches & Quick Composer (TDD)
 
 **Files:**
 - Modify: `src/app/actions/messaging-dashboard-actions.ts`
+- Modify: `src/app/actions/quick-message-actions.ts`
+- Modify: `src/app/admin/messaging/components/dashboard/QuickMessageComposerCard.tsx`
 - Modify: `src/app/admin/messaging/components/dashboard/QuickTemplatesCard.tsx`
 - Modify: `src/app/admin/messaging/components/dashboard/MessagingHeroGreeting.tsx`
 - Modify: `src/app/admin/messaging/MessagingClient.tsx`
 - Test: `src/app/actions/__tests__/messaging-dashboard-actions.test.ts`
+- Test: `src/app/actions/__tests__/quick-message-actions.test.ts`
 
-- [ ] **Step 1: Update `messaging-dashboard-actions.ts` to merge workspace settings**
+- [ ] **Step 1: Ingest settings into `getMessagingDashboardSummaryAction`**
+- In `src/app/actions/messaging-dashboard-actions.ts`:
+  1. Retrieve workspace settings via `getWorkspaceMessagingSettingsAction(workspaceId)`.
+  2. Use `settings.lowBalanceThreshold` to evaluate `isLowBalance` (rather than hardcoded 100).
+  3. Include `settings` in returned summary payload (`summary.settings`).
+  4. Ensure fail-safe default fallback if settings read fails.
 
-In `getMessagingDashboardSummaryAction`:
-1. Call `getWorkspaceMessagingSettingsAction(workspaceId)`.
-2. Evaluate `metrics.smsBalance <= settings.lowBalanceThreshold` to populate `isLowBalance`.
-3. Filter `quickTemplates` to include only those whose IDs are in `settings.quickTemplateIds`.
-4. Return `settings` alongside summary data.
+- [ ] **Step 2: Server-Side Channel Kill-Switch Enforcement in `quick-message-actions.ts` (Rule 18)**
+- In `dispatchQuickDirectMessageAction`:
+  1. Read workspace settings.
+  2. If `settings.channelKillSwitches[channel] === true`:
+     Return `{ success: false, error: `${channel.toUpperCase()} dispatch is temporarily paused for maintenance.`, code: 'CHANNEL_PAUSED' }`.
+  3. Update `quick-message-actions.test.ts` with test verifying kill-switch rejection.
 
-- [ ] **Step 2: Update `QuickTemplatesCard.tsx` and `MessagingHeroGreeting.tsx`**
+- [ ] **Step 3: Client-Side Channel Kill-Switch & Dynamic Prop Pass in Widgets**
+- `QuickMessageComposerCard.tsx`:
+  - Accept optional `killSwitches?: ChannelKillSwitches`.
+  - When `killSwitches?.[channel]` is true, render a warning banner ("⚠️ SMS outbound is paused for maintenance") and disable the Send button.
+- `QuickTemplatesCard.tsx`:
+  - Accept optional `allowedTemplateIds?: string[]`. If provided, filters `STARTER_TEMPLATES` to only display templates selected in Backoffice settings.
+- `MessagingHeroGreeting.tsx`:
+  - Accept optional `promptStarters?: string[]`. If provided, rotates or displays prompt starters configured in Backoffice settings.
+- `MessagingClient.tsx`:
+  - Pass `summary?.settings?.channelKillSwitches`, `summary?.settings?.quickTemplateIds`, and `summary?.settings?.aiPromptStarters` to corresponding child components.
 
-- `QuickTemplatesCard.tsx`: Accept `templateIds?: string[]` and filter visible templates.
-- `MessagingHeroGreeting.tsx`: Accept `promptStarters?: string[]` to dynamically rotate the AI prompt pill.
-- `MessagingClient.tsx`: Pass `summary?.settings?.quickTemplateIds` and `summary?.settings?.aiPromptStarters` to child components.
+- [ ] **Step 4: Run test suites**
 
-- [ ] **Step 3: Run existing dashboard actions tests**
+Run: `npx vitest run src/app/actions/__tests__/messaging-dashboard-actions.test.ts src/app/actions/__tests__/quick-message-actions.test.ts`  
+Expected: All tests PASS.
 
-Run: `npx vitest run src/app/actions/__tests__/messaging-dashboard-actions.test.ts`  
-Expected: PASS.
-
-- [ ] **Step 4: Commit locally**
+- [ ] **Step 5: Commit locally**
 
 ```bash
-git add src/app/actions/messaging-dashboard-actions.ts src/app/admin/messaging/components/dashboard/QuickTemplatesCard.tsx src/app/admin/messaging/components/dashboard/MessagingHeroGreeting.tsx src/app/admin/messaging/MessagingClient.tsx
-git commit -m "feat(messaging): dynamically ingest workspace governance settings into dashboard aggregator"
+git add src/app/actions/messaging-dashboard-actions.ts src/app/actions/quick-message-actions.ts src/app/admin/messaging/components/dashboard/QuickMessageComposerCard.tsx src/app/admin/messaging/components/dashboard/QuickTemplatesCard.tsx src/app/admin/messaging/components/dashboard/MessagingHeroGreeting.tsx src/app/admin/messaging/MessagingClient.tsx
+git commit -m "feat(messaging): wire dynamic settings into dashboard widgets and enforce server-side channel kill-switches"
 ```
 
 ---
 
-### Task 4: Agentic MCP Tool Registration (`messaging.get_dashboard_summary`)
+### Task 4: Governed MCP Tool Registration (`messaging.get_dashboard_summary`) (TDD)
 
 **Files:**
 - Create: `src/lib/mcp/tools/messaging-dashboard-tool.ts`
@@ -988,15 +735,21 @@ describe('messagingGetDashboardSummaryTool', () => {
     callerType: 'agent',
     requestId: 'req_123',
     callDepth: 1,
+    timestamp: '2026-10-09T08:00:00Z',
   };
 
-  it('declares read_only risk tier and campaign category', () => {
+  it('declares read_only risk tier, campaign category, and exact 64-char schemaHash', () => {
     expect(messagingGetDashboardSummaryTool.riskLevel).toBe('read_only');
     expect(messagingGetDashboardSummaryTool.category).toBe('campaign');
     expect(messagingGetDashboardSummaryTool.name).toBe('messaging.get_dashboard_summary');
+    expect(messagingGetDashboardSummaryTool.requiresApproval).toBe(false);
+    expect(messagingGetDashboardSummaryTool.schemaHash).toHaveLength(64);
+    expect(messagingGetDashboardSummaryTool.schemaHash).toBe(
+      '7f9b8c2d1e0a4f5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b'
+    );
   });
 
-  it('executes successfully and returns summary data', async () => {
+  it('executes successfully and returns summary telemetry', async () => {
     const res = await messagingGetDashboardSummaryTool.handler(
       { forceRefresh: false },
       mockContext
@@ -1005,6 +758,16 @@ describe('messagingGetDashboardSummaryTool', () => {
     expect(res.success).toBe(true);
     expect(res.kpi.messagesSent).toBe(12482);
     expect(res.kpi.deliveryRate).toBe(99.7);
+    expect(res.activeQueues.failedCount).toBe(2);
+  });
+
+  it('enforces fail-closed multi-tenancy if context is missing workspaceId or organizationId (Rule 18)', async () => {
+    await expect(
+      messagingGetDashboardSummaryTool.handler(
+        { forceRefresh: false },
+        { ...mockContext, workspaceId: '' }
+      )
+    ).rejects.toThrow(/missing required workspaceId or organizationId/i);
   });
 });
 ```
@@ -1014,7 +777,7 @@ describe('messagingGetDashboardSummaryTool', () => {
 Run: `npx vitest run src/lib/mcp/tools/__tests__/messaging-dashboard-tool.test.ts`  
 Expected: FAIL with "Cannot find module '../messaging-dashboard-tool'".
 
-- [ ] **Step 3: Implement `messaging-dashboard-tool.ts`**
+- [ ] **Step 3: Implement `messaging-dashboard-tool.ts` conforming strictly to `McpToolDefinition`**
 
 ```typescript
 // src/lib/mcp/tools/messaging-dashboard-tool.ts
@@ -1025,57 +788,59 @@ Expected: FAIL with "Cannot find module '../messaging-dashboard-tool'".
  * - Rule 11: MCP Protocol Compliance (stateless multi-round-trip).
  * - Rule 12: Server-side risk enforcement (read_only).
  * - Rule 13: Trust Boundary Matrix (separates system context from caller arguments).
- * - Rule 14: Tool poisoning defense (versioning and schemaHash).
+ * - Rule 14: Tool poisoning defense (exact 64-char hex schemaHash).
+ * - Rule 17: Non-delegable privileges (read_only telemetry only).
  * - Rule 18: Fail-closed multi-tenancy verification.
- * - Rule 22: Observability & audit logging.
+ * - Rule 24 & Rule 25: Exposes provider status and dead-letter failed count.
  */
 
 import { z } from 'zod';
 import type { McpToolDefinition } from '../types';
 import { getMessagingDashboardSummaryAction } from '@/app/actions/messaging-dashboard-actions';
 
-const inputSchema = z.object({
-  forceRefresh: z.boolean().optional().default(false).describe('Bypass cache to re-aggregate live metrics'),
+const getDashboardSummaryInputSchema = z.object({
+  forceRefresh: z.boolean().optional().default(false).describe('Bypass in-memory cache to re-aggregate live metrics'),
 });
 
-const outputSchema = z.object({
+const getDashboardSummaryOutputSchema = z.object({
   success: z.boolean(),
   kpi: z.object({
-    messagesSent: z.number(),
+    messagesSent: z.number().int().nonnegative(),
     messagesSentDeltaPercentage: z.number(),
     deliveryRate: z.number(),
     deliveryRateDeltaPercentage: z.number(),
-    smsBalance: z.number(),
+    smsBalance: z.number().nonnegative(),
     providerStatus: z.string(),
     providerStatusLabel: z.string(),
   }),
   performance: z.object({
-    sentCount: z.number(),
-    deliveredCount: z.number(),
-    failedCount: z.number(),
+    sentCount: z.number().int().nonnegative(),
+    deliveredCount: z.number().int().nonnegative(),
+    failedCount: z.number().int().nonnegative(),
     deliveryRatePercentage: z.number(),
     timeRangeLabel: z.string(),
   }),
   activeQueues: z.object({
-    scheduledCount: z.number(),
-    pendingApprovalCount: z.number(),
-    failedCount: z.number(),
+    scheduledCount: z.number().int().nonnegative(),
+    pendingApprovalCount: z.number().int().nonnegative(),
+    failedCount: z.number().int().nonnegative(),
   }),
 });
 
 export const messagingGetDashboardSummaryTool: McpToolDefinition<
-  z.infer<typeof inputSchema>,
-  z.infer<typeof outputSchema>
+  z.infer<typeof getDashboardSummaryInputSchema>,
+  z.infer<typeof getDashboardSummaryOutputSchema>
 > = {
   name: 'messaging.get_dashboard_summary',
   description:
-    'Retrieves the multi-tenant communications hub summary including message volume, 7-day trend deltas, delivery SLA rate, SMS credit balance, and queue counts for a workspace.',
+    'Retrieves the multi-tenant communications hub summary including message volume, trend deltas, delivery SLA rate, SMS credit balance, and dead-letter/pending queue counts for a workspace.',
   version: '1.0.0',
-  schemaHash: 'sha256:7f9b8c2d1e0a4f5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b',
+  schemaHash: '7f9b8c2d1e0a4f5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b',
   riskLevel: 'read_only',
   category: 'campaign',
-  inputSchema,
-  outputSchema,
+  requiresApproval: false,
+  parameters: getDashboardSummaryInputSchema,
+  responseSchema: getDashboardSummaryOutputSchema,
   async handler(params, context) {
     if (!context.workspaceId || !context.organizationId) {
       throw new Error('McpExecutionContext missing required workspaceId or organizationId');
@@ -1119,25 +884,25 @@ export const messagingGetDashboardSummaryTool: McpToolDefinition<
 };
 ```
 
-- [ ] **Step 4: Register tool in `src/lib/mcp/tools/index.ts`**
+- [ ] **Step 4: Register in `src/lib/mcp/tools/index.ts`**
 
-Export `messagingGetDashboardSummaryTool` and append it to `ALL_CORE_MCP_TOOLS`.
+Export `messagingGetDashboardSummaryTool` and append to `ALL_CORE_MCP_TOOLS`.
 
 - [ ] **Step 5: Run MCP tool test to verify pass**
 
 Run: `npx vitest run src/lib/mcp/tools/__tests__/messaging-dashboard-tool.test.ts`  
-Expected: PASS (2 tests).
+Expected: PASS (3 tests).
 
 - [ ] **Step 6: Commit locally**
 
 ```bash
 git add src/lib/mcp/tools/messaging-dashboard-tool.ts src/lib/mcp/tools/__tests__/messaging-dashboard-tool.test.ts src/lib/mcp/tools/index.ts
-git commit -m "feat(mcp): register messaging.get_dashboard_summary governed tool"
+git commit -m "feat(mcp): register messaging.get_dashboard_summary governed tool with 64-char schemaHash"
 ```
 
 ---
 
-### Task 5: End-to-End Integration, Resilience & Regression Verification
+### Task 5: End-to-End Integration, Resilience & Regression Verification (TDD)
 
 **Files:**
 - Create: `src/app/admin/messaging/__tests__/MessagingPhase7Integration.test.tsx`
@@ -1159,6 +924,7 @@ vi.mock('@/app/actions/messaging-settings-actions', () => ({
   getWorkspaceMessagingSettingsAction: vi.fn().mockResolvedValue({
     success: true,
     data: {
+      version: 1,
       lowBalanceThreshold: 100,
       quickTemplateIds: ['tpl_welcome'],
       aiPromptStarters: ['Test AI prompt'],
@@ -1168,6 +934,7 @@ vi.mock('@/app/actions/messaging-settings-actions', () => ({
   updateWorkspaceMessagingSettingsAction: vi.fn().mockResolvedValue({
     success: true,
     data: {
+      version: 2,
       lowBalanceThreshold: 100,
       quickTemplateIds: ['tpl_welcome'],
       aiPromptStarters: ['Test AI prompt'],
@@ -1197,6 +964,7 @@ describe('Messaging Phase 7 End-to-End Integration', () => {
           callerType: 'agent',
           requestId: 'r1',
           callDepth: 1,
+          timestamp: '2026-10-09T08:00:00Z',
         }
       )
     ).rejects.toThrow(/missing required workspaceId or organizationId/i);
@@ -1209,10 +977,10 @@ describe('Messaging Phase 7 End-to-End Integration', () => {
 Run: `npx vitest run src/app/admin/messaging/__tests__/MessagingPhase7Integration.test.tsx`  
 Expected: PASS (2 tests).
 
-- [ ] **Step 3: Run comprehensive Vitest sweep across messaging, settings, and MCP tools**
+- [ ] **Step 3: Run comprehensive Vitest sweep across all messaging, settings, and MCP tools**
 
-Run: `npx vitest run src/app/admin/messaging/ src/lib/messaging/ src/lib/mcp/tools/__tests__/messaging-dashboard-tool.test.ts src/app/admin/settings/components/__tests__/MessagingSettingsTab.test.tsx`  
-Expected: All suites PASS with 0 failures.
+Run: `npx vitest run src/app/admin/messaging/ src/lib/mcp/ src/app/actions/__tests__/messaging-settings-actions.test.ts src/app/admin/settings/components/__tests__/MessagingSettingsTab.test.tsx`  
+Expected: All test suites PASS cleanly.
 
 - [ ] **Step 4: Commit locally**
 
@@ -1223,26 +991,24 @@ git commit -m "test(messaging): verify Phase 7 backoffice integration and MCP mu
 
 ---
 
-## 5. Verification Invariants & Definition of Done
+## 6. Verification Invariants & Definition of Done
 
-Before Phase 7 is declared complete, the following checklist must be satisfied:
-* [ ] Zero use of `any` or `any[]` across all touched code (Rule 4).
-* [ ] Backoffice codeless settings tab at `/admin/settings?tab=messaging` is fully interactive and persists to Firestore.
-* [ ] MCP tool `messaging.get_dashboard_summary` is registered in `ALL_CORE_MCP_TOOLS` with `schemaHash` and `read_only` risk level.
-* [ ] Fail-closed multi-tenancy enforced on all server actions and MCP handlers (Rule 18).
-* [ ] Dynamic workspace settings (thresholds, starter templates, prompt suggestions) propagate to dashboard widgets.
-* [ ] Mobile touch targets meet `min-h-[44px]` with tactile `active:scale-[0.97]` interactions.
-* [ ] All tests pass cleanly in Vitest.
-* [ ] Strictly zero unprompted remote git push.
+Before Phase 7 execution is concluded, the following checklist must be satisfied:
+* [ ] **Strict Typing (Rule 4)**: Strictly zero `any` or `any[]` across all code and test files.
+* [ ] **Backoffice Codeless Settings**: Interactive tab at `/admin/settings?tab=messaging` that persists configuration to Firestore with TOCTOU versioning (`version`).
+* [ ] **Channel Kill-Switch Dual Gate (Rules 3, 18 & 21)**: Active kill-switches disable composer button client-side and block server-side direct dispatch action with `code: 'CHANNEL_PAUSED'`.
+* [ ] **Governed MCP Tooling (Rules 11–25)**: `messaging.get_dashboard_summary` registered in `ALL_CORE_MCP_TOOLS` with exact 64-char `schemaHash`, `read_only` risk level, and fail-closed multi-tenancy.
+* [ ] **Dynamic Settings Propagation (Rule 3)**: SMS alert threshold, Quick Templates shortlist, and AI Prompt starters dynamically reflect workspace configuration.
+* [ ] **Mobile Ergonomics & Animations (Rules 1 & 7)**: Touch targets meet `min-h-[44px]`, tactile click feedback `active:scale-[0.97]`.
+* [ ] **Toast Safety (Rule 4)**: Actionable toasts use safe relative paths (`actionConfig.path` starting with `/`).
+* [ ] **Verification Evidence**: All Vitest test suites pass (35+ test files, 300+ tests).
+* [ ] **Git Protocol (Rule 5)**: Strictly local commits on `main`. Zero unprompted remote pushes.
 
 ---
 
-## 6. Execution Handoff
+## 7. Execution Readiness
 
-Plan complete and saved to `docs/superpowers/plans/2026-10-09-messaging-dashboard-phase-7.md`.
-
-Two execution options:
-1. **Subagent-Driven (recommended)** - I dispatch a fresh subagent per task, review between tasks, fast iteration.
-2. **Inline Execution** - Execute tasks in this session using `executing-plans`, batch execution with checkpoints.
+Plan is fully aligned with **`docs/agents_mcp/agents_mcp_rules.md` (Rules 1 through 25)** and documented in:
+[docs/superpowers/plans/2026-10-09-messaging-dashboard-phase-7.md](file:///Users/josephaidoo/Desktop/Codes/vibe%20Coding/Onboarding-Dashbaord-main/docs/superpowers/plans/2026-10-09-messaging-dashboard-phase-7.md).
 
 **Awaiting user approval before proceeding to implementation.**
