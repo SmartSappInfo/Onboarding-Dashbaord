@@ -252,7 +252,7 @@ export function BulkActionReviewDialog({
                         variant="outline"
                         disabled={isExecuting}
                         onClick={onClose}
-                        className="rounded-xl border-border/80 text-xs font-semibold px-4 min-h-[40px] sm:min-h-[36px] active:scale-[0.97]"
+                        className="rounded-xl border-border/80 text-xs font-semibold px-4 min-h-[44px] sm:min-h-[36px] active:scale-[0.97]"
                     >
                         {hasFailures ? 'Close' : 'Cancel'}
                     </Button>
@@ -263,7 +263,7 @@ export function BulkActionReviewDialog({
                             variant="default"
                             disabled={isExecuting}
                             onClick={handleRetry}
-                            className="rounded-xl text-xs font-semibold px-4 min-h-[40px] sm:min-h-[36px] active:scale-[0.97] shadow-sm gap-1.5"
+                            className="rounded-xl text-xs font-semibold px-4 min-h-[44px] sm:min-h-[36px] active:scale-[0.97] shadow-sm gap-1.5"
                         >
                             <RefreshCw className="h-3.5 w-3.5" />
                             Retry Failed Tasks
@@ -275,7 +275,7 @@ export function BulkActionReviewDialog({
                             disabled={isExecuting || count === 0}
                             onClick={handleConfirm}
                             className={cn(
-                                "rounded-xl text-xs font-semibold px-4 min-h-[40px] sm:min-h-[36px] active:scale-[0.97] shadow-sm",
+                                "rounded-xl text-xs font-semibold px-4 min-h-[44px] sm:min-h-[36px] active:scale-[0.97] shadow-sm",
                                 isDestructive && "bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             )}
                         >

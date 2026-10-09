@@ -50,7 +50,7 @@ export function TaskErrorState({
                         type="button"
                         variant="outline"
                         onClick={onRetry}
-                        className="rounded-xl border-border/80 text-xs font-semibold px-3.5 min-h-[38px] active:scale-[0.97]"
+                        className="rounded-xl border-border/80 text-xs font-semibold px-3.5 min-h-[44px] sm:min-h-[38px] active:scale-[0.97]"
                     >
                         <RefreshCw className="h-3.5 w-3.5 mr-1.5 shrink-0" />
                         Try again
@@ -60,7 +60,7 @@ export function TaskErrorState({
                     <Button
                         type="button"
                         asChild
-                        className="rounded-xl text-xs font-semibold px-3.5 min-h-[38px] active:scale-[0.97]"
+                        className="rounded-xl text-xs font-semibold px-3.5 min-h-[44px] sm:min-h-[38px] active:scale-[0.97]"
                     >
                         <Link href={actionConfig.path}>
                             {actionConfig.label}

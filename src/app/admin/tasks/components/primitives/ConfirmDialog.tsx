@@ -82,7 +82,7 @@ export function ConfirmDialog({
                         variant="outline"
                         disabled={isLoading}
                         onClick={onClose}
-                        className="rounded-xl border-border/80 text-xs font-semibold px-4 min-h-[40px] sm:min-h-[36px] active:scale-[0.97]"
+                        className="rounded-xl border-border/80 text-xs font-semibold px-4 min-h-[44px] sm:min-h-[36px] active:scale-[0.97]"
                     >
                         {cancelText}
                     </Button>
@@ -91,7 +91,7 @@ export function ConfirmDialog({
                         variant={isDestructive ? 'destructive' : 'default'}
                         disabled={isLoading}
                         onClick={onConfirm}
-                        className="rounded-xl text-xs font-semibold px-4 min-h-[40px] sm:min-h-[36px] active:scale-[0.97] shadow-sm"
+                        className="rounded-xl text-xs font-semibold px-4 min-h-[44px] sm:min-h-[36px] active:scale-[0.97] shadow-sm"
                     >
                         {isLoading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
                         {confirmText}

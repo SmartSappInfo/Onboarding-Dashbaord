@@ -47,7 +47,7 @@ export function TaskEmptyState({
                         type="button"
                         variant="outline"
                         onClick={onClearFilters}
-                        className="mt-5 rounded-xl border-border/80 text-xs font-semibold px-4 min-h-[40px] sm:min-h-[36px] active:scale-[0.97]"
+                        className="mt-5 rounded-xl border-border/80 text-xs font-semibold px-4 min-h-[44px] sm:min-h-[36px] active:scale-[0.97]"
                     >
                         Clear filters
                     </Button>

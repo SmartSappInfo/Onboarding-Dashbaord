@@ -74,7 +74,7 @@ export function TaskStatusBadge({
                         onPointerDown={(e) => e.stopPropagation()}
                         onClick={(e) => e.stopPropagation()}
                         className={cn(
-                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition-all select-none min-h-[32px] sm:min-h-[28px] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition-all select-none min-h-[44px] sm:min-h-[32px] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
                             config.badgeClass,
                             className
                         )}
@@ -97,7 +97,7 @@ export function TaskStatusBadge({
                                     onStatusChange(st);
                                 }}
                                 className={cn(
-                                    "flex items-center gap-2 text-xs font-medium cursor-pointer min-h-[40px] sm:min-h-[36px]",
+                                    "flex items-center gap-2 text-xs font-medium cursor-pointer min-h-[44px] sm:min-h-[36px]",
                                     isCurrent && "font-bold text-primary bg-primary/10"
                                 )}
                             >
