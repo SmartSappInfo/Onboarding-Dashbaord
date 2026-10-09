@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * PURPOSE: Baseline unit tests for the client-side Signature Processing Engine.
  * ARCHITECTURAL CONTEXT: Locks in digital convolution, ink thresholding, transparent alpha

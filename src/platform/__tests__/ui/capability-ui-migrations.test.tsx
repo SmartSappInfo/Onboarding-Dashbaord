@@ -1,33 +1,27 @@
 /**
- * @fileOverview UI Proof Point Test: TasksClient Migration to useCapability (Phase 1 / PR-11)
+ * @fileOverview Consolidated UI Proof Point Tests: Capability Migration (PR-11 Proof Points)
+ * Verifies useCapability integration for TagSelector and TasksClient.
  *
  * Implements Rule 4 (Strict Typing), Rule 18 (TOCTOU Concurrency Guard),
  * Rule 23 (State Change Invariant), Rule 51 (User Error Notice Contract),
- * and Rule 69 (Master Layering Axiom).
- *
- * Verifies that TasksClient routes mutations through canonical capabilities:
- * - `task.create` for task creation
- * - `task.complete` for task completion
- * - Displays <CapabilityErrorNotice> when mutations fail
- * - Displays <VersionConflictDialog> upon TOCTOU version collisions
- *
- * Strict Typing Policy: Zero `any` or `any[]`.
+ * Rule 69 (Master Layering Axiom), and Tag Selection SSOT.
  */
 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import type { AgentPrincipal } from '../../capabilities/contracts/capability-definition';
 import { resetCapabilityRegistryForTests } from '../../capabilities/registry/capability-registry';
+import { registerCrmContactsCapabilities } from '../../domains/crm_contacts';
 import { registerTasksProductivityCapabilities } from '../../domains/tasks_productivity';
 import * as invokeActionModule from '../../capabilities/ui/invoke-capability-action';
 
 // Mock session principal
 const mockSessionPrincipal: AgentPrincipal = {
   actorType: 'user',
-  userId: 'user_tasks_ui_test',
-  organizationId: 'org_tasks_test',
-  workspaceId: 'ws_tasks_test',
+  userId: 'user_capability_ui_test',
+  organizationId: 'org_test_org',
+  workspaceId: 'ws_test_ws',
   grantedScopes: ['*'],
   effectiveRole: 'admin',
 };
@@ -42,10 +36,10 @@ vi.mock('firebase/firestore', () => ({
 
 vi.mock('@/lib/auth/require-auth', () => ({
   requireWorkspace: vi.fn(async () => ({
-    uid: 'user_tasks_ui_test',
+    uid: 'user_capability_ui_test',
     profile: {
-      id: 'user_tasks_ui_test',
-      organizationId: 'org_tasks_test',
+      id: 'user_capability_ui_test',
+      organizationId: 'org_test_org',
       role: 'admin',
       permissions: ['*'],
     },
@@ -61,11 +55,18 @@ vi.mock('@/platform/capabilities/policy/session-principal-resolver', () => ({
 vi.mock('@/firebase', () => ({
   useFirestore: vi.fn(() => ({})),
   useUser: vi.fn(() => ({
-    user: { uid: 'user_tasks_ui_test', displayName: 'Test User' },
+    user: { uid: 'user_capability_ui_test', displayName: 'Capability Tester' },
     loading: false,
   })),
   useCollection: vi.fn(() => ({
     data: [
+      {
+        id: 'tag_enterprise',
+        name: 'Enterprise',
+        category: 'status',
+        color: '#3B82F6',
+        workspaceId: 'ws_test_ws',
+      },
       {
         id: 'task_001',
         title: 'Review quarterly figures',
@@ -73,8 +74,8 @@ vi.mock('@/firebase', () => ({
         status: 'todo',
         priority: 'high',
         category: 'general',
-        workspaceId: 'ws_tasks_test',
-        assignedTo: 'user_tasks_ui_test',
+        workspaceId: 'ws_test_ws',
+        assignedTo: 'user_capability_ui_test',
         dueDate: new Date().toISOString(),
         createdAt: new Date().toISOString(),
         reminderSent: false,
@@ -86,10 +87,17 @@ vi.mock('@/firebase', () => ({
   useMemoFirebase: vi.fn((fn: () => unknown) => fn()),
 }));
 
+vi.mock('@/context/WorkspaceContext', () => ({
+  useWorkspace: vi.fn(() => ({
+    activeWorkspaceId: 'ws_test_ws',
+    activeOrganizationId: 'org_test_org',
+  })),
+}));
+
 vi.mock('@/context/TenantContext', () => ({
   useTenant: vi.fn(() => ({
-    activeWorkspaceId: 'ws_tasks_test',
-    activeOrganizationId: 'org_tasks_test',
+    activeWorkspaceId: 'ws_test_ws',
+    activeOrganizationId: 'org_test_org',
   })),
 }));
 
@@ -121,9 +129,79 @@ vi.mock('@/hooks/use-toast', () => ({
   })),
 }));
 
-// Import component under test
+vi.mock('@/hooks/use-media-query', () => ({
+  useMediaQuery: vi.fn(() => false),
+}));
+
+import { TagSelector } from '@/components/tags/TagSelector';
 import TasksClient from '@/app/admin/tasks/TasksClient';
 
+/* ==============================================================================
+ * 1. TagSelector useCapability Migration
+ * ============================================================================== */
+describe('TagSelector useCapability Migration (PR-11 Proof Point)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetCapabilityRegistryForTests();
+    registerCrmContactsCapabilities();
+  });
+
+  it('renders assigned tags and executes client/draft mode when contactId is omitted', async () => {
+    const onTagsChange = vi.fn();
+    render(
+      <TagSelector
+        currentTagIds={['tag_enterprise']}
+        onTagsChange={onTagsChange}
+      />
+    );
+
+    expect(screen.getByText('Enterprise')).toBeInTheDocument();
+  });
+
+  it('routes tag removal through crm.entity.remove_tag capability in entity mode', async () => {
+    const invokeSpy = vi.spyOn(invokeActionModule, 'invokeCapabilityAction').mockResolvedValue({
+      success: true,
+      data: {
+        contactId: 'contact_001',
+        remainingTagIds: [],
+        removedTagCount: 1,
+      },
+      executionId: 'exec_test_001',
+      durationMs: 5,
+      stateChanged: 'yes',
+    });
+
+    const onTagsChange = vi.fn();
+    render(
+      <TagSelector
+        contactId="contact_001"
+        contactType="entity"
+        currentTagIds={['tag_enterprise']}
+        onTagsChange={onTagsChange}
+      />
+    );
+
+    const removeBtn = screen.getByRole('button', { name: /Remove tag Enterprise/i });
+    fireEvent.click(removeBtn);
+
+    await waitFor(() => {
+      expect(invokeSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          capabilityId: 'crm.entity.remove_tag',
+          input: expect.objectContaining({
+            entityId: 'contact_001',
+            tagIds: ['tag_enterprise'],
+            workspaceId: 'ws_test_ws',
+          }),
+        })
+      );
+    });
+  });
+});
+
+/* ==============================================================================
+ * 2. TasksClient useCapability Migration
+ * ============================================================================== */
 describe('TasksClient useCapability Migration (PR-11 Proof Point)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -142,7 +220,6 @@ describe('TasksClient useCapability Migration (PR-11 Proof Point)', () => {
 
     render(<TasksClient />);
 
-    // Trigger Quick New Task or handleSaveTask via the UI
     const createBtn = screen.queryByRole('button', { name: /new task/i }) || screen.queryByText(/New Task/i);
     expect(createBtn).toBeDefined();
     expect(invokeSpy).toBeDefined();

@@ -5,7 +5,16 @@ import { fileURLToPath } from 'node:url';
 export default defineConfig({
   plugins: [react()],
   test: {
-    environment: 'jsdom',
+    // Default to lightweight Node.js environment for pure logic, algorithms, and services.
+    // Restrict heavy JSDOM browser environment to UI components (.tsx) and React hooks.
+    environment: 'node',
+    environmentMatchGlobs: [
+      ['**/*.test.tsx', 'jsdom'],
+      ['**/*.spec.tsx', 'jsdom'],
+      ['**/use*.test.ts', 'jsdom'],
+      ['**/use*.spec.ts', 'jsdom'],
+      ['**/hooks/**', 'jsdom'],
+    ],
     setupFiles: ['./src/test/setup.ts'],
     globals: true,
     testTimeout: 30000, // 30 seconds for integration tests

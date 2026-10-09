@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { expect, test, describe, beforeEach, vi } from 'vitest';
 import { FontLoader } from '../font-loader';
 

@@ -30,42 +30,63 @@ vi.mock('@/hooks/use-toast', () => ({
   }),
 }));
 
+const mockDoc = {
+  id: 'doc_123',
+  workspaceId: 'ws_test_123',
+  title: 'University Prospectus',
+  description: '2026 Admissions Prospectus',
+  slug: 'prospectus-2026',
+  status: 'published',
+  documentType: 'prospectus',
+  activeVersionId: 'doc_123_v1',
+  defaultViewerMode: 'flipbook',
+  createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-01-01T00:00:00Z',
+};
+
+const mockPages = [
+  {
+    id: 'p_1',
+    documentId: 'doc_123',
+    versionId: 'doc_123_v1',
+    workspaceId: 'ws_test_123',
+    pageNumber: 1,
+    renderedAssetUrl: 'https://example.com/page1.jpg',
+    thumbnailUrl: 'https://example.com/thumb1.jpg',
+    width: 800,
+    height: 1130,
+  },
+];
+
+const mockDocResult = { data: mockDoc, isLoading: false };
+const mockPagesResult = { data: mockPages, isLoading: false };
+
 vi.mock('@/firebase', () => ({
   useFirestore: () => ({}),
   useUser: () => ({ user: { uid: 'usr_test_123', email: 'admin@example.com' } }),
   useMemoFirebase: (fn: () => unknown) => fn(),
-  useDoc: () => ({
-    data: {
-      id: 'doc_123',
-      workspaceId: 'ws_test_123',
-      title: 'University Prospectus',
-      description: '2026 Admissions Prospectus',
-      slug: 'prospectus-2026',
-      status: 'published',
-      documentType: 'prospectus',
-      activeVersionId: 'doc_123_v1',
-      defaultViewerMode: 'flipbook',
-      createdAt: '2026-01-01T00:00:00Z',
-      updatedAt: '2026-01-01T00:00:00Z',
-    },
-    isLoading: false,
-  }),
-  useCollection: () => ({
-    data: [
-      {
-        id: 'p_1',
-        documentId: 'doc_123',
-        versionId: 'doc_123_v1',
-        workspaceId: 'ws_test_123',
-        pageNumber: 1,
-        renderedAssetUrl: 'https://example.com/page1.jpg',
-        thumbnailUrl: 'https://example.com/thumb1.jpg',
-        width: 800,
-        height: 1130,
-      },
-    ],
-    isLoading: false,
-  }),
+  useDoc: () => mockDocResult,
+  useCollection: () => mockPagesResult,
+}));
+
+vi.mock('@/components/documents/studio/DocumentPageManager', () => ({
+  DocumentPageManager: () => <div data-testid="page-manager">Page Manager</div>,
+}));
+
+vi.mock('@/components/documents/studio/DocumentLayerInspector', () => ({
+  DocumentLayerInspector: () => <div data-testid="layer-inspector">Layer Inspector</div>,
+}));
+
+vi.mock('@/components/documents/studio/DocumentDistributionManager', () => ({
+  DocumentDistributionManager: () => <div data-testid="distribution-manager">Distribution Manager</div>,
+}));
+
+vi.mock('@/components/documents/studio/DocumentAiIntelligenceTab', () => ({
+  DocumentAiIntelligenceTab: () => <div data-testid="ai-intelligence-tab">AI Intelligence Tab</div>,
+}));
+
+vi.mock('@/components/documents/ProcessingProgressSheet', () => ({
+  ProcessingProgressSheet: () => null,
 }));
 
 vi.mock('@/components/ui/tabs', () => ({

@@ -141,7 +141,7 @@ describe('CrmIntelligenceService (Phase 9 Milestone 3)', () => {
     timeline: [
       {
         id: 'tl_01',
-        timestamp: '2026-10-02T10:15:00Z',
+        timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
         category: 'COMMERCIAL',
         title: 'Technical note added',
         summary: 'Alex Rivera documented SIS roster sync requirements.',

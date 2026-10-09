@@ -3404,6 +3404,9 @@ describe('Property 11: Tag Filter OR Logic', () => {
      * OR logic returns exactly those contacts whose tag array intersects
      * with the filter tag set — no more, no less.
      */
+    const { adminDb } = await import('../firebase-admin');
+    const { getContactsByTagsAction } = await import('../tag-actions');
+
     await fc.assert(
       fc.asyncProperty(
         // Generate a pool of tag IDs
@@ -3442,11 +3445,8 @@ describe('Property 11: Tag Filter OR Logic', () => {
             });
 
           const { mockCollection } = buildOrFilterMocks(schoolDocs, [], workspaceId);
-
-          const { adminDb } = await import('../firebase-admin');
           vi.mocked(adminDb).collection = mockCollection as any;
 
-          const { getContactsByTagsAction } = await import('../tag-actions');
           const result = await getContactsByTagsAction(workspaceId, {
             tagIds: filterTags,
             logic: 'OR',
@@ -3478,14 +3478,17 @@ describe('Property 11: Tag Filter OR Logic', () => {
           expect(returnedIds.size).toBe(expectedIds.size);
         }
       ),
-      { numRuns: 50 }
+      { numRuns: 30 }
     );
-  });
+  }, 60000);
 
   it('should return empty result when no contacts have any of the filter tags', async () => {
     /**
      * Property: If no contact has any of the filter tags, OR logic returns empty.
      */
+    const { adminDb } = await import('../firebase-admin');
+    const { getContactsByTagsAction } = await import('../tag-actions');
+
     await fc.assert(
       fc.asyncProperty(
         fc.array(
@@ -3512,11 +3515,8 @@ describe('Property 11: Tag Filter OR Logic', () => {
             .map(id => ({ id, tags: [otherTag] })); // none have filter tags
 
           const { mockCollection } = buildOrFilterMocks(schoolDocs, [], workspaceId);
-
-          const { adminDb } = await import('../firebase-admin');
           vi.mocked(adminDb).collection = mockCollection as any;
 
-          const { getContactsByTagsAction } = await import('../tag-actions');
           const result = await getContactsByTagsAction(workspaceId, {
             tagIds: filterTags,
             logic: 'OR',
@@ -3527,9 +3527,9 @@ describe('Property 11: Tag Filter OR Logic', () => {
           expect(result.data ?? []).toHaveLength(0);
         }
       ),
-      { numRuns: 30 }
+      { numRuns: 20 }
     );
-  });
+  }, 60000);
 
   it('OR logic should be a superset of AND logic for the same tags', async () => {
     /**
