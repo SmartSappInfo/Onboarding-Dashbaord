@@ -96,6 +96,7 @@ export interface McpToolDefinition<
   parameters: z.ZodType<TInput>;
   responseSchema: z.ZodType<TOutput>;
   requiresApproval: boolean;
+  schemaHash?: string;
   handler: (params: TInput, context: McpExecutionContext) => Promise<TOutput>;
 }
 

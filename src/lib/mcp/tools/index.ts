@@ -15,6 +15,10 @@ import { contextBuildTool, contextGetDossierTool } from './context-tools';
 import { crmGetEntityTool, crmSearchEntitiesTool } from './crm-tools';
 import { dealGetTool, dealListTool, dealUpdateStageTool, dealTransferTool, dealPreviewTransferTool } from './deal-tools';
 import { taskListTool, taskCreateTool } from './task-tools';
+import {
+  messagingGetConversationThreadTool,
+  messagingSuggestReplyTool,
+} from './messaging-conversation-tools';
 
 export const ALL_CORE_MCP_TOOLS = [
   memoryRecallTool,
@@ -32,6 +36,8 @@ export const ALL_CORE_MCP_TOOLS = [
   dealPreviewTransferTool,
   taskListTool,
   taskCreateTool,
+  messagingGetConversationThreadTool,
+  messagingSuggestReplyTool,
 ] as const;
 
 /**
