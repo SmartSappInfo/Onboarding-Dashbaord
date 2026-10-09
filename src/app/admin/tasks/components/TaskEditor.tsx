@@ -787,6 +787,9 @@ export default function TaskEditor({
                                             reminders={reminders}
                                             onChange={setReminders}
                                             taskDueDate={form.watch('dueDate')?.toISOString()}
+                                            onRetryReminder={(reminderId) => {
+                                                setReminders(prev => prev.map(r => r.id === reminderId ? { ...r, status: 'scheduled', error: null } : r));
+                                            }}
                                         />
                                     </div>
 

@@ -144,6 +144,26 @@ export function TaskDetailDrawer({
         await onUpdateTask(task.id, { reminders: newReminders });
     };
 
+    const handleRetryReminder = async (reminderId: string) => {
+        if (!onUpdateTask || !task) return;
+        const currentReminders = task.reminders || [];
+        const updated = currentReminders.map(r => {
+            if (r.id === reminderId) {
+                return {
+                    ...r,
+                    status: 'scheduled' as const,
+                    error: null,
+                };
+            }
+            return r;
+        });
+        await onUpdateTask(task.id, { reminders: updated });
+        toast({
+            title: 'Reminder Retried',
+            description: 'The reminder delivery has been queued for retry.',
+        });
+    };
+
     const handleAddNote = async () => {
         if (!quickNote.trim() || !onUpdateTask) return;
         const note: TaskNote = {
@@ -324,6 +344,7 @@ export function TaskDetailDrawer({
                             reminders={task.reminders || []}
                             onChange={handleRemindersChange}
                             taskDueDate={task.dueDate}
+                            onRetryReminder={handleRetryReminder}
                         />
 
                         <Separator className="border-border/60" />

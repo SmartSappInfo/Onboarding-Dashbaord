@@ -14,7 +14,7 @@
 
 import { z } from 'zod';
 import { adminDb } from '@/lib/firebase-admin';
-import type { Task, EntityType } from '@/lib/types';
+import type { Task, EntityType, TaskReminder } from '@/lib/types';
 import { logActivity } from '@/lib/activity-logger';
 import { resolveContact } from '@/lib/contact-adapter';
 import { canUser } from '@/lib/workspace-permissions';
@@ -217,10 +217,27 @@ export async function updateTaskCore(
     for (const field of IMMUTABLE_TASK_FIELDS) delete data[field];
 
     const isMarkingDone = updates.status === 'done';
+    const isCancelling = updates.status === 'cancelled';
     if (isMarkingDone && !updates.completedAt) {
       data.completedAt = timestamp;
     } else if (updates.status && updates.status !== 'done') {
       data.completedAt = null;
+    }
+
+    // Rule 26 & PRD §7.6: Automatic reminder cancellation when task is completed or cancelled
+    if (isMarkingDone || isCancelling) {
+      const currentReminders = ((updates.reminders || stored.reminders || []) as TaskReminder[]);
+      const hasScheduled = currentReminders.some(
+        r => r.status === 'scheduled' || (!r.sent && (!r.status || r.status === 'scheduled'))
+      );
+      if (hasScheduled) {
+        data.reminders = currentReminders.map(r => {
+          if (r.status === 'scheduled' || (!r.sent && (!r.status || r.status === 'scheduled'))) {
+            return { ...r, status: 'cancelled' as const };
+          }
+          return r;
+        });
+      }
     }
 
     await adminDb.collection('tasks').doc(taskId).update(data);

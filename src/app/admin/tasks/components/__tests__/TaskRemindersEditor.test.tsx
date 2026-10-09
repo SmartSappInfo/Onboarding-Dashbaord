@@ -66,6 +66,16 @@ describe('TaskRemindersEditor (Roadmap §37-39, UI Spec §599-612)', () => {
     expect(onRetry).toHaveBeenCalledWith('rem-2');
   });
 
+  it('updates reminder to scheduled status when retry button is clicked without onRetryReminder', () => {
+    const onChange = vi.fn();
+    render(<TaskRemindersEditor reminders={sampleReminders} onChange={onChange} />);
+    const retryBtn = screen.getByRole('button', { name: /retry/i });
+    fireEvent.click(retryBtn);
+    expect(onChange).toHaveBeenCalledWith(expect.arrayContaining([
+      expect.objectContaining({ id: 'rem-2', status: 'scheduled', error: null }),
+    ]));
+  });
+
   it('deletes reminder when remove button is clicked', () => {
     const onChange = vi.fn();
     render(<TaskRemindersEditor reminders={sampleReminders} onChange={onChange} />);

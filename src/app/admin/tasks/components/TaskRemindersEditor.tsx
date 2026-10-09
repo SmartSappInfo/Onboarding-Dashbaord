@@ -111,6 +111,25 @@ export function TaskRemindersEditor({
         setCustomDateTime('');
     };
 
+    const handleRetry = (remId?: string, remIdx?: number) => {
+        if (disabled) return;
+        if (remId && onRetryReminder) {
+            onRetryReminder(remId);
+            return;
+        }
+        const updated = reminders.map((r, idx) => {
+            if ((remId && r.id === remId) || (!remId && idx === remIdx)) {
+                return {
+                    ...r,
+                    status: 'scheduled' as const,
+                    error: null,
+                };
+            }
+            return r;
+        });
+        onChange(updated);
+    };
+
     const handleDeleteReminder = (id?: string, index?: number) => {
         if (disabled) return;
         const updated = reminders.filter((r, idx) => (id ? r.id !== id : idx !== index));
@@ -198,7 +217,7 @@ export function TaskRemindersEditor({
                                             size="sm"
                                             variant="outline"
                                             aria-label="Retry reminder delivery"
-                                            onClick={() => rem.id && onRetryReminder?.(rem.id)}
+                                            onClick={() => handleRetry(rem.id, idx)}
                                             className="min-h-[44px] sm:min-h-[28px] h-7 px-2.5 rounded-lg text-[10px] font-semibold gap-1 text-rose-700 border-rose-200 hover:bg-rose-100 active:scale-[0.97]"
                                         >
                                             <RefreshCw className="h-2.5 w-2.5" />

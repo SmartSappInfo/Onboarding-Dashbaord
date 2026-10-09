@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { TaskDetailDrawer } from '../TaskDetailDrawer';
 import type { Task } from '@/lib/types';
 
@@ -84,5 +84,47 @@ describe('TaskDetailDrawer (Roadmap §43, UI Spec §559-576)', () => {
     expect(completeBtn.className).toMatch(/min-h-\[44px\]/);
     const editBtn = screen.getByRole('button', { name: /edit task/i });
     expect(editBtn.className).toMatch(/min-h-\[44px\]/);
+  });
+
+  it('retries failed reminder from drawer when retry button is clicked', async () => {
+    const onUpdateTask = vi.fn();
+    const taskWithFailedReminder: Task = {
+      ...sampleTask,
+      reminders: [
+        {
+          id: 'rem-failed',
+          reminderTime: '2026-10-15T09:00:00.000Z',
+          channels: ['email'],
+          sent: false,
+          status: 'failed',
+          error: 'SMTP failed',
+        },
+      ],
+    };
+    render(
+      <TaskDetailDrawer
+        task={taskWithFailedReminder}
+        isOpen={true}
+        onClose={vi.fn()}
+        onUpdateTask={onUpdateTask}
+        onEditFull={vi.fn()}
+      />
+    );
+    const retryBtn = screen.getByRole('button', { name: /retry/i });
+    await act(async () => {
+      fireEvent.click(retryBtn);
+    });
+    expect(onUpdateTask).toHaveBeenCalledWith(
+      't-1',
+      expect.objectContaining({
+        reminders: [
+          expect.objectContaining({
+            id: 'rem-failed',
+            status: 'scheduled',
+            error: null,
+          }),
+        ],
+      })
+    );
   });
 });
