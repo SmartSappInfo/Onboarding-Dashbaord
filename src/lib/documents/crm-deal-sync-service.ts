@@ -301,7 +301,7 @@ export async function handleEnvelopeDeclined(
  */
 export async function syncTaskCompletionToObligation(
   params: SyncTaskCompletionToObligationParams
-): Promise<{ success: boolean; obligationUpdated: boolean }> {
+): Promise<{ success: boolean; obligationUpdated: boolean; error?: string }> {
   const { workspaceId, taskId, contractId, obligationId, actorUserId } = params;
 
   const obRef = adminDb.collection('contract_obligations').doc(obligationId);

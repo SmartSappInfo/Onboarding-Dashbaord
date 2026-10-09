@@ -194,7 +194,8 @@ export const taskObligationSyncCapability: CapabilityDefinition<
           events: [domainEvent],
         };
       } else {
-        const errorMsg = syncResult?.error || 'Downstream obligation sync failed';
+        const errorMsg: string =
+          typeof syncResult?.error === 'string' ? syncResult.error : 'Downstream obligation sync failed';
         await adminDb.collection('tasks').doc(task.id).update({
           obligationSyncStatus: 'failed',
           obligationSyncError: errorMsg,
