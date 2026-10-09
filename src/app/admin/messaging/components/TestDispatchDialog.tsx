@@ -45,6 +45,8 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { sendMessage, sendRawMessage } from '@/lib/messaging-engine';
 import { cn, toTitleCase } from '@/lib/utils';
+import { extractTemplateTokens } from '@/lib/utils/variable-replacer';
+import { getVariableValuesMapAction } from '@/lib/services/fields-variables-service';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useFirestore } from '@/firebase';
@@ -150,8 +152,7 @@ export default function TestDispatchDialog({
         if (!open) return;
 
         const contentToScan = `${rawSubject || ''} ${rawBody || ''}`;
-        const matches = contentToScan.match(/\{\{(.*?)\}\}/g);
-        const tags = matches ? [...new Set(matches.map(m => m.replace(/\{\{|\}\}/g, '').trim()))] : [];
+        const tags = extractTemplateTokens(contentToScan);
         
         setDetectedTags(tags);
         
@@ -224,14 +225,38 @@ export default function TestDispatchDialog({
             if (phone) setRecipient(phone);
         }
 
-        // Auto-fill template variables from entity fields
+        // Auto-fill template variables from entity fields via FieldsVariablesService SSOT
         const entityName = matched.displayName || (typeof rawEntity.name === 'string' ? rawEntity.name : '');
-        const customFields = (rawEntity.customFields && typeof rawEntity.customFields === 'object' ? rawEntity.customFields : {}) as Record<string, unknown>;
         const resolvedVars: Record<string, string> = { ...localVariables };
 
+        if (activeWorkspaceId) {
+            getVariableValuesMapAction({
+                workspaceId: activeWorkspaceId,
+                entityId: eId,
+                recipientContact: primaryContact?.email || primaryContact?.phone || undefined,
+            }).then((valuesMap) => {
+                setLocalVariables((prev) => {
+                    const updated = { ...prev };
+                    detectedTags.forEach((tag) => {
+                        if (valuesMap[tag] !== undefined && valuesMap[tag] !== '') {
+                            updated[tag] = valuesMap[tag];
+                        } else if (valuesMap[`contact_${tag}`]) {
+                            updated[tag] = valuesMap[`contact_${tag}`];
+                        } else if (valuesMap[`entity_${tag}`]) {
+                            updated[tag] = valuesMap[`entity_${tag}`];
+                        }
+                    });
+                    return updated;
+                });
+            }).catch((err) => {
+                console.warn('[TestDispatchDialog] Failed to resolve variables via FieldsVariablesService:', err);
+            });
+        }
+
+        // Initialize immediate fallbacks while async SSOT values resolve
         detectedTags.forEach((tag) => {
             const lower = tag.toLowerCase();
-            if (lower.includes('entity') || lower.includes('school') || lower === 'name' || lower === 'displayname') {
+            if (lower.includes('entity') || lower.includes('school') || lower === 'name') {
                 resolvedVars[tag] = entityName;
             } else if (lower.includes('first_name')) {
                 resolvedVars[tag] = (primaryContact?.name || entityName).trim().split(' ')[0] || '';
@@ -241,10 +266,6 @@ export default function TestDispatchDialog({
                 resolvedVars[tag] = primaryContact?.email || matched.primaryEmail || '';
             } else if (lower.includes('phone')) {
                 resolvedVars[tag] = primaryContact?.phone || matched.primaryPhone || '';
-            } else if (lower.includes('token')) {
-                resolvedVars[tag] = `token_${(matched.entityId || matched.id).slice(0, 8)}`;
-            } else if (customFields[tag] !== undefined) {
-                resolvedVars[tag] = String(customFields[tag]);
             } else if (!resolvedVars[tag]) {
                 resolvedVars[tag] = `${toTitleCase(tag.replace(/_/g, ' '))} Value`;
             }

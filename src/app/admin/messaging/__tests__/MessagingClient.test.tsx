@@ -27,6 +27,11 @@ vi.mock('@/firebase', () => ({
   useAuth: () => ({ currentUser: { displayName: 'Sarah Admin' } }),
 }));
 
+vi.mock('@/hooks/use-toast', () => ({
+  useToast: () => ({ toast: vi.fn() }),
+  toast: vi.fn(),
+}));
+
 vi.mock('@/app/actions/messaging-dashboard-actions', () => ({
   getMessagingDashboardSummaryAction: vi.fn().mockResolvedValue({
     success: true,
@@ -108,7 +113,9 @@ describe('MessagingClient Master Orchestrator', () => {
 
     // Clicking retry triggers a reload
     fireEvent.click(screen.getByRole('button', { name: /Retry/i }));
-    expect(getMessagingDashboardSummaryAction).toHaveBeenCalledTimes(2);
+    await waitFor(() => {
+      expect(getMessagingDashboardSummaryAction).toHaveBeenCalledTimes(2);
+    });
   });
 });
 

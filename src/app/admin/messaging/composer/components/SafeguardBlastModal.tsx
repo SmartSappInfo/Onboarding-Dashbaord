@@ -51,9 +51,12 @@ export function SafeguardBlastModal({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+      <AlertDialogContent 
+        aria-describedby="safeguard-blast-description"
+        className="sm:max-w-md p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl"
+      >
         {/* Demarcated Header (theme.md Section 8.2) */}
-        <AlertDialogHeader className="min-h-[52px] sm:min-h-[56px] border-b border-border/80 bg-muted/20 px-6 py-3.5 sm:py-4 flex flex-row items-center justify-between shrink-0 space-y-0 text-left">
+        <AlertDialogHeader demarcated className="text-left">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
               <Send className="h-4 w-4" />
@@ -63,7 +66,7 @@ export function SafeguardBlastModal({
             </AlertDialogTitle>
             <CardInfoTooltip text="Review your audience volume, selected channel, and dispatch timing parameters before executing this operation." />
           </div>
-          <AlertDialogDescription className="sr-only">
+          <AlertDialogDescription id="safeguard-blast-description" className="sr-only">
             Please review your dispatch parameters before executing.
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -113,7 +116,7 @@ export function SafeguardBlastModal({
         </div>
 
         {/* Demarcated Footer Bar (theme.md Section 8.5) */}
-        <AlertDialogFooter className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5 shrink-0">
+        <AlertDialogFooter demarcated>
           <AlertDialogCancel 
             disabled={isSubmitting} 
             className="rounded-xl min-h-[44px] text-xs font-semibold active:scale-[0.97] border-border/70 mt-0"

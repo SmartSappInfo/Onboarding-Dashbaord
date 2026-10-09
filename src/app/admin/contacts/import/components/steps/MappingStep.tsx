@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { getContactPolicyLabel } from '@/lib/contact-policy';
 import type { ContactIdentifierPolicy, IndustryVertical } from '@/lib/types';
+import { autoMapSpreadsheetHeaders, type MappableField } from '@/lib/import-export';
 
 interface Props {
   state: ImportState;
@@ -113,38 +114,49 @@ export function MappingStep({ state, updateState, onNext, onBack }: Props) {
     }));
   }, [state.entityType, contactPolicy, industry]);
 
+  const runAutoMap = React.useCallback(() => {
+    const candidateFields: MappableField[] = targetFields.map(f => ({
+      key: f.value,
+      label: f.label,
+      required: f.required,
+    }));
+
+    const singularTerm =
+      state.entityType === 'institution'
+        ? 'Organization'
+        : state.entityType === 'family'
+        ? 'Family'
+        : 'Contact';
+
+    const { mapping: fieldToHeaderMap } = autoMapSpreadsheetHeaders(
+      state.headers,
+      candidateFields,
+      state.entityType || undefined,
+      singularTerm
+    );
+
+    // Invert fieldToHeaderMap (targetField -> csvColumn) to (csvColumn -> targetField)
+    const headerToFieldMap: Record<string, string> = {};
+    for (const [fieldKey, header] of Object.entries(fieldToHeaderMap)) {
+      headerToFieldMap[header] = fieldKey;
+    }
+
+    const newMappings: ColumnMapping[] = state.headers.map(header => ({
+      csvColumn: header,
+      targetField: headerToFieldMap[header] || null,
+    }));
+
+    setLocalMappings(newMappings);
+  }, [state.headers, state.entityType, targetFields]);
+
   useEffect(() => {
     if (state.mappings.length > 0) {
       setLocalMappings(state.mappings);
       return;
     }
 
-    // Auto mapping logic
-    const defaults: ColumnMapping[] = state.headers.map(header => {
-      // Strip * and whitespace for matching
-      const lowerHeader = header.toLowerCase().replace(/[^a-z0-9]/g, '');
-      let matchedField = null;
-
-      for (const field of targetFields) {
-        const lowerField = field.value.toLowerCase().replace(/[^a-z0-9]/g, '');
-        if (
-          lowerHeader === lowerField || 
-          lowerHeader.includes(lowerField) || 
-          lowerField.includes(lowerHeader)
-        ) {
-          matchedField = field.value;
-          break;
-        }
-      }
-
-      return {
-        csvColumn: header,
-        targetField: matchedField
-      };
-    });
-
-    setLocalMappings(defaults);
-  }, [state.headers, state.mappings, targetFields]);
+    runAutoMap();
+  }, [state.mappings, runAutoMap]);
 
   const handleMappingChange = (header: string, selection: string) => {
     setLocalMappings(prev => prev.map(m => 
@@ -170,12 +182,20 @@ export function MappingStep({ state, updateState, onNext, onBack }: Props) {
          <div>
             <h3 className="text-lg font-semibold flex items-center">
               Field Mapping
-              <span className="ml-3 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs flex items-center">
+              <span className="ml-3 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs flex items-center font-medium">
                 <Wand2 className="w-3 h-3 mr-1" /> Auto-matched
               </span>
             </h3>
             <p className="text-sm text-muted-foreground mt-1">Match your CSV columns to {state.entityType} fields.</p>
          </div>
+         <Button
+           variant="outline"
+           size="sm"
+           onClick={runAutoMap}
+           className="gap-2 font-semibold text-xs h-9 px-3.5 rounded-xl border-primary/20 text-primary hover:bg-primary/5 active:scale-[0.97]"
+         >
+           <Wand2 className="w-3.5 h-3.5" /> Re-Match Columns
+         </Button>
       </div>
 
       {/* Policy & Industry context banner */}

@@ -105,3 +105,20 @@ export function resolveTextWithMap(
 
   return normalizeUrlQueryJoins(resolved);
 }
+
+/**
+ * PURE Single Source of Truth (SSOT) utility to extract unique variable token keys
+ * from template strings, stripping double braces and inline fallbacks (e.g. `{{name|there}}` -> `name`).
+ */
+export function extractTemplateTokens(templateText: string): string[] {
+  if (!templateText) return [];
+  const matches = templateText.match(/\{\{(.*?)\}\}/g);
+  if (!matches) return [];
+  const tokens = matches.map((match) => {
+    const raw = match.replace(/\{\{|\}\}/g, '').trim();
+    const parts = raw.split(/\|\||\|/);
+    return parts[0].trim();
+  }).filter(Boolean);
+  return Array.from(new Set(tokens));
+}
+

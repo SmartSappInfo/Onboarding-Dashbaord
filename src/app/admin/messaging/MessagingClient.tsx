@@ -13,6 +13,7 @@
 
 import * as React from 'react';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { toast } from '@/hooks/use-toast';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageContainerFluid } from '@/components/ui/page-container';
@@ -73,12 +74,23 @@ export default function MessagingClient() {
           setErrorMessage(null);
         } else {
           console.error('[MessagingClient] Failed to load dashboard summary:', res.error);
-          setErrorMessage(res.error || 'Failed to load messaging statistics.');
+          const errorText = res.error || 'Failed to load messaging statistics.';
+          setErrorMessage(errorText);
+          toast({
+            variant: 'destructive',
+            title: 'Unable to refresh statistics',
+            description: errorText,
+          });
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Failed to load messaging statistics.';
         console.error('[MessagingClient] Exception loading messaging dashboard summary:', err);
         setErrorMessage(msg);
+        toast({
+          variant: 'destructive',
+          title: 'Unable to load statistics',
+          description: msg,
+        });
       } finally {
         setIsLoading(false);
       }

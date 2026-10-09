@@ -21,6 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { CardInfoTooltip } from '@/components/ui/card-info-tooltip';
 import { Button } from '@/components/ui/button';
@@ -143,7 +144,7 @@ export function MessagingAllFeaturesModal({
         </div>
 
         {/* Demarcated Footer */}
-        <div className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
+        <DialogFooter demarcated>
           <Button
             type="button"
             variant="outline"
@@ -152,7 +153,7 @@ export function MessagingAllFeaturesModal({
           >
             Close Directory
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

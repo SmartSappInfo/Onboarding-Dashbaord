@@ -47,19 +47,19 @@ export const messagingGetQueueStatsTool: McpToolDefinition<
     }
 
     try {
-      // 1. Scheduled messages count
+      // 1. Scheduled messages count (pending scheduled dispatches)
       const scheduledSnap = await adminDb
         .collection('scheduled_messages')
         .where('workspaceId', '==', context.workspaceId)
-        .where('status', '==', 'scheduled')
+        .where('status', '==', 'pending')
         .count()
         .get();
 
-      // 2. Pending approval message jobs count
+      // 2. Pending approval / queued message jobs count
       const pendingSnap = await adminDb
         .collection('message_jobs')
         .where('workspaceId', '==', context.workspaceId)
-        .where('status', '==', 'pending')
+        .where('status', '==', 'queued')
         .count()
         .get();
 

@@ -97,7 +97,7 @@ describe('Tasks Data Integrity & Downstream Synchronization Reconciliation (Road
     }
 
     const mockSyncToObligation = vi.fn().mockImplementation(
-      async (payload: ObligationSyncPayload): Promise<ObligationSyncResponse> => {
+      async (_payload: ObligationSyncPayload): Promise<ObligationSyncResponse> => {
         return {
           success: true,
           status: 'synced',
