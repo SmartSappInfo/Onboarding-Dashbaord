@@ -4797,6 +4797,9 @@ export interface Task {
   createdBy?: string;
   tagIds?: string[];
   checklist?: TaskChecklistItem[];
+  obligationSyncStatus?: 'synced' | 'failed' | 'pending' | null;
+  obligationSyncError?: string | null;
+  obligationSyncAt?: string | null;
 }
 
 export interface TaskChecklistItem {
