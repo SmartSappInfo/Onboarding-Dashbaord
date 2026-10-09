@@ -319,9 +319,15 @@ export default function AgreementsClient() {
         if (selectedEntities.length === 0) return;
 
         // Filter out entities with active legal hold or already signed agreements
-        const ineligibleEntities = selectedEntities.filter(ent => {
+        // Defensively inspects both paginated items and global contracts collection for multi-page selections
+        const getEntityContract = (ent: WorkspaceEntity) => {
             const item = entitiesWithContracts.find(e => e.id === ent.id);
-            return item?.contract?.isUnderLegalHold || item?.contract?.status === 'signed';
+            return item?.contract || (contracts || []).find(c => c.entityId === (ent.entityId || ent.id));
+        };
+
+        const ineligibleEntities = selectedEntities.filter(ent => {
+            const contract = getEntityContract(ent);
+            return contract?.isUnderLegalHold || contract?.status === 'signed';
         });
 
         if (ineligibleEntities.length > 0) {
@@ -334,8 +340,8 @@ export default function AgreementsClient() {
 
         const validToPrepare = selectedEntities
             .filter(ent => {
-                const item = entitiesWithContracts.find(e => e.id === ent.id);
-                return !item?.contract?.isUnderLegalHold && item?.contract?.status !== 'signed';
+                const contract = getEntityContract(ent);
+                return !contract?.isUnderLegalHold && contract?.status !== 'signed';
             })
             .slice(0, 50);
 
@@ -350,7 +356,7 @@ export default function AgreementsClient() {
 
         setSelectedEntities(validToPrepare);
         setIsWizardOpen(true);
-    }, [selectedEntities, entitiesWithContracts, toast]);
+    }, [selectedEntities, entitiesWithContracts, contracts, toast]);
 
     // Bulk Reminders Handler
     const handleBulkReminders = React.useCallback(() => {
@@ -373,34 +379,38 @@ export default function AgreementsClient() {
 
         const rows = selectedEntities.map(entity => {
             const item = entitiesWithContracts.find(e => e.id === entity.id);
+            const contract = item?.contract || (contracts || []).find(c => c.entityId === (entity.entityId || entity.id));
             return [
                 sanitizeCell(entity.entityId || entity.id),
                 sanitizeCell(entity.displayName || 'Unnamed Institution'),
                 sanitizeCell(getEntityZoneName(entity) || 'Unassigned'),
-                sanitizeCell(item?.contract?.status || 'no_contract'),
-                sanitizeCell(item?.contract?.id || '—'),
-                sanitizeCell(item?.contract?.updatedAt || entity.updatedAt || '—'),
+                sanitizeCell(contract?.status || 'no_contract'),
+                sanitizeCell(contract?.id || '—'),
+                sanitizeCell(contract?.updatedAt || entity.updatedAt || '—'),
                 sanitizeCell(entity.assignedTo?.name || 'Unassigned'),
-                sanitizeCell(item?.contract?.isUnderLegalHold ? 'Yes' : 'No')
+                sanitizeCell(contract?.isUnderLegalHold ? 'Yes' : 'No')
             ].join(',');
         });
 
         const csvContent = [headers.join(','), ...rows].join('\n');
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', `agreements_export_${format(new Date(), 'yyyy-MM-dd_HHmm')}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        try {
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `agreements_export_${format(new Date(), 'yyyy-MM-dd_HHmm')}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } finally {
+            URL.revokeObjectURL(url);
+        }
 
         toast({
             title: 'Export Complete',
             description: `Exported ${selectedEntities.length} institutions to CSV.`,
         });
-    }, [selectedEntities, entitiesWithContracts, getEntityZoneName, toast]);
+    }, [selectedEntities, entitiesWithContracts, contracts, getEntityZoneName, toast]);
 
     const toggleSelect = (entity: WorkspaceEntity) => {
         setSelectedEntities(prev => {
