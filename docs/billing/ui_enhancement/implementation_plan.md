@@ -98,9 +98,15 @@ src/app/admin/finance/contracts/
 
 ---
 
-### Phase 2: Redefined, Actionable KPI Cards [CURRENT MILESTONE - IN PLANNING]
-**Status:** In Planning — Detailed Plan in `docs/billing/ui_enhancement/phase_2_kpi_cards_plan.md`
-**Goal:** Replace legacy stat cards with clear, standardized metrics matching the design mockup, featuring interactive filter toggling, active visual indicators, skeleton loading, and mobile 2x2 touch-friendly layouts.
+### Phase 2: Redefined, Actionable KPI Cards [COMPLETED & VERIFIED]
+**Status:** Completed & Verified (Commit: `38d06c77`)
+**Deliverables:**
+* Created `AgreementsKpiGrid.tsx` with 4 standardized, mockup-aligned metrics: Total Institutions, No Contract, Awaiting Signature, and Active Contracts.
+* Implemented bidirectional interactive one-click filter toggling and active ring/border styling.
+* Designed mobile-first 2x2 grid with `min-h-[104px]` touch targets and Emil Kowalski `active:scale-[0.97]` animations.
+* Added skeleton shimmer loading state and bounded arithmetic safeguards (`Math.max(0, ...)`).
+* Reset status filter to `'all'` on workspace change (Rule 50).
+* Cleaned up legacy `StatCard` function and unused imports. Typecheck and ESLint passed with 0 errors.
 
 * **2.1. Metric Calculation Engine:**
   * **Total Institutions:** Current scope count (`totalEntities` from Firestore `workspace_entities`) + trend (`↑ +12%` vs last 30 days).
