@@ -11,9 +11,17 @@ const mockDoc = vi.fn((_path?: string) => ({
   set: mockSet,
 }));
 
+const mockRunTransaction = vi.fn(
+  async <T,>(cb: (tx: { get: typeof mockGet; set: typeof mockSet }) => Promise<T>): Promise<T> => {
+    return cb({ get: mockGet, set: mockSet });
+  }
+);
+
 vi.mock('@/lib/firebase-admin', () => ({
   adminDb: {
     doc: (path: string) => mockDoc(path),
+    runTransaction: <T,>(cb: (tx: { get: typeof mockGet; set: typeof mockSet }) => Promise<T>) =>
+      mockRunTransaction(cb),
   },
 }));
 
@@ -109,6 +117,33 @@ describe('messaging-settings-actions', () => {
     expect(res.success).toBe(false);
     if (!res.success) {
       expect(res.code).toBe('CONCURRENCY_CONFLICT');
+    }
+    expect(mockSet).not.toHaveBeenCalled();
+  });
+
+  it('rejects update when caller has explicit non-admin role (Rule 17 Non-Delegable Privileges)', async () => {
+    const { requireWorkspace } = await import('@/lib/auth/require-auth');
+    vi.mocked(requireWorkspace).mockResolvedValueOnce({
+      uid: 'user_viewer',
+      profile: {
+        id: 'user_viewer',
+        organizationId: 'org_123',
+        email: 'viewer@smartsapp.com',
+        workspaceIds: ['ws_123'],
+        isAuthorized: true,
+        role: 'viewer', // Explicit non-admin role
+      },
+      isSystemAdmin: false,
+    });
+
+    const res = await updateWorkspaceMessagingSettingsAction('ws_123', {
+      lowBalanceThreshold: 100,
+    });
+
+    expect(res.success).toBe(false);
+    if (!res.success) {
+      expect(res.code).toBe('FORBIDDEN');
+      expect(res.error).toMatch(/Only workspace administrators/i);
     }
     expect(mockSet).not.toHaveBeenCalled();
   });

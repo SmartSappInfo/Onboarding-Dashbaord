@@ -53,6 +53,7 @@ export function MessagingSettingsTab({ workspaceId, className }: MessagingSettin
   const [newPrompt, setNewPrompt] = React.useState('');
 
   const loadSettings = React.useCallback(async () => {
+    if (!workspaceId) return;
     setIsLoading(true);
     try {
       const res = await getWorkspaceMessagingSettingsAction(workspaceId);
@@ -229,7 +230,7 @@ export function MessagingSettingsTab({ workspaceId, className }: MessagingSettin
                   type="button"
                   onClick={() => handleToggleTemplate(tpl.id)}
                   className={cn(
-                    'p-3 rounded-xl border text-left flex items-start justify-between gap-3 transition-all active:scale-[0.98]',
+                    'p-3 rounded-xl border text-left flex items-start justify-between gap-3 transition-all active:scale-[0.97]',
                     isSelected
                       ? 'border-primary bg-primary/5 text-foreground ring-1 ring-primary'
                       : 'border-border/60 bg-muted/10 hover:border-border text-muted-foreground'

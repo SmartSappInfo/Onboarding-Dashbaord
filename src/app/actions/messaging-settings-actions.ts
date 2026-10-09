@@ -63,33 +63,48 @@ export async function updateWorkspaceMessagingSettingsAction(
       return { success: false, error: 'Workspace access not granted', code: 'UNAUTHORIZED' };
     }
 
-    const docRef = adminDb.doc(`workspaces/${workspaceId}/messaging_settings/current`);
-    const snap = await docRef.get();
-    const currentData = snap.exists ? snap.data() : null;
-    const currentVersion = typeof currentData?.version === 'number' ? currentData.version : 1;
-
-    // Rule 18: TOCTOU Concurrency Guard
-    if (expectedVersion !== undefined && currentVersion !== expectedVersion) {
+    // Rules 8 & 17: Non-delegable administrative privilege check
+    const userRole = authContext.profile.role?.toLowerCase();
+    const isExplicitNonAdmin = userRole && !['admin', 'org_admin', 'workspace_admin', 'owner', 'manager'].includes(userRole);
+    if (isExplicitNonAdmin && !authContext.isSystemAdmin) {
       return {
         success: false,
-        error: 'Settings were modified by another administrator. Please refresh the page and try again.',
-        code: 'CONCURRENCY_CONFLICT',
+        error: 'Only workspace administrators can modify messaging settings.',
+        code: 'FORBIDDEN',
       };
     }
 
-    const existingRes = await getWorkspaceMessagingSettingsAction(workspaceId);
-    const baseSettings = existingRes.success ? existingRes.data : DEFAULT_MESSAGING_SETTINGS;
+    const docRef = adminDb.doc(`workspaces/${workspaceId}/messaging_settings/current`);
 
-    const merged = {
-      ...baseSettings,
-      ...settings,
-      version: currentVersion + 1,
-      updatedAt: new Date().toISOString(),
-      updatedBy: authContext.uid,
-    };
+    // Atomically read, guard against concurrency conflicts, and persist with incremented version
+    const validated = await adminDb.runTransaction(async (transaction) => {
+      const snap = await transaction.get(docRef);
+      const currentData = snap.exists ? snap.data() : null;
+      const currentVersion = typeof currentData?.version === 'number' ? currentData.version : 1;
 
-    const validated = WorkspaceMessagingSettingsSchema.parse(merged);
-    await docRef.set(validated, { merge: true });
+      // Rule 18: TOCTOU Concurrency Guard
+      if (expectedVersion !== undefined && currentVersion !== expectedVersion) {
+        throw new Error('CONCURRENCY_CONFLICT');
+      }
+
+      const baseSettings = snap.exists && currentData
+        ? (WorkspaceMessagingSettingsSchema.safeParse(currentData).success
+            ? (currentData as WorkspaceMessagingSettings)
+            : DEFAULT_MESSAGING_SETTINGS)
+        : DEFAULT_MESSAGING_SETTINGS;
+
+      const merged = {
+        ...baseSettings,
+        ...settings,
+        version: currentVersion + 1,
+        updatedAt: new Date().toISOString(),
+        updatedBy: authContext.uid,
+      };
+
+      const result = WorkspaceMessagingSettingsSchema.parse(merged);
+      transaction.set(docRef, result, { merge: true });
+      return result;
+    });
 
     // Invalidate dashboard summary cache for this workspace across all timeframes (Rule 9 & 20)
     const orgId = authContext.profile.organizationId || '';
@@ -100,6 +115,13 @@ export async function updateWorkspaceMessagingSettingsAction(
 
     return { success: true, data: validated };
   } catch (err) {
+    if (err instanceof Error && err.message === 'CONCURRENCY_CONFLICT') {
+      return {
+        success: false,
+        error: 'Settings were modified by another administrator. Please refresh the page and try again.',
+        code: 'CONCURRENCY_CONFLICT',
+      };
+    }
     const message = err instanceof Error ? err.message : 'Failed to update messaging settings';
     return { success: false, error: message, code: 'UPDATE_FAILED' };
   }
