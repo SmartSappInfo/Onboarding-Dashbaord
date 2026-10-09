@@ -134,7 +134,7 @@ export function TaskListRow({
             )}
         >
             {/* Selection Checkbox OR Quick Complete Button */}
-            <div className="flex items-center justify-center shrink-0 min-h-[44px] min-w-[32px]">
+            <div className="flex items-center justify-center shrink-0 min-h-[44px] min-w-[44px]">
                 {isSelectionMode ? (
                     <Checkbox
                         checked={isSelected}
@@ -154,7 +154,7 @@ export function TaskListRow({
                             onToggleComplete?.(task);
                         }}
                         className={cn(
-                            "h-6 w-6 rounded-full border border-border/80 hover:border-emerald-500 hover:bg-emerald-500/10 flex items-center justify-center transition-all shrink-0 cursor-pointer active:scale-90",
+                            "h-6 w-6 rounded-full border border-border/80 hover:border-emerald-500 hover:bg-emerald-500/10 flex items-center justify-center transition-all shrink-0 cursor-pointer active:scale-[0.97]",
                             isDone && "border-emerald-500 bg-emerald-500/10"
                         )}
                     >
@@ -261,7 +261,7 @@ export function TaskListRow({
 
             {/* Optional Row Action Menu */}
             {(onEdit || onDelete || onPostpone) && (
-                <div className="flex items-center shrink-0" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center shrink-0 min-h-[44px] min-w-[44px] justify-center" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>
                             <Button
@@ -269,7 +269,7 @@ export function TaskListRow({
                                 size="icon"
                                 disabled={isPending}
                                 aria-label="Task options"
-                                className="h-8 w-8 rounded-lg opacity-40 hover:opacity-100 focus:opacity-100 transition-opacity"
+                                className="h-9 w-9 sm:h-8 sm:w-8 rounded-lg opacity-40 hover:opacity-100 focus:opacity-100 transition-all active:scale-[0.97]"
                             >
                                 <MoreVertical className="h-4 w-4" />
                             </Button>

@@ -84,10 +84,30 @@ export function TaskCard({
     const handleCardClick = (e: React.MouseEvent) => {
         if (isPending) return;
         const target = e.target as HTMLElement;
-        if (target.closest('button') || target.closest('a') || target.closest('[role="button"]') || target.closest('[role="menuitem"]')) {
+        if (target.closest('button') || target.closest('a') || target.closest('[role="menuitem"]')) {
+            return;
+        }
+        const innerBtnRole = target.closest('[role="button"]');
+        if (innerBtnRole && innerBtnRole !== e.currentTarget) {
             return;
         }
         onClick?.();
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (isPending) return;
+        if (e.key === 'Enter' || e.key === ' ') {
+            const target = e.target as HTMLElement;
+            if (target.closest('button') || target.closest('a') || target.closest('[role="menuitem"]')) {
+                return;
+            }
+            const innerBtnRole = target.closest('[role="button"]');
+            if (innerBtnRole && innerBtnRole !== e.currentTarget) {
+                return;
+            }
+            e.preventDefault();
+            onClick?.();
+        }
     };
 
     return (
@@ -97,6 +117,7 @@ export function TaskCard({
                 tabIndex={isPending ? -1 : 0}
                 aria-label={task.title}
                 onClick={handleCardClick}
+                onKeyDown={handleKeyDown}
                 className={cn(
                     "group relative mb-3 rounded-2xl border border-border/80 bg-card text-card-foreground shadow-xs transition-all duration-200 select-none w-full max-w-full overflow-hidden text-left cursor-pointer",
                     !isOverlay && !isPending && "hover:shadow-md hover:border-border",
