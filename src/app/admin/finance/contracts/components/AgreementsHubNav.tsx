@@ -80,7 +80,7 @@ const PRIMARY_TABS: PrimaryTabItem[] = [
   { id: 'insights', label: 'Insights', icon: BarChart3 },
 ];
 
-export function AgreementsHubNav({
+export const AgreementsHubNav = React.memo(function AgreementsHubNav({
   activeTab,
   onTabChange,
   userPermissions = [],
@@ -110,7 +110,11 @@ export function AgreementsHubNav({
   return (
     <div className={cn("w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3", className)}>
       {/* Primary Segmented Navigation */}
-      <div className="flex items-center gap-1.5 p-1 rounded-xl bg-muted/40 border border-border/80 overflow-x-auto no-scrollbar scroll-smooth">
+      <div 
+        role="tablist"
+        aria-label="Agreements Hub Sections"
+        className="flex items-center gap-1.5 p-1 rounded-xl bg-muted/40 border border-border/80 overflow-x-auto no-scrollbar scroll-smooth"
+      >
         {PRIMARY_TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -118,10 +122,12 @@ export function AgreementsHubNav({
           return (
             <button
               key={tab.id}
+              role="tab"
+              aria-selected={isActive}
               type="button"
               onClick={() => onTabChange(tab.id)}
               className={cn(
-                "inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all select-none min-h-[40px] sm:min-h-[36px]",
+                "inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all select-none min-h-[44px] sm:min-h-[36px]",
                 "active:scale-[0.97]",
                 isActive
                   ? "bg-card text-foreground shadow-xs border border-border/60"
@@ -212,7 +218,7 @@ export function AgreementsHubNav({
             type="button"
             onClick={() => onContractsSubViewChange('register')}
             className={cn(
-              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all select-none min-h-[32px]",
+              "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all select-none min-h-[44px] sm:min-h-[32px]",
               "active:scale-[0.97]",
               contractsSubView === 'register'
                 ? "bg-card text-foreground shadow-xs"
@@ -226,7 +232,7 @@ export function AgreementsHubNav({
             type="button"
             onClick={() => onContractsSubViewChange('campaigns')}
             className={cn(
-              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all select-none min-h-[32px]",
+              "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all select-none min-h-[44px] sm:min-h-[32px]",
               "active:scale-[0.97]",
               contractsSubView === 'campaigns'
                 ? "bg-card text-foreground shadow-xs"
@@ -240,4 +246,4 @@ export function AgreementsHubNav({
       )}
     </div>
   );
-}
+});

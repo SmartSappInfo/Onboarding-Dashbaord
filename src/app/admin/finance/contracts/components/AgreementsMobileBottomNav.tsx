@@ -51,7 +51,7 @@ export interface AgreementsMobileBottomNavProps {
   className?: string;
 }
 
-export function AgreementsMobileBottomNav({
+export const AgreementsMobileBottomNav = React.memo(function AgreementsMobileBottomNav({
   activeTab,
   onTabChange,
   userPermissions = [],
@@ -71,7 +71,7 @@ export function AgreementsMobileBottomNav({
       className={cn(
         "fixed bottom-0 left-0 right-0 z-40 sm:hidden",
         "bg-card/95 backdrop-blur-md border-t border-border/80 shadow-lg",
-        "px-3 py-1 pb-safe flex items-center justify-around",
+        "px-3 py-1 pb-[calc(0.25rem+env(safe-area-inset-bottom,0px))] flex items-center justify-around",
         className
       )}
     >
@@ -206,4 +206,4 @@ export function AgreementsMobileBottomNav({
       </DropdownMenu>
     </nav>
   );
-}
+});

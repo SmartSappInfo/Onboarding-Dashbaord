@@ -104,6 +104,8 @@ import { Bell } from 'lucide-react';
 import { AgreementsHubNav, type AgreementsTabKey, type ContractsSubViewKey } from './components/AgreementsHubNav';
 import { AgreementsMobileBottomNav } from './components/AgreementsMobileBottomNav';
 
+export type EntityWithContract = WorkspaceEntity & { contract: Contract | null };
+
 /**
  * @fileOverview Agreements Hub Client.
  * Upgraded with multi-workspace sharing logic and workspace-bound filtering.
@@ -155,6 +157,18 @@ export default function AgreementsClient() {
     }, [user, firestore]);
 
     const canPurge = userPermissions.includes('contracts_delete') || userPermissions.includes('system_admin');
+    const canAccessAdmin = 
+        userPermissions.includes('system_admin') || 
+        userPermissions.includes('admin_role') ||
+        userPermissions.includes('contracts_admin') ||
+        userPermissions.includes('owner');
+
+    // Workspace-switch reset (Rule 50: Cache & Tenant Isolation)
+    React.useEffect(() => {
+        setActiveTab('contracts');
+        setContractsSubView('register');
+        setSelectedEntities([]);
+    }, [activeWorkspaceId]);
 
     // Paginated entity search (replaces streaming the full WE set + the entire
     // `entities` collection). Identity fields (zone, signatory) come off the
@@ -235,7 +249,7 @@ export default function AgreementsClient() {
         toast({ title: 'Batch Selected', description: `${unprepared.length} unprepared entities identified.` });
     };
 
-    const handleCopyLink = (item: any) => {
+    const handleCopyLink = (item: EntityWithContract) => {
         if (!item.contract?.pdfId) return;
         if (typeof window === 'undefined') return;
         
@@ -348,7 +362,7 @@ export default function AgreementsClient() {
                     {/* Reorganized Four-Section Navigation Architecture with Administration Dropdown (Phase 1) */}
                     <AgreementsHubNav
                         activeTab={activeTab}
-                        onTabChange={(tab) => setActiveTab(tab)}
+                        onTabChange={setActiveTab}
                         userPermissions={userPermissions}
                         contractsSubView={contractsSubView}
                         onContractsSubViewChange={setContractsSubView}
@@ -795,17 +809,21 @@ export default function AgreementsClient() {
                             <ContractsAnalyticsTab workspaceId={activeWorkspaceId || ''} />
                         </TabsContent>
 
-                        <TabsContent value="governance" className="mt-0">
-                            <EnterpriseGovernanceTab workspaceId={activeWorkspaceId || ''} />
-                        </TabsContent>
+                        {canAccessAdmin && (
+                            <>
+                                <TabsContent value="governance" className="mt-0">
+                                    <EnterpriseGovernanceTab workspaceId={activeWorkspaceId || ''} />
+                                </TabsContent>
 
-                        <TabsContent value="migration" className="mt-0">
-                            <MigrationCutoverTab workspaceId={activeWorkspaceId || ''} />
-                        </TabsContent>
+                                <TabsContent value="migration" className="mt-0">
+                                    <MigrationCutoverTab workspaceId={activeWorkspaceId || ''} />
+                                </TabsContent>
 
-                        <TabsContent value="developer" className="mt-0">
-                            <DeveloperPlatformTab workspaceId={activeWorkspaceId || ''} />
-                        </TabsContent>
+                                <TabsContent value="developer" className="mt-0">
+                                    <DeveloperPlatformTab workspaceId={activeWorkspaceId || ''} />
+                                </TabsContent>
+                            </>
+                        )}
 
                         <TabsContent value="campaigns" className="mt-0">
                             <BulkCampaignsTab workspaceId={activeWorkspaceId || ''} />
@@ -815,12 +833,12 @@ export default function AgreementsClient() {
 
                 {/* Bulk Actions Floating Bar */}
                 <AnimatePresence>
-                    {selectedEntities.length > 0 && (
+                    {selectedEntities.length > 0 && activeTab === 'contracts' && contractsSubView === 'register' && (
                         <motion.div 
                             initial={{ y: 100, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
                             exit={{ y: 100, opacity: 0 }}
- className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] w-fit min-w-[320px]"
+                            className="fixed bottom-20 sm:bottom-8 left-1/2 -translate-x-1/2 z-30 sm:z-[100] w-fit min-w-[320px]"
                         >
  <Card className="bg-card/95 text-foreground border border-border shadow-[0_20px_50px_rgba(0,0,0,0.3)] rounded-2xl overflow-hidden ring-1 ring-white/10">
  <CardContent className="p-2 flex items-center justify-between gap-6">
