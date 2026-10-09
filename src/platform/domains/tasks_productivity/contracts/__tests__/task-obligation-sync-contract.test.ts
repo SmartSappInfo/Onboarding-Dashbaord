@@ -1,11 +1,9 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { 
   taskObligationSyncCapability, 
   TaskObligationSyncInputSchema,
   TaskObligationSyncOutputSchema,
-  type TaskObligationSyncInput,
 } from '../task-obligation-sync.contract';
-import type { CapabilityExecutionContext } from '../../../../capabilities/contracts/capability-definition';
 
 describe('task.obligation.sync Capability Contract', () => {
   it('validates schema correctly with valid parameters', () => {

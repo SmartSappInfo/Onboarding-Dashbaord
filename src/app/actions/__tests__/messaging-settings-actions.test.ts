@@ -127,11 +127,13 @@ describe('messaging-settings-actions', () => {
       uid: 'user_viewer',
       profile: {
         id: 'user_viewer',
+        name: 'Viewer User',
         organizationId: 'org_123',
         email: 'viewer@smartsapp.com',
         workspaceIds: ['ws_123'],
         isAuthorized: true,
         role: 'viewer', // Explicit non-admin role
+        createdAt: '2026-10-01T00:00:00.000Z',
       },
       isSystemAdmin: false,
     });

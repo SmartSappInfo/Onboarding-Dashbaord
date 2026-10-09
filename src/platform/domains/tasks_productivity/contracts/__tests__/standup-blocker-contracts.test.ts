@@ -8,12 +8,10 @@
 import { describe, it, expect } from 'vitest';
 import { 
   StandupSubmitInputSchema, 
-  StandupSubmitOutputSchema, 
   standupSubmitCapability 
 } from '../standup-submit.contract';
 import { 
   BlockerMutateInputSchema, 
-  BlockerMutateOutputSchema, 
   blockerMutateCapability 
 } from '../blocker-mutate.contract';
 

@@ -196,9 +196,14 @@ describe('Tasks Security Confinement & Anti-IDOR Suite (Phase 6 / SEC-01–04)',
       const result = await createTaskAction({
         workspaceId: h.foreignWorkspaceId,
         title: 'Attacker injected task',
+        description: 'Test payload',
         status: 'todo',
         priority: 'medium',
         category: 'general',
+        assignedTo: ['usr-1'],
+        dueDate: '2026-10-20T00:00:00.000Z',
+        reminders: [],
+        reminderSent: false,
       });
 
       expect(result.success).toBe(false);
@@ -209,9 +214,14 @@ describe('Tasks Security Confinement & Anti-IDOR Suite (Phase 6 / SEC-01–04)',
       const result = await createTaskAction({
         workspaceId: h.validWorkspaceId,
         title: 'Authorized Task',
+        description: 'Test payload',
         status: 'todo',
         priority: 'medium',
         category: 'general',
+        assignedTo: ['usr-1'],
+        dueDate: '2026-10-20T00:00:00.000Z',
+        reminders: [],
+        reminderSent: false,
       });
 
       expect(result.success).toBe(true);

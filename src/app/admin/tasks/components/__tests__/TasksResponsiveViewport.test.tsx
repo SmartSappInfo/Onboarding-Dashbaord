@@ -173,13 +173,13 @@ describe('Tasks Cross-Device Responsive Layout Verification (Roadmap §79 / UI S
 
     // 3. Skeleton Loading State (List & Card)
     const { container: skeletonListContainer, unmount: unmountSkelList } = render(
-      <TaskSkeleton count={3} mode="list" />
+      <TaskSkeleton count={3} variant="list" />
     );
     expect(skeletonListContainer.querySelectorAll('.animate-pulse').length).toBeGreaterThanOrEqual(3);
     unmountSkelList();
 
     const { container: skeletonCardContainer, unmount: unmountSkelCard } = render(
-      <TaskSkeleton count={4} mode="card" />
+      <TaskSkeleton count={4} variant="card" />
     );
     expect(skeletonCardContainer.querySelectorAll('.animate-pulse').length).toBeGreaterThanOrEqual(4);
     unmountSkelCard();

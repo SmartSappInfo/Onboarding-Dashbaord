@@ -11,7 +11,6 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { StandupSubmission, UserProfile } from '@/lib/types';
 
 const h = vi.hoisted(() => ({
   standups: new Map<string, Record<string, unknown>>(),

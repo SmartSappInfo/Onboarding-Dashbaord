@@ -217,7 +217,7 @@ export async function updateTaskCore(
     for (const field of IMMUTABLE_TASK_FIELDS) delete data[field];
 
     const isMarkingDone = updates.status === 'done';
-    const isCancelling = updates.status === 'cancelled';
+    const isCancelling = (updates.status as string) === 'cancelled';
     if (isMarkingDone && !updates.completedAt) {
       data.completedAt = timestamp;
     } else if (updates.status && updates.status !== 'done') {
@@ -226,13 +226,13 @@ export async function updateTaskCore(
 
     // Rule 26 & PRD §7.6: Automatic reminder cancellation when task is completed or cancelled
     if (isMarkingDone || isCancelling) {
-      const currentReminders = ((updates.reminders || stored.reminders || []) as TaskReminder[]);
+      const currentReminders = (updates.reminders || []) as TaskReminder[];
       const hasScheduled = currentReminders.some(
-        r => r.status === 'scheduled' || (!r.sent && (!r.status || r.status === 'scheduled'))
+        r => r.status === 'scheduled' || (!r.sent && r.status !== 'cancelled')
       );
       if (hasScheduled) {
         data.reminders = currentReminders.map(r => {
-          if (r.status === 'scheduled' || (!r.sent && (!r.status || r.status === 'scheduled'))) {
+          if (r.status === 'scheduled' || (!r.sent && r.status !== 'cancelled')) {
             return { ...r, status: 'cancelled' as const };
           }
           return r;

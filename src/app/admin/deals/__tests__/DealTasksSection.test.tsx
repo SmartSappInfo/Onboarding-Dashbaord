@@ -24,6 +24,7 @@ describe('Deals Detail Upcoming Tasks Harmonization (Roadmap §77)', () => {
   const sampleDealTask: Task = {
     id: 'deal-task-1',
     title: 'Schedule Contract Signing Review',
+    description: 'Review details',
     status: 'todo',
     priority: 'urgent',
     category: 'general',
@@ -31,7 +32,10 @@ describe('Deals Detail Upcoming Tasks Harmonization (Roadmap §77)', () => {
     dealId: 'deal-999',
     entityId: 'ent-123',
     entityName: 'Globex Corp',
+    assignedTo: [],
     dueDate: '2026-10-22T10:00:00Z',
+    reminders: [],
+    reminderSent: false,
     checklist: [
       { id: 'step-1', title: 'Prepare PDF agreement', completed: false },
     ],

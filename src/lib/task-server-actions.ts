@@ -213,9 +213,9 @@ export async function bulkDeleteTasksAction(taskIds: string[], workspaceId: stri
   }
 }
 
-export interface RetryObligationSyncResult extends TaskResult {
-  alreadySynced?: boolean;
-}
+export type RetryObligationSyncResult =
+  | { success: true; alreadySynced?: boolean; message?: string; error?: never }
+  | { success: false; error: string; alreadySynced?: never; message?: never };
 
 /**
  * Retries synchronization between a completed task and its linked contractual obligation.

@@ -244,6 +244,7 @@ describe('Tasks Accessibility (a11y) & Touch Target Suite (Roadmap §79 / PRD §
         open={true}
         onOpenChange={vi.fn()}
         onSave={vi.fn().mockResolvedValue(undefined)}
+        isSaving={false}
       />
     );
     const editorSrDesc = document.querySelector('.sr-only');

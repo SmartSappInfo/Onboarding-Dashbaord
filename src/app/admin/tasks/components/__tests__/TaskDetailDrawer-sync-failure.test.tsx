@@ -20,6 +20,7 @@ describe('TaskDetailDrawer Contract Obligation Recovery (Roadmap §78)', () => {
   const sampleFailedTask: Task = {
     id: 'task-sync-fail-1',
     title: 'Deliver Term Sheet Addendum',
+    description: 'Sample description',
     status: 'todo',
     priority: 'urgent',
     category: 'general',
@@ -27,7 +28,10 @@ describe('TaskDetailDrawer Contract Obligation Recovery (Roadmap §78)', () => {
     relatedEntityType: 'Submission',
     relatedParentId: 'contract-456',
     relatedEntityId: 'ob-789',
+    assignedTo: [],
     dueDate: '2026-10-25T12:00:00Z',
+    reminders: [],
+    reminderSent: false,
     obligationSyncStatus: 'failed',
     obligationSyncError: 'Contract obligation status 409 conflict',
     createdAt: '2026-10-01T00:00:00Z',

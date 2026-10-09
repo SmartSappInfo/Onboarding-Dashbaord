@@ -85,6 +85,7 @@ export const taskObligationSyncCapability: CapabilityDefinition<
       if (!taskDoc.exists) {
         return {
           success: false,
+          executionId: context.correlationId,
           error: {
             code: 'TASK_NOT_FOUND',
             message: `Task ${input.taskId} was not found.`,
@@ -97,6 +98,7 @@ export const taskObligationSyncCapability: CapabilityDefinition<
       if (task.workspaceId !== input.workspaceId) {
         return {
           success: false,
+          executionId: context.correlationId,
           error: {
             code: 'FORBIDDEN',
             message: 'Task does not belong to the authorized workspace.',
@@ -109,6 +111,7 @@ export const taskObligationSyncCapability: CapabilityDefinition<
       if (input.expectedUpdatedAt && task.updatedAt !== input.expectedUpdatedAt) {
         return {
           success: false,
+          executionId: context.correlationId,
           error: {
             code: 'CONCURRENCY_CONFLICT',
             message: 'Task was modified concurrently by another process. Please reload and retry.',
@@ -120,6 +123,7 @@ export const taskObligationSyncCapability: CapabilityDefinition<
       if (!task.relatedParentId || !task.relatedEntityId) {
         return {
           success: false,
+          executionId: context.correlationId,
           error: {
             code: 'NO_LINKED_OBLIGATION',
             message: 'Task does not have a linked contract obligation.',
@@ -140,6 +144,9 @@ export const taskObligationSyncCapability: CapabilityDefinition<
             obligationId: task.relatedEntityId,
             alreadySynced: true,
           },
+          executionId: context.correlationId,
+          emittedEvents: [],
+          durationMs: 0,
         };
       }
 
@@ -179,6 +186,8 @@ export const taskObligationSyncCapability: CapabilityDefinition<
             obligationId: task.relatedEntityId,
             syncedAt: now,
           },
+          correlationId: context.correlationId,
+          source: `/workspaces/${input.workspaceId}/tasks`,
         });
 
         return {
@@ -191,7 +200,9 @@ export const taskObligationSyncCapability: CapabilityDefinition<
             obligationId: task.relatedEntityId,
             alreadySynced: false,
           },
-          events: [domainEvent],
+          executionId: context.correlationId,
+          emittedEvents: [domainEvent],
+          durationMs: 0,
         };
       } else {
         const errorMsg: string =
@@ -204,6 +215,7 @@ export const taskObligationSyncCapability: CapabilityDefinition<
 
         return {
           success: false,
+          executionId: context.correlationId,
           error: {
             code: 'DOWNSTREAM_SYNC_FAILED',
             message: errorMsg,
@@ -215,6 +227,7 @@ export const taskObligationSyncCapability: CapabilityDefinition<
       const message = err instanceof Error ? err.message : 'Internal error syncing obligation';
       return {
         success: false,
+        executionId: context.correlationId,
         error: {
           code: 'INTERNAL_ERROR',
           message,

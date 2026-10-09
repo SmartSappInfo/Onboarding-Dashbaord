@@ -9,7 +9,6 @@
  */
 
 import { z } from 'zod/v4';
-import { randomUUID } from 'crypto';
 import type {
   CapabilityDefinition,
   CapabilityExecutionContext,
