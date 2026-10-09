@@ -11,14 +11,20 @@
  */
 
 import * as React from 'react';
-import { CheckCircle2, TrendingUp } from 'lucide-react';
+import { CheckCircle2, TrendingUp, AlertCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import type { PerformanceChartData, ChannelBreakdownItem } from '@/lib/types/messaging-dashboard';
+import type {
+  PerformanceChartData,
+  ChannelBreakdownItem,
+  MessagingDashboardTimeRange,
+} from '@/lib/types/messaging-dashboard';
 
 export interface MessagingPerformanceChartsProps {
   performance?: PerformanceChartData;
   channelBreakdown?: ChannelBreakdownItem[];
+  activeTimeRange?: MessagingDashboardTimeRange;
+  onTimeRangeChange?: (range: MessagingDashboardTimeRange) => void;
   isLoading?: boolean;
   className?: string;
 }
@@ -26,6 +32,8 @@ export interface MessagingPerformanceChartsProps {
 export function MessagingPerformanceCharts({
   performance,
   channelBreakdown = [],
+  activeTimeRange = '7d',
+  onTimeRangeChange,
   isLoading,
   className,
 }: MessagingPerformanceChartsProps) {
@@ -39,17 +47,34 @@ export function MessagingPerformanceCharts({
   }
 
   const rate = performance?.deliveryRatePercentage ?? 0;
+  const delivered = performance?.deliveredCount ?? 0;
+  const failed = performance?.failedCount ?? 0;
 
   return (
     <div className={cn('rounded-2xl border border-border/80 bg-card p-4 sm:p-5 text-card-foreground shadow-xs', className)}>
       <div className="flex items-center justify-between pb-3 border-b border-border/60">
         <div>
           <h3 className="text-sm font-semibold tracking-tight text-foreground">Delivery Performance</h3>
-          <p className="text-xs text-muted-foreground">7-day outbound reliability and channel distribution</p>
+          <p className="text-xs text-muted-foreground">Outbound reliability and channel distribution</p>
         </div>
-        <span className="text-xs font-medium px-2 py-1 rounded-md bg-muted/30 text-muted-foreground">
-          {performance?.timeRangeLabel ?? 'Last 7 days'}
-        </span>
+        {/* Interactive Time Range Switcher */}
+        <div className="flex items-center gap-1 bg-muted/40 p-0.5 rounded-lg">
+          {(['7d', '30d'] as const).map((r) => (
+            <button
+              key={r}
+              type="button"
+              onClick={() => onTimeRangeChange?.(r)}
+              className={cn(
+                'px-2.5 py-1 text-xs font-medium rounded-md transition-all active:scale-[0.97]',
+                activeTimeRange === r
+                  ? 'bg-primary text-primary-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              {r.toUpperCase()}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 pt-4 items-center">
@@ -75,8 +100,15 @@ export function MessagingPerformanceCharts({
               <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Delivered</span>
             </div>
           </div>
-          <div className="mt-2 text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
-            <CheckCircle2 className="w-3.5 h-3.5" /> High Delivery SLA
+          <div className="mt-2.5 flex items-center gap-3 text-xs">
+            <span className="text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1 tabular-nums">
+              <CheckCircle2 className="w-3.5 h-3.5" /> {delivered.toLocaleString()} delivered
+            </span>
+            {failed > 0 && (
+              <span className="text-rose-500 font-medium flex items-center gap-1 tabular-nums">
+                <AlertCircle className="w-3.5 h-3.5" /> {failed.toLocaleString()} failed
+              </span>
+            )}
           </div>
         </div>
 
