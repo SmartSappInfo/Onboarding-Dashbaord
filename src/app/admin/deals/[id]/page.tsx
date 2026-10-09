@@ -83,7 +83,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import DuplicateDealModal from '../../pipeline/components/DuplicateDealModal';
 import MergeDealsModal from '../../pipeline/components/MergeDealsModal';
-import { createTaskAction, updateTaskAction, deleteTaskAction } from '@/lib/task-server-actions';
+import { createTaskAction, updateTaskAction, deleteTaskAction, retryTaskObligationSyncAction } from '@/lib/task-server-actions';
+import { CompactTaskCard } from '../../tasks/components/CompactTaskCard';
+import { TaskDetailDrawer } from '../../tasks/components/TaskDetailDrawer';
 import { useEntitySearch } from '@/hooks/use-entity-search';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import dynamic from 'next/dynamic';
@@ -287,6 +289,9 @@ export default function DealDetailsPage() {
     const [taskAssignee, setTaskAssignee] = React.useState('');
     const [taskDueDate, setTaskDueDate] = React.useState('');
     const [isTaskCreating, setIsTaskCreating] = React.useState(false);
+    const [selectedDetailTask, setSelectedDetailTask] = React.useState<Task | null>(null);
+    const [isDetailDrawerOpen, setIsDetailDrawerOpen] = React.useState(false);
+    const [retryingSyncTaskIds, setRetryingSyncTaskIds] = React.useState<Set<string>>(new Set());
 
     // Contact Association State
     const [isAddContactOpen, setIsAddContactOpen] = React.useState(false);
@@ -315,6 +320,17 @@ export default function DealDetailsPage() {
         );
     }, [firestore, dealId, deal?.workspaceId]);
     const { data: dealTasks, isLoading: isTasksLoading } = useCollection<Task>(dealTasksQuery);
+
+    const userMap = React.useMemo(() => {
+        const map = new Map<string, UserProfile>();
+        users?.forEach((u) => map.set(u.id, u));
+        return map;
+    }, [users]);
+
+    const activeDetailTask = React.useMemo(() => {
+        if (!selectedDetailTask) return null;
+        return dealTasks?.find((t) => t.id === selectedDetailTask.id) || selectedDetailTask;
+    }, [dealTasks, selectedDetailTask]);
 
     // Fetch all deals in workspace for Merge modal candidate selection
     const allDealsQuery = useMemoFirebase(() => {
@@ -453,11 +469,78 @@ export default function DealDetailsPage() {
             if (res.success) {
                 toast({ title: newStatus === 'done' ? 'Task completed' : 'Task reopened' });
             } else {
-                throw new Error(res.error);
+                toast({
+                    variant: 'destructive',
+                    title: 'Update Failed',
+                    description: res.error || 'Failed to update task status.',
+                    actionConfig: {
+                        path: '/admin/settings/permissions',
+                        label: 'Check Permissions',
+                    },
+                });
             }
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : 'Unknown error';
             toast({ variant: 'destructive', title: 'Update Failed', description: msg });
+        }
+    };
+
+    const handleRetryTaskSync = async (taskId: string) => {
+        setRetryingSyncTaskIds((prev) => new Set(prev).add(taskId));
+        try {
+            const res = await retryTaskObligationSyncAction(taskId);
+            if (res.success) {
+                toast({
+                    title: 'Sync Succeeded',
+                    description: res.message || 'Obligation synchronized successfully.',
+                });
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Sync Failed',
+                    description: res.error || 'Failed to retry sync.',
+                    actionConfig: {
+                        path: '/admin/finance/agreements',
+                        label: 'View Agreements',
+                    },
+                });
+            }
+        } catch (err: unknown) {
+            toast({
+                variant: 'destructive',
+                title: 'Sync Failed',
+                description: err instanceof Error ? err.message : 'An unexpected error occurred.',
+            });
+        } finally {
+            setRetryingSyncTaskIds((prev) => {
+                const next = new Set(prev);
+                next.delete(taskId);
+                return next;
+            });
+        }
+    };
+
+    const handleUpdateTaskFromDrawer = async (taskId: string, updates: Partial<Task>) => {
+        try {
+            const res = await updateTaskAction(taskId, updates);
+            if (res.success) {
+                toast({ title: 'Task Updated', description: 'Changes saved successfully.' });
+                if (selectedDetailTask && selectedDetailTask.id === taskId) {
+                    setSelectedDetailTask((prev) => prev ? { ...prev, ...updates } : null);
+                }
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Update Failed',
+                    description: res.error || 'Failed to update task.',
+                });
+            }
+        } catch (err: unknown) {
+            toast({
+                variant: 'destructive',
+                title: 'Update Failed',
+                description: err instanceof Error ? err.message : 'An error occurred.',
+            });
         }
     };
 
@@ -1759,28 +1842,23 @@ export default function DealDetailsPage() {
                                 {isTasksLoading ? (
                                     <div className="space-y-2"><Skeleton className="h-12 w-full rounded-xl" /><Skeleton className="h-12 w-full rounded-xl" /></div>
                                 ) : upcomingTasks.length > 0 ? (
-                                    upcomingTasks.map(t => {
-                                        const isDone = t.status === 'done';
-                                        const due = getForecastUrgency(t.dueDate);
-                                        return (
-                                            <div key={t.id} className={cn("group flex items-start gap-2.5 p-3 rounded-xl border bg-muted/10 transition-all hover:bg-muted/20 hover:border-primary/20", isDone && "opacity-50")}>
-                                                <button onClick={() => handleToggleTaskStatus(t)} className="mt-0.5 text-muted-foreground hover:text-primary transition-colors shrink-0">
-                                                    {isDone ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <Circle className="h-4 w-4" />}
-                                                </button>
-                                                <div className="min-w-0 flex-1 space-y-0.5">
-                                                    <p className={cn("text-[11px] font-bold leading-snug", isDone && "line-through text-muted-foreground")}>{t.title}</p>
-                                                    <div className="flex items-center gap-1.5 text-[9px] font-semibold text-muted-foreground/70">
-                                                        <Clock className="h-3 w-3" />
-                                                        <span className={cn(!isDone && due.colorClass)}>{formatSafeLocaleDate(t.dueDate, 'No date')}</span>
-                                                        {t.assignedToName && <><span className="h-1 w-1 rounded-full bg-muted-foreground/40" /><span className="truncate">{t.assignedToName}</span></>}
-                                                    </div>
-                                                </div>
-                                                <button onClick={() => handleDeleteTask(t.id)} className="opacity-0 group-hover:opacity-100 text-rose-500 hover:text-rose-700 transition-opacity shrink-0">
-                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                </button>
-                                            </div>
-                                        );
-                                    })
+                                    <div className="space-y-2.5">
+                                        {upcomingTasks.map((t) => (
+                                            <CompactTaskCard
+                                                key={t.id}
+                                                task={t}
+                                                showRelationship={false}
+                                                userMap={userMap}
+                                                isRetryingSync={retryingSyncTaskIds.has(t.id)}
+                                                onToggleComplete={handleToggleTaskStatus}
+                                                onRetrySync={handleRetryTaskSync}
+                                                onClick={(task) => {
+                                                    setSelectedDetailTask(task);
+                                                    setIsDetailDrawerOpen(true);
+                                                }}
+                                            />
+                                        ))}
+                                    </div>
                                 ) : (
                                     <div className="text-center p-6 bg-muted/10 rounded-xl border border-dashed flex flex-col items-center gap-2">
                                         <CheckCircle2 className="h-7 w-7 text-muted-foreground/20" />
@@ -1973,6 +2051,17 @@ export default function DealDetailsPage() {
                     </form>
                 </DialogContent>
             </Dialog>
+
+            {/* Slide-over Task Detail Drawer */}
+            <TaskDetailDrawer
+                task={activeDetailTask}
+                isOpen={isDetailDrawerOpen}
+                onClose={() => setIsDetailDrawerOpen(false)}
+                onUpdateTask={handleUpdateTaskFromDrawer}
+                userMap={userMap}
+                currentUserId={currentUser?.uid}
+                currentUserName={currentUser?.displayName || undefined}
+            />
 
             {/* Opportunity Duplication Modal */}
             <DuplicateDealModal
