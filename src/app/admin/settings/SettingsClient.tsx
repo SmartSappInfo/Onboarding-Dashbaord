@@ -12,6 +12,7 @@ import WorkspaceProfileTab from './components/WorkspaceProfileTab';
 import WorkspaceBrandingTab from './components/WorkspaceBrandingTab';
 import WorkspaceRegionalTab from './components/WorkspaceRegionalTab';
 import WorkspaceIntegrationsTab from './components/WorkspaceIntegrationsTab';
+import { MessagingSettingsTab } from './components/MessagingSettingsTab';
 import { useTenant } from '@/context/TenantContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useUser, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
@@ -67,7 +68,7 @@ export default function SettingsClient() {
   const searchParams = useSearchParams();
   const targetWorkspaceId = searchParams.get('workspaceId');
   const tabParam = searchParams.get('tab');
-  const validTabs = React.useMemo(() => ['profile', 'branding', 'regional', 'integrations', 'billing'], []);
+  const validTabs = React.useMemo(() => ['profile', 'branding', 'regional', 'integrations', 'billing', 'messaging'], []);
   const [activeTab, setActiveTab] = React.useState<string>(
     tabParam && validTabs.includes(tabParam) ? tabParam : 'profile'
   );
@@ -231,6 +232,12 @@ export default function SettingsClient() {
               className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
             >
               <CreditCard className="h-3.5 w-3.5 shrink-0" /> SMS Units & Billing
+            </TabsTrigger>
+            <TabsTrigger 
+              value="messaging" 
+              className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
+            >
+              <MessageSquare className="h-3.5 w-3.5 shrink-0" /> Messaging Hub
             </TabsTrigger>
           </TabsList>
 
@@ -583,6 +590,11 @@ export default function SettingsClient() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* TAB 6: Messaging Hub Codeless Controls */}
+          <TabsContent value="messaging" className="space-y-6 outline-none text-left">
+            <MessagingSettingsTab workspaceId={activeWorkspace?.id || activeWorkspaceId || ''} />
           </TabsContent>
         </Tabs>
       </div>
