@@ -81,7 +81,7 @@ export const AgreementsBulkActionBar = React.memo(function AgreementsBulkActionB
                     animate={{ y: 0, opacity: 1, scale: 1 }}
                     exit={{ y: 80, opacity: 0, scale: 0.96 }}
                     transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                    className="fixed bottom-20 left-3 right-3 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 z-40 sm:z-[100] w-auto max-w-xl mx-auto"
+                    className="fixed bottom-20 sm:bottom-8 left-3 right-3 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 z-40 sm:z-[100] w-auto max-w-xl mx-auto"
                 >
                     <Card className="border border-border/80 bg-card/95 backdrop-blur-md shadow-2xl rounded-2xl overflow-hidden ring-1 ring-black/5 dark:ring-white/10">
                         <CardContent className="p-2 sm:px-4 sm:py-2.5 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 sm:gap-4">

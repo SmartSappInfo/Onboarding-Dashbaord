@@ -168,7 +168,7 @@ export const AgreementsFilterBar = React.memo(function AgreementsFilterBar({
                     <div className="flex-1 min-w-[220px] sm:min-w-[260px] relative">
                         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60 pointer-events-none" />
                         <Input
-                            placeholder="Search by name, contract ID or representative..."
+                            placeholder="Search institutions by name..."
                             value={localSearch}
                             onChange={handleSearchInput}
                             disabled={isLoading}
@@ -188,8 +188,8 @@ export const AgreementsFilterBar = React.memo(function AgreementsFilterBar({
                         )}
                     </div>
 
-                    {/* Status Select Dropdown */}
-                    <div className="w-full sm:w-[190px]">
+                    {/* Status Select Dropdown (Desktop/Tablet; on mobile handled by AgreementsMobileFilterChips) */}
+                    <div className="hidden sm:block w-full sm:w-[190px]">
                         <Select
                             value={status}
                             onValueChange={(val) => onStatusChange(val as AgreementsFilterStatus)}

@@ -5,7 +5,7 @@ import * as React from 'react';
 import { collection, query, orderBy, doc, getDoc, where, getCountFromServer } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { WorkspaceEntity, Contract } from '@/lib/types';
-import { UNASSIGNED_ZONE } from '@/lib/zone-constants';
+import { UNASSIGNED_ZONE, isUnassignedZone, type ZoneRef } from '@/lib/zone-constants';
 import { useEntitySearch } from '@/hooks/use-entity-search';
 import { 
     FileCheck, 
@@ -226,16 +226,28 @@ export default function AgreementsClient() {
         return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
     }, [entities]);
 
+    // Helper to safely extract zone display name from WorkspaceEntity (Finding 1)
+    const getEntityZoneName = React.useCallback((e: WorkspaceEntity): string => {
+        const rawZone = (e as { location?: { zone?: ZoneRef | string } }).location?.zone || e.zone;
+        if (!rawZone) return '';
+        if (typeof rawZone === 'string') {
+            return rawZone === UNASSIGNED_ZONE.name || rawZone === UNASSIGNED_ZONE.id ? '' : rawZone;
+        }
+        if (isUnassignedZone(rawZone)) return '';
+        return rawZone.name || '';
+    }, []);
+
     // Extract unique geographical zones from entities for secondary filter
     const availableZones = React.useMemo<string[]>(() => {
         const set = new Set<string>();
         (entities || []).forEach(e => {
-            if (e.zone && e.zone !== UNASSIGNED_ZONE) {
-                set.add(e.zone);
+            const zName = getEntityZoneName(e);
+            if (zName) {
+                set.add(zName);
             }
         });
         return Array.from(set).sort();
-    }, [entities]);
+    }, [entities, getEntityZoneName]);
 
     // Search is server-side (useEntitySearch); status, assignee, and secondary filters apply client-side.
     const filteredList = React.useMemo(() => {
@@ -264,14 +276,14 @@ export default function AgreementsClient() {
                 return false;
             }
 
-            // Advanced: Zone filter
-            if (advancedFilters.zone && item.zone !== advancedFilters.zone) {
+            // Advanced: Zone filter (Finding 1: clean string comparison)
+            if (advancedFilters.zone && getEntityZoneName(item) !== advancedFilters.zone) {
                 return false;
             }
 
             return true;
         });
-    }, [entitiesWithContracts, statusFilter, advancedFilters]);
+    }, [entitiesWithContracts, statusFilter, advancedFilters, getEntityZoneName]);
 
     // Active filters tracking
     const hasActiveFilters = Boolean(
@@ -336,25 +348,50 @@ export default function AgreementsClient() {
         });
     }, [selectedEntities, entitiesWithContracts]);
 
-    // Bulk Prepare Handler with 50-item cap (Rule 9 & 23)
+    // Bulk Prepare Handler with 50-item cap (Rule 9 & 23) and TOCTOU / Legal Hold Safeguards (Finding 2)
     const handleBulkPrepare = React.useCallback(() => {
         if (selectedEntities.length === 0) return;
+
+        // Filter out entities with active legal hold or already signed agreements
+        const ineligibleEntities = selectedEntities.filter(ent => {
+            const item = entitiesWithContracts.find(e => e.id === ent.id);
+            return item?.contract?.isUnderLegalHold || item?.contract?.status === 'signed';
+        });
+
+        if (ineligibleEntities.length > 0) {
+            toast({
+                variant: 'destructive',
+                title: 'Ineligible Institutions Excluded',
+                description: `${ineligibleEntities.length} selected institution(s) are already signed or locked under legal hold.`,
+            });
+        }
+
+        const validToPrepare = selectedEntities
+            .filter(ent => {
+                const item = entitiesWithContracts.find(e => e.id === ent.id);
+                return !item?.contract?.isUnderLegalHold && item?.contract?.status !== 'signed';
+            })
+            .slice(0, 50);
+
+        if (validToPrepare.length === 0) return;
+
         if (selectedEntities.length > 50) {
             toast({
                 title: 'Batch Limit Cap',
-                description: 'Batch preparation is capped at 50 institutions at a time. Processing the first 50.',
+                description: 'Batch preparation is capped at 50 institutions per run. Processing the first 50 valid institutions.',
             });
-            setSelectedEntities(prev => prev.slice(0, 50));
         }
+
+        setSelectedEntities(validToPrepare);
         setIsWizardOpen(true);
-    }, [selectedEntities.length, toast]);
+    }, [selectedEntities, entitiesWithContracts, toast]);
 
     // Bulk Reminders Handler
     const handleBulkReminders = React.useCallback(() => {
         setIsReminderSettingsOpen(true);
     }, []);
 
-    // CSV Export Handler with Formula Injection Defense (Rule 8)
+    // CSV Export Handler with Formula Injection Defense (Rule 8) and Zone String Extraction (Finding 1)
     const handleExportSelectionCsv = React.useCallback(() => {
         if (selectedEntities.length === 0) return;
 
@@ -362,7 +399,7 @@ export default function AgreementsClient() {
         
         const sanitizeCell = (val: unknown): string => {
             if (val === null || val === undefined) return '""';
-            const str = String(val);
+            const str = String(val).trimStart();
             const unsafePrefixes = ['=', '+', '-', '@', '\t', '\r'];
             const safeStr = unsafePrefixes.includes(str.charAt(0)) ? `'${str}` : str;
             return `"${safeStr.replace(/"/g, '""')}"`;
@@ -373,7 +410,7 @@ export default function AgreementsClient() {
             return [
                 sanitizeCell(entity.entityId || entity.id),
                 sanitizeCell(entity.displayName || entity.name || 'Unnamed Institution'),
-                sanitizeCell(entity.zone || 'Unassigned'),
+                sanitizeCell(getEntityZoneName(entity) || 'Unassigned'),
                 sanitizeCell(item?.contract?.status || 'no_contract'),
                 sanitizeCell(item?.contract?.id || '—'),
                 sanitizeCell(item?.contract?.updatedAt || entity.updatedAt || '—'),
@@ -397,7 +434,7 @@ export default function AgreementsClient() {
             title: 'Export Complete',
             description: `Exported ${selectedEntities.length} institutions to CSV.`,
         });
-    }, [selectedEntities, entitiesWithContracts, toast]);
+    }, [selectedEntities, entitiesWithContracts, getEntityZoneName, toast]);
 
     const toggleSelect = (entity: WorkspaceEntity) => {
         setSelectedEntities(prev => {
@@ -598,7 +635,13 @@ export default function AgreementsClient() {
                                 <TableRow>
  <TableHead className="w-12 pl-6 py-5">
                                         <Checkbox 
-                                            checked={selectedEntities.length === filteredList.length && filteredList.length > 0}
+                                            checked={
+                                                selectedEntities.length === filteredList.length && filteredList.length > 0
+                                                    ? true
+                                                    : selectedEntities.length > 0
+                                                        ? 'indeterminate'
+                                                        : false
+                                            }
                                             onCheckedChange={(checked) => {
                                                 if (checked) setSelectedEntities(filteredList);
                                                 else setSelectedEntities([]);
@@ -980,7 +1023,7 @@ export default function AgreementsClient() {
 
                 {isWizardOpen && selectedEntities.length > 0 && (
                     <ContractWizard 
-                        entities={selectedEntities} 
+                        entities={selectedEntities.slice(0, 50)} 
                         open={isWizardOpen} 
                         onOpenChange={(o) => {
                             setIsWizardOpen(o);
