@@ -27,12 +27,22 @@ export const ProviderHealthStatusSchema = z
 export type ProviderHealthStatus = z.infer<typeof ProviderHealthStatusSchema>;
 
 /**
+ * Parametric time range options for the messaging dashboard analytics.
+ */
+export const MessagingDashboardTimeRangeSchema = z
+  .enum(['24h', '7d', '30d'])
+  .default('7d')
+  .describe('Time window interval for dashboard aggregation');
+export type MessagingDashboardTimeRange = z.infer<typeof MessagingDashboardTimeRangeSchema>;
+
+/**
  * Input validation schema for fetching messaging dashboard summaries (MCP Tool boundary).
  */
 export const GetMessagingDashboardSummaryInputSchema = z.object({
   organizationId: z.string().min(1).describe('The tenant organization unique identifier'),
   workspaceId: z.string().min(1).describe('The active operational workspace identifier'),
   forceRefresh: z.boolean().optional().default(false).describe('Bypass the 3-minute in-memory cache if true'),
+  timeRange: MessagingDashboardTimeRangeSchema.optional().default('7d').describe('Aggregation time window'),
 });
 export type GetMessagingDashboardSummaryInput = z.input<typeof GetMessagingDashboardSummaryInputSchema>;
 
@@ -110,6 +120,7 @@ export const InboxThreadPreviewItemSchema = z.object({
   lastMessageTimestamp: z.string().describe('ISO timestamp of the latest communication'),
   unreadCount: z.number().nonnegative().describe('Unread messages awaiting staff attention'),
   isGroup: z.boolean().default(false).describe('Whether this thread represents a group communication'),
+  isDirect: z.boolean().default(true).describe('Whether this thread represents a 1-to-1 direct communication'),
 });
 export type InboxThreadPreviewItem = z.infer<typeof InboxThreadPreviewItemSchema>;
 

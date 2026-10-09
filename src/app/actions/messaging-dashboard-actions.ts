@@ -130,7 +130,7 @@ export async function getMessagingDashboardSummaryAction(
     const errorMsg = validationErr instanceof Error ? validationErr.message : 'Invalid request payload';
     return { success: false, error: errorMsg, code: 'VALIDATION_FAILED' };
   }
-  const { organizationId, workspaceId, forceRefresh } = input;
+  const { organizationId, workspaceId, forceRefresh, timeRange = '7d' } = input;
 
   // 2. Fail-Closed Authentication & Multi-Tenant Authorization (Rules 8 & 18)
   let authContext: Awaited<ReturnType<typeof requireWorkspace>>;
@@ -151,7 +151,7 @@ export async function getMessagingDashboardSummaryAction(
   }
 
   // 3. Check In-Memory TTL Cache (Rule 9)
-  const cacheKey = `dashboard:${organizationId}:${workspaceId}`;
+  const cacheKey = `dashboard:${organizationId}:${workspaceId}:${timeRange}`;
   const nowMs = Date.now();
   if (!forceRefresh) {
     const cachedData = getCachedDashboardSummary(cacheKey, nowMs);
@@ -162,8 +162,18 @@ export async function getMessagingDashboardSummaryAction(
 
   try {
     const nowDate = new Date();
-    const sevenDaysAgoIso = formatISO(subDays(nowDate, 7));
-    const fourteenDaysAgoIso = formatISO(subDays(nowDate, 14));
+    let days = 7;
+    let timeRangeLabel = 'Last 7 days';
+    if (timeRange === '30d') {
+      days = 30;
+      timeRangeLabel = 'Last 30 days';
+    } else if (timeRange === '24h') {
+      days = 1;
+      timeRangeLabel = 'Last 24 hours';
+    }
+
+    const currentWindowIso = formatISO(subDays(nowDate, days));
+    const previousWindowIso = formatISO(subDays(nowDate, days * 2));
 
     // 4. Parallel Bounded Firestore Queries
     const [logsSnap, campaignsSnap, scheduledSnap, providerResults] = await Promise.all([
@@ -229,10 +239,10 @@ export async function getMessagingDashboardSummaryAction(
 
     // Partition logs by time windows
     const currentWindowLogs = rawLogs.filter(
-      (log) => log.sentAt && log.sentAt >= sevenDaysAgoIso
+      (log) => log.sentAt && log.sentAt >= currentWindowIso
     );
     const previousWindowLogs = rawLogs.filter(
-      (log) => log.sentAt && log.sentAt >= fourteenDaysAgoIso && log.sentAt < sevenDaysAgoIso
+      (log) => log.sentAt && log.sentAt >= previousWindowIso && log.sentAt < currentWindowIso
     );
 
     // Compute volume & delivery metrics
@@ -402,6 +412,7 @@ export async function getMessagingDashboardSummaryAction(
           lastMessageTimestamp: log.sentAt || new Date().toISOString(),
           unreadCount: 0,
           isGroup: false,
+          isDirect: true,
         });
       }
     }
@@ -427,7 +438,7 @@ export async function getMessagingDashboardSummaryAction(
         deliveredCount: currentDeliveredCount,
         failedCount: currentFailedCount,
         deliveryRatePercentage: deliveryRate,
-        timeRangeLabel: 'Last 7 days',
+        timeRangeLabel,
       },
       channelBreakdown,
       recentCampaigns,

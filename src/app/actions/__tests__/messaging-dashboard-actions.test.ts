@@ -404,6 +404,30 @@ describe('getMessagingDashboardSummaryAction', () => {
     }
   });
 
+  it('supports parametric timeRange selection (30d vs 7d vs 24h)', async () => {
+    const res30d = await getMessagingDashboardSummaryAction({
+      organizationId: orgId,
+      workspaceId: wsId,
+      timeRange: '30d',
+    });
+
+    expect(res30d.success).toBe(true);
+    if (res30d.success) {
+      expect(res30d.data.performance.timeRangeLabel).toBe('Last 30 days');
+    }
+
+    const res24h = await getMessagingDashboardSummaryAction({
+      organizationId: orgId,
+      workspaceId: wsId,
+      timeRange: '24h',
+    });
+
+    expect(res24h.success).toBe(true);
+    if (res24h.success) {
+      expect(res24h.data.performance.timeRangeLabel).toBe('Last 24 hours');
+    }
+  });
+
   it('rejects malformed input missing organizationId or workspaceId', async () => {
     // @ts-expect-error Testing missing mandatory property
     const result = await getMessagingDashboardSummaryAction({

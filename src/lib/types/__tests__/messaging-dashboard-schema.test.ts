@@ -9,6 +9,7 @@ import { describe, it, expect } from 'vitest';
 import {
   MessagingChannelSchema,
   ProviderHealthStatusSchema,
+  MessagingDashboardTimeRangeSchema,
   MessagingKpiMetricsSchema,
   PerformanceChartDataSchema,
   ChannelBreakdownItemSchema,
@@ -36,6 +37,14 @@ describe('Messaging Dashboard Zod Schemas & Domain Models', () => {
     expect(ProviderHealthStatusSchema.parse('degraded')).toBe('degraded');
     expect(ProviderHealthStatusSchema.parse('error')).toBe('error');
     expect(() => ProviderHealthStatusSchema.parse('offline')).toThrow();
+  });
+
+  it('validates time range options and defaults to 7d', () => {
+    expect(MessagingDashboardTimeRangeSchema.parse('24h')).toBe('24h');
+    expect(MessagingDashboardTimeRangeSchema.parse('7d')).toBe('7d');
+    expect(MessagingDashboardTimeRangeSchema.parse('30d')).toBe('30d');
+    expect(MessagingDashboardTimeRangeSchema.parse(undefined)).toBe('7d');
+    expect(() => MessagingDashboardTimeRangeSchema.parse('90d')).toThrow();
   });
 
   it('validates KPI metrics with valid data and rejects invalid numbers', () => {
