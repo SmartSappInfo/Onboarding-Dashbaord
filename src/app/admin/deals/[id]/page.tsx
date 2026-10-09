@@ -23,7 +23,6 @@ import {
     Plus,
     Trash2,
     CheckCircle2,
-    Circle,
     Clock,
     Check,
     Search,
@@ -544,7 +543,7 @@ export default function DealDetailsPage() {
         }
     };
 
-    const handleDeleteTask = async (taskId: string) => {
+    const _handleDeleteTask = async (taskId: string) => {
         if (!currentUser) return;
         if (!(await confirm({ title: 'Delete task?', description: 'This task will be permanently deleted.', confirmText: 'Delete', variant: 'destructive' }))) return;
         try {
