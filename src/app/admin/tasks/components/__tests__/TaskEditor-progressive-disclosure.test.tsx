@@ -91,7 +91,7 @@ describe('TaskEditor Progressive Disclosure & Ergonomics (Roadmap ยง31-32, PRD ย
           id: 'task_entity_1',
           title: 'Review School Contract',
           entityId: 'ent_acme',
-          entityType: 'School',
+          entityType: 'institution',
           workspaceId: 'ws_123',
           dueDate: '2026-10-20T10:00:00Z',
           assignedTo: ['usr_test_1'],

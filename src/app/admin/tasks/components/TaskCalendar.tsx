@@ -965,8 +965,8 @@ export default function TaskCalendar({
             >
                 <div className="flex items-start gap-3 min-w-0 flex-1">
                     <div className="flex items-center gap-2 shrink-0 pt-0.5 sm:pt-0">
-                        <TaskStatusBadge status={task.status} size="sm" />
-                        <TaskPriorityBadge priority={task.priority} size="sm" />
+                        <TaskStatusBadge status={task.status} />
+                        <TaskPriorityBadge priority={task.priority} />
                     </div>
                     <div className="min-w-0 flex-1">
                         <p className={cn(
@@ -984,7 +984,7 @@ export default function TaskCalendar({
                 </div>
 
                 <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
-                    <TaskDueDate dueDate={task.dueDate} status={task.status} />
+                    <TaskDueDate dueDate={task.dueDate} isDone={isDone} />
                     {assignees.length > 0 && (
                         <div className="flex -space-x-1.5 overflow-hidden">
                             {assignees.slice(0, 3).map((u, i) => (

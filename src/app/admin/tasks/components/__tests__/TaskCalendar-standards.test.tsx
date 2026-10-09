@@ -9,6 +9,7 @@ describe('TaskCalendar Standards & Mobile Agenda (Roadmap §28, UI Spec §491-50
     {
       id: 'task-1',
       title: 'Audit Compliance Clause',
+      description: 'Audit compliance clause for vendor contract',
       status: 'todo',
       priority: 'high',
       dueDate: new Date().toISOString(),
@@ -23,6 +24,7 @@ describe('TaskCalendar Standards & Mobile Agenda (Roadmap §28, UI Spec §491-50
     {
       id: 'task-2',
       title: 'Overdue Vendor Agreement',
+      description: 'Review overdue agreement terms',
       status: 'todo',
       priority: 'urgent',
       dueDate: new Date(Date.now() - 86400000 * 5).toISOString(), // 5 days overdue
