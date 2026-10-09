@@ -66,7 +66,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { AgreementsStatusBadge } from './AgreementsStatusBadge';
+import { AgreementsStatusBadge, getInitials } from './AgreementsStatusBadge';
 import { formatSafeDate, formatSafeRelativeTime } from '@/lib/date-utils';
 import type { WorkspaceEntity, Contract } from '@/lib/types';
 import type { LegalHoldContractSummary } from './LegalHoldManagerModal';
@@ -102,16 +102,6 @@ export interface AgreementsDesktopTableProps {
   hasActiveFilters: boolean;
   getEntityZoneName: (e: WorkspaceEntity) => string;
   className?: string;
-}
-
-/**
- * Extracts initials from an entity or user display name.
- */
-function getInitials(name: string): string {
-  if (!name) return 'IN';
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
 export const AgreementsDesktopTable = React.memo(function AgreementsDesktopTable({

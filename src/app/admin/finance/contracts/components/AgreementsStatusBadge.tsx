@@ -43,6 +43,16 @@ export type ContractDisplayStatus =
   | 'expiring' 
   | 'expired';
 
+/**
+ * Extracts clean 2-letter uppercase initials from an entity or user display name.
+ */
+export function getInitials(name: string): string {
+  if (!name) return 'IN';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
 export interface AgreementsStatusBadgeProps {
   status: ContractDisplayStatus | string | null | undefined;
   size?: 'default' | 'compact';

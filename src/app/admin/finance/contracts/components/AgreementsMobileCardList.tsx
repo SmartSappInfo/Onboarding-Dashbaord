@@ -53,7 +53,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { AgreementsStatusBadge } from './AgreementsStatusBadge';
+import { AgreementsStatusBadge, getInitials } from './AgreementsStatusBadge';
 import { formatSafeRelativeTime } from '@/lib/date-utils';
 import type { WorkspaceEntity, Contract } from '@/lib/types';
 import type { LegalHoldContractSummary } from './LegalHoldManagerModal';
@@ -88,16 +88,6 @@ export interface AgreementsMobileCardListProps {
   hasActiveFilters: boolean;
   getEntityZoneName: (e: WorkspaceEntity) => string;
   className?: string;
-}
-
-/**
- * Extracts initials from an entity or user display name.
- */
-function getInitials(name: string): string {
-  if (!name) return 'IN';
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
 export const AgreementsMobileCardList = React.memo(function AgreementsMobileCardList({
@@ -188,13 +178,14 @@ export const AgreementsMobileCardList = React.memo(function AgreementsMobileCard
               {/* Card Header: Checkbox + Avatar + Title + Menu */}
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  {/* Min-h-44px Touch Target for Selection */}
+                  {/* Min-h-44px Touch Target for Selection (Rule 7) */}
                   <div
-                    className="min-h-[44px] min-w-[36px] flex items-center justify-center -ml-1 cursor-pointer"
+                    className="min-h-[44px] min-w-[44px] flex items-center justify-center -ml-1 cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();
                       onToggleSelect(item);
                     }}
+                    onKeyDown={(e) => e.stopPropagation()}
                   >
                     <Checkbox
                       checked={isSelected}
@@ -216,7 +207,10 @@ export const AgreementsMobileCardList = React.memo(function AgreementsMobileCard
                   {/* Title & Zone */}
                   <div className="flex flex-col min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-semibold text-sm tracking-tight text-foreground truncate max-w-[170px]">
+                      <span 
+                        title={item.displayName}
+                        className="font-semibold text-sm tracking-tight text-foreground truncate max-w-[170px]"
+                      >
                         {item.displayName}
                       </span>
                       {contract?.isUnderLegalHold && (
@@ -224,6 +218,7 @@ export const AgreementsMobileCardList = React.memo(function AgreementsMobileCard
                           className="inline-flex items-center p-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
                           title="Preservation Hold Active"
                           onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
                         >
                           <Lock className="h-3 w-3" />
                         </span>
@@ -239,6 +234,7 @@ export const AgreementsMobileCardList = React.memo(function AgreementsMobileCard
                 <div 
                   className="min-h-[44px] min-w-[44px] flex items-center justify-center -mr-2 -mt-1 shrink-0"
                   onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
                 >
                   <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
