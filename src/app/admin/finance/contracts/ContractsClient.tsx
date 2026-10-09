@@ -8,55 +8,19 @@ import type { WorkspaceEntity, Contract } from '@/lib/types';
 import { UNASSIGNED_ZONE, isUnassignedZone, type ZoneRef } from '@/lib/zone-constants';
 import { useEntitySearch } from '@/hooks/use-entity-search';
 import { 
-    FileCheck, 
     Plus, 
-    Building, 
-    Clock, 
-    Download, 
-    Send,
-    ShieldCheck,
-    MoreHorizontal,
-    Eye,
-    Trash2,
-    Loader2,
-    Copy,
-    Globe,
-    ShieldAlert,
-    History,
-    Users,
-    GitBranch,
-    CheckSquare,
-    Sparkles,
-    GitCompare,
-    Lock
+    Trash2, 
+    Loader2, 
+    ShieldAlert 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
-import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
-import Link from 'next/link';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import ContractWizard from './components/ContractWizard';
 import WithdrawContractModal from './components/WithdrawContractModal';
 import EnvelopeDetailModal from './components/EnvelopeDetailModal';
 import { useToast } from '@/hooks/use-toast';
-import { Checkbox } from '@/components/ui/checkbox';
-import { 
-    Tooltip, 
-    TooltipContent, 
-    TooltipProvider, 
-    TooltipTrigger 
-} from '@/components/ui/tooltip';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 import { deleteContractAction } from '@/lib/contract-actions';
 import {
@@ -98,6 +62,8 @@ import type { AiAssistantActionKey } from './components/AgreementsAiActionSheet'
 import { AgreementsFilterBar, type RepresentativeOption, type AdvancedFilterState } from './components/AgreementsFilterBar';
 import { AgreementsMobileFilterChips } from './components/AgreementsMobileFilterChips';
 import { AgreementsBulkActionBar } from './components/AgreementsBulkActionBar';
+import { AgreementsDesktopTable } from './components/AgreementsDesktopTable';
+import { AgreementsMobileCardList } from './components/AgreementsMobileCardList';
 
 export type EntityWithContract = WorkspaceEntity & { contract: Contract | null };
 
@@ -528,15 +494,33 @@ export default function AgreementsClient() {
         }
     };
 
-    const getStatusBadge = (status: string) => {
-        switch (status) {
-            case 'signed': return <Badge className="bg-emerald-500 text-white border-none text-[8px] h-5 uppercase px-2 font-semibold gap-1"><ShieldCheck className="h-2.5 w-2.5" /> Signed</Badge>;
-            case 'sent': return <Badge className="bg-blue-500 text-white border-none text-[8px] h-5 uppercase px-2 font-semibold gap-1"><Clock className="h-2.5 w-2.5" /> Sent</Badge>;
-            case 'draft': return <Badge variant="secondary" className="text-[8px] h-5 uppercase px-2 font-semibold gap-1">Draft</Badge>;
-            case 'no_contract': return <Badge variant="outline" className="text-[8px] h-5 uppercase px-2 font-semibold border-dashed opacity-40">No Contract</Badge>;
-            default: return <Badge variant="outline" className="text-[8px] h-5 uppercase px-2 font-semibold">{status}</Badge>;
+    // Interactive row click opens contract lifecycle drawer or prep wizard (Phase 5)
+    const handleRowClick = React.useCallback((item: EntityWithContract) => {
+        if (item.contract?.id) {
+            setLifecycleContractId(item.contract.id);
+        } else {
+            setSelectedEntities([item]);
+            setIsWizardOpen(true);
         }
-    };
+    }, []);
+
+    const handlePrepContract = React.useCallback((item: EntityWithContract) => {
+        setSelectedEntities([item]);
+        setIsWizardOpen(true);
+    }, []);
+
+    const handleSendAgreement = React.useCallback((item: EntityWithContract) => {
+        setSelectedEntities([item]);
+        setIsWizardOpen(true);
+    }, []);
+
+    const handleSelectAll = React.useCallback((checked: boolean) => {
+        if (checked) {
+            setSelectedEntities(filteredList);
+        } else {
+            setSelectedEntities([]);
+        }
+    }, [filteredList]);
 
     return (
         <TooltipProvider>
@@ -628,334 +612,66 @@ export default function AgreementsClient() {
                                         isLoading={isLoading}
                                     />
 
-                    {/* Institutional Registry */}
-                    <div className="rounded-2xl border border-border/80 bg-card shadow-sm overflow-hidden text-left">
-                        <Table>
- <TableHeader className="bg-muted/30">
-                                <TableRow>
- <TableHead className="w-12 pl-6 py-5">
-                                        <Checkbox 
-                                            checked={
-                                                selectedEntities.length === filteredList.length && filteredList.length > 0
-                                                    ? true
-                                                    : selectedEntities.length > 0
-                                                        ? 'indeterminate'
-                                                        : false
-                                            }
-                                            onCheckedChange={(checked) => {
-                                                if (checked) setSelectedEntities(filteredList);
-                                                else setSelectedEntities([]);
-                                            }}
-                                        />
-                                    </TableHead>
- <TableHead className="text-[10px] font-semibold py-5">Institution</TableHead>
- <TableHead className="text-[10px] font-semibold ">Active Status</TableHead>
- <TableHead className="text-[10px] font-semibold ">Last Update</TableHead>
- <TableHead className="text-[10px] font-semibold ">Assigned Representative</TableHead>
- <TableHead className="text-right pr-8 text-[10px] font-semibold ">Management</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {isLoading ? (
-                                    Array.from({ length: 5 }).map((_, i) => (
-                                        <TableRow key={i}>
- <TableCell className="pl-6"><Skeleton className="h-4 w-4" /></TableCell>
- <TableCell><Skeleton className="h-4 w-48" /></TableCell>
- <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
- <TableCell><Skeleton className="h-4 w-32" /></TableCell>
- <TableCell><Skeleton className="h-4 w-40" /></TableCell>
- <TableCell className="text-right pr-8"><Skeleton className="h-8 w-24 ml-auto" /></TableCell>
-                                        </TableRow>
-                                    ))
-                                ) : filteredList.length > 0 ? (
-                                    filteredList.map((item) => {
-                                        const contract = item.contract;
-                                        const status = contract?.status || 'no_contract';
-                                        const isSigningInProcess = downloadingId === contract?.id;
-                                        const isSelected = !!selectedEntities.find(s => s.id === item.id);
-                                        
-                                        return (
- <TableRow key={item.id} className={cn("group transition-colors", isSelected ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15")}>
- <TableCell className="pl-6">
-                                                    <Checkbox 
-                                                        checked={isSelected}
-                                                        onCheckedChange={() => toggleSelect(item)}
-                                                    />
-                                                </TableCell>
- <TableCell className="py-4">
- <div className="flex items-center gap-3">
- <div className={cn(
-                                                            "p-2 rounded-xl border transition-all",
-                                                            isSelected ? "bg-primary text-white border-primary" : "bg-primary/5 border-primary/10 text-primary group-hover:bg-primary group-hover:text-white"
-                                                        )}>
- <Building className="h-4 w-4" />
-                                                         </div>
-                                                        <div className="flex flex-col">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <span className="font-semibold text-sm tracking-tight text-foreground">{item.displayName}</span>
-                                                                {contract?.isUnderLegalHold && (
-                                                                    <Tooltip>
-                                                                        <TooltipTrigger asChild>
-                                                                            <span className="inline-flex items-center p-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                                                                                <Lock className="h-3 w-3" />
-                                                                            </span>
-                                                                        </TooltipTrigger>
-                                                                        <TooltipContent className="text-xs">
-                                                                            Preservation Hold Active ({contract.legalHoldDetails?.matterId || 'FRCP 26/37'})
-                                                                        </TooltipContent>
-                                                                    </Tooltip>
-                                                                )}
-                                                            </div>
-                                                            <span className="text-[9px] font-bold text-muted-foreground opacity-60 italic">{item.location?.zone?.name || item.zone?.name || UNASSIGNED_ZONE.name}</span>
-                                                        </div>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>{getStatusBadge(status)}</TableCell>
- <TableCell className="text-[10px] font-bold text-muted-foreground ">
-                                                    {contract?.updatedAt ? format(new Date(contract.updatedAt), 'MMM d, yyyy') : '—'}
-                                                </TableCell>
- <TableCell className="text-xs font-medium text-foreground/80">
-                                                    {item.entityContacts?.find(c => c.isSignatory)?.name || 'No Primary Contact'}
-                                                </TableCell>
- <TableCell className="text-right pr-8">
- <div className="flex items-center justify-end gap-1">
-                                                        {contract?.pdfId && (
- <div className="flex items-center gap-1 mr-1 border-r border-border/50 pr-1 animate-in fade-in duration-500">
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <Button 
-                                                                            variant="ghost" 
-                                                                            size="icon" 
- className="h-8 w-8 text-primary hover:bg-primary/5 rounded-lg shrink-0"
-                                                                            onClick={() => handleCopyLink(item)}
-                                                                        >
- <Copy className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent>Copy Signing Link</TooltipContent>
-                                                                </Tooltip>
-                                                                
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <Button 
-                                                                            variant="ghost" 
-                                                                            size="icon" 
- className="h-8 w-8 text-primary hover:bg-primary/5 rounded-lg shrink-0"
-                                                                            asChild
-                                                                        >
-                                                                            <a href={`/forms/${item.contract?.pdfId || ''}?entityId=${item.entityId}`} target="_blank" rel="noopener noreferrer">
- <Globe className="h-4 w-4" />
-                                                                            </a>
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent>View Signing Page</TooltipContent>
-                                                                </Tooltip>
-                                                            </div>
-                                                        )}
+                    {/* Desktop Institutional Table (Phase 5 - hidden sm:block) */}
+                    <AgreementsDesktopTable
+                        className="hidden sm:block"
+                        items={filteredList}
+                        selectedEntities={selectedEntities}
+                        onToggleSelect={toggleSelect}
+                        onSelectAll={handleSelectAll}
+                        onRowClick={handleRowClick}
+                        onCopySigningLink={handleCopyLink}
+                        onDownloadSignedPdf={handleDownload}
+                        onPrepContract={handlePrepContract}
+                        onSendAgreement={handleSendAgreement}
+                        onTrackSignatories={(id) => setTrackingEnvelopeId(id)}
+                        onOpenLifecycle={(id) => setLifecycleContractId(id)}
+                        onOpenCopilot={(c) => setCopilotContract(c)}
+                        onOpenRedline={(c) => setDiffContract(c)}
+                        onOpenObligations={(c) => setReviewObligationContract(c)}
+                        onOpenLegalHold={(params) => setLegalHoldContract(params)}
+                        onPurgeContract={(params) => setContractToPurge(params)}
+                        onAuditPurgeHistory={(entity) => setWithdrawingEntity(entity)}
+                        downloadingId={downloadingId}
+                        canPurge={canPurge}
+                        isLoading={isLoading}
+                        hasMore={hasMore}
+                        isLoadingMore={isLoadingEntities}
+                        onLoadMore={loadMore}
+                        onResetFilters={handleResetFilters}
+                        hasActiveFilters={hasActiveFilters}
+                        getEntityZoneName={getEntityZoneName}
+                    />
 
-                                                        <DropdownMenu modal={false}>
-                                                            <DropdownMenuTrigger asChild>
- <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted transition-colors"><MoreHorizontal className="h-4 w-4" /></Button>
-                                                            </DropdownMenuTrigger>
- <DropdownMenuContent align="end" className="w-60 rounded-2xl border border-border bg-card shadow-2xl p-2 animate-in zoom-in-95 duration-200">
- <DropdownMenuLabel className="text-[10px] font-semibold text-muted-foreground px-3 py-2">Agreement Protocols</DropdownMenuLabel>
-                                                                
-                                                                {status === 'signed' ? (
-                                                                    <>
- <DropdownMenuItem className="gap-3 rounded-xl p-2.5" onClick={() => contract && handleDownload(contract)} disabled={isSigningInProcess}>
- <div className="p-1.5 bg-emerald-50 rounded-lg text-emerald-600">
- {isSigningInProcess ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                                                                            </div>
- <span className="font-bold text-sm">Download Signed PDF</span>
-                                                                        </DropdownMenuItem>
-                                                                        {contract?.submissionId && (
-                                                                            <DropdownMenuItem className="gap-3 rounded-xl p-2.5" asChild>
-                                                                                <Link href={`/admin/pdfs/${contract.pdfId}/submissions/${contract.submissionId}`}>
-                                                                                    <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Eye className="h-4 w-4" /></div>
-                                                                                    <span className="font-bold text-sm">View Legal Record</span>
-                                                                                </Link>
-                                                                            </DropdownMenuItem>
-                                                                        )}
-                                                                        {contract?.id && (
-                                                                            <DropdownMenuItem className="gap-3 rounded-xl p-2.5" asChild>
-                                                                                <Link href={`/verify/${contract.id}`} target="_blank" rel="noopener noreferrer">
-                                                                                    <div className="p-1.5 bg-indigo-500/10 rounded-lg text-indigo-600 dark:text-indigo-400"><ShieldCheck className="h-4 w-4" /></div>
-                                                                                    <span className="font-bold text-sm">Verify Certificate</span>
-                                                                                </Link>
-                                                                            </DropdownMenuItem>
-                                                                        )}
-                                                                    </>
-                                                                ) : (
-                                                                    <>
- <DropdownMenuItem className="gap-3 rounded-xl p-2.5" onClick={() => { setSelectedEntities([item]); setIsWizardOpen(true); }}>
- <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Plus className="h-4 w-4" /></div>
- <span className="font-bold text-sm">Prep Contract</span>
-                                                                        </DropdownMenuItem>
- <DropdownMenuItem className="gap-3 rounded-xl p-2.5" onClick={() => { setSelectedEntities([item]); setIsWizardOpen(true); }}>
- <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Send className="h-4 w-4" /></div>
- <span className="font-bold text-sm">Send Agreement</span>
-                                                                        </DropdownMenuItem>
-                                                                    </>
-                                                                )}
-
-                                                                {contract?.pdfId && (
-                                                                    <>
- <DropdownMenuSeparator className="my-1 mx-2" />
- <DropdownMenuItem className="gap-3 rounded-xl p-2.5" onClick={() => handleCopyLink(item)}>
- <div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Copy className="h-4 w-4" /></div>
- <span className="font-bold text-sm">Copy Link</span>
-                                                                        </DropdownMenuItem>
-                                                                        {status === 'signed' && contract?.id && (
-                                                                            <DropdownMenuItem 
-                                                                                className="gap-3 rounded-xl p-2.5" 
-                                                                                onClick={() => {
-                                                                                    const verifyUrl = `${window.location.origin}/verify/${contract.id}`;
-                                                                                    navigator.clipboard.writeText(verifyUrl);
-                                                                                    toast({ title: 'Verification Link Copied', description: 'Public audit URL copied to clipboard.' });
-                                                                                }}
-                                                                            >
-                                                                                <div className="p-1.5 bg-indigo-500/10 rounded-lg text-indigo-600 dark:text-indigo-400"><ShieldCheck className="h-4 w-4" /></div>
-                                                                                <span className="font-bold text-sm">Copy Verify URL</span>
-                                                                            </DropdownMenuItem>
-                                                                        )}
-                                                                        {contract?.id && (
-                                                                            <DropdownMenuItem 
-                                                                                className="gap-3 rounded-xl p-2.5" 
-                                                                                onClick={() => setTrackingEnvelopeId(contract.id)}
-                                                                            >
-                                                                                <div className="p-1.5 bg-indigo-500/10 rounded-lg text-indigo-600 dark:text-indigo-400"><Users className="h-4 w-4" /></div>
-                                                                                <span className="font-bold text-sm">Track Signatories</span>
-                                                                            </DropdownMenuItem>
-                                                                        )}
-                                                                        {contract?.id && (
-                                                                            <DropdownMenuItem 
-                                                                                className="gap-3 rounded-xl p-2.5" 
-                                                                                onClick={() => setLifecycleContractId(contract.id)}
-                                                                            >
-                                                                                <div className="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-600 dark:text-emerald-400"><GitBranch className="h-4 w-4" /></div>
-                                                                                <span className="font-bold text-sm">Contract Lifecycle</span>
-                                                                            </DropdownMenuItem>
-                                                                        )}
-                                                                        {contract?.id && (
-                                                                            <DropdownMenuItem 
-                                                                                className="gap-3 rounded-xl p-2.5" 
-                                                                                onClick={() => setCopilotContract({ id: contract.id, title: item.displayName || 'Agreement' })}
-                                                                            >
-                                                                                <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Sparkles className="h-4 w-4" /></div>
-                                                                                <span className="font-bold text-sm">AI Assistant</span>
-                                                                            </DropdownMenuItem>
-                                                                        )}
-                                                                        {contract?.id && (
-                                                                            <DropdownMenuItem 
-                                                                                className="gap-3 rounded-xl p-2.5" 
-                                                                                onClick={() => setDiffContract({ id: contract.id, title: item.displayName || 'Agreement' })}
-                                                                            >
-                                                                                <div className="p-1.5 bg-indigo-500/10 rounded-lg text-indigo-600 dark:text-indigo-400"><GitCompare className="h-4 w-4" /></div>
-                                                                                <span className="font-bold text-sm">Semantic Redline</span>
-                                                                            </DropdownMenuItem>
-                                                                        )}
-                                                                        {contract?.id && (
-                                                                            <DropdownMenuItem 
-                                                                                className="gap-3 rounded-xl p-2.5" 
-                                                                                onClick={() => setReviewObligationContract({ id: contract.id, title: item.displayName || 'Agreement' })}
-                                                                            >
-                                                                                <div className="p-1.5 bg-purple-500/10 rounded-lg text-purple-600 dark:text-purple-400"><CheckSquare className="h-4 w-4" /></div>
-                                                                                <span className="font-bold text-sm">Obligation Review</span>
-                                                                            </DropdownMenuItem>
-                                                                        )}
-                                                                        {contract?.id && (
-                                                                            <DropdownMenuItem 
-                                                                                className="gap-3 rounded-xl p-2.5" 
-                                                                                onClick={() => setLegalHoldContract({
-                                                                                    id: contract.id,
-                                                                                    title: item.displayName || 'Agreement',
-                                                                                    isUnderLegalHold: contract.isUnderLegalHold,
-                                                                                    legalHoldDetails: contract.legalHoldDetails,
-                                                                                    retentionCategory: contract.retentionCategory,
-                                                                                })}
-                                                                            >
-                                                                                <div className="p-1.5 bg-amber-500/10 rounded-lg text-amber-600 dark:text-amber-400">
-                                                                                    <Lock className="h-4 w-4" />
-                                                                                </div>
-                                                                                <span className="font-bold text-sm">Legal Hold & Retention</span>
-                                                                            </DropdownMenuItem>
-                                                                        )}
- <DropdownMenuItem className="gap-3 rounded-xl p-2.5" asChild>
-                                                                            <a href={`/forms/${contract.pdfId}?entityId=${item.entityId}`} target="_blank" rel="noopener noreferrer">
- <div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Globe className="h-4 w-4" /></div>
- <span className="font-bold text-sm">Open Portal</span>
-                                                                            </a>
-                                                                        </DropdownMenuItem>
-                                                                    </>
-                                                                )}
-
-                                                                {canPurge && contract && (
-                                                                    <>
- <DropdownMenuSeparator className="my-2 mx-2" />
-                                                                        {contract.isUnderLegalHold ? (
-                                                                            <DropdownMenuItem 
-                                                                                disabled
-                                                                                className="text-muted-foreground gap-3 rounded-xl p-2.5 opacity-60 cursor-not-allowed"
-                                                                            >
-                                                                                <div className="p-1.5 bg-amber-500/10 rounded-lg text-amber-600"><Lock className="h-4 w-4" /></div>
-                                                                                <span className="font-bold text-sm">Locked Under Legal Hold</span>
-                                                                            </DropdownMenuItem>
-                                                                        ) : (
-                                                                            <DropdownMenuItem 
- className="text-destructive gap-3 rounded-xl p-2.5 focus:bg-destructive/10 focus:text-destructive"
-                                                                                onClick={() => setContractToPurge({ contract, entity: item })}
-                                                                            >
- <div className="p-1.5 bg-destructive/10 rounded-lg"><Trash2 className="h-4 w-4" /></div>
- <span className="font-bold text-sm">Purge Record</span>
-                                                                            </DropdownMenuItem>
-                                                                        )}
-                                                                    </>
-                                                                )}
-
-                                                                {canPurge && !contract && (
-                                                                    <>
- <DropdownMenuSeparator className="my-2 mx-2" />
-                                                                        <DropdownMenuItem 
- className="text-destructive gap-3 rounded-xl p-2.5 focus:bg-destructive/10 focus:text-destructive"
-                                                                            onClick={() => setWithdrawingEntity(item)}
-                                                                        >
- <div className="p-1.5 bg-destructive/10 rounded-lg"><History className="h-4 w-4" /></div>
- <span className="font-bold text-sm">Audit & Purge History</span>
-                                                                        </DropdownMenuItem>
-                                                                    </>
-                                                                )}
-                                                            </DropdownMenuContent>
-                                                        </DropdownMenu>
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        );
-                                    })
-                                ) : (
-                                    <TableRow>
- <TableCell colSpan={6} className="h-64 text-center">
- <div className="flex flex-col items-center justify-center gap-3 opacity-20">
- <FileCheck className="h-12 w-12" />
- <p className="text-xs font-semibold ">No matching entities in this workspace</p>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                        {hasMore && (
-                            <div className="border-t border-border/40 p-3">
-                                <button
-                                    type="button"
-                                    onClick={loadMore}
-                                    disabled={isLoadingEntities}
-                                    className="w-full py-2 text-center text-[11px] font-bold text-primary hover:bg-primary/5 rounded-lg disabled:opacity-50"
-                                >
-                                    {isLoadingEntities ? 'Loading…' : 'Load more'}
-                                </button>
-                            </div>
-                        )}
-                    </div>
+                    {/* Mobile Institutional Card List (Phase 5 - sm:hidden) */}
+                    <AgreementsMobileCardList
+                        className="sm:hidden"
+                        items={filteredList}
+                        selectedEntities={selectedEntities}
+                        onToggleSelect={toggleSelect}
+                        onRowClick={handleRowClick}
+                        onCopySigningLink={handleCopyLink}
+                        onDownloadSignedPdf={handleDownload}
+                        onPrepContract={handlePrepContract}
+                        onSendAgreement={handleSendAgreement}
+                        onTrackSignatories={(id) => setTrackingEnvelopeId(id)}
+                        onOpenLifecycle={(id) => setLifecycleContractId(id)}
+                        onOpenCopilot={(c) => setCopilotContract(c)}
+                        onOpenRedline={(c) => setDiffContract(c)}
+                        onOpenObligations={(c) => setReviewObligationContract(c)}
+                        onOpenLegalHold={(params) => setLegalHoldContract(params)}
+                        onPurgeContract={(params) => setContractToPurge(params)}
+                        onAuditPurgeHistory={(entity) => setWithdrawingEntity(entity)}
+                        downloadingId={downloadingId}
+                        canPurge={canPurge}
+                        isLoading={isLoading}
+                        hasMore={hasMore}
+                        isLoadingMore={isLoadingEntities}
+                        onLoadMore={loadMore}
+                        onResetFilters={handleResetFilters}
+                        hasActiveFilters={hasActiveFilters}
+                        getEntityZoneName={getEntityZoneName}
+                    />
                                 </>
                             )}
                         </TabsContent>
