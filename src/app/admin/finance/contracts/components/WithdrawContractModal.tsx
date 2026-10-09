@@ -48,9 +48,16 @@ export default function WithdrawContractModal({ entity, open, onOpenChange }: Wi
     const { user } = useUser();
     const { toast } = useToast();
     
+    interface LegalRecordSubmission {
+        id: string;
+        pdfId: string;
+        pdfName: string;
+        date: string;
+    }
+
     const [isLoadingData, setIsLoadingData] = React.useState(true);
     const [isPurging, setIsPurging] = React.useState(false);
-    const [submissions, setSubmissions] = React.useState<{ id: string, pdfName: string, date: string, pdfId: string }[]>([]);
+    const [submissions, setSubmissions] = React.useState<LegalRecordSubmission[]>([]);
     const [selectedSubIds, setSelectedIds] = React.useState<string[]>([]);
 
     // 1. Audit Phase: Locate all relevant legal records
@@ -64,7 +71,7 @@ export default function WithdrawContractModal({ entity, open, onOpenChange }: Wi
                 const pdfsQuery = query(collection(firestore, 'pdfs'), where('isContractDocument', '==', true));
                 const pdfsSnap = await getDocs(pdfsQuery);
                 
-                const foundSubmissions: any[] = [];
+                const foundSubmissions: LegalRecordSubmission[] = [];
 
                 for (const pdfDoc of pdfsSnap.docs) {
                     const pdfData = pdfDoc.data();

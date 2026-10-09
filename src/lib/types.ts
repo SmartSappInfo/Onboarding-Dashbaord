@@ -4704,6 +4704,7 @@ export interface Submission {
 
 export interface Contract {
   id: string;
+  workspaceId?: string;
   entityId: string;
   entityName: string;
   pdfId: string;

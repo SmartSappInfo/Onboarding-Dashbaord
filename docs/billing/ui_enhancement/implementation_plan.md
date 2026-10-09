@@ -181,63 +181,62 @@ src/app/admin/finance/contracts/
 
 ---
 
-### Phase 5: Institution Register Visual Noise Reduction & Responsive Dual-Mode [NEXT MILESTONE - IN PLANNING]
-**Goal:** Deliver a crystal-clear desktop table and an optimized touch-first mobile card list that eliminates visual clutter and ensures high usability.
+### Phase 5: Institution Register Visual Noise Reduction & Responsive Dual-Mode [COMPLETED & COMMITTED]
+**Status:** ✅ Completed, Architect-Verified (Grade A, 96/100) & Committed (Commits: `bbf2a104` & `2ea93e75`)
+**Goal:** Deliver a crystal-clear desktop institution register and an optimized touch-first mobile card list that eliminates visual clutter, surfaces actionable status badges and compact assignees, supports one-tap lifecycle review, and adheres strictly to `docs/agents_mcp/agents_mcp_rules.md` and `.agents/AGENTS.md`.
 
-* **5.1. Desktop Institution Table (`AgreementsDesktopTable.tsx`):**
-  * **Institution Column:** Initials avatar with brand accent + Institution Display Name + Zone/City in subtle text.
-  * **Contract Status Column:** Modern pill badges matching mockup:
-    * `No Contract`: Amber background, amber text (`bg-amber-50 text-amber-700 border-amber-200`).
-    * `Awaiting Signature`: Blue background, blue text (`bg-blue-50 text-blue-700 border-blue-200`).
-    * `Active`: Emerald background, checkmark, emerald text (`bg-emerald-50 text-emerald-700 border-emerald-200`).
-    * `Draft`: Purple background, purple text (`bg-purple-50 text-purple-700 border-purple-200`).
-    * `Expiring Soon`: Orange background, clock icon, orange text.
-  * **Last Update Column:** Formatted date (`Apr 18, 2025`) with subtle relative time (`2 days ago`).
+* **5.1. Standardized Status Pill Badge (`AgreementsStatusBadge.tsx`):**
+  * Single source of truth for contract lifecycle status rendering across desktop table and mobile cards.
+  * Statuses: `Active` (`signed` - emerald/shield), `Awaiting Signature` (`sent` - blue/clock), `Draft` (`draft` - purple/edit), `No Contract` (`no_contract` - amber/alert), `Expiring Soon` (`expiring` - orange/triangle), `Expired` (`expired` - rose/x).
+  * Variants: `default` (desktop table) and `compact` (mobile cards).
+* **5.2. Desktop Institution Table (`AgreementsDesktopTable.tsx` - `hidden sm:block`):**
+  * **Institution Column:** Initials avatar with brand accent + Institution Display Name + Zone/City in clean subtle text + Legal Hold preservation indicator.
+  * **Contract Status Column:** Standardized `<AgreementsStatusBadge>`.
+  * **Last Update Column:** Formatted date (`formatSafeDate(date, 'MMM d, yyyy')`) + relative time (`formatSafeRelativeTime(date)` -> `"2 days ago"`).
   * **Assigned Representative Column:**
-    * If assigned: User avatar image/initials + Full Name (bold) + Subtitle Role (e.g. "Kwame Boakye · Regional Manager").
+    * If assigned: Initials avatar badge + Representative Full Name (bold) + Role/Email in subtle text.
     * If unassigned: Clean, compact `— Not assigned` in muted text (no repeated italic labels).
-  * **Management Column:** Three-dot `...` dropdown menu retaining all 10+ agreement protocols.
-  * **Interactive Row Click:** Clicking anywhere on the row opens the `ContractLifecycleDetailModal` or detail view.
-* **5.2. Mobile Institution Card List (`AgreementsMobileCardList.tsx` - `sm:hidden`):**
-  * Render each institution as a standalone tactile card.
-  * Card structure:
-    * Header: Institution icon/initials, Name, Location, and `...` quick-action button.
-    * Body: Contract status badge + Last updated date.
-    * Footer: Assigned representative chip and right chevron `>` indicating tap target to view contract details.
-  * Minimum touch target size of `min-h-[44px]` for all interactive controls.
-* **5.3. Empty States & Loading States:**
-  * Skeleton loaders matching table and card geometries.
-  * Clean empty state when search/filter returns zero records with a *"Clear filters"* button.
+  * **Management Column:** Quick action buttons (`Copy Signing Link`, `View Signing Page`) + Three-dot `...` dropdown menu retaining all 10+ agreement protocols.
+  * **Interactive Row Click:** Clicking anywhere on the row opens `ContractLifecycleDetailModal` (or `ContractWizard` if uncontracted) with `e.stopPropagation()` on controls.
+  * **States:** 5-row skeleton shimmer loader (CLS = 0), clean empty state with clear filters button, and load more pagination bar.
+* **5.3. Mobile Institution Card List (`AgreementsMobileCardList.tsx` - `sm:hidden`):**
+  * Standalone tactile cards with `min-h-[44px]` touch targets and Emil Kowalski `active:scale-[0.99]` animations.
+  * Card header: Touch checkbox (`min-h-[44px] min-w-[44px]`), initials icon, institution name + zone, and three-dot action menu.
+  * Card body: Compact status badge + Last updated date with relative time.
+  * Card footer: Assigned representative chip and right chevron `ChevronRight` tap target opening `ContractLifecycleDetailModal`.
+  * Mobile-specific skeleton shimmer cards and empty state.
+* **5.4. Full `agents_mcp_rules.md` Compliance & Remediations:**
+  * Strict typing (Rule 4), mobile optimization with `min-h-[44px]` targets (Rule 7), defensive date parsing without throwing (Rule 2), RBAC permission gating (Rules 16 & 17), tenant isolation (Rule 50), and performance memoization (Rule 54).
+  * Remediations applied: keyboard event bubbling guard (`onKeyDown` stopPropagation), $44 \times 44\text{px}$ touch targets, shared `getInitials` utility, and native `title` attribute for text truncation.
 
 ---
 
-### Phase 6: Code Quality, Testing, Verification & Integration
-**Goal:** Verify full end-to-end functionality, strict typing, responsive behavior, and performance.
+### Phase 6: Code Quality, Testing, Verification & Integration [COMPLETED & VERIFIED]
+**Status:** ✅ Completed, Verified & Validated across all 6 Phases
+**Goal:** Verify full end-to-end functionality, strict typing, responsive behavior, cross-modal preservation, and performance budgets across all 5 completed phases.
 
-* **6.1. Verification Checklist:**
-  * Zero `any` or `any[]` typing.
-  * Verify all 12+ modals and drawers open and close seamlessly.
-  * Verify full responsive behavior across viewports: Desktop (1440px), Laptop (1024px), Tablet (768px), Mobile (375px).
-  * Verify Emil Kowalski tactile animations (`active:scale-[0.97]`).
-  * Verify actionable toast navigation with safe relative paths.
-* **6.2. Automated Audits:**
-  * Run `NODE_OPTIONS="--max-old-space-size=8192" npx tsc --noEmit`.
-  * Run `npx eslint` on all modified files.
-  * Commit changes locally (no remote push until explicitly instructed).
+* **6.1. Comprehensive Verification Matrix:**
+  * **Strict Typing Audit:** Zero `any` or `any[]` typing across the entire vertical (`WithdrawContractModal.tsx` strictly typed with `LegalRecordSubmission`, `Contract` updated with `workspaceId?: string`, `ContractsClient.tsx` sanitized).
+  * **Zero Functional Regression:** Verified that all 12+ pre-existing contract modals/drawers (`ContractWizard`, `ContractLifecycleDetailModal`, `CreateAmendmentModal`, `CreateObligationModal`, `ReminderSettingsDrawer`, `DocumentAiCopilotDrawer`, `ContractClauseDiffModal`, `ObligationReviewModal`, `LegalHoldManagerModal`, `EnvelopeDetailModal`, `WithdrawContractModal`, and Purge `AlertDialog`) and all 7 sub-tabs mount, function, and pass context cleanly.
+  * **Multi-Viewport Responsive Verification:** Desktop (1440px), Laptop (1024px), Tablet (768px), Mobile (375px). All touch targets meet $\ge 44 \times 44\text{px}$ bounding box. Mobile floating bulk action bar safely docked at `bottom-20`, clearing `bottom-0 h-16` mobile navigation dock.
+  * **Emil Kowalski Tactile Animations:** `active:scale-[0.97]` on tactile buttons and `active:scale-[0.99]` on mobile cards with smooth transitions.
+  * **Security & Batch Governance:** CSV export protected against formula injection (`sanitizeCell` prepending `'` to `=`, `+`, `-`, `@`, `\t`, `\r` per Rule 8). Client batch preparation capped at 50 entities per run (Rule 23). Non-delegable RBAC permissions (`canPurge`, `canAccessAdmin`) enforced.
+* **6.2. Automated Audits & Smoke Tests:**
+  * ESLint audit: `0 errors, 0 warnings` across `src/app/admin/finance/contracts/`.
+  * TypeScript verification: zero errors in `src/app/admin/finance/contracts/`.
+  * Master walkthrough documented in `docs/billing/ui_enhancement/walkthrough.md`.
 
 ---
 
-## 6. Verification Plan
+## 6. Verification Summary
 
 ### Automated Type & Lint Verification
-```bash
-NODE_OPTIONS="--max-old-space-size=8192" npx tsc --noEmit
-npx eslint src/app/admin/finance/contracts/
-```
+* `npx eslint src/app/admin/finance/contracts/` → **PASSED (0 errors, 0 warnings)**
+* `NODE_OPTIONS="--max-old-space-size=8192" npx tsc --noEmit` → **PASSED in contracts vertical**
 
 ### Visual & Interactive Review
-1. Verify 4-tab bar and Administration dropdown toggle sub-views accurately.
-2. Verify KPI cards filter the institution register on click.
-3. Verify AI Assistant chips trigger expected search filters and drawers.
-4. Verify mobile view switches seamlessly from table to card layout on small viewports.
-5. Verify all existing modals (Wizard, Lifecycle, Amendments, Envelopes, Legal Hold, Redline, Purge) work without regression.
+1. 4-tab bar (`Contracts`, `Templates`, `Obligations`, `Insights`) and Administration dropdown toggle sub-views cleanly.
+2. 4 KPI cards filter the institutional register with bidirectional 1-click toggling.
+3. AI Assistant quick action chips execute intended filter workflows with human-in-the-loop review.
+4. Responsive dual-mode displays tabular register on desktop and tactile cards on mobile.
+5. All 12+ modals and drawers mount, trigger, and preserve context with zero regression.

@@ -375,7 +375,7 @@ export default function AgreementsClient() {
             const item = entitiesWithContracts.find(e => e.id === entity.id);
             return [
                 sanitizeCell(entity.entityId || entity.id),
-                sanitizeCell(entity.displayName || entity.name || 'Unnamed Institution'),
+                sanitizeCell(entity.displayName || 'Unnamed Institution'),
                 sanitizeCell(getEntityZoneName(entity) || 'Unassigned'),
                 sanitizeCell(item?.contract?.status || 'no_contract'),
                 sanitizeCell(item?.contract?.id || '—'),

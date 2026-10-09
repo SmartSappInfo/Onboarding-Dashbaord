@@ -294,7 +294,7 @@ export const AgreementsDesktopTable = React.memo(function AgreementsDesktopTable
                             {representative.name}
                           </span>
                           <span className="text-[10px] text-muted-foreground truncate">
-                            {representative.email || primaryContact?.role || 'Sales Representative'}
+                            {representative.email || primaryContact?.typeLabel || 'Sales Representative'}
                           </span>
                         </div>
                       </div>
