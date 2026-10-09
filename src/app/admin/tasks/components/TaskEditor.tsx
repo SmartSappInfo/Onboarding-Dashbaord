@@ -44,6 +44,9 @@ import {
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { TaskChecklist } from './TaskChecklist';
+import { TaskRemindersEditor } from './TaskRemindersEditor';
+import type { TaskChecklistItem, TaskReminder } from '@/lib/types';
 import { 
     Loader2, 
     Save, 
@@ -129,11 +132,8 @@ export type TaskSavePayload = {
     entityType?: EntityType;
     startDate?: string;
     dueDate: string;
-    reminders: Array<{
-        reminderTime: string;
-        channels: ('notification' | 'email' | 'sms')[];
-        sent: boolean;
-    }>;
+    reminders: TaskReminder[];
+    checklist?: TaskChecklistItem[];
     reminderSent: boolean;
     notes: Array<{
         id: string;
@@ -226,6 +226,8 @@ export default function TaskEditor({
     // 1: Template Selection, 2: Task Form Details
     const [activeStep, setActiveStep] = React.useState<number>(1);
     const [newNoteContent, setNewNoteContent] = React.useState('');
+    const [checklist, setChecklist] = React.useState<TaskChecklistItem[]>([]);
+    const [reminders, setReminders] = React.useState<TaskReminder[]>([]);
 
     // Fetch team members for assignment from canonical 'users' collection
     const userProfilesQuery = useMemoFirebase(() => {
@@ -302,6 +304,8 @@ export default function TaskEditor({
                 lastResetKeyRef.current = currentKey;
 
                 if (task) {
+                    setChecklist(task.checklist || []);
+                    setReminders(task.reminders || []);
                     if (task.id) {
                         setActiveStep(2);
                         reset({
@@ -373,6 +377,8 @@ export default function TaskEditor({
                         }
                     }
                 } else {
+                    setChecklist([]);
+                    setReminders([]);
                     setActiveStep(1);
                     reset({
                         title: '',
@@ -446,7 +452,10 @@ export default function TaskEditor({
             workspaceId: activeWorkspaceId, 
             startDate: data.startDate?.toISOString(),
             dueDate: data.dueDate.toISOString(),
-            reminders: data.reminders.map(r => ({ ...r, reminderTime: r.reminderTime.toISOString() })),
+            reminders: reminders.length > 0
+                ? reminders
+                : data.reminders.map(r => ({ ...r, reminderTime: r.reminderTime.toISOString() })),
+            checklist,
             tagIds: data.tagIds || [],
             reminderSent: false,
         };
@@ -761,7 +770,29 @@ export default function TaskEditor({
 
                                     <Separator className="border-border" />
 
-                                    {/* 7. Notes & Attachments */}
+                                    {/* 7. Checklist */}
+                                    <div className="space-y-2 text-left">
+                                        <TaskChecklist
+                                            items={checklist}
+                                            onChange={setChecklist}
+                                            currentUserId={currentUser?.uid}
+                                        />
+                                    </div>
+
+                                    <Separator className="border-border/60" />
+
+                                    {/* 8. Reminders */}
+                                    <div className="space-y-2 text-left">
+                                        <TaskRemindersEditor
+                                            reminders={reminders}
+                                            onChange={setReminders}
+                                            taskDueDate={form.watch('dueDate')?.toISOString()}
+                                        />
+                                    </div>
+
+                                    <Separator className="border-border" />
+
+                                    {/* 9. Notes & Attachments */}
                                     <div className="space-y-6 text-left">
                                         {/* Attached Files */}
                                         <div className="space-y-3 text-left">
