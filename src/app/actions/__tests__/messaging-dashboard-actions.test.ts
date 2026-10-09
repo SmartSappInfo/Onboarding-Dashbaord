@@ -409,7 +409,6 @@ describe('getMessagingDashboardSummaryAction', () => {
   it('rejects malformed input missing organizationId or workspaceId', async () => {
     // @ts-expect-error Testing missing mandatory property
     const result = await getMessagingDashboardSummaryAction({
-      organizationId: '',
       workspaceId: wsId,
     });
 
