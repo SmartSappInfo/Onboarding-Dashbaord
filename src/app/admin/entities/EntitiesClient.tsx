@@ -30,6 +30,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User, FileUp, ShieldCheck, Share2, Tag as TagIcon, Mail, Phone, Building2, Flame, ChevronDown, ListFilter, X, RotateCcw, CalendarDays, ClipboardList, Video, PhoneCall, Download, Archive } from 'lucide-react';
 import ManageWorkspacesModal from './components/ManageWorkspacesModal';
+import { BulkManageWorkspacesModal } from './components/BulkManageWorkspacesModal';
 import AiEntityGenerator from './components/ai-entity-generator';
 import {
   AlertDialog,
@@ -166,6 +167,7 @@ export default function EntitiesClient() {
 
   const [taggingEntity, setTaggingEntity] = useState<WorkspaceEntity | null>(null);
   const [managingWorkspacesEntity, setManagingWorkspacesEntity] = useState<WorkspaceEntity | null>(null);
+  const [isBulkManageWorkspacesOpen, setIsBulkManageWorkspacesOpen] = useState(false);
   const [isAiArchitectOpen, setIsAiArchitectOpen] = useState(false);
   const [isAddToAutomationOpen, setIsAddToAutomationOpen] = useState(false);
   const [addToAutomationEntityIds, setAddToAutomationEntityIds] = useState<string[]>([]);
@@ -886,7 +888,7 @@ export default function EntitiesClient() {
   });
 
   const selectedEntities = useMemo(() => {
-    return sortedEntities.filter((e: any) => selectedEntityIds.includes(e.id));
+    return sortedEntities.filter((e) => selectedEntityIds.includes(e.id));
   }, [sortedEntities, selectedEntityIds]);
 
   const handleDeleteEntity = async () => {
@@ -2014,11 +2016,25 @@ export default function EntitiesClient() {
                 setAddToAutomationEntityIds(selectedEntities.map(e => e.entityId));
                 setIsAddToAutomationOpen(true);
               }}
+              onManageWorkspaces={() => setIsBulkManageWorkspacesOpen(true)}
               onArchive={() => setIsBulkArchiveOpen(true)}
               onDelete={() => setIsBulkDeleteOpen(true)}
               onExport={() => handleExportCSV(selectedEntityIds)}
               hideAssign={restrictToAssigned}
             />
+
+            {isBulkManageWorkspacesOpen && (
+              <BulkManageWorkspacesModal
+                open={isBulkManageWorkspacesOpen}
+                onOpenChange={setIsBulkManageWorkspacesOpen}
+                selectedEntities={selectedEntities}
+                currentWorkspaceId={activeWorkspaceId}
+                onSuccess={() => {
+                  clearSelection();
+                  router.refresh();
+                }}
+              />
+            )}
 
             {managingWorkspacesEntity && (
                 <ManageWorkspacesModal

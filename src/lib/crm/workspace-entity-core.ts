@@ -22,7 +22,7 @@ import {
   logWorkspaceEntityUpdated,
   logWorkspaceEntityDeleted
 } from '@/lib/entity-audit';
-import type { Entity, Workspace, WorkspaceEntity } from '@/lib/types';
+import type { Entity, EntityType, Workspace, WorkspaceEntity } from '@/lib/types';
 import { extractPrimaryContactFields } from '@/lib/entity-contact-helpers';
 import { getErrorMessage } from '@/lib/errors/report-error';
 import { EntitySyncGateway } from '@/lib/services/entity-sync-gateway';
@@ -1496,7 +1496,7 @@ export async function bulkLinkEntitiesToWorkspacesCore(
       workspaceId: string;
       entityName: string;
       organizationId: string;
-      entityType: string;
+      entityType: EntityType;
     }
 
     const pendingLinks: PendingLink[] = [];
@@ -1526,12 +1526,15 @@ export async function bulkLinkEntitiesToWorkspacesCore(
 
         // Construct denormalized WorkspaceEntity document
         const { primaryContactName, primaryEmail, primaryPhone } = extractPrimaryContact(entity);
+        const normalizedEntityType: EntityType =
+          entity.entityType === 'family' || entity.entityType === 'person' ? entity.entityType : 'institution';
+
         const workspaceEntityData: WorkspaceEntity = withEntitySearchFields({
           id: deterministicWeId,
           organizationId: entity.organizationId,
           workspaceId: wsId,
           entityId: entity.id,
-          entityType: entity.entityType,
+          entityType: normalizedEntityType,
           status: 'active',
           workspaceTags: [],
           addedAt: timestamp,
@@ -1550,7 +1553,7 @@ export async function bulkLinkEntitiesToWorkspacesCore(
           workspaceId: wsId,
           entityName: entity.name,
           organizationId: entity.organizationId,
-          entityType: entity.entityType,
+          entityType: normalizedEntityType,
         });
 
         // Mark as existing locally so duplicate loop iterations across same entity don't double add
@@ -1681,7 +1684,7 @@ export async function bulkUnlinkEntitiesFromWorkspacesCore(
       entityId: string;
       workspaceId: string;
       organizationId: string;
-      entityType: string;
+      entityType: EntityType;
       entityName: string;
     }
 
@@ -1690,6 +1693,8 @@ export async function bulkUnlinkEntitiesFromWorkspacesCore(
 
     for (const entity of entities) {
       const activeWsIds = new Set(entity.workspaceIds || []);
+      const normalizedEntityType: EntityType =
+        entity.entityType === 'family' || entity.entityType === 'person' ? entity.entityType : 'institution';
 
       for (const wsId of permittedWorkspaceIds) {
         if (activeWsIds.has(wsId)) {
@@ -1699,7 +1704,7 @@ export async function bulkUnlinkEntitiesFromWorkspacesCore(
             entityId: entity.id,
             workspaceId: wsId,
             organizationId: entity.organizationId,
-            entityType: entity.entityType,
+            entityType: normalizedEntityType,
             entityName: entity.name,
           });
         }

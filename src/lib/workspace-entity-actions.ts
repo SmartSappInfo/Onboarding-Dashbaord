@@ -37,9 +37,9 @@ import {
 type SessionIdentity = 'userId' | 'userName' | 'userEmail';
 
 /** The session user as an actor, plus the name/email written to audit logs. */
-async function sessionCaller(workspaceId?: string): Promise<{ actor: CrmActor; userName: string; userEmail: string }> {
+async function sessionCaller(workspaceId?: string): Promise<{ actor: CrmActor; userId: string; userName: string; userEmail: string }> {
   const { uid, profile } = workspaceId ? await requireWorkspace(workspaceId) : await requireAuth();
-  return { actor: { kind: 'user', uid }, userName: profile.name || 'Unknown User', userEmail: profile.email || '' };
+  return { actor: { kind: 'user', uid }, userId: uid, userName: profile.name || 'Unknown User', userEmail: profile.email || '' };
 }
 
 export async function linkEntityToWorkspaceAction(input: Omit<LinkEntityToWorkspaceInput, SessionIdentity>) {
@@ -86,8 +86,8 @@ export type { BulkWorkspaceOperationResult };
 export async function bulkLinkEntitiesToWorkspacesAction(
   input: Omit<BulkLinkEntitiesInput, SessionIdentity>
 ): Promise<BulkWorkspaceOperationResult> {
-  const { actor, userName, userEmail } = await sessionCaller();
-  return bulkLinkEntitiesToWorkspacesCore(actor, { ...input, userId: actor.uid, userName, userEmail });
+  const { actor, userId, userName, userEmail } = await sessionCaller();
+  return bulkLinkEntitiesToWorkspacesCore(actor, { ...input, userId, userName, userEmail });
 }
 
 /**
@@ -97,8 +97,8 @@ export async function bulkLinkEntitiesToWorkspacesAction(
 export async function bulkUnlinkEntitiesFromWorkspacesAction(
   input: Omit<BulkUnlinkEntitiesInput, SessionIdentity>
 ): Promise<BulkWorkspaceOperationResult> {
-  const { actor, userName, userEmail } = await sessionCaller();
-  return bulkUnlinkEntitiesFromWorkspacesCore(actor, { ...input, userId: actor.uid, userName, userEmail });
+  const { actor, userId, userName, userEmail } = await sessionCaller();
+  return bulkUnlinkEntitiesFromWorkspacesCore(actor, { ...input, userId, userName, userEmail });
 }
 
 /**
