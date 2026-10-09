@@ -114,9 +114,6 @@ export function DomainAgentsHub({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="bg-purple-100/70 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border-purple-300 text-xs uppercase font-bold tracking-wider">
-                Phase 8 Live
-              </Badge>
               <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
                 Domain Specialists & Agent Swarm
               </h1>

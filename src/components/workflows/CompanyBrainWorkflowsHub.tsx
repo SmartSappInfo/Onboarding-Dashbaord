@@ -362,9 +362,6 @@ export function CompanyBrainWorkflowsHub({
             <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
               Autonomous Workflows & Background Triggers
             </h2>
-            <Badge variant="outline" className="border-blue-300 bg-blue-50 text-blue-900 font-medium">
-              Phase 9 Apex
-            </Badge>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 leading-relaxed max-w-2xl">
             Event-driven multi-agent orchestration pipelines coordinating domain specialists, token-budget context dossiers, branching decisions, and human approval gates.

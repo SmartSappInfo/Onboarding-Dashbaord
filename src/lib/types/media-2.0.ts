@@ -857,6 +857,17 @@ export interface MediaRetentionPolicy {
   updatedAt: string;
 }
 
+export const DEFAULT_RETENTION_POLICY: MediaRetentionPolicy = {
+  workspaceId: '',
+  rawEventsRetentionDays: 90,
+  sessionRetentionDays: 365,
+  anonymizeIpImmediately: false,
+  maskGeolocation: false,
+  auditLogRetentionDays: 365,
+  autoPurgeEnabled: false,
+  updatedAt: new Date().toISOString(),
+};
+
 export type MediaResourceRole =
   | 'VIEWER'
   | 'CONTRIBUTOR'

@@ -1,4 +1,4 @@
-'use server';
+// NOTE: Intentionally NOT 'use server' — internal Genkit flow invoked via SurveyAiMessagingActions on server.
 
 /**
  * @fileOverview AI Flow to generate tailored multi-channel (Email, SMS, WhatsApp) messaging templates

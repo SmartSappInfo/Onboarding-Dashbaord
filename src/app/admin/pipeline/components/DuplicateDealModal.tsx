@@ -185,7 +185,7 @@ export default function DuplicateDealModal({
                 required
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                placeholder="e.g. Acme Corp - Phase 2"
+                placeholder="e.g. Acme Corp - Renewal"
                 className="h-10 text-xs rounded-xl"
               />
             </div>

@@ -21,22 +21,11 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
-import type { MediaRetentionPolicy } from '@/lib/types/media-2.0';
+import { DEFAULT_RETENTION_POLICY, type MediaRetentionPolicy } from '@/lib/types/media-2.0';
 import { logMediaAuditEventAction } from './audit-service';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 // Audit actor for system-initiated writes. Not an authorisation check (audit F8).
 const SYSTEM_ACTOR_EMAIL = 'system@platform.internal';
-
-export const DEFAULT_RETENTION_POLICY: MediaRetentionPolicy = {
-  workspaceId: '',
-  rawEventsRetentionDays: 90,
-  sessionRetentionDays: 365,
-  anonymizeIpImmediately: false,
-  maskGeolocation: false,
-  auditLogRetentionDays: 365,
-  autoPurgeEnabled: false,
-  updatedAt: new Date().toISOString(),
-};
 
 /**
  * Retrieves the data retention and privacy policy for a workspace.

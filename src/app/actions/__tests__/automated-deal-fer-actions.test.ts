@@ -51,13 +51,13 @@ describe('Automated Deal FER Protocol', () => {
     currentDescription: null,
   };
 
-  it('should enrich generic deal name with entity displayName', () => {
-    const enriched = enrichDealData(mockCandidate, mockEntity);
+  it('should enrich generic deal name with entity displayName', async () => {
+    const enriched = await enrichDealData(mockCandidate, mockEntity);
     expect(enriched.newName).toBe('St. Jude International Academy - Opened Email');
   });
 
-  it('should resolve primary contact from entity.entityContacts into focalContacts', () => {
-    const enriched = enrichDealData(mockCandidate, mockEntity);
+  it('should resolve primary contact from entity.entityContacts into focalContacts', async () => {
+    const enriched = await enrichDealData(mockCandidate, mockEntity);
     expect(enriched.focalContacts).toBeDefined();
     expect(enriched.focalContacts).toHaveLength(1);
     expect(enriched.focalContacts?.[0].id).toBe('cnt_primary');
@@ -65,17 +65,17 @@ describe('Automated Deal FER Protocol', () => {
     expect(enriched.focalContacts?.[0].role).toBe('Headmaster');
   });
 
-  it('should populate engagement summary in description if description was empty', () => {
-    const enriched = enrichDealData(mockCandidate, mockEntity);
+  it('should populate engagement summary in description if description was empty', async () => {
+    const enriched = await enrichDealData(mockCandidate, mockEntity);
     expect(enriched.description).toBe('Opened Email: "Automated Email Engagement"');
   });
 
-  it('should preserve existing description if present', () => {
+  it('should preserve existing description if present', async () => {
     const candidateWithDesc: AutomatedDealFERCandidate = {
       ...mockCandidate,
       currentDescription: 'Existing custom deal notes',
     };
-    const enriched = enrichDealData(candidateWithDesc, mockEntity);
+    const enriched = await enrichDealData(candidateWithDesc, mockEntity);
     expect(enriched.description).toBe('Existing custom deal notes');
   });
 });

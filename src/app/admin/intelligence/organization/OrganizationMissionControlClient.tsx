@@ -291,11 +291,8 @@ export function OrganizationMissionControlClient({
         {/* Cockpit Top Bar & Action Launcher Toolbar */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border/80">
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
               Organization Swarm Mission Control
-              <Badge variant="outline" className="text-[10px] font-mono border-primary/30 text-primary bg-primary/5">
-                Phase 13 Swarm Mesh
-              </Badge>
             </h1>
             <CardInfoTooltip text="Autonomous multi-agent orchestration, mathematical authority trees, and live topological DAG telemetry." />
           </div>

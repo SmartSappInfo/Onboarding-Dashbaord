@@ -206,7 +206,7 @@ export function CoachingStudioTab({
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                     <Award className="h-3.5 w-3.5 text-primary" />
-                    <span>Phase 1 Dimension Competencies</span>
+                    <span>Dimension Competencies</span>
                   </h4>
                 </div>
 

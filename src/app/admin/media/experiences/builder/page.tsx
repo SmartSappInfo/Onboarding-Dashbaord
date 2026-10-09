@@ -317,7 +317,7 @@ export default function ExperienceBuilderPage() {
           </Button>
           <div>
             <h2 className="text-sm font-black text-foreground truncate">{title}</h2>
-            <p className="text-[10px] text-muted-foreground">Phase 5 Experience Studio: Personalization & Dynamic Rules</p>
+            <p className="text-[10px] text-muted-foreground">Experience Studio: Personalization & Dynamic Rules</p>
           </div>
         </div>
 

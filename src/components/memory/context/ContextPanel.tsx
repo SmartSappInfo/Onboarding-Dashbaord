@@ -116,9 +116,6 @@ export function ContextPanel({
                     <SheetTitle className="text-lg font-semibold tracking-tight">
                       AI Context Panel
                     </SheetTitle>
-                    <Badge variant="outline" className="text-[10px] uppercase font-mono tracking-wider">
-                      Phase 5
-                    </Badge>
                   </div>
                   <SheetDescription className="text-xs text-muted-foreground mt-0.5">
                     What AI knows about {contextPackage?.subject?.name || 'this account'}

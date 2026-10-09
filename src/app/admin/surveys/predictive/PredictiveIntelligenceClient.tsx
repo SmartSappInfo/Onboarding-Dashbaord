@@ -132,11 +132,8 @@ export function PredictiveIntelligenceClient() {
               <Sparkles className="h-6 w-6" />
             </div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
+              <h1 className="text-2xl font-black tracking-tight text-foreground">
                 Predictive Survey Intelligence Hub
-                <Badge variant="outline" className="text-[10px] font-mono text-indigo-600 border-indigo-300">
-                  Phase 9 (Apex)
-                </Badge>
               </h1>
               <CardInfoTooltip text="Cross-system predictive convergence of Survey Sentiment + CRM Pipeline + Engagement Signals." />
             </div>

@@ -277,7 +277,6 @@ export default function MeetingAgentOpsPanel() {
             <h3 className="font-semibold flex items-center gap-2">
               <Cpu className="h-4 w-4 text-purple-500" /> Shadow Comparison & Canary Ladder
             </h3>
-            <Badge variant="secondary">Canary Stage</Badge>
           </div>
           <p className="text-muted-foreground text-[11px]">
             Shadow runs execute with dryRun=true and compare agent predictions against keyword heuristics and human-created tasks.

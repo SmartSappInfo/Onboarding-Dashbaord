@@ -173,7 +173,7 @@ export function DirectorySyncTab({ config, logs, onSave, isSaving }: DirectorySy
               <div className="space-y-0.5">
                 <Label className="text-xs font-semibold">Auto-Deactivate on SCIM Delete</Label>
                 <p className="text-[11px] text-muted-foreground">
-                  Automatically suspend members when removed from IdP (bridges to Phase 7 Offboarding Safety Gate).
+                  Automatically suspend members when removed from IdP (bridges to Offboarding Safety Gate).
                 </p>
               </div>
               <Switch checked={autoDeactivateOnDelete} onCheckedChange={setAutoDeactivateOnDelete} />

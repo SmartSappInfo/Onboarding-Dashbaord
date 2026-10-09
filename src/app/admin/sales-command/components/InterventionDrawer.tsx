@@ -202,16 +202,13 @@ export function InterventionDrawer({
       >
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           <SheetHeader className="space-y-2 border-b border-border/40 pb-4">
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs font-semibold">
-                Phase 3 Intelligence
-              </Badge>
-              {targetDeal && (
+            {targetDeal && (
+              <div className="flex items-center gap-2">
                 <Badge variant="destructive" className="text-xs">
                   {targetDeal.daysInCurrentStage}d Stalled
                 </Badge>
-              )}
-            </div>
+              </div>
+            )}
             <SheetTitle className="text-xl font-bold tracking-tight">
               Manager Operational Intervention
             </SheetTitle>
@@ -310,7 +307,7 @@ export function InterventionDrawer({
                   <p className="text-xs text-foreground/90 leading-relaxed">
                     Elevating this deal sets <span className="font-bold font-mono">isManagerElevated = true</span>.
                     It will immediately bypass standard heuristics and lock into {targetRepName}&apos;s #1
-                    slot in their Phase 2 <span className="font-semibold">&quot;DO THIS NOW&quot;</span> queue.
+                    slot in their <span className="font-semibold">&quot;DO THIS NOW&quot;</span> queue.
                   </p>
                 </div>
 

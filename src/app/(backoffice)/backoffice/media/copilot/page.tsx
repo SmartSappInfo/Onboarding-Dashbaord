@@ -251,9 +251,6 @@ export default function BackofficeCopilotGovernancePage() {
             <h1 className="text-2xl font-black tracking-tight text-foreground">
               Media Copilot & AI Studio Governance
             </h1>
-            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] font-black uppercase">
-              Phase 7
-            </Badge>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             Super-admin orchestration of autonomous AI personas, prompt guardrails, and content repurposing pipelines.

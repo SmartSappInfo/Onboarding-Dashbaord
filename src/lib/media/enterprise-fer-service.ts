@@ -18,11 +18,10 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
-import type { EnterprisePlatformGovernanceConfig, MediaRetentionPolicy } from '@/lib/types/media-2.0';
-import { DEFAULT_RETENTION_POLICY } from './retention-service';
+import { DEFAULT_RETENTION_POLICY, type EnterprisePlatformGovernanceConfig, type MediaRetentionPolicy } from '@/lib/types/media-2.0';
 import { requireAuth } from '@/lib/auth/require-auth';
 
-export const DEFAULT_ENTERPRISE_GOVERNANCE: EnterprisePlatformGovernanceConfig = {
+const DEFAULT_ENTERPRISE_GOVERNANCE: EnterprisePlatformGovernanceConfig = {
   workspaceId: '',
   enforceStrictRbac: false,
   requireApprovalForPublish: false,

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Table as TableIcon, UserPlus, Trash2, Users, FileText, Zap, Plus, Database, AlertCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Table as TableIcon, UserPlus, Trash2, Users, FileText, Zap, Plus, Database, AlertCircle, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -34,6 +34,7 @@ interface MappingStepProps {
     onNext: () => void;
     stepperMarkup?: React.ReactNode;
     appFieldsList?: any[] | null;
+    onAutoMatch?: () => void;
 }
 
 export function MappingStep({
@@ -58,6 +59,7 @@ export function MappingStep({
     onNext,
     stepperMarkup,
     appFieldsList,
+    onAutoMatch,
 }: MappingStepProps) {
     const [selectedFormulaField, setSelectedFormulaField] = React.useState<string>('');
     const [formulaInputValue, setFormulaInputValue] = React.useState<string>('');
@@ -144,6 +146,16 @@ export function MappingStep({
                             <CardDescription className="text-xs font-medium">Verify each column maps to the correct property.</CardDescription>
                         </div>
                     </div>
+                    {onAutoMatch && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={onAutoMatch}
+                            className="gap-2 font-semibold text-xs h-9 px-4 rounded-xl border-primary/20 text-primary hover:bg-primary/5 active:scale-[0.97]"
+                        >
+                            <Sparkles size={14} /> Auto-Match Columns
+                        </Button>
+                    )}
                 </CardHeader>
                 <CardContent className="p-8 space-y-6">
                     {/* Contact Slots Controls & Explicit Mapping */}

@@ -1,4 +1,4 @@
-'use server';
+// NOTE: Intentionally NOT 'use server' — internal Genkit flow invoked via SurveyIntelligenceActions on server.
 
 /**
  * @fileOverview SmartSapp Survey Intelligence 2.0 — Evidence-Backed Natural Language Research Assistant Flow

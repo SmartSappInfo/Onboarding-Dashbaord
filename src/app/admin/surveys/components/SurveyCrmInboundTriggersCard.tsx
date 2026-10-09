@@ -140,9 +140,6 @@ export function SurveyCrmInboundTriggersCard({ workspaceId: _workspaceId }: Surv
               <CardTitle className="text-sm sm:text-base font-bold text-foreground">
                 Inbound CRM Trigger Automations (CRM &rarr; Survey)
               </CardTitle>
-              <Badge variant="outline" className="text-[10px] font-mono text-blue-600 border-blue-300">
-                Phase 6
-              </Badge>
               <CardInfoTooltip text="Automatically dispatch this survey to entity contacts when CRM lifecycle events occur." />
             </div>
           </div>

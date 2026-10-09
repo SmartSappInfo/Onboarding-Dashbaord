@@ -129,9 +129,6 @@ export default function OptimizationDashboardPage() {
               <h1 className="text-2xl font-black tracking-tight text-foreground">
                 Content Health & Predictive Optimization
               </h1>
-              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] font-black uppercase">
-                Phase 8
-              </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               Trailing velocity regression, content decay detection radar, and deal close acceleration forecasts.

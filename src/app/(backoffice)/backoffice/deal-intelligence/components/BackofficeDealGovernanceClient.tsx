@@ -448,7 +448,7 @@ export const BackofficeDealGovernanceClient: React.FC = () => {
                   </div>
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  Incorporates Phase 5 call scorecard scores, net sentiment balance, and unresolved objections.
+                  Incorporates call scorecard scores, net sentiment balance, and unresolved objections.
                 </p>
               </div>
             </div>

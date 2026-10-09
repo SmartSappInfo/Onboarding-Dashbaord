@@ -260,10 +260,10 @@ export function WorkflowNodeEditorModal({
                 <SelectValue placeholder="Select node type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="specialist">Domain Specialist (Phase 8 Agent)</SelectItem>
-                <SelectItem value="context">Context Builder (Phase 5 Dossier)</SelectItem>
+                <SelectItem value="specialist">Domain Specialist Agent</SelectItem>
+                <SelectItem value="context">Context Builder (Dossier)</SelectItem>
                 <SelectItem value="decision">Decision Gateway (Predicate Branching)</SelectItem>
-                <SelectItem value="tool">Governed Tool (Phase 6 MCP)</SelectItem>
+                <SelectItem value="tool">Governed Tool (MCP)</SelectItem>
                 <SelectItem value="approval_gate">Human Approval Gate (Sign-Off)</SelectItem>
                 <SelectItem value="action">Action Dispatcher (Tasks / Push)</SelectItem>
               </SelectContent>

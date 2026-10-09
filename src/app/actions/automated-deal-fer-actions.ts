@@ -115,10 +115,10 @@ export async function fetchCandidateDealsForFER(
  * Uses dual-key lookup (`${workspaceId}_${entityId}` as primary, `entityId` as fallback)
  * because legacy entity documents may be keyed under either convention.
  */
-export function enrichDealData(
+export async function enrichDealData(
   candidate: AutomatedDealFERCandidate,
   entity: WorkspaceEntity
-): EnrichedDealPayload {
+): Promise<EnrichedDealPayload> {
   // 1. Dynamic Entity Name Resolution
   const entityName =
     entity.displayName ||
@@ -238,7 +238,7 @@ export async function runAutomatedDealFERProtocol(
         }
 
         const entity = entitySnap.data() as WorkspaceEntity;
-        const enriched = enrichDealData(candidate, entity);
+        const enriched = await enrichDealData(candidate, entity);
 
         const dealRef = adminDb.collection('deals').doc(candidate.dealId);
         const updatePayload: Record<string, unknown> = {

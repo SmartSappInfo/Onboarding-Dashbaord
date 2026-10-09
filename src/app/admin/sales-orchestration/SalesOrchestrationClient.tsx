@@ -190,9 +190,6 @@ export default function SalesOrchestrationClient() {
               <Workflow className="h-7 w-7 text-primary" />
               <span>Sales Orchestration & Plays</span>
             </h1>
-            <Badge className="bg-primary/10 text-primary border-primary/20 text-xs font-bold">
-              Phase 8 • Governed Execution
-            </Badge>
           </div>
           <p className="text-xs text-muted-foreground mt-1 max-w-2xl">
             Translate buyer signals and revenue intelligence into automated sales plays, capacity-weighted routing, and governed human-in-the-loop approvals.

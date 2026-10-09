@@ -174,9 +174,6 @@ export default function EntityContextTab({
               <h3 className="text-base font-semibold text-foreground">
                 CompanyBrain Executive Intelligence
               </h3>
-              <Badge variant="outline" className="text-[10px] font-mono uppercase tracking-wider">
-                Phase 5 Context
-              </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
               Live context synthesis across institutional memory, active deals, and relationship topology.

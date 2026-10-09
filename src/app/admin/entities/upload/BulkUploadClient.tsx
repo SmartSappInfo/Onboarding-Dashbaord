@@ -19,6 +19,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { ingestBatchAction } from '@/lib/bulk-upload-actions';
 import { cn } from '@/lib/utils';
 import type { DealImportConfig, NotificationConfig } from '@/lib/import-types';
+import { autoMapSpreadsheetHeaders, detectContactSlotCount } from '@/lib/import-export';
 
 // Step sub-components
 import { UploadStep } from './components/UploadStep';
@@ -275,47 +276,35 @@ export default function BulkUploadClient() {
         return [...entityFields, ...contactFields];
     }, [TARGET_FIELDS, contactSlotCount]);
 
-    const autoMapHeaders = (fileHeaders: string[]) => {
+    const autoMapHeaders = React.useCallback((fileHeaders: string[]) => {
         setCurrentStep('MAPPING');
-        const initialMapping: Record<string, string> = {};
-        const mappedHeaders = new Set<string>();
-        
-        // Exact matches
-        allMappableFields.forEach(f => {
-            const targetLabel = f.label.toLowerCase();
-            const targetKey = f.key.toLowerCase();
-            
-            const exactMatch = fileHeaders.find(header => {
-                const h = header.toLowerCase().trim();
-                return h === targetLabel || h === targetKey;
-            });
-            
-            if (exactMatch) {
-                initialMapping[f.key] = exactMatch;
-                mappedHeaders.add(exactMatch);
-            }
-        });
-        
-        // Heuristic matches
-        fileHeaders.forEach(header => {
-            if (mappedHeaders.has(header)) return;
-            const h = header.toLowerCase().trim();
-            let matchedKey: string | null = null;
-            
-            if (h.includes('name') && !h.includes('contact') && !initialMapping['name']) {
-                matchedKey = 'name';
-            } else if (h.includes('organization') && contactScope === 'institution' && !initialMapping['name']) {
-                matchedKey = 'name';
-            }
-            
-            if (matchedKey) {
-                initialMapping[matchedKey] = header;
-                mappedHeaders.add(header);
-            }
-        });
+        const detectedSlots = detectContactSlotCount(fileHeaders);
+        if (detectedSlots > contactSlotCount) {
+            setContactSlotCount(detectedSlots);
+        }
 
-        setMapping(initialMapping);
-    };
+        const slotsToUse = Math.max(contactSlotCount, detectedSlots);
+        const entityFields = TARGET_FIELDS.filter(f => !f.key.startsWith('contact_'));
+        const candidateFields = [...entityFields];
+        for (let i = 0; i < slotsToUse; i++) {
+            const prefix = i === 0 ? '' : ` ${i + 1}`;
+            candidateFields.push(
+                { key: `contact_${i}_name`,  label: `Contact${prefix} Name`,  required: false },
+                { key: `contact_${i}_email`, label: `Contact${prefix} Email`, required: false },
+                { key: `contact_${i}_phone`, label: `Contact${prefix} Phone`, required: false },
+                { key: `contact_${i}_role`,  label: `Contact${prefix} Role`,  required: false },
+            );
+        }
+
+        const { mapping: newMapping } = autoMapSpreadsheetHeaders(
+            fileHeaders,
+            candidateFields,
+            contactScope,
+            terms.singular
+        );
+
+        setMapping(newMapping);
+    }, [contactSlotCount, TARGET_FIELDS, contactScope, terms.singular]);
 
     const handleFileProcessed = (pFileName: string, pHeaders: string[], pData: any[]) => {
         setFileName(pFileName);
@@ -497,6 +486,7 @@ export default function BulkUploadClient() {
                             onNext={() => setCurrentStep('SETTINGS')}
                             stepperMarkup={stepperMarkup}
                             appFieldsList={appFieldsList}
+                            onAutoMatch={() => autoMapHeaders(headers)}
                         />
                     )}
 
@@ -532,7 +522,7 @@ export default function BulkUploadClient() {
                             terms={terms}
                             rawData={rawData}
                             mapping={mapping}
-                            targetFields={TARGET_FIELDS}
+                            targetFields={allMappableFields}
                             defaultCountry={orgData?.defaultCountryCode}
                             onBack={() => setCurrentStep('SETTINGS')}
                             onExecute={() => startExecution()}

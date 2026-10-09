@@ -309,9 +309,6 @@ export function CollectionsClient({
             Collections Action Desk
           </h1>
           <CardInfoTooltip text="Intelligent aging receivables recovery engine. Evaluates overdue tuition fees, generates dynamic installment plans, and intercepts high-risk proposals into the unified approval center." />
-          <Badge variant="outline" className="hidden sm:inline-flex text-xs font-mono">
-            Phase 12 · M4
-          </Badge>
         </div>
 
         <div className="flex items-center gap-2.5">

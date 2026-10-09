@@ -273,9 +273,6 @@ export default function MediaCopilotStudioPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-[10px] font-black uppercase tracking-wider bg-primary/10 text-primary border-primary/20">
-                Phase 7 Studio
-              </Badge>
               <Badge variant="outline" className="text-[10px] font-black uppercase text-emerald-600 bg-emerald-500/10 border-emerald-500/20">
                 Autonomous Copilot
               </Badge>

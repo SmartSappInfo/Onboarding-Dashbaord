@@ -16,7 +16,7 @@ import type { CreativeTemplate } from '@/lib/creative/creative-types';
 import { FORMAT_PRESETS } from '@/lib/creative/creative-types';
 import { requireAuth } from '@/lib/auth/require-auth';
 
-export const GLOBAL_BLUEPRINT_TEMPLATES: CreativeTemplate[] = [
+const GLOBAL_BLUEPRINT_TEMPLATES: CreativeTemplate[] = [
   {
     id: 'tmpl-yt-reaction-shock',
     name: 'Shock / Breakthrough Formula',

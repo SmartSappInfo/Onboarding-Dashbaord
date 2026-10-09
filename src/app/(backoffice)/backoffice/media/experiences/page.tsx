@@ -56,7 +56,7 @@ export default function BackofficeExperienceGovernancePage() {
     try {
       toast({
         title: 'Governance Saved',
-        description: 'Experience templates, embed domain whitelist, and Phase 5 dynamic policies updated.',
+        description: 'Experience templates, embed domain whitelist, and dynamic personalization policies updated.',
       });
     } catch (err: unknown) {
       console.error('[handleSave] Error:', err);
@@ -73,10 +73,10 @@ export default function BackofficeExperienceGovernancePage() {
     try {
       const res = await migrateExperiencesToPhase5Action(firestore, activeWorkspaceId);
       if (res.success) {
-        setMigrationResult(`Successfully scanned ${res.totalScanned} experiences; enriched ${res.totalEnriched} with Phase 5 defaults.`);
+        setMigrationResult(`Successfully scanned ${res.totalScanned} experiences; enriched ${res.totalEnriched} with current defaults.`);
         toast({
           title: 'Migration Completed',
-          description: `Enriched ${res.totalEnriched} experiences with Phase 5 defaults.`,
+          description: `Enriched ${res.totalEnriched} experiences with current defaults.`,
         });
       } else {
         setMigrationResult(`Migration failed: ${res.errorMessage}`);
@@ -278,10 +278,10 @@ export default function BackofficeExperienceGovernancePage() {
             <div className="p-4 border border-dashed rounded-2xl bg-muted/10 space-y-3">
               <div className="space-y-1">
                 <p className="text-xs font-extrabold text-foreground flex items-center gap-1.5">
-                  <RefreshCw className="h-3.5 w-3.5 text-primary" /> Phase 5 FER Schema Migration
+                  <RefreshCw className="h-3.5 w-3.5 text-primary" /> FER Schema Migration
                 </p>
                 <p className="text-[11px] text-muted-foreground">
-                  Safely enriches existing experiences with Phase 5 fields using chunked batch writes (max 150 ops).
+                  Safely enriches existing experiences with dynamic fields using chunked batch writes (max 150 ops).
                 </p>
               </div>
 
@@ -298,7 +298,7 @@ export default function BackofficeExperienceGovernancePage() {
                 className="w-full rounded-xl font-bold text-xs h-11 min-h-[44px] gap-2 active:scale-[0.97]"
               >
                 {isMigrating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                Run Phase 5 Experience Enrichment
+                Run Experience Schema Enrichment
               </Button>
             </div>
           </CardContent>

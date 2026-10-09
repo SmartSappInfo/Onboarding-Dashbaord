@@ -139,7 +139,7 @@ export default function TemplateCatalogTab({
                         isDraft && 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30'
                       )}
                     >
-                      {isPublished ? 'v1.0 Published' : 'Draft Revision'}
+                      {isPublished ? 'Published' : 'Draft Revision'}
                     </Badge>
 
                     {template.isContractDocument && (

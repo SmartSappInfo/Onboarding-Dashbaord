@@ -26,7 +26,7 @@ import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 // Audit actor for system-initiated writes. Not an authorisation check (audit F8).
 const SYSTEM_ACTOR_EMAIL = 'system@platform.internal';
 
-export const ROLE_HIERARCHY: Record<MediaResourceRole, number> = {
+const ROLE_HIERARCHY: Record<MediaResourceRole, number> = {
   ADMIN: 7,
   MANAGER: 6,
   PUBLISHER: 5,

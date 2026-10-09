@@ -181,7 +181,7 @@ export function CommandCenterTab({
               Sales Representative Health & Capacity Matrix
             </h3>
             <p className="text-xs text-muted-foreground">
-              Live capacity utilization, Phase 2 queue load, and composite performance index.
+              Live capacity utilization, active queue load, and composite performance index.
             </p>
           </div>
           <Button
@@ -315,7 +315,7 @@ export function CommandCenterTab({
                 <span>At-Risk & Stalled Pipeline Opportunities</span>
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground">
-                Deals stalled in stage or lacking engagement signals. Elevate to inject directly into rep&apos;s Phase 2 top priority slot.
+                Deals stalled in stage or lacking engagement signals. Elevate to inject directly into rep&apos;s top priority slot.
               </CardDescription>
             </div>
 

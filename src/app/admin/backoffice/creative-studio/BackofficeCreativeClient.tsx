@@ -270,19 +270,19 @@ export function BackofficeCreativeClient() {
           <div className="grid grid-cols-2 gap-2 text-xs font-bold">
             <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200">
               <div>Concept Generator</div>
-              <div className="text-[10px] text-emerald-400 mt-1">v3.2 Production</div>
+              <div className="text-[10px] text-emerald-400 mt-1">Production</div>
             </div>
             <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200">
               <div>Canvas NLP Parser</div>
-              <div className="text-[10px] text-emerald-400 mt-1">v2.4 Production</div>
+              <div className="text-[10px] text-emerald-400 mt-1">Production</div>
             </div>
             <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200">
               <div>Copy Matrix Formula</div>
-              <div className="text-[10px] text-emerald-400 mt-1">v1.8 Production</div>
+              <div className="text-[10px] text-emerald-400 mt-1">Production</div>
             </div>
             <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200">
               <div>Visual Health Linter</div>
-              <div className="text-[10px] text-emerald-400 mt-1">v2.0 Production</div>
+              <div className="text-[10px] text-emerald-400 mt-1">Production</div>
             </div>
           </div>
         </div>

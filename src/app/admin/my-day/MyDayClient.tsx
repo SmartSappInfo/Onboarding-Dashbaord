@@ -361,7 +361,7 @@ export default function MyDayClient() {
                 <span className="text-xs text-muted-foreground font-bold">/ 100</span>
               </div>
               <p className="text-[10px] text-muted-foreground font-medium truncate">
-                Phase 1 composite score
+                Composite performance score
               </p>
             </CardContent>
           </Card>

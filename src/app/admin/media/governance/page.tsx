@@ -67,18 +67,18 @@ import {
   purgeExpiredMediaTelemetryAction,
   exportContactComplianceDataAction,
   eraseContactComplianceDataAction,
-  DEFAULT_RETENTION_POLICY,
 } from '@/lib/media/retention-service';
 import {
   listResourcePermissionsAction,
   saveResourcePermissionAction,
   deleteResourcePermissionAction,
 } from '@/lib/media/rbac-service';
-import type {
-  MediaAuditLog,
-  MediaRetentionPolicy,
-  MediaResourcePermission,
-  MediaResourceRole,
+import {
+  DEFAULT_RETENTION_POLICY,
+  type MediaAuditLog,
+  type MediaRetentionPolicy,
+  type MediaResourcePermission,
+  type MediaResourceRole,
 } from '@/lib/types/media-2.0';
 
 export default function MediaGovernanceConsolePage() {

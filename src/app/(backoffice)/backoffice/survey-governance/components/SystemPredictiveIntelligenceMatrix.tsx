@@ -117,9 +117,6 @@ export function SystemPredictiveIntelligenceMatrix() {
             <div>
               <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
                 Predictive Intelligence Signal Weights & Churn Matrix
-                <Badge variant="outline" className="text-[10px] font-mono text-indigo-600 border-indigo-300">
-                  Phase 9 (Apex)
-                </Badge>
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground">
                 Control the cross-system weighting distribution for Churn Forecasting, Account Health & Next-Best-Action logic.

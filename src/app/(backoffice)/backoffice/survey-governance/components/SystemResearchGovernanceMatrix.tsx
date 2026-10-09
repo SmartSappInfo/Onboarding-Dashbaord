@@ -110,9 +110,6 @@ export function SystemResearchGovernanceMatrix() {
             <div>
               <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
                 Research & Data Retention Governance Control Matrix
-                <Badge variant="outline" className="text-[10px] font-mono text-purple-600 border-purple-300">
-                  Phase 8
-                </Badge>
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground">
                 Enforce organization-wide research sample thresholds, statistical confidence standards, and PII retention policies.

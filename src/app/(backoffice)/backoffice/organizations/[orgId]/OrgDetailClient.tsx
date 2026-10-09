@@ -394,7 +394,7 @@ export default function OrgDetailClient({ orgId }: { orgId: string }) {
               Audit History
             </h3>
             <p className="text-xs text-slate-600">
-              Organization-scoped audit logs will be connected in Phase 7.
+              Organization-scoped audit logs will be displayed here.
             </p>
           </div>
         </TabsContent>

@@ -147,9 +147,6 @@ export function EntityPredictiveHealthCard({
             <div>
               <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
                 Predictive Survey & Account Intelligence
-                <Badge variant="outline" className="text-[10px] font-mono text-indigo-600 border-indigo-300">
-                  Phase 9
-                </Badge>
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground">
                 Unified synthesis of Survey Telemetry + CRM Pipeline + Engagement Velocity.

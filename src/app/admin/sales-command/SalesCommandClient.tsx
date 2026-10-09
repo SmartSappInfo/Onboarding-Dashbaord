@@ -178,9 +178,6 @@ export default function SalesCommandClient() {
             <h1 className="text-xl sm:text-2xl font-black tracking-tight text-foreground">
               Manager Command Center
             </h1>
-            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 font-semibold text-xs">
-              Phase 3 Intelligence
-            </Badge>
             <Badge variant="secondary" className="text-xs">
               {overview?.dateString || 'Today'}
             </Badge>

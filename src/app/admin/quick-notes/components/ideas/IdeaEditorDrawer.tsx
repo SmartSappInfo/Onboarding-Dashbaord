@@ -741,7 +741,7 @@ export function IdeaEditorDrawer({
                 <Input
                   value={newDecisionTitle}
                   onChange={(e) => setNewDecisionTitle(e.target.value)}
-                  placeholder="Decision title (e.g. Approved for Phase 2 Sprints)..."
+                  placeholder="Decision title (e.g. Approved for Upcoming Sprints)..."
                   className="text-xs h-9"
                 />
                 <div className="flex gap-2">

@@ -332,7 +332,7 @@ export default function NotificationStudio({
                   onCheckedChange={(val) => handleUpdateInternal({ notifyDealOwner: val })}
                 />
                 <Label className="text-xs text-muted-foreground font-semibold cursor-pointer">
-                  Also dynamically alert the assigned CRM Deal / Task Owner (from Phase 4 routing)
+                  Also dynamically alert the assigned CRM Deal / Task Owner (from CRM routing)
                 </Label>
               </div>
             </div>

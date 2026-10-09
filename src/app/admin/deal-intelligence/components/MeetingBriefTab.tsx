@@ -243,7 +243,7 @@ export const MeetingBriefTab: React.FC<MeetingBriefTabProps> = ({
                 <div className="space-y-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-4">
                   <h4 className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
                     <AlertTriangle className="w-4 h-4" />
-                    Open Objections & Insights from Previous Calls (Phase 5)
+                    Open Objections & Insights from Previous Calls
                   </h4>
                   <ul className="space-y-1.5 text-xs text-muted-foreground">
                     {activeMeetingBrief.previousCallTakeaways.map((takeaway, idx) => (

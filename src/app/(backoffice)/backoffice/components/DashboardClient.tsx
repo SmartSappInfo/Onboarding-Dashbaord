@@ -233,7 +233,7 @@ export default function DashboardClient() {
             Feature Rollout Progress
           </h3>
           <p className="text-xs text-slate-600">
-            Feature flag rollout visualization will appear here in Phase 2.
+            Feature flag rollout visualization will appear here.
           </p>
         </div>
         <div className="rounded-2xl border border-border bg-muted/50 p-6 min-h-[200px]">

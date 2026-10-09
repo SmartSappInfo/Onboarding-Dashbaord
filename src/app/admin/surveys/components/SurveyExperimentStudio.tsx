@@ -193,9 +193,6 @@ export function SurveyExperimentStudio({ surveyId, workspaceId }: SurveyExperime
               <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
                 A/B Testing &amp; Question Experiment Studio
               </CardTitle>
-              <Badge variant="outline" className="text-[10px] font-mono text-purple-600 border-purple-300">
-                Phase 8
-              </Badge>
               <CardInfoTooltip text="Split respondent traffic to test different survey titles, introductory copy, and CTA button phrasing." />
             </div>
           </div>

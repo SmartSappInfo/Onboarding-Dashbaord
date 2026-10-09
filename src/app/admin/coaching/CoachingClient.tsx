@@ -185,9 +185,6 @@ export default function CoachingClient() {
                 <GraduationCap className="w-6 h-6" />
               </div>
               <h2 className="text-2xl font-bold tracking-tight text-foreground">Coaching & Practice Lab</h2>
-              <Badge variant="outline" className="text-xs font-mono border-primary text-primary">
-                Phase 5
-              </Badge>
             </div>
             <p className="text-sm text-muted-foreground">
               Conversation intelligence, Gong-style scorecard reviews, and interactive AI Buyer roleplay simulations.
