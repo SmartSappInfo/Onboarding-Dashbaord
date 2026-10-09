@@ -312,15 +312,17 @@ export default function TasksClient() {
         setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
     };
 
+    const [taskPageLimit, setTaskPageLimit] = React.useState(100);
+
     const tasksQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
         return query(
             collection(firestore, 'tasks'), 
             where('workspaceId', '==', activeWorkspaceId),
             orderBy('dueDate', 'asc'), 
-            limit(200)
+            limit(taskPageLimit)
         );
-    }, [firestore, activeWorkspaceId]);
+    }, [firestore, activeWorkspaceId, taskPageLimit]);
 
     // ORG-AWARE USER QUERY
     const usersQuery = useMemoFirebase(() => {
@@ -2028,6 +2030,22 @@ export default function TasksClient() {
                                     );
                                 });
                             })()
+                        )}
+
+                        {allTasks && allTasks.length >= taskPageLimit && (
+                            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 rounded-2xl border border-border/80 bg-card mt-3">
+                                <span className="text-xs font-medium text-muted-foreground">
+                                    Showing <span className="font-bold text-foreground">{allTasks.length}</span> tasks in workspace
+                                </span>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setTaskPageLimit(prev => prev + 50)}
+                                    className="rounded-xl h-11 min-h-[44px] px-6 text-xs font-bold active:scale-[0.97]"
+                                >
+                                    Load more tasks…
+                                </Button>
+                            </div>
                         )}
                     </TabsContent>
 
