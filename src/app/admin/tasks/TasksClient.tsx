@@ -1749,7 +1749,7 @@ export default function TasksClient() {
                             />
                         ) : !isLoading && filteredTasks.length === 0 ? (
                             <TaskEmptyState 
-                                hasActiveFilters={activeFilterCount > 0} 
+                                isFiltered={activeFilterCount > 0} 
                                 onClearFilters={handleClearFilters} 
                                 onCreateTask={() => { 
                                     setEditingTask(null); 
@@ -1801,7 +1801,7 @@ export default function TasksClient() {
                                                 <div className="divide-y divide-border/60">
                                                     {isLoading ? (
                                                         <div className="p-4">
-                                                            <TaskSkeleton mode="list" count={3} />
+                                                            <TaskSkeleton variant="list" count={3} />
                                                         </div>
                                                     ) : category.tasks.length > 0 ? (
                                                         category.tasks.map((task) => (

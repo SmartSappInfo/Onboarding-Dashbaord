@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { TaskStatusBadge } from '../primitives/TaskStatusBadge';
 import { TaskPriorityBadge } from '../primitives/TaskPriorityBadge';
 import { TaskAssignee } from '../primitives/TaskAssignee';

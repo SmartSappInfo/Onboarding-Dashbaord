@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { TaskCard } from '../TaskCard';
-import type { Task, UserProfile } from '@/lib/types';
+import type { Task } from '@/lib/types';
 
 describe('TaskCard Mutation Feedback & Contract Sync (Phase 1)', () => {
   const baseTask: Task = {
