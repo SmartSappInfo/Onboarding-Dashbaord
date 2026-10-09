@@ -24,20 +24,35 @@ import { cn } from '@/lib/utils';
 import type { MessagingDashboardChannel } from '@/lib/types/messaging-dashboard';
 
 export interface QuickMessageComposerCardProps {
+  initialMessage?: string;
   onMessageSent?: () => void;
   className?: string;
 }
 
-export function QuickMessageComposerCard({ onMessageSent, className }: QuickMessageComposerCardProps) {
+export function QuickMessageComposerCard({
+  initialMessage,
+  onMessageSent,
+  className,
+}: QuickMessageComposerCardProps) {
   const { toast } = useToast();
   const [recipient, setRecipient] = React.useState('');
-  const [message, setMessage] = React.useState('');
+  const [message, setMessage] = React.useState(initialMessage ?? '');
   const [channel, setChannel] = React.useState<MessagingDashboardChannel>('sms');
   const [isSending, setIsSending] = React.useState(false);
 
-  // Rule 19: Single 1-to-1 recipient guard (detects commas, semicolons, or newlines)
+  React.useEffect(() => {
+    if (initialMessage !== undefined) {
+      setMessage(initialMessage);
+    }
+  }, [initialMessage]);
+
+  // Rule 19: Single 1-to-1 recipient guard (detects commas, semicolons, newlines, or space-separated tokens)
   const isMultipleRecipients = React.useMemo(() => {
-    return /[,;\n]/.test(recipient.trim());
+    const trimmed = recipient.trim();
+    if (!trimmed) return false;
+    if (/[,;\n]/.test(trimmed)) return true;
+    const parts = trimmed.split(/\s+/).filter(Boolean);
+    return parts.length > 1;
   }, [recipient]);
 
   const charCount = message.length;

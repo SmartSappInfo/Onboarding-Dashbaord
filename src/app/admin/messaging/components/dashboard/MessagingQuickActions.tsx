@@ -35,6 +35,7 @@ import { MessagingAllFeaturesModal } from './MessagingAllFeaturesModal';
 import { cn } from '@/lib/utils';
 
 export interface MessagingQuickActionsProps {
+  onOpenAllFeatures?: () => void;
   className?: string;
 }
 
@@ -76,7 +77,7 @@ function resolveAccentClasses(accent: QuickActionItem['accentColor']) {
   }
 }
 
-export function MessagingQuickActions({ className }: MessagingQuickActionsProps) {
+export function MessagingQuickActions({ onOpenAllFeatures, className }: MessagingQuickActionsProps) {
   const [modalOpen, setModalOpen] = React.useState<boolean>(false);
 
   return (
@@ -97,7 +98,7 @@ export function MessagingQuickActions({ className }: MessagingQuickActionsProps)
 
         <button
           type="button"
-          onClick={() => setModalOpen(true)}
+          onClick={() => (onOpenAllFeatures ? onOpenAllFeatures() : setModalOpen(true))}
           className={cn(
             'inline-flex items-center gap-1 text-xs sm:text-sm font-medium text-blue-600 dark:text-blue-400',
             'hover:text-blue-700 dark:hover:text-blue-300 hover:underline',

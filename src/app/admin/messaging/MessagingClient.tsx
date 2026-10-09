@@ -36,6 +36,7 @@ export default function MessagingClient() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [isAiModalOpen, setIsAiModalOpen] = React.useState(false);
   const [isAllFeaturesOpen, setIsAllFeaturesOpen] = React.useState(false);
+  const [selectedSnippet, setSelectedSnippet] = React.useState<string | undefined>();
 
   const loadSummary = React.useCallback(
     async (forceRefresh = false) => {
@@ -69,7 +70,7 @@ export default function MessagingClient() {
   return (
     <PageContainerFluid className="space-y-6 pb-20 md:pb-8">
       {/* 1. Hero Greeting Banner */}
-      <MessagingHeroGreeting onOpenAiModal={() => setIsAiModalOpen(true)} />
+      <MessagingHeroGreeting onOpenAiPrompt={() => setIsAiModalOpen(true)} />
 
       {/* 2. Top KPI Metrics Grid (4 Stat Cards) */}
       <MessagingKpiGrid metrics={summary?.kpi} isLoading={isLoading} />
@@ -94,8 +95,11 @@ export default function MessagingClient() {
 
         {/* Right Column (4 Cols): Stacked Sidebar Utilities */}
         <div className="lg:col-span-4 space-y-6">
-          <QuickMessageComposerCard onMessageSent={() => loadSummary(true)} />
-          <QuickTemplatesCard />
+          <QuickMessageComposerCard
+            initialMessage={selectedSnippet}
+            onMessageSent={() => loadSummary(true)}
+          />
+          <QuickTemplatesCard onSelectTemplate={(tpl) => setSelectedSnippet(tpl.snippet)} />
           <ActiveQueuesCard stats={summary?.activeQueues} isLoading={isLoading} />
         </div>
       </div>
@@ -104,7 +108,7 @@ export default function MessagingClient() {
       <MessagingFooterHighlights />
 
       {/* 5. Modals & Drawers */}
-      <MessagingAiPromptModal open={isAiModalOpen} onOpenChange={setIsAiModalOpen} />
+      <MessagingAiPromptModal isOpen={isAiModalOpen} onOpenChange={setIsAiModalOpen} />
       <MessagingAllFeaturesModal open={isAllFeaturesOpen} onOpenChange={setIsAllFeaturesOpen} />
 
       {/* 6. Mobile Bottom Navigation */}

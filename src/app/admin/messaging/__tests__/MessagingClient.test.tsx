@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import MessagingClient from '../MessagingClient';
 
@@ -69,5 +69,21 @@ describe('MessagingClient Master Orchestrator', () => {
       expect(screen.getByText(/Quick Templates/i)).toBeInTheDocument();
       expect(screen.getByText(/Active Queues/i)).toBeInTheDocument();
     });
+  });
+
+  it('populates the quick composer when a template is selected', async () => {
+    render(<MessagingClient />);
+    await waitFor(() => {
+      expect(screen.getByText('Welcome Message')).toBeInTheDocument();
+    });
+
+    const welcomeTemplateButton = screen.getByText('Welcome Message').closest('button');
+    expect(welcomeTemplateButton).toBeTruthy();
+    if (welcomeTemplateButton) {
+      fireEvent.click(welcomeTemplateButton);
+    }
+
+    const textarea = screen.getByPlaceholderText(/Type your message/i) as HTMLTextAreaElement;
+    expect(textarea.value).toContain('Welcome to our community');
   });
 });
