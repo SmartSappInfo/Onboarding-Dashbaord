@@ -356,7 +356,7 @@ export async function rollbackEntitySchemaRestructure(organizationId: string) {
             batchCount = 0;
           }
         }
-      } catch (_e) {
+      } catch {
         failed++;
       }
     }

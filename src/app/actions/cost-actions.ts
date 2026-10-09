@@ -25,7 +25,6 @@ import {
   ModelRoutingInput,
   ModelRoutingDecision,
   CostBudgetPolicy,
-  CostBudgetPolicySchema,
   ModelRoutingInputSchema,
   COST_ERROR_CODES,
   CostDomainError,

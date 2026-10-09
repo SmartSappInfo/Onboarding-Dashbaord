@@ -217,7 +217,7 @@ export async function getGoogleAuthUrlAction(
 export async function getMicrosoftAuthUrlAction(
   workspaceId: string,
   organizationId?: string,
-  userId?: string
+  _userId?: string
 ): Promise<{ success: boolean; url?: string; error?: string }> {
   // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
   await requireWorkspace(workspaceId);

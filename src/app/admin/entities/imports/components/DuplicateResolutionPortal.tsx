@@ -732,6 +732,19 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
                                 {Math.max(0, (importLog.duplicateCount ?? 0) - (importLog.resolvedDuplicateCount ?? 0))} total remaining
                             </Badge>
                         )}
+                        {importLog?._importConfig?.addTagsToDuplicates !== undefined && (
+                            <Badge 
+                                variant="outline" 
+                                className={cn(
+                                    "text-[10px] font-semibold border",
+                                    importLog._importConfig.addTagsToDuplicates !== false
+                                        ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-800"
+                                        : "bg-muted text-muted-foreground border-border"
+                                )}
+                            >
+                                {importLog._importConfig.addTagsToDuplicates !== false ? 'Tags on duplicates: ON' : 'Tags on duplicates: OFF'}
+                            </Badge>
+                        )}
                     </div>
 
                     <div className="flex items-center gap-2 border-l pl-6 border-border/50">

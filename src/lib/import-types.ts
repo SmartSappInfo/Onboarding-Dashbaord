@@ -68,6 +68,17 @@ export interface NotificationConfig {
   sendSmsNotification: boolean;
 }
 
+export interface NoteImportConfig {
+  /** Incoming spreadsheet column header to read note text from */
+  columnHeader: string;
+  /** Note category type (defaults to 'general') */
+  noteType?: 'general' | 'call' | 'meeting' | 'escalation' | 'followup';
+  /** Whether the note should be pinned to the top of the entity's notes tab */
+  isPinned?: boolean;
+  /** Optional prefix prepended to note body (e.g. "Imported Note") */
+  prefix?: string;
+}
+
 export interface IngestBatchOptions {
   rows: Record<string, any>[];
   mapping: Record<string, string>;
@@ -84,6 +95,8 @@ export interface IngestBatchOptions {
   enableTitleCase?: boolean;
   dealConfig?: DealImportConfig;
   notificationConfig?: NotificationConfig;
+  noteConfig?: NoteImportConfig | null;
+  addTagsToDuplicates?: boolean;
 }
 
 

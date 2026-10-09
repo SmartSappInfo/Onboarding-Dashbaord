@@ -124,6 +124,7 @@ export default function OrgListClient() {
   React.useEffect(() => {
     loadOrgs();
     loadFeatures();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function loadOrgs() {
@@ -274,7 +275,7 @@ export default function OrgListClient() {
         setTimeout(() => setCopiedLink(false), 2000);
       }
       toast({ title: 'Copied', description: `${type === 'token' ? 'Join token' : 'Invitation link'} copied to clipboard.` });
-    } catch (_err) {
+    } catch {
       toast({ variant: 'destructive', title: 'Copy Failed', description: 'Failed to copy to clipboard.' });
     }
   };

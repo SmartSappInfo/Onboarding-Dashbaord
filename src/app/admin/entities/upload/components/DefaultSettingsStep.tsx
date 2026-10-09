@@ -45,6 +45,8 @@ interface DefaultSettingsStepProps {
     automationsList: any[] | null | undefined;
     notificationConfig: NotificationConfig;
     setNotificationConfig: React.Dispatch<React.SetStateAction<NotificationConfig>>;
+    addTagsToDuplicates?: boolean;
+    setAddTagsToDuplicates?: (val: boolean) => void;
     onBack: () => void;
     onNext: () => void;
     stepperMarkup?: React.ReactNode;
@@ -68,6 +70,8 @@ export function DefaultSettingsStep({
     automationsList,
     notificationConfig,
     setNotificationConfig,
+    addTagsToDuplicates = true,
+    setAddTagsToDuplicates,
     onBack,
     onNext,
     stepperMarkup,
@@ -145,6 +149,18 @@ export function DefaultSettingsStep({
                                     <p className="text-xs text-muted-foreground">Clean formatting by converting ALL CAPS or all lowercase text values to Title Case.</p>
                                 </div>
                                 <Switch checked={enableTitleCase} onCheckedChange={setEnableTitleCase} />
+                            </div>
+                            <div className="border-t my-2 border-border/50" />
+                            <div className="flex items-center justify-between min-h-[44px]">
+                                <div>
+                                    <p className="font-semibold text-sm">Add Tags If Lead Already Exists (Duplicates)</p>
+                                    <p className="text-xs text-muted-foreground">Append the selected batch tags to matching existing leads, even when &apos;Skip Identical&apos; or other duplicate resolutions are selected.</p>
+                                </div>
+                                <Switch 
+                                    checked={addTagsToDuplicates} 
+                                    onCheckedChange={setAddTagsToDuplicates}
+                                    className="active:scale-[0.97] transition-transform" 
+                                />
                             </div>
                         </div>
                     </div>

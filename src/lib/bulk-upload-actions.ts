@@ -8,7 +8,8 @@ import { FieldValue } from 'firebase-admin/firestore';
 import type { DuplicateStrategy } from './import-types';
 import { IngestionDeduplicator } from './services/IngestionDeduplicator';
 import { after } from 'next/server';
-import type { EntityContact, Workspace } from './types';
+import type { EntityContact, Workspace, EntityNote } from './types';
+import { buildEntityNotePayload, isValidNoteText } from './import-export/note-import-helpers';
 import { normalizeContactType, enforceContactConstraints } from './entity-contact-helpers';
 import { resolveFieldStorageBucket } from './field-storage-utils';
 import { cleanBatch, cleanValueByKey, type CleaningStats } from './import-data-cleaner';
@@ -177,7 +178,9 @@ export async function ingestBatchAction(
         manualTagNames = [],
         enableTitleCase = false,
         dealConfig,
-        notificationConfig
+        notificationConfig,
+        noteConfig,
+        addTagsToDuplicates = true
     } = options;
 
     // 1. Workspace metadata (needed for data cleaning)
@@ -233,7 +236,9 @@ export async function ingestBatchAction(
             defaultCountryCode,
             enableTitleCase,
             dealConfig: dealConfig || null,
-            notificationConfig: notificationConfig || null
+            notificationConfig: notificationConfig || null,
+            noteConfig: noteConfig || null,
+            addTagsToDuplicates: addTagsToDuplicates !== false
         }
     });
 
@@ -353,6 +358,7 @@ export async function processImportChunkBackground(importLogId: string): Promise
         workspaceIndustry = 'SaaS',
         defaultCountryCode = undefined as string | undefined,
         enableTitleCase = false,
+        noteConfig = null,
     } = cfg;
 
     // Fetch resolution context once per chunk (zones, tags, users, etc.)
@@ -476,6 +482,7 @@ export async function processImportChunkBackground(importLogId: string): Promise
     const duplicateRowDocs: any[] = [];
     const pendingDealDocs: any[] = [];
     const pendingDealAudit: { entityId: string; dealId: string }[] = [];
+    const pendingNoteDocs: EntityNote[] = [];
 
     // Hoist the dynamic import above the loop to avoid repeating it per row (Risk 3)
     const { triggerAutomationProtocols, runAutomationById } = await import('./automation-processor');
@@ -601,6 +608,24 @@ export async function processImportChunkBackground(importLogId: string): Promise
                     }
                 }
 
+                // Build note document if configured (Append Note to Lead)
+                if (noteConfig?.columnHeader && isValidNoteText(rawPayload?.[noteConfig.columnHeader])) {
+                    const rawNoteText = String(rawPayload[noteConfig.columnHeader]);
+                    const noteId = adminDb.collection('entity_notes').doc().id;
+                    const notePayload = buildEntityNotePayload({
+                        noteId,
+                        entityId: extracted.entityId,
+                        workspaceId: importLog.workspaceId,
+                        content: rawNoteText,
+                        userId: importLog.userId,
+                        userName: uploaderUser?.name || 'System Import',
+                        noteType: noteConfig.noteType,
+                        isPinned: noteConfig.isPinned,
+                        prefix: noteConfig.prefix,
+                    });
+                    pendingNoteDocs.push(notePayload);
+                }
+
                 await triggerAutomationProtocols('ENTITY_CREATED', extracted.automationPayload);
                 if (automationId) await runAutomationById(automationId, extracted.automationPayload);
 
@@ -630,6 +655,11 @@ export async function processImportChunkBackground(importLogId: string): Promise
     // NEW — batched deal writes:
     for (const dealDoc of pendingDealDocs) {
         wb.set(adminDb.collection('deals').doc(dealDoc.id), dealDoc);
+    }
+
+    // NEW — batched note writes (Append Note to Lead):
+    for (const noteDoc of pendingNoteDocs) {
+        wb.set(adminDb.collection('entity_notes').doc(noteDoc.id), noteDoc);
     }
     
     // NEW — audit trail (Risk 13):
@@ -1345,6 +1375,7 @@ export async function resolveDuplicatesAction(
         workspaceIndustry = 'SaaS',
         defaultCountryCode = undefined as string | undefined,
         enableTitleCase = false,
+        addTagsToDuplicates = true,
     } = cfg;
 
     const resolutionTags = globalTagIds.length > 0 ? globalTagIds : cfgGlobalTagIds;
@@ -1441,7 +1472,7 @@ export async function resolveDuplicatesAction(
                         payload, mapping, name, importLog.entityType, context,
                         workspaceIndustry, importLog.workspaceId, importLog.organizationId,
                         importLog.userId, importLog.filename, autoCreateTags,
-                        defaultValues, tagIds || effectiveResolutionTags, automationId ?? undefined, manualTagNames,
+                        defaultValues, (tagIds && tagIds.length > 0) ? tagIds : effectiveResolutionTags, automationId ?? undefined, manualTagNames,
                         defaultCountryCode, enableTitleCase
                     );
 
@@ -1455,7 +1486,10 @@ export async function resolveDuplicatesAction(
 
                     manualCorrectionsCount++;
                 } else if (existingSnap.exists) {
-                    const finalTagsForReconciliation = tagIds || effectiveResolutionTags;
+                    // Respect user preference on whether to add tags to duplicates and avoid truthy [] bug:
+                    const finalTagsForReconciliation = (tagIds && tagIds.length > 0)
+                        ? tagIds
+                        : (addTagsToDuplicates ? effectiveResolutionTags : []);
 
                     if (strategy === 'SKIP') {
                         if (customExistingData) {

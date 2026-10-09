@@ -211,7 +211,7 @@ export async function generateBatchPersonalizedCreativesAction(
         );
 
         // Evaluate Creative Health
-        const health = evaluateCreativeHealth(
+        const _health = evaluateCreativeHealth(
           personalizedElements,
           sourceDocument.backgroundColor,
           sourceDocument.backgroundGradient

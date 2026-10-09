@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { DefaultValueRow } from './DefaultValueRow';
+import { AppendNoteCard } from './AppendNoteCard';
+import type { NoteImportConfig } from '@/lib/import-types';
 
 interface MappingStepProps {
     terms: { singular: string; plural: string };
@@ -30,6 +32,8 @@ interface MappingStepProps {
     packagesList: any[] | null | undefined;
     modulesList: any[] | null | undefined;
     workspaceStatuses: any[];
+    noteConfig?: NoteImportConfig | null;
+    setNoteConfig?: React.Dispatch<React.SetStateAction<NoteImportConfig | null>>;
     onBack: () => void;
     onNext: () => void;
     stepperMarkup?: React.ReactNode;
@@ -55,6 +59,8 @@ export function MappingStep({
     packagesList,
     modulesList,
     workspaceStatuses,
+    noteConfig = null,
+    setNoteConfig,
     onBack,
     onNext,
     stepperMarkup,
@@ -515,6 +521,20 @@ export function MappingStep({
                                 </AnimatePresence>
                             </div>
                         )}
+                    </div>
+
+                    {/* Append Note to Lead Card */}
+                    <div className="pt-6 border-t border-border/50">
+                        <AppendNoteCard
+                            headers={headers}
+                            rawData={rawData}
+                            noteConfig={noteConfig}
+                            onNoteConfigChange={(cfg) => {
+                                if (setNoteConfig) {
+                                    setNoteConfig(cfg);
+                                }
+                            }}
+                        />
                     </div>
 
                     {/* Mapping summary */}

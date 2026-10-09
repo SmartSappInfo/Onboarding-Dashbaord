@@ -18,8 +18,8 @@ import { useTerminology } from '@/hooks/use-terminology';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { ingestBatchAction } from '@/lib/bulk-upload-actions';
 import { cn } from '@/lib/utils';
-import type { DealImportConfig, NotificationConfig } from '@/lib/import-types';
-import { autoMapSpreadsheetHeaders, detectContactSlotCount } from '@/lib/import-export';
+import type { DealImportConfig, NotificationConfig, NoteImportConfig } from '@/lib/import-types';
+import { autoMapSpreadsheetHeaders, detectContactSlotCount, detectNoteColumn } from '@/lib/import-export';
 
 // Step sub-components
 import { UploadStep } from './components/UploadStep';
@@ -205,6 +205,8 @@ export default function BulkUploadClient() {
         sendEmailNotification: true,
         sendSmsNotification: false,
     });
+    const [noteConfig, setNoteConfig] = React.useState<NoteImportConfig | null>(null);
+    const [addTagsToDuplicates, setAddTagsToDuplicates] = React.useState<boolean>(true);
     const [lastImportLogId, setLastImportLogId] = React.useState<string | null>(null);
     const [editingRowIdx, setEditingRowIdx] = React.useState<number | null>(null);
     const [executionResults, setExecutionResults] = React.useState<{ row: number; status: 'success' | 'error'; entityName?: string; error?: string }[]>([]);
@@ -304,6 +306,19 @@ export default function BulkUploadClient() {
         );
 
         setMapping(newMapping);
+
+        // Auto-detect note column (e.g. "Personal Notes", "Remarks", "Comments")
+        const detectedNoteCol = detectNoteColumn(fileHeaders);
+        if (detectedNoteCol) {
+            setNoteConfig({
+                columnHeader: detectedNoteCol,
+                noteType: 'general',
+                isPinned: false,
+                prefix: '',
+            });
+        } else {
+            setNoteConfig(null);
+        }
     }, [contactSlotCount, TARGET_FIELDS, contactScope, terms.singular]);
 
     const handleFileProcessed = (pFileName: string, pHeaders: string[], pData: any[]) => {
@@ -360,7 +375,9 @@ export default function BulkUploadClient() {
                 manualTagNames: [],
                 enableTitleCase,
                 dealConfig: createDealForImport ? dealImportConfig : undefined,
-                notificationConfig
+                notificationConfig,
+                noteConfig: noteConfig || undefined,
+                addTagsToDuplicates
             });
 
             setLastImportLogId(result.importLogId);
@@ -482,6 +499,8 @@ export default function BulkUploadClient() {
                             packagesList={packagesList}
                             modulesList={modulesList}
                             workspaceStatuses={workspaceStatuses}
+                            noteConfig={noteConfig}
+                            setNoteConfig={setNoteConfig}
                             onBack={() => setCurrentStep('UPLOAD')}
                             onNext={() => setCurrentStep('SETTINGS')}
                             stepperMarkup={stepperMarkup}
@@ -510,6 +529,8 @@ export default function BulkUploadClient() {
                             automationsList={automationsList}
                             notificationConfig={notificationConfig}
                             setNotificationConfig={setNotificationConfig}
+                            addTagsToDuplicates={addTagsToDuplicates}
+                            setAddTagsToDuplicates={setAddTagsToDuplicates}
                             onBack={() => setCurrentStep('MAPPING')}
                             onNext={() => setCurrentStep('PREVIEW')}
                             stepperMarkup={stepperMarkup}

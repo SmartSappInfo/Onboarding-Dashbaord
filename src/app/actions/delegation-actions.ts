@@ -19,7 +19,7 @@
  * Strict Typing Policy: Zero `any` or `any[]`.
  */
 
-import { z, ZodError } from 'zod';
+import { ZodError } from 'zod';
 import { requireAuth, type AuthContext } from '@/lib/auth/require-auth';
 import {
   checkGovernanceDeadManSwitch,

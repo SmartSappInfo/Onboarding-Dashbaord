@@ -54,7 +54,7 @@ export default function SystemCrmFieldMappingMatrix() {
       if (res.success && res.templates) {
         setTemplates(res.templates);
       }
-    } catch (_err) {
+    } catch {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -115,7 +115,7 @@ export default function SystemCrmFieldMappingMatrix() {
           description: res.error || 'Failed to save templates',
         });
       }
-    } catch (_err) {
+    } catch {
       toast({
         variant: 'destructive',
         title: 'Error',
