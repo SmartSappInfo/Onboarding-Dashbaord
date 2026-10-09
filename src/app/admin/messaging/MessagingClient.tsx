@@ -13,6 +13,8 @@
 
 import * as React from 'react';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { AlertCircle, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { getMessagingDashboardSummaryAction } from '@/app/actions/messaging-dashboard-actions';
 import type {
@@ -31,13 +33,13 @@ import { RecentCampaignsCard } from './components/dashboard/RecentCampaignsCard'
 import { QuickMessageComposerCard } from './components/dashboard/QuickMessageComposerCard';
 import { QuickTemplatesCard } from './components/dashboard/QuickTemplatesCard';
 import { ActiveQueuesCard } from './components/dashboard/ActiveQueuesCard';
-import { MessagingFooterHighlights } from './components/dashboard/MessagingFooterHighlights';
 import { MobileBottomNav } from './components/dashboard/MobileBottomNav';
 
 export default function MessagingClient() {
-  const { activeOrganizationId, activeWorkspaceId } = useWorkspace();
+  const { activeOrganizationId, activeWorkspaceId, isLoading: isTenantLoading } = useWorkspace();
   const [summary, setSummary] = React.useState<MessagingDashboardSummary | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [isAiModalOpen, setIsAiModalOpen] = React.useState(false);
   const [isAllFeaturesOpen, setIsAllFeaturesOpen] = React.useState(false);
   const [selectedTemplate, setSelectedTemplate] = React.useState<{
@@ -49,11 +51,16 @@ export default function MessagingClient() {
 
   const loadSummary = React.useCallback(
     async (forceRefresh = false, range: MessagingDashboardTimeRange = timeRange) => {
+      // If tenant context is still initializing, don't set loading to false prematurely
+      if (isTenantLoading) {
+        return;
+      }
       if (!activeOrganizationId || !activeWorkspaceId) {
         setIsLoading(false);
         return;
       }
       setIsLoading(true);
+      setErrorMessage(null);
       try {
         const res = await getMessagingDashboardSummaryAction({
           organizationId: activeOrganizationId,
@@ -63,14 +70,20 @@ export default function MessagingClient() {
         });
         if (res.success) {
           setSummary(res.data);
+          setErrorMessage(null);
+        } else {
+          console.error('[MessagingClient] Failed to load dashboard summary:', res.error);
+          setErrorMessage(res.error || 'Failed to load messaging statistics.');
         }
       } catch (err) {
-        console.error('Failed to load messaging dashboard summary:', err);
+        const msg = err instanceof Error ? err.message : 'Failed to load messaging statistics.';
+        console.error('[MessagingClient] Exception loading messaging dashboard summary:', err);
+        setErrorMessage(msg);
       } finally {
         setIsLoading(false);
       }
     },
-    [activeOrganizationId, activeWorkspaceId, timeRange]
+    [activeOrganizationId, activeWorkspaceId, isTenantLoading, timeRange]
   );
 
   React.useEffect(() => {
@@ -84,6 +97,28 @@ export default function MessagingClient() {
         onOpenAiPrompt={() => setIsAiModalOpen(true)}
         promptStarters={summary?.settings?.aiPromptStarters}
       />
+
+      {/* Actionable Error State with Retry Button */}
+      {errorMessage && !summary && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-destructive/30 bg-destructive/10 text-destructive text-sm">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-5 h-5 shrink-0 text-destructive" />
+            <div>
+              <p className="font-semibold text-foreground">Unable to load messaging statistics</p>
+              <p className="text-xs text-muted-foreground">{errorMessage}</p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => loadSummary(true)}
+            className="self-start sm:self-center border-border/80 hover:bg-background/80 active:scale-[0.97] min-h-[44px] sm:min-h-[36px] rounded-xl text-foreground"
+          >
+            <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+            Retry
+          </Button>
+        </div>
+      )}
 
       {/* 2. Top KPI Metrics Grid (4 Stat Cards) */}
       <MessagingKpiGrid
@@ -143,9 +178,6 @@ export default function MessagingClient() {
           <ActiveQueuesCard stats={summary?.activeQueues} isLoading={isLoading} />
         </div>
       </div>
-
-      {/* 4. Footer Value Pillars */}
-      <MessagingFooterHighlights />
 
       {/* 5. Modals & Drawers */}
       <MessagingAiPromptModal

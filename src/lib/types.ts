@@ -4790,7 +4790,7 @@ export interface Task {
   notes?: TaskNote[];
   reminders: TaskReminder[];
   reminderSent: boolean;
-  relatedEntityType?: 'SurveyResponse' | 'Submission' | 'Meeting' | 'School' | 'Deal' | null;
+  relatedEntityType?: 'SurveyResponse' | 'Submission' | 'Meeting' | 'School' | 'Deal' | 'Contract' | null;
   relatedParentId?: string | null; // e.g. Survey ID or PDF ID
   relatedEntityId?: string | null; // e.g. Response ID
   dealId?: string | null;

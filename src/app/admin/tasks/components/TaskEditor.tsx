@@ -113,7 +113,7 @@ const taskSchema = z.object({
         type: z.string(),
         createdAt: z.string()
     })).default([]),
-    relatedEntityType: z.enum(['SurveyResponse', 'Submission', 'Meeting', 'School', 'Deal']).optional().nullable(),
+    relatedEntityType: z.enum(['SurveyResponse', 'Submission', 'Meeting', 'School', 'Deal', 'Contract']).optional().nullable(),
     relatedParentId: z.string().optional().nullable(),
     relatedEntityId: z.string().optional().nullable(),
     tagIds: z.array(z.string()).default([]),
@@ -148,7 +148,7 @@ export type TaskSavePayload = {
         type: string;
         createdAt: string;
     }>;
-    relatedEntityType?: 'SurveyResponse' | 'Submission' | 'Meeting' | 'School' | 'Deal' | null;
+    relatedEntityType?: 'SurveyResponse' | 'Submission' | 'Meeting' | 'School' | 'Deal' | 'Contract' | null;
     relatedParentId?: string | null;
     relatedEntityId?: string | null;
     tagIds?: string[];

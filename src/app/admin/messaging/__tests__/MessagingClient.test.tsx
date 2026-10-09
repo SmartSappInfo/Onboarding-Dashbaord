@@ -1,5 +1,5 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import MessagingClient from '../MessagingClient';
 
 vi.mock('next/navigation', () => ({
@@ -55,7 +55,13 @@ vi.mock('@/app/actions/messaging-dashboard-actions', () => ({
   }),
 }));
 
+import { getMessagingDashboardSummaryAction } from '@/app/actions/messaging-dashboard-actions';
+
 describe('MessagingClient Master Orchestrator', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('renders all sections and loads summary from server action', async () => {
     render(<MessagingClient />);
     await waitFor(() => {
@@ -86,4 +92,23 @@ describe('MessagingClient Master Orchestrator', () => {
     const textarea = screen.getByPlaceholderText(/Type your message/i) as HTMLTextAreaElement;
     expect(textarea.value).toContain('Welcome to our community');
   });
+
+  it('displays actionable error banner with retry button on failure', async () => {
+    vi.mocked(getMessagingDashboardSummaryAction).mockResolvedValueOnce({
+      success: false,
+      error: 'Network timeout connecting to provider.',
+    });
+
+    render(<MessagingClient />);
+    await waitFor(() => {
+      expect(screen.getByText('Unable to load messaging statistics')).toBeInTheDocument();
+      expect(screen.getByText('Network timeout connecting to provider.')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Retry/i })).toBeInTheDocument();
+    });
+
+    // Clicking retry triggers a reload
+    fireEvent.click(screen.getByRole('button', { name: /Retry/i }));
+    expect(getMessagingDashboardSummaryAction).toHaveBeenCalledTimes(2);
+  });
 });
+
