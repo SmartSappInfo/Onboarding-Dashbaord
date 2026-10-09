@@ -9,8 +9,29 @@ import { TaskAssignee } from './primitives/TaskAssignee';
 import { TaskDueDate } from './primitives/TaskDueDate';
 import { TaskRelationshipBadge } from './primitives/TaskRelationshipBadge';
 import { TaskSourceBadge } from './primitives/TaskSourceBadge';
-import { CheckCircle2, Loader2, MessageSquare, Paperclip } from 'lucide-react';
+import { 
+    CheckCircle2, 
+    Loader2, 
+    MessageSquare, 
+    Paperclip, 
+    MoreVertical, 
+    Pencil, 
+    Trash2, 
+    Clock 
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuSub,
+    DropdownMenuSubTrigger,
+    DropdownMenuSubContent,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export interface TaskListRowProps {
     task: Task;
@@ -23,6 +44,9 @@ export interface TaskListRowProps {
     onClick?: (task: Task) => void;
     onToggleComplete?: (task: Task) => void | Promise<void>;
     onStatusChange?: (taskId: string, newStatus: TaskStatus) => void;
+    onEdit?: (task: Task) => void;
+    onDelete?: (task: Task) => void;
+    onPostpone?: (task: Task, days: number) => void;
     className?: string;
 }
 
@@ -45,6 +69,9 @@ export function TaskListRow({
     onClick,
     onToggleComplete,
     onStatusChange,
+    onEdit,
+    onDelete,
+    onPostpone,
     className,
 }: TaskListRowProps) {
     const isDone = task.status === 'done';
@@ -193,6 +220,60 @@ export function TaskListRow({
                 <TaskDueDate dueDate={task.dueDate} isDone={isDone} />
                 <TaskAssignee assignees={assignees} size="sm" />
             </div>
+
+            {/* Optional Row Action Menu */}
+            {(onEdit || onDelete || onPostpone) && (
+                <div className="flex items-center shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenu modal={false}>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled={isPending}
+                                aria-label="Task options"
+                                className="h-8 w-8 rounded-lg opacity-40 hover:opacity-100 focus:opacity-100 transition-opacity"
+                            >
+                                <MoreVertical className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-52 rounded-xl p-1.5 border border-border bg-card text-foreground shadow-2xl">
+                            <DropdownMenuLabel className="text-[10px] font-bold text-muted-foreground px-2.5 py-1.5">Task Actions</DropdownMenuLabel>
+                            {onEdit && (
+                                <DropdownMenuItem onClick={() => onEdit(task)} className="rounded-lg p-2 gap-2.5 cursor-pointer">
+                                    <Pencil className="h-4 w-4 text-primary" /> <span className="font-semibold text-xs">Edit Task</span>
+                                </DropdownMenuItem>
+                            )}
+                            {onPostpone && (
+                                <DropdownMenuSub>
+                                    <DropdownMenuSubTrigger className="rounded-lg p-2 gap-2.5 cursor-pointer">
+                                        <Clock className="h-4 w-4 text-primary" />
+                                        <span className="font-semibold text-xs">Postpone</span>
+                                    </DropdownMenuSubTrigger>
+                                    <DropdownMenuSubContent className="bg-card border border-border rounded-xl p-1 w-44 shadow-2xl text-foreground">
+                                        <DropdownMenuItem onClick={() => onPostpone(task, 1)} className="rounded-lg p-2 text-xs font-semibold cursor-pointer">
+                                            Postpone 1 Day
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => onPostpone(task, 3)} className="rounded-lg p-2 text-xs font-semibold cursor-pointer">
+                                            Postpone 3 Days
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => onPostpone(task, 7)} className="rounded-lg p-2 text-xs font-semibold cursor-pointer">
+                                            Postpone 1 Week
+                                        </DropdownMenuItem>
+                                    </DropdownMenuSubContent>
+                                </DropdownMenuSub>
+                            )}
+                            {onDelete && (
+                                <>
+                                    <DropdownMenuSeparator className="bg-border/60" />
+                                    <DropdownMenuItem onClick={() => onDelete(task)} className="text-destructive rounded-lg p-2 gap-2.5 focus:bg-destructive/10 focus:text-destructive cursor-pointer">
+                                        <Trash2 className="h-4 w-4" /> <span className="font-semibold text-xs">Delete Task</span>
+                                    </DropdownMenuItem>
+                                </>
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+            )}
         </div>
     );
 }

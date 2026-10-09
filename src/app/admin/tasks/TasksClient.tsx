@@ -6,36 +6,29 @@ import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebas
 import type { Task, UserProfile, TaskPriority, TaskCategory, TaskStatus, Tag } from '@/lib/types';
 import { useEntityResolver } from '@/context/EntityCacheContext';
 import { format, isToday, isPast, differenceInCalendarDays, addDays, startOfWeek, endOfWeek, endOfMonth, addMonths, addWeeks, startOfDay, endOfDay } from 'date-fns';
-import { safeParseDate, formatTaskDueDate } from '@/lib/utils/date-utils';
+import { safeParseDate } from '@/lib/utils/date-utils';
 import { Separator } from '@/components/ui/separator';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { 
     CheckCircle2, 
-    Circle, 
     Clock, 
-    AlertTriangle, 
     ShieldAlert, 
-    MoreVertical,
-    Trash2,
-    Calendar,
-    Search,
-    Pencil,
-    X,
-    CheckSquare,
-    ListChecks,
-    Zap,
-    Layers,
-    User as UserIcon,
-    MessageSquare,
-    Paperclip,
-    EyeOff,
-    ChevronDown,
-    ChevronLeft,
-    ChevronRight,
-    Target,
-    LayoutList,
-    Filter,
-    ArrowLeft,
+    Calendar, 
+    Search, 
+    X, 
+    CheckSquare, 
+    ListChecks, 
+    Zap, 
+    Layers, 
+    User as UserIcon, 
+    EyeOff, 
+    ChevronDown, 
+    ChevronLeft, 
+    ChevronRight, 
+    Target, 
+    LayoutList, 
+    Filter, 
+    ArrowLeft, 
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -49,7 +42,6 @@ import {
     SheetTitle,
     SheetDescription,
 } from '@/components/ui/sheet';
-import { Checkbox } from '@/components/ui/checkbox';
 import { 
     updateTaskAction, 
     deleteTaskAction, 
@@ -58,10 +50,9 @@ import {
 } from '@/lib/task-server-actions';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useWorkspaceVisibility } from '@/hooks/use-workspace-visibility';
-import { cn, toTitleCase } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
     DropdownMenu,
@@ -73,31 +64,24 @@ import {
     DropdownMenuSub,
     DropdownMenuSubTrigger,
     DropdownMenuSubContent,
-    DropdownMenuCheckboxItem,
 } from '@/components/ui/dropdown-menu';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from '@/components/ui/tooltip';
 import TaskEditor from './components/TaskEditor';
 import TaskBoard from './components/TaskBoard';
 import TaskCalendar from './components/TaskCalendar';
-import { getProgressValue } from './components/task-utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { TaskListRow } from './components/TaskListRow';
+import { TaskEmptyState } from './components/primitives/TaskEmptyState';
+import { TaskErrorState } from './components/primitives/TaskErrorState';
+import { TaskSkeleton } from './components/primitives/TaskSkeleton';
+import { ConfirmDialog } from './components/primitives/ConfirmDialog';
+import { 
+    BulkActionReviewDialog, 
+    type BulkActionType, 
+    type BulkTaskFailure, 
+    type BulkActionSnapshot 
+} from './components/BulkActionReviewDialog';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
-import { EntityAvatar } from '../components/EntityAvatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
 import { useTenant } from '@/context/TenantContext';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { getErrorMessage } from '@/lib/errors/report-error';
@@ -108,13 +92,6 @@ import type { ClientCapabilityError } from '@/platform/capabilities/ui/types';
 import type { TaskCreateInput, TaskCreateOutput } from '@/platform/domains/tasks_productivity/contracts/task-create.contract';
 import type { TaskCompleteInput, TaskCompleteOutput } from '@/platform/domains/tasks_productivity/contracts/task-complete.contract';
 import type { TaskUpdateInput, TaskUpdateOutput } from '@/platform/domains/tasks_productivity/contracts/task-update.contract';
-
-const PRIORITY_CONFIG: Record<TaskPriority, { label: string, color: string, icon: React.ComponentType<{ className?: string }> }> = {
-    urgent: { label: 'Urgent', color: 'text-rose-600 bg-rose-500/10 border-rose-200/20', icon: ShieldAlert },
-    high: { label: 'High', color: 'text-orange-600 bg-orange-500/10 border-orange-200/20', icon: AlertTriangle },
-    medium: { label: 'Medium', color: 'text-blue-600 bg-blue-500/10 border-blue-200/20', icon: Clock },
-    low: { label: 'Low', color: 'text-slate-500 bg-muted/100/10 border-slate-200/20', icon: Circle }
-};
 
 const STATUS_LABELS: Record<TaskStatus, string> = {
     todo: 'To Do',
@@ -299,8 +276,17 @@ export default function TasksClient() {
     // Confirmation State
     const [taskToComplete, setTaskToComplete] = React.useState<Task | null>(null);
     const [taskToDelete, setTaskToDelete] = React.useState<Task | null>(null);
-    const [isBulkDeleteOpen, setIsBulkDeleteOpen] = React.useState(false);
-    const [isBulkResolveOpen, setIsBulkResolveOpen] = React.useState(false);
+    const [pendingTaskIds, setPendingTaskIds] = React.useState<Set<string>>(new Set());
+    const [bulkReviewState, setBulkReviewState] = React.useState<{
+        isOpen: boolean;
+        actionType: BulkActionType;
+        targetValue?: string;
+        targetLabel?: string;
+        failedTasks?: BulkTaskFailure[];
+    }>({
+        isOpen: false,
+        actionType: 'status',
+    });
 
     const [expandedSections, setExpandedSections] = React.useState<Record<string, boolean>>({
         overdue: true,
@@ -345,9 +331,15 @@ export default function TasksClient() {
 
     const { entitiesById, resolveIds } = useEntityResolver();
 
-    const { data: allTasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
+    const { data: allTasks, isLoading: isLoadingTasks, error: tasksError } = useCollection<Task>(tasksQuery);
     const { data: users } = useCollection<UserProfile>(usersQuery);
     const { data: workspaceTags } = useCollection<Tag>(tagsQuery);
+
+    const selectedTasksSnapshot = React.useMemo(() => {
+        return (allTasks || [])
+            .filter(t => selectedIds.includes(t.id))
+            .map(t => ({ id: t.id, title: t.title }));
+    }, [allTasks, selectedIds]);
 
     // Resolve only the entities referenced by the loaded tasks (logo lookup),
     // instead of streaming the full workspace_entities set.
@@ -627,8 +619,45 @@ export default function TasksClient() {
         return count;
     }, [taskScope, statusFilter, priorityFilter, selectedTagId, dateFilterType]);
 
-    const handleUpdateAssignee = async (task: Task, userId: string) => {
+    const handleClearFilters = () => {
+        setStatusFilter('all');
+        setPriorityFilter('all');
+        setSelectedTagId('all');
+        setSearchTerm('');
+        setDateFilterType('all');
+        setTaskScope('all');
+    };
+
+    const handleQuickComplete = async (task: Task) => {
         if (!currentUser) return;
+        setPendingTaskIds(prev => new Set(prev).add(task.id));
+        const newStatus: TaskStatus = task.status === 'done' ? 'todo' : 'done';
+        try {
+            const res = await updateTaskAction(task.id, { ...task, status: newStatus });
+            if (res.success) {
+                toast({ title: newStatus === 'done' ? 'Task Completed' : 'Task Reopened' });
+            } else {
+                toast({ 
+                    variant: 'destructive', 
+                    title: 'Update Failed', 
+                    description: res.error || 'Failed to update task status.',
+                    actionConfig: { path: '/admin/settings/permissions', label: 'Check Permissions' }
+                });
+            }
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) || 'Failed to update task' });
+        } finally {
+            setPendingTaskIds(prev => {
+                const next = new Set(prev);
+                next.delete(task.id);
+                return next;
+            });
+        }
+    };
+
+    const _handleUpdateAssignee = async (task: Task, userId: string) => {
+        if (!currentUser) return;
+        setPendingTaskIds(prev => new Set(prev).add(task.id));
         try {
             const currentAssignees = Array.isArray(task.assignedTo) ? task.assignedTo : (task.assignedTo ? [task.assignedTo] : []);
             const nextAssignees = currentAssignees.includes(userId)
@@ -643,11 +672,18 @@ export default function TasksClient() {
             }
         } catch (e: unknown) {
             toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) || 'Failed to update assignee' });
+        } finally {
+            setPendingTaskIds(prev => {
+                const next = new Set(prev);
+                next.delete(task.id);
+                return next;
+            });
         }
     };
 
     const handleUpdateStatus = async (task: Task, newStatus: TaskStatus) => {
         if (!currentUser) return;
+        setPendingTaskIds(prev => new Set(prev).add(task.id));
         try {
             const res = await updateTaskAction(task.id, { ...task, status: newStatus });
             if (res.success) {
@@ -657,11 +693,18 @@ export default function TasksClient() {
             }
         } catch (e: unknown) {
             toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) || 'Failed to update status' });
+        } finally {
+            setPendingTaskIds(prev => {
+                const next = new Set(prev);
+                next.delete(task.id);
+                return next;
+            });
         }
     };
 
     const handlePostponeTask = async (task: Task, days: number) => {
         if (!currentUser) return;
+        setPendingTaskIds(prev => new Set(prev).add(task.id));
         try {
             const currentDueDate = safeParseDate(task.dueDate) || new Date();
             const newDueDate = addDays(currentDueDate, days).toISOString();
@@ -673,6 +716,12 @@ export default function TasksClient() {
             }
         } catch (e: unknown) {
             toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) || 'Failed to postpone task' });
+        } finally {
+            setPendingTaskIds(prev => {
+                const next = new Set(prev);
+                next.delete(task.id);
+                return next;
+            });
         }
     };
 
@@ -773,6 +822,7 @@ export default function TasksClient() {
         
         const isDone = taskToComplete.status === 'done';
         setCapabilityError(null);
+        setPendingTaskIds(prev => new Set(prev).add(taskToComplete.id));
         
         try {
             if (!isDone) {
@@ -799,12 +849,19 @@ export default function TasksClient() {
             }
         } catch (e: unknown) {
             toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
+        } finally {
+            setPendingTaskIds(prev => {
+                const next = new Set(prev);
+                next.delete(taskToComplete.id);
+                return next;
+            });
+            setTaskToComplete(null);
         }
-        setTaskToComplete(null);
     };
 
     const handleDelete = async (task: Task) => {
         if (!currentUser) return;
+        setPendingTaskIds(prev => new Set(prev).add(task.id));
         try {
             const res = await deleteTaskAction(task.id);
             if (res.success) {
@@ -814,119 +871,164 @@ export default function TasksClient() {
             }
         } catch (e: unknown) {
             toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
+        } finally {
+            setPendingTaskIds(prev => {
+                const next = new Set(prev);
+                next.delete(task.id);
+                return next;
+            });
+            setTaskToDelete(null);
         }
-        setTaskToDelete(null);
     };
 
-    const handleBulkComplete = async () => {
+    const handleBulkComplete = () => {
         if (!currentUser || selectedIds.length === 0) return;
+        setBulkReviewState({
+            isOpen: true,
+            actionType: 'status',
+            targetValue: 'done',
+            targetLabel: 'Resolved',
+            failedTasks: undefined,
+        });
+    };
+
+    const handleBulkDelete = () => {
+        if (!currentUser || selectedIds.length === 0) return;
+        setBulkReviewState({
+            isOpen: true,
+            actionType: 'delete',
+            failedTasks: undefined,
+        });
+    };
+
+    const handleBulkAssign = (userId: string) => {
+        if (!currentUser || selectedIds.length === 0) return;
+        const userObj = workspaceUsers?.find(u => u.id === userId);
+        setBulkReviewState({
+            isOpen: true,
+            actionType: 'assign',
+            targetValue: userId,
+            targetLabel: userObj?.name || 'Assignee',
+            failedTasks: undefined,
+        });
+    };
+
+    const handleBulkChangeStatus = (status: TaskStatus) => {
+        if (!currentUser || selectedIds.length === 0) return;
+        setBulkReviewState({
+            isOpen: true,
+            actionType: 'status',
+            targetValue: status,
+            targetLabel: STATUS_LABELS[status],
+            failedTasks: undefined,
+        });
+    };
+
+    const handleBulkConfirm = async (snapshot: BulkActionSnapshot) => {
+        if (!currentUser || snapshot.taskIds.length === 0) return;
         setIsBulkProcessing(true);
+        setBulkReviewState(prev => ({ ...prev, failedTasks: undefined }));
+
         try {
-            const res = await bulkUpdateTasksAction(selectedIds, { status: 'done' }, activeWorkspaceId);
-            if (res.success) {
-                toast({ title: 'Bulk Completion Success', description: `${selectedIds.length} tasks resolved.` });
-                setSelectedIds([]);
-                setIsSelectionMode(false);
-            } else {
-                toast({
-                    variant: 'destructive',
-                    title: 'Bulk Action Failed',
-                    description: res.error || 'Failed to resolve tasks.',
-                    actionConfig: {
-                        path: '/admin/settings/permissions',
-                        label: 'Check Permissions',
-                    },
-                });
+            if (snapshot.actionType === 'delete') {
+                const res = await bulkDeleteTasksAction(snapshot.taskIds, activeWorkspaceId);
+                if (res.success) {
+                    toast({ title: 'Bulk Delete Success', description: `${snapshot.taskIds.length} tasks permanently deleted.` });
+                    setSelectedIds([]);
+                    setIsSelectionMode(false);
+                    setBulkReviewState(prev => ({ ...prev, isOpen: false }));
+                } else {
+                    const failed: BulkTaskFailure[] = snapshot.taskIds.map(id => {
+                        const t = (allTasks || []).find(task => task.id === id);
+                        return {
+                            id,
+                            title: t?.title || `Task ${id.slice(0, 8)}...`,
+                            error: res.error || 'Failed to delete task.',
+                        };
+                    });
+                    setBulkReviewState(prev => ({ ...prev, failedTasks: failed }));
+                    toast({
+                        variant: 'destructive',
+                        title: 'Bulk Action Failed',
+                        description: res.error || 'Failed to delete tasks.',
+                        actionConfig: {
+                            path: '/admin/settings/permissions',
+                            label: 'Check Permissions',
+                        },
+                    });
+                }
+            } else if (snapshot.actionType === 'status') {
+                const targetStatus = (snapshot.targetValue || 'done') as TaskStatus;
+                const res = await bulkUpdateTasksAction(snapshot.taskIds, { status: targetStatus }, activeWorkspaceId);
+                if (res.success) {
+                    toast({ title: 'Bulk Status Update Success', description: `${snapshot.taskIds.length} tasks updated to ${STATUS_LABELS[targetStatus]}.` });
+                    setSelectedIds([]);
+                    setIsSelectionMode(false);
+                    setBulkReviewState(prev => ({ ...prev, isOpen: false }));
+                } else {
+                    const failed: BulkTaskFailure[] = snapshot.taskIds.map(id => {
+                        const t = (allTasks || []).find(task => task.id === id);
+                        return {
+                            id,
+                            title: t?.title || `Task ${id.slice(0, 8)}...`,
+                            error: res.error || 'Failed to update task status.',
+                        };
+                    });
+                    setBulkReviewState(prev => ({ ...prev, failedTasks: failed }));
+                    toast({
+                        variant: 'destructive',
+                        title: 'Bulk Action Failed',
+                        description: res.error || 'Failed to update task status.',
+                        actionConfig: {
+                            path: '/admin/settings/permissions',
+                            label: 'Check Permissions',
+                        },
+                    });
+                }
+            } else if (snapshot.actionType === 'assign') {
+                const userId = snapshot.targetValue || '';
+                const userObj = workspaceUsers?.find(u => u.id === userId);
+                const res = await bulkUpdateTasksAction(snapshot.taskIds, { assignedTo: userId ? [userId] : [] }, activeWorkspaceId);
+                if (res.success) {
+                    toast({ title: 'Bulk Assignment Success', description: `${snapshot.taskIds.length} tasks assigned to ${userObj?.name || 'user'}.` });
+                    setSelectedIds([]);
+                    setIsSelectionMode(false);
+                    setBulkReviewState(prev => ({ ...prev, isOpen: false }));
+                } else {
+                    const failed: BulkTaskFailure[] = snapshot.taskIds.map(id => {
+                        const t = (allTasks || []).find(task => task.id === id);
+                        return {
+                            id,
+                            title: t?.title || `Task ${id.slice(0, 8)}...`,
+                            error: res.error || 'Failed to assign tasks.',
+                        };
+                    });
+                    setBulkReviewState(prev => ({ ...prev, failedTasks: failed }));
+                    toast({
+                        variant: 'destructive',
+                        title: 'Bulk Assignment Failed',
+                        description: res.error || 'Failed to assign tasks.',
+                        actionConfig: {
+                            path: '/admin/settings/permissions',
+                            label: 'Check Permissions',
+                        },
+                    });
+                }
             }
         } catch (e: unknown) {
             toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
         } finally {
             setIsBulkProcessing(false);
-            setIsBulkResolveOpen(false);
         }
     };
 
-    const handleBulkDelete = async () => {
-        if (!currentUser || selectedIds.length === 0) return;
-        setIsBulkProcessing(true);
-        try {
-            const res = await bulkDeleteTasksAction(selectedIds, activeWorkspaceId);
-            if (res.success) {
-                toast({ title: 'Bulk Delete Success', description: `${selectedIds.length} tasks permanently deleted.` });
-                setSelectedIds([]);
-                setIsSelectionMode(false);
-            } else {
-                toast({
-                    variant: 'destructive',
-                    title: 'Bulk Action Failed',
-                    description: res.error || 'Failed to delete tasks.',
-                    actionConfig: {
-                        path: '/admin/settings/permissions',
-                        label: 'Check Permissions',
-                    },
-                });
-            }
-        } catch (e: unknown) {
-            toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
-        } finally {
-            setIsBulkProcessing(false);
-            setIsBulkDeleteOpen(false);
-        }
-    };
-
-    const handleBulkAssign = async (userId: string) => {
-        if (!currentUser || selectedIds.length === 0) return;
-        setIsBulkProcessing(true);
-        try {
-            const userObj = workspaceUsers?.find(u => u.id === userId);
-            const res = await bulkUpdateTasksAction(selectedIds, { assignedTo: [userId] }, activeWorkspaceId);
-            if (res.success) {
-                toast({ title: 'Bulk Assignment Success', description: `${selectedIds.length} tasks assigned to ${userObj?.name || 'user'}.` });
-                setSelectedIds([]);
-                setIsSelectionMode(false);
-            } else {
-                toast({
-                    variant: 'destructive',
-                    title: 'Bulk Assignment Failed',
-                    description: res.error || 'Failed to assign tasks.',
-                    actionConfig: {
-                        path: '/admin/settings/permissions',
-                        label: 'Check Permissions',
-                    },
-                });
-            }
-        } catch (e: unknown) {
-            toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
-        } finally {
-            setIsBulkProcessing(false);
-        }
-    };
-
-    const handleBulkChangeStatus = async (status: TaskStatus) => {
-        if (!currentUser || selectedIds.length === 0) return;
-        setIsBulkProcessing(true);
-        try {
-            const res = await bulkUpdateTasksAction(selectedIds, { status }, activeWorkspaceId);
-            if (res.success) {
-                toast({ title: 'Bulk Status Update Success', description: `${selectedIds.length} tasks updated to ${STATUS_LABELS[status]}.` });
-                setSelectedIds([]);
-                setIsSelectionMode(false);
-            } else {
-                toast({
-                    variant: 'destructive',
-                    title: 'Bulk Status Update Failed',
-                    description: res.error || 'Failed to update task status.',
-                    actionConfig: {
-                        path: '/admin/settings/permissions',
-                        label: 'Check Permissions',
-                    },
-                });
-            }
-        } catch (e: unknown) {
-            toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
-        } finally {
-            setIsBulkProcessing(false);
-        }
+    const handleRetryFailedBulkTasks = async (failedIds: string[]) => {
+        await handleBulkConfirm({
+            actionType: bulkReviewState.actionType,
+            taskIds: failedIds,
+            targetValue: bulkReviewState.targetValue,
+            targetLabel: bulkReviewState.targetLabel,
+        });
     };
 
     const handleBulkPostpone = async (days: number) => {
@@ -1521,7 +1623,7 @@ export default function TasksClient() {
                                         <Button 
                                             size="sm" 
                                             variant="outline" 
-                                            onClick={() => setIsBulkResolveOpen(true)} 
+                                            onClick={handleBulkComplete} 
                                             className="h-8 rounded-lg text-emerald-600 hover:bg-emerald-500/10 border-emerald-500/20 text-xs font-bold"
                                         >
                                             Resolve Selected
@@ -1617,7 +1719,7 @@ export default function TasksClient() {
                                         <Button 
                                             size="sm" 
                                             variant="outline" 
-                                            onClick={() => setIsBulkDeleteOpen(true)} 
+                                            onClick={handleBulkDelete} 
                                             className="h-8 rounded-lg text-rose-600 hover:bg-rose-500/10 border-rose-500/20 text-xs font-bold"
                                         >
                                             Delete Selected
@@ -1640,418 +1742,108 @@ export default function TasksClient() {
 
                 <div className="space-y-12">
                     <TabsContent value="list" className="m-0 space-y-6">
-                        {/* Grouped Lists by Accordions */}
-                        {(() => {
-                            const categoriesConfig = [
-                                { id: 'current', label: currentPeriodLabel, tasks: groupedListTasks.current, count: groupedListTasks.current.length },
-                                { id: 'overdue', label: 'Overdue Tasks', tasks: groupedListTasks.overdue, count: groupedListTasks.overdue.length },
-                                { id: 'upcoming', label: 'Upcoming Tasks', tasks: groupedListTasks.upcoming, count: groupedListTasks.upcoming.length },
-                                { id: 'completed', label: 'Completed Archive', tasks: groupedListTasks.completed, count: groupedListTasks.completed.length },
-                            ];
+                        {tasksError ? (
+                            <TaskErrorState 
+                                message={tasksError.message || "An error occurred while loading tasks."}
+                                onRetry={() => window.location.reload()} 
+                            />
+                        ) : !isLoading && filteredTasks.length === 0 ? (
+                            <TaskEmptyState 
+                                hasActiveFilters={activeFilterCount > 0} 
+                                onClearFilters={handleClearFilters} 
+                                onCreateTask={() => { 
+                                    setEditingTask(null); 
+                                    setEditorOpen(true); 
+                                }} 
+                            />
+                        ) : (
+                            /* Grouped Lists by Accordions */
+                            (() => {
+                                const categoriesConfig = [
+                                    { id: 'current', label: currentPeriodLabel, tasks: groupedListTasks.current, count: groupedListTasks.current.length },
+                                    { id: 'overdue', label: 'Overdue Tasks', tasks: groupedListTasks.overdue, count: groupedListTasks.overdue.length },
+                                    { id: 'upcoming', label: 'Upcoming Tasks', tasks: groupedListTasks.upcoming, count: groupedListTasks.upcoming.length },
+                                    { id: 'completed', label: 'Completed Archive', tasks: groupedListTasks.completed, count: groupedListTasks.completed.length },
+                                ];
 
-                            const isPeriodFilter = dateFilterType === 'day' || dateFilterType === 'week' || dateFilterType === 'month';
+                                const isPeriodFilter = dateFilterType === 'day' || dateFilterType === 'week' || dateFilterType === 'month';
 
-                            return categoriesConfig.map(category => {
-                                const isExpanded = expandedSections[category.id];
-                                // The current-period card only makes sense when the selected
-                                // period is the real current day/week/month. Navigating the
-                                // arrows to another period hides it.
-                                if (category.id === 'current' && !isViewingCurrentPeriod) return null;
-                                // Under a narrow period filter, suppress empty Overdue/Upcoming
-                                // cards (they'd always be empty since the filter excludes
-                                // out-of-period tasks) to keep the view clean.
-                                if ((category.id === 'overdue' || category.id === 'upcoming') && category.count === 0 && isPeriodFilter) return null;
-                                // Always surface Completed under a period filter so users can
-                                // review resolved tasks for that period, even at zero.
-                                if (category.id === 'completed' && category.count === 0 && !isPeriodFilter) return null;
+                                return categoriesConfig.map(category => {
+                                    const isExpanded = expandedSections[category.id];
+                                    if (category.id === 'current' && !isViewingCurrentPeriod) return null;
+                                    if ((category.id === 'overdue' || category.id === 'upcoming') && category.count === 0 && isPeriodFilter) return null;
+                                    if (category.id === 'completed' && category.count === 0 && !isPeriodFilter) return null;
 
-                                return (
-                                    <div key={category.id} className="rounded-2xl border border-border/80 shadow-sm bg-card overflow-hidden">
-                                        {/* Accordion Trigger */}
-                                        <button
-                                            type="button"
-                                            onClick={() => toggleSection(category.id)}
-                                            className="w-full flex items-center justify-between py-3.5 px-5 bg-muted/20 hover:bg-muted/30 border-b border-border/80 transition-all text-left cursor-pointer"
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <ChevronDown 
-                                                    className={cn(
-                                                        "h-5 w-5 text-muted-foreground transition-transform duration-200", 
-                                                        isExpanded ? "transform rotate-0" : "transform -rotate-90"
-                                                    )} 
-                                                />
-                                                <h3 className="text-base font-bold text-foreground tracking-tight">{category.label}</h3>
-                                                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-muted text-muted-foreground">
-                                                    {category.count}
-                                                </span>
-                                            </div>
-                                        </button>
+                                    return (
+                                        <div key={category.id} className="rounded-2xl border border-border/80 shadow-sm bg-card overflow-hidden">
+                                            {/* Accordion Trigger */}
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleSection(category.id)}
+                                                className="w-full flex items-center justify-between py-3.5 px-5 bg-muted/20 hover:bg-muted/30 border-b border-border/80 transition-all text-left cursor-pointer"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <ChevronDown 
+                                                        className={cn(
+                                                            "h-5 w-5 text-muted-foreground transition-transform duration-200", 
+                                                            isExpanded ? "transform rotate-0" : "transform -rotate-90"
+                                                        )} 
+                                                    />
+                                                    <h3 className="text-base font-bold text-foreground tracking-tight">{category.label}</h3>
+                                                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-muted text-muted-foreground">
+                                                        {category.count}
+                                                    </span>
+                                                </div>
+                                            </button>
 
-                                        {/* Accordion Content */}
-                                        {isExpanded && (
-                                            <div className="divide-y divide-border/60">
-                                                {isLoading ? (
-                                                    <div className="p-6 space-y-4">
-                                                        <Skeleton className="h-10 w-full rounded-xl" />
-                                                        <Skeleton className="h-10 w-full rounded-xl" />
-                                                    </div>
-                                                ) : category.tasks.length > 0 ? (
-                                                    category.tasks.map((task) => {
-                                                        const P = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium;
-                                                        const parsedDue = safeParseDate(task.dueDate);
-                                                        const daysLeft = parsedDue ? differenceInCalendarDays(parsedDue, new Date()) : null;
-                                                        const isOverdue = daysLeft !== null && daysLeft < 0 && task.status !== 'done';
-                                                        const progress = getProgressValue(task.status);
-
-                                                        return (
-                                                            <div 
-                                                                key={task.id} 
-                                                                className={cn(
-                                                                    isSimpleView 
-                                                                        ? "flex items-center gap-3 px-6 py-2.5 sm:py-3 transition-colors even:bg-muted/30 dark:even:bg-muted/15 hover:bg-muted/50"
-                                                                        : "flex items-center gap-4 px-6 py-4 transition-colors even:bg-muted/30 dark:even:bg-muted/15 hover:bg-muted/50",
-                                                                    task.status === 'done' && "opacity-65"
-                                                                )}
-                                                            >
-                                                                {isSelectionMode ? (
-                                                                    <Checkbox 
-                                                                        checked={selectedIds.includes(task.id)} 
-                                                                        onCheckedChange={() => toggleSelect(task.id)}
-                                                                        onClick={(e) => e.stopPropagation()}
-                                                                        className="h-5 w-5 rounded-lg border-border data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 shrink-0"
-                                                                    />
-                                                                ) : (
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={async (e) => {
-                                                                            e.stopPropagation();
-                                                                            if (!currentUser) return;
-                                                                            const newStatus = task.status === 'done' ? 'todo' : 'done';
-                                                                            await updateTaskAction(task.id, { ...task, status: newStatus });
-                                                                            toast({ title: newStatus === 'done' ? 'Task Completed' : 'Task Reopened' });
-                                                                        }}
-                                                                        className="h-5 w-5 rounded-full border border-border hover:border-emerald-500 hover:bg-emerald-500/10 flex items-center justify-center transition-all shrink-0 group/check cursor-pointer"
-                                                                    >
-                                                                        {task.status === 'done' ? (
-                                                                            <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500 shrink-0" />
-                                                                        ) : (
-                                                                            <div className="h-2.5 w-2.5 rounded-full bg-transparent group-hover/check:bg-emerald-500/40 transition-all shrink-0" />
-                                                                        )}
-                                                                    </button>
-                                                                )}
-
-                                                                {isSimpleView ? (
-                                                                    <>
-                                                                        <div className="flex-1 min-w-0">
-                                                                            <h4 className={cn("text-sm font-bold text-foreground leading-tight truncate", task.status === 'done' && "line-through")}>
-                                                                                {task.title}
-                                                                            </h4>
-                                                                        </div>
-
-                                                                        <div className="flex items-center min-w-[70px] sm:min-w-[90px] shrink-0">
-                                                                            <span className={cn("font-bold uppercase text-[9px] px-1.5 py-0.5 rounded-sm border-none shadow-xs shrink-0", P.color)}>
-                                                                                {P.label}
-                                                                            </span>
-                                                                        </div>
-
-                                                                        {/* Entity Display Name - Swapped and brought into Simple View */}
-                                                                        {task.entityName ? (
-                                                                            <div className="hidden md:flex items-center gap-1.5 min-w-[120px] max-w-[160px] shrink-0">
-                                                                                <EntityAvatar 
-                                                                                    src={task.entityId ? entityLogoMap.get(task.entityId) : undefined} 
-                                                                                    name={task.entityName} 
-                                                                                    className="h-3.5 w-3.5 rounded-sm shadow-none ring-0 p-0 shrink-0"
-                                                                                    fallbackClassName="text-[6px]"
-                                                                                />
-                                                                                <span className="text-[10px] font-semibold text-muted-foreground/60 truncate">
-                                                                                    {task.entityName}
-                                                                                </span>
-                                                                            </div>
-                                                                        ) : (
-                                                                            <div className="hidden md:flex min-w-[120px] shrink-0" />
-                                                                        )}
-
-                                                                        <div className="flex items-center gap-1.5 min-w-[95px] sm:min-w-[110px] shrink-0">
-                                                                            <Clock className={cn("h-3 w-3", isOverdue ? "text-rose-600" : "text-muted-foreground/40")} />
-                                                                            <span className={cn("text-[10px] font-semibold tracking-tighter", isOverdue ? "text-rose-600 animate-pulse" : "text-muted-foreground/60")}>
-                                                                                {task.status === 'done' 
-                                                                                    ? 'Resolved' 
-                                                                                    : daysLeft === null
-                                                                                        ? 'No due date'
-                                                                                        : isOverdue 
-                                                                                            ? 'Overdue' 
-                                                                                            : daysLeft === 0 
-                                                                                                ? 'Today' 
-                                                                                                : daysLeft === 1 
-                                                                                                    ? 'Tomorrow' 
-                                                                                                    : daysLeft < 0 
-                                                                                                        ? `${Math.abs(daysLeft)}d overdue` 
-                                                                                                        : `${daysLeft}d left`
-                                                                                }
-                                                                            </span>
-                                                                        </div>
-
-                                                                        <div className="hidden sm:flex items-center gap-2.5 min-w-[100px] sm:min-w-[120px] shrink-0">
-                                                                            <Progress value={progress} className="h-1 flex-1" />
-                                                                            <span className="text-[9px] font-semibold tabular-nums w-6 text-right opacity-45">{progress}%</span>
-                                                                        </div>
-                                                                    </>
-                                                                ) : (
-                                                                    <>
-                                                                        <div className="flex-1 min-w-0">
-                                                                            <div className="flex flex-col gap-1 text-left">
-                                                                                <h4 className={cn("text-base font-bold text-foreground leading-tight truncate", task.status === 'done' && "line-through")}>
-                                                                                    {task.title}
-                                                                                </h4>
-                                                                                <div className="text-[10px] font-bold text-muted-foreground flex items-center gap-2 flex-wrap text-left">
-                                                                                    <span>{toTitleCase(task.category)}</span>
-                                                                                    <span className="text-muted-foreground/30 font-normal">·</span>
-                                                                                    <span className={cn("font-bold uppercase text-[9px] px-1.5 py-0.5 rounded-sm border-none shadow-xs shrink-0", P.color)}>
-                                                                                        {P.label}
-                                                                                    </span>
-                                                                                    <span className="text-muted-foreground/30 font-normal">·</span>
-                                                                                    <span className="font-semibold text-muted-foreground/70 shrink-0">
-                                                                                        {formatTaskDueDate(task.dueDate, 'MMM d, yyyy h:mm a')}
-                                                                                    </span>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-
-                                                                        {/* Entity Display Name - Swapped to come before Clock/Due Status */}
-                                                                        {task.entityName ? (
-                                                                            <div className="hidden lg:flex items-center gap-1.5 min-w-[140px] max-w-[180px] shrink-0">
-                                                                                <EntityAvatar 
-                                                                                    src={task.entityId ? entityLogoMap.get(task.entityId) : undefined} 
-                                                                                    name={task.entityName} 
-                                                                                    className="h-3.5 w-3.5 rounded-sm shadow-none ring-0 p-0 shrink-0"
-                                                                                    fallbackClassName="text-[6px]"
-                                                                                />
-                                                                                <span className="text-[10px] font-semibold text-muted-foreground/60 truncate">
-                                                                                    {task.entityName}
-                                                                                </span>
-                                                                            </div>
-                                                                        ) : (
-                                                                            <div className="hidden lg:flex min-w-[140px] shrink-0" />
-                                                                        )}
-
-                                                                        <div className="hidden md:flex items-center gap-2 min-w-[120px] shrink-0">
-                                                                            <Clock className={cn("h-3.5 w-3.5", isOverdue ? "text-rose-600" : "text-muted-foreground/40")} />
-                                                                            <span className={cn("text-[10px] font-semibold tracking-tighter", isOverdue ? "text-rose-600 animate-pulse" : "text-muted-foreground/60")}>
-                                                                                {task.status === 'done' 
-                                                                                    ? 'Resolved' 
-                                                                                    : daysLeft === null
-                                                                                        ? 'No due date'
-                                                                                        : isOverdue 
-                                                                                            ? 'Overdue' 
-                                                                                            : daysLeft === 0 
-                                                                                                ? 'Due Today' 
-                                                                                                : daysLeft === 1 
-                                                                                                    ? 'Due Tomorrow' 
-                                                                                                    : daysLeft < 0 
-                                                                                                        ? `${Math.abs(daysLeft)} Days Overdue` 
-                                                                                                        : `${daysLeft} Days Left`
-                                                                                }
-                                                                            </span>
-                                                                        </div>
-
-                                                                        <div className="hidden xl:flex items-center gap-4 min-w-[180px] shrink-0">
-                                                                            <div className="flex-1 space-y-1">
-                                                                                <Progress value={progress} className="h-1.5" />
-                                                                            </div>
-                                                                            <span className="text-[10px] font-semibold tabular-nums w-8 text-right opacity-40">{progress}%</span>
-                                                                        </div>
-                                                                    </>
-                                                                )}
-
-                                                                <div className="flex items-center justify-end shrink-0 pl-2 gap-3">
-                                                                    {!isSimpleView && (
-                                                                        <div className="hidden lg:flex items-center gap-2 mr-1 text-muted-foreground">
-                                                                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/30">
-                                                                                <Paperclip className="h-3 w-3" />
-                                                                                <span className="text-[10px] font-semibold tabular-nums">{task.attachments?.length || 0}</span>
-                                                                            </div>
-                                                                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/30">
-                                                                                <MessageSquare className="h-3 w-3" />
-                                                                                <span className="text-[10px] font-semibold tabular-nums">{task.notes?.length || 0}</span>
-                                                                            </div>
-                                                                        </div>
-                                                                    )}
-
-                                                                    {(() => {
-                                                                        const ids = Array.isArray(task.assignedTo) ? task.assignedTo : (task.assignedTo ? [task.assignedTo] : []);
-                                                                        if (ids.length === 0) return null;
-                                                                        return (
-                                                                            <div className="flex items-center -space-x-2 shrink-0 mr-1.5">
-                                                                                {ids.map((id) => {
-                                                                                    const u = userMap.get(id);
-                                                                                    if (!u) return null;
-                                                                                    return (
-                                                                                        <TooltipProvider key={id}>
-                                                                                            <Tooltip>
-                                                                                                <TooltipTrigger asChild>
-                                                                                                    <Avatar className={cn(
-                                                                                                        isSimpleView 
-                                                                                                            ? "h-5 w-5 border border-background shadow-xs shrink-0 select-none hover:translate-y-[-1px] transition-transform"
-                                                                                                            : "h-6 w-6 border-2 border-background shadow-xs shrink-0 select-none hover:translate-y-[-2px] transition-transform"
-                                                                                                    )}>
-                                                                                                        <AvatarImage src={u.photoURL || undefined} />
-                                                                                                        <AvatarFallback className={cn(
-                                                                                                            isSimpleView ? "text-[7px]" : "text-[8px]",
-                                                                                                            "bg-muted/40 font-bold"
-                                                                                                        )}>{getInitials(u.name)}</AvatarFallback>
-                                                                                                    </Avatar>
-                                                                                                </TooltipTrigger>
-                                                                                                <TooltipContent className="bg-card border border-border p-2 rounded-xl text-xs font-bold text-foreground">
-                                                                                                    {u.name}
-                                                                                                </TooltipContent>
-                                                                                            </Tooltip>
-                                                                                        </TooltipProvider>
-                                                                                    );
-                                                                                })}
-                                                                            </div>
-                                                                        );
-                                                                    })()}
-
-                                                                    <DropdownMenu modal={false}>
-                                                                        <DropdownMenuTrigger asChild>
-                                                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg opacity-40 group-hover:opacity-100 transition-opacity">
-                                                                                <MoreVertical className="h-4 w-4" />
-                                                                            </Button>
-                                                                        </DropdownMenuTrigger>
-                                                                        <DropdownMenuContent align="end" className="w-56 rounded-xl p-2 border border-border bg-card text-foreground shadow-2xl">
-                                                                            <DropdownMenuLabel className="text-[10px] font-bold text-muted-foreground px-3 py-2">Task Actions</DropdownMenuLabel>
-                                                                            {canEdit && (
-                                                                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditingTask(task); setEditorOpen(true); }} className="rounded-xl p-2.5 gap-3 cursor-pointer">
-                                                                                    <Pencil className="h-4 w-4 text-primary" /> <span className="font-bold text-sm">Update Task</span>
-                                                                                </DropdownMenuItem>
-                                                                            )}
-                                                                            {canEdit && (
-                                                                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setTaskToComplete(task); }} className="rounded-xl p-2.5 gap-3 cursor-pointer">
-                                                                                    <CheckCircle2 className="h-4 w-4 text-emerald-500" /> <span className="font-bold text-sm">{task.status === 'done' ? 'Reopen Task' : 'Mark as Resolved'}</span>
-                                                                                </DropdownMenuItem>
-                                                                            )}
-                                                                            <DropdownMenuSeparator className="bg-border" />
-                                                                            
-                                                                            {canEdit && (
-                                                                                <>
-                                                                                    <DropdownMenuSub>
-                                                                                        <DropdownMenuSubTrigger className="rounded-xl p-2.5 gap-3 cursor-pointer focus:bg-muted">
-                                                                                            <UserIcon className="h-4 w-4 text-primary" />
-                                                                                            <span className="font-bold text-sm">Change Assignee</span>
-                                                                                        </DropdownMenuSubTrigger>
-                                                                                        <DropdownMenuSubContent className="bg-card border border-border rounded-xl p-1 w-48 shadow-2xl text-foreground">
-                                                                                            {workspaceUsers && workspaceUsers.length > 0 ? (
-                                                                                                workspaceUsers.map(u => {
-                                                                                                    const isChecked = Array.isArray(task.assignedTo) ? task.assignedTo.includes(u.id) : task.assignedTo === u.id;
-                                                                                                    return (
-                                                                                                        <DropdownMenuCheckboxItem 
-                                                                                                            key={u.id} 
-                                                                                                            checked={isChecked}
-                                                                                                            onCheckedChange={() => {}}
-                                                                                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleUpdateAssignee(task, u.id); }}
-                                                                                                            className={cn(
-                                                                                                                "rounded-lg p-2 flex items-center gap-2 cursor-pointer focus:bg-muted",
-                                                                                                                isChecked && "bg-primary/5 text-primary"
-                                                                                                            )}
-                                                                                                        >
-                                                                                                            <Avatar className="h-5 w-5 shrink-0 ml-1.5">
-                                                                                                                <AvatarImage src={u.photoURL || undefined} />
-                                                                                                                <AvatarFallback className="text-[8px] bg-muted/40">{getInitials(u.name)}</AvatarFallback>
-                                                                                                            </Avatar>
-                                                                                                            <span className="text-xs font-semibold truncate">{u.name}</span>
-                                                                                                        </DropdownMenuCheckboxItem>
-                                                                                                    );
-                                                                                                })
-                                                                                            ) : (
-                                                                                                <div className="p-2 text-center text-xs text-muted-foreground">No users found</div>
-                                                                                            )}
-                                                                                        </DropdownMenuSubContent>
-                                                                                    </DropdownMenuSub>
-
-                                                                                    <DropdownMenuSub>
-                                                                                        <DropdownMenuSubTrigger className="rounded-xl p-2.5 gap-3 cursor-pointer focus:bg-muted">
-                                                                                            <Layers className="h-4 w-4 text-primary" />
-                                                                                            <span className="font-bold text-sm">Change Status</span>
-                                                                                        </DropdownMenuSubTrigger>
-                                                                                        <DropdownMenuSubContent className="bg-card border border-border rounded-xl p-1 w-48 shadow-2xl text-foreground">
-                                                                                            {(['todo', 'in_progress', 'waiting', 'review', 'done'] as const).map(status => (
-                                                                                                <DropdownMenuCheckboxItem
-                                                                                                    key={status}
-                                                                                                    checked={task.status === status}
-                                                                                                    onCheckedChange={() => {}}
-                                                                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleUpdateStatus(task, status); }}
-                                                                                                    className={cn(
-                                                                                                        "rounded-lg p-2 flex items-center gap-2 cursor-pointer focus:bg-muted",
-                                                                                                        task.status === status && "bg-primary/5 text-primary"
-                                                                                                    )}
-                                                                                                >
-                                                                                                    <span className={cn(
-                                                                                                        "text-xs font-semibold truncate",
-                                                                                                        status === 'todo' && "text-foreground",
-                                                                                                        status === 'in_progress' && "text-blue-500",
-                                                                                                        status === 'waiting' && "text-orange-500",
-                                                                                                        status === 'review' && "text-purple-500",
-                                                                                                        status === 'done' && "text-emerald-500"
-                                                                                                    )}>
-                                                                                                        {STATUS_LABELS[status]}
-                                                                                                    </span>
-                                                                                                </DropdownMenuCheckboxItem>
-                                                                                            ))}
-                                                                                        </DropdownMenuSubContent>
-                                                                                    </DropdownMenuSub>
-
-                                                                                    <DropdownMenuSub>
-                                                                                        <DropdownMenuSubTrigger className="rounded-xl p-2.5 gap-3 cursor-pointer focus:bg-muted">
-                                                                                            <Clock className="h-4 w-4 text-primary" />
-                                                                                            <span className="font-bold text-sm">Postpone Task</span>
-                                                                                        </DropdownMenuSubTrigger>
-                                                                                        <DropdownMenuSubContent className="bg-card border border-border rounded-xl p-1 w-48 shadow-2xl text-foreground">
-                                                                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handlePostponeTask(task, 1); }} className="rounded-lg p-2 cursor-pointer focus:bg-muted">
-                                                                                                <span className="text-xs font-semibold">Postpone 1 Day</span>
-                                                                                            </DropdownMenuItem>
-                                                                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handlePostponeTask(task, 3); }} className="rounded-lg p-2 cursor-pointer focus:bg-muted">
-                                                                                                <span className="text-xs font-semibold">Postpone 3 Days</span>
-                                                                                            </DropdownMenuItem>
-                                                                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handlePostponeTask(task, 7); }} className="rounded-lg p-2 cursor-pointer focus:bg-muted">
-                                                                                                <span className="text-xs font-semibold">Postpone 1 Week</span>
-                                                                                            </DropdownMenuItem>
-                                                                                        </DropdownMenuSubContent>
-                                                                                    </DropdownMenuSub>
-                                                                                    <DropdownMenuSeparator className="bg-border" />
-                                                                                </>
-                                                                            )}
-
-                                                                            {canDelete && (
-                                                                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setTaskToDelete(task); }} className="text-destructive rounded-xl p-2.5 gap-3 focus:bg-destructive/10 focus:text-destructive cursor-pointer">
-                                                                                    <Trash2 className="h-4 w-4" /> <span className="font-bold text-sm">Delete Task</span>
-                                                                                </DropdownMenuItem>
-                                                                            )}
-                                                                        </DropdownMenuContent>
-                                                                    </DropdownMenu>
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })
-                                                ) : (
-                                                    <div className="p-12 text-center bg-transparent flex flex-col items-center gap-2">
-                                                        <EyeOff className="h-8 w-8 text-muted-foreground opacity-30" />
-                                                        <p className="text-[10px] font-bold text-muted-foreground opacity-40">No tasks in this category</p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            });
-                        })()}
+                                            {/* Accordion Content */}
+                                            {isExpanded && (
+                                                <div className="divide-y divide-border/60">
+                                                    {isLoading ? (
+                                                        <div className="p-4">
+                                                            <TaskSkeleton mode="list" count={3} />
+                                                        </div>
+                                                    ) : category.tasks.length > 0 ? (
+                                                        category.tasks.map((task) => (
+                                                            <TaskListRow
+                                                                key={task.id}
+                                                                task={task}
+                                                                isSimpleView={isSimpleView}
+                                                                isSelected={selectedIds.includes(task.id)}
+                                                                isSelectionMode={isSelectionMode}
+                                                                isPending={pendingTaskIds.has(task.id)}
+                                                                userMap={userMap}
+                                                                onSelect={toggleSelect}
+                                                                onToggleComplete={handleQuickComplete}
+                                                                onStatusChange={(_taskId, newStatus) => handleUpdateStatus(task, newStatus)}
+                                                                onEdit={(t) => { setEditingTask(t); setEditorOpen(true); }}
+                                                                onDelete={(t) => setTaskToDelete(t)}
+                                                                onPostpone={(t, days) => handlePostponeTask(t, days)}
+                                                                onClick={(t) => { setEditingTask(t); setEditorOpen(true); }}
+                                                            />
+                                                        ))
+                                                    ) : (
+                                                        <div className="p-8 text-center bg-transparent flex flex-col items-center gap-2">
+                                                            <EyeOff className="h-6 w-6 text-muted-foreground opacity-30" />
+                                                            <p className="text-[11px] font-semibold text-muted-foreground opacity-50">No tasks in this category</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                });
+                            })()
+                        )}
                     </TabsContent>
 
                     <TabsContent value="board" className="m-0 h-[calc(100vh-350px)]">
                         <TaskBoard 
                             tasks={filteredTasks} 
-                            entityLogoMap={entityLogoMap}
+                            entityLogoMap={entityLogoMap} 
                             onTaskClick={(t) => { setEditingTask(t); setEditorOpen(true); }} 
                             userMap={userMap}
+                            pendingTaskIds={pendingTaskIds}
                         />
                     </TabsContent>
 
@@ -2094,107 +1886,44 @@ export default function TasksClient() {
                 isSaving={isSaving}
             />
 
-            <AlertDialog open={!!taskToComplete} onOpenChange={(o) => !o && setTaskToComplete(null)}>
-                <AlertDialogContent className="rounded-2xl p-0 border border-border shadow-lg overflow-hidden">
-                    <div className="p-10 text-center space-y-6">
-                        <div className="mx-auto bg-primary/10 w-20 h-20 rounded-2xl flex items-center justify-center">
-                            <CheckCircle2 className="h-10 w-10 text-primary" />
-                        </div>
-                        <div className="space-y-2">
-                            <AlertDialogTitle className="text-2xl font-semibold tracking-tight">Resolve Task?</AlertDialogTitle>
-                            <AlertDialogDescription className="text-sm font-medium text-muted-foreground px-4">
-                                Confirming execution of <span className="font-bold text-foreground">&quot;{taskToComplete?.title}&quot;</span>. This will move the record to the archive.
-                            </AlertDialogDescription>
-                        </div>
-                    </div>
-                    <div className="bg-muted/30 p-6 border-t border-border flex flex-col sm:flex-row gap-3">
-                        <AlertDialogCancel className="rounded-xl font-bold h-12 flex-1 border-none shadow-sm">Discard</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleConfirmComplete} className="rounded-xl font-semibold h-12 flex-1 text-xs">
-                            Commit Result
-                        </AlertDialogAction>
-                    </div>
-                </AlertDialogContent>
-            </AlertDialog>
+            {/* Standardized Single Task Resolve Modal */}
+            <ConfirmDialog
+                isOpen={Boolean(taskToComplete)}
+                onClose={() => setTaskToComplete(null)}
+                onConfirm={handleConfirmComplete}
+                title={taskToComplete?.status === 'done' ? 'Reopen Task?' : 'Resolve Task?'}
+                description={`Confirming execution of "${taskToComplete?.title}". This will move the record to the ${taskToComplete?.status === 'done' ? 'backlog' : 'archive'}.`}
+                confirmText={taskToComplete?.status === 'done' ? 'Reopen Task' : 'Resolve Task'}
+                tooltipText="Toggles task completion status and archives or restores the record."
+            />
 
-            {/* Single Task Delete Modal */}
-            <AlertDialog open={!!taskToDelete} onOpenChange={(o) => !o && setTaskToDelete(null)}>
-                <AlertDialogContent className="rounded-2xl p-0 border border-border shadow-lg overflow-hidden">
-                    <div className="p-10 text-center space-y-6">
-                        <div className="mx-auto bg-rose-500/10 w-20 h-20 rounded-2xl flex items-center justify-center">
-                            <Trash2 className="h-10 w-10 text-rose-500" />
-                        </div>
-                        <div className="space-y-2">
-                            <AlertDialogTitle className="text-2xl font-semibold tracking-tight">Delete Task?</AlertDialogTitle>
-                            <AlertDialogDescription className="text-sm font-medium text-muted-foreground px-4">
-                                Confirming permanent deletion of <span className="font-bold text-foreground">&quot;{taskToDelete?.title}&quot;</span>. This action cannot be undone.
-                            </AlertDialogDescription>
-                        </div>
-                    </div>
-                    <div className="bg-muted/30 p-6 border-t border-border flex flex-col sm:flex-row gap-3">
-                        <AlertDialogCancel className="rounded-xl font-bold h-12 flex-1 border-none shadow-sm">Discard</AlertDialogCancel>
-                        <AlertDialogAction 
-                            onClick={() => taskToDelete && handleDelete(taskToDelete)} 
-                            className="rounded-xl font-semibold h-12 flex-1 text-xs bg-rose-600 hover:bg-rose-700 text-white border-none shadow-sm"
-                        >
-                            Purge Record
-                        </AlertDialogAction>
-                    </div>
-                </AlertDialogContent>
-            </AlertDialog>
-
-            {/* Bulk Delete Modal */}
-            <AlertDialog open={isBulkDeleteOpen} onOpenChange={setIsBulkDeleteOpen}>
-                <AlertDialogContent className="rounded-2xl p-0 border border-border shadow-lg overflow-hidden">
-                    <div className="p-10 text-center space-y-6">
-                        <div className="mx-auto bg-rose-500/10 w-20 h-20 rounded-2xl flex items-center justify-center">
-                            <Trash2 className="h-10 w-10 text-rose-500" />
-                        </div>
-                        <div className="space-y-2">
-                            <AlertDialogTitle className="text-2xl font-semibold tracking-tight">Delete Selected Tasks?</AlertDialogTitle>
-                            <AlertDialogDescription className="text-sm font-medium text-muted-foreground px-4">
-                                Confirming permanent deletion of <span className="font-bold text-foreground">{selectedIds.length} tasks</span>. This action cannot be undone.
-                            </AlertDialogDescription>
-                        </div>
-                    </div>
-                    <div className="bg-muted/30 p-6 border-t border-border flex flex-col sm:flex-row gap-3">
-                        <AlertDialogCancel className="rounded-xl font-bold h-12 flex-1 border-none shadow-sm" disabled={isBulkProcessing}>Discard</AlertDialogCancel>
-                        <AlertDialogAction 
-                            onClick={(e) => { e.preventDefault(); handleBulkDelete(); }} 
-                            disabled={isBulkProcessing}
-                            className="rounded-xl font-semibold h-12 flex-1 text-xs bg-rose-600 hover:bg-rose-700 text-white border-none shadow-sm"
-                        >
-                            {isBulkProcessing ? 'Processing...' : 'Purge Records'}
-                        </AlertDialogAction>
-                    </div>
-                </AlertDialogContent>
-            </AlertDialog>
-
-            {/* Bulk Resolve Modal */}
-            <AlertDialog open={isBulkResolveOpen} onOpenChange={setIsBulkResolveOpen}>
-                <AlertDialogContent className="rounded-2xl p-0 border border-border shadow-lg overflow-hidden">
-                    <div className="p-10 text-center space-y-6">
-                        <div className="mx-auto bg-emerald-500/10 w-20 h-20 rounded-2xl flex items-center justify-center">
-                            <CheckCircle2 className="h-10 w-10 text-emerald-500" />
-                        </div>
-                        <div className="space-y-2">
-                            <AlertDialogTitle className="text-2xl font-semibold tracking-tight">Resolve Selected Tasks?</AlertDialogTitle>
-                            <AlertDialogDescription className="text-sm font-medium text-muted-foreground px-4">
-                                Confirming execution of <span className="font-bold text-foreground">{selectedIds.length} tasks</span>. This will move the records to the archive.
-                            </AlertDialogDescription>
-                        </div>
-                    </div>
-                    <div className="bg-muted/30 p-6 border-t border-border flex flex-col sm:flex-row gap-3">
-                        <AlertDialogCancel className="rounded-xl font-bold h-12 flex-1 border-none shadow-sm" disabled={isBulkProcessing}>Discard</AlertDialogCancel>
-                        <AlertDialogAction 
-                            onClick={(e) => { e.preventDefault(); handleBulkComplete(); }} 
-                            disabled={isBulkProcessing}
-                            className="rounded-xl font-semibold h-12 flex-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-none shadow-sm"
-                        >
-                            {isBulkProcessing ? 'Processing...' : 'Commit Results'}
-                        </AlertDialogAction>
-                    </div>
-                </AlertDialogContent>
-            </AlertDialog>
+            {/* Standardized Single Task Delete Modal */}
+            <ConfirmDialog
+                isOpen={Boolean(taskToDelete)}
+                onClose={() => setTaskToDelete(null)}
+                onConfirm={() => {
+                    if (taskToDelete) handleDelete(taskToDelete);
+                }}
+                title="Delete Task?"
+                description={`Confirming permanent deletion of "${taskToDelete?.title}". This action cannot be undone.`}
+                confirmText="Delete Task"
+                variant="destructive"
+                tooltipText="Permanently removes this task from the workspace."
+            />
+            {/* Standardized Two-Phase Bulk Action Review Dialog */}
+            <BulkActionReviewDialog
+                isOpen={bulkReviewState.isOpen}
+                onClose={() => setBulkReviewState(prev => ({ ...prev, isOpen: false, failedTasks: undefined }))}
+                actionType={bulkReviewState.actionType}
+                selectedTaskIds={selectedIds}
+                selectedTasks={selectedTasksSnapshot}
+                targetValue={bulkReviewState.targetValue}
+                targetLabel={bulkReviewState.targetLabel}
+                isExecuting={isBulkProcessing}
+                failedTasks={bulkReviewState.failedTasks}
+                onConfirm={handleBulkConfirm}
+                onRetryFailed={handleRetryFailedBulkTasks}
+            />
 
             {/* TOCTOU Version Conflict Dialog (Rule 18, Rule 51 & Theme §8) */}
             <VersionConflictDialog
