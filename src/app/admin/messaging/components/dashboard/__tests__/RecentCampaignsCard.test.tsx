@@ -23,6 +23,7 @@ describe('RecentCampaignsCard', () => {
       />
     );
     expect(screen.getByText(/Mid-Term Fee Notice/i)).toBeInTheDocument();
+    expect(screen.getByText(/45.6% clicked/i)).toBeInTheDocument();
     expect(screen.getByText(/Let AI do the heavy lifting/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Try AI Assistant/i }));

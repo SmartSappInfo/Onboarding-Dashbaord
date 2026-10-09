@@ -74,6 +74,7 @@ export function RecentCampaignsCard({
                     <p className="text-xs font-semibold text-foreground truncate">{c.name}</p>
                     <p className="text-[11px] text-muted-foreground tabular-nums">
                       {c.recipientCount.toLocaleString()} recipients · {c.deliveryRate}% delivered
+                      {c.clickRate !== undefined ? ` · ${c.clickRate}% clicked` : ''}
                     </p>
                   </div>
                 </div>
