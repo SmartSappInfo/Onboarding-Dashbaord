@@ -27,9 +27,12 @@ import {
     Plus,
     Loader2,
     Sparkles,
+    AlertTriangle,
+    RefreshCw,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { suggestTaskChecklistAction } from '@/app/actions/task-copilot-actions';
+import { retryTaskObligationSyncAction } from '@/lib/task-server-actions';
 import {
     Sheet,
     SheetContent,
@@ -81,6 +84,7 @@ export function TaskDetailDrawer({
     const [quickNote, setQuickNote] = React.useState('');
     const { toast } = useToast();
     const [isSuggestingSteps, setIsSuggestingSteps] = React.useState(false);
+    const [isRetryingSync, setIsRetryingSync] = React.useState(false);
 
     const assignees = React.useMemo(() => {
         if (!userMap || !task?.assignedTo) return [];
@@ -101,6 +105,44 @@ export function TaskDetailDrawer({
     const handleStatusChange = async (newStatus: TaskStatus) => {
         if (!onUpdateTask) return;
         await onUpdateTask(task.id, { status: newStatus });
+    };
+
+    const handleRetryObligationSync = async () => {
+        if (!task) return;
+        setIsRetryingSync(true);
+        try {
+            const res = await retryTaskObligationSyncAction(task.id);
+            if (res.success) {
+                toast({
+                    title: 'Sync Succeeded',
+                    description: res.message || 'Obligation synchronized successfully.',
+                });
+                if (onUpdateTask) {
+                    await onUpdateTask(task.id, {
+                        obligationSyncStatus: 'synced',
+                        obligationSyncError: undefined,
+                    });
+                }
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Sync Failed',
+                    description: res.error || 'Check contract obligation.',
+                    actionConfig: {
+                        path: '/admin/finance/agreements',
+                        label: 'View Agreements',
+                    },
+                });
+            }
+        } catch (err: unknown) {
+            toast({
+                variant: 'destructive',
+                title: 'Sync Failed',
+                description: err instanceof Error ? err.message : 'An unexpected error occurred.',
+            });
+        } finally {
+            setIsRetryingSync(false);
+        }
     };
 
     const handleSuggestSteps = async () => {
@@ -236,6 +278,40 @@ export function TaskDetailDrawer({
                 {/* Main Scrollable Body */}
                 <ScrollArea className="flex-1 px-4 sm:px-6 py-5">
                     <div className="space-y-6 text-left">
+                        {/* Contract Obligation Sync Failure Recovery Alert (Roadmap §78) */}
+                        {task.obligationSyncStatus === 'failed' && (
+                            <div className="p-4 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/80 dark:bg-rose-950/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                                <div className="flex items-start gap-2.5 min-w-0 text-rose-800 dark:text-rose-200">
+                                    <AlertTriangle className="h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400 mt-0.5" />
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-xs sm:text-sm font-semibold leading-tight">
+                                            Contract obligation could not be synchronized.
+                                        </p>
+                                        {task.obligationSyncError && (
+                                            <p className="text-[11px] text-rose-600/90 dark:text-rose-400/90 mt-1 break-words">
+                                                {task.obligationSyncError}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={isRetryingSync}
+                                    onClick={handleRetryObligationSync}
+                                    className="h-9 min-h-[44px] sm:min-h-[36px] px-3.5 rounded-xl text-xs font-semibold gap-1.5 text-rose-700 border-rose-300 hover:bg-rose-100 dark:text-rose-200 dark:border-rose-800 dark:hover:bg-rose-900/40 active:scale-[0.97] shrink-0"
+                                >
+                                    {isRetryingSync ? (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                        <RefreshCw className="h-3.5 w-3.5" />
+                                    )}
+                                    <span>Retry synchronization</span>
+                                </Button>
+                            </div>
+                        )}
+
                         {/* Primary Context Row: Assignee, Due Date, Relationship */}
                         <div className="p-3.5 rounded-xl border border-border/60 bg-muted/15 space-y-3">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">

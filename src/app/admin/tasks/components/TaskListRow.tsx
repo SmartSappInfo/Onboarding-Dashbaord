@@ -19,7 +19,8 @@ import {
     Pencil, 
     Trash2, 
     Clock,
-    Bell 
+    Bell,
+    AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -186,18 +187,29 @@ export function TaskListRow({
                     {task.source && task.source !== 'manual' && (
                         <TaskSourceBadge source={task.source} className="hidden sm:inline-flex" />
                     )}
+                    {task.obligationSyncStatus === 'failed' && (
+                        <span
+                            title={`Contract obligation sync failed: ${task.obligationSyncError || 'Sync failed'}`}
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 text-[10px] font-semibold shrink-0"
+                        >
+                            <AlertTriangle className="h-3 w-3 text-rose-600 dark:text-rose-400 shrink-0" />
+                            <span className="hidden sm:inline">Sync failed</span>
+                        </span>
+                    )}
                 </div>
 
                 {!isSimpleView && (
                     <div className="flex items-center gap-2.5 mt-1 text-xs text-muted-foreground truncate">
-                        {task.entityName && (
+                        {(task.entityName || task.dealId || task.relatedEntityType || task.obligationSyncStatus) && (
                             <TaskRelationshipBadge
+                                entityId={task.entityId}
                                 entityName={task.entityName}
                                 entityType={task.entityType}
                                 dealId={task.dealId}
                                 relatedParentId={task.relatedParentId}
                                 relatedEntityId={task.relatedEntityId}
                                 relatedEntityType={task.relatedEntityType}
+                                obligationSyncStatus={task.obligationSyncStatus}
                             />
                         )}
                         {checklistTotal > 0 && (
