@@ -30,6 +30,8 @@ import {
 } from '@/lib/types/messaging-dashboard';
 import { fetchSmsBalanceAction } from '@/lib/mnotify-actions';
 import { WhatsAppCredentialRepository } from '@/lib/whatsapp/whatsapp-credential-repository';
+import { getWorkspaceMessagingSettingsAction } from './messaging-settings-actions';
+import { DEFAULT_MESSAGING_SETTINGS } from '@/lib/types/messaging-settings';
 
 export { type GetMessagingDashboardSummaryInput };
 
@@ -176,7 +178,7 @@ export async function getMessagingDashboardSummaryAction(
     const previousWindowIso = formatISO(subDays(nowDate, days * 2));
 
     // 4. Parallel Bounded Firestore Queries
-    const [logsSnap, campaignsSnap, scheduledSnap, providerResults] = await Promise.all([
+    const [logsSnap, campaignsSnap, scheduledSnap, providerResults, settingsRes] = await Promise.all([
       // Logs query: bounded to 500 records by workspace (uses indexed: workspaceIds array-contains, sentAt desc)
       adminDb
         .collection('message_logs')
@@ -214,7 +216,15 @@ export async function getMessagingDashboardSummaryAction(
           { status: 'error' } as unknown as Awaited<ReturnType<typeof WhatsAppCredentialRepository.getPublic>>
         ),
       ]),
+
+      // 5. Workspace Governance Settings (Rule 3)
+      getWorkspaceMessagingSettingsAction(workspaceId).catch(() => ({
+        success: true as const,
+        data: DEFAULT_MESSAGING_SETTINGS,
+      })),
     ]);
+
+    const settings = settingsRes.success ? settingsRes.data : DEFAULT_MESSAGING_SETTINGS;
 
     // 5. Extract and filter logs
     let rawLogs: RawMessageLogDoc[] = logsSnap.docs.map((doc) => ({
@@ -448,6 +458,7 @@ export async function getMessagingDashboardSummaryAction(
         failedCount,
       },
       inboxPreview,
+      settings,
     };
 
     const validatedSummary = MessagingDashboardSummarySchema.parse(payload);

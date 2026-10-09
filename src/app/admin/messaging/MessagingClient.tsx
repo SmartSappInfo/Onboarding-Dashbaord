@@ -18,6 +18,7 @@ import { getMessagingDashboardSummaryAction } from '@/app/actions/messaging-dash
 import type {
   MessagingDashboardSummary,
   MessagingDashboardTimeRange,
+  MessagingDashboardChannel,
 } from '@/lib/types/messaging-dashboard';
 import { MessagingHeroGreeting } from './components/dashboard/MessagingHeroGreeting';
 import { MessagingAiPromptModal } from './components/dashboard/MessagingAiPromptModal';
@@ -79,10 +80,17 @@ export default function MessagingClient() {
   return (
     <PageContainerFluid className="space-y-6 pb-20 md:pb-8">
       {/* 1. Hero Greeting Banner */}
-      <MessagingHeroGreeting onOpenAiPrompt={() => setIsAiModalOpen(true)} />
+      <MessagingHeroGreeting
+        onOpenAiPrompt={() => setIsAiModalOpen(true)}
+        promptStarters={summary?.settings?.aiPromptStarters}
+      />
 
       {/* 2. Top KPI Metrics Grid (4 Stat Cards) */}
-      <MessagingKpiGrid metrics={summary?.kpi} isLoading={isLoading} />
+      <MessagingKpiGrid
+        metrics={summary?.kpi}
+        isLoading={isLoading}
+        lowBalanceThreshold={summary?.settings?.lowBalanceThreshold}
+      />
 
       {/* 3. Main Dashboard Grid (12 Columns) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -119,9 +127,11 @@ export default function MessagingClient() {
             initialChannel={selectedTemplate?.defaultChannel}
             workspaceId={activeWorkspaceId ?? undefined}
             smsBalance={summary?.kpi.smsBalance}
+            killSwitches={summary?.settings?.channelKillSwitches}
             onMessageSent={() => loadSummary(true)}
           />
           <QuickTemplatesCard
+            allowedTemplateIds={summary?.settings?.quickTemplateIds}
             onSelectTemplate={(tpl) =>
               setSelectedTemplate({
                 snippet: tpl.snippet,
@@ -138,7 +148,11 @@ export default function MessagingClient() {
       <MessagingFooterHighlights />
 
       {/* 5. Modals & Drawers */}
-      <MessagingAiPromptModal isOpen={isAiModalOpen} onOpenChange={setIsAiModalOpen} />
+      <MessagingAiPromptModal
+        isOpen={isAiModalOpen}
+        onOpenChange={setIsAiModalOpen}
+        customStarters={summary?.settings?.aiPromptStarters}
+      />
       <MessagingAllFeaturesModal open={isAllFeaturesOpen} onOpenChange={setIsAllFeaturesOpen} />
 
       {/* 6. Mobile Bottom Navigation */}

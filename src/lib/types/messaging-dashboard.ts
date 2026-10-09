@@ -9,6 +9,7 @@
  */
 
 import { z } from 'zod';
+import { WorkspaceMessagingSettingsSchema, type WorkspaceMessagingSettings } from './messaging-settings';
 
 /**
  * Supported messaging channels across the SmartSapp platform.
@@ -139,6 +140,7 @@ export const MessagingDashboardSummarySchema = z.object({
   recentCampaigns: z.array(RecentCampaignItemSchema).describe('Recent outreach campaigns and performance'),
   activeQueues: ActiveQueueStatsSchema.describe('Queue metrics for scheduled, pending, and failed queues'),
   inboxPreview: z.array(InboxThreadPreviewItemSchema).describe('Recent incoming conversations and message history'),
+  settings: WorkspaceMessagingSettingsSchema.optional().describe('Workspace messaging governance parameters'),
 });
 export type MessagingDashboardSummary = z.infer<typeof MessagingDashboardSummarySchema>;
 

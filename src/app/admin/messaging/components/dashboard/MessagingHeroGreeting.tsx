@@ -29,12 +29,14 @@ export interface MessagingHeroGreetingProps {
   userDisplayName?: string | null;
   className?: string;
   onOpenAiPrompt?: () => void;
+  promptStarters?: string[];
 }
 
 export function MessagingHeroGreeting({
   userDisplayName,
   className,
   onOpenAiPrompt,
+  promptStarters,
 }: MessagingHeroGreetingProps) {
   const { user } = useUser();
   const terminology = useTerminology();
@@ -131,6 +133,7 @@ export function MessagingHeroGreeting({
         onOpenChange={setIsModalOpen}
         entityTermSingular={terminology?.singular}
         entityTermPlural={terminology?.plural}
+        customStarters={promptStarters}
       />
     </>
   );

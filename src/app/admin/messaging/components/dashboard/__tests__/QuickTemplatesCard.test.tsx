@@ -51,4 +51,13 @@ describe('QuickTemplatesCard', () => {
       })
     );
   });
+
+  it('filters displayed templates when allowedTemplateIds is provided', () => {
+    render(<QuickTemplatesCard allowedTemplateIds={['tpl_welcome', 'tpl_fee']} />);
+
+    expect(screen.getByText('Welcome Message')).toBeInTheDocument();
+    expect(screen.getByText('Fee Reminder')).toBeInTheDocument();
+    expect(screen.queryByText('Event Invite')).not.toBeInTheDocument();
+    expect(screen.queryByText('General Announcement')).not.toBeInTheDocument();
+  });
 });

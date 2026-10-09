@@ -74,4 +74,16 @@ describe('MessagingHeroGreeting', () => {
     render(<MessagingHeroGreeting userDisplayName="   Kofi Annan   " />);
     expect(screen.getByText(/Kofi 👋/i)).toBeInTheDocument();
   });
+
+  it('passes custom promptStarters to modal and renders them upon opening', () => {
+    render(
+      <MessagingHeroGreeting
+        promptStarters={['Announce annual speech and prize-giving day']}
+      />
+    );
+    const promptPill = screen.getByRole('button', { name: /Ask AI to draft/i });
+    fireEvent.click(promptPill);
+
+    expect(screen.getByText(/Announce annual speech and prize-giving day/i)).toBeInTheDocument();
+  });
 });

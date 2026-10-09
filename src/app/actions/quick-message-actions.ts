@@ -14,8 +14,10 @@
 
 import { z } from 'zod';
 import { adminDb } from '@/lib/firebase-admin';
+import { Timestamp } from 'firebase-admin/firestore';
 import { requireWorkspace } from '@/lib/auth/require-auth';
 import { sendRawMessage } from '@/lib/messaging-engine';
+import { getWorkspaceMessagingSettingsAction } from './messaging-settings-actions';
 
 export const QuickDirectMessageInputSchema = z.object({
   workspaceId: z.string().min(1, 'Workspace ID is required'),
@@ -48,8 +50,8 @@ function validateSingleRecipient(recipient: string, channel: 'sms' | 'whatsapp' 
     return { valid: false, error: 'Recipient cannot be empty.' };
   }
 
-  // Comma, semicolon, or newline clearly signals multiple recipients
-  if (/[,;\n]/.test(trimmed)) {
+  // Comma, semicolon, newline, slash, or pipe clearly signals multiple recipients
+  if (/[,;\n/|]/.test(trimmed)) {
     return { valid: false, error: 'Quick Compose supports a single recipient only. Use Campaign Wizard for bulk messages.' };
   }
 
@@ -67,8 +69,8 @@ function validateSingleRecipient(recipient: string, channel: 'sms' | 'whatsapp' 
     if (digitsOnly.length < 7) {
       return { valid: false, error: 'Phone number is too short.' };
     }
-    // E.164 max digits is 15. If multiple phone numbers are pasted with spaces, digits will exceed 15.
-    if (/\s+/.test(trimmed) && digitsOnly.length > 15) {
+    // E.164 max digits is 15. If multiple phone numbers are pasted, digits will exceed 15.
+    if (digitsOnly.length > 15) {
       return { valid: false, error: 'Quick Compose supports a single recipient only. Multiple phone numbers detected.' };
     }
   }
@@ -109,38 +111,68 @@ export async function dispatchQuickDirectMessageAction(
       return { success: false, error: 'Email subject is required for email messages.' };
     }
 
-    // 4. Firestore-Persisted Idempotency / Replay Protection (Rule 20)
-    const idempotencyDocId = `${workspaceId}_${clientRequestId}`;
-    const idemRef = adminDb.collection(IDEMPOTENCY_COLLECTION).doc(idempotencyDocId);
-    const idemSnap = await idemRef.get();
-
-    if (idemSnap.exists) {
-      const data = idemSnap.data();
-      if (data?.status === 'completed' && data?.logId) {
-        return {
-          success: true,
-          logId: String(data.logId),
-          isDuplicate: true,
-        };
-      }
-      if (data?.status === 'in_flight') {
-        return {
-          success: false,
-          error: 'A dispatch with this request ID is currently in flight. Please wait.',
-          code: 'IN_FLIGHT',
-        };
-      }
+    // 4. Channel Maintenance Kill-Switch Guard (Rules 3, 18 & 21)
+    const settingsRes = await getWorkspaceMessagingSettingsAction(workspaceId);
+    if (settingsRes.success && settingsRes.data.channelKillSwitches[channel]) {
+      return {
+        success: false,
+        error: `${channel.toUpperCase()} dispatch is temporarily paused for maintenance.`,
+        code: 'CHANNEL_PAUSED',
+      };
     }
 
-    // Mark as in-flight
-    await idemRef.set({
-      workspaceId,
-      organizationId: orgId,
-      clientRequestId,
-      channel,
-      status: 'in_flight',
-      createdAt: new Date().toISOString(),
+    // 5. Firestore-Persisted Idempotency / Replay Protection (Rule 20)
+    const idempotencyDocId = `${workspaceId}_${clientRequestId}`;
+    const idemRef = adminDb.collection(IDEMPOTENCY_COLLECTION).doc(idempotencyDocId);
+
+    // Atomically claim or inspect in-flight / completed record using runTransaction
+    const claimResult = await adminDb.runTransaction(async (transaction) => {
+      const snap = await transaction.get(idemRef);
+      if (snap.exists) {
+        const data = snap.data();
+        if (data?.status === 'completed' && data?.logId) {
+          return { type: 'completed' as const, logId: String(data.logId) };
+        }
+        if (data?.status === 'in_flight') {
+          const createdAtMs = typeof data.createdAtMs === 'number' ? data.createdAtMs : 0;
+          // Stale in-flight threshold: 60 seconds (allows retry if server crashed)
+          if (Date.now() - createdAtMs < 60000) {
+            return { type: 'in_flight' as const };
+          }
+        }
+      }
+
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24h TTL
+      transaction.set(idemRef, {
+        workspaceId,
+        organizationId: orgId,
+        clientRequestId,
+        channel,
+        status: 'in_flight',
+        createdAt: now.toISOString(),
+        createdAtMs: now.getTime(),
+        expiresAt: Timestamp.fromDate(expiresAt),
+      });
+
+      return { type: 'claimed' as const };
     });
+
+    if (claimResult.type === 'completed') {
+      return {
+        success: true,
+        logId: claimResult.logId,
+        isDuplicate: true,
+      };
+    }
+
+    if (claimResult.type === 'in_flight') {
+      return {
+        success: false,
+        error: 'A dispatch with this request ID is currently in flight. Please wait.',
+        code: 'IN_FLIGHT',
+      };
+    }
 
     // 5. Execute Raw Message Dispatch via Core Messaging Engine
     const dispatchResult = await sendRawMessage({
@@ -172,7 +204,7 @@ export async function dispatchQuickDirectMessageAction(
     await idemRef.delete().catch(() => {});
 
     const errorMsg = dispatchResult.error || 'Failed to dispatch message.';
-    if (/24-hour.*window.*closed/i.test(errorMsg)) {
+    if (/24-hour.*customer-service window|outside.*24-hour|24-hour.*window.*closed|131047/i.test(errorMsg)) {
       return {
         success: false,
         error: errorMsg,

@@ -39,6 +39,7 @@ export interface MessagingAiPromptModalProps {
   entityTermSingular?: string;
   entityTermPlural?: string;
   initialPrompt?: string;
+  customStarters?: string[];
 }
 
 export function MessagingAiPromptModal({
@@ -47,6 +48,7 @@ export function MessagingAiPromptModal({
   entityTermSingular = 'School',
   entityTermPlural = 'Recipients',
   initialPrompt = '',
+  customStarters,
 }: MessagingAiPromptModalProps) {
   const router = useRouter();
   const [prompt, setPrompt] = React.useState(initialPrompt);
@@ -65,6 +67,13 @@ export function MessagingAiPromptModal({
     `Write a warm welcome message for new ${entityTermPlural}`,
     `Analyze recent campaign performance and recommend improvements`,
   ], [entityTermSingular, entityTermPlural]);
+
+  const activeStarters = React.useMemo(() => {
+    if (customStarters && customStarters.length > 0) {
+      return customStarters;
+    }
+    return curatedStarters;
+  }, [customStarters, curatedStarters]);
 
   const tones: Array<{ id: PromptTone; label: string; icon: string }> = [
     { id: 'friendly', label: 'Friendly', icon: '😊' },
@@ -182,7 +191,7 @@ export function MessagingAiPromptModal({
               <span>Suggested Starters</span>
             </span>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {curatedStarters.map((starter, idx) => (
+              {activeStarters.map((starter, idx) => (
                 <button
                   key={idx}
                   type="button"

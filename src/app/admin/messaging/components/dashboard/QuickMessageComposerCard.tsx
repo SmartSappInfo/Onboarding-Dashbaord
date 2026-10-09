@@ -32,7 +32,10 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { MessagingDashboardChannel } from '@/lib/types/messaging-dashboard';
+import type { ChannelKillSwitches } from '@/lib/types/messaging-settings';
 import { dispatchQuickDirectMessageAction } from '@/app/actions/quick-message-actions';
+
+export type QuickComposerChannel = 'sms' | 'whatsapp' | 'email';
 
 export interface QuickMessageComposerCardProps {
   initialMessage?: string;
@@ -40,6 +43,7 @@ export interface QuickMessageComposerCardProps {
   initialChannel?: MessagingDashboardChannel;
   workspaceId?: string;
   smsBalance?: number;
+  killSwitches?: ChannelKillSwitches;
   onMessageSent?: () => void;
   className?: string;
 }
@@ -50,6 +54,7 @@ export function QuickMessageComposerCard({
   initialChannel,
   workspaceId,
   smsBalance,
+  killSwitches,
   onMessageSent,
   className,
 }: QuickMessageComposerCardProps) {
@@ -60,7 +65,9 @@ export function QuickMessageComposerCard({
   const [recipient, setRecipient] = React.useState('');
   const [subject, setSubject] = React.useState(initialSubject ?? '');
   const [message, setMessage] = React.useState(initialMessage ?? '');
-  const [channel, setChannel] = React.useState<MessagingDashboardChannel>(initialChannel ?? 'sms');
+  const [channel, setChannel] = React.useState<QuickComposerChannel>(
+    initialChannel && initialChannel !== 'in_app' ? initialChannel : 'sms'
+  );
   const [isSending, setIsSending] = React.useState(false);
   const [isVariablesOpen, setIsVariablesOpen] = React.useState(false);
 
@@ -72,28 +79,26 @@ export function QuickMessageComposerCard({
   }, [initialMessage]);
 
   React.useEffect(() => {
-    if (initialSubject !== undefined) {
-      setSubject(initialSubject);
-    }
+    setSubject(initialSubject ?? '');
   }, [initialSubject]);
 
   React.useEffect(() => {
-    if (initialChannel !== undefined) {
+    if (initialChannel !== undefined && initialChannel !== 'in_app') {
       setChannel(initialChannel);
     }
   }, [initialChannel]);
 
   // Rule 19 Single-Target Guard:
-  // Rejects delimiter characters [,;\n] and flags multiple distinct numbers while permitting spaced numbers
+  // Rejects delimiter characters [,;\n/|] and flags multiple distinct numbers while permitting spaced numbers
   const isMultipleRecipients = React.useMemo(() => {
     const trimmed = recipient.trim();
     if (!trimmed) return false;
-    if (/[,;\n]/.test(trimmed)) return true;
+    if (/[,;\n/|]/.test(trimmed)) return true;
     if (channel === 'email') {
       return /\s/.test(trimmed);
     }
     const cleanDigits = trimmed.replace(/\D/g, '');
-    if (/\s+/.test(trimmed) && cleanDigits.length > 15) {
+    if (cleanDigits.length > 15) {
       return true;
     }
     return false;
@@ -175,7 +180,10 @@ export function QuickMessageComposerCard({
     }
   };
 
+  const isChannelPaused = Boolean(killSwitches && killSwitches[channel]);
+
   const isSendDisabled =
+    isChannelPaused ||
     !recipient.trim() ||
     !message.trim() ||
     isMultipleRecipients ||
@@ -210,6 +218,22 @@ export function QuickMessageComposerCard({
       </div>
 
       <div className="space-y-3 pt-3">
+        {/* Channel Maintenance Kill-Switch Banner (Rules 3, 18 & 21) */}
+        {isChannelPaused && (
+          <div className="p-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs flex items-center justify-between font-medium">
+            <div className="flex items-center gap-1.5">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              <span>⚠️ {channel.toUpperCase()} outbound is paused for maintenance</span>
+            </div>
+            <Link
+              href="/admin/settings?tab=messaging"
+              className="font-semibold underline hover:text-amber-800 dark:hover:text-amber-300"
+            >
+              Settings →
+            </Link>
+          </div>
+        )}
+
         {/* Low SMS Balance Alert Pill (Rule 23) */}
         {isLowBalance && (
           <div className="p-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs flex items-center justify-between">
@@ -322,6 +346,11 @@ export function QuickMessageComposerCard({
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
               <span>Sending...</span>
+            </>
+          ) : isChannelPaused ? (
+            <>
+              <AlertCircle className="w-4 h-4" />
+              <span>Channel Paused</span>
             </>
           ) : (
             <>

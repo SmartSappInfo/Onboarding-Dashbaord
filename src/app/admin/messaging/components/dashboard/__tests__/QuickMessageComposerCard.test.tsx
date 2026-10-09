@@ -173,4 +173,23 @@ describe('QuickMessageComposerCard', () => {
       );
     });
   });
+
+  it('renders paused maintenance banner and disables dispatch button when channel kill-switch is active', () => {
+    render(
+      <QuickMessageComposerCard
+        killSwitches={{ sms: true, whatsapp: false, email: false }}
+        initialMessage="Hello there"
+      />
+    );
+
+    // SMS is active channel by default
+    expect(screen.getByText(/SMS outbound is paused for maintenance/i)).toBeInTheDocument();
+    const pausedBtn = screen.getByRole('button', { name: /Channel Paused/i });
+    expect(pausedBtn).toBeDisabled();
+
+    // Switch to WhatsApp (which is not paused)
+    fireEvent.click(screen.getByRole('button', { name: 'WHATSAPP' }));
+    expect(screen.queryByText(/SMS outbound is paused for maintenance/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Send Message/i })).toBeInTheDocument();
+  });
 });

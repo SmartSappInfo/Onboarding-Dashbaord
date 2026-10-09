@@ -60,6 +60,7 @@ export const STARTER_TEMPLATES: readonly QuickTemplateItem[] = [
 
 export interface QuickTemplatesCardProps {
   onSelectTemplate?: (template: QuickTemplateItem) => void;
+  allowedTemplateIds?: string[];
   className?: string;
 }
 
@@ -70,7 +71,15 @@ const CATEGORY_STYLES: Record<string, { bg: string; text: string; icon: React.Co
   Updates: { bg: 'bg-purple-500/10', text: 'text-purple-600 dark:text-purple-400', icon: Megaphone },
 };
 
-export function QuickTemplatesCard({ onSelectTemplate, className }: QuickTemplatesCardProps) {
+export function QuickTemplatesCard({ onSelectTemplate, allowedTemplateIds, className }: QuickTemplatesCardProps) {
+  const displayedTemplates = React.useMemo(() => {
+    if (!allowedTemplateIds || allowedTemplateIds.length === 0) {
+      return STARTER_TEMPLATES;
+    }
+    const filtered = STARTER_TEMPLATES.filter((tpl) => allowedTemplateIds.includes(tpl.id));
+    return filtered.length > 0 ? filtered : STARTER_TEMPLATES;
+  }, [allowedTemplateIds]);
+
   return (
     <div className={cn('rounded-2xl border border-border/80 bg-card p-4 sm:p-5 text-card-foreground shadow-xs', className)}>
       <div className="flex items-center justify-between pb-3 border-b border-border/60">
@@ -87,7 +96,7 @@ export function QuickTemplatesCard({ onSelectTemplate, className }: QuickTemplat
       </div>
 
       <div className="space-y-2 pt-3">
-        {STARTER_TEMPLATES.map((tpl) => {
+        {displayedTemplates.map((tpl) => {
           const style = CATEGORY_STYLES[tpl.category] || {
             bg: 'bg-primary/10',
             text: 'text-primary',
