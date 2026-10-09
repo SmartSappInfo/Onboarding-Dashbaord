@@ -31,7 +31,7 @@ export const STARTER_TEMPLATES: readonly QuickTemplateItem[] = [
     id: 'tpl_welcome',
     name: 'Welcome Message',
     category: 'Onboarding',
-    snippet: 'Welcome to our school community, {{first_name}}! We are thrilled to partner with your family.',
+    snippet: 'Welcome to our community, {{first_name}}! We are thrilled to have you.',
     defaultChannel: 'whatsapp',
   },
   {

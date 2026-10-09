@@ -39,7 +39,11 @@ export default function MessagingClient() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [isAiModalOpen, setIsAiModalOpen] = React.useState(false);
   const [isAllFeaturesOpen, setIsAllFeaturesOpen] = React.useState(false);
-  const [selectedSnippet, setSelectedSnippet] = React.useState<string | undefined>();
+  const [selectedTemplate, setSelectedTemplate] = React.useState<{
+    snippet: string;
+    subject?: string;
+    defaultChannel?: MessagingDashboardChannel;
+  } | null>(null);
   const [timeRange, setTimeRange] = React.useState<MessagingDashboardTimeRange>('7d');
 
   const loadSummary = React.useCallback(
@@ -110,10 +114,22 @@ export default function MessagingClient() {
         {/* Right Column (4 Cols): Stacked Sidebar Utilities */}
         <div className="lg:col-span-4 space-y-6">
           <QuickMessageComposerCard
-            initialMessage={selectedSnippet}
+            initialMessage={selectedTemplate?.snippet}
+            initialSubject={selectedTemplate?.subject}
+            initialChannel={selectedTemplate?.defaultChannel}
+            workspaceId={activeWorkspaceId ?? undefined}
+            smsBalance={summary?.kpi.smsBalance}
             onMessageSent={() => loadSummary(true)}
           />
-          <QuickTemplatesCard onSelectTemplate={(tpl) => setSelectedSnippet(tpl.snippet)} />
+          <QuickTemplatesCard
+            onSelectTemplate={(tpl) =>
+              setSelectedTemplate({
+                snippet: tpl.snippet,
+                subject: tpl.subject,
+                defaultChannel: tpl.defaultChannel,
+              })
+            }
+          />
           <ActiveQueuesCard stats={summary?.activeQueues} isLoading={isLoading} />
         </div>
       </div>
