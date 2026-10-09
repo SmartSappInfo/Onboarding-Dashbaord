@@ -141,15 +141,39 @@ export async function bulkUpdateTasksAction(taskIds: string[], updates: Partial<
             '@/lib/documents/crm-deal-sync-service'
           );
           await Promise.allSettled(
-            linkedTasks.map(t =>
-              syncTaskCompletionToObligation({
-                workspaceId,
-                taskId: t.id,
-                contractId: t.relatedParentId!,
-                obligationId: t.relatedEntityId!,
-                actorUserId: uid,
-              })
-            )
+            linkedTasks.map(async t => {
+              const now = new Date().toISOString();
+              try {
+                const res = await syncTaskCompletionToObligation({
+                  workspaceId,
+                  taskId: t.id,
+                  contractId: t.relatedParentId!,
+                  obligationId: t.relatedEntityId!,
+                  actorUserId: uid,
+                });
+                if (res && res.success) {
+                  await adminDb.collection('tasks').doc(t.id).update({
+                    obligationSyncStatus: 'synced',
+                    obligationSyncAt: now,
+                    obligationSyncError: null,
+                    updatedAt: now,
+                  });
+                } else {
+                  await adminDb.collection('tasks').doc(t.id).update({
+                    obligationSyncStatus: 'failed',
+                    obligationSyncError: res?.error || 'Downstream obligation sync failed',
+                    updatedAt: now,
+                  });
+                }
+              } catch (err: unknown) {
+                const errMessage = err instanceof Error ? err.message : 'Downstream obligation sync failed';
+                await adminDb.collection('tasks').doc(t.id).update({
+                  obligationSyncStatus: 'failed',
+                  obligationSyncError: errMessage,
+                  updatedAt: now,
+                });
+              }
+            })
           );
         }
       } catch (syncErr: unknown) {
@@ -185,6 +209,84 @@ export async function bulkDeleteTasksAction(taskIds: string[], workspaceId: stri
     return { success: true };
   } catch (error: unknown) {
     console.error('[TASK] Bulk Delete Error:', error);
+    return { success: false, error: getErrorMessage(error) };
+  }
+}
+
+export interface RetryObligationSyncResult extends TaskResult {
+  alreadySynced?: boolean;
+}
+
+/**
+ * Retries synchronization between a completed task and its linked contractual obligation.
+ * Strictly verifies workspace membership, anti-IDOR confinement, and TOCTOU concurrency.
+ * (Rule 8, Rule 18, Rule 19).
+ */
+export async function retryTaskObligationSyncAction(
+  workspaceId: string,
+  taskId: string,
+  expectedUpdatedAt?: string
+): Promise<RetryObligationSyncResult> {
+  try {
+    const { uid } = await requireWorkspace(workspaceId);
+    const permission = await canUser(uid, 'operations', 'tasks', 'edit', workspaceId);
+    if (!permission.granted) {
+      return { success: false, error: permission.reason ?? 'Permission denied.' };
+    }
+
+    const taskDoc = await adminDb.collection('tasks').doc(taskId).get();
+    if (!taskDoc.exists) {
+      return { success: false, error: 'Task not found.' };
+    }
+
+    const task = { id: taskDoc.id, ...taskDoc.data() } as Task;
+    if (task.workspaceId !== workspaceId) {
+      return { success: false, error: 'Task does not belong to this workspace.' };
+    }
+
+    // TOCTOU concurrency check (Rule 18)
+    if (expectedUpdatedAt && task.updatedAt !== expectedUpdatedAt) {
+      return { success: false, error: 'Task was modified concurrently by another process. Please reload and retry.' };
+    }
+
+    if (!task.relatedParentId || !task.relatedEntityId) {
+      return { success: false, error: 'Task does not have a linked contract obligation.' };
+    }
+
+    // Idempotency: if already synced, return success without duplicate calls (Rule 19)
+    if (task.obligationSyncStatus === 'synced') {
+      return { success: true, alreadySynced: true };
+    }
+
+    const { syncTaskCompletionToObligation } = await import('@/lib/documents/crm-deal-sync-service');
+    const syncRes = await syncTaskCompletionToObligation({
+      workspaceId,
+      taskId: task.id,
+      contractId: task.relatedParentId,
+      obligationId: task.relatedEntityId,
+      actorUserId: uid,
+    });
+
+    const now = new Date().toISOString();
+    if (syncRes && syncRes.success) {
+      await adminDb.collection('tasks').doc(taskId).update({
+        obligationSyncStatus: 'synced',
+        obligationSyncAt: now,
+        obligationSyncError: null,
+        updatedAt: now,
+      });
+      return { success: true, alreadySynced: false };
+    } else {
+      const errorMsg = syncRes?.error || 'Downstream sync to contract obligation failed';
+      await adminDb.collection('tasks').doc(taskId).update({
+        obligationSyncStatus: 'failed',
+        obligationSyncError: errorMsg,
+        updatedAt: now,
+      });
+      return { success: false, error: errorMsg };
+    }
+  } catch (error: unknown) {
+    console.error('[TASK] Retry Obligation Sync Error:', error);
     return { success: false, error: getErrorMessage(error) };
   }
 }

@@ -256,21 +256,48 @@ export async function updateTaskCore(
         metadata: { taskId },
       });
 
-      // Bi-directional Reverse Hook: Fulfill contractual obligation if task is linked (P4.1 & P4.2)
+      // Bi-directional Reverse Hook: Fulfill contractual obligation if task is linked (P4.1 & P4.2, Roadmap §78)
       if (stored.relatedParentId && stored.relatedEntityId) {
         try {
           const { syncTaskCompletionToObligation } = await import(
             '@/lib/documents/crm-deal-sync-service'
           );
-          await syncTaskCompletionToObligation({
+          const syncResult = await syncTaskCompletionToObligation({
             workspaceId,
             taskId,
             contractId: stored.relatedParentId,
             obligationId: stored.relatedEntityId,
             actorUserId: actor.kind === 'user' ? actor.uid : undefined,
           });
+          const now = new Date().toISOString();
+          if (syncResult && syncResult.success) {
+            await adminDb.collection('tasks').doc(taskId).update({
+              obligationSyncStatus: 'synced',
+              obligationSyncAt: now,
+              obligationSyncError: null,
+              updatedAt: now,
+            });
+          } else {
+            const errMessage = syncResult?.error || 'Downstream obligation sync failed';
+            await adminDb.collection('tasks').doc(taskId).update({
+              obligationSyncStatus: 'failed',
+              obligationSyncError: errMessage,
+              updatedAt: now,
+            });
+          }
         } catch (syncErr: unknown) {
           console.warn('[TASK] Failed to sync obligation status on task completion:', syncErr);
+          const errMessage = syncErr instanceof Error ? syncErr.message : 'Downstream obligation sync exception';
+          const now = new Date().toISOString();
+          try {
+            await adminDb.collection('tasks').doc(taskId).update({
+              obligationSyncStatus: 'failed',
+              obligationSyncError: errMessage,
+              updatedAt: now,
+            });
+          } catch {
+            // Fail-soft
+          }
         }
       }
     }
