@@ -712,7 +712,7 @@ export function MappableInputField({
                       const el = inputRef.current;
                       if (el) {
                         const start = el.selectionStart ?? value.length;
-                        const end = el.selectionEnd ?? value.length;
+                        const _end = el.selectionEnd ?? value.length;
                         let delStart = start > 0 ? start - 1 : 0;
                         if (slashTriggerIndexRef.current !== null && value[slashTriggerIndexRef.current] === '/') {
                           delStart = slashTriggerIndexRef.current;

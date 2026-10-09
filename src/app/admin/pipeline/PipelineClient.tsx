@@ -27,9 +27,16 @@ import {
     Zap,
     TrendingUp,
     Target,
-    BarChart3
+    BarChart3,
+    MoreVertical
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -41,12 +48,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger
-} from '@/components/ui/tooltip';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useWorkspaceVisibility } from '@/hooks/use-workspace-visibility';
 import { useToast } from '@/hooks/use-toast';
@@ -494,19 +495,9 @@ export default function PipelineClient() {
                                     <div className="p-1.5 rounded-lg bg-primary/10 text-primary shrink-0 transition-transform group-hover:scale-105">
                                         <GitBranch className="h-3.5 w-3.5" />
                                     </div>
-                                    <div className="flex items-center gap-2 min-w-0 text-left">
-                                        <span className="font-extrabold text-xs sm:text-sm tracking-tight text-foreground truncate">
-                                            {currentPipeline?.name || (isLoadingPipelines ? "Loading..." : "Select Pipeline")}
-                                        </span>
-                                        {currentPipeline?.isDefault && (
-                                            <Badge variant="outline" className="h-4 border-primary/20 bg-primary/10 text-primary text-[8px] font-bold uppercase px-1 shrink-0">
-                                                Default
-                                            </Badge>
-                                        )}
-                                        <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-muted/60 text-muted-foreground font-semibold shrink-0 hidden sm:inline-block">
-                                            {filterStages ? `${filterStages.length} Stages` : 'Pipeline'}
-                                        </span>
-                                    </div>
+                                    <span className="font-extrabold text-xs sm:text-sm tracking-tight text-foreground truncate min-w-0 text-left">
+                                        {currentPipeline?.name || (isLoadingPipelines ? "Loading..." : "Select Pipeline")}
+                                    </span>
                                     <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0 ml-auto transition-transform duration-200 group-data-[state=open]:rotate-180" />
                                 </Button>
                             </PopoverTrigger>
@@ -643,41 +634,38 @@ export default function PipelineClient() {
                         {/* Subtle Vertical Divider */}
                         <div className="h-4 w-[1px] bg-border/60 mx-1 shrink-0" />
 
-                        {/* New Pipeline Button (+) */}
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={handleOpenCreateModal}
-                                        className="h-8 w-8 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 active:scale-95 transition-all focus-visible:ring-1 focus-visible:ring-primary/40 focus:outline-none"
+                        {/* More Actions Dropdown (Add & Duplicate) */}
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent/60 active:scale-[0.97] transition-all focus-visible:ring-1 focus-visible:ring-primary/40 focus:outline-none"
+                                    aria-label="Pipeline actions"
+                                    title="More pipeline actions"
+                                >
+                                    <MoreVertical className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-48 rounded-xl border border-border/80 bg-popover text-popover-foreground shadow-lg p-1 z-[200]">
+                                <DropdownMenuItem
+                                    onClick={handleOpenCreateModal}
+                                    className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-semibold rounded-lg cursor-pointer hover:bg-accent focus:bg-accent"
+                                >
+                                    <Plus className="h-3.5 w-3.5 text-primary" />
+                                    <span>New Pipeline</span>
+                                </DropdownMenuItem>
+                                {currentPipeline && (
+                                    <DropdownMenuItem
+                                        onClick={() => handleOpenCloneModal(currentPipeline)}
+                                        className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-semibold rounded-lg cursor-pointer hover:bg-accent focus:bg-accent text-indigo-600 dark:text-indigo-400"
                                     >
-                                        <Plus className="h-4 w-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent className="text-xs">Create New Pipeline</TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-
-                        {/* Clone Current Pipeline Button */}
-                        {currentPipeline && (
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => handleOpenCloneModal(currentPipeline)}
-                                            className="h-8 w-8 rounded-xl text-muted-foreground hover:text-indigo-400 hover:bg-indigo-500/10 active:scale-95 transition-all focus-visible:ring-1 focus-visible:ring-indigo-500/40 focus:outline-none"
-                                        >
-                                            <Copy className="h-3.5 w-3.5" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent className="text-xs">Clone Pipeline ({currentPipeline.name})</TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        )}
+                                        <Copy className="h-3.5 w-3.5" />
+                                        <span>Duplicate Pipeline</span>
+                                    </DropdownMenuItem>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                 </div>
 

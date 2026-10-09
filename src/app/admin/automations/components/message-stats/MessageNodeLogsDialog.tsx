@@ -262,7 +262,7 @@ function MessageContactRowDetails({ log, workspaceId, cachedContact }: MessageCo
             setContactPerson(log.displayName || '-');
           }
         }
-      } catch (_error) {
+      } catch {
         if (isMounted) {
           setEntityName(log.entityName || log.displayName || '-');
           setContactPerson(log.displayName || '-');

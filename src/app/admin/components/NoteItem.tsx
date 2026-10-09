@@ -82,6 +82,7 @@ export default function NoteItem({ note, userProfile }: NoteItemProps) {
                     <div className="flex items-center gap-2">
                         <div className="h-6 w-6 rounded-full bg-amber-200/50 flex items-center justify-center text-[8px] font-medium text-amber-700">
                             {userProfile?.photoURL ? (
+                                /* eslint-disable-next-line @next/next/no-img-element */
                                 <img src={userProfile.photoURL} alt={userProfile.name} className="h-full w-full rounded-full object-cover" />
                             ) : getInitials(userProfile?.name)}
                         </div>

@@ -67,6 +67,7 @@ export default function MediaSelectorTrigger({
                         onClick={() => setIsMenuOpen(true)}
                     >
                         {value ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
                             <img src={value} alt="Preview" className="h-full w-full object-cover" />
                         ) : fallbackInitials ? (
                             <div className="h-full w-full flex flex-col items-center justify-center bg-gradient-to-br from-primary/15 via-primary/5 to-muted text-primary font-black text-2xl md:text-3xl tracking-wider select-none">

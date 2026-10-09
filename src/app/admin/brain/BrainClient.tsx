@@ -21,7 +21,6 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { useEventStream } from '@/hooks/useEventStream';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   Inbox,
   RefreshCw,

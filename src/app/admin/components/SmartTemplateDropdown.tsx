@@ -63,14 +63,14 @@ export function SmartTemplateDropdown({
     const [searchQuery, setSearchQuery] = React.useState('');
     const [selectedCategoryFilter, setSelectedCategoryFilter] = React.useState<string>('all');
 
-    const handleValueChange = (val: string) => {
+    const handleValueChange = React.useCallback((val: string) => {
         onValueChange(val);
         if (onSelect) {
             const tmpl = templates.find(t => t.id === val);
             if (tmpl) onSelect(tmpl);
         }
         setIsOpen(false);
-    };
+    }, [onValueChange, onSelect, templates]);
 
     const fetchTemplates = React.useCallback(async (bypassCache = false) => {
         setIsLoading(true);
@@ -130,7 +130,7 @@ export function SmartTemplateDropdown({
             const defaultTemplate = templates[0];
             handleValueChange(defaultTemplate.id);
         }
-    }, [templates, value]);
+    }, [templates, value, handleValueChange]);
 
     // Phase 4: Auto-refetch if a value is provided but not found in the current list (e.g. newly created custom template)
     const refetchAttemptedForValue = React.useRef<string | null>(null);

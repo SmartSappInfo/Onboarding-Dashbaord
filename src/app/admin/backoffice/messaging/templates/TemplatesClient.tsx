@@ -261,7 +261,7 @@ export default function TemplatesClient() {
             await deleteDoc(doc(firestore, 'message_templates', templateToDelete.id));
             toast({ title: 'Template Removed' });
             setTemplateToDelete(null);
-        } catch (_e: unknown) {
+        } catch {
             toast({ variant: 'destructive', title: 'Deletion Failed' });
         } finally {
             setIsDeleting(false);
