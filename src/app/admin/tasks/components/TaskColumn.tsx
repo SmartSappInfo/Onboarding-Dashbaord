@@ -27,9 +27,18 @@ interface TaskColumnProps {
     onTaskClick: (task: Task) => void;
     userMap?: Map<string, UserProfile>;
     onStatusChange?: (taskId: string, newStatus: TaskStatus) => void;
+    pendingTaskIds?: Set<string>;
 }
 
-export default function TaskColumn({ status, tasks, entityLogoMap, onTaskClick, userMap, onStatusChange }: TaskColumnProps) {
+export default function TaskColumn({
+    status,
+    tasks,
+    entityLogoMap,
+    onTaskClick,
+    userMap,
+    onStatusChange,
+    pendingTaskIds,
+}: TaskColumnProps) {
     const { setNodeRef, isOver } = useDroppable({
         id: status,
         data: { type: 'COLUMN', status }
@@ -64,6 +73,7 @@ export default function TaskColumn({ status, tasks, entityLogoMap, onTaskClick, 
                                     key={task.id} 
                                     task={task} 
                                     entityLogoUrl={task.entityId ? entityLogoMap?.get(task.entityId) : undefined}
+                                    isPending={pendingTaskIds?.has(task.id)}
                                     onClick={() => onTaskClick(task)} 
                                     userMap={userMap}
                                     onStatusChange={onStatusChange}

@@ -26,13 +26,28 @@ interface TaskBoardProps {
     entityLogoMap?: Map<string, string | undefined>;
     onTaskClick: (task: Task) => void;
     userMap?: Map<string, UserProfile>;
+    pendingTaskIds?: Set<string>;
 }
 
-export default function TaskBoard({ tasks, entityLogoMap, onTaskClick, userMap }: TaskBoardProps) {
+export default function TaskBoard({ 
+    tasks, 
+    entityLogoMap, 
+    onTaskClick, 
+    userMap,
+    pendingTaskIds: externalPendingTaskIds,
+}: TaskBoardProps) {
     const { toast } = useToast();
     
     const [localTasks, setLocalTasks] = React.useState<Task[]>(tasks);
     const [activeTask, setActiveTask] = React.useState<Task | null>(null);
+    const [internalPendingTaskIds, setInternalPendingTaskIds] = React.useState<Set<string>>(new Set());
+
+    // Merged pending task IDs for visual saving indicators and action locking
+    const allPendingTaskIds = React.useMemo(() => {
+        const combined = new Set<string>(externalPendingTaskIds ? Array.from(externalPendingTaskIds) : []);
+        internalPendingTaskIds.forEach(id => combined.add(id));
+        return combined;
+    }, [externalPendingTaskIds, internalPendingTaskIds]);
 
     React.useEffect(() => {
         setLocalTasks(tasks);
@@ -96,6 +111,7 @@ export default function TaskBoard({ tasks, entityLogoMap, onTaskClick, userMap }
         if (activeTaskItem && currentLocalTask && activeTaskItem.status !== currentLocalTask.status) {
             const targetStatus = currentLocalTask.status;
 
+            setInternalPendingTaskIds(prev => new Set(prev).add(activeId));
             try {
                 const result = await updateTaskAction(activeId, { 
                     status: targetStatus 
@@ -137,6 +153,12 @@ export default function TaskBoard({ tasks, entityLogoMap, onTaskClick, userMap }
                         label: 'Review Permissions',
                     },
                 });
+            } finally {
+                setInternalPendingTaskIds(prev => {
+                    const next = new Set(prev);
+                    next.delete(activeId);
+                    return next;
+                });
             }
         }
     };
@@ -147,6 +169,7 @@ export default function TaskBoard({ tasks, entityLogoMap, onTaskClick, userMap }
 
         // Optimistic UI update
         setLocalTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: targetStatus } : t));
+        setInternalPendingTaskIds(prev => new Set(prev).add(taskId));
 
         try {
             const result = await updateTaskAction(taskId, { 
@@ -189,6 +212,12 @@ export default function TaskBoard({ tasks, entityLogoMap, onTaskClick, userMap }
                     label: 'Review Permissions',
                 },
             });
+        } finally {
+            setInternalPendingTaskIds(prev => {
+                const next = new Set(prev);
+                next.delete(taskId);
+                return next;
+            });
         }
     };
 
@@ -221,6 +250,7 @@ export default function TaskBoard({ tasks, entityLogoMap, onTaskClick, userMap }
                                 onTaskClick={onTaskClick}
                                 userMap={userMap}
                                 onStatusChange={handleStatusChangeDirect}
+                                pendingTaskIds={allPendingTaskIds}
                             />
                         ))}
                     </div>
