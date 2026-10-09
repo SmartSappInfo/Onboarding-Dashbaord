@@ -15,7 +15,10 @@ import * as React from 'react';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { getMessagingDashboardSummaryAction } from '@/app/actions/messaging-dashboard-actions';
-import type { MessagingDashboardSummary } from '@/lib/types/messaging-dashboard';
+import type {
+  MessagingDashboardSummary,
+  MessagingDashboardTimeRange,
+} from '@/lib/types/messaging-dashboard';
 import { MessagingHeroGreeting } from './components/dashboard/MessagingHeroGreeting';
 import { MessagingAiPromptModal } from './components/dashboard/MessagingAiPromptModal';
 import { MessagingKpiGrid } from './components/dashboard/MessagingKpiGrid';
@@ -37,9 +40,10 @@ export default function MessagingClient() {
   const [isAiModalOpen, setIsAiModalOpen] = React.useState(false);
   const [isAllFeaturesOpen, setIsAllFeaturesOpen] = React.useState(false);
   const [selectedSnippet, setSelectedSnippet] = React.useState<string | undefined>();
+  const [timeRange, setTimeRange] = React.useState<MessagingDashboardTimeRange>('7d');
 
   const loadSummary = React.useCallback(
-    async (forceRefresh = false) => {
+    async (forceRefresh = false, range: MessagingDashboardTimeRange = timeRange) => {
       if (!activeOrganizationId || !activeWorkspaceId) {
         setIsLoading(false);
         return;
@@ -49,6 +53,7 @@ export default function MessagingClient() {
         const res = await getMessagingDashboardSummaryAction({
           organizationId: activeOrganizationId,
           workspaceId: activeWorkspaceId,
+          timeRange: range,
           forceRefresh,
         });
         if (res.success) {
@@ -60,7 +65,7 @@ export default function MessagingClient() {
         setIsLoading(false);
       }
     },
-    [activeOrganizationId, activeWorkspaceId]
+    [activeOrganizationId, activeWorkspaceId, timeRange]
   );
 
   React.useEffect(() => {
@@ -80,10 +85,19 @@ export default function MessagingClient() {
         {/* Left Column (8 Cols): Quick Actions + Inbox + Charts */}
         <div className="lg:col-span-8 space-y-6">
           <MessagingQuickActions onOpenAllFeatures={() => setIsAllFeaturesOpen(true)} />
-          <MessagingInboxPreview items={summary?.inboxPreview ?? []} isLoading={isLoading} />
+          <MessagingInboxPreview
+            items={summary?.inboxPreview ?? []}
+            isLoading={isLoading}
+            onOpenAiAssistant={() => setIsAiModalOpen(true)}
+          />
           <MessagingPerformanceCharts
             performance={summary?.performance}
             channelBreakdown={summary?.channelBreakdown ?? []}
+            activeTimeRange={timeRange}
+            onTimeRangeChange={(r) => {
+              setTimeRange(r);
+              loadSummary(false, r);
+            }}
             isLoading={isLoading}
           />
           <RecentCampaignsCard
