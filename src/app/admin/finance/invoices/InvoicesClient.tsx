@@ -308,15 +308,13 @@ export default function InvoicesClient() {
 
     return (
         <PageContainerFluid>
-            <div className="h-full overflow-y-auto w-full">
-                <div className="space-y-6 pb-32 w-full">
-                    {/* Header Row */}
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="flex items-center gap-2.5 text-left">
-                            <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
-                                <Receipt className="h-8 w-8 text-primary" />
-                                Invoice Registry
-                            </h1>
+            <div className="space-y-6 pb-20 w-full text-left">
+                {/* Header Row */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-2.5 text-left">
+                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                            Invoice Registry
+                        </h1>
                             <CardInfoTooltip text={`Institutional billing records and financial cycles for ${activeWorkspace?.name || activeWorkspaceId || 'this workspace'}.`} />
                         </div>
                         <div className="flex items-center gap-3">
@@ -468,7 +466,7 @@ export default function InvoicesClient() {
                                         const balanceDue = Number(invoice.balanceDue ?? Math.max(0, invoice.totalPayable - amountPaid));
 
                                         return (
-                                            <TableRow key={invoice.id} className="group hover:bg-muted/25 transition-colors text-left">
+                                            <TableRow key={invoice.id} className="group hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 transition-colors text-left">
                                                 <TableCell className="pl-6 py-3.5 text-left">
                                                     <span className="font-bold text-xs text-foreground tracking-tight block text-left">
                                                         {invoice.invoiceNumber}
@@ -603,11 +601,15 @@ export default function InvoicesClient() {
                     <Dialog open={isAdding} onOpenChange={setIsAdding}>
                         <DialogContent className="sm:max-w-lg rounded-2xl p-0 overflow-hidden border border-border shadow-2xl text-left bg-card">
                             <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }}>
-                                <DialogHeader className="p-6 bg-muted/20 border-b shrink-0 text-left">
-                                    <DialogTitle className="text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
-                                        <Receipt className="h-5 w-5 text-primary" /> Initialize Billing Record
-                                    </DialogTitle>
-                                    <DialogDescription className="text-xs text-muted-foreground">
+                                <DialogHeader demarcated className="px-6 py-3.5 sm:py-4 bg-muted/20 border-b border-border/80 flex flex-row items-center justify-between text-left">
+                                    <div className="flex items-center gap-2">
+                                        <Receipt className="h-5 w-5 text-primary shrink-0" />
+                                        <DialogTitle className="text-base font-bold tracking-tight text-foreground">
+                                            Initialize Billing Record
+                                        </DialogTitle>
+                                        <CardInfoTooltip text={`Select target ${singular.toLowerCase()} and binding profile. Rate, headcount, and taxes will be applied automatically.`} />
+                                    </div>
+                                    <DialogDescription className="sr-only">
                                         Select target {singular.toLowerCase()} and binding profile. Rate, headcount, and taxes will be applied automatically.
                                     </DialogDescription>
                                 </DialogHeader>
@@ -661,7 +663,7 @@ export default function InvoicesClient() {
                                     </div>
                                 </div>
 
-                                <DialogFooter className="p-4 bg-muted/20 border-t flex flex-col-reverse sm:flex-row items-center justify-end gap-2 shrink-0">
+                                <DialogFooter demarcated className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5 shrink-0">
                                     <Button 
                                         type="button" 
                                         variant="outline" 
@@ -739,7 +741,6 @@ export default function InvoicesClient() {
                             }}
                         />
                     )}
-                </div>
             </div>
         </PageContainerFluid>
     );

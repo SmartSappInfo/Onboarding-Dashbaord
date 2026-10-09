@@ -30,6 +30,7 @@ import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter 
 } from '@/components/ui/dialog';
 import { PageContainerFluid } from '@/components/ui/page-container';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import Image from 'next/image';
 
 /**
@@ -118,13 +119,21 @@ export default function FinanceSettingsClient() {
         try {
             if (activeProfile) {
                 await updateDoc(doc(firestore, 'billing_profiles', activeProfile.id), payload);
-                toast({ title: 'Profile Synchronized' });
+                toast({ 
+                    title: 'Profile Synchronized',
+                    description: `Billing protocol "${payload.name}" updated successfully.`,
+                    actionConfig: { path: '/admin/finance/settings', label: 'View Settings' },
+                });
             } else {
                 await addDoc(collection(firestore, 'billing_profiles'), {
                     ...payload,
                     createdAt: timestamp
                 });
-                toast({ title: 'Profile Initialized' });
+                toast({ 
+                    title: 'Profile Initialized',
+                    description: `Billing protocol "${payload.name}" created successfully.`,
+                    actionConfig: { path: '/admin/finance/settings', label: 'View Settings' },
+                });
             }
             setIsEditing(false);
         } catch {
@@ -151,16 +160,13 @@ export default function FinanceSettingsClient() {
 
     return (
         <PageContainerFluid>
-            <div className="space-y-6 pb-32 w-full text-left">
+            <div className="space-y-6 pb-20 w-full text-left">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex flex-col items-start">
-                        <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
-                            <Settings2 className="h-8 w-8 text-primary" />
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
                             Billing Protocols
                         </h1>
-                        <p className="text-muted-foreground text-xs mt-1">
-                            Define tax rules, remittance instructions, and digital signatures for {activeWorkspace?.name || activeWorkspaceId}
-                        </p>
+                        <CardInfoTooltip text={`Define tax rules, remittance instructions, and digital signatures for ${activeWorkspace?.name || activeWorkspaceId || 'this workspace'}.`} />
                     </div>
                     <Button 
                         onClick={() => handleOpenEdit()} 
@@ -189,7 +195,7 @@ export default function FinanceSettingsClient() {
                                 ))
                             ) : profiles?.length ? (
                                 profiles.map((p) => (
-                                    <TableRow key={p.id} className="group hover:bg-muted/25 transition-colors">
+                                    <TableRow key={p.id} className="group hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 transition-colors">
                                         <TableCell className="pl-6 py-3.5">
                                             <p className="font-bold text-xs text-foreground">{p.name}</p>
                                             <p className="text-[10px] text-muted-foreground font-medium">{p.signatureName} ({p.signatureDesignation || 'Authorized Signatory'})</p>
@@ -242,20 +248,19 @@ export default function FinanceSettingsClient() {
             <Dialog open={isEditing} onOpenChange={setIsEditing}>
                 <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col p-0 overflow-hidden border border-border shadow-2xl rounded-2xl bg-card">
                     <form onSubmit={handleSave} className="flex flex-col h-full text-left">
-                        <DialogHeader className="p-6 bg-muted/20 border-b shrink-0">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2.5 bg-primary text-white rounded-xl shadow-md shadow-primary/20">
-                                    <CreditCard className="h-5 w-5" />
+                        <DialogHeader demarcated className="px-6 py-3.5 sm:py-4 bg-muted/20 border-b border-border/80 flex flex-row items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                                <div className="p-2 bg-primary text-white rounded-xl shadow-xs">
+                                    <CreditCard className="h-4 w-4" />
                                 </div>
-                                <div>
-                                    <DialogTitle className="text-xl font-bold tracking-tight">
-                                        {activeProfile ? 'Modify Billing Protocol' : 'Initialize Billing Protocol'}
-                                    </DialogTitle>
-                                    <DialogDescription className="text-xs text-muted-foreground">
-                                        Define tax rules and remittance signatures
-                                    </DialogDescription>
-                                </div>
+                                <DialogTitle className="text-base sm:text-lg font-bold tracking-tight text-foreground">
+                                    {activeProfile ? 'Modify Billing Protocol' : 'Initialize Billing Protocol'}
+                                </DialogTitle>
+                                <CardInfoTooltip text="Define tax rules, remittance instructions, and digital signatures for this billing profile." />
                             </div>
+                            <DialogDescription className="sr-only">
+                                Define tax rules, remittance instructions, and digital signatures for this billing profile.
+                            </DialogDescription>
                         </DialogHeader>
 
                         <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-background">
@@ -360,19 +365,19 @@ export default function FinanceSettingsClient() {
                             </div>
                         </div>
 
-                        <DialogFooter className="p-4 bg-muted/20 border-t shrink-0 flex justify-between gap-3 items-center">
+                        <DialogFooter demarcated className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
                             <Button 
                                 type="button" 
-                                variant="ghost" 
+                                variant="outline" 
                                 onClick={() => setIsEditing(false)} 
-                                className="rounded-xl font-bold px-5 h-10 text-xs active:scale-[0.97]"
+                                className="rounded-xl font-bold px-5 min-h-[44px] text-xs active:scale-[0.97]"
                             >
                                 Cancel
                             </Button>
                             <Button 
                                 type="submit" 
                                 disabled={isSaving || !name.trim() || workspaceIds.length === 0} 
-                                className="rounded-xl font-bold px-6 h-10 text-xs bg-primary text-white active:scale-[0.97]"
+                                className="rounded-xl font-bold px-6 min-h-[44px] text-xs bg-primary text-white active:scale-[0.97]"
                             >
                                 {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />}
                                 Commit Protocol

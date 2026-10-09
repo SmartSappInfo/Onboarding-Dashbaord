@@ -15,8 +15,8 @@ import WorkspaceIntegrationsTab from './components/WorkspaceIntegrationsTab';
 import { useTenant } from '@/context/TenantContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useUser, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { Building, Globe, Mail, Phone, MapPin, Pencil, Sparkles, Sliders, Key, Layers } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Building, Globe, Mail, Phone, MapPin, Pencil, Sparkles, Sliders, Key, Layers, CreditCard, MessageSquare, Receipt, ArrowRight, ExternalLink } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -66,6 +66,18 @@ export default function SettingsClient() {
 
   const searchParams = useSearchParams();
   const targetWorkspaceId = searchParams.get('workspaceId');
+  const tabParam = searchParams.get('tab');
+  const validTabs = React.useMemo(() => ['profile', 'branding', 'regional', 'integrations', 'billing'], []);
+  const [activeTab, setActiveTab] = React.useState<string>(
+    tabParam && validTabs.includes(tabParam) ? tabParam : 'profile'
+  );
+
+  React.useEffect(() => {
+    if (tabParam && validTabs.includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam, validTabs]);
+
   const hasAutoOpenedRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
@@ -188,7 +200,7 @@ export default function SettingsClient() {
           </div>
         </div>
 
-        <Tabs defaultValue="profile" className="space-y-8">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
           <TabsList className="bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto w-full md:w-auto flex flex-wrap md:inline-flex items-center gap-1">
             <TabsTrigger 
               value="profile" 
@@ -213,6 +225,12 @@ export default function SettingsClient() {
               className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
             >
               <Key className="h-3.5 w-3.5 shrink-0" /> AI & Integrations
+            </TabsTrigger>
+            <TabsTrigger 
+              value="billing" 
+              className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
+            >
+              <CreditCard className="h-3.5 w-3.5 shrink-0" /> SMS Units & Billing
             </TabsTrigger>
           </TabsList>
 
@@ -452,6 +470,119 @@ export default function SettingsClient() {
                 />
               )
             )}
+          </TabsContent>
+
+          {/* TAB 5: SMS Units & Billing */}
+          <TabsContent value="billing" className="space-y-6 outline-none text-left">
+            <Card className="border border-border/80 shadow-sm rounded-2xl overflow-hidden bg-card text-card-foreground">
+              <div className="h-1.5 w-full bg-gradient-to-r from-orange-500 via-primary to-purple-600" />
+              <CardHeader className="p-6 sm:p-8 border-b border-border/60">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2.5">
+                      <div className="h-9 w-9 rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0">
+                        <CreditCard className="h-5 w-5" />
+                      </div>
+                      <CardTitle className="text-xl sm:text-2xl font-bold tracking-tight">
+                        SMS Units & Billing Management
+                      </CardTitle>
+                      <CardInfoTooltip text="Manage SMS unit credits, gateway routing credentials, and institutional billing protocols." />
+                    </div>
+                    <CardDescription className="text-xs text-muted-foreground mt-1">
+                      Monitor credit reserves, top up dispatch capacity, and configure organization tax and remittance profiles.
+                    </CardDescription>
+                  </div>
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="rounded-xl font-bold text-xs h-10 px-4 border-border/80 active:scale-[0.97]"
+                  >
+                    <Link href="/admin/messaging">
+                      <MessageSquare className="h-3.5 w-3.5 mr-1.5 text-primary" />
+                      Open Messaging Hub
+                    </Link>
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6 sm:p-8 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* SMS Gateway & Units Card */}
+                  <div className="p-5 rounded-2xl border border-border/80 bg-muted/10 space-y-4 flex flex-col justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          SMS Gateway Capacity
+                        </span>
+                        <Badge variant="outline" className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 border-emerald-500/20">
+                          Active Gateway
+                        </Badge>
+                      </div>
+                      <h3 className="text-lg font-bold text-foreground">mNotify Provider Credits</h3>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        Outbound SMS dispatches route through your configured mNotify gateway credentials. To purchase additional units or renew your sending bundle, access your provider dashboard.
+                      </p>
+                    </div>
+                    <div className="pt-2 flex flex-wrap gap-2.5 items-center">
+                      <Button
+                        asChild
+                        className="rounded-xl font-bold text-xs h-10 px-4 bg-primary text-primary-foreground active:scale-[0.97]"
+                      >
+                        <a href="https://apps.mnotify.com" target="_blank" rel="noopener noreferrer">
+                          Top Up SMS Units <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
+                        </a>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setActiveTab('integrations')}
+                        className="rounded-xl font-bold text-xs h-10 px-4 border-border/80 active:scale-[0.97]"
+                      >
+                        Configure API Keys
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Finance & Invoicing Protocols Card */}
+                  <div className="p-5 rounded-2xl border border-border/80 bg-muted/10 space-y-4 flex flex-col justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          Institutional Protocols
+                        </span>
+                        <Badge variant="outline" className="text-[10px] font-bold text-primary bg-primary/10 border-primary/20">
+                          Finance Hub
+                        </Badge>
+                      </div>
+                      <h3 className="text-lg font-bold text-foreground">Billing & Remittance Protocols</h3>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        Configure institutional tax codes, VAT/Levy schedules, bank remittance details, authorized digital signatures, and fee invoicing schedules.
+                      </p>
+                    </div>
+                    <div className="pt-2 flex flex-wrap gap-2.5 items-center">
+                      <Button
+                        asChild
+                        variant="outline"
+                        className="rounded-xl font-bold text-xs h-10 px-4 border-border/80 active:scale-[0.97]"
+                      >
+                        <Link href="/admin/finance/settings">
+                          Billing Protocols <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+                        </Link>
+                      </Button>
+                      <Button
+                        asChild
+                        variant="ghost"
+                        className="rounded-xl font-bold text-xs h-10 px-4 active:scale-[0.97]"
+                      >
+                        <Link href="/admin/finance/invoices">
+                          <Receipt className="h-3.5 w-3.5 mr-1.5 text-primary" />
+                          View Invoices
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
