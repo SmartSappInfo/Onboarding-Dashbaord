@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { MessagingInboxPreview } from '../MessagingInboxPreview';
 
 describe('MessagingInboxPreview', () => {
@@ -12,6 +12,7 @@ describe('MessagingInboxPreview', () => {
       lastMessageTimestamp: '2026-10-09T09:15:00Z',
       unreadCount: 2,
       isGroup: false,
+      isDirect: true,
     },
     {
       threadId: 't2',
@@ -21,6 +22,7 @@ describe('MessagingInboxPreview', () => {
       lastMessageTimestamp: '2026-10-08T14:30:00Z',
       unreadCount: 0,
       isGroup: true,
+      isDirect: false,
     },
   ];
 
@@ -35,15 +37,25 @@ describe('MessagingInboxPreview', () => {
     expect(screen.getByText(/Parent PTA Group/i)).toBeInTheDocument();
   });
 
-  it('filters by tab status', () => {
+  it('renders tab counters and filters by direct mode', () => {
     render(<MessagingInboxPreview items={mockThreads} isLoading={false} />);
-    fireEvent.click(screen.getByRole('button', { name: /unread/i }));
+    expect(screen.getByText(/All \(2\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Unread \(1\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Groups \(1\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Direct \(1\)/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Direct/i }));
     expect(screen.getByText(/St. Mary High School/i)).toBeInTheDocument();
     expect(screen.queryByText(/Parent PTA Group/i)).not.toBeInTheDocument();
+  });
 
-    fireEvent.click(screen.getByRole('button', { name: /groups/i }));
-    expect(screen.queryByText(/St. Mary High School/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/Parent PTA Group/i)).toBeInTheDocument();
+  it('invokes onOpenAiAssistant when AI drafting bar is clicked', () => {
+    const handleAi = vi.fn();
+    render(<MessagingInboxPreview items={mockThreads} isLoading={false} onOpenAiAssistant={handleAi} />);
+    
+    const aiBtn = screen.getByRole('button', { name: /Ask AI to draft reply/i });
+    fireEvent.click(aiBtn);
+    expect(handleAi).toHaveBeenCalledTimes(1);
   });
 
   it('renders skeleton on loading', () => {

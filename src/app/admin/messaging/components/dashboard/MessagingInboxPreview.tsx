@@ -13,8 +13,9 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Search, ArrowRight, Users } from 'lucide-react';
+import { Search, ArrowRight, Users, Sparkles } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import type { InboxThreadPreviewItem } from '@/lib/types/messaging-dashboard';
@@ -22,17 +23,33 @@ import type { InboxThreadPreviewItem } from '@/lib/types/messaging-dashboard';
 export interface MessagingInboxPreviewProps {
   items?: InboxThreadPreviewItem[];
   isLoading?: boolean;
+  onOpenAiAssistant?: () => void;
   className?: string;
 }
 
-export function MessagingInboxPreview({ items = [], isLoading, className }: MessagingInboxPreviewProps) {
-  const [filter, setFilter] = React.useState<'all' | 'unread' | 'groups'>('all');
+export function MessagingInboxPreview({
+  items = [],
+  isLoading,
+  onOpenAiAssistant,
+  className,
+}: MessagingInboxPreviewProps) {
+  const [filter, setFilter] = React.useState<'all' | 'unread' | 'groups' | 'direct'>('all');
   const [search, setSearch] = React.useState('');
+
+  const counts = React.useMemo(() => {
+    return {
+      all: items.length,
+      unread: items.filter((i) => i.unreadCount > 0).length,
+      groups: items.filter((i) => i.isGroup).length,
+      direct: items.filter((i) => !i.isGroup).length,
+    };
+  }, [items]);
 
   const filtered = React.useMemo(() => {
     return items.filter((item) => {
       if (filter === 'unread' && item.unreadCount === 0) return false;
       if (filter === 'groups' && !item.isGroup) return false;
+      if (filter === 'direct' && item.isGroup) return false;
       if (search.trim()) {
         const query = search.toLowerCase();
         return (
@@ -72,7 +89,7 @@ export function MessagingInboxPreview({ items = [], isLoading, className }: Mess
       <div className="pt-3 space-y-3">
         {/* Search & Filter Tabs */}
         <div className="flex flex-col sm:flex-row gap-2 items-center justify-between">
-          <div className="relative w-full sm:w-60">
+          <div className="relative w-full sm:w-56">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
@@ -81,29 +98,36 @@ export function MessagingInboxPreview({ items = [], isLoading, className }: Mess
               className="pl-8 h-9 text-xs rounded-xl bg-muted/20"
             />
           </div>
-          <div className="flex items-center gap-1 w-full sm:w-auto bg-muted/30 p-0.5 rounded-lg">
-            {(['all', 'unread', 'groups'] as const).map((tab) => (
+          <div className="flex items-center gap-1 w-full sm:w-auto bg-muted/30 p-0.5 rounded-lg overflow-x-auto">
+            {(
+              [
+                { key: 'all', label: `All (${counts.all})` },
+                { key: 'unread', label: `Unread (${counts.unread})` },
+                { key: 'groups', label: `Groups (${counts.groups})` },
+                { key: 'direct', label: `Direct (${counts.direct})` },
+              ] as const
+            ).map((tab) => (
               <button
-                key={tab}
+                key={tab.key}
                 type="button"
-                onClick={() => setFilter(tab)}
+                onClick={() => setFilter(tab.key)}
                 className={cn(
-                  'px-2.5 py-1 text-xs font-medium rounded-md capitalize transition-all active:scale-[0.97]',
-                  filter === tab
+                  'px-2 py-1 text-[11px] font-medium rounded-md whitespace-nowrap transition-all active:scale-[0.97]',
+                  filter === tab.key
                     ? 'bg-primary text-primary-foreground shadow-xs'
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
-                {tab}
+                {tab.label}
               </button>
             ))}
           </div>
         </div>
 
         {/* Thread List */}
-        <div className="divide-y divide-border/50">
+        <div className="divide-y divide-border/50 min-h-[160px]">
           {filtered.length === 0 ? (
-            <p className="text-xs text-muted-foreground py-6 text-center italic">No conversations found.</p>
+            <p className="text-xs text-muted-foreground py-8 text-center italic">No conversations found.</p>
           ) : (
             filtered.map((thread) => (
               <Link
@@ -135,6 +159,20 @@ export function MessagingInboxPreview({ items = [], isLoading, className }: Mess
               </Link>
             ))
           )}
+        </div>
+
+        {/* Docked AI Assistant Trigger Bar */}
+        <div className="pt-2 border-t border-border/60">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onOpenAiAssistant}
+            aria-label="Ask AI to draft reply"
+            className="w-full min-h-[44px] rounded-xl text-xs font-semibold border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 text-primary flex items-center justify-center gap-2 active:scale-[0.97] transition-all"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>Ask AI to draft a response or follow-up →</span>
+          </Button>
         </div>
       </div>
     </div>
