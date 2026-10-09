@@ -28,9 +28,9 @@ export async function getWorkspaceMessagingSettingsAction(
   workspaceId: string
 ): Promise<MessagingSettingsActionResult<WorkspaceMessagingSettings>> {
   try {
-    const { workspace } = await requireWorkspace(workspaceId);
-    if (!workspace) {
-      return { success: false, error: 'Workspace not found', code: 'NOT_FOUND' };
+    const authContext = await requireWorkspace(workspaceId);
+    if (!authContext) {
+      return { success: false, error: 'Workspace access not granted', code: 'UNAUTHORIZED' };
     }
 
     const docRef = adminDb.doc(`workspaces/${workspaceId}/messaging_settings/current`);
@@ -58,9 +58,9 @@ export async function updateWorkspaceMessagingSettingsAction(
   expectedVersion?: number
 ): Promise<MessagingSettingsActionResult<WorkspaceMessagingSettings>> {
   try {
-    const { workspace, user } = await requireWorkspace(workspaceId);
-    if (!workspace) {
-      return { success: false, error: 'Workspace not found', code: 'NOT_FOUND' };
+    const authContext = await requireWorkspace(workspaceId);
+    if (!authContext) {
+      return { success: false, error: 'Workspace access not granted', code: 'UNAUTHORIZED' };
     }
 
     const docRef = adminDb.doc(`workspaces/${workspaceId}/messaging_settings/current`);
@@ -85,17 +85,18 @@ export async function updateWorkspaceMessagingSettingsAction(
       ...settings,
       version: currentVersion + 1,
       updatedAt: new Date().toISOString(),
-      updatedBy: user.uid,
+      updatedBy: authContext.uid,
     };
 
     const validated = WorkspaceMessagingSettingsSchema.parse(merged);
     await docRef.set(validated, { merge: true });
 
     // Invalidate dashboard summary cache for this workspace across all timeframes (Rule 9 & 20)
+    const orgId = authContext.profile.organizationId || '';
     for (const range of ['24h', '7d', '30d']) {
-      dashboardSummaryCache.delete(`dashboard:${workspace.organizationId}:${workspaceId}:${range}`);
+      dashboardSummaryCache.delete(`dashboard:${orgId}:${workspaceId}:${range}`);
     }
-    dashboardSummaryCache.delete(`dashboard:${workspace.organizationId}:${workspaceId}`);
+    dashboardSummaryCache.delete(`dashboard:${orgId}:${workspaceId}`);
 
     return { success: true, data: validated };
   } catch (err) {

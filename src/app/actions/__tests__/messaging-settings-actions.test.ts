@@ -6,7 +6,7 @@ import {
 
 const mockGet = vi.fn();
 const mockSet = vi.fn();
-const mockDoc = vi.fn(() => ({
+const mockDoc = vi.fn((_path?: string) => ({
   get: mockGet,
   set: mockSet,
 }));
@@ -23,8 +23,15 @@ vi.mock('@/lib/auth/require-auth', () => ({
       throw new Error('Unauthorized');
     }
     return {
-      workspace: { id: workspaceId, organizationId: 'org_123' },
-      user: { uid: 'user_123', email: 'admin@smartsapp.com' },
+      uid: 'user_123',
+      profile: {
+        id: 'user_123',
+        organizationId: 'org_123',
+        email: 'admin@smartsapp.com',
+        workspaceIds: [workspaceId],
+        isAuthorized: true,
+      },
+      isSystemAdmin: false,
     };
   }),
 }));

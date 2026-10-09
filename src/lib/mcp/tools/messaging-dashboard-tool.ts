@@ -16,7 +16,7 @@ import type { McpToolDefinition } from '../types';
 import { getMessagingDashboardSummaryAction } from '@/app/actions/messaging-dashboard-actions';
 
 const getDashboardSummaryInputSchema = z.object({
-  forceRefresh: z.boolean().optional().default(false).describe('Bypass in-memory cache to re-aggregate live metrics'),
+  forceRefresh: z.boolean().optional().describe('Bypass in-memory cache to re-aggregate live metrics'),
 });
 
 const getDashboardSummaryOutputSchema = z.object({
