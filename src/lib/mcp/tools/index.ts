@@ -20,6 +20,9 @@ import {
   messagingSuggestReplyTool,
 } from './messaging-conversation-tools';
 import { messagingGetQueueStatsTool } from './messaging-queue-tools';
+import { messagingGetDashboardSummaryTool } from './messaging-dashboard-tool';
+
+export { messagingGetDashboardSummaryTool };
 
 export const ALL_CORE_MCP_TOOLS = [
   memoryRecallTool,
@@ -40,6 +43,7 @@ export const ALL_CORE_MCP_TOOLS = [
   messagingGetConversationThreadTool,
   messagingSuggestReplyTool,
   messagingGetQueueStatsTool,
+  messagingGetDashboardSummaryTool,
 ] as const;
 
 /**
