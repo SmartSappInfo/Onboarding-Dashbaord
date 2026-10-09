@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * Test Suite for Event Calendar & Live Countdown Utilities
  */
