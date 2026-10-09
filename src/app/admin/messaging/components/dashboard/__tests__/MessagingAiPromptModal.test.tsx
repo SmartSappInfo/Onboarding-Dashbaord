@@ -88,4 +88,24 @@ describe('MessagingAiPromptModal', () => {
     );
     expect(handleOpenChange).toHaveBeenCalledWith(false);
   });
+
+  it('enforces 500-character maximum length bound on prompt input', () => {
+    render(
+      <MessagingAiPromptModal
+        isOpen={true}
+        onOpenChange={vi.fn()}
+      />
+    );
+
+    const textarea = screen.getByPlaceholderText(/What would you like to draft or analyze/i) as HTMLTextAreaElement;
+    expect(textarea).toHaveAttribute('maxLength', '500');
+
+    expect(screen.getByText('0/500 characters')).toBeInTheDocument();
+
+    const longText = 'A'.repeat(600);
+    fireEvent.change(textarea, { target: { value: longText } });
+
+    expect(textarea.value.length).toBe(500);
+    expect(screen.getByText('500/500 characters')).toBeInTheDocument();
+  });
 });

@@ -20,6 +20,7 @@ import { useTerminology } from '@/hooks/use-terminology';
 import {
   formatGreetingHeadline,
   buildHeroSubtitle,
+  extractFirstName,
 } from '@/lib/messaging/greeting-utils';
 import { MessagingAiPromptModal } from './MessagingAiPromptModal';
 import { cn } from '@/lib/utils';
@@ -48,7 +49,7 @@ export function MessagingHeroGreeting({
   const activeName = userDisplayName ?? user?.displayName ?? null;
   const headline = mounted
     ? formatGreetingHeadline(activeName)
-    : `Welcome, ${activeName ? activeName.split(' ')[0] : 'Team Member'} 👋`;
+    : `Welcome, ${extractFirstName(activeName)} 👋`;
 
   const subtitle = buildHeroSubtitle(terminology?.singular);
 
@@ -112,7 +113,7 @@ export function MessagingHeroGreeting({
 
               {/* Middle Prompt Snippet */}
               <span className="text-xs sm:text-sm text-white/90 dark:text-white/80 font-normal truncate max-w-[210px] sm:max-w-xs md:max-w-[260px] lg:max-w-sm text-left">
-                Ask AI to draft a message, find parents, or analyze results...
+                Ask AI to draft a message, find {terminology?.plural ? terminology.plural.toLowerCase() : 'contacts'}, or analyze results...
               </span>
 
               {/* Arrow Circle Button */}

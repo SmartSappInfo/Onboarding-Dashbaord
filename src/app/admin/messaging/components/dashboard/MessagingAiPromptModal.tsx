@@ -78,8 +78,9 @@ export function MessagingAiPromptModal({
     const trimmed = prompt.trim();
     if (!trimmed) return;
 
-    // Append tone context if not already mentioned
-    const fullQuery = `${trimmed} [Tone: ${selectedTone}]`;
+    // Bounded prompt query to prevent URI Too Long errors (CWE-1236 / Rule 13)
+    const boundedPrompt = trimmed.slice(0, 500);
+    const fullQuery = `${boundedPrompt} [Tone: ${selectedTone}]`;
     const targetUrl = `/admin/messaging/composer?prompt=${encodeURIComponent(fullQuery)}`;
 
     onOpenChange(false);
@@ -119,15 +120,16 @@ export function MessagingAiPromptModal({
             >
               <span>Your Instructions or Topic</span>
               <span className="text-[11px] font-normal text-muted-foreground/80">
-                {prompt.length} characters
+                {prompt.length}/500 characters
               </span>
             </label>
             <div className="relative rounded-xl border border-border/80 bg-background focus-within:ring-2 focus-within:ring-ring focus-within:border-transparent transition-all">
               <textarea
                 id="ai-prompt-input"
                 rows={3}
+                maxLength={500}
                 value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
+                onChange={(e) => setPrompt(e.target.value.slice(0, 500))}
                 placeholder="What would you like to draft or analyze? (e.g., Draft a fee reminder message for next term...)"
                 className="w-full bg-transparent px-3.5 py-3 text-sm text-foreground placeholder:text-muted-foreground/60 resize-none focus:outline-none"
               />

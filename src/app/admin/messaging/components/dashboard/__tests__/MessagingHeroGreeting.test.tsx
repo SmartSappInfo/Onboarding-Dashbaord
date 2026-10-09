@@ -62,4 +62,16 @@ describe('MessagingHeroGreeting', () => {
     render(<MessagingHeroGreeting userDisplayName="Kwame Asante" />);
     expect(screen.getByText(/Kwame 👋/i)).toBeInTheDocument();
   });
+
+  it('renders dynamic terminology in the AI prompt pill snippet', () => {
+    render(<MessagingHeroGreeting />);
+    expect(
+      screen.getByText(/Ask AI to draft a message, find schools, or analyze results\.\.\./i)
+    ).toBeInTheDocument();
+  });
+
+  it('safely handles user display name with leading or trailing whitespace', () => {
+    render(<MessagingHeroGreeting userDisplayName="   Kofi Annan   " />);
+    expect(screen.getByText(/Kofi 👋/i)).toBeInTheDocument();
+  });
 });

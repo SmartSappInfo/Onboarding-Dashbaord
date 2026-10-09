@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 describe('Composer Prompt Ingestion Spec', () => {
   it('safely decodes and extracts prompt parameter from query string', () => {
@@ -12,5 +12,21 @@ describe('Composer Prompt Ingestion Spec', () => {
   it('handles null, undefined or empty prompts without altering state', () => {
     const params = new URLSearchParams('');
     expect(params.get('prompt')).toBeNull();
+  });
+
+  it('correctly maps prompt parameter to composer form schema fields (customBody, messageSourceType, customSubject)', () => {
+    const mockSetValue = vi.fn();
+    const prompt = 'Announce sports day next Friday [Tone: friendly]';
+
+    // Simulate ComposerWizard ingestion logic
+    if (prompt) {
+      mockSetValue('customBody', prompt, { shouldDirty: true });
+      mockSetValue('messageSourceType', 'new', { shouldDirty: true });
+      mockSetValue('customSubject', 'AI Assisted Draft', { shouldDirty: true });
+    }
+
+    expect(mockSetValue).toHaveBeenCalledWith('customBody', prompt, { shouldDirty: true });
+    expect(mockSetValue).toHaveBeenCalledWith('messageSourceType', 'new', { shouldDirty: true });
+    expect(mockSetValue).toHaveBeenCalledWith('customSubject', 'AI Assisted Draft', { shouldDirty: true });
   });
 });

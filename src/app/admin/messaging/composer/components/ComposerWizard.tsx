@@ -461,7 +461,9 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
         // Pre-populate message body when launched from AI prompt bar (Rule 8 & 19 safe binding)
         const promptParam = searchParams.get('prompt');
         if (promptParam) {
-            setValue('messageBody', promptParam);
+            setValue('customBody', promptParam, { shouldDirty: true });
+            setValue('messageSourceType', 'new', { shouldDirty: true });
+            setValue('customSubject', 'AI Assisted Draft', { shouldDirty: true });
         }
 
         const entityIdParam = searchParams.get('entityId');
