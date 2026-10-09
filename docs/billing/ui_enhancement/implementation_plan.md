@@ -130,8 +130,8 @@ src/app/admin/finance/contracts/
 
 ---
 
-### Phase 3: Contextual AI Contract Assistant Action Layer [CURRENT MILESTONE - IN PLANNING]
-**Status:** In Planning — Detailed Plan in `docs/billing/ui_enhancement/phase_3_ai_assistant_plan.md`
+### Phase 3: Contextual AI Contract Assistant Action Layer [COMPLETED & COMMITTED]
+**Status:** ✅ Completed & Committed (Commit: `83eb56c2`)
 **Goal:** Introduce an AI-assisted action layer directly above the institutional register that surfaces gaps, suggests follow-ups, and drafts reminders with human review.
 
 * **3.1. Desktop AI Assistant Hero Banner (`AgreementsAiAssistantBanner.tsx`):**
@@ -152,29 +152,36 @@ src/app/admin/finance/contracts/
 
 ---
 
-### Phase 4: Unified Filter & Contextual Bulk Action Bar
+### Phase 4: Unified Filter & Contextual Bulk Action Bar [COMPLETED]
+**Status:** ✅ Completed & Verified (Commit Pending) — Full specification in `docs/billing/ui_enhancement/phase_4_filter_and_bulk_bar_plan.md`
 **Goal:** Streamline searching and filtering while replacing clunky "Select All Unprepared" buttons with standard checkboxes and a contextual action bar.
 
 * **4.1. Desktop Filter Controls (`AgreementsFilterBar.tsx`):**
-  * Unified search input with placeholder: *"Search by institution name, contract ID or representative..."* with debounce.
-  * **Status Select Dropdown:** `All`, `No Contract`, `Draft`, `Awaiting Signature`, `Active`, `Expiring Soon`.
-  * **Assigned Representative Select Dropdown:** `Assigned To: All`, `Unassigned`, or specific sales representative / manager.
-  * Filter toggle button for secondary filters (zones, dates, legal hold status).
-  * Primary action: `+ New Contract` CTA button (`bg-primary text-white shadow-sm active:scale-[0.97]`).
-* **4.2. Mobile Horizontal Filter Chips:**
-  * Smooth horizontal scrollable chip row on mobile: `[All]`, `[No Contract]`, `[Draft]`, `[Active]`, `[+]`.
-* **4.3. Contextual Bulk Action Bar:**
-  * When entities are checked via checkboxes, display a docked floating action bar:
-    * *"Selected {N} institutions"*
-    * Button: *"Prepare contracts ({N})"*
-    * Button: *"Send Batch Reminders"*
-    * Button: *"Export Selection"*
-    * Button: *"Clear"*
-  * Protected by chunked execution (max 50 entities per run, Rule 23).
+  * Unified search input with placeholder: *"Search by institution name, contract ID or representative..."* with 250ms debounce and clear button.
+  * **Status Select Dropdown:** `All Institutions`, `No Contract (Unprepared)`, `Draft Contracts`, `Awaiting Signature`, `Active Contracts`, `Expiring Soon (< 60d)`.
+  * **Assigned Representative Select Dropdown:** `All Representatives`, `Unassigned`, or specific sales representative / manager.
+  * **Advanced Filters Popover:** Zone / Region multi-select, Legal Hold status (`all`, `on_hold`, `not_on_hold`), with active filter count badge.
+  * **Reset All Filters Button:** Displayed whenever active filters or search terms are present.
+  * **Primary Action CTA:** `+ New Contract` button (`bg-primary text-white shadow-sm active:scale-[0.97] rounded-xl`).
+* **4.2. Mobile Horizontal Filter Chips (`AgreementsMobileFilterChips.tsx`):**
+  * Smooth horizontal scrollable chip row on mobile (`sm:hidden`): `[All (count)]`, `[No Contract (count)]`, `[Awaiting Signature (count)]`, `[Active (count)]`, `[Draft (count)]`, `[Expiring Soon (count)]`, `[+ More Filters]`.
+  * Touch target compliance: `min-h-[44px]`, `active:scale-[0.95]`.
+* **4.3. Contextual Bulk Action Bar (`AgreementsBulkActionBar.tsx`):**
+  * Dynamically floats above bottom dock when $\ge 1$ institutions are selected:
+    * Desktop: `fixed bottom-8 left-1/2 -translate-x-1/2 z-[100]`.
+    * Mobile: `fixed bottom-20 left-3 right-3 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 z-40` (safely clear of mobile bottom dock).
+  * **Selection Counter Badge:** `ShieldCheck` icon + `Selected {N} of {total} institutions`.
+  * **Action Buttons:**
+    * Button: *"Prepare contracts ({N})"* — triggers `ContractWizard` (batch size capped at 50 entities per run per Rule 23).
+    * Button: *"Send Batch Reminders"* — triggers reminder outreach flow for pending contracts.
+    * Button: *"Export Selection"* — downloads sanitized CSV protected against spreadsheet formula injection (Rule 8).
+    * Button: *"Clear"* — 1-click deselect.
+* **4.4. Full `agents_mcp_rules.md` Compliance:**
+  * Two-phase mutation guard (Rule 21), TOCTOU concurrency check (Rule 18), chunked batch limits (Rule 23), formula injection sanitization (Rule 8), zero `any` typing (Rule 4), and performance memoization (Rule 54).
 
 ---
 
-### Phase 5: Institution Register Visual Noise Reduction & Responsive Dual-Mode
+### Phase 5: Institution Register Visual Noise Reduction & Responsive Dual-Mode [NEXT MILESTONE - IN PLANNING]
 **Goal:** Deliver a crystal-clear desktop table and an optimized touch-first mobile card list that eliminates visual clutter and ensures high usability.
 
 * **5.1. Desktop Institution Table (`AgreementsDesktopTable.tsx`):**

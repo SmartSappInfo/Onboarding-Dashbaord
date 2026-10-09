@@ -9,23 +9,18 @@ import { UNASSIGNED_ZONE } from '@/lib/zone-constants';
 import { useEntitySearch } from '@/hooks/use-entity-search';
 import { 
     FileCheck, 
-    Search, 
     Plus, 
     Building, 
     Clock, 
     Download, 
     Send,
     ShieldCheck,
-    Zap,
     MoreHorizontal,
     Eye,
     Trash2,
     Loader2,
     Copy,
     Globe,
-    X,
-    ListChecks,
-    RotateCcw,
     ShieldAlert,
     History,
     Users,
@@ -35,11 +30,8 @@ import {
     GitCompare,
     Lock
 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -59,7 +51,6 @@ import WithdrawContractModal from './components/WithdrawContractModal';
 import EnvelopeDetailModal from './components/EnvelopeDetailModal';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
-import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Tooltip, 
     TooltipContent, 
@@ -104,6 +95,9 @@ import { AgreementsMobileBottomNav } from './components/AgreementsMobileBottomNa
 import { AgreementsKpiGrid, type AgreementsKpiStats, type AgreementsFilterStatus } from './components/AgreementsKpiGrid';
 import { AgreementsAiAssistantBanner } from './components/AgreementsAiAssistantBanner';
 import type { AiAssistantActionKey } from './components/AgreementsAiActionSheet';
+import { AgreementsFilterBar, type RepresentativeOption, type AdvancedFilterState } from './components/AgreementsFilterBar';
+import { AgreementsMobileFilterChips } from './components/AgreementsMobileFilterChips';
+import { AgreementsBulkActionBar } from './components/AgreementsBulkActionBar';
 
 export type EntityWithContract = WorkspaceEntity & { contract: Contract | null };
 
@@ -115,7 +109,7 @@ export type EntityWithContract = WorkspaceEntity & { contract: Contract | null }
 export default function AgreementsClient() {
     const firestore = useFirestore();
     const { toast } = useToast();
-    const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
+    const { assignedUserId, setAssignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
     const { activeWorkspaceId } = useWorkspace();
     
     const [activeTab, setActiveTab] = React.useState<AgreementsTabKey>('contracts');
@@ -123,6 +117,7 @@ export default function AgreementsClient() {
     const [searchTerm, setSearchTerm] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState<AgreementsFilterStatus>('all');
     const [selectedEntities, setSelectedEntities] = React.useState<WorkspaceEntity[]>([]);
+    const [advancedFilters, setAdvancedFilters] = React.useState<AdvancedFilterState>({ legalHold: 'all', zone: '' });
     const [isWizardOpen, setIsWizardOpen] = React.useState(false);
     const [withdrawingEntity, setWithdrawingEntity] = React.useState<WorkspaceEntity | null>(null);
     const [downloadingId, setDownloadingId] = React.useState<string | null>(null);
@@ -170,6 +165,7 @@ export default function AgreementsClient() {
         setContractsSubView('register');
         setStatusFilter('all');
         setSelectedEntities([]);
+        setAdvancedFilters({ legalHold: 'all', zone: '' });
     }, [activeWorkspaceId]);
 
     // Paginated entity search (replaces streaming the full WE set + the entire
@@ -219,17 +215,81 @@ export default function AgreementsClient() {
         }));
     }, [entities, contracts, assignedUserId]);
 
-    // Search is server-side; only the status filter applies to the loaded page.
+    // Extract unique assignees from loaded entities for filter dropdown
+    const assignees = React.useMemo<RepresentativeOption[]>(() => {
+        const map = new Map<string, string>();
+        (entities || []).forEach(e => {
+            if (e.assignedTo?.userId && e.assignedTo?.name) {
+                map.set(e.assignedTo.userId, e.assignedTo.name);
+            }
+        });
+        return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+    }, [entities]);
+
+    // Extract unique geographical zones from entities for secondary filter
+    const availableZones = React.useMemo<string[]>(() => {
+        const set = new Set<string>();
+        (entities || []).forEach(e => {
+            if (e.zone && e.zone !== UNASSIGNED_ZONE) {
+                set.add(e.zone);
+            }
+        });
+        return Array.from(set).sort();
+    }, [entities]);
+
+    // Search is server-side (useEntitySearch); status, assignee, and secondary filters apply client-side.
     const filteredList = React.useMemo(() => {
-        if (statusFilter === 'all') return entitiesWithContracts;
         return entitiesWithContracts.filter(item => {
             const status = item.contract?.status || 'no_contract';
-            if (statusFilter === 'no_contract') {
-                return !item.contract || status === 'no_contract' || status === 'draft';
+
+            // Status filter
+            if (statusFilter !== 'all') {
+                if (statusFilter === 'no_contract') {
+                    if (item.contract && status !== 'no_contract' && status !== 'draft') return false;
+                } else if (statusFilter === 'expiring') {
+                    const isExpired = status === 'expired';
+                    const hasRetentionExpiring = item.contract?.retentionExpiresAt && 
+                        (new Date(item.contract.retentionExpiresAt).getTime() - Date.now() < 60 * 24 * 60 * 60 * 1000);
+                    if (!isExpired && !hasRetentionExpiring) return false;
+                } else if (status !== statusFilter) {
+                    return false;
+                }
             }
-            return status === statusFilter;
+
+            // Advanced: Legal Hold filter
+            if (advancedFilters.legalHold === 'on_hold' && !item.contract?.isUnderLegalHold) {
+                return false;
+            }
+            if (advancedFilters.legalHold === 'not_on_hold' && item.contract?.isUnderLegalHold) {
+                return false;
+            }
+
+            // Advanced: Zone filter
+            if (advancedFilters.zone && item.zone !== advancedFilters.zone) {
+                return false;
+            }
+
+            return true;
         });
-    }, [entitiesWithContracts, statusFilter]);
+    }, [entitiesWithContracts, statusFilter, advancedFilters]);
+
+    // Active filters tracking
+    const hasActiveFilters = Boolean(
+        searchTerm || 
+        statusFilter !== 'all' || 
+        assignedUserId || 
+        advancedFilters.legalHold !== 'all' || 
+        (advancedFilters.zone && advancedFilters.zone !== 'all')
+    );
+
+    // Reset all filters (Rule 50: State Hygiene)
+    const handleResetFilters = React.useCallback(() => {
+        setSearchTerm('');
+        setStatusFilter('all');
+        setAssignedUserId(null);
+        setAdvancedFilters({ legalHold: 'all', zone: '' });
+        setSelectedEntities([]);
+    }, [setAssignedUserId]);
 
     // Coverage stats are GLOBAL (not page-bound): total from count(), signed/
     // pending from the contracts collection (Phase 2 - Conforming to agents_mcp_rules.md).
@@ -254,18 +314,97 @@ export default function AgreementsClient() {
         };
     }, [totalEntities, contracts, activeWorkspaceId]);
 
+    // Dynamic counts for mobile filter chips
+    const mobileFilterCounts = React.useMemo(() => {
+        const draftCount = (contracts || []).filter(c => c.status === 'draft' && (!c.workspaceId || c.workspaceId === activeWorkspaceId)).length;
+        const expiringCount = (contracts || []).filter(c => c.status === 'expired' && (!c.workspaceId || c.workspaceId === activeWorkspaceId)).length;
+        return {
+            total: stats.total,
+            noContract: stats.noContract,
+            awaitingSignature: stats.awaitingSignature,
+            activeContracts: stats.activeContracts,
+            draft: draftCount,
+            expiring: expiringCount
+        };
+    }, [stats, contracts, activeWorkspaceId]);
+
+    // Has pending signatures in current selection
+    const hasPendingSignatures = React.useMemo(() => {
+        return selectedEntities.some(ent => {
+            const item = entitiesWithContracts.find(e => e.id === ent.id);
+            return item?.contract?.status === 'sent' || item?.contract?.status === 'draft';
+        });
+    }, [selectedEntities, entitiesWithContracts]);
+
+    // Bulk Prepare Handler with 50-item cap (Rule 9 & 23)
+    const handleBulkPrepare = React.useCallback(() => {
+        if (selectedEntities.length === 0) return;
+        if (selectedEntities.length > 50) {
+            toast({
+                title: 'Batch Limit Cap',
+                description: 'Batch preparation is capped at 50 institutions at a time. Processing the first 50.',
+            });
+            setSelectedEntities(prev => prev.slice(0, 50));
+        }
+        setIsWizardOpen(true);
+    }, [selectedEntities.length, toast]);
+
+    // Bulk Reminders Handler
+    const handleBulkReminders = React.useCallback(() => {
+        setIsReminderSettingsOpen(true);
+    }, []);
+
+    // CSV Export Handler with Formula Injection Defense (Rule 8)
+    const handleExportSelectionCsv = React.useCallback(() => {
+        if (selectedEntities.length === 0) return;
+
+        const headers = ['Entity ID', 'Institution Name', 'Zone', 'Contract Status', 'Contract ID', 'Last Updated', 'Assigned Representative', 'Legal Hold'];
+        
+        const sanitizeCell = (val: unknown): string => {
+            if (val === null || val === undefined) return '""';
+            const str = String(val);
+            const unsafePrefixes = ['=', '+', '-', '@', '\t', '\r'];
+            const safeStr = unsafePrefixes.includes(str.charAt(0)) ? `'${str}` : str;
+            return `"${safeStr.replace(/"/g, '""')}"`;
+        };
+
+        const rows = selectedEntities.map(entity => {
+            const item = entitiesWithContracts.find(e => e.id === entity.id);
+            return [
+                sanitizeCell(entity.entityId || entity.id),
+                sanitizeCell(entity.displayName || entity.name || 'Unnamed Institution'),
+                sanitizeCell(entity.zone || 'Unassigned'),
+                sanitizeCell(item?.contract?.status || 'no_contract'),
+                sanitizeCell(item?.contract?.id || '—'),
+                sanitizeCell(item?.contract?.updatedAt || entity.updatedAt || '—'),
+                sanitizeCell(entity.assignedTo?.name || 'Unassigned'),
+                sanitizeCell(item?.contract?.isUnderLegalHold ? 'Yes' : 'No')
+            ].join(',');
+        });
+
+        const csvContent = [headers.join(','), ...rows].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `agreements_export_${format(new Date(), 'yyyy-MM-dd_HHmm')}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        toast({
+            title: 'Export Complete',
+            description: `Exported ${selectedEntities.length} institutions to CSV.`,
+        });
+    }, [selectedEntities, entitiesWithContracts, toast]);
+
     const toggleSelect = (entity: WorkspaceEntity) => {
         setSelectedEntities(prev => {
             const exists = prev.find(s => s.id === entity.id);
             if (exists) return prev.filter(s => s.id !== entity.id);
             return [...prev, entity];
         });
-    };
-
-    const handleSelectAllUnprepared = () => {
-        const unprepared = filteredList.filter(item => !item.contract || item.contract.status === 'no_contract' || item.contract.status === 'draft');
-        setSelectedEntities(unprepared);
-        toast({ title: 'Batch Selected', description: `${unprepared.length} unprepared entities identified.` });
     };
 
     const handleCopyLink = (item: EntityWithContract) => {
@@ -352,12 +491,6 @@ export default function AgreementsClient() {
         }
     };
 
-    const clearFilters = () => {
-        setSearchTerm('');
-        setStatusFilter('all');
-        setSelectedEntities([]);
-    };
-
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'signed': return <Badge className="bg-emerald-500 text-white border-none text-[8px] h-5 uppercase px-2 font-semibold gap-1"><ShieldCheck className="h-2.5 w-2.5" /> Signed</Badge>;
@@ -367,8 +500,6 @@ export default function AgreementsClient() {
             default: return <Badge variant="outline" className="text-[8px] h-5 uppercase px-2 font-semibold">{status}</Badge>;
         }
     };
-
-    const hasActiveFilters = searchTerm !== '' || statusFilter !== 'all';
 
     return (
         <TooltipProvider>
@@ -433,50 +564,32 @@ export default function AgreementsClient() {
                                         isLoading={isLoading}
                                     />
 
-                    {/* Search & Filters */}
-                    <Card className="border border-border/80 shadow-sm rounded-2xl overflow-hidden bg-card">
- <CardContent className="p-4 flex flex-wrap items-center gap-4">
- <div className="flex-grow min-w-[240px] relative">
- <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
-                                <Input 
-                                    placeholder="Search by entity name..." 
-                                    value={searchTerm}
-                                    onChange={e => setSearchTerm(e.target.value)}
- className="pl-10 h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"
-                                />
-                            </div>
-                            <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val as AgreementsFilterStatus)}>
- <SelectTrigger className="w-[180px] h-11 rounded-xl bg-muted/20 border-none font-semibold text-[10px] transition-all">
-                                    <SelectValue placeholder="All Status" />
-                                </SelectTrigger>
- <SelectContent className="rounded-xl">
-                                    <SelectItem value="all">All Institutions</SelectItem>
-                                    <SelectItem value="signed">Active Contracts</SelectItem>
-                                    <SelectItem value="sent">Awaiting Signature</SelectItem>
-                                    <SelectItem value="draft">Draft Contracts</SelectItem>
-                                    <SelectItem value="no_contract">No Contract</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            
-                            {hasActiveFilters && (
-                                <Button 
-                                    variant="ghost" 
-                                    onClick={clearFilters} 
- className="rounded-xl font-bold h-11 gap-2 text-muted-foreground hover:text-primary transition-all"
-                                >
- <RotateCcw className="h-4 w-4" /> Show All
-                                </Button>
-                            )}
+                                    {/* Mobile Horizontal Filter Chips (Phase 4 - sm:hidden) */}
+                                    <AgreementsMobileFilterChips
+                                        currentStatus={statusFilter}
+                                        onStatusChange={setStatusFilter}
+                                        counts={mobileFilterCounts}
+                                        isLoading={isLoading}
+                                    />
 
-                            <Button 
-                                variant="outline" 
-                                onClick={handleSelectAllUnprepared} 
- className="rounded-xl font-bold h-11 gap-2 border-primary/20 text-primary transition-all active:scale-95"
-                            >
- <ListChecks className="h-4 w-4" /> Select All Unprepared
-                            </Button>
-                        </CardContent>
-                    </Card>
+                                    {/* Unified Filter Bar (Phase 4 - Conforming to agents_mcp_rules.md) */}
+                                    <AgreementsFilterBar
+                                        search={searchTerm}
+                                        onSearchChange={setSearchTerm}
+                                        status={statusFilter}
+                                        onStatusChange={setStatusFilter}
+                                        assignee={assignedUserId || 'all'}
+                                        onAssigneeChange={(val) => setAssignedUserId(val ? val : null)}
+                                        assignees={assignees}
+                                        advancedFilters={advancedFilters}
+                                        onAdvancedFiltersChange={setAdvancedFilters}
+                                        availableZones={availableZones}
+                                        hasActiveFilters={hasActiveFilters}
+                                        onResetFilters={handleResetFilters}
+                                        onNewContract={() => setIsWizardOpen(true)}
+                                        canCreateContract={canAccessAdmin || userPermissions.includes('contracts_create')}
+                                        isLoading={isLoading}
+                                    />
 
                     {/* Institutional Registry */}
                     <div className="rounded-2xl border border-border/80 bg-card shadow-sm overflow-hidden text-left">
@@ -850,48 +963,20 @@ export default function AgreementsClient() {
                     </Tabs>
                 </div>
 
-                {/* Bulk Actions Floating Bar */}
-                <AnimatePresence>
-                    {selectedEntities.length > 0 && activeTab === 'contracts' && contractsSubView === 'register' && (
-                        <motion.div 
-                            initial={{ y: 100, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            exit={{ y: 100, opacity: 0 }}
-                            className="fixed bottom-20 sm:bottom-8 left-1/2 -translate-x-1/2 z-30 sm:z-[100] w-fit min-w-[320px]"
-                        >
- <Card className="bg-card/95 text-foreground border border-border shadow-[0_20px_50px_rgba(0,0,0,0.3)] rounded-2xl overflow-hidden ring-1 ring-white/10">
- <CardContent className="p-2 flex items-center justify-between gap-6">
- <div className="flex items-center gap-3 pl-4 pr-2">
- <div className="flex items-center justify-center h-8 w-8 bg-primary/20 rounded-lg">
- <ShieldCheck className="h-4 w-4 text-primary" />
-                                        </div>
- <span className="text-xs font-bold tracking-tight whitespace-nowrap text-foreground">
-                                            {selectedEntities.length} Selection{selectedEntities.length !== 1 ? 's' : ''}
-                                        </span>
-                                    </div>
- <div className="flex items-center gap-1.5 p-1 bg-card/5 rounded-xl">
-                                        <Button 
-                                            onClick={() => setIsWizardOpen(true)}
-                                            size="sm"
- className="rounded-lg font-semibold text-[10px] h-9 px-6 bg-primary hover:bg-primary/90 transition-all"
-                                        >
- <Zap className="h-3 w-3 mr-2" />
-                                            Prep Bulk
-                                        </Button>
-                                        <Button 
-                                            variant="ghost" 
-                                            size="icon" 
-                                            onClick={() => setSelectedEntities([])}
- className="h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
-                                        >
- <X className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                {/* Contextual Floating Bulk Action Bar (Phase 4 - Conforming to agents_mcp_rules.md) */}
+                {activeTab === 'contracts' && contractsSubView === 'register' && (
+                    <AgreementsBulkActionBar
+                        selectedCount={selectedEntities.length}
+                        totalMatchingCount={filteredList.length}
+                        onPrepareContracts={handleBulkPrepare}
+                        onSendBatchReminders={handleBulkReminders}
+                        onExportSelection={handleExportSelectionCsv}
+                        onClearSelection={() => setSelectedEntities([])}
+                        canPrepareContracts={canAccessAdmin || userPermissions.includes('contracts_create')}
+                        hasPendingSignatures={hasPendingSignatures}
+                        isLoading={isLoading}
+                    />
+                )}
 
                 {isWizardOpen && selectedEntities.length > 0 && (
                     <ContractWizard 
