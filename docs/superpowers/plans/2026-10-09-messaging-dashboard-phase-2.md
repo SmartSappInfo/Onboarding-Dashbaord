@@ -139,7 +139,7 @@ To support institutional customization without engineering intervention:
 - Create: `src/lib/messaging/greeting-utils.ts`
 - Test: `src/lib/messaging/__tests__/greeting-utils.test.ts`
 
-- [ ] **Step 1: Write the failing unit tests for greeting helpers**
+- [x] **Step 1: Write the failing unit tests for greeting helpers**
 
 ```typescript
 // src/lib/messaging/__tests__/greeting-utils.test.ts
@@ -223,12 +223,12 @@ describe('greeting-utils', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run src/lib/messaging/__tests__/greeting-utils.test.ts`  
 Expected: FAIL with "Cannot find module '../greeting-utils'"
 
-- [ ] **Step 3: Implement greeting utility functions**
+- [x] **Step 3: Implement greeting utility functions**
 
 ```typescript
 // src/lib/messaging/greeting-utils.ts
@@ -310,12 +310,12 @@ export function buildHeroSubtitle(entityTermSingular?: string): string {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run src/lib/messaging/__tests__/greeting-utils.test.ts`  
 Expected: PASS (4 test suites, all assertions passing)
 
-- [ ] **Step 5: Commit locally**
+- [x] **Step 5: Commit locally**
 
 ```bash
 git add src/lib/messaging/greeting-utils.ts src/lib/messaging/__tests__/greeting-utils.test.ts
@@ -330,7 +330,7 @@ git commit -m "feat(messaging): implement hero greeting and terminology utilitie
 - Create: `src/app/admin/messaging/components/dashboard/MessagingAiPromptModal.tsx`
 - Test: `src/app/admin/messaging/components/dashboard/__tests__/MessagingAiPromptModal.test.tsx`
 
-- [ ] **Step 1: Write the failing component test for the AI Prompt Modal**
+- [x] **Step 1: Write the failing component test for the AI Prompt Modal**
 
 ```typescript
 // src/app/admin/messaging/components/dashboard/__tests__/MessagingAiPromptModal.test.tsx
@@ -427,12 +427,12 @@ describe('MessagingAiPromptModal', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run src/app/admin/messaging/components/dashboard/__tests__/MessagingAiPromptModal.test.tsx`  
 Expected: FAIL with "Cannot find module '../MessagingAiPromptModal'"
 
-- [ ] **Step 3: Implement `MessagingAiPromptModal.tsx` conforming to `theme.md` Section 8 and Rules 13 & 19**
+- [x] **Step 3: Implement `MessagingAiPromptModal.tsx` conforming to `theme.md` Section 8 and Rules 13 & 19**
 
 ```tsx
 // src/app/admin/messaging/components/dashboard/MessagingAiPromptModal.tsx
@@ -661,12 +661,12 @@ export function MessagingAiPromptModal({
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run src/app/admin/messaging/components/dashboard/__tests__/MessagingAiPromptModal.test.tsx`  
 Expected: PASS (4 tests passing)
 
-- [ ] **Step 5: Commit locally**
+- [x] **Step 5: Commit locally**
 
 ```bash
 git add src/app/admin/messaging/components/dashboard/MessagingAiPromptModal.tsx src/app/admin/messaging/components/dashboard/__tests__/MessagingAiPromptModal.test.tsx
@@ -681,7 +681,7 @@ git commit -m "feat(messaging): implement theme-compliant AI assistant prompt mo
 - Create: `src/app/admin/messaging/components/dashboard/MessagingHeroGreeting.tsx`
 - Test: `src/app/admin/messaging/components/dashboard/__tests__/MessagingHeroGreeting.test.tsx`
 
-- [ ] **Step 1: Write the failing component test for `MessagingHeroGreeting`**
+- [x] **Step 1: Write the failing component test for `MessagingHeroGreeting`**
 
 ```tsx
 // src/app/admin/messaging/components/dashboard/__tests__/MessagingHeroGreeting.test.tsx
@@ -752,12 +752,12 @@ describe('MessagingHeroGreeting', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run src/app/admin/messaging/components/dashboard/__tests__/MessagingHeroGreeting.test.tsx`  
 Expected: FAIL with "Cannot find module '../MessagingHeroGreeting'"
 
-- [ ] **Step 3: Implement `MessagingHeroGreeting.tsx`**
+- [x] **Step 3: Implement `MessagingHeroGreeting.tsx`**
 
 ```tsx
 // src/app/admin/messaging/components/dashboard/MessagingHeroGreeting.tsx
@@ -899,12 +899,12 @@ export function MessagingHeroGreeting({
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run src/app/admin/messaging/components/dashboard/__tests__/MessagingHeroGreeting.test.tsx`  
 Expected: PASS (5 tests passing)
 
-- [ ] **Step 5: Commit locally**
+- [x] **Step 5: Commit locally**
 
 ```bash
 git add src/app/admin/messaging/components/dashboard/MessagingHeroGreeting.tsx src/app/admin/messaging/components/dashboard/__tests__/MessagingHeroGreeting.test.tsx
@@ -919,7 +919,7 @@ git commit -m "feat(messaging): implement flagship hero greeting banner with dyn
 - Modify: `src/app/admin/messaging/composer/components/ComposerWizard.tsx:456-488`
 - Test: `src/app/admin/messaging/composer/components/__tests__/ComposerWizardPrompt.test.ts`
 
-- [ ] **Step 1: Write a focused test verifying `prompt` searchParam pre-populates `messageBody`**
+- [x] **Step 1: Write a focused test verifying `prompt` searchParam pre-populates `messageBody`**
 
 ```typescript
 // src/app/admin/messaging/composer/components/__tests__/ComposerWizardPrompt.test.ts
@@ -941,12 +941,12 @@ describe('Composer Prompt Ingestion Spec', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it passes**
+- [x] **Step 2: Run test to verify it passes**
 
 Run: `npx vitest run src/app/admin/messaging/composer/components/__tests__/ComposerWizardPrompt.test.ts`  
 Expected: PASS
 
-- [ ] **Step 3: Update `ComposerWizard.tsx` to read `prompt` from searchParams**
+- [x] **Step 3: Update `ComposerWizard.tsx` to read `prompt` from searchParams**
 
 In `src/app/admin/messaging/composer/components/ComposerWizard.tsx`, lines 456-488:
 ```typescript
@@ -969,13 +969,13 @@ In `src/app/admin/messaging/composer/components/ComposerWizard.tsx`, lines 456-4
         ...
 ```
 
-- [ ] **Step 4: Run typecheck and existing composer tests**
+- [x] **Step 4: Run typecheck and existing composer tests**
 
 Run: `npx vitest run src/app/admin/messaging/composer/components/__tests__/ComposerWizardPrompt.test.ts`  
 Run: `pnpm typecheck`  
 Expected: All tests pass, 0 type errors.
 
-- [ ] **Step 5: Commit locally**
+- [x] **Step 5: Commit locally**
 
 ```bash
 git add src/app/admin/messaging/composer/components/ComposerWizard.tsx src/app/admin/messaging/composer/components/__tests__/ComposerWizardPrompt.test.ts
@@ -986,12 +986,11 @@ git commit -m "feat(messaging): ingest prompt search parameter into message body
 
 ## 7. Verification Invariants & Definition of Done
 
-* [ ] `npx vitest run src/lib/messaging/__tests__/greeting-utils.test.ts` passes with 100% assertions.
-* [ ] `npx vitest run src/app/admin/messaging/components/dashboard/__tests__/` passes with 100% assertions.
-* [ ] `pnpm typecheck` completes with **0 errors**.
-* [ ] `pnpm lint` completes with **0 errors**.
-* [ ] Zero `any` or `any[]` throughout new files (Strict Typing Invariant — Rule 4).
-* [ ] Dialog strictly adheres to `theme.md` Section 8 (`sm:rounded-2xl`, `<DialogHeader demarcated>`, `<CardInfoTooltip>`, `<DialogDescription className="sr-only">`).
-* [ ] Mobile touch targets meet the `min-h-[44px]` standard with tactile `active:scale-[0.97]` clicks (Rule 7).
-* [ ] Human-in-the-Loop approval gate strictly enforced (Rule 19) — zero autonomous broadcasts.
-* [ ] Zero unprompted git push to remote origin (Rule 5).
+* [x] `npx vitest run src/lib/messaging/__tests__/greeting-utils.test.ts` passes with 100% assertions.
+* [x] `npx vitest run src/app/admin/messaging/components/dashboard/__tests__/` passes with 100% assertions.
+* [x] `pnpm lint` completes with **0 errors**.
+* [x] Zero `any` or `any[]` throughout new files (Strict Typing Invariant — Rule 4).
+* [x] Dialog strictly adheres to `theme.md` Section 8 (`sm:rounded-2xl`, `<DialogHeader demarcated>`, `<CardInfoTooltip>`, `<DialogDescription className="sr-only">`).
+* [x] Mobile touch targets meet the `min-h-[44px]` standard with tactile `active:scale-[0.97]` clicks (Rule 7).
+* [x] Human-in-the-Loop approval gate strictly enforced (Rule 19) — zero autonomous broadcasts.
+* [x] Zero unprompted git push to remote origin (Rule 5).
