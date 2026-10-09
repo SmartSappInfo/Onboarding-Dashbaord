@@ -220,15 +220,24 @@ export default function AgreementsClient() {
     // Search is server-side; only the status filter applies to the loaded page.
     const filteredList = React.useMemo(() => {
         if (statusFilter === 'all') return entitiesWithContracts;
-        return entitiesWithContracts.filter(item => (item.contract?.status || 'no_contract') === statusFilter);
+        return entitiesWithContracts.filter(item => {
+            const status = item.contract?.status || 'no_contract';
+            if (statusFilter === 'no_contract') {
+                return !item.contract || status === 'no_contract' || status === 'draft';
+            }
+            return status === statusFilter;
+        });
     }, [entitiesWithContracts, statusFilter]);
 
     // Coverage stats are GLOBAL (not page-bound): total from count(), signed/
     // pending from the contracts collection (Phase 2 - Conforming to agents_mcp_rules.md).
     const stats = React.useMemo<AgreementsKpiStats>(() => {
         const total = totalEntities;
-        const signed = (contracts || []).filter(c => c.status === 'signed').length;
-        const pending = (contracts || []).filter(c => c.status === 'sent').length;
+        const workspaceContracts = (contracts || []).filter(
+            c => !c.workspaceId || c.workspaceId === activeWorkspaceId
+        );
+        const signed = workspaceContracts.filter(c => c.status === 'signed').length;
+        const pending = workspaceContracts.filter(c => c.status === 'sent').length;
         const noContract = Math.max(0, total - (signed + pending));
 
         return { 
@@ -241,7 +250,7 @@ export default function AgreementsClient() {
             awaitingSignatureTrend: 8,
             activeContractsTrend: 15
         };
-    }, [totalEntities, contracts]);
+    }, [totalEntities, contracts, activeWorkspaceId]);
 
     const toggleSelect = (entity: WorkspaceEntity) => {
         setSelectedEntities(prev => {
@@ -407,11 +416,11 @@ export default function AgreementsClient() {
                                     <SelectValue placeholder="All Status" />
                                 </SelectTrigger>
  <SelectContent className="rounded-xl">
-                                    <SelectItem value="all">Global Compliance</SelectItem>
-                                    <SelectItem value="signed">Doc Signed</SelectItem>
-                                    <SelectItem value="sent">Awaiting Sign</SelectItem>
-                                    <SelectItem value="draft">Draft Protocol</SelectItem>
-                                    <SelectItem value="no_contract">Unassigned</SelectItem>
+                                    <SelectItem value="all">All Institutions</SelectItem>
+                                    <SelectItem value="signed">Active Contracts</SelectItem>
+                                    <SelectItem value="sent">Awaiting Signature</SelectItem>
+                                    <SelectItem value="draft">Draft Contracts</SelectItem>
+                                    <SelectItem value="no_contract">No Contract</SelectItem>
                                 </SelectContent>
                             </Select>
                             

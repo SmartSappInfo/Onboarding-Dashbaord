@@ -24,7 +24,7 @@
 
 import * as React from 'react';
 import { 
-    FileText, 
+    Building2, 
     AlertCircle, 
     Clock, 
     ShieldCheck, 
@@ -62,7 +62,7 @@ export type AgreementsFilterStatus =
 
 export interface AgreementsKpiGridProps {
     stats: AgreementsKpiStats;
-    currentFilter: string;
+    currentFilter: AgreementsFilterStatus | string;
     onFilterChange: (filter: AgreementsFilterStatus) => void;
     isLoading?: boolean;
 }
@@ -102,7 +102,7 @@ export const AgreementsKpiGrid = React.memo(function AgreementsKpiGrid({
             trend: stats.totalTrend ?? 12,
             sub: 'vs. last 30 days',
             tooltip: 'Total institutions in active workspace scope',
-            icon: FileText,
+            icon: Building2,
             iconBg: 'bg-primary/10',
             iconColor: 'text-primary',
             activeRing: 'ring-primary/40',
