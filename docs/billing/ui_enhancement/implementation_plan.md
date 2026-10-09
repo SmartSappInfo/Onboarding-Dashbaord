@@ -152,8 +152,8 @@ src/app/admin/finance/contracts/
 
 ---
 
-### Phase 4: Unified Filter & Contextual Bulk Action Bar [COMPLETED]
-**Status:** ✅ Completed & Verified (Commit Pending) — Full specification in `docs/billing/ui_enhancement/phase_4_filter_and_bulk_bar_plan.md`
+### Phase 4: Unified Filter & Contextual Bulk Action Bar [COMPLETED & COMMITTED]
+**Status:** ✅ Completed, Architect-Verified (Grade A+) & Committed (Commits: `eacacaf3` & `65e70910`) — Full specification in `docs/billing/ui_enhancement/phase_4_filter_and_bulk_bar_plan.md`
 **Goal:** Streamline searching and filtering while replacing clunky "Select All Unprepared" buttons with standard checkboxes and a contextual action bar.
 
 * **4.1. Desktop Filter Controls (`AgreementsFilterBar.tsx`):**
