@@ -875,6 +875,8 @@ export default function TasksClient() {
             toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) || 'Failed to reschedule task' });
             return false;
         }
+    };
+
     const handleOpenDetailDrawer = (task: Task) => {
         setSelectedDetailTask(task);
         setDetailDrawerOpen(true);
