@@ -11,7 +11,7 @@ import { z } from 'zod';
 
 export const taskCopilotInputSchema = z.object({
   prompt: z.string().trim().min(3, 'Prompt must be at least 3 characters.').max(500, 'Prompt cannot exceed 500 characters.'),
-  userTimezone: z.string().default('UTC'),
+  userTimezone: z.string().optional().default('UTC'),
   referenceDate: z.string().optional(),
   contextMembers: z.array(
     z.object({
@@ -48,6 +48,6 @@ export const taskChecklistProposalSchema = z.object({
   items: z.array(z.string().min(1)).min(1, 'At least one step required.').max(10, 'Max 10 steps allowed.'),
 });
 
-export type TaskCopilotInput = z.infer<typeof taskCopilotInputSchema>;
+export type TaskCopilotInput = z.input<typeof taskCopilotInputSchema>;
 export type TaskCopilotProposal = z.infer<typeof taskCopilotProposalSchema>;
 export type TaskChecklistProposal = z.infer<typeof taskChecklistProposalSchema>;

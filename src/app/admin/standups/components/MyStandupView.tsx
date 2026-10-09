@@ -146,8 +146,8 @@ export function MyStandupView({
     if (!newCompletedText.trim()) return;
     const newItem: StandupWorkItem = {
       id: `comp_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      type: 'commitment',
       title: newCompletedText.trim(),
-      completed: true,
     };
     setCompletedWork((prev) => [...prev, newItem]);
     setNewCompletedText('');
@@ -157,8 +157,8 @@ export function MyStandupView({
     if (!newPlannedText.trim()) return;
     const newItem: StandupWorkItem = {
       id: `plan_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      type: 'commitment',
       title: newPlannedText.trim(),
-      completed: false,
     };
     setPlannedWork((prev) => [...prev, newItem]);
     setNewPlannedText('');
@@ -183,9 +183,10 @@ export function MyStandupView({
   const handleTaskPicked = (task: Task) => {
     const item: StandupWorkItem = {
       id: `task_${task.id}`,
+      type: 'task',
       title: task.title,
       taskId: task.id,
-      completed: pickerTarget === 'completed',
+      taskStatus: task.status,
     };
     if (pickerTarget === 'completed') {
       setCompletedWork((prev) => [...prev, item]);

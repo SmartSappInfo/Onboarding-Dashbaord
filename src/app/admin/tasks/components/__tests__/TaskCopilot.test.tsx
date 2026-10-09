@@ -73,7 +73,7 @@ describe('Task Copilot Engine & Two-Phase Dialog (Phase 4D)', () => {
       title: 'Prepare demo for client meeting',
       description: 'Demo latest portal features',
       priority: 'high',
-      category: 'meeting',
+      category: 'general',
       dueDate: '2026-10-15',
       assignedTo: [],
       confidenceScore: 0.95,
@@ -132,7 +132,7 @@ describe('Task Copilot Engine & Two-Phase Dialog (Phase 4D)', () => {
             workspaceId: 'ws-1',
             title: 'Prepare demo for client meeting',
             priority: 'high',
-            category: 'meeting',
+            category: 'general',
             dueDate: '2026-10-15',
             checklist: expect.arrayContaining([
               expect.objectContaining({ title: 'Verify staging seed data' }),

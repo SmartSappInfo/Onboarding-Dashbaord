@@ -98,26 +98,33 @@ export const blockerMutateCapability: CapabilityDefinition<
       resolvedAt: input.action === 'resolve' ? now : undefined,
     };
 
-    const domainEvent = createDomainEvent(
-      'task.updated',
-      input.workspaceId,
-      {
+    const domainEvent = createDomainEvent({
+      type: 'task.updated',
+      organizationId: principal.organizationId,
+      workspaceId: input.workspaceId,
+      actor: {
+        type: principal.actorType,
+        id: principal.userId,
+      },
+      entity: {
+        type: 'task',
+        id: input.blockerId,
+      },
+      payload: {
         taskId: input.blockerId,
         title: `Blocker ${input.action}`,
-        status: nextStatus,
+        workspaceId: input.workspaceId,
       },
-      {
-        actor: {
-          type: principal.actorType,
-          id: principal.userId,
-        },
-      }
-    );
+      correlationId: context.correlationId,
+      source: `/workspaces/${input.workspaceId}/blockers`,
+    });
 
     return {
       success: true,
       data: output,
-      events: [domainEvent],
+      executionId: context.correlationId,
+      emittedEvents: [domainEvent],
+      durationMs: 0,
     };
   },
 };

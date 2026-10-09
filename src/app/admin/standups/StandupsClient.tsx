@@ -14,7 +14,7 @@ import * as React from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { collection, query, where, orderBy, limit } from 'firebase/firestore';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { useWorkspaceVisibility } from '@/hooks/use-workspace-visibility';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import { format } from 'date-fns';
 import {
   CalendarDays,
@@ -40,7 +40,7 @@ export default function StandupsClient() {
   const searchParams = useSearchParams();
   const firestore = useFirestore();
   const { user } = useUser();
-  const { activeWorkspaceId, activeWorkspace } = useWorkspaceVisibility();
+  const { activeWorkspaceId, activeWorkspace } = useWorkspace();
 
   // Active tab state
   const tabParam = searchParams.get('tab');

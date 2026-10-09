@@ -118,26 +118,33 @@ export const standupSubmitCapability: CapabilityDefinition<
       submittedAt: now,
     };
 
-    const domainEvent = createDomainEvent(
-      'task.created',
-      input.workspaceId,
-      {
+    const domainEvent = createDomainEvent({
+      type: 'task.created',
+      organizationId: principal.organizationId,
+      workspaceId: input.workspaceId,
+      actor: {
+        type: principal.actorType,
+        id: principal.userId,
+      },
+      entity: {
+        type: 'task',
+        id: standupId,
+      },
+      payload: {
         taskId: standupId,
         title: `Daily Standup - ${input.date}`,
-        status: input.status,
+        workspaceId: input.workspaceId,
       },
-      {
-        actor: {
-          type: principal.actorType,
-          id: principal.userId,
-        },
-      }
-    );
+      correlationId: context.correlationId,
+      source: `/workspaces/${input.workspaceId}/standups`,
+    });
 
     return {
       success: true,
       data: output,
-      events: [domainEvent],
+      executionId: context.correlationId,
+      emittedEvents: [domainEvent],
+      durationMs: 0,
     };
   },
 };

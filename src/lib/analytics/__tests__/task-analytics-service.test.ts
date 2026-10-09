@@ -29,61 +29,73 @@ describe('calculateTaskAnalytics (Phase 4C)', () => {
     expect(isNaN(summary.completionRate)).toBe(false);
   });
 
-  it('calculates completion and on-time rates accurately while excluding cancelled tasks', () => {
+  it('calculates completion and on-time rates accurately', () => {
     const mockTasks: Task[] = [
       // Completed on time: created 2026-10-01, due 2026-10-05, completed 2026-10-04 (lead time 3d)
       {
         id: 't1',
         workspaceId: 'ws-1',
         title: 'Task 1',
+        description: '',
         status: 'done',
         priority: 'high',
-        category: 'engineering',
+        category: 'general',
+        assignedTo: 'u1',
         createdAt: '2026-10-01T00:00:00.000Z',
         dueDate: '2026-10-05',
         completedAt: '2026-10-04T00:00:00.000Z',
         updatedAt: '2026-10-04T00:00:00.000Z',
         reminders: [],
+        reminderSent: false,
       },
       // Completed late: created 2026-10-01, due 2026-10-03, completed 2026-10-06 (lead time 5d)
       {
         id: 't2',
         workspaceId: 'ws-1',
         title: 'Task 2',
+        description: '',
         status: 'done',
         priority: 'medium',
-        category: 'engineering',
+        category: 'document',
+        assignedTo: 'u1',
         createdAt: '2026-10-01T00:00:00.000Z',
         dueDate: '2026-10-03',
         completedAt: '2026-10-06T00:00:00.000Z',
         updatedAt: '2026-10-06T00:00:00.000Z',
         reminders: [],
+        reminderSent: false,
       },
       // Open and overdue: due 2026-10-02 (relative to 2026-10-09)
       {
         id: 't3',
         workspaceId: 'ws-1',
         title: 'Task 3',
+        description: '',
         status: 'in_progress',
-        priority: 'critical',
-        category: 'design',
+        priority: 'urgent',
+        category: 'follow_up',
+        assignedTo: 'u2',
         createdAt: '2026-10-01T00:00:00.000Z',
         dueDate: '2026-10-02',
         updatedAt: '2026-10-01T00:00:00.000Z',
         reminders: [],
+        reminderSent: false,
       },
-      // Cancelled: should not count as open or penalize completion rate
+      // Open waiting: due 2026-10-15 (future)
       {
         id: 't4',
         workspaceId: 'ws-1',
-        title: 'Task 4 (abandoned)',
-        status: 'cancelled',
+        title: 'Task 4',
+        description: '',
+        status: 'waiting',
         priority: 'low',
-        category: 'marketing',
+        category: 'call',
+        assignedTo: 'u2',
         createdAt: '2026-10-01T00:00:00.000Z',
-        dueDate: '2026-10-02',
+        dueDate: '2026-10-15',
         updatedAt: '2026-10-01T00:00:00.000Z',
         reminders: [],
+        reminderSent: false,
       },
     ];
 
@@ -91,11 +103,11 @@ describe('calculateTaskAnalytics (Phase 4C)', () => {
 
     expect(summary.totalTasks).toBe(4);
     expect(summary.completedTasks).toBe(2);
-    expect(summary.openTasks).toBe(1);
+    expect(summary.openTasks).toBe(2);
     expect(summary.overdueTasks).toBe(1);
 
-    // Completion rate of active (non-cancelled) tasks: 2 completed out of 3 = 67%
-    expect(summary.completionRate).toBe(67);
+    // Completion rate: 2 completed out of 4 = 50%
+    expect(summary.completionRate).toBe(50);
 
     // On-time rate: 1 of 2 completed on time = 50%
     expect(summary.onTimeRate).toBe(50);
@@ -110,7 +122,7 @@ describe('calculateTaskAnalytics (Phase 4C)', () => {
         id: 'b1',
         workspaceId: 'ws-1',
         summary: 'Cert issue',
-        category: 'access',
+        category: 'technical',
         severity: 'high',
         status: 'resolved',
         raisedBy: 'u1',
@@ -134,7 +146,7 @@ describe('calculateTaskAnalytics (Phase 4C)', () => {
         id: 'b3',
         workspaceId: 'ws-1',
         summary: 'Still open',
-        category: 'other',
+        category: 'general',
         severity: 'low',
         status: 'open',
         raisedBy: 'u3',

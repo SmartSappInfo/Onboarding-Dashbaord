@@ -120,8 +120,8 @@ describe('Standup Server Actions & Blocker Lifecycle (Phase 4B)', () => {
     it('saves a standup draft for authorized user and workspace', async () => {
       const res = await saveStandupDraftAction('ws-1', {
         date: '2026-10-09',
-        completedWork: [{ id: 'w-1', title: 'Refactored auth middleware', completed: true }],
-        plannedWork: [{ id: 'w-2', title: 'Implement blocker actions', completed: false }],
+        completedWork: [{ id: 'w-1', title: 'Refactored auth middleware', type: 'commitment' }],
+        plannedWork: [{ id: 'w-2', title: 'Implement blocker actions', type: 'commitment' }],
         blockers: [],
         helpNeeded: 'None',
         privateManagerNote: 'Feeling slightly burned out from deadlines',
@@ -195,8 +195,8 @@ describe('Standup Server Actions & Blocker Lifecycle (Phase 4B)', () => {
 
       const res = await submitStandupAction('ws-1', {
         date: '2026-10-09',
-        completedWork: [{ id: 'w-1', title: 'Built components', completed: true }],
-        plannedWork: [{ id: 'w-2', title: 'Write unit tests', completed: false }],
+        completedWork: [{ id: 'w-1', title: 'Built components', type: 'commitment' }],
+        plannedWork: [{ id: 'w-2', title: 'Write unit tests', type: 'commitment' }],
         blockers,
         helpNeeded: 'Review PR #42',
         privateManagerNote: 'Will take Friday afternoon off',

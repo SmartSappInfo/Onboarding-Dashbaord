@@ -15,7 +15,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { collection, query, where, limit } from 'firebase/firestore';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { useWorkspaceVisibility } from '@/hooks/use-workspace-visibility';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import { subDays, format } from 'date-fns';
 import {
   BarChart3,
@@ -41,7 +41,7 @@ import { AnalyticsBlockersTab } from './components/AnalyticsBlockersTab';
 
 export default function TaskAnalyticsClient() {
   const firestore = useFirestore();
-  const { activeWorkspaceId, activeWorkspace } = useWorkspaceVisibility();
+  const { activeWorkspaceId, activeWorkspace } = useWorkspace();
 
   const [period, setPeriod] = React.useState<'7d' | '30d' | '90d' | 'all'>('30d');
   const [activeTab, setActiveTab] = React.useState('overview');

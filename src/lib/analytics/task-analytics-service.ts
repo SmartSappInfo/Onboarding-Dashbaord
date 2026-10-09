@@ -47,7 +47,6 @@ export function calculateTaskAnalytics(
   let completedTasks = 0;
   let openTasks = 0;
   let overdueTasks = 0;
-  let cancelledTasks = 0;
 
   let completedWithDueDate = 0;
   let onTimeCompleted = 0;
@@ -63,29 +62,23 @@ export function calculateTaskAnalytics(
     medium: 0,
     high: 0,
     urgent: 0,
-    critical: 0,
   };
 
   const tasksByCategory: Record<TaskCategory, number> = {
     general: 0,
     call: 0,
-    meeting: 0,
-    review: 0,
+    visit: 0,
     document: 0,
-    sales: 0,
-    design: 0,
-    engineering: 0,
-    compliance: 0,
-    marketing: 0,
+    training: 0,
+    follow_up: 0,
   };
 
   const tasksByStatus: Record<TaskStatus, number> = {
     todo: 0,
     in_progress: 0,
+    waiting: 0,
     review: 0,
-    blocked: 0,
     done: 0,
-    cancelled: 0,
   };
 
   const userWorkloadMap = new Map<string, UserWorkloadItem>();
@@ -133,17 +126,12 @@ export function calculateTaskAnalytics(
       uWork.totalAssigned++;
       if (task.status === 'done') {
         uWork.completedCount++;
-      } else if (task.status !== 'cancelled') {
+      } else {
         uWork.openCount++;
         if (dueDate && dueDate < now) {
           uWork.overdueCount++;
         }
       }
-    }
-
-    if (task.status === 'cancelled') {
-      cancelledTasks++;
-      continue;
     }
 
     if (task.status === 'done') {
@@ -181,9 +169,8 @@ export function calculateTaskAnalytics(
     }
   }
 
-  const activeTotal = totalTasks - cancelledTasks;
   const completionRate =
-    activeTotal > 0 ? Math.round((completedTasks / activeTotal) * 100) : 0;
+    totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   const onTimeRate =
     completedWithDueDate > 0

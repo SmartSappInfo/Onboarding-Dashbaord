@@ -114,16 +114,19 @@ export function TaskCopilotDialog({
         id: `chk_${Date.now()}_${idx}`,
         title: item,
         completed: false,
-        position: idx,
       }));
 
       const res = await createTaskAction({
         workspaceId,
         title: title.trim(),
-        description: description.trim() || undefined,
+        description: description.trim() || '',
+        status: 'todo',
         priority,
         category,
-        dueDate: dueDate || undefined,
+        assignedTo: '',
+        dueDate: dueDate || new Date().toISOString(),
+        reminders: [],
+        reminderSent: false,
         checklist: checklistItems.length > 0 ? checklistItems : undefined,
       });
 

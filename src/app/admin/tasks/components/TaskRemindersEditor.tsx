@@ -158,9 +158,9 @@ export function TaskRemindersEditor({
                             >
                                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                     <div className="flex items-center gap-1 shrink-0 text-muted-foreground">
-                                        {rem.channels.includes('notification') && <Bell className="h-3.5 w-3.5" title="In-app notification" />}
-                                        {rem.channels.includes('email') && <Mail className="h-3.5 w-3.5" title="Email" />}
-                                        {rem.channels.includes('sms') && <MessageSquare className="h-3.5 w-3.5" title="SMS" />}
+                                        {rem.channels.includes('notification') && <Bell className="h-3.5 w-3.5" aria-label="In-app notification" />}
+                                        {rem.channels.includes('email') && <Mail className="h-3.5 w-3.5" aria-label="Email" />}
+                                        {rem.channels.includes('sms') && <MessageSquare className="h-3.5 w-3.5" aria-label="SMS" />}
                                     </div>
                                     <div className="min-w-0">
                                         <p className="text-xs font-medium text-foreground truncate">

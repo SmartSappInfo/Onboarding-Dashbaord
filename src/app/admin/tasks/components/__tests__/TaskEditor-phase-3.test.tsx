@@ -66,7 +66,7 @@ describe('TaskEditor Phase 3 (Checklist & Reminders Progressive Integration)', (
       description: 'Audit scope',
       priority: 'high' as const,
       status: 'in_progress' as const,
-      category: 'operations' as const,
+      category: 'general' as const,
       assignedTo: 'usr_test_1',
       dueDate: '2026-10-15T00:00:00.000Z',
       createdAt: '2026-10-01T00:00:00.000Z',

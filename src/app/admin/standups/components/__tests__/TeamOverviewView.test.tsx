@@ -22,13 +22,13 @@ const mockStandups: StandupSubmission[] = [
     date: '2026-10-09',
     status: 'submitted',
     submittedAt: '2026-10-09T09:15:00.000Z',
-    completedWork: [{ id: 'c-1', title: 'Finished API docs', completed: true }],
-    plannedWork: [{ id: 'p-1', title: 'Work on data connector', completed: false }],
+    completedWork: [{ id: 'c-1', title: 'Finished API docs', type: 'commitment' }],
+    plannedWork: [{ id: 'p-1', title: 'Work on data connector', type: 'commitment' }],
     blockers: [
       {
         id: 'b-1',
         summary: 'Cloud IAM permissions missing',
-        category: 'access',
+        category: 'technical',
         severity: 'high',
       },
     ],
@@ -44,6 +44,9 @@ const mockMembers: UserProfile[] = [
     email: 'alice@corp.internal',
     roles: ['member'],
     permissions: [],
+    organizationId: 'org-1',
+    workspaceIds: ['ws-1'],
+    createdAt: '2026-01-01T00:00:00.000Z',
   },
   {
     id: 'user-bob',
@@ -51,6 +54,9 @@ const mockMembers: UserProfile[] = [
     email: 'bob@corp.internal',
     roles: ['member'],
     permissions: [],
+    organizationId: 'org-1',
+    workspaceIds: ['ws-1'],
+    createdAt: '2026-01-01T00:00:00.000Z',
   },
 ];
 

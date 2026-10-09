@@ -283,12 +283,6 @@ export default function TasksClient() {
     const [selectedDetailTask, setSelectedDetailTask] = React.useState<Task | null>(null);
     const [detailDrawerOpen, setDetailDrawerOpen] = React.useState(false);
 
-    // Active detail task stays synced with latest allTasks Firestore stream
-    const activeDetailTask = React.useMemo(() => {
-        if (!selectedDetailTask) return null;
-        return allTasks?.find(t => t.id === selectedDetailTask.id) || selectedDetailTask;
-    }, [allTasks, selectedDetailTask]);
-
     // Confirmation State
     const [taskToComplete, setTaskToComplete] = React.useState<Task | null>(null);
     const [taskToDelete, setTaskToDelete] = React.useState<Task | null>(null);
@@ -352,6 +346,12 @@ export default function TasksClient() {
     const { data: allTasks, isLoading: isLoadingTasks, error: tasksError } = useCollection<Task>(tasksQuery);
     const { data: users } = useCollection<UserProfile>(usersQuery);
     const { data: workspaceTags } = useCollection<Tag>(tagsQuery);
+
+    // Active detail task stays synced with latest allTasks Firestore stream
+    const activeDetailTask = React.useMemo(() => {
+        if (!selectedDetailTask) return null;
+        return allTasks?.find(t => t.id === selectedDetailTask.id) || selectedDetailTask;
+    }, [allTasks, selectedDetailTask]);
 
     const selectedTasksSnapshot = React.useMemo(() => {
         return (allTasks || [])

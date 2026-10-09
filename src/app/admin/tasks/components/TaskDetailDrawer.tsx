@@ -100,6 +100,12 @@ export function TaskDetailDrawer({
     const { toast } = useToast();
     const [isSuggestingSteps, setIsSuggestingSteps] = React.useState(false);
 
+    const assignees = React.useMemo(() => {
+        if (!userMap || !task?.assignedTo) return [];
+        const ids = Array.isArray(task.assignedTo) ? task.assignedTo : [task.assignedTo];
+        return ids.map(id => userMap.get(id)).filter(Boolean) as UserProfile[];
+    }, [task?.assignedTo, userMap]);
+
     const handleSuggestSteps = async () => {
         if (!task || isSuggestingSteps) return;
         try {
@@ -111,7 +117,6 @@ export function TaskDetailDrawer({
                     id: `chk_${Date.now()}_${idx}`,
                     title,
                     completed: false,
-                    position: currentItems.length + idx,
                 }));
                 await handleChecklistChange([...currentItems, ...newItems]);
                 toast({
@@ -222,7 +227,7 @@ export function TaskDetailDrawer({
                                         <Users className="h-3 w-3" />
                                         Assignee
                                     </span>
-                                    <TaskAssignee assignedTo={task.assignedTo} userMap={userMap} />
+                                    <TaskAssignee assignees={assignees} />
                                 </div>
 
                                 <div className="space-y-1">

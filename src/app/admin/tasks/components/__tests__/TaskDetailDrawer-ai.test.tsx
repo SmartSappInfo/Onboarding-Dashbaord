@@ -30,12 +30,12 @@ const mockTask: Task = {
   title: 'Deploy microservice to staging',
   status: 'in_progress',
   priority: 'high',
-  category: 'engineering',
+  category: 'general',
   dueDate: '2026-10-15',
   createdAt: '2026-10-09T00:00:00.000Z',
   updatedAt: '2026-10-09T00:00:00.000Z',
   reminders: [],
-  checklist: [{ id: 'c1', title: 'Run linter', completed: true, position: 0 }],
+  checklist: [{ id: 'c1', title: 'Run linter', completed: true }],
 };
 
 describe('TaskDetailDrawer AI Integration (Phase 4D)', () => {
