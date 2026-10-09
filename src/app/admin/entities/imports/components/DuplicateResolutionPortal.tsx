@@ -23,6 +23,7 @@ import { TagSelector } from '@/components/tags';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getErrorMessage, getErrorName } from '@/lib/errors/report-error';
+import { cn } from '@/lib/utils';
 
 interface DuplicateRow {
     id: string;

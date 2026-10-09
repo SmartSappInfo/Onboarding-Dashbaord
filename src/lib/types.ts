@@ -735,6 +735,8 @@ export interface EntityNote {
    */
   dealId?: string;
   dealName?: string;
+  /** Provenance of the note (e.g. 'bulk_import', 'quick_note', 'timeline') */
+  source?: string;
 }
 
 export interface ContactAttachment {

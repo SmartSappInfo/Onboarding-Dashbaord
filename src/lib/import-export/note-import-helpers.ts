@@ -109,7 +109,7 @@ export function buildEntityNotePayload(params: BuildNoteParams): EntityNote {
     updatedAt: now,
     noteType,
     isPinned,
-    source: 'bulk_import' as unknown as undefined, // Optional provenance
+    source: 'bulk_import',
   };
 
   if (isPinned) {
