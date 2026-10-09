@@ -26,8 +26,12 @@ import {
     MessageSquare,
     StickyNote,
     Plus,
-    Loader2
+    Loader2,
+    Sparkles,
+    AlertTriangle,
 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { suggestTaskChecklistAction } from '@/app/actions/task-copilot-actions';
 import {
     Sheet,
     SheetContent,
@@ -91,6 +95,41 @@ export function TaskDetailDrawer({
     const handleStatusChange = async (newStatus: TaskStatus) => {
         if (!onUpdateTask) return;
         await onUpdateTask(task.id, { status: newStatus });
+    };
+
+    const { toast } = useToast();
+    const [isSuggestingSteps, setIsSuggestingSteps] = React.useState(false);
+
+    const handleSuggestSteps = async () => {
+        if (!task || isSuggestingSteps) return;
+        try {
+            setIsSuggestingSteps(true);
+            const res = await suggestTaskChecklistAction(task.workspaceId, task.id, task.title);
+            if (res.success && res.checklist && res.checklist.items.length > 0) {
+                const currentItems = task.checklist || [];
+                const newItems: TaskChecklistItem[] = res.checklist.items.map((title, idx) => ({
+                    id: `chk_${Date.now()}_${idx}`,
+                    title,
+                    completed: false,
+                    position: currentItems.length + idx,
+                }));
+                await handleChecklistChange([...currentItems, ...newItems]);
+                toast({
+                    title: 'Checklist Steps Generated',
+                    description: `Added ${newItems.length} action steps to task checklist.`,
+                });
+            } else {
+                toast({
+                    title: 'No steps generated',
+                    description: res.error || 'Could not generate steps for this task.',
+                    variant: 'destructive',
+                });
+            }
+        } catch (err: unknown) {
+            console.error('[TASK_DETAIL_DRAWER] Error suggesting steps:', err);
+        } finally {
+            setIsSuggestingSteps(false);
+        }
     };
 
     const handleChecklistChange = async (newItems: TaskChecklistItem[]) => {
@@ -245,11 +284,36 @@ export function TaskDetailDrawer({
                         <Separator className="border-border/60" />
 
                         {/* Interactive Checklist Section */}
-                        <TaskChecklist
-                            items={task.checklist || []}
-                            onChange={handleChecklistChange}
-                            currentUserId={currentUserId}
-                        />
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs font-bold text-foreground">Action Checklist</span>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={isSuggestingSteps}
+                                    onClick={handleSuggestSteps}
+                                    className="rounded-xl h-11 min-h-[44px] px-3.5 text-xs font-bold active:scale-[0.97] text-primary hover:text-primary"
+                                >
+                                    {isSuggestingSteps ? (
+                                        <>
+                                            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                                            Generating...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                                            Suggest steps with AI
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
+                            <TaskChecklist
+                                items={task.checklist || []}
+                                onChange={handleChecklistChange}
+                                currentUserId={currentUserId}
+                            />
+                        </div>
 
                         <Separator className="border-border/60" />
 

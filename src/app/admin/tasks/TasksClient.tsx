@@ -29,6 +29,8 @@ import {
     LayoutList, 
     Filter, 
     ArrowLeft, 
+    CalendarDays,
+    BarChart3,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -77,6 +79,7 @@ import { TaskEmptyState } from './components/primitives/TaskEmptyState';
 import { TaskErrorState } from './components/primitives/TaskErrorState';
 import { TaskSkeleton } from './components/primitives/TaskSkeleton';
 import { ConfirmDialog } from './components/primitives/ConfirmDialog';
+import { TaskCopilotBar } from './components/TaskCopilotBar';
 import { 
     BulkActionReviewDialog, 
     type BulkActionType, 
@@ -1298,28 +1301,55 @@ export default function TasksClient() {
                             <CardInfoTooltip text="Action items, global workflows, and execution protocols across all operations." />
                         </div>
                     </div>
-                    {/* Header Tabs conforming to standard segmented pill */}
-                    <TabsList className="inline-flex items-center gap-1 bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto shrink-0">
-                        <TabsTrigger 
-                            value="list" 
-                            className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <Button
+                            asChild
+                            variant="outline"
+                            size="sm"
+                            className="rounded-xl h-11 min-h-[44px] px-3.5 text-xs font-bold active:scale-[0.97]"
                         >
-                            <LayoutList className="h-3.5 w-3.5" /> List ({filteredTasks.length})
-                        </TabsTrigger>
-                        <TabsTrigger 
-                            value="board" 
-                            className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
+                            <Link href="/admin/standups">
+                                <CalendarDays className="h-4 w-4 mr-1.5 text-primary" />
+                                Standups
+                            </Link>
+                        </Button>
+                        <Button
+                            asChild
+                            variant="outline"
+                            size="sm"
+                            className="rounded-xl h-11 min-h-[44px] px-3.5 text-xs font-bold active:scale-[0.97]"
                         >
-                            <Layers className="h-3.5 w-3.5" /> Board
-                        </TabsTrigger>
-                        <TabsTrigger 
-                            value="calendar" 
-                            className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
-                        >
-                            <Calendar className="h-3.5 w-3.5" /> Calendar
-                        </TabsTrigger>
-                    </TabsList>
+                            <Link href="/admin/task-analytics">
+                                <BarChart3 className="h-4 w-4 mr-1.5 text-primary" />
+                                Analytics
+                            </Link>
+                        </Button>
+                        {/* Header Tabs conforming to standard segmented pill */}
+                        <TabsList className="inline-flex items-center gap-1 bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto shrink-0">
+                            <TabsTrigger 
+                                value="list" 
+                                className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
+                            >
+                                <LayoutList className="h-3.5 w-3.5" /> List ({filteredTasks.length})
+                            </TabsTrigger>
+                            <TabsTrigger 
+                                value="board" 
+                                className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
+                            >
+                                <Layers className="h-3.5 w-3.5" /> Board
+                            </TabsTrigger>
+                            <TabsTrigger 
+                                value="calendar" 
+                                className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
+                            >
+                                <Calendar className="h-3.5 w-3.5" /> Calendar
+                            </TabsTrigger>
+                        </TabsList>
+                    </div>
                 </div>
+
+                {/* AI Task Copilot Bar (Phase 4D) */}
+                <TaskCopilotBar workspaceId={activeWorkspaceId || ''} />
 
                 {/* Capability Error Notice Surface (Rule 51 & PRD §53) */}
                 {capabilityError && (
