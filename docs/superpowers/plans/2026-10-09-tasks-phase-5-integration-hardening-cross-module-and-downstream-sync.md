@@ -1,137 +1,219 @@
-# Tasks Phase 5: Integration Hardening, Cross-Module Standards & Downstream Synchronization (Replanned)
+# Tasks Phase 5: Integration Hardening, Cross-Module Standards & Downstream Synchronization
+## Implementation Plan (Conforming to `agents_mcp_rules.md`, Institutional Theme Standards & Roadmap §75–78)
 
-> **Governance Notice:** Conforms strictly to `docs/agents_mcp/agents_mcp_rules.md`, `.agents/AGENTS.md`, `theme.md` (Section 8 Modal Architecture), `docs/tasks/tasks_roadmap_ui.md` (§75–78), and `docs/tasks/tasks_ui_spec.md` (Phase 5).
-> **Execution Status:** AWAITING PLAN APPROVAL. Do NOT begin implementation until explicitly approved by the user.
-
----
-
-## 1. Context, Baseline & Current Codebase Status
-
-### Current Status After Phase 4
-- **Phases 1 through 4 are 100% complete, fully verified, and tested** (all 33 test files, 130 tests passing).
-- The atomic UI primitives (`TaskStatusBadge`, `TaskPriorityBadge`, `TaskDueDate`, `TaskAssignee`, `TaskRelationshipBadge`, `TaskSourceBadge`), Layout (`TaskListRow`, `TaskCard`, `TaskBoard`), Execution Drawer (`TaskDetailDrawer`), Checklists, Reminders, Standups (`/admin/standups`), Operational Analytics (`/admin/task-analytics`), and AI Copilot (`TaskCopilotBar`, `TaskCopilotDialog`) are operational and stable.
-- **Phase 5 gap identified:**
-  1. `src/lib/types.ts` does NOT have `obligationSyncStatus` fields.
-  2. `src/lib/tasks/task-core.ts` (`line 255`) and `src/lib/task-server-actions.ts` (`line 155`) catch downstream contract reverse-hook errors (`syncTaskCompletionToObligation`) and only log warnings to the console—silently swallowing failures without recording them or notifying users.
-  3. `src/app/admin/tasks/components/CompactTaskCard.tsx` does not exist yet.
-  4. Fragmented, ad-hoc task card markup exists in `TaskWidget.tsx`, `entities/[id]/page.tsx` (Tasks tab), and `deals/[id]/page.tsx` (Upcoming Tasks).
-  5. Users and operations teams have no UI mechanism or retry action to recover from downstream obligation sync failures.
+> **File Location:** `docs/superpowers/plans/2026-10-09-tasks-phase-5-integration-hardening-cross-module-and-downstream-sync.md`  
+> **Status:** Pending User Approval  
+> **Target Subsystems:** Cross-Module Tasks Presentation (`CompactTaskCard`), Dashboard `TaskWidget`, CRM Entity Tasks Tab (`entities/[id]`), Deals Upcoming Tasks (`deals/[id]`), Downstream Contract Obligation Reverse Hook (`crm-deal-sync-service`), Recovery UX in `TaskDetailDrawer` and `TaskListRow`.  
+> **Applicable Rules:** SmartSapp Agentic Development Rules (MCP Edition — Rules 1 through 25 from `docs/agents_mcp/agents_mcp_rules.md`), `.agents/AGENTS.md`, and `theme.md` (Section 8 Modal Architecture).  
+> **Reference Specs:** `docs/tasks/tasks_roadmap_ui.md` (§75–78, §80–92), `docs/tasks/tasks_ui_spec.md` (Phase 5), and `docs/tasks/tasks_prd.md` (§20, §21).  
 
 ---
 
-## 2. Strategic Objectives for Phase 5
+> [!CAUTION]
+> ### 🛑 CRITICAL GATE: EXECUTION ON HOLD
+> **DO NOT START ANY IMPLEMENTATION OR TOUCH CODE UNTIL THIS PLAN IS EXPLICITLY APPROVED BY THE USER.**  
+> In accordance with Rule 5 and Rule 19 of `agents_mcp_rules.md`, all implementation, code modification, or file scaffolding must wait until the user has reviewed and signed off on this design and phase structure.
 
-1. **Establish the Canonical `<CompactTaskCard>` Component (Roadmap §77):**
-   Deploy a single, universal information model across all embedded surfaces:
+---
+
+## 1. Executive Summary & Goals
+
+This plan details the implementation of **Phase 5** of the SmartSapp Tasks Architecture upgrade:
+1. **Canonical Cross-Module Task Card Standard (`CompactTaskCard.tsx`)**: An institutional, high-density component conforming to Roadmap §77:
    ```text
    ┌─────────────────────────────────────────────────────────────┐
    │ [○] Task Title                                [Priority]   │
    │     Status · Due Date · Assignee              [Source]     │
-   │     [Relationship Badge: Deal/Entity/Contract]              │
+   │     [Relationship Badge: Deal / Entity / Agreement]         │
    │     ⚠ Contract obligation sync failed. [ Retry ]           │
    └─────────────────────────────────────────────────────────────┘
    ```
-2. **Standardize Embedded Task Surfaces Across SmartSapp:**
-   Replace bespoke, ad-hoc cards in Dashboard (`TaskWidget.tsx`), CRM Entity Profiles (`entities/[id]/page.tsx`), and Deals Pipeline (`deals/[id]/page.tsx`) with `<CompactTaskCard>`, wiring context-preserving slide-over inspection via `TaskDetailDrawer`.
-3. **Resilient Downstream Obligation Synchronization & Recovery (Roadmap §78):**
-   Upgrade `task-core.ts` and `task-server-actions.ts` to record explicit sync states (`synced`, `failed`, `pending`) and implement `retryTaskObligationSyncAction` with TOCTOU currency verification and idempotency protection.
-4. **Governed MCP Capability Contract (Rules 11, 12, 18, 19, 47):**
-   Provide `task-obligation-sync.contract.ts` with stateless execution, `L2_STATE_MUTATION` server-side authorization, and principal audit logging.
+   Built using the atomic primitives validated in Phase 1–3 (`TaskStatusBadge`, `TaskPriorityBadge`, `TaskDueDate`, `TaskAssignee`, `TaskRelationshipBadge`, `TaskSourceBadge`), enforcing $\ge 44\text{px}$ touch targets, tactile micro-interactions (`active:scale-[0.97]`), and uniform status semantics.
+2. **Cross-Module Task Harmonization**:
+   - **Dashboard Task Widget (`TaskWidget.tsx`)**: Standardize ad-hoc card markup with `<CompactTaskCard>`, apply query bounding with `limit(10)` (Rule 9), and preserve Firestore streaming with optimistic completion feedback.
+   - **CRM Entity Detail (`entities/[id]/page.tsx`)**: Standardize Tasks tab with `<CompactTaskCard>` and wire card click to open `TaskDetailDrawer` slide-over to preserve context without navigation.
+   - **Deals Detail (`deals/[id]/page.tsx`)**: Standardize Upcoming Tasks with `<CompactTaskCard>`, preserving due-date urgency sorting (overdue/today first) and drawer inspection.
+3. **Resilient Downstream Contract Obligation Synchronization (Roadmap §78)**:
+   - Upgrade `src/lib/tasks/task-core.ts` (`line 255`) and `src/lib/task-server-actions.ts` (`line 155`) to eliminate the silent failure defect where reverse-hook errors were swallowed with only a `console.warn`.
+   - Persist explicit states on task documents: `obligationSyncStatus: 'synced' | 'failed' | 'pending'`, `obligationSyncError: string | null`, `obligationSyncAt: string | null`.
+   - Provide an authenticated, idempotent server action: `retryTaskObligationSyncAction(workspaceId, taskId)` with TOCTOU currency verification.
+4. **Governed MCP Capability Contract (`task-obligation-sync.contract.ts`)**:
+   - Stateless capability contract conforming to MCP SDK v2 (`2026-07-28` spec), `L2_STATE_MUTATION` server-side authorization, workspace confinement, and principal audit logging.
+5. **Downstream Integration Failure Recovery UX**:
+   - Prominent Section 78 banner in `TaskDetailDrawer.tsx` and warning indicator in `TaskListRow.tsx`:
+     ```text
+     Task completed.
+     Contract obligation could not be synchronized.
+     [ Retry synchronization ]
+     ```
+   - One-click retry with actionable toasts linking strictly to safe relative paths (`/admin/finance/agreements`).
 
 ---
 
-## 3. Comprehensive Agents & MCP Rules Compliance Mapping
+## 2. Conformance with `agents_mcp_rules.md` (The 10 + 15 Rules)
 
-### Foundation Rules (Rules 1 – 10)
+### 2.1 The 10 Foundational Engineering Rules
 
-| Rule | Requirement | Phase 5 Technical Defense |
-|---|---|---|
-| **Rule 1: Design Standards & UI Consistency** | Next.js 15, React 19, `emilkowal-animations`, `frontend-design`, `theme.md` §8. | `<CompactTaskCard>` leverages Phase 1 atomic primitives. Buttons use `active:scale-[0.97]` tactile transitions ($< 250\text{ms}$). Modals and drawers strictly adhere to Section 8 demarcated headers/footers with single-circle `CardInfoTooltip` (`z-[10050]`) and `sr-only` descriptions. |
-| **Rule 2: Risk Analysis, Prevention & Scalability** | Proactive failure mode analysis, clean refactoring, test-driven validation, no origin pushes. | Comprehensive failure modes matrix below. All tasks executed with test-first methodology. Strictly local git commits; NO `git push`. |
-| **Rule 3: Cross-Module Observability & Backoffice Governance** | Backoffice management without code changes; no broken downstream dependencies. | Failed obligation syncs are persisted to Firestore task records and observable in backoffice feeds, allowing operators to monitor and retry without touching code. |
-| **Rule 4: Strict Typing Policy** | Zero `any` or `any[]`. No unchecked casts in domain code. Inferred/explicit types. Validate `unknown` at boundaries. | Absolute ban on `any` and `any[]`. External payloads from `crm-deal-sync-service.ts` validated via Zod schemas at API boundary. All contracts and actions strictly typed. |
-| **Rule 5: Deployment, Staging & Rule Safety** | Stage and verify rules/indexes before deployment. Never auto-deploy security-sensitive changes. | Firestore security rules for `tasks` and `contract_obligations` verified with workspace isolation checks. |
-| **Rule 6: Dependency & Documentation Standards** | No unvetted dependencies. Use official SDKs and latest documentation via Context7. | Uses established dependencies (`@/lib/types`, `date-fns`, `lucide-react`, `zod/v4`). Zero new external npm packages. |
-| **Rule 7: Mobile-First, Touch Targets & Everyday Plain UI English** | Touch targets $\ge 44\text{px}$. Gesture/viewport support. Minimal, plain everyday UI English. No verbose walls of text. | All interactive targets (completion circle, card click area, retry trigger) enforce `min-h-[44px]` and `min-w-[44px]`. Copy strictly uses concise, plain English (*"Task completed"*, *"Contract obligation could not be synchronized"*, *"[ Retry synchronization ]"*). |
-| **Rule 8: Security, Anti-IDOR & Zero Trust** | Workspace confinement, tenant isolation, anti-IDOR checks, safe relative navigation. | All actions validate `workspaceId` against authenticated session before reading/mutating. Actionable toast paths strictly relative beginning with `/` (e.g. `/admin/finance/agreements`). |
-| **Rule 9: Concurrency, Load & Resource Protection** | Avoid batch overload, resource exhaustion, or unbounded queries. | Queries in `TaskWidget` enforce `limit(10)`. Entity and deal task queries scoped strictly by workspace and parent IDs with indexes. Bulk operations chunked in batches $\le 500$. |
-| **Rule 10: Inline Architectural Guidance** | Clear code comments explaining what changed, why, caution areas, and testability pointers. | Every new component, action, and contract includes structured `@fileOverview` and inline maintainer pointers explaining design decisions and safety boundaries. |
-
-### Protocol & Agentic Rules (Rules 11 – 20)
-
-| Rule | Requirement | Phase 5 Technical Defense |
-|---|---|---|
-| **Rule 11: MCP Protocol Compliance** | Target current supported MCP specification (`2026-07-28`), stateless execution, SDK v2 standards. | Capability contract `task-obligation-sync.contract.ts` adheres to stateless execution, standard schemas, and structured result types. |
-| **Rule 12: Server-Side Risk Enforcement** | Risk classifications enforced server-side independently of client/MCP metadata hints. | Classified as `L2_STATE_MUTATION`. Explicit server-side permission checks (`operations:tasks:edit`, `contracts:obligations:edit`) enforced before executing reverse sync. |
-| **Rule 13: Formal Trust Boundary Matrix** | Data entering agent/system has explicit trust classification. External data treated as untrusted. | Downstream agreement sync response parsed with Zod before updating task record. |
-| **Rule 16: Agent Identity as Security Principal** | Security principal includes `organizationId`, `workspaceId`, `userId`, `actorType`, `agentId`. | Capability execution context records `principal.actorType` (`'user' | 'agent' | 'system'`) and tags task audit logs accordingly. |
-| **Rule 18: TOCTOU Concurrency Protection** | Prevent time-of-check to time-of-use races using version/timestamp tokens. | `retryTaskObligationSyncAction` accepts `expectedUpdatedAt`. Mutation aborts safely with concurrency alert if task was modified concurrently. |
-| **Rule 19: Mutating Action Idempotency** | Define idempotency keys and retry semantics for every mutation. | Re-executing `retryTaskObligationSyncAction` on an already-synced obligation returns cached success without duplicate side-effects. |
-| **Rule 20: Replay & Duplicate Delivery Protection** | Unique execution identifiers (`executionId`, `idempotencyKey`). | Action execution generates a unique `executionId` for downstream synchronization calls to prevent double-fulfillment of contract terms. |
+* **Rule 1 (Industry-Grade Best Practices & Design Standards)**:
+  * Complies with `next-best-practices`: Presentation components (`CompactTaskCard`) are client components (`'use client'`), completely decoupled from Firestore queries or network side effects. They take validated props and callback handlers.
+  * Complies with `vercel-react-best-practices`: Pure memoized layout, `tabular-nums` used on all dates/times to eliminate alignment jitter; zero unnecessary re-renders.
+  * Complies with `emilkowal-animations`: Tactile feedback on all interactive elements (`active:scale-[0.97]`), smooth transitions ($< 250\text{ms}$).
+  * Complies with `theme.md` Section 8 Modal Architecture: Drawers and modals use demarcated headers/footers with single-circle `CardInfoTooltip` (`z-[10050]`), `border border-border/80 bg-card text-card-foreground shadow-2xl sm:rounded-2xl`, and `sr-only` descriptions.
+* **Rule 2 (Risk Analysis, Prevention & Scalability)**:
+  * Comprehensive failure modes identified: downstream API timeout/lockout, TOCTOU collision during retry, ad-hoc UI regressions, and small mobile clipping.
+  * Full mitigation matrix documented in Section 4.
+  * Unit and integration test coverage with Vitest and React Testing Library before merging.
+  * Strictly zero remote git pushes. Local commit discipline only.
+* **Rule 3 (Cross-Module Observability & Backoffice Management)**:
+  * Detailed in Section 5. Zero breaking changes to existing CRM, Deal, or Dashboard features.
+  * Failed downstream obligation syncs are persisted directly on Firestore task records, making them observable in backoffice audit feeds.
+  * Operations teams and administrators can inspect and trigger retries without touching code.
+* **Rule 4 (Strict Typing & External Boundary Trust)**:
+  * Strictly zero `any`, `any[]`, or unchecked casts across all new components, actions, contracts, and test suites.
+  * External payloads from `crm-deal-sync-service.ts` validated via Zod schemas at API boundary.
+  * Strict union types: `obligationSyncStatus: 'synced' | 'failed' | 'pending'`.
+* **Rule 5 (Staging, Validation & Approval Gates)**:
+  * Strict approval gate enforced before executing tasks.
+  * All unit and integration tests must pass locally before staging.
+  * Firestore rules for `tasks` and `contract_obligations` verified with workspace isolation checks.
+* **Rule 6 (Dependency Integrity & Context7)**:
+  * Uses existing, verified packages only: `@/lib/types`, `date-fns`, `lucide-react`, `zod/v4`.
+  * Zero new external npm packages required.
+* **Rule 7 (Mobile-First Ergonomics & Everyday UI English)**:
+  * Every interactive touch target meets or exceeds `min-h-[44px]` and `min-w-[44px]` (completion circle, card click area, retry trigger).
+  * Smooth transition from desktop slide-over to full-width mobile bottom sheet (<768px).
+  * Everyday UI English: Concise labels with zero technical jargon (*"Task completed"*, *"Contract obligation could not be synchronized"*, *"[ Retry synchronization ]"*).
+* **Rule 8 (Security, Anti-IDOR & Zero Trust)**:
+  * All server actions validate `workspaceId` against authenticated session before reading or mutating records.
+  * Anti-IDOR: Completing a task only syncs to its strictly bound `relatedParentId` and `relatedEntityId`.
+  * Actionable toast navigation paths strictly adhere to relative path protocol starting with `/` (e.g. `/admin/finance/agreements`). Prohibits direct external links, protocol schemes (`http:`, `https:`), or `javascript:` targets.
+* **Rule 9 (High-Load Safety & Resource Protection)**:
+  * Enforces `limit(10)` on `TaskWidget` query to prevent unbounded Firestore streaming.
+  * Entity and deal task queries scoped strictly by workspace and parent IDs with indexes.
+  * Bulk operations chunked in batches $\le 500$ documents.
+* **Rule 10 (Inline Architectural Documentation & Pointers)**:
+  * Comprehensive `@fileOverview` and inline JSDoc comments explaining architectural intent, security cautions, maintainer guidance, and testability pointers across all files.
 
 ---
 
-## 4. Proactive Risk Analysis & Failure Modes Matrix (Rule 2 & Rule 3)
+### 2.2 The Agentic & MCP Rules (Rules 11–25)
 
-| Potential Failure Mode | Root Cause | Severity | Prevention & Mitigation Strategy |
-|---|---|---|---|
-| **Downstream Agreement API Failure** | Network timeout, contract locked, or obligation already resolved. | High | Instead of swallowing error in `catch`, catch block writes `obligationSyncStatus: 'failed'` and `obligationSyncError: message` to task document. UI renders non-blocking warning with `[ Retry synchronization ]`. |
-| **TOCTOU Concurrency Collision** | User marks task done while another user or agent edits task details. | Medium | Enforce `expectedUpdatedAt` check in `task-core.ts`. If timestamps mismatch, abort with actionable toast allowing user to reload latest state. |
-| **Ad-Hoc UI Regression in CRM / Deals** | Swapping custom markup with `<CompactTaskCard>` breaks entity linking or click behavior. | High | Component integration tests (`EntityTasksTab.test.tsx`, `DealTasksSection.test.tsx`) written and verified prior to refactoring. Preserve all existing props, parent IDs, and search parameters. |
-| **Query Performance Degradation** | Multiple widgets streaming full task collections on dashboard load. | Medium | Enforce `limit(10)` on `TaskWidget` query; use indexed compound queries (`workspaceId`, `status != done`, `dueDate asc`). |
-| **Unvalidated Data Injection** | External sync service returns arbitrary error payload. | Medium | Sanitize error strings before saving to Firestore. Never render raw HTML in UI; render through standard sanitized text elements. |
-| **Touch Target Violation on Mobile** | Small retry icon or badge inaccessible to touch users on small screens. | Medium | Enforce `min-h-[44px]` and `min-w-[44px]` on all interactive elements in `<CompactTaskCard>`, with clear visual focus rings. |
+* **Rule 11 (MCP Protocol Compliance — Current 2026-07-28 Spec & SDK v2)**:
+  * Capability contract `task-obligation-sync.contract.ts` adheres to stateless protocol execution, header-based routing, and split `@modelcontextprotocol/server` package standards.
+* **Rule 12 (Server-Side Risk Enforcement — Metadata vs Real Boundaries)**:
+  * Risk classified as `L2_STATE_MUTATION`. Explicit server-side permission checks (`operations:tasks:edit`, `contracts:obligations:edit`) enforced before executing reverse sync, independent of client hints.
+* **Rule 13 (Formal Trust Boundary Matrix)**:
+  * Strict data classification applied:
+    * `USER TRUST`: Client retry click (treated as untrusted; session & anti-IDOR verified).
+    * `SYSTEM TRUST`: Internal Firestore `tasks` collection and task-core engine.
+    * `TENANT TRUST`: Workspace confinement (`workspaceId`).
+    * `EXTERNAL DATA`: Downstream `crm-deal-sync-service.ts` response (validated via Zod before updating task).
+    * `AGENT TRUST`: Evaluated at intersection of `User authority ∩ Agent authority ∩ Workspace authority`.
+* **Rule 14 (Tool Poisoning / Rug-Pull Defense)**:
+  * Contract schemas versioned and fingerprinted (`version: '1.0.0'`). Any drift in downstream obligation fields caught at the Zod schema validation boundary.
+* **Rule 15 (Server Allowlisting and Supply-Chain Controls)**:
+  * Downstream sync calls strictly execute against internal allowlisted domain services; zero external dynamic URL dispatch.
+* **Rule 16 (Agent Identity as a First-Class Security Principal)**:
+  * Context records `principal.actorType` (`'user' | 'agent' | 'system'`), `agentId`, and `runId`. Agents cannot inherit unearned administrative privileges.
+* **Rule 17 (Non-Delegable Privileges)**:
+  * Overriding legal contract fulfillment or altering obligation definitions requires explicit human administrative permissions; cannot be delegated to autonomous subagents.
+* **Rule 18 (Time-of-Check / Time-of-Use Protection — TOCTOU)**:
+  * `retryTaskObligationSyncAction` accepts `expectedUpdatedAt`. If task was concurrently modified by another user or background job, mutation aborts safely with a concurrency alert.
+* **Rule 19 (Mutating Tool Idempotency & Human-in-the-Loop Approval Gates)**:
+  * Re-executing `retryTaskObligationSyncAction` on an already-synced obligation returns cached success (`alreadySynced: true`) without redundant downstream calls.
+* **Rule 20 (Replay / Duplicate Delivery Protection)**:
+  * Generates unique `executionId` for downstream synchronization calls to prevent double-fulfillment of contract terms.
+* **Rule 21 (Model Drift & Prompt Injection Guardrails)**:
+  * Downstream contract error messages sanitized before persisting to Firestore; UI renders sanitized strings via standard text nodes (zero raw unescaped HTML).
+* **Rule 22 (Two-Phase Action Model for High-Risk Work)**:
+  * Manual retry triggers require explicit human click; displays in-flight pending state with confirmation toast.
+* **Rule 23 (Budget, Backpressure & Resource Governance)**:
+  * `TaskWidget` restricted to 10 tasks max. Task queries in CRM entities and Deals bounded and indexed.
+* **Rule 24 (Circuit Breakers & Fail-Soft Degradation)**:
+  * If downstream agreement service is unavailable, task completion succeeds locally and records `obligationSyncStatus: 'failed'`. The primary user workflow is never blocked by downstream outages.
+* **Rule 25 (Dead-Letter and Recovery Queues / Tasks State)**:
+  * Failed syncs act as durable task-level dead-letter states, observable and retryable directly in the UI.
 
 ---
 
-## 5. File Structure & Change Map
+## 3. Detailed Component Hierarchy & File Architecture
 
 ```text
 src/
 ├── lib/
-│   ├── types.ts                                                    [Modify: Add obligationSyncStatus, obligationSyncError, obligationSyncAt to Task]
+│   ├── types.ts                                                    (Modify: Add obligationSyncStatus, obligationSyncError, obligationSyncAt to Task)
 │   ├── tasks/
-│   │   └── task-core.ts                                            [Modify: Persist obligationSyncStatus in reverse-hook try/catch]
-│   ├── task-server-actions.ts                                      [Modify: Add retryTaskObligationSyncAction & bulk status persistence]
+│   │   └── task-core.ts                                            (Modify: Persist obligationSyncStatus on reverse-hook try/catch)
+│   ├── task-server-actions.ts                                      (Modify: Add retryTaskObligationSyncAction & bulk status persistence)
 │   └── __tests__/
-│       └── task-obligation-sync-actions.test.ts                    [Create: Server action unit & reverse-hook failure tests]
+│       └── task-obligation-sync-actions.test.ts                    (Create: Vitest server action unit & reverse-hook failure tests)
 ├── platform/
 │   └── domains/
 │       └── tasks_productivity/
 │           └── contracts/
-│               ├── task-obligation-sync.contract.ts                [Create: Capability contract with Rules 11, 12, 18, 19]
+│               ├── task-obligation-sync.contract.ts                (Create: Capability contract with Rules 11, 12, 18, 19)
 │               └── __tests__/
-│                   └── task-obligation-sync-contract.test.ts       [Create: Capability contract unit tests]
+│                   └── task-obligation-sync-contract.test.ts       (Create: Vitest capability contract unit tests)
 ├── app/
 │   └── admin/
 │       ├── tasks/
 │       │   └── components/
-│       │       ├── CompactTaskCard.tsx                             [Create: Canonical cross-module task card (§77)]
-│       │       ├── TaskDetailDrawer.tsx                            [Modify: Embed sync failure banner & retry action (§78)]
-│       │       ├── TaskListRow.tsx                                 [Modify: Add sync failure alert badge]
+│       │       ├── CompactTaskCard.tsx                             (Create: Canonical cross-module task card conforming to §77)
+│       │       ├── TaskDetailDrawer.tsx                            (Modify: Embed sync failure banner & retry action conforming to §78)
+│       │       ├── TaskListRow.tsx                                 (Modify: Add sync failure alert badge)
 │       │       └── __tests__/
-│       │           ├── CompactTaskCard.test.tsx                    [Create: Unit tests for card rendering & interactions]
-│       │           └── TaskDetailDrawer-sync-failure.test.tsx      [Create: Integration tests for sync failure recovery]
+│       │           ├── CompactTaskCard.test.tsx                    (Create: Unit tests for card rendering, touch targets & failure badge)
+│       │           └── TaskDetailDrawer-sync-failure.test.tsx      (Create: Integration tests for sync failure recovery banner)
 │       ├── entities/
 │       │   ├── [id]/
-│       │   │   └── page.tsx                                        [Modify: Refactor Tasks tab to use CompactTaskCard + Drawer]
+│       │   │   └── page.tsx                                        (Modify: Refactor Tasks tab to use CompactTaskCard + Drawer)
 │       │   └── __tests__/
-│       │       └── EntityTasksTab.test.tsx                         [Create: Entity detail tasks tab integration tests]
+│       │       └── EntityTasksTab.test.tsx                         (Create: Entity detail tasks tab integration tests)
 │       └── deals/
 │           ├── [id]/
-│           │   └── page.tsx                                        [Modify: Refactor Upcoming Tasks to use CompactTaskCard + Drawer]
+│           │   └── page.tsx                                        (Modify: Refactor Upcoming Tasks to use CompactTaskCard + Drawer)
 │           └── __tests__/
-│               └── DealTasksSection.test.tsx                       [Create: Deal detail tasks section integration tests]
+│               └── DealTasksSection.test.tsx                       (Create: Deal detail tasks section integration tests)
 └── components/
     └── dashboard/
-        ├── TaskWidget.tsx                                          [Modify: Standardize with CompactTaskCard & query limits]
+        ├── TaskWidget.tsx                                          (Modify: Standardize with CompactTaskCard & query limit(10))
         └── __tests__/
-            └── TaskWidget-compact.test.tsx                         [Create: Dashboard widget integration tests]
+            └── TaskWidget-compact.test.tsx                         (Create: Dashboard widget integration tests)
 ```
 
 ---
 
-## 6. Bite-Sized Implementation Plan
+## 4. What Could Go Wrong & Mitigation Matrix (Rule 2)
+
+| Potential Failure Mode | Root Cause | Impact | Mitigation Strategy |
+| :--- | :--- | :--- | :--- |
+| **Downstream Agreement API Failure / Timeout** | DocSigning or agreement service experiencing transient network error or lock contention. | Obligation remains unfulfilled, but task shows completed without notification. | **Explicit State Persistence (Rule 24)**: Catch block in `task-core.ts` writes `obligationSyncStatus: 'failed'` and `obligationSyncError`. UI renders prominent recovery banner per §78. |
+| **TOCTOU Race Condition During Retry** | Multiple operators or background sync jobs click retry simultaneously on the same task. | Redundant downstream fulfillment calls or database write collisions. | **Optimistic Concurrency Guard (Rule 18)**: `retryTaskObligationSyncAction` evaluates `expectedUpdatedAt`. If task was concurrently modified, aborts safely with concurrency alert. |
+| **Duplicate Downstream Execution / Double Fulfillment** | Network drop after downstream success but before client receives confirmation. | Multiple fulfillment events recorded against the same contractual term. | **Idempotent Capability Engine (Rule 19 & 20)**: Downstream sync service checks if obligation is already `'fulfilled'`. If so, returns `{ success: true, obligationUpdated: false }` cleanly. |
+| **Context Loss on Card Click in CRM Entities / Deals** | User clicks a task in Deal/Entity detail view and gets redirected to `/admin/tasks`, losing deal context. | Frustrating user experience, lost navigation state. | **In-Place Drawer Inspection (Rule 1 & Roadmap §87)**: Card click opens `TaskDetailDrawer` slide-over / bottom sheet directly within the host page. |
+| **Touch Target Violation on Mobile (<768px)** | Small completion circle or retry button $< 44\text{px}$, causing tap misses. | Poor mobile usability, accessibility failure. | **Mobile Ergonomics Invariant (Rule 7)**: All interactive controls enforce `min-h-[44px]` and `min-w-[44px]` with `active:scale-[0.97]` tactile transitions. |
+| **Query Storm / Resource Exhaustion on Dashboard** | Dashboard loads unbounded task collection on high-activity workspaces. | Slow page load, elevated Firestore read costs, memory spikes. | **Hard-Bounded Query (Rule 9)**: Apply `limit(10)` with compound indexing on `(workspaceId, status, dueDate)`. |
+| **Open Redirect via Actionable Toasts** | Malicious injection or dynamic path concatenation in toast action button. | Open redirect vulnerability (CWE-601). | **Strict Relative Path Invariant (Rule 8)**: All `actionConfig.path` parameters strictly start with `/` (e.g. `/admin/finance/agreements`) with zero protocol or external domain targets. |
+
+---
+
+## 5. Impact Analysis & Backoffice Management (Rule 3)
+
+### 5.1 Subsystem Impact Analysis
+* **Tasks Command Hub (`/admin/tasks`)**: Fully compatible. `TaskListRow` gains an obligation sync failure indicator, enabling operators to identify failed downstream syncs from the list view.
+* **Dashboard (`TaskWidget.tsx`)**: Replaces bespoke markup with `<CompactTaskCard>`. Visual layout is cleaner, more compact, and enforces `limit(10)` query bounds.
+* **CRM Entity Profiles (`entities/[id]/page.tsx`)**: Tasks tab upgraded to `<CompactTaskCard>`. Clicking a task opens `TaskDetailDrawer` in place, preserving entity context.
+* **Deals Pipeline (`deals/[id]/page.tsx`)**: Upcoming Tasks upgraded to `<CompactTaskCard>`. Urgency sorting (overdue/today first) is preserved.
+* **Agreements & DocSigning (`crm-deal-sync-service.ts`)**: Reverse hook contract upgraded with explicit status tracking and safe idempotency.
+
+### 5.2 Backoffice Management (Codeless Customization)
+1. **Observable Sync Statuses**: Failed contract obligation syncs are persisted with `obligationSyncStatus: 'failed'` and an error description, making them queryable in Backoffice audit feeds.
+2. **One-Click Recovery Without Code**: Operators can inspect failed tasks and execute `[ Retry synchronization ]` directly from the UI without requiring database scripts or developer intervention.
+3. **Audit Trail**: Every retry operation records `actorUserId`, `syncedAt`, and `executionId` in the task activity log.
+
+---
+
+## 6. Bite-Sized Implementation Tasks
 
 ### Task 1: Domain Types & Obligation Sync Capability Contract
 *Enforces Rule 4 (Strict Typing), Rule 11 (MCP Protocol), Rule 12 (Server-Side Risk L2), Rule 18 (TOCTOU), and Rule 47 (Workspace Confinement).*
@@ -142,22 +224,43 @@ src/
 - Create: `src/platform/domains/tasks_productivity/contracts/__tests__/task-obligation-sync-contract.test.ts`
 
 - [ ] **Step 1: Write failing tests for `task-obligation-sync.contract.ts`**
-  Assert input validation (`workspaceId`, `taskId`, optional `expectedUpdatedAt`, optional `idempotencyKey`).
-  Assert output schema (`taskId`, `contractId`, `obligationId`, `status: 'synced' | 'failed'`, `syncedAt`).
-  Assert risk policy: `level: 'L2_STATE_MUTATION'`, `workspaceScoped: true`, `auditRequired: true`.
+
+```typescript
+// src/platform/domains/tasks_productivity/contracts/__tests__/task-obligation-sync-contract.test.ts
+import { describe, it, expect } from 'vitest';
+import { taskObligationSyncCapability, TaskObligationSyncInputSchema } from '../task-obligation-sync.contract';
+
+describe('task.obligation.sync Capability Contract', () => {
+  it('validates schema correctly', () => {
+    const valid = TaskObligationSyncInputSchema.safeParse({
+      workspaceId: 'ws-1',
+      taskId: 'task-100',
+      expectedUpdatedAt: '2026-10-09T00:00:00.000Z',
+    });
+    expect(valid.success).toBe(true);
+  });
+
+  it('enforces L2_STATE_MUTATION risk and workspace scoping', () => {
+    expect(taskObligationSyncCapability.risk.level).toBe('L2_STATE_MUTATION');
+    expect(taskObligationSyncCapability.workspaceScoped).toBe(true);
+    expect(taskObligationSyncCapability.permissions).toContain('operations:tasks:edit');
+  });
+});
+```
+
 - [ ] **Step 2: Run test to verify failure**
   Run: `pnpm test:run src/platform/domains/tasks_productivity/contracts/__tests__/task-obligation-sync-contract.test.ts`
   Expected: FAIL (module not found).
 - [ ] **Step 3: Update `src/lib/types.ts`**
   Add explicit fields to `Task` interface:
-  ```ts
+  ```typescript
   obligationSyncStatus?: 'synced' | 'failed' | 'pending';
   obligationSyncError?: string;
   obligationSyncAt?: string;
   ```
-  Ensure zero `any` or `any[]`.
+  Strict typing policy: zero `any` or `any[]`.
 - [ ] **Step 4: Implement `task-obligation-sync.contract.ts`**
-  Implement capability contract adhering to the project's standard `CapabilityDefinition` pattern. Wire input/output schemas with Zod, bind permissions (`['operations:tasks:edit', 'contracts:obligations:edit']`), and implement handler with principal audit logging.
+  Implement capability contract adhering to the project's standard `CapabilityDefinition` pattern. Wire input/output schemas with Zod, bind permissions, and implement handler with principal audit logging.
 - [ ] **Step 5: Run tests to verify pass**
   Run: `pnpm test:run src/platform/domains/tasks_productivity/contracts/__tests__/task-obligation-sync-contract.test.ts`
   Expected: PASS.
@@ -175,8 +278,8 @@ src/
 - Create: `src/lib/__tests__/task-obligation-sync-actions.test.ts`
 
 - [ ] **Step 1: Write failing tests in `task-obligation-sync-actions.test.ts`**
-  - Test 1: When `syncTaskCompletionToObligation` fails, task record persists `obligationSyncStatus: 'failed'` and the error message without crashing.
-  - Test 2: When `syncTaskCompletionToObligation` succeeds, task record persists `obligationSyncStatus: 'synced'` and `obligationSyncAt`.
+  - Test 1: When `syncTaskCompletionToObligation` fails, task document persists `obligationSyncStatus: 'failed'` and error message without throwing.
+  - Test 2: When `syncTaskCompletionToObligation` succeeds, task document persists `obligationSyncStatus: 'synced'` and `obligationSyncAt`.
   - Test 3: `retryTaskObligationSyncAction` validates workspace authorization, checks `expectedUpdatedAt` for TOCTOU concurrency, performs sync, and transitions status to `'synced'`.
   - Test 4: `retryTaskObligationSyncAction` is idempotent: calling it on already-synced task returns success without redundant sync calls.
 - [ ] **Step 2: Run test to verify failure**
@@ -380,7 +483,7 @@ src/
 
 ---
 
-## 7. Verification & Architecture Review Plan
+## 7. Verification & Quality Gates Plan
 
 1. **Automated Verification:**
    - 100% pass across all unit and integration test suites.
