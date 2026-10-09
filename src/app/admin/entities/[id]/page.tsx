@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useCallModal } from '@/context/CallModalContext';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser as useFirebaseUser } from '@/firebase';
 import { doc, collection, query, where, orderBy, updateDoc, getDocs, limit, writeBatch } from 'firebase/firestore';
-import type { WorkspaceEntity, Entity, Task, OnlinePresence, EntityContact, Deal, EntityNote } from '@/lib/types';
+import type { WorkspaceEntity, Entity, Task, OnlinePresence, EntityContact, Deal, EntityNote, UserProfile } from '@/lib/types';
 import { generateEntityDossierSummaryAction } from '@/app/actions/entity-dossier-actions';
 import { generateEntityDossierPdf } from '@/lib/services/entity-dossier-pdf-service';
 import { UNASSIGNED_ZONE } from '@/lib/zone-constants';
@@ -107,7 +107,9 @@ import EntityAiOverviewSection from '../components/EntityAiOverviewSection';
 import EntityHeaderCard from './components/EntityHeaderCard';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import TaskEditor from '../../tasks/components/TaskEditor';
-import { createTaskAction, updateTaskAction } from '@/lib/task-server-actions';
+import { CompactTaskCard } from '../../tasks/components/CompactTaskCard';
+import { TaskDetailDrawer } from '../../tasks/components/TaskDetailDrawer';
+import { createTaskAction, updateTaskAction, retryTaskObligationSyncAction } from '@/lib/task-server-actions';
 import { linkEntityToWorkspaceAction } from '@/lib/workspace-entity-actions';
 import { getErrorMessage } from '@/lib/errors/report-error';
 
@@ -168,6 +170,10 @@ export default function EntityDetailPage() {
     const [isCampaignDialogOpen, setIsCampaignDialogOpen] = React.useState(false);
     const [isTaskEditorOpen, setIsTaskEditorOpen] = React.useState(false);
     const [isSavingTask, setIsSavingTask] = React.useState(false);
+    const [selectedDetailTask, setSelectedDetailTask] = React.useState<Task | null>(null);
+    const [isDetailDrawerOpen, setIsDetailDrawerOpen] = React.useState(false);
+    const [editingTask, setEditingTask] = React.useState<Task | null>(null);
+    const [retryingSyncIds, setRetryingSyncIds] = React.useState<Set<string>>(new Set());
 
     const [convertModalOpen, setConvertModalOpen] = React.useState(false);
     const [activeTab, setActiveTab] = React.useState('overview');
@@ -283,6 +289,31 @@ export default function EntityDetailPage() {
         );
     }, [firestore, entityId, activeWorkspaceId]);
     const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
+
+    // Users query to resolve assignees for CompactTaskCard and TaskDetailDrawer
+    const usersQuery = useMemoFirebase(() => {
+        if (!firestore || !activeWorkspaceId) return null;
+        try {
+            return query(
+                collection(firestore, 'users'),
+                where('workspaceId', '==', activeWorkspaceId)
+            );
+        } catch {
+            return null;
+        }
+    }, [firestore, activeWorkspaceId]);
+    const { data: workspaceUsers } = useCollection<UserProfile>(usersQuery);
+    const userMap = React.useMemo(() => {
+        const map = new Map<string, UserProfile>();
+        workspaceUsers?.forEach((u) => map.set(u.id, u));
+        return map;
+    }, [workspaceUsers]);
+
+    // Live synced task for drawer if tasks subscription updates
+    const activeDetailTask = React.useMemo(() => {
+        if (!selectedDetailTask) return null;
+        return tasks?.find((t) => t.id === selectedDetailTask.id) || selectedDetailTask;
+    }, [tasks, selectedDetailTask]);
 
     // Cross-workspace memberships for this entity (all workspaces)
     const allMembershipsQuery = useMemoFirebase(() => {
@@ -424,16 +455,20 @@ export default function EntityDetailPage() {
         );
     }
 
-    const handleTaskComplete = async (taskId: string) => {
+    const handleToggleTask = async (task: Task) => {
+        const nextStatus = task.status === 'done' ? 'todo' : 'done';
         try {
-            const res = await updateTaskAction(taskId, { status: 'done' });
+            const res = await updateTaskAction(task.id, { status: nextStatus });
             if (res.success) {
-                toast({ title: 'Task Completed', description: 'Task marked as resolved.' });
+                toast({
+                    title: nextStatus === 'done' ? 'Task Completed' : 'Task Reopened',
+                    description: nextStatus === 'done' ? 'Task marked as resolved.' : 'Task marked as unresolved.',
+                });
             } else {
                 toast({
                     variant: 'destructive',
                     title: 'Update Failed',
-                    description: res.error || 'Failed to complete task in this workspace.',
+                    description: res.error || 'Failed to update task in this workspace.',
                     actionConfig: {
                         path: '/admin/settings/permissions',
                         label: 'Check Permissions',
@@ -449,26 +484,96 @@ export default function EntityDetailPage() {
         }
     };
 
+    const handleRetryTaskSync = async (taskId: string) => {
+        setRetryingSyncIds((prev) => new Set(prev).add(taskId));
+        try {
+            const res = await retryTaskObligationSyncAction(taskId);
+            if (res.success) {
+                toast({
+                    title: 'Sync Succeeded',
+                    description: res.message || 'Obligation synchronized successfully.',
+                });
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Sync Failed',
+                    description: res.error || 'Could not retry obligation sync.',
+                    actionConfig: {
+                        path: '/admin/finance/agreements',
+                        label: 'View Agreements',
+                    },
+                });
+            }
+        } catch (err: unknown) {
+            toast({
+                variant: 'destructive',
+                title: 'Sync Failed',
+                description: err instanceof Error ? err.message : 'An unexpected error occurred.',
+            });
+        } finally {
+            setRetryingSyncIds((prev) => {
+                const next = new Set(prev);
+                next.delete(taskId);
+                return next;
+            });
+        }
+    };
+
+    const handleUpdateTaskFromDrawer = async (taskId: string, updates: Partial<Task>) => {
+        try {
+            const res = await updateTaskAction(taskId, updates);
+            if (res.success) {
+                toast({ title: 'Task Updated', description: 'Changes saved successfully.' });
+                if (selectedDetailTask && selectedDetailTask.id === taskId) {
+                    setSelectedDetailTask((prev) => prev ? { ...prev, ...updates } : null);
+                }
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Update Failed',
+                    description: res.error || 'Failed to update task.',
+                });
+            }
+        } catch (err: unknown) {
+            toast({
+                variant: 'destructive',
+                title: 'Update Failed',
+                description: err instanceof Error ? err.message : 'An error occurred.',
+            });
+        }
+    };
+
     const handleSaveTask = async (payload: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
         if (!currentUser) return;
         setIsSavingTask(true);
         try {
-            const finalPayload = {
-                ...payload,
-                workspaceId: activeWorkspaceId,
-                entityId: entityId,
-                entityName: displayName,
-                entityType: entityData.entityType
-            };
-            const res = await createTaskAction(finalPayload);
-            if (res.success) {
-                toast({ title: 'Task Initialized', description: `Task "${payload.title}" created successfully.` });
-                setIsTaskEditorOpen(false);
+            if (editingTask?.id) {
+                const res = await updateTaskAction(editingTask.id, payload);
+                if (res.success) {
+                    toast({ title: 'Task Updated', description: `Task "${payload.title}" updated successfully.` });
+                    setIsTaskEditorOpen(false);
+                    setEditingTask(null);
+                } else {
+                    toast({ variant: 'destructive', title: 'Operation Failed', description: res.error });
+                }
             } else {
-                toast({ variant: 'destructive', title: 'Operation Failed', description: res.error });
+                const finalPayload = {
+                    ...payload,
+                    workspaceId: activeWorkspaceId,
+                    entityId: entityId,
+                    entityName: displayName,
+                    entityType: entityData.entityType,
+                };
+                const res = await createTaskAction(finalPayload);
+                if (res.success) {
+                    toast({ title: 'Task Initialized', description: `Task "${payload.title}" created successfully.` });
+                    setIsTaskEditorOpen(false);
+                } else {
+                    toast({ variant: 'destructive', title: 'Operation Failed', description: res.error });
+                }
             }
         } catch (e: unknown) {
-            const errorMessage = e instanceof Error ? e.message : 'Failed to create task.';
+            const errorMessage = e instanceof Error ? e.message : 'Failed to save task.';
             toast({ variant: 'destructive', title: 'Error', description: errorMessage });
         } finally {
             setIsSavingTask(false);
@@ -825,7 +930,10 @@ export default function EntityDetailPage() {
       size="sm" 
       variant="outline" 
       className="rounded-xl font-bold h-9 border-primary/20 hover:bg-primary/5 text-primary gap-2 transition-all active:scale-[0.97]" 
-      onClick={() => setIsTaskEditorOpen(true)}
+      onClick={() => {
+          setEditingTask(null);
+          setIsTaskEditorOpen(true);
+      }}
   >
       <Plus className="h-4 w-4" /> Create Task
   </Button>
@@ -835,20 +943,19 @@ export default function EntityDetailPage() {
  Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-2xl" />)
                             ) : tasks && tasks.length > 0 ? (
                                 tasks.map(task => (
- <Card key={task.id} className="border-border/50 rounded-2xl bg-card shadow-sm hover:shadow-md transition-all text-left">
- <CardContent className="p-4 flex items-center gap-4 text-left">
- <button onClick={() => handleTaskComplete(task.id)} className="shrink-0 text-muted-foreground hover:text-emerald-500"><Circle className="h-6 w-6" /></button>
- <div className="flex-1 min-w-0 text-left">
- <p className="text-sm font-semibold tracking-tight truncate leading-tight">{task.title}</p>
- <div className="flex items-center gap-3 mt-1 text-[9px] font-bold tracking-tighter">
- <span className={cn("flex items-center gap-1", isPast(new Date(task.dueDate)) && !isToday(new Date(task.dueDate)) ? "text-rose-600" : "text-muted-foreground")}>
- <Clock className="h-2.5 w-2.5" /> Due {isToday(new Date(task.dueDate)) ? 'Today' : format(new Date(task.dueDate), 'MMM d')}
-                                                    </span>
-                                                    <Badge variant="outline" className="h-4 border-primary/20 text-primary text-[7px] uppercase">{task.category}</Badge>
-                                                </div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
+                                    <CompactTaskCard
+                                        key={task.id}
+                                        task={task}
+                                        showRelationship={false}
+                                        userMap={userMap}
+                                        isRetryingSync={retryingSyncIds.has(task.id)}
+                                        onToggleComplete={handleToggleTask}
+                                        onRetrySync={handleRetryTaskSync}
+                                        onClick={(t) => {
+                                            setSelectedDetailTask(t);
+                                            setIsDetailDrawerOpen(true);
+                                        }}
+                                    />
                                 ))
                             ) : (
  <div className="col-span-full py-16 text-center border-2 border-dashed rounded-2xl bg-background/20 opacity-30 flex flex-col items-center gap-2">
@@ -1048,14 +1155,34 @@ export default function EntityDetailPage() {
             )}
 
             {entityData && (
+                <TaskDetailDrawer
+                    task={activeDetailTask}
+                    isOpen={isDetailDrawerOpen}
+                    onClose={() => setIsDetailDrawerOpen(false)}
+                    onUpdateTask={handleUpdateTaskFromDrawer}
+                    onEditFull={(t) => {
+                        setIsDetailDrawerOpen(false);
+                        setEditingTask(t);
+                        setIsTaskEditorOpen(true);
+                    }}
+                    userMap={userMap}
+                    currentUserId={currentUser?.uid}
+                    currentUserName={currentUser?.displayName || undefined}
+                />
+            )}
+
+            {entityData && (
                 <TaskEditor
                     open={isTaskEditorOpen}
-                    onOpenChange={setIsTaskEditorOpen}
-                    task={{
+                    onOpenChange={(open) => {
+                        setIsTaskEditorOpen(open);
+                        if (!open) setEditingTask(null);
+                    }}
+                    task={(editingTask || {
                         entityId: entityId,
                         entityType: entityData.entityType,
-                        entityName: displayName
-                    } as Partial<Task>}
+                        entityName: displayName,
+                    }) as Partial<Task>}
                     onSave={handleSaveTask}
                     isSaving={isSavingTask}
                     disableEntitySelect={true}
