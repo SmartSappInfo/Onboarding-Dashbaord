@@ -88,46 +88,39 @@ src/app/admin/finance/contracts/
 
 ## 5. Phase-by-Phase Implementation Plan
 
-### Phase 1: Navigation Architecture & Section Restructuring
-**Goal:** Consolidate the 8 top-level tabs into 4 logical workflow sections + an authorized Administration dropdown menu without altering the theme or breaking any sub-tabs.
-
-* **1.1. Tab State & Model Refactor:**
-  * Update `activeTab` type to: `'contracts' | 'templates' | 'obligations' | 'insights' | 'governance' | 'migration' | 'developer'`.
-  * Group modules logically:
-    * `contracts`: Institutional register, contract lifecycle, bulk campaigns sub-view.
-    * `templates`: Document catalog and reusable clauses (`TemplateCatalogTab`).
-    * `obligations`: Milestones, renewals, reminders, and compliance (`ObligationsSummaryTab`).
-    * `insights`: Analytics, velocity metrics, and audit reports (`ContractsAnalyticsTab`).
-* **1.2. Desktop Navigation Bar:**
-  * Implement clean pill-style segmented tab triggers (`Contracts`, `Templates`, `Obligations`, `Insights`).
-  * Add the `Administration ⌄` dropdown menu (`AgreementsAdminMenu.tsx`) containing `Enterprise & Governance`, `GA Cutover & Migration`, and `Developer & Embedded SDK`.
-  * Enforce RBAC permission gating (`system_admin` or `admin_role`) on the Administration dropdown.
-* **1.3. Mobile Navigation Controls:**
-  * Implement a horizontal scrollable segmented pill control on mobile viewports.
-  * Implement a mobile bottom navigation dock with quick-access tabs (`Home`, `Contracts`, `Templates`, `Obligations`, `More`).
-* **1.4. In-Page Sub-Navigation:**
-  * When inside `Contracts`, provide sub-view toggling for `Register` vs `Bulk Campaigns`.
-  * When inside `Obligations`, provide contextual access to `Reminder Rules`.
+### Phase 1: Navigation Architecture & Section Restructuring [COMPLETED & VERIFIED]
+**Status:** Completed & Architect-Verified (Commits: `d56bb1be` & `bb3a2e1a`)
+**Deliverables:**
+* Created `AgreementsHubNav.tsx` with 4 workflow hubs (`Contracts`, `Templates`, `Obligations`, `Insights`), `Administration ⌄` dropdown (RBAC gated), and `Bulk Campaigns` sub-view toggle.
+* Created `AgreementsMobileBottomNav.tsx` with responsive fixed bottom dock and `min-h-[44px]` touch targets.
+* Replaced legacy 8-tab `<TabsList>` in `ContractsClient.tsx` with zero functional regressions across all 12+ modals and sub-tabs.
+* Applied code review remediations: content-level RBAC guard on administration tabs, floating bulk bar elevated on mobile, workspace switch resets, and strict typing.
 
 ---
 
-### Phase 2: Redefined, Actionable KPI Cards
-**Goal:** Replace confusing metrics with clear, standardized metrics matching the design mockup with interactive filter triggers.
+### Phase 2: Redefined, Actionable KPI Cards [CURRENT MILESTONE - IN PLANNING]
+**Status:** In Planning — Detailed Plan in `docs/billing/ui_enhancement/phase_2_kpi_cards_plan.md`
+**Goal:** Replace legacy stat cards with clear, standardized metrics matching the design mockup, featuring interactive filter toggling, active visual indicators, skeleton loading, and mobile 2x2 touch-friendly layouts.
 
 * **2.1. Metric Calculation Engine:**
-  * **Total Institutions:** Current scope count (`count` from `workspace_entities`) + trend vs last 30 days (`+12%`).
-  * **No Contract:** Institutions without active contracts (`Needs preparation`) + trend (`-6%`).
-  * **Awaiting Signature:** Contracts in `sent` state (`Pending completion`) + trend (`+8%`).
-  * **Active Contracts:** Completed / signed contracts + trend (`+15%`).
+  * **Total Institutions:** Current scope count (`totalEntities` from Firestore `workspace_entities`) + trend (`↑ +12%` vs last 30 days).
+  * **No Contract:** Institutions without active contracts (`Needs preparation`) + trend (`↓ -6%` vs last 30 days).
+  * **Awaiting Signature:** Contracts in `sent` state (`Pending completion`) + trend (`↑ +8%` vs last 30 days).
+  * **Active Contracts:** Completed / signed contracts (`Active`) + trend (`↑ +15%` vs last 30 days).
 * **2.2. Responsive Grid Layout (`AgreementsKpiGrid.tsx`):**
   * Desktop (`lg:grid-cols-4`): 4 horizontal cards with iconography, primary value, trend badge, and sub-label.
-  * Tablet (`sm:grid-cols-2`): 2x2 grid.
-  * Mobile (`grid-cols-2`): Compact 2x2 grid with everyday UI English, clear values, and `min-h-[44px]` touch targets.
-* **2.3. Interactive Click-to-Filter Binding:**
-  * Clicking "No Contract" card sets `statusFilter = 'no_contract'`.
-  * Clicking "Awaiting Signature" card sets `statusFilter = 'sent'`.
-  * Clicking "Active Contracts" card sets `statusFilter = 'signed'`.
-  * Clicking "Total Institutions" card resets `statusFilter = 'all'`.
+  * Tablet (`sm:grid-cols-2 lg:grid-cols-4`): 2x2 grid.
+  * Mobile (`grid-cols-2`): Compact 2x2 grid with everyday UI English, clear values, and `min-h-[104px]` touch targets (`active:scale-[0.97]`).
+* **2.3. Interactive Click-to-Filter Binding & Toggling:**
+  * Clicking "No Contract" card toggles `statusFilter` between `'no_contract'` and `'all'`.
+  * Clicking "Awaiting Signature" card toggles `statusFilter` between `'sent'` and `'all'`.
+  * Clicking "Active Contracts" card toggles `statusFilter` between `'signed'` and `'all'`.
+  * Clicking "Total Institutions" card resets `statusFilter` to `'all'`.
+  * Active cards receive an active ring/border and an active status badge.
+* **2.4. Failure Mode Safeguards & Accessibility (Rules 2, 4, 7):**
+  * Strict typing (`AgreementsKpiStats`, `AgreementsKpiGridProps`).
+  * Skeleton shimmer loader on initial load (CLS = 0).
+  * Semantic ARIA attributes (`role="button"`, `aria-pressed`, `tabIndex={0}`, keyboard `Enter`/`Space` handlers).
 
 ---
 

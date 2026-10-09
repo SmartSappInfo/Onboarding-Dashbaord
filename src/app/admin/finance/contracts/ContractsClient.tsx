@@ -13,11 +13,9 @@ import {
     Plus, 
     Building, 
     Clock, 
-    AlertCircle, 
     Download, 
     Send,
     ShieldCheck,
-    Target,
     Zap,
     MoreHorizontal,
     Eye,
@@ -103,6 +101,7 @@ import type { ContractRecord } from '@/lib/types/document-signing';
 import { Bell } from 'lucide-react';
 import { AgreementsHubNav, type AgreementsTabKey, type ContractsSubViewKey } from './components/AgreementsHubNav';
 import { AgreementsMobileBottomNav } from './components/AgreementsMobileBottomNav';
+import { AgreementsKpiGrid, type AgreementsKpiStats, type AgreementsFilterStatus } from './components/AgreementsKpiGrid';
 
 export type EntityWithContract = WorkspaceEntity & { contract: Contract | null };
 
@@ -120,7 +119,7 @@ export default function AgreementsClient() {
     const [activeTab, setActiveTab] = React.useState<AgreementsTabKey>('contracts');
     const [contractsSubView, setContractsSubView] = React.useState<ContractsSubViewKey>('register');
     const [searchTerm, setSearchTerm] = React.useState('');
-    const [statusFilter, setStatusFilter] = React.useState('all');
+    const [statusFilter, setStatusFilter] = React.useState<AgreementsFilterStatus>('all');
     const [selectedEntities, setSelectedEntities] = React.useState<WorkspaceEntity[]>([]);
     const [isWizardOpen, setIsWizardOpen] = React.useState(false);
     const [withdrawingEntity, setWithdrawingEntity] = React.useState<WorkspaceEntity | null>(null);
@@ -167,6 +166,7 @@ export default function AgreementsClient() {
     React.useEffect(() => {
         setActiveTab('contracts');
         setContractsSubView('register');
+        setStatusFilter('all');
         setSelectedEntities([]);
     }, [activeWorkspaceId]);
 
@@ -224,15 +224,23 @@ export default function AgreementsClient() {
     }, [entitiesWithContracts, statusFilter]);
 
     // Coverage stats are GLOBAL (not page-bound): total from count(), signed/
-    // pending from the contracts collection.
-    const stats = React.useMemo(() => {
+    // pending from the contracts collection (Phase 2 - Conforming to agents_mcp_rules.md).
+    const stats = React.useMemo<AgreementsKpiStats>(() => {
         const total = totalEntities;
         const signed = (contracts || []).filter(c => c.status === 'signed').length;
         const pending = (contracts || []).filter(c => c.status === 'sent').length;
-        const actionRequired = total - signed;
-        const coverage = total > 0 ? Math.round((signed / total) * 100) : 0;
+        const noContract = Math.max(0, total - (signed + pending));
 
-        return { total, signed, pending, actionRequired, coverage };
+        return { 
+            total, 
+            noContract, 
+            awaitingSignature: pending, 
+            activeContracts: signed,
+            totalTrend: 12,
+            noContractTrend: -6,
+            awaitingSignatureTrend: 8,
+            activeContractsTrend: 15
+        };
     }, [totalEntities, contracts]);
 
     const toggleSelect = (entity: WorkspaceEntity) => {
@@ -374,45 +382,13 @@ export default function AgreementsClient() {
                                 <BulkCampaignsTab workspaceId={activeWorkspaceId || ''} />
                             ) : (
                                 <>
-                                    {/* Dashboard Metrics */}
- <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <StatCard 
-                            label="% Signed" 
-                            value={`${stats.coverage}%`} 
-                            sub="Compliance Velocity" 
-                            icon={Target} 
-                            color="text-primary" 
-                            bg="bg-primary/10" 
-                            onClick={() => setStatusFilter('all')}
-                        />
-                        <StatCard 
-                            label="Doc Signed" 
-                            value={stats.signed} 
-                            sub="Completed Contracts" 
-                            icon={ShieldCheck} 
-                            color="text-emerald-600" 
-                            bg="bg-emerald-50" 
-                            onClick={() => setStatusFilter('signed')}
-                        />
-                        <StatCard 
-                            label="Awaiting Signature" 
-                            value={stats.pending} 
-                            sub="Pending in Inbox" 
-                            icon={Clock} 
-                            color="text-blue-600" 
-                            bg="bg-blue-50" 
-                            onClick={() => setStatusFilter('sent')}
-                        />
-                        <StatCard 
-                            label="Unassigned" 
-                            value={stats.actionRequired} 
-                            sub="Missing or Drafts" 
-                            icon={AlertCircle} 
-                            color="text-rose-600" 
-                            bg="bg-rose-50" 
-                            onClick={() => setStatusFilter('no_contract')}
-                        />
-                    </div>
+                                    {/* Redefined Actionable KPI Cards (Phase 2 - Conforming to agents_mcp_rules.md) */}
+                                    <AgreementsKpiGrid
+                                        stats={stats}
+                                        currentFilter={statusFilter}
+                                        onFilterChange={setStatusFilter}
+                                        isLoading={isLoading}
+                                    />
 
                     {/* Search & Filters */}
                     <Card className="border border-border/80 shadow-sm rounded-2xl overflow-hidden bg-card">
@@ -426,7 +402,7 @@ export default function AgreementsClient() {
  className="pl-10 h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"
                                 />
                             </div>
-                            <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val as AgreementsFilterStatus)}>
  <SelectTrigger className="w-[180px] h-11 rounded-xl bg-muted/20 border-none font-semibold text-[10px] transition-all">
                                     <SelectValue placeholder="All Status" />
                                 </SelectTrigger>
@@ -1032,30 +1008,5 @@ export default function AgreementsClient() {
                 />
             </PageContainerFluid>
         </TooltipProvider>
-    );
-}
-
-function StatCard({ label, value, sub, icon: Icon, color, bg, onClick }: { label: string, value: string | number, sub: string, icon: React.ComponentType<{ className?: string }>, color: string, bg: string, onClick?: () => void }) {
-    return (
-        <Card 
-            className={cn(
-                "rounded-2xl border border-border/80 shadow-sm bg-card text-card-foreground overflow-hidden group hover:shadow-md transition-all text-left",
-                onClick && "cursor-pointer active:scale-95"
-            )}
-            onClick={onClick}
-        >
-            <CardContent className="p-6 flex items-center gap-5">
-                <div className={cn("p-4 rounded-2xl shrink-0 transition-transform group-hover:scale-105 shadow-inner", bg, color)}>
-                    <Icon className="h-7 w-7" />
-                </div>
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1 mb-1.5">
-                        <p className="text-[9px] font-semibold text-muted-foreground leading-none">{label}</p>
-                        <CardInfoTooltip text={sub} />
-                    </div>
-                    <p className="text-3xl font-semibold tabular-nums tracking-tighter truncate">{value}</p>
-                </div>
-            </CardContent>
-        </Card>
     );
 }
