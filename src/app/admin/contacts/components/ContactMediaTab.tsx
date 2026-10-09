@@ -23,8 +23,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { 
-  Eye, Clock, MousePointerClick, Download, 
-  Flame, Video, FileText, Music, Sparkles, ExternalLink, Bot 
+  Eye, Clock, MousePointerClick, 
+  Flame, Video, FileText, Music, Sparkles, ExternalLink 
 } from 'lucide-react';
 import { MediaCopilotDrawer } from '@/app/admin/media/components/MediaCopilotDrawer';
 

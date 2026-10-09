@@ -39,23 +39,7 @@ export function UploadStep({ state, updateState, onNext }: Props) {
     else if (e.type === 'dragleave') setIsDragActive(false);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      processFile(e.dataTransfer.files[0]);
-    }
-  }, []);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    if (e.target.files && e.target.files[0]) {
-      processFile(e.target.files[0]);
-    }
-  };
-
-  const processFile = (file: File) => {
+  const processFile = useCallback((file: File) => {
     const extension = file.name.split('.').pop()?.toLowerCase();
     if (extension !== 'csv' && extension !== 'ntt' && extension !== 'json') {
       toast({ title: 'Invalid file type', description: 'Please upload a CSV, NTT or JSON file', variant: 'destructive' });
@@ -130,7 +114,7 @@ export function UploadStep({ state, updateState, onNext }: Props) {
           } else {
             toast({ title: 'Empty file', description: 'The file contains no valid data', variant: 'destructive' });
           }
-        } catch (_err) {
+        } catch {
           toast({ title: 'Failed to parse', description: 'Invalid JSON format in file', variant: 'destructive' });
         }
       };
@@ -139,6 +123,22 @@ export function UploadStep({ state, updateState, onNext }: Props) {
         toast({ title: 'Failed to read', description: 'Could not read the file', variant: 'destructive' });
       };
       reader.readAsText(file);
+    }
+  }, [updateState]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      processFile(e.dataTransfer.files[0]);
+    }
+  }, [processFile]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    if (e.target.files && e.target.files[0]) {
+      processFile(e.target.files[0]);
     }
   };
 

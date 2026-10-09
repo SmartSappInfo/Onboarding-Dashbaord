@@ -220,6 +220,7 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
                     >
                         <div className="flex aspect-square size-10 items-center justify-center rounded-lg bg-card text-sidebar-primary-foreground shadow-xl group-hover:scale-110 transition-transform overflow-hidden">
                             {activeOrganization?.logoUrl ? (
+                                /* eslint-disable-next-line @next/next/no-img-element */
                                 <img src={activeOrganization.logoUrl} alt={activeOrganization.name} className="h-full w-full object-cover" />
                             ) : (
                                 <Building className="size-5 text-primary" />
@@ -251,6 +252,7 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
                 {/* Organization Logo/Icon */}
  <div className="flex items-center gap-2">
                     {activeOrganization?.logoUrl ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
                         <img 
                             src={activeOrganization.logoUrl} 
                             alt={activeOrganization.name}
@@ -329,6 +331,7 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
                                                 isActiveOrg ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
                                             )}>
                                                 {org.logoUrl ? (
+                                                    /* eslint-disable-next-line @next/next/no-img-element */
                                                     <img src={org.logoUrl} alt={org.name} className="h-4 w-4 rounded object-cover" />
                                                 ) : (
                                                     <Building className="h-4 w-4" />

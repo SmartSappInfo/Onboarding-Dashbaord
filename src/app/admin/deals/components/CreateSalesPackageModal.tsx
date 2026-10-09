@@ -107,8 +107,8 @@ export function CreateSalesPackageModal({
           };
         });
         setAvailableAssets(items);
-        if (items.length > 0 && selectedAssetIds.length === 0) {
-          setSelectedAssetIds([items[0].id]);
+        if (items.length > 0) {
+          setSelectedAssetIds((prev) => (prev.length === 0 ? [items[0].id] : prev));
         }
       } catch (err) {
         console.error('[CreateSalesPackageModal] Error fetching assets:', err);

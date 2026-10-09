@@ -11,7 +11,7 @@
 
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, RotateCcw, ArrowLeft, LayoutGrid } from 'lucide-react';
+import { AlertTriangle, RotateCcw, LayoutGrid } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DealDetailsError({
