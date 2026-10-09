@@ -17,7 +17,6 @@ import {
   CheckCircle2,
   Clock,
   ArrowUpRight,
-  ShieldAlert,
   Search,
   User,
   Check,
@@ -37,7 +36,7 @@ import {
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { useToast } from '@/hooks/use-toast';
 import { mutateBlockerAction } from '@/lib/standup-server-actions';
-import type { BlockerRecord, BlockerStatus, BlockerSeverity } from '@/lib/types';
+import type { BlockerRecord } from '@/lib/types';
 
 export interface BlockersManagerViewProps {
   workspaceId: string;
@@ -254,14 +253,29 @@ export function BlockersManagerView({
           ))}
         </div>
 
-        <div className="relative sm:w-64">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-          <Input
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search blockers..."
-            className="pl-10 h-11 min-h-[44px] rounded-xl text-xs bg-background"
-          />
+        <div className="flex items-center gap-2">
+          <select
+            value={severityFilter}
+            onChange={(e) => setSeverityFilter(e.target.value)}
+            aria-label="Filter by severity"
+            className="h-11 min-h-[44px] px-3 rounded-xl border border-border/80 bg-background text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="all">All Severities</option>
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+
+          <div className="relative sm:w-64">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search blockers..."
+              className="pl-10 h-11 min-h-[44px] rounded-xl text-xs bg-background"
+            />
+          </div>
         </div>
       </div>
 

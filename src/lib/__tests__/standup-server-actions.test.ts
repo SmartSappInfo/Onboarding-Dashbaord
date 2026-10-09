@@ -131,7 +131,7 @@ describe('Standup Server Actions & Blocker Lifecycle (Phase 4B)', () => {
       expect(res.id).toBeDefined();
 
       // Check stored record
-      const stored = h.standups.get(res.id!) as StandupSubmission;
+      const stored = h.standups.get(res.id!) as unknown as StandupSubmission;
       expect(stored).toBeDefined();
       expect(stored.status).toBe('draft');
       expect(stored.userId).toBe('user-alice');
@@ -185,7 +185,7 @@ describe('Standup Server Actions & Blocker Lifecycle (Phase 4B)', () => {
         {
           id: 'blk-local-1',
           summary: 'Waiting on staging API key approval',
-          category: 'access',
+          category: 'external_dependency',
           severity: 'high',
           affectedTaskId: 'task-100',
           affectedTaskTitle: 'Configure API Integration',
@@ -205,13 +205,13 @@ describe('Standup Server Actions & Blocker Lifecycle (Phase 4B)', () => {
       expect(res.success).toBe(true);
       expect(res.id).toBeDefined();
 
-      const stored = h.standups.get(res.id!) as StandupSubmission;
+      const stored = h.standups.get(res.id!) as unknown as StandupSubmission;
       expect(stored.status).toBe('submitted');
       expect(stored.submittedAt).toBeDefined();
 
       // Blocker should be extracted to blockers collection
       expect(h.blockers.size).toBe(1);
-      const blockerEntries = Array.from(h.blockers.values()) as BlockerRecord[];
+      const blockerEntries = Array.from(h.blockers.values()) as unknown as BlockerRecord[];
       const extracted = blockerEntries[0];
       expect(extracted.workspaceId).toBe('ws-1');
       expect(extracted.summary).toBe('Waiting on staging API key approval');
@@ -263,7 +263,7 @@ describe('Standup Server Actions & Blocker Lifecycle (Phase 4B)', () => {
       });
 
       expect(res.success).toBe(true);
-      const updated = h.blockers.get('blk-1') as BlockerRecord;
+      const updated = h.blockers.get('blk-1') as unknown as BlockerRecord;
       expect(updated.status).toBe('acknowledged');
       expect(updated.ownerId).toBe('user-alice');
       expect(updated.ownerName).toBe('Alice Smith');
@@ -276,7 +276,7 @@ describe('Standup Server Actions & Blocker Lifecycle (Phase 4B)', () => {
       });
 
       expect(res.success).toBe(true);
-      const updated = h.blockers.get('blk-1') as BlockerRecord;
+      const updated = h.blockers.get('blk-1') as unknown as BlockerRecord;
       expect(updated.status).toBe('resolved');
       expect(updated.resolutionNote).toBe('Applied schema patch v4 and ran vacuum.');
       expect(updated.resolvedBy).toBe('user-alice');

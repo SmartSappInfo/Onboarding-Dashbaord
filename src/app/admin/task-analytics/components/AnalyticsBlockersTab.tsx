@@ -11,15 +11,8 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Clock,
-  ArrowUpRight,
-  ShieldAlert,
-} from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import type { TaskAnalyticsExtended } from '@/lib/analytics/task-analytics-service';
 import type { BlockerRecord } from '@/lib/types';
 

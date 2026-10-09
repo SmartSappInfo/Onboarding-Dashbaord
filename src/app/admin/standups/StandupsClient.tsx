@@ -21,7 +21,6 @@ import {
   Users,
   AlertTriangle,
   History,
-  CheckCircle2,
   Layers,
   ArrowLeft,
 } from 'lucide-react';

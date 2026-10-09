@@ -28,13 +28,16 @@ const mockTask: Task = {
   id: 'task-100',
   workspaceId: 'ws-1',
   title: 'Deploy microservice to staging',
+  description: 'Stage deployment checklist validation',
   status: 'in_progress',
   priority: 'high',
   category: 'general',
+  assignedTo: 'user-alice',
   dueDate: '2026-10-15',
   createdAt: '2026-10-09T00:00:00.000Z',
   updatedAt: '2026-10-09T00:00:00.000Z',
   reminders: [],
+  reminderSent: false,
   checklist: [{ id: 'c1', title: 'Run linter', completed: true }],
 };
 

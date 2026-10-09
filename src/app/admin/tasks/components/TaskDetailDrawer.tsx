@@ -23,12 +23,10 @@ import {
     Users, 
     Tag as TagIcon, 
     FileText, 
-    MessageSquare,
     StickyNote,
     Plus,
     Loader2,
     Sparkles,
-    AlertTriangle,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { suggestTaskChecklistAction } from '@/app/actions/task-copilot-actions';
@@ -81,6 +79,14 @@ export function TaskDetailDrawer({
     className,
 }: TaskDetailDrawerProps) {
     const [quickNote, setQuickNote] = React.useState('');
+    const { toast } = useToast();
+    const [isSuggestingSteps, setIsSuggestingSteps] = React.useState(false);
+
+    const assignees = React.useMemo(() => {
+        if (!userMap || !task?.assignedTo) return [];
+        const ids = Array.isArray(task.assignedTo) ? task.assignedTo : [task.assignedTo];
+        return ids.map(id => userMap.get(id)).filter(Boolean) as UserProfile[];
+    }, [task?.assignedTo, userMap]);
 
     if (!task) return null;
 
@@ -96,15 +102,6 @@ export function TaskDetailDrawer({
         if (!onUpdateTask) return;
         await onUpdateTask(task.id, { status: newStatus });
     };
-
-    const { toast } = useToast();
-    const [isSuggestingSteps, setIsSuggestingSteps] = React.useState(false);
-
-    const assignees = React.useMemo(() => {
-        if (!userMap || !task?.assignedTo) return [];
-        const ids = Array.isArray(task.assignedTo) ? task.assignedTo : [task.assignedTo];
-        return ids.map(id => userMap.get(id)).filter(Boolean) as UserProfile[];
-    }, [task?.assignedTo, userMap]);
 
     const handleSuggestSteps = async () => {
         if (!task || isSuggestingSteps) return;

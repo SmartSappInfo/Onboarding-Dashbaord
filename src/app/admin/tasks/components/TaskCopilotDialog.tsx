@@ -149,8 +149,9 @@ export function TaskCopilotDialog({
       });
 
       onOpenChange(false);
-      if (res.data?.id && onTaskCreated) {
-        onTaskCreated(res.data.id);
+      const createdTaskId = res.id || (res as unknown as { data?: { id?: string } }).data?.id;
+      if (createdTaskId && onTaskCreated) {
+        onTaskCreated(createdTaskId);
       }
     } catch (err: unknown) {
       console.error('[TASK_COPILOT] Error creating task:', err);

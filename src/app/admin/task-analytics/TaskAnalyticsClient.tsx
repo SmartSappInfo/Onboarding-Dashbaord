@@ -24,8 +24,6 @@ import {
   ArrowLeft,
   Users,
   AlertTriangle,
-  RefreshCw,
-  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

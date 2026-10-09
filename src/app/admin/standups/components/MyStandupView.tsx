@@ -586,7 +586,7 @@ export function MyStandupView({
           <div>
             <h3 className="text-sm font-bold text-foreground">Help needed / Discussion points</h3>
             <p className="text-xs text-muted-foreground">
-              Anything you'd like feedback or pairing on today
+              Anything you would like feedback or pairing on today
             </p>
           </div>
         </div>

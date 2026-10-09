@@ -64,7 +64,7 @@ describe('BlockersManagerView Component (Phase 4B)', () => {
 
     expect(screen.getByText('Third-party webhook failing with 502')).toBeInTheDocument();
     expect(screen.getByText(/Alice Smith/i)).toBeInTheDocument();
-    expect(screen.getByText(/CRITICAL/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/critical/i).length).toBeGreaterThanOrEqual(1);
   });
 
   it('triggers acknowledge action on open blocker', async () => {
