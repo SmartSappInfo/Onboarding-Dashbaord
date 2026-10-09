@@ -1,16 +1,54 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import { QuickTemplatesCard } from '../QuickTemplatesCard';
+import { QuickTemplatesCard, STARTER_TEMPLATES } from '../QuickTemplatesCard';
 
 describe('QuickTemplatesCard', () => {
-  it('renders 4 starter templates and handles selection', () => {
+  it('renders title, subtitle, and all starter templates', () => {
+    render(<QuickTemplatesCard />);
+    expect(screen.getByText('Quick Templates')).toBeInTheDocument();
+    expect(screen.getByText(/Standardized starter layouts/i)).toBeInTheDocument();
+    expect(screen.getByText('Welcome Message')).toBeInTheDocument();
+    expect(screen.getByText('Fee Reminder')).toBeInTheDocument();
+    expect(screen.getByText('Event Invite')).toBeInTheDocument();
+    expect(screen.getByText('General Announcement')).toBeInTheDocument();
+  });
+
+  it('renders "All templates →" link routing to /admin/messaging/templates', () => {
+    render(<QuickTemplatesCard />);
+    const link = screen.getByRole('link', { name: /All templates/i });
+    expect(link).toHaveAttribute('href', '/admin/messaging/templates');
+  });
+
+  it('invokes onSelectTemplate with complete template item including channel and subject', () => {
     const handleSelect = vi.fn();
     render(<QuickTemplatesCard onSelectTemplate={handleSelect} />);
-    expect(screen.getByText(/Quick Templates/i)).toBeInTheDocument();
-    expect(screen.getByText(/Welcome Message/i)).toBeInTheDocument();
-    expect(screen.getByText(/Fee Reminder/i)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText(/Welcome Message/i));
-    expect(handleSelect).toHaveBeenCalledWith(expect.objectContaining({ name: 'Welcome Message' }));
+    const feeReminderBtn = screen.getByText('Fee Reminder').closest('button');
+    expect(feeReminderBtn).toBeInTheDocument();
+    fireEvent.click(feeReminderBtn!);
+
+    expect(handleSelect).toHaveBeenCalledTimes(1);
+    expect(handleSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'tpl_fee',
+        name: 'Fee Reminder',
+        category: 'Finance',
+        defaultChannel: 'sms',
+      })
+    );
+
+    // Click Event Invite (Email channel)
+    const eventInviteBtn = screen.getByText('Event Invite').closest('button');
+    fireEvent.click(eventInviteBtn!);
+
+    expect(handleSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'tpl_event',
+        name: 'Event Invite',
+        category: 'Events',
+        defaultChannel: 'email',
+        subject: expect.stringContaining('School Open Day'),
+      })
+    );
   });
 });
