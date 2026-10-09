@@ -458,6 +458,12 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
         const r = searchParams.get('recipient');
         if (r) setValue('recipient', r);
 
+        // Pre-populate message body when launched from AI prompt bar (Rule 8 & 19 safe binding)
+        const promptParam = searchParams.get('prompt');
+        if (promptParam) {
+            setValue('messageBody', promptParam);
+        }
+
         const entityIdParam = searchParams.get('entityId');
         if (entityIdParam) {
             setValue('entityId', entityIdParam);
