@@ -32,12 +32,9 @@ import {
     History,
     Users,
     GitBranch,
-    FileText,
     CheckSquare,
     Sparkles,
     GitCompare,
-    Rocket,
-    Layers,
     Lock
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -46,7 +43,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -85,6 +82,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+import { PageContainerFluid } from '@/components/ui/page-container';
 import { getErrorMessage } from '@/lib/errors/report-error';
 import ContractLifecycleDetailModal from './components/ContractLifecycleDetailModal';
 import CreateAmendmentModal from './components/CreateAmendmentModal';
@@ -102,11 +100,14 @@ import DeveloperPlatformTab from './components/DeveloperPlatformTab';
 import BulkCampaignsTab from './components/BulkCampaignsTab';
 import { LegalHoldManagerModal, LegalHoldContractSummary } from './components/LegalHoldManagerModal';
 import type { ContractRecord } from '@/lib/types/document-signing';
-import { BarChart3, Bell, Code2 } from 'lucide-react';
+import { Bell } from 'lucide-react';
+import { AgreementsHubNav, type AgreementsTabKey, type ContractsSubViewKey } from './components/AgreementsHubNav';
+import { AgreementsMobileBottomNav } from './components/AgreementsMobileBottomNav';
 
 /**
  * @fileOverview Agreements Hub Client.
  * Upgraded with multi-workspace sharing logic and workspace-bound filtering.
+ * Modernized in Phase 1 with Four-Section Navigation and Mobile Bottom Dock.
  */
 export default function AgreementsClient() {
     const firestore = useFirestore();
@@ -114,7 +115,8 @@ export default function AgreementsClient() {
     const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
     const { activeWorkspaceId } = useWorkspace();
     
-    const [activeTab, setActiveTab] = React.useState<'contracts' | 'templates' | 'obligations' | 'analytics' | 'governance' | 'migration' | 'developer' | 'campaigns'>('contracts');
+    const [activeTab, setActiveTab] = React.useState<AgreementsTabKey>('contracts');
+    const [contractsSubView, setContractsSubView] = React.useState<ContractsSubViewKey>('register');
     const [searchTerm, setSearchTerm] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState('all');
     const [selectedEntities, setSelectedEntities] = React.useState<WorkspaceEntity[]>([]);
@@ -313,11 +315,11 @@ export default function AgreementsClient() {
 
     return (
         <TooltipProvider>
-            <div className="h-full overflow-y-auto w-full">
-                <div className="space-y-8 pb-32 w-full p-8">
+            <PageContainerFluid>
+                <div className="space-y-6 pb-28 sm:pb-20 w-full text-left">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="flex items-center gap-2.5">
-                            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+                            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
                                 Agreements Hub
                             </h1>
                             <CardInfoTooltip text={`Institutional legal contracts, templates, and post-signing obligations for ${activeWorkspaceId || 'this workspace'}.`} />
@@ -343,45 +345,22 @@ export default function AgreementsClient() {
                         </div>
                     </div>
 
-                    {/* Unified 8-Tab Workspace Navigation */}
-                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'contracts' | 'templates' | 'obligations' | 'analytics' | 'governance' | 'migration' | 'developer' | 'campaigns')} className="w-full space-y-6">
-                        <TabsList className="bg-muted/40 p-1 rounded-xl border border-border/80 flex flex-wrap h-auto gap-1">
-                            <TabsTrigger value="contracts" className="rounded-lg text-xs font-semibold gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                                <FileCheck className="h-3.5 w-3.5" />
-                                Contracts & Lifecycle
-                            </TabsTrigger>
-                            <TabsTrigger value="templates" className="rounded-lg text-xs font-semibold gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                                <FileText className="h-3.5 w-3.5" />
-                                Document Templates
-                            </TabsTrigger>
-                            <TabsTrigger value="obligations" className="rounded-lg text-xs font-semibold gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                                <CheckSquare className="h-3.5 w-3.5" />
-                                Obligations & Milestones
-                            </TabsTrigger>
-                            <TabsTrigger value="analytics" className="rounded-lg text-xs font-semibold gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                                <BarChart3 className="h-3.5 w-3.5" />
-                                Analytics & Reports
-                            </TabsTrigger>
-                            <TabsTrigger value="governance" className="rounded-lg text-xs font-semibold gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                                <ShieldCheck className="h-3.5 w-3.5" />
-                                Enterprise & Governance
-                            </TabsTrigger>
-                            <TabsTrigger value="migration" className="rounded-lg text-xs font-semibold gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                                <Rocket className="h-3.5 w-3.5" />
-                                GA Cutover & Migration
-                            </TabsTrigger>
-                            <TabsTrigger value="developer" className="rounded-lg text-xs font-semibold gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                                <Code2 className="h-3.5 w-3.5" />
-                                Developer & Embedded SDK
-                            </TabsTrigger>
-                            <TabsTrigger value="campaigns" className="rounded-lg text-xs font-semibold gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                                <Layers className="h-3.5 w-3.5" />
-                                Bulk Campaigns & Compliance
-                            </TabsTrigger>
-                        </TabsList>
+                    {/* Reorganized Four-Section Navigation Architecture with Administration Dropdown (Phase 1) */}
+                    <AgreementsHubNav
+                        activeTab={activeTab}
+                        onTabChange={(tab) => setActiveTab(tab)}
+                        userPermissions={userPermissions}
+                        contractsSubView={contractsSubView}
+                        onContractsSubViewChange={setContractsSubView}
+                    />
 
+                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as AgreementsTabKey)} className="w-full space-y-6">
                         <TabsContent value="contracts" className="space-y-6 mt-0">
-                            {/* Dashboard Metrics */}
+                            {contractsSubView === 'campaigns' ? (
+                                <BulkCampaignsTab workspaceId={activeWorkspaceId || ''} />
+                            ) : (
+                                <>
+                                    {/* Dashboard Metrics */}
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <StatCard 
                             label="% Signed" 
@@ -507,7 +486,7 @@ export default function AgreementsClient() {
                                         const isSelected = !!selectedEntities.find(s => s.id === item.id);
                                         
                                         return (
- <TableRow key={item.id} className={cn("group transition-colors", isSelected ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-muted/30")}>
+ <TableRow key={item.id} className={cn("group transition-colors", isSelected ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15")}>
  <TableCell className="pl-6">
                                                     <Checkbox 
                                                         checked={isSelected}
@@ -788,6 +767,8 @@ export default function AgreementsClient() {
                             </div>
                         )}
                     </div>
+                                </>
+                            )}
                         </TabsContent>
 
                         <TabsContent value="templates" className="mt-0">
@@ -804,6 +785,10 @@ export default function AgreementsClient() {
                                 workspaceId={activeWorkspaceId || ''}
                                 onOpenCreateObligation={() => setIsCreateObligationOpen(true)}
                             />
+                        </TabsContent>
+
+                        <TabsContent value="insights" className="mt-0">
+                            <ContractsAnalyticsTab workspaceId={activeWorkspaceId || ''} />
                         </TabsContent>
 
                         <TabsContent value="analytics" className="mt-0">
@@ -1020,7 +1005,14 @@ export default function AgreementsClient() {
                         contract={legalHoldContract}
                     />
                 )}
-            </div>
+
+                {/* Mobile Bottom Navigation Dock (Phase 1) */}
+                <AgreementsMobileBottomNav
+                    activeTab={activeTab}
+                    onTabChange={setActiveTab}
+                    userPermissions={userPermissions}
+                />
+            </PageContainerFluid>
         </TooltipProvider>
     );
 }
