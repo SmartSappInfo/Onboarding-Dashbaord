@@ -9,7 +9,7 @@
  */
 
 import { z } from 'zod';
-import { WorkspaceMessagingSettingsSchema, type WorkspaceMessagingSettings } from './messaging-settings';
+import { WorkspaceMessagingSettingsSchema } from './messaging-settings';
 
 /**
  * Supported messaging channels across the SmartSapp platform.

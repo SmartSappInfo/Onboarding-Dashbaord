@@ -170,7 +170,7 @@ export function MessagingAiPromptModal({
                     data-selected={isSelected ? 'true' : 'false'}
                     onClick={() => setSelectedTone(t.id)}
                     className={cn(
-                      'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all active:scale-[0.97] min-h-[36px] sm:min-h-[32px] border cursor-pointer',
+                      'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all active:scale-[0.97] min-h-[44px] sm:min-h-[36px] border cursor-pointer',
                       isSelected
                         ? 'bg-primary text-primary-foreground border-transparent shadow-sm'
                         : 'bg-muted/40 text-muted-foreground hover:bg-muted/80 hover:text-foreground border-border/60'

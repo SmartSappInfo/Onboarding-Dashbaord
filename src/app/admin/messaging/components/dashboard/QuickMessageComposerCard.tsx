@@ -205,7 +205,7 @@ export function QuickMessageComposerCard({
               type="button"
               onClick={() => setChannel(ch)}
               className={cn(
-                'min-h-[36px] sm:min-h-[32px] px-2.5 py-1 text-xs font-medium rounded-md transition-all active:scale-[0.97]',
+                'min-h-[44px] sm:min-h-[36px] px-2.5 py-1 text-xs font-medium rounded-md transition-all active:scale-[0.97]',
                 channel === ch
                   ? 'bg-primary text-primary-foreground shadow-xs'
                   : 'text-muted-foreground hover:text-foreground'

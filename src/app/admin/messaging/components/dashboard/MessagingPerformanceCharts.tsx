@@ -50,6 +50,13 @@ export function MessagingPerformanceCharts({
   const delivered = performance?.deliveredCount ?? 0;
   const failed = performance?.failedCount ?? 0;
 
+  const strokeColorClass =
+    rate >= 95
+      ? 'text-emerald-500'
+      : rate >= 85
+      ? 'text-amber-500'
+      : 'text-rose-500';
+
   return (
     <div className={cn('rounded-2xl border border-border/80 bg-card p-4 sm:p-5 text-card-foreground shadow-xs', className)}>
       <div className="flex items-center justify-between pb-3 border-b border-border/60">
@@ -91,7 +98,7 @@ export function MessagingPerformanceCharts({
                 strokeWidth="8"
                 strokeDasharray={2 * Math.PI * 38}
                 strokeDashoffset={2 * Math.PI * 38 * (1 - rate / 100)}
-                className="text-emerald-500 fill-none transition-all duration-1000 ease-out"
+                className={cn(strokeColorClass, 'fill-none transition-all duration-1000 ease-out')}
                 strokeLinecap="round"
               />
             </svg>

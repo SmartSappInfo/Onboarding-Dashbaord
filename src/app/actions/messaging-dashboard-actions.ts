@@ -177,31 +177,77 @@ export async function getMessagingDashboardSummaryAction(
     const currentWindowIso = formatISO(subDays(nowDate, days));
     const previousWindowIso = formatISO(subDays(nowDate, days * 2));
 
-    // 4. Parallel Bounded Firestore Queries
-    const [logsSnap, campaignsSnap, scheduledSnap, providerResults, settingsRes] = await Promise.all([
-      // Logs query: bounded to 500 records by workspace (uses indexed: workspaceIds array-contains, sentAt desc)
-      adminDb
-        .collection('message_logs')
-        .where('workspaceIds', 'array-contains', workspaceId)
-        .orderBy('sentAt', 'desc')
-        .limit(500)
-        .get(),
+    // 4. Parallel Bounded Firestore Queries with Fault Isolation (Rule 21)
+    const logsQueryPromise = adminDb
+      .collection('message_logs')
+      .where('workspaceIds', 'array-contains', workspaceId)
+      .orderBy('sentAt', 'desc')
+      .limit(500)
+      .get()
+      .catch(async (primaryErr) => {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[MessagingDashboardAggregator] Primary message_logs query degraded, trying fallback:', primaryErr?.message);
+        }
+        try {
+          return await adminDb
+            .collection('message_logs')
+            .where('workspaceId', '==', workspaceId)
+            .orderBy('sentAt', 'desc')
+            .limit(500)
+            .get();
+        } catch (fallbackErr) {
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('[MessagingDashboardAggregator] Fallback message_logs query also degraded:', fallbackErr);
+          }
+          return { docs: [] } as unknown as FirebaseFirestore.QuerySnapshot;
+        }
+      });
 
-      // Campaigns query: latest 5 campaigns in this workspace
-      adminDb
-        .collection('message_campaigns')
-        .where('workspaceId', '==', workspaceId)
-        .orderBy('createdAt', 'desc')
-        .limit(5)
-        .get(),
+    const campaignsQueryPromise = adminDb
+      .collection('message_campaigns')
+      .where('workspaceId', '==', workspaceId)
+      .orderBy('createdAt', 'desc')
+      .limit(5)
+      .get()
+      .catch((err) => {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[MessagingDashboardAggregator] message_campaigns query degraded:', err?.message);
+        }
+        return { docs: [] } as unknown as FirebaseFirestore.QuerySnapshot;
+      });
 
-      // Scheduled queue query: up to 50 pending messages strictly scoped to this organization (Rule 8 & 18)
-      adminDb
-        .collection('scheduled_messages')
-        .where('organizationId', '==', organizationId)
-        .where('status', '==', 'pending')
-        .limit(50)
-        .get(),
+    const scheduledQueryPromise = adminDb
+      .collection('scheduled_messages')
+      .where('organizationId', '==', organizationId)
+      .where('status', '==', 'pending')
+      .limit(50)
+      .get()
+      .catch((err) => {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[MessagingDashboardAggregator] scheduled_messages query degraded:', err?.message);
+        }
+        return { docs: [] } as unknown as FirebaseFirestore.QuerySnapshot;
+      });
+
+    // Message jobs pending / queued count with fault isolation (Rule 21)
+    const pendingJobsPromise = adminDb
+      .collection('message_jobs')
+      .where('workspaceId', '==', workspaceId)
+      .where('status', '==', 'queued')
+      .count()
+      .get()
+      .catch((err) => {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[MessagingDashboardAggregator] message_jobs queued query degraded:', err?.message);
+        }
+        return { data: () => ({ count: 0 }) } as unknown as FirebaseFirestore.AggregateQuerySnapshot<{ count: FirebaseFirestore.AggregateField<number> }>;
+      });
+
+    const [logsSnap, campaignsSnap, scheduledSnap, pendingJobsSnap, providerResults, settingsRes] = await Promise.all([
+      logsQueryPromise,
+      campaignsQueryPromise,
+      scheduledQueryPromise,
+      pendingJobsPromise,
 
       // External Provider Health (Rule 21: Graceful Degradation with 3.5s timeout)
       Promise.allSettled([
@@ -234,17 +280,23 @@ export async function getMessagingDashboardSummaryAction(
 
     // Fallback for legacy logs with single workspaceId field (uses indexed: workspaceId asc, sentAt desc)
     if (rawLogs.length === 0) {
-      const legacyLogsSnap = await adminDb
-        .collection('message_logs')
-        .where('workspaceId', '==', workspaceId)
-        .orderBy('sentAt', 'desc')
-        .limit(500)
-        .get();
+      try {
+        const legacyLogsSnap = await adminDb
+          .collection('message_logs')
+          .where('workspaceId', '==', workspaceId)
+          .orderBy('sentAt', 'desc')
+          .limit(500)
+          .get();
 
-      rawLogs = legacyLogsSnap.docs.map((doc) => ({
-        id: doc.id,
-        ...(doc.data() as Omit<RawMessageLogDoc, 'id'>),
-      }));
+        rawLogs = legacyLogsSnap.docs.map((doc) => ({
+          id: doc.id,
+          ...(doc.data() as Omit<RawMessageLogDoc, 'id'>),
+        }));
+      } catch (legacyErr) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[MessagingDashboardAggregator] Legacy logs read failed or unindexed:', legacyErr);
+        }
+      }
     }
 
     // Partition logs by time windows
@@ -427,6 +479,7 @@ export async function getMessagingDashboardSummaryAction(
       }
     }
     const inboxPreview = Array.from(threadMap.values());
+    const pendingApprovalCount = pendingJobsSnap?.data?.().count ?? 0;
 
     // 11. Assemble and Validate against Schema (Rule 4, 13, 14)
     const payload: MessagingDashboardSummary = {
@@ -454,7 +507,7 @@ export async function getMessagingDashboardSummaryAction(
       recentCampaigns,
       activeQueues: {
         scheduledCount,
-        pendingApprovalCount: 0,
+        pendingApprovalCount,
         failedCount,
       },
       inboxPreview,

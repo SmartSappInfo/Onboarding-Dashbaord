@@ -64,6 +64,11 @@ vi.mock('@/lib/firebase-admin', () => ({
       where: vi.fn().mockReturnThis(),
       orderBy: vi.fn().mockReturnThis(),
       limit: vi.fn().mockReturnThis(),
+      count: vi.fn().mockReturnValue({
+        get: vi.fn(async () => ({
+          data: () => ({ count: 0 }),
+        })),
+      }),
       get: vi.fn(async () => {
         if (colName === 'message_logs') {
           return {

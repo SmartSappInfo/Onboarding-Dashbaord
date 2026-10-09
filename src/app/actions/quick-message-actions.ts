@@ -18,8 +18,9 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { requireWorkspace } from '@/lib/auth/require-auth';
 import { sendRawMessage } from '@/lib/messaging-engine';
 import { getWorkspaceMessagingSettingsAction } from './messaging-settings-actions';
+import { FieldsVariablesService } from '@/lib/services/fields-variables-service-impl';
 
-export const QuickDirectMessageInputSchema = z.object({
+const QuickDirectMessageInputSchema = z.object({
   workspaceId: z.string().min(1, 'Workspace ID is required'),
   channel: z.enum(['sms', 'whatsapp', 'email']),
   recipient: z.string().min(1, 'Recipient is required'),
@@ -174,12 +175,41 @@ export async function dispatchQuickDirectMessageAction(
       };
     }
 
-    // 5. Execute Raw Message Dispatch via Core Messaging Engine
+    // 5. Interpolate Template Variables via FieldsVariablesService SSOT
+    let resolvedBody = body.trim();
+    if (resolvedBody.includes('{{')) {
+      try {
+        resolvedBody = await FieldsVariablesService.resolveTemplateVariables(resolvedBody, {
+          workspaceId,
+          recipientContact: recipient.trim(),
+        });
+      } catch (varErr) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[dispatchQuickDirectMessageAction] Variable resolution failed:', varErr);
+        }
+      }
+    }
+
+    let resolvedSubject = channel === 'email' ? subject?.trim() : undefined;
+    if (resolvedSubject && resolvedSubject.includes('{{')) {
+      try {
+        resolvedSubject = await FieldsVariablesService.resolveTemplateVariables(resolvedSubject, {
+          workspaceId,
+          recipientContact: recipient.trim(),
+        });
+      } catch (varErr) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[dispatchQuickDirectMessageAction] Subject variable resolution failed:', varErr);
+        }
+      }
+    }
+
+    // 6. Execute Raw Message Dispatch via Core Messaging Engine
     const dispatchResult = await sendRawMessage({
       channel,
       recipient: recipient.trim(),
-      body: body.trim(),
-      subject: channel === 'email' ? subject?.trim() : undefined,
+      body: resolvedBody,
+      subject: resolvedSubject,
       organizationId: orgId,
       workspaceIds: [workspaceId],
     });
