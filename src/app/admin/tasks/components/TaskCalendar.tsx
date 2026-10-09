@@ -1,5 +1,15 @@
 'use client';
 
+/**
+ * TaskCalendar
+ * Temporal Workflow Map conforming to Roadmap §28 and UI Spec §491-501:
+ * - Interactive Month, Week, Day, and Agenda views.
+ * - Mobile Agenda fallback with overdue task discovery, today, and upcoming groups.
+ * - Standardized TaskStatusBadge, TaskPriorityBadge, and TaskDueDate primitives.
+ * - Min-h-[44px] touch targets on all interactive controls.
+ * - Strict typing with zero any or any[].
+ */
+
 import * as React from 'react';
 import { 
     format, 
@@ -16,7 +26,11 @@ import {
     addWeeks,
     subWeeks,
     addDays,
-    subDays
+    subDays,
+    startOfDay,
+    endOfDay,
+    isBefore,
+    isAfter,
 } from 'date-fns';
 import { 
     ChevronLeft, 
@@ -25,7 +39,6 @@ import {
     Clock, 
     ShieldAlert, 
     AlertTriangle,
-    type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -35,8 +48,11 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { computeTimelineLayout, formatMinutesToTime, type LayoutItem } from '../utils/timelineLayout';
 import { safeParseDate } from '@/lib/utils/date-utils';
+import { TaskStatusBadge } from './primitives/TaskStatusBadge';
+import { TaskPriorityBadge } from './primitives/TaskPriorityBadge';
+import { TaskDueDate } from './primitives/TaskDueDate';
 
-const PRIORITY_ICONS: Record<TaskPriority, LucideIcon | null> = {
+const PRIORITY_ICONS: Record<TaskPriority, React.ComponentType<{ className?: string }> | null> = {
     urgent: ShieldAlert,
     high: AlertTriangle,
     medium: Clock,
@@ -53,11 +69,11 @@ const PRIORITY_COLORS: Record<TaskPriority, string> = {
 const getInitials = (name?: string | null) =>
   name ? name.split(' ').map((n) => n[0]).join('').toUpperCase() : '?';
 
-interface TaskCalendarProps {
+export interface TaskCalendarProps {
     tasks: Task[];
     onTaskClick: (task: Task) => void;
-    userMap: Map<string, UserProfile>;
-    onTaskUpdate: (taskId: string, updatedFields: Partial<Task>) => Promise<boolean>;
+    userMap?: Map<string, UserProfile>;
+    onTaskUpdate?: (taskId: string, updatedFields: Partial<Task>) => Promise<boolean>;
     onDateClick?: (date: Date) => void;
 }
 
@@ -190,8 +206,14 @@ function TaskCalendarCard({ task, onTaskClick, userMap, onDragStart, onDragEnd }
     );
 }
 
-export default function TaskCalendar({ tasks, onTaskClick, userMap, onTaskUpdate, onDateClick }: TaskCalendarProps) {
-    const [view, setView] = React.useState<'month' | 'week' | 'day'>('month');
+export default function TaskCalendar({ 
+    tasks, 
+    onTaskClick, 
+    userMap = new Map(), 
+    onTaskUpdate = async () => true, 
+    onDateClick 
+}: TaskCalendarProps) {
+    const [view, setView] = React.useState<'month' | 'week' | 'day' | 'agenda'>('month');
     const [currentDate, setCurrentDate] = React.useState(new Date());
     const [mounted, setMounted] = React.useState(false);
 
@@ -418,7 +440,7 @@ export default function TaskCalendar({ tasks, onTaskClick, userMap, onTaskUpdate
     };
 
     const handlePrev = () => {
-        if (view === 'month') {
+        if (view === 'month' || view === 'agenda') {
             setCurrentDate(prev => subMonths(prev, 1));
         } else if (view === 'week') {
             setCurrentDate(prev => subWeeks(prev, 1));
@@ -428,7 +450,7 @@ export default function TaskCalendar({ tasks, onTaskClick, userMap, onTaskUpdate
     };
 
     const handleNext = () => {
-        if (view === 'month') {
+        if (view === 'month' || view === 'agenda') {
             setCurrentDate(prev => addMonths(prev, 1));
         } else if (view === 'week') {
             setCurrentDate(prev => addWeeks(prev, 1));
@@ -442,7 +464,9 @@ export default function TaskCalendar({ tasks, onTaskClick, userMap, onTaskUpdate
     };
 
     const titleLabel = React.useMemo(() => {
-        if (view === 'month') {
+        if (view === 'agenda') {
+            return `Agenda: ${format(currentDate, 'MMMM yyyy')}`;
+        } else if (view === 'month') {
             return format(currentDate, 'MMMM yyyy');
         } else if (view === 'week') {
             const start = startOfWeek(currentDate, { weekStartsOn: 0 });
@@ -912,6 +936,198 @@ export default function TaskCalendar({ tasks, onTaskClick, userMap, onTaskUpdate
         );
     };
 
+    const renderAgendaTaskRow = (task: Task, isOverdue = false) => {
+        const isDone = task.status === 'done';
+        const assignees = (() => {
+            const raw = task.assignedTo;
+            if (!raw) return [];
+            const ids = Array.isArray(raw) ? raw : [raw];
+            return ids.map(id => userMap?.get(id)).filter(Boolean) as UserProfile[];
+        })();
+
+        return (
+            <div
+                key={task.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => onTaskClick(task)}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onTaskClick(task);
+                    }
+                }}
+                className={cn(
+                    "flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3 px-3 rounded-xl transition-all cursor-pointer select-none min-h-[44px]",
+                    "hover:bg-muted/40 active:scale-[0.99]",
+                    isOverdue && "hover:bg-destructive/10"
+                )}
+            >
+                <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <div className="flex items-center gap-2 shrink-0 pt-0.5 sm:pt-0">
+                        <TaskStatusBadge status={task.status} size="sm" />
+                        <TaskPriorityBadge priority={task.priority} size="sm" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <p className={cn(
+                            "text-xs font-semibold text-foreground truncate",
+                            isDone && "line-through text-muted-foreground"
+                        )}>
+                            {task.title}
+                        </p>
+                        {task.entityName && (
+                            <p className="text-[10px] text-muted-foreground truncate">
+                                {task.entityName}
+                            </p>
+                        )}
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                    <TaskDueDate dueDate={task.dueDate} status={task.status} />
+                    {assignees.length > 0 && (
+                        <div className="flex -space-x-1.5 overflow-hidden">
+                            {assignees.slice(0, 3).map((u, i) => (
+                                <Avatar key={u.id} className="h-5 w-5 ring-1 ring-card border-none shrink-0" style={{ zIndex: 3 - i }}>
+                                    <AvatarImage src={u.photoURL || undefined} />
+                                    <AvatarFallback className="text-[7px] font-black bg-muted text-muted-foreground">
+                                        {getInitials(u.name)}
+                                    </AvatarFallback>
+                                </Avatar>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
+    const renderAgendaView = () => {
+        const now = new Date();
+        const todayStart = startOfDay(now);
+        const todayEnd = endOfDay(now);
+
+        const overdueTasks = tasks.filter(t => {
+            if (t.status === 'done') return false;
+            const d = safeParseDate(t.dueDate);
+            return d ? isBefore(d, todayStart) : false;
+        });
+
+        const todayTasks = tasks.filter(t => {
+            const d = safeParseDate(t.dueDate);
+            return d ? isSameDay(d, now) : false;
+        });
+
+        const upcomingTasks = tasks.filter(t => {
+            if (t.status === 'done') return false;
+            const d = safeParseDate(t.dueDate);
+            return d ? isAfter(d, todayEnd) : false;
+        });
+
+        const unscheduledTasks = tasks.filter(t => !t.dueDate && t.status !== 'done');
+        const completedTasks = tasks.filter(t => t.status === 'done');
+
+        return (
+            <div className="p-4 sm:p-6 space-y-6">
+                {/* Overdue Section */}
+                {overdueTasks.length > 0 && (
+                    <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4 sm:p-5 space-y-3 shadow-xs">
+                        <div className="flex items-center justify-between pb-2 border-b border-destructive/15">
+                            <div className="flex items-center gap-2 text-destructive font-bold text-sm">
+                                <ShieldAlert className="h-4 w-4" />
+                                <span>Overdue Tasks</span>
+                            </div>
+                            <Badge variant="destructive" className="text-xs px-2.5 py-0.5 rounded-full font-bold">
+                                {overdueTasks.length} overdue
+                            </Badge>
+                        </div>
+                        <div className="divide-y divide-destructive/15">
+                            {overdueTasks.map(task => renderAgendaTaskRow(task, true))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Today's Tasks */}
+                <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 space-y-3 shadow-xs">
+                    <div className="flex items-center justify-between pb-2 border-b border-border/50">
+                        <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-primary" />
+                            <span>Today</span>
+                        </h3>
+                        <Badge variant="outline" className="text-xs px-2.5 py-0.5 rounded-full font-bold">
+                            {todayTasks.length} tasks
+                        </Badge>
+                    </div>
+                    {todayTasks.length === 0 ? (
+                        <p className="text-xs text-muted-foreground italic py-3">No tasks scheduled for today.</p>
+                    ) : (
+                        <div className="divide-y divide-border/40">
+                            {todayTasks.map(task => renderAgendaTaskRow(task))}
+                        </div>
+                    )}
+                </div>
+
+                {/* Upcoming Tasks */}
+                {upcomingTasks.length > 0 && (
+                    <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 space-y-3 shadow-xs">
+                        <div className="flex items-center justify-between pb-2 border-b border-border/50">
+                            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                                <span>Upcoming Tasks</span>
+                            </h3>
+                            <Badge variant="outline" className="text-xs px-2.5 py-0.5 rounded-full font-bold">
+                                {upcomingTasks.length} tasks
+                            </Badge>
+                        </div>
+                        <div className="divide-y divide-border/40">
+                            {upcomingTasks.map(task => renderAgendaTaskRow(task))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Unscheduled Tasks */}
+                {unscheduledTasks.length > 0 && (
+                    <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 space-y-3 shadow-xs">
+                        <div className="flex items-center justify-between pb-2 border-b border-border/50">
+                            <h3 className="text-sm font-bold text-muted-foreground flex items-center gap-2">
+                                <span>Unscheduled Tasks</span>
+                            </h3>
+                            <Badge variant="outline" className="text-xs px-2.5 py-0.5 rounded-full font-bold">
+                                {unscheduledTasks.length} tasks
+                            </Badge>
+                        </div>
+                        <div className="divide-y divide-border/40">
+                            {unscheduledTasks.map(task => renderAgendaTaskRow(task))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Completed Tasks */}
+                {completedTasks.length > 0 && (
+                    <div className="rounded-2xl border border-border/50 bg-muted/10 p-4 sm:p-5 space-y-3 opacity-80">
+                        <div className="flex items-center justify-between pb-2 border-b border-border/40">
+                            <h3 className="text-sm font-bold text-muted-foreground flex items-center gap-2">
+                                <span>Completed Tasks</span>
+                            </h3>
+                            <Badge variant="outline" className="text-xs px-2.5 py-0.5 rounded-full font-bold">
+                                {completedTasks.length} completed
+                            </Badge>
+                        </div>
+                        <div className="divide-y divide-border/40">
+                            {completedTasks.map(task => renderAgendaTaskRow(task))}
+                        </div>
+                    </div>
+                )}
+
+                {tasks.length === 0 && (
+                    <div className="text-center py-12 text-muted-foreground text-xs font-medium">
+                        No tasks found to display in agenda.
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     if (!mounted) {
         return (
             <Card className="border-none shadow-2xl rounded-2xl overflow-hidden bg-card ring-1 ring-black/5 p-12 text-center flex flex-col items-center justify-center min-h-[400px]">
@@ -937,11 +1153,11 @@ export default function TaskCalendar({ tasks, onTaskClick, userMap, onTaskUpdate
 
                 <div className="flex flex-wrap items-center gap-3">
                     {/* View Switcher Segments */}
-                    <div className="flex gap-1 bg-muted/30 p-1 rounded-xl border shrink-0">
+                    <div className="flex flex-wrap gap-1 bg-muted/30 p-1 rounded-xl border shrink-0">
                         <Button 
                             variant={view === 'day' ? 'secondary' : 'ghost'} 
                             size="sm" 
-                            className="h-8 px-4 rounded-lg text-[10px] font-bold cursor-pointer"
+                            className="h-8 min-h-[44px] sm:min-h-[32px] px-3.5 rounded-lg text-xs font-bold cursor-pointer active:scale-[0.97]"
                             onClick={() => setView('day')}
                         >
                             Day
@@ -949,7 +1165,7 @@ export default function TaskCalendar({ tasks, onTaskClick, userMap, onTaskUpdate
                         <Button 
                             variant={view === 'week' ? 'secondary' : 'ghost'} 
                             size="sm" 
-                            className="h-8 px-4 rounded-lg text-[10px] font-bold cursor-pointer"
+                            className="h-8 min-h-[44px] sm:min-h-[32px] px-3.5 rounded-lg text-xs font-bold cursor-pointer active:scale-[0.97]"
                             onClick={() => setView('week')}
                         >
                             Week
@@ -957,22 +1173,47 @@ export default function TaskCalendar({ tasks, onTaskClick, userMap, onTaskUpdate
                         <Button 
                             variant={view === 'month' ? 'secondary' : 'ghost'} 
                             size="sm" 
-                            className="h-8 px-4 rounded-lg text-[10px] font-bold cursor-pointer"
+                            className="h-8 min-h-[44px] sm:min-h-[32px] px-3.5 rounded-lg text-xs font-bold cursor-pointer active:scale-[0.97]"
                             onClick={() => setView('month')}
                         >
                             Month
                         </Button>
+                        <Button 
+                            variant={view === 'agenda' ? 'secondary' : 'ghost'} 
+                            size="sm" 
+                            className="h-8 min-h-[44px] sm:min-h-[32px] px-3.5 rounded-lg text-xs font-bold cursor-pointer active:scale-[0.97]"
+                            onClick={() => setView('agenda')}
+                        >
+                            Agenda
+                        </Button>
                     </div>
 
-                    <Button variant="outline" size="sm" onClick={handleToday} className="h-9 px-4 rounded-xl font-bold border-primary/20 text-primary cursor-pointer">
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleToday} 
+                        className="h-9 min-h-[44px] sm:min-h-[36px] px-4 rounded-xl font-bold border-primary/20 text-primary cursor-pointer active:scale-[0.97]"
+                    >
                         Today
                     </Button>
 
                     <div className="flex gap-1 bg-muted/30 p-1 rounded-xl border">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg cursor-pointer" onClick={handlePrev}>
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 min-h-[44px] min-w-[44px] sm:min-h-[32px] sm:min-w-[32px] rounded-lg cursor-pointer active:scale-[0.97]" 
+                            onClick={handlePrev}
+                            aria-label="Previous period"
+                        >
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg cursor-pointer" onClick={handleNext}>
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 min-h-[44px] min-w-[44px] sm:min-h-[32px] sm:min-w-[32px] rounded-lg cursor-pointer active:scale-[0.97]" 
+                            onClick={handleNext}
+                            aria-label="Next period"
+                        >
                             <ChevronRight className="h-4 w-4" />
                         </Button>
                     </div>
@@ -982,6 +1223,7 @@ export default function TaskCalendar({ tasks, onTaskClick, userMap, onTaskUpdate
             {view === 'month' && renderMonthView()}
             {view === 'week' && renderWeekView()}
             {view === 'day' && renderDayView()}
+            {view === 'agenda' && renderAgendaView()}
         </Card>
     );
 }
