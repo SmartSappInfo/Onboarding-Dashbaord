@@ -37,25 +37,10 @@ export type MessagingDashboardActionResult =
   | { success: true; data: MessagingDashboardSummary }
   | { success: false; error: string; code?: string };
 
-interface CacheEntry {
-  data: MessagingDashboardSummary;
-  expiresAt: number;
-}
-
-/**
- * In-memory TTL cache for dashboard summaries to protect Firestore
- * from query storms when users switch tabs or refresh pages frequently.
- * Key format: `dashboard:${organizationId}:${workspaceId}`
- * Capacity capped at 500 entries to prevent unbounded memory growth (Rule 9).
- */
-const dashboardSummaryCache = new Map<string, CacheEntry>();
-const CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutes
-const MAX_CACHE_ENTRIES = 500;
-
-/** Test utility to clear memory cache between runs */
-export function clearDashboardSummaryCacheForTests(): void {
-  dashboardSummaryCache.clear();
-}
+import {
+  getCachedDashboardSummary,
+  setCachedDashboardSummary,
+} from '@/lib/messaging/messaging-dashboard-cache';
 
 /**
  * Wraps an asynchronous task with a strict timeout to guarantee bounded latency.
@@ -169,9 +154,9 @@ export async function getMessagingDashboardSummaryAction(
   const cacheKey = `dashboard:${organizationId}:${workspaceId}`;
   const nowMs = Date.now();
   if (!forceRefresh) {
-    const cached = dashboardSummaryCache.get(cacheKey);
-    if (cached && cached.expiresAt > nowMs) {
-      return { success: true, data: cached.data };
+    const cachedData = getCachedDashboardSummary(cacheKey, nowMs);
+    if (cachedData) {
+      return { success: true, data: cachedData };
     }
   }
 
@@ -457,22 +442,7 @@ export async function getMessagingDashboardSummaryAction(
     const validatedSummary = MessagingDashboardSummarySchema.parse(payload);
 
     // 12. Cache Result with Bounded Capacity Guard (Rule 9)
-    if (dashboardSummaryCache.size >= MAX_CACHE_ENTRIES) {
-      for (const [k, v] of dashboardSummaryCache.entries()) {
-        if (v.expiresAt <= nowMs) {
-          dashboardSummaryCache.delete(k);
-        }
-      }
-      if (dashboardSummaryCache.size >= MAX_CACHE_ENTRIES) {
-        const oldestKey = dashboardSummaryCache.keys().next().value;
-        if (oldestKey) dashboardSummaryCache.delete(oldestKey);
-      }
-    }
-
-    dashboardSummaryCache.set(cacheKey, {
-      data: validatedSummary,
-      expiresAt: nowMs + CACHE_TTL_MS,
-    });
+    setCachedDashboardSummary(cacheKey, validatedSummary, nowMs);
 
     const elapsedMs = Date.now() - startTime;
     if (process.env.NODE_ENV === 'development') {

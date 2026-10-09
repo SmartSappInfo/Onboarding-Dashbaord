@@ -98,10 +98,8 @@ vi.mock('@/lib/firebase-admin', () => ({
   },
 }));
 
-import {
-  getMessagingDashboardSummaryAction,
-  clearDashboardSummaryCacheForTests,
-} from '../messaging-dashboard-actions';
+import { getMessagingDashboardSummaryAction } from '../messaging-dashboard-actions';
+import { clearDashboardSummaryCacheForTests } from '@/lib/messaging/messaging-dashboard-cache';
 import { UnauthorizedError } from '@/lib/auth/require-auth';
 
 describe('getMessagingDashboardSummaryAction', () => {
