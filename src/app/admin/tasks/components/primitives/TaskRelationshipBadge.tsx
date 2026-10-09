@@ -1,15 +1,41 @@
 'use client';
 
+/**
+ * @fileOverview TaskRelationshipBadge Primitive
+ *
+ * Unified visual indicator and deep-link bridge for CRM entities (Institution, Family, Deal),
+ * DocSigning Contract Obligations, Meetings, and Surveys conforming to Roadmap §40-41 and UI Spec §613-624:
+ * - Computes authoritative deep-links to canonical records without data duplication.
+ * - Explicitly surfaces "Sync pending" vs "Synced" states for contract obligations.
+ * - Includes hover preview tooltip with record context and direct navigation action.
+ * - Graceful fallback to neutral unlinked badge if record identifier is missing.
+ */
+
 import * as React from 'react';
-import { Building2, User, Users, Briefcase, FileSignature, CheckCircle2, Clock } from 'lucide-react';
+import { 
+    Building2, 
+    User, 
+    Users, 
+    Briefcase, 
+    FileSignature, 
+    CheckCircle2, 
+    Clock, 
+    Calendar, 
+    ClipboardList,
+    ExternalLink 
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
 export interface TaskRelationshipBadgeProps {
+    entityId?: string | null;
     entityName?: string | null;
     entityType?: string | null;
     relatedEntityType?: string | null;
+    relatedParentId?: string | null;
+    relatedEntityId?: string | null;
     dealId?: string | null;
     obligationSyncStatus?: 'synced' | 'pending' | 'failed' | null;
     href?: string | null;
@@ -27,21 +53,24 @@ function getEntityIcon(type?: string | null) {
             return User;
         case 'deal':
             return Briefcase;
+        case 'meeting':
+            return Calendar;
+        case 'surveyresponse':
+        case 'survey':
+            return ClipboardList;
         default:
             return Building2;
     }
 }
 
-/**
- * TaskRelationshipBadge
- * Unified visual indicator for CRM entities (Institution, Family, Deal) and DocSigning Contract Obligations.
- * Explicitly surfaces "Sync pending" vs "Synced" states for contract obligations,
- * ensuring UI never falsely implies downstream synchronization before backend confirmation.
- */
 export function TaskRelationshipBadge({
+    entityId,
     entityName,
     entityType,
     relatedEntityType,
+    relatedParentId,
+    relatedEntityId,
+    dealId,
     obligationSyncStatus,
     href,
     className,
@@ -49,7 +78,29 @@ export function TaskRelationshipBadge({
     const isContractObligation = relatedEntityType === 'School' || relatedEntityType === 'Submission';
     const Icon = getEntityIcon(entityType || relatedEntityType);
 
-    const content = (
+    // Authoritative deep-link derivation (Roadmap §40, UI Spec §617)
+    const computedHref = React.useMemo(() => {
+        if (href) return href;
+        if (dealId) return `/admin/deals?dealId=${dealId}`;
+        if (isContractObligation && (relatedParentId || relatedEntityId)) {
+            const params = new URLSearchParams();
+            if (relatedParentId) params.set('contractId', relatedParentId);
+            if (relatedEntityId) params.set('obligationId', relatedEntityId);
+            return `/admin/finance/contracts?${params.toString()}`;
+        }
+        if (entityId) {
+            return `/admin/entities/${entityId}`;
+        }
+        if (relatedEntityType === 'Meeting' && relatedEntityId) {
+            return `/admin/meetings/${relatedEntityId}`;
+        }
+        if (relatedEntityType === 'SurveyResponse' && relatedParentId) {
+            return `/admin/surveys/${relatedParentId}`;
+        }
+        return null;
+    }, [href, dealId, isContractObligation, relatedParentId, relatedEntityId, entityId, relatedEntityType]);
+
+    const badgeContent = (
         <div className={cn("inline-flex items-center gap-1.5 max-w-full truncate select-none", className)}>
             {entityName && (
                 <Badge
@@ -92,17 +143,37 @@ export function TaskRelationshipBadge({
         </div>
     );
 
-    if (href) {
+    if (computedHref && entityName) {
         return (
-            <Link
-                href={href}
-                onClick={(e) => e.stopPropagation()}
-                className="hover:opacity-85 transition-opacity inline-flex max-w-full"
-            >
-                {content}
-            </Link>
+            <TooltipProvider delayDuration={300}>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Link
+                            href={computedHref}
+                            onClick={(e) => e.stopPropagation()}
+                            className="hover:opacity-85 transition-opacity inline-flex max-w-full"
+                        >
+                            {badgeContent}
+                        </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-xs p-2.5 z-[10050] max-w-xs space-y-1">
+                        <div className="flex items-center justify-between gap-2">
+                            <span className="font-semibold text-foreground">{entityName}</span>
+                            <span className="text-[10px] uppercase font-bold text-muted-foreground">
+                                {entityType || relatedEntityType || 'CRM Record'}
+                            </span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground flex items-center gap-1 text-primary">
+                            <span>Open record</span>
+                            <ExternalLink className="h-3 w-3" />
+                        </p>
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
         );
     }
 
-    return content;
+    return badgeContent;
 }
+
+export default TaskRelationshipBadge;
