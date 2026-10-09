@@ -4,6 +4,7 @@ import { getCashFlowForecastingService } from '@/platform/agents/finance/analyti
 import { getFinanceEmergencyControls } from '@/platform/policy/finance-control-policy';
 import { getSchoolOperationsService } from '@/platform/agents/school/school-operations-service';
 import { CashFlowClient } from './CashFlowClient';
+import { PageContainerFluid } from '@/components/ui/page-container';
 import { type CashFlowForecastResult } from '@/platform/agents/finance/analytics/cash-flow-types';
 import { type AttendanceAnomalyResult } from '@/platform/agents/school/school-operations-types';
 
@@ -60,15 +61,17 @@ async function CashFlowDataFetcher() {
 
 function CashFlowLoadingSkeleton() {
   return (
-    <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6 animate-pulse">
-      <div className="h-10 bg-muted/40 rounded-xl w-1/3" />
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="h-24 bg-muted/30 rounded-xl" />
-        ))}
+    <PageContainerFluid>
+      <div className="space-y-6 pb-20 w-full text-left animate-pulse">
+        <div className="h-10 bg-muted/40 rounded-xl w-1/3" />
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-24 bg-muted/30 rounded-xl" />
+          ))}
+        </div>
+        <div className="h-48 bg-muted/20 rounded-xl" />
       </div>
-      <div className="h-48 bg-muted/20 rounded-xl" />
-    </div>
+    </PageContainerFluid>
   );
 }
 

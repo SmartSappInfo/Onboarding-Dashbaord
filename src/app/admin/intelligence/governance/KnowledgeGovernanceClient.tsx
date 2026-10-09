@@ -198,19 +198,11 @@ export function KnowledgeGovernanceClient() {
     <PageContainerFluid className="space-y-6 pb-16">
       {/* Zone 1: Executive Telemetry & Global Dead-Man Status */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-5">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/20">
-              <ShieldAlert className="h-5 w-5" />
-            </div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl flex items-center gap-2">
-              Backoffice Governance & Control Plane
-              <CardInfoTooltip text="Operational control plane for SmartSapp AI and ambient meeting intelligence. Configure feature flags, rate quotas, GDPR retention, and emergency kill switches (Rules 3, 60, 64)." />
-            </h1>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Zero-downtime policy adjustments, security incident feeds, and dead-man controls.
-          </p>
+        <div className="flex items-center gap-2.5">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
+            Backoffice Governance & Control Plane
+            <CardInfoTooltip text="Operational control plane for SmartSapp AI and ambient meeting intelligence. Configure feature flags, rate quotas, GDPR retention, and emergency kill switches (Rules 3, 60, 64)." />
+          </h1>
         </div>
 
         <div className="flex items-center gap-2">
@@ -368,7 +360,7 @@ export function KnowledgeGovernanceClient() {
           )}
 
           {metrics?.recentIncidents.map((incident) => (
-            <div key={incident.incidentId} className="p-4 flex items-center justify-between gap-3 text-xs">
+            <div key={incident.incidentId} className="p-4 flex items-center justify-between gap-3 text-xs transition-colors hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <Badge

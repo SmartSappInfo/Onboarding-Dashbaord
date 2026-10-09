@@ -71,7 +71,7 @@ function DroppableDay({ id, children, isToday, isCurrentMonth }: DroppableDayPro
     <div
       ref={setNodeRef}
       className={cn(
-        "min-h-32 p-2 border-b border-r border-border/20 transition-all duration-200 relative flex flex-col gap-1.5",
+        "min-h-32 p-2 border-b border-r border-border/20 transition-all duration-200 relative flex flex-col gap-1.5 even:bg-muted/15 dark:even:bg-muted/10",
         !isCurrentMonth && "bg-muted/10 opacity-30",
         isToday && "bg-emerald-500/5 dark:bg-emerald-500/2",
         isOver && "bg-emerald-500/10 dark:bg-emerald-500/5 border-emerald-500/40"
@@ -264,18 +264,14 @@ export default function SocialCalendarClient() {
   };
 
   return (
-    <PageContainerFluid className="space-y-6 max-w-6xl mx-auto py-8">
-      {/* Calendar Header Panel */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/50 pb-6">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/10">
-            <CalendarIcon className="h-5 w-5 text-white" />
-          </div>
+    <PageContainerFluid>
+      <div className="space-y-6 pb-20 w-full text-left">
+        {/* Calendar Header Panel */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/50 pb-6">
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Content Calendar</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Content Calendar</h1>
             <CardInfoTooltip text="Manage and schedule posts via drag-and-drop on the monthly planner grid." />
           </div>
-        </div>
 
         <div className="flex items-center gap-2 self-end sm:self-auto">
           <Button variant="outline" size="icon" onClick={handlePrevMonth} className="rounded-xl h-9 w-9 active:scale-[0.97] transition-all bg-white dark:bg-card border border-border/80 shadow-xs">
@@ -358,6 +354,7 @@ export default function SocialCalendarClient() {
           </Card>
         </DndContext>
       )}
+      </div>
     </PageContainerFluid>
   );
 }

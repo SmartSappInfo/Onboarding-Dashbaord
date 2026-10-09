@@ -1,5 +1,6 @@
 import * as React from 'react';
 import type { Metadata } from 'next';
+import { PageContainerFluid } from '@/components/ui/page-container';
 import { ReconciliationClient } from './ReconciliationClient';
 
 /**
@@ -23,17 +24,19 @@ export const dynamic = 'force-dynamic';
 
 export default function ReconciliationPage() {
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
-      <React.Suspense
-        fallback={
-          <div className="h-96 w-full flex items-center justify-center p-8 text-muted-foreground text-sm">
-            <div className="inline-block animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full mr-2" />
-            Loading Payment Reconciliation Desk...
-          </div>
-        }
-      >
-        <ReconciliationClient />
-      </React.Suspense>
-    </div>
+    <PageContainerFluid>
+      <div className="space-y-6 pb-20 w-full text-left">
+        <React.Suspense
+          fallback={
+            <div className="h-96 w-full flex items-center justify-center p-8 text-muted-foreground text-sm">
+              <div className="inline-block animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full mr-2" />
+              Loading Payment Reconciliation Desk...
+            </div>
+          }
+        >
+          <ReconciliationClient />
+        </React.Suspense>
+      </div>
+    </PageContainerFluid>
   );
 }

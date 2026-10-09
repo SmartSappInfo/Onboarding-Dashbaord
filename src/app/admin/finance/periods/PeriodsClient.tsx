@@ -181,12 +181,11 @@ export default function PeriodsClient() {
 
     return (
         <PageContainerFluid>
-            <div className="space-y-6 pb-32 w-full text-left">
+            <div className="space-y-6 pb-20 w-full text-left">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex flex-col items-start">
                         <div className="flex items-center gap-2">
-                            <Timer className="h-8 w-8 text-primary" />
-                            <h1 className="text-3xl font-bold tracking-tight text-foreground">
+                            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
                                 Billing Cycles
                             </h1>
                             <CardInfoTooltip text={`Define recurring and term-based invoicing windows for ${activeWorkspace?.name || activeWorkspaceId || 'this workspace'}.`} />
@@ -247,7 +246,7 @@ export default function PeriodsClient() {
                                 ))
                             ) : filteredPeriods.length ? (
                                 filteredPeriods.map((period) => (
-                                    <TableRow key={period.id} className={cn('border-border/80 group', period.status === 'closed' && 'opacity-60')}>
+                                    <TableRow key={period.id} className={cn('border-border/80 group hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 transition-colors', period.status === 'closed' && 'opacity-60')}>
                                         <TableCell className="pl-6 py-3.5">
                                             <p className="font-bold text-xs text-foreground tracking-tight">{period.name}</p>
                                             <p className="text-[10px] font-semibold text-muted-foreground tabular-nums">

@@ -83,7 +83,7 @@ export function BenchmarkRunsTable({
               return (
                 <tr
                   key={run.id}
-                  className="hover:bg-muted/10 transition-colors group"
+                  className="transition-colors hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 group"
                 >
                   {/* SCENARIO */}
                   <td className="py-3 px-4 font-mono font-medium text-foreground">

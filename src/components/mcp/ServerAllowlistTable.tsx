@@ -202,7 +202,7 @@ export function ServerAllowlistTable({
               </TableRow>
             ) : (
               servers.map((srv) => (
-                <TableRow key={srv.serverId} className="hover:bg-muted/10 transition-colors">
+                <TableRow key={srv.serverId} className="transition-colors hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15">
                   {/* Name and ServerId */}
                   <TableCell className="py-3.5">
                     <div className="space-y-0.5">

@@ -244,8 +244,8 @@ export function AgentHealthTable({
                   <tr
                     key={sc.personaId}
                     className={cn(
-                      'hover:bg-muted/15 transition-colors',
-                      isTripped && 'bg-destructive/5'
+                      'transition-colors hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15',
+                      isTripped && 'bg-destructive/5 even:bg-destructive/10'
                     )}
                   >
                     {/* 1. Persona */}

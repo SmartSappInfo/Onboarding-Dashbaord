@@ -126,7 +126,7 @@ export function DebtorAccountTable({
           </thead>
           <tbody className="divide-y divide-border/60">
             {debtors.map((debtor) => (
-              <tr key={debtor.entityId} className="hover:bg-muted/15 transition-colors">
+              <tr key={debtor.entityId} className="hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 transition-colors">
                 {/* Account & Contact */}
                 <td className="px-5 py-3.5 max-w-[260px]">
                   <div className="space-y-0.5">

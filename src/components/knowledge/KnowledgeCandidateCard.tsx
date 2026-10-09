@@ -74,7 +74,7 @@ export function KnowledgeCandidateCard({
   return (
     <Card
       className={cn(
-        'border border-border/80 bg-card text-card-foreground shadow-sm rounded-xl overflow-hidden transition-all duration-200 hover:shadow-md hover:border-border',
+        'border border-border/80 bg-card even:bg-muted/20 dark:even:bg-muted/10 text-card-foreground shadow-sm rounded-xl overflow-hidden transition-all duration-200 hover:shadow-md hover:border-border',
         candidate.conflictId && 'border-amber-500/40 bg-amber-500/[0.02]',
         className
       )}

@@ -63,6 +63,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import AssignUserModal from './components/AssignUserModal';
+import UserFilterSelect from './components/UserFilterSelect';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -133,7 +134,8 @@ export default function EntitiesClient() {
   const { user: currentUser } = useUser();
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const { industry } = useIndustry();
-  const { restrictToAssigned } = useWorkspaceVisibility();
+  const { restrictToAssigned, isWorkspaceAdmin } = useWorkspaceVisibility();
+  const isRestricted = Boolean(restrictToAssigned && !isWorkspaceAdmin);
   const { 
     singular, 
     plural, 
@@ -333,7 +335,23 @@ export default function EntitiesClient() {
     });
   };
 
-  const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
+  const { assignedUserId, setAssignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
+
+  /**
+   * Default Assigned User Auto-Filtering (Requirement: agent_mcp_rules.md & User Spec):
+   * When opening the Entity List page, if no explicit ?assignedTo param is in the URL,
+   * automatically filter entities to the logged-in user.
+   * If the workspace allows viewing all entities (!isRestricted), the user retains
+   * full ability to switch to "All Users", "Unassigned", or any team member via the dropdown.
+   */
+  const hasInitializedUserFilterRef = useRef(false);
+  useEffect(() => {
+    if (hasInitializedUserFilterRef.current) return;
+    if (currentUser?.uid && !searchParams.get('assignedTo')) {
+      hasInitializedUserFilterRef.current = true;
+      setAssignedUserId(currentUser.uid);
+    }
+  }, [currentUser?.uid, searchParams, setAssignedUserId]);
   const [sortConfig, setSortConfig] = useState<{ key: keyof WorkspaceEntity | string; direction: 'asc' | 'desc' } | null>({ key: 'addedAt', direction: 'desc' });
 
   // Unified atomic filter state (prevents state drift on Clear All)
@@ -1121,11 +1139,20 @@ export default function EntitiesClient() {
                         </div>
                         
                         <div className="flex items-center gap-2 w-full md:w-auto">
+                            {/* Filter by User Dropdown — sitting directly next to the Filters button */}
+                            <UserFilterSelect
+                                value={assignedUserId}
+                                onValueChange={setAssignedUserId}
+                                currentUserId={currentUser?.uid}
+                                isRestricted={isRestricted}
+                                className="flex-1 sm:flex-initial"
+                            />
+
                             <Button 
                                 variant={isFilterPanelOpen ? "secondary" : "outline"}
                                 onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
                                 className={cn(
-                                    "h-11 px-4 rounded-xl font-bold gap-2 transition-all border border-border/80 w-full md:w-auto justify-center bg-white dark:bg-card active:scale-[0.97]",
+                                    "h-11 px-4 rounded-xl font-bold gap-2 transition-all border border-border/80 flex-1 sm:flex-initial md:w-auto justify-center bg-white dark:bg-card active:scale-[0.97]",
                                     isFilterPanelOpen && "ring-2 ring-primary/20 border-primary/30"
                                 )}
                             >

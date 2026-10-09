@@ -26,6 +26,7 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
+import { PageContainerFluid } from '@/components/ui/page-container';
 import {
   Dialog,
   DialogContent,
@@ -126,7 +127,8 @@ export function FinancialApprovalsClient() {
   };
 
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+    <PageContainerFluid>
+      <div className="space-y-6 pb-20 w-full text-left">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -195,7 +197,7 @@ export function FinancialApprovalsClient() {
                     const isSelfRequest = req.requestedByUserId === user?.uid;
 
                     return (
-                      <TableRow key={req.id} className="border-border/80 text-xs">
+                      <TableRow key={req.id} className="border-border/80 hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 transition-colors text-xs">
                         <TableCell className="pl-6 py-4">
                           {getRequestTypeBadge(req.requestType)}
                         </TableCell>
@@ -321,6 +323,7 @@ export function FinancialApprovalsClient() {
           </DialogContent>
         </Dialog>
       )}
-    </div>
+      </div>
+    </PageContainerFluid>
   );
 }

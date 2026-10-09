@@ -48,6 +48,8 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PageContainerFluid } from '@/components/ui/page-container';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { UnifiedEntitySelector } from '@/components/entities/UnifiedEntitySelector';
 import { ExecuteRecurringBillingModal } from '@/components/finance/ExecuteRecurringBillingModal';
 import { useToast } from '@/hooks/use-toast';
@@ -266,17 +268,15 @@ export function AgreementsClient() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+    <PageContainerFluid>
+      <div className="space-y-6 pb-20 w-full text-left">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground flex items-center gap-3">
-            <ShieldCheck className="h-7 w-7 text-primary" />
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
             Billing Agreements
           </h1>
-          <p className="text-sm text-muted-foreground font-medium mt-1">
-            Institutional recurring contracts, agreed pricing rates, and automated cycle billing for {activeWorkspace?.name || activeWorkspaceId}
-          </p>
+          <CardInfoTooltip text="Institutional recurring contracts, agreed pricing rates, and automated cycle billing." />
         </div>
 
         <div className="flex items-center gap-2.5 w-full sm:w-auto">
@@ -414,7 +414,7 @@ export function AgreementsClient() {
                   </TableRow>
                 ) : (
                   filteredAgreements.map((agreement: BillingAgreement) => (
-                    <TableRow key={agreement.id} className="border-border hover:bg-muted/20 transition-colors">
+                    <TableRow key={agreement.id} className="border-border hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 transition-colors">
                       <TableCell className="pl-6 py-4 font-mono font-bold text-xs text-foreground">
                         {agreement.agreementNumber}
                       </TableCell>
@@ -656,6 +656,7 @@ export function AgreementsClient() {
         isOpen={isCycleBillingOpen}
         onClose={() => setIsCycleBillingOpen(false)}
       />
-    </div>
+      </div>
+    </PageContainerFluid>
   );
 }

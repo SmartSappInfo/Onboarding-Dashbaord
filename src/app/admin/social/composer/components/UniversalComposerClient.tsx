@@ -255,15 +255,16 @@ export default function UniversalComposerClient() {
   };
 
   return (
-    <PageContainerFluid className="space-y-8 max-w-6xl mx-auto py-8">
-      {/* Header Panel */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50 pb-6">
-        <div className="flex items-center gap-2.5">
-          <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-400 to-teal-500 bg-clip-text text-transparent">
-            Universal Composer
-          </h1>
-          <CardInfoTooltip text="Draft once and generate tailored, channel-specific variations utilizing your AI brand voice profile." />
-        </div>
+    <PageContainerFluid>
+      <div className="space-y-6 pb-20 w-full text-left">
+        {/* Header Panel */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50 pb-6">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              Universal Composer
+            </h1>
+            <CardInfoTooltip text="Draft once and generate tailored, channel-specific variations utilizing your AI brand voice profile." />
+          </div>
 
         <div className="flex items-center gap-2">
           <Button 
@@ -420,7 +421,7 @@ export default function UniversalComposerClient() {
               const data = platformData[platform];
 
               return (
-                <Card key={platform} className="border border-border/30 rounded-2xl bg-card/30 backdrop-blur-sm overflow-hidden">
+                <Card key={platform} className="border border-border/30 rounded-2xl bg-card/30 backdrop-blur-sm overflow-hidden even:bg-muted/30 dark:even:bg-muted/15">
                   <CardHeader className="flex flex-row items-center justify-between pb-3 space-y-0 border-b border-border/10 bg-muted/10">
                     <div className="flex items-center gap-2">
                       <Icon className="h-4 w-4 text-muted-foreground" />
@@ -556,6 +557,7 @@ export default function UniversalComposerClient() {
             </TabsContent>
           </Tabs>
         </div>
+      </div>
       </div>
     </PageContainerFluid>
   );

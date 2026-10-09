@@ -11,6 +11,8 @@ import { ReportFilterBar } from './ReportFilterBar';
 import { ReportExportToolbar } from './ReportExportToolbar';
 import { DateRangePreset } from '@/lib/types';
 import { BarChart3, Loader2 } from 'lucide-react';
+import { PageContainerFluid } from '@/components/ui/page-container';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 export interface ReportTabConfig {
   id: string;
@@ -58,22 +60,21 @@ export function ModularReportStudio({
   };
 
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+    <PageContainerFluid>
+      <div className="space-y-6 pb-20 w-full text-left">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
+          <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider mb-1">
             <BarChart3 className="h-4 w-4" />
             Financial Intelligence
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-            {title}
-          </h1>
-          {subtitle && (
-            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-              {subtitle}
-            </p>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              {title}
+            </h1>
+            {subtitle && <CardInfoTooltip text={subtitle} />}
+          </div>
         </div>
 
         {onExportCsv && (
@@ -133,6 +134,7 @@ export function ModularReportStudio({
           </TabsContent>
         ))}
       </Tabs>
-    </div>
+      </div>
+    </PageContainerFluid>
   );
 }

@@ -247,19 +247,15 @@ export default function ListeningClient() {
   };
 
   return (
-    <PageContainerFluid className="space-y-6 max-w-6xl mx-auto py-8">
-      <Tabs defaultValue="alert-logs" className="w-full space-y-6">
-        {/* Header Panel */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50 pb-5">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/10">
-              <Radio className="h-5 w-5 text-white" />
-            </div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Listening Engine</h1>
+    <PageContainerFluid>
+      <div className="space-y-6 pb-20 w-full text-left">
+        <Tabs defaultValue="alert-logs" className="w-full space-y-6">
+          {/* Header Panel */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50 pb-5">
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Listening Engine</h1>
               <CardInfoTooltip text="Track public mentions, hashtags, and competitor actions to protect your brand reputation." />
             </div>
-          </div>
 
           <div className="flex flex-wrap items-center gap-3 shrink-0">
             <TabsList className="inline-flex items-center gap-1 bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto">
@@ -324,7 +320,7 @@ export default function ListeningClient() {
                 {sortedAlerts.map((alert) => {
                   const Icon = platformIcons[alert.platform] || Globe;
                   return (
-                    <Card key={alert.id} className="border border-border/30 bg-card/40 rounded-2xl relative overflow-hidden flex flex-col justify-between hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
+                    <Card key={alert.id} className="border border-border/30 bg-card/40 rounded-2xl relative overflow-hidden flex flex-col justify-between hover:-translate-y-1 hover:shadow-lg transition-all duration-300 even:bg-muted/30 dark:even:bg-muted/15">
                       <CardHeader className="pb-2 border-b border-border/10 bg-muted/10 flex flex-row items-center justify-between space-y-0 py-3">
                         <div className="flex items-center gap-2">
                           <Icon className="h-4 w-4 text-muted-foreground" />
@@ -507,6 +503,7 @@ export default function ListeningClient() {
         </>
       )}
       </Tabs>
+      </div>
     </PageContainerFluid>
   );
 }

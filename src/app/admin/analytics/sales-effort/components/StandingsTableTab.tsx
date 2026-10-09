@@ -127,7 +127,7 @@ export function StandingsTableTab({
                   <TableRow
                     key={user.userId}
                     onClick={() => onSelectRep(user.userId)}
-                    className="hover:bg-muted/20 cursor-pointer transition-all duration-150 group border-b border-border/20 last:border-none active:scale-[0.99]"
+                    className="transition-colors hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 cursor-pointer group border-b border-border/20 last:border-none active:scale-[0.99]"
                   >
                     <TableCell className="py-4 text-center">
                       <div className="flex justify-center">{getRankBadge(idx)}</div>

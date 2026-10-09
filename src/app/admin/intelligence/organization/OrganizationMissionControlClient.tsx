@@ -57,6 +57,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+import { PageContainerFluid } from '@/components/ui/page-container';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { useEventStream } from '@/hooks/useEventStream';
@@ -285,27 +286,19 @@ export function OrganizationMissionControlClient({
   const activeMission = telemetry?.activeMissions?.[0] ?? null;
 
   return (
-    <div className="space-y-6 p-4 sm:p-6 max-w-7xl mx-auto">
-      {/* Cockpit Top Bar & Action Launcher Toolbar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border/80">
-        <div>
+    <PageContainerFluid>
+      <div className="space-y-6 pb-20 w-full text-left">
+        {/* Cockpit Top Bar & Action Launcher Toolbar */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border/80">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20">
-              <Network className="h-5 w-5" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
-                Organization Swarm Mission Control
-                <Badge variant="outline" className="text-[10px] font-mono border-primary/30 text-primary bg-primary/5">
-                  Phase 13 Swarm Mesh
-                </Badge>
-              </h1>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Autonomous multi-agent orchestration, mathematical authority trees, and live topological DAG telemetry.
-              </p>
-            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
+              Organization Swarm Mission Control
+              <Badge variant="outline" className="text-[10px] font-mono border-primary/30 text-primary bg-primary/5">
+                Phase 13 Swarm Mesh
+              </Badge>
+            </h1>
+            <CardInfoTooltip text="Autonomous multi-agent orchestration, mathematical authority trees, and live topological DAG telemetry." />
           </div>
-        </div>
 
         {/* Toolbar & Status Dot */}
         <div className="flex flex-wrap items-center gap-2.5">
@@ -603,7 +596,7 @@ export function OrganizationMissionControlClient({
             {telemetry?.meshPeers?.map((peer) => (
               <div
                 key={peer.peerId}
-                className="p-3 rounded-lg border border-border/60 bg-muted/10 flex items-center justify-between gap-3 text-xs"
+                className="p-3 rounded-lg border border-border/60 transition-colors hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 flex items-center justify-between gap-3 text-xs"
               >
                 <div>
                   <div className="flex items-center gap-2">
@@ -829,6 +822,7 @@ export function OrganizationMissionControlClient({
         organizationId={organizationId}
         workspaceId={workspaceId}
       />
-    </div>
+      </div>
+    </PageContainerFluid>
   );
 }

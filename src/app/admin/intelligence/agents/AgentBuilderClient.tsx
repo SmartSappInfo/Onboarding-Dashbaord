@@ -353,7 +353,7 @@ export function AgentBuilderClient() {
 
       {/* VIEW 1: STUDIO EDITOR VIEW */}
       {activePersona ? (
-        <div className="flex-1 flex flex-col p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+        <div className="flex-1 flex flex-col w-full pb-20">
           {/* Top Navigation Bar */}
           <div className="flex flex-wrap items-center justify-between gap-3 pb-5 mb-6 border-b border-border/80">
             <div className="flex items-center gap-3">
@@ -518,7 +518,7 @@ export function AgentBuilderClient() {
         </div>
       ) : (
         /* VIEW 2: PERSONA CATALOG GRID */
-        <div className="flex-1 flex flex-col p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+        <div className="flex-1 flex flex-col w-full pb-20">
           {/* Executive Header */}
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6 border-b border-border/80 pb-5">
             <div className="flex items-center gap-2.5">
@@ -528,7 +528,7 @@ export function AgentBuilderClient() {
               >
                 <ArrowLeft className="w-4 h-4" />
               </Link>
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
                 Agent Persona Studio & Policy Editor
               </h1>
               <CardInfoTooltip text="Build, configure, govern, and test autonomous agent personas. Enforces Rule 16 least privilege, Rule 23 budget ceilings, and Rule 42 shadow mode testing." />

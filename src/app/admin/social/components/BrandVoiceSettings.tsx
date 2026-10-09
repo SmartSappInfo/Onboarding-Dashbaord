@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sparkles, Save, Loader2, RefreshCw } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import type { BrandVoiceProfile } from '@/lib/types';
 
 export default function BrandVoiceSettings() {
@@ -166,13 +167,11 @@ export default function BrandVoiceSettings() {
 
         <CardHeader className="border-b border-border/20 pb-4 relative z-10">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
+            <div className="flex items-center gap-2">
               <CardTitle className="text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-emerald-500" /> AI Brand Voice Guide
               </CardTitle>
-              <CardDescription className="text-xs">
-                Configure guidelines that prompt the AI Composer to replicate your organization&apos;s exact messaging style.
-              </CardDescription>
+              <CardInfoTooltip text="Configure guidelines that prompt the AI Composer to replicate your organization's exact messaging style." />
             </div>
             <Button
               type="button"

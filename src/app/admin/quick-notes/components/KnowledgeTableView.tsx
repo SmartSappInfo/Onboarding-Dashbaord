@@ -105,7 +105,7 @@ export function KnowledgeTableView({
               return (
                 <tr
                   key={note.id}
-                  className="hover:bg-muted/40 transition-colors group cursor-pointer"
+                  className="transition-colors hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 group cursor-pointer"
                   onClick={() => onEdit(note)}
                 >
                   <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>

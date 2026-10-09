@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+import { PageContainerFluid } from '@/components/ui/page-container';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -310,15 +311,16 @@ export default function InboxClient() {
   }, [contacts, searchContactQuery]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-6rem)] max-w-7xl mx-auto py-6 px-4 gap-6">
-      {/* Header controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/50 pb-4">
-        <div className="flex items-center gap-2.5">
-          <h1 className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-400 to-teal-500 bg-clip-text text-transparent">
-            Social Inbox
-          </h1>
-          <CardInfoTooltip text="Monitor and respond to customer questions, DMs, and reviews in a single hub linked directly to CRM records." />
-        </div>
+    <PageContainerFluid className="h-[calc(100vh-4rem)] flex flex-col">
+      <div className="flex flex-col flex-1 h-full w-full text-left gap-6 pb-6 overflow-hidden">
+        {/* Header controls */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/50 pb-4">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              Social Inbox
+            </h1>
+            <CardInfoTooltip text="Monitor and respond to customer questions, DMs, and reviews in a single hub linked directly to CRM records." />
+          </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {['facebook', 'instagram', 'linkedin', 'x'].map((platform) => {
@@ -388,10 +390,10 @@ export default function InboxClient() {
                     key={thread.id}
                     onClick={() => setActiveThreadId(thread.id)}
                     className={cn(
-                      "w-full text-left p-3 rounded-2xl border transition-all duration-200 flex flex-col gap-1.5 active:scale-[0.99]",
+                      "w-full text-left p-3 rounded-2xl border transition-colors duration-200 flex flex-col gap-1.5 active:scale-[0.99]",
                       isSelected 
-                        ? "bg-background/60 border-emerald-500/30 text-foreground shadow-lg shadow-emerald-500/2"
-                        : "bg-background/20 border-border/20 hover:border-border/40 text-muted-foreground"
+                        ? "bg-background/80 border-primary/40 text-foreground shadow-sm"
+                        : "hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 border-border/20 text-muted-foreground"
                     )}
                   >
                     <div className="flex justify-between items-center gap-2 w-full">
@@ -634,7 +636,7 @@ export default function InboxClient() {
                               key={contact.id}
                               onClick={() => handleLinkCRM(contact.id)}
                               disabled={isLinking}
-                              className="w-full text-left p-2 rounded-xl bg-muted/20 hover:bg-muted/40 border border-border/10 text-[10px] font-bold flex items-center justify-between"
+                              className="w-full text-left p-2 rounded-xl border border-border/10 text-[10px] font-bold flex items-center justify-between transition-colors hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15"
                             >
                               <span className="truncate">{contact.displayName}</span>
                               <Link2 className="h-3.5 w-3.5 text-muted-foreground shrink-0 ml-1" />
@@ -728,6 +730,7 @@ export default function InboxClient() {
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </PageContainerFluid>
   );
 }

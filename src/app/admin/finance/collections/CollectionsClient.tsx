@@ -21,6 +21,7 @@ import { useTenant } from '@/context/TenantContext';
 import { useEventStream } from '@/hooks/useEventStream';
 import { useToast } from '@/hooks/use-toast';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+import { PageContainerFluid } from '@/components/ui/page-container';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -299,22 +300,18 @@ export function CollectionsClient({
   ];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+    <PageContainerFluid>
+      <div className="space-y-6 pb-20 w-full text-left">
       {/* Title Bar & Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-5">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-              Collections Action Desk
-            </h1>
-            <CardInfoTooltip text="Intelligent aging receivables recovery engine. Evaluates overdue tuition fees, generates dynamic installment plans, and intercepts high-risk proposals into the unified approval center." />
-            <Badge variant="outline" className="hidden sm:inline-flex text-xs font-mono">
-              Phase 12 · M4
-            </Badge>
-          </div>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Automated dunning escalation, dynamic installment agreements, and promise-to-pay tracking.
-          </p>
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+            Collections Action Desk
+          </h1>
+          <CardInfoTooltip text="Intelligent aging receivables recovery engine. Evaluates overdue tuition fees, generates dynamic installment plans, and intercepts high-risk proposals into the unified approval center." />
+          <Badge variant="outline" className="hidden sm:inline-flex text-xs font-mono">
+            Phase 12 · M4
+          </Badge>
         </div>
 
         <div className="flex items-center gap-2.5">
@@ -495,6 +492,7 @@ export function CollectionsClient({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </PageContainerFluid>
   );
 }

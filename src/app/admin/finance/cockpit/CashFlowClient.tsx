@@ -32,6 +32,8 @@ import {
   toggleFinanceEmergencySwitchAction,
   getFinanceEmergencyControlsAction,
 } from '@/app/actions/finance-control-actions';
+import { PageContainerFluid } from '@/components/ui/page-container';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import {
   Clock,
   ShieldAlert,
@@ -126,23 +128,20 @@ export function CashFlowClient({
   const isEmergencyActive = Object.values(controls.switches).some(Boolean);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6 font-figtree">
-      {/* Header Zone */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border/70 pb-5">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+    <PageContainerFluid>
+      <div className="space-y-6 pb-20 w-full text-left font-figtree">
+        {/* Header Zone */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border/70 pb-5">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
               Predictive Cash Flow Cockpit
             </h1>
+            <CardInfoTooltip text="Deterministic 30/60/90-day cash runway projection, collections velocity, and school operations intelligence." />
             <Badge variant="outline" className="text-xs gap-1.5 px-2 py-0.5">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Live Forecasting
             </Badge>
           </div>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Deterministic 30/60/90-day cash runway projection, collections velocity, and school operations intelligence.
-          </p>
-        </div>
 
         {/* Action Controls */}
         <div className="flex items-center gap-2 flex-wrap">
@@ -436,5 +435,6 @@ export function CashFlowClient({
         }}
       />
     </div>
+  </PageContainerFluid>
   );
 }

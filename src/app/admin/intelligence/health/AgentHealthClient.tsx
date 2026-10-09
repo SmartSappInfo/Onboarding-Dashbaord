@@ -40,6 +40,8 @@ import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { useEventStream } from '@/hooks/useEventStream';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { PageContainerFluid } from '@/components/ui/page-container';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 import {
   AgentHealthKPIHeader,
@@ -378,26 +380,18 @@ export function AgentHealthClient({
   };
 
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
-      {/* COCKPIT HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border/80 pb-5">
-        <div className="flex flex-col gap-1.5">
+    <PageContainerFluid>
+      <div className="flex flex-col gap-6 pb-20 w-full text-left">
+        {/* COCKPIT HEADER */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border/80 pb-5">
           <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/10 text-primary border border-primary/20">
-              <Activity className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-                Agent Health & Verification Cockpit
-              </h1>
-            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              Agent Health & Verification Cockpit
+            </h1>
+            <CardInfoTooltip text="Autonomous fleet telemetry, dynamic circuit breakers, postcondition verification, and human governance." />
           </div>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            Autonomous fleet telemetry, dynamic circuit breakers, postcondition verification, and human governance.
-          </p>
-        </div>
 
-        {/* TOP STATUS BAR & REFRESH ACTION */}
+          {/* TOP STATUS BAR & REFRESH ACTION */}
         <div className="flex items-center gap-3 self-start sm:self-auto">
           {/* SSE Stream Status Badge */}
           <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border/70 bg-card text-xs">
@@ -527,6 +521,7 @@ export function AgentHealthClient({
         workspaceId={workspaceId}
         onResetSuccess={handleResetSuccess}
       />
-    </div>
+      </div>
+    </PageContainerFluid>
   );
 }

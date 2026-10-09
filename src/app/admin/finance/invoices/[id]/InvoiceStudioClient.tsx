@@ -33,6 +33,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PageContainerFluid } from '@/components/ui/page-container';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 /**
  * InvoiceStudioClient - Invoice Editor UI
@@ -218,29 +219,25 @@ export default function InvoiceStudioClient() {
 
     return (
         <PageContainerFluid>
-            <div className="h-full overflow-y-auto w-full">
-                <div className="max-w-5xl mx-auto space-y-6 pb-32">
-                    {/* Header */}
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                            <Button 
-                                variant="ghost" 
-                                size="icon"
-                                onClick={() => router.push('/admin/finance/invoices')} 
-                                className="rounded-xl h-10 w-10 text-muted-foreground hover:text-primary active:scale-[0.97]"
-                            >
-                                <ArrowLeft className="h-5 w-5" />
-                            </Button>
-                            <div>
-                                <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
-                                    <Receipt className="h-7 w-7 text-primary" />
-                                    Invoice Studio
-                                </h1>
-                                <p className="text-muted-foreground text-xs mt-0.5">
-                                    Reviewing <span className="font-bold text-foreground">{invoice.invoiceNumber}</span> for <span className="font-bold text-foreground">{invoice.entityName}</span>
-                                </p>
-                            </div>
+            <div className="space-y-6 pb-20 w-full text-left">
+                {/* Header */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => router.push('/admin/finance/invoices')} 
+                            className="rounded-xl h-10 w-10 text-muted-foreground hover:text-primary active:scale-[0.97]"
+                        >
+                            <ArrowLeft className="h-5 w-5" />
+                        </Button>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                                Invoice Studio
+                            </h1>
+                            <CardInfoTooltip text={`Reviewing ${invoice.invoiceNumber} for ${invoice.entityName}.`} />
                         </div>
+                    </div>
 
                         <div className="flex flex-wrap items-center gap-2.5">
                             {isFinalized && !isVoided && balanceDue > 0 && (
@@ -343,7 +340,7 @@ export default function InvoiceStudioClient() {
                                         </TableHeader>
                                         <TableBody>
                                             {localItems.map((item, idx) => (
-                                                <TableRow key={idx} className="hover:bg-muted/5">
+                                                <TableRow key={idx} className="hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 transition-colors">
                                                     <TableCell className="space-y-1">
                                                         <Input 
                                                             value={item.name} 
@@ -563,7 +560,6 @@ export default function InvoiceStudioClient() {
                         </div>
                     </div>
                 </div>
-            </div>
 
             {/* Record Payment Modal */}
             {invoice && (

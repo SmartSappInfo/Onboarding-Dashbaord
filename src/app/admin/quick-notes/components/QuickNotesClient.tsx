@@ -280,19 +280,14 @@ export default function QuickNotesClient() {
       <PageContainerFluid>
       {/* Header */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 text-primary shadow-sm">
-            <Brain className="h-6 w-6" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="font-serif text-3xl font-semibold tracking-tight text-foreground">Company Brain</h1>
-              <CardInfoTooltip text="Organizational knowledge, ideas, decisions, and intelligence across this workspace." />
-              <Badge variant="outline" className="text-xs font-mono font-medium">
-                {counts.all} {counts.all === 1 ? 'item' : 'items'}
-              </Badge>
-            </div>
-          </div>
+        <div className="flex items-center gap-2.5">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+            Company Brain
+          </h1>
+          <CardInfoTooltip text="Organizational knowledge, ideas, decisions, and intelligence across this workspace." />
+          <Badge variant="outline" className="text-xs font-mono font-medium">
+            {counts.all} {counts.all === 1 ? 'item' : 'items'}
+          </Badge>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">

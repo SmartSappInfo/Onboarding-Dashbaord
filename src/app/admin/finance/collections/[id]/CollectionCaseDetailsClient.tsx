@@ -23,6 +23,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { PageContainerFluid } from '@/components/ui/page-container';
 import { 
   Table, 
   TableBody, 
@@ -185,7 +186,8 @@ export function CollectionCaseDetailsClient({ caseId }: { caseId: string }) {
   }
 
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+    <PageContainerFluid>
+      <div className="space-y-6 pb-20 w-full text-left">
       {/* Top Header */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
@@ -597,6 +599,7 @@ export function CollectionCaseDetailsClient({ caseId }: { caseId: string }) {
         preselectedBalanceDue={collectionCase.totalDebt}
         onPaymentSuccess={fetchDetails}
       />
-    </div>
+      </div>
+    </PageContainerFluid>
   );
 }

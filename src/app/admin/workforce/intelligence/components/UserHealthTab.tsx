@@ -87,7 +87,7 @@ export function UserHealthTab({ scores }: UserHealthTabProps) {
           <TableBody>
             {scores.length > 0 ? (
               scores.map((u) => (
-                <TableRow key={u.personId} className="text-xs hover:bg-muted/10 transition-colors">
+                <TableRow key={u.personId} className="text-xs transition-colors hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15">
                   <TableCell className="pl-4 py-3">
                     <div className="space-y-0.5">
                       <span className="font-semibold text-foreground block">{u.personName}</span>

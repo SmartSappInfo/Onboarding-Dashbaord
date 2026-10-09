@@ -132,21 +132,22 @@ export default function SocialAccountsPage() {
   const platforms = ['linkedin', 'facebook', 'instagram', 'x', 'youtube'] as const;
 
   return (
-    <PageContainerFluid className="space-y-8 max-w-6xl mx-auto py-8">
-      {/* Header: Title & Description */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50 pb-6">
-        <div className="flex items-center gap-2.5">
-          <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-400 to-teal-500 bg-clip-text text-transparent">
-            Connected Profiles
-          </h1>
-          <CardInfoTooltip text="Authorize and manage connected social media profiles for your organization." />
+    <PageContainerFluid>
+      <div className="space-y-6 pb-20 w-full text-left">
+        {/* Header: Title & Description */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50 pb-6">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              Connected Profiles
+            </h1>
+            <CardInfoTooltip text="Authorize and manage connected social media profiles for your organization." />
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400 gap-1.5 py-1 px-3 font-semibold text-xs tracking-wider uppercase rounded-full">
+              <Globe className="h-3 w-3 animate-spin" /> Simulated Dev Mode Active
+            </Badge>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400 gap-1.5 py-1 px-3 font-semibold text-xs tracking-wider uppercase rounded-full">
-            <Globe className="h-3 w-3 animate-spin" /> Simulated Dev Mode Active
-          </Badge>
-        </div>
-      </div>
 
       {/* Info notice about mock mode */}
       <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-4 flex gap-3 text-emerald-800 dark:text-emerald-300">
@@ -211,7 +212,7 @@ export default function SocialAccountsPage() {
                   <Card 
                     key={acc.id} 
                     className={cn(
-                      "border rounded-2xl transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 relative overflow-hidden group bg-card/60 backdrop-blur-md",
+                      "border rounded-2xl transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 relative overflow-hidden group bg-card/60 backdrop-blur-md even:bg-muted/30 dark:even:bg-muted/15",
                       colors.border
                     )}
                   >
@@ -286,7 +287,7 @@ export default function SocialAccountsPage() {
                     key={platform}
                     variant="outline" 
                     className={cn(
-                      "w-full justify-between h-12 rounded-xl hover:bg-muted/40 font-semibold text-xs tracking-wide active:scale-[0.97] transition-all bg-white dark:bg-card border border-border/80 shadow-xs",
+                      "w-full justify-between h-12 rounded-xl hover:bg-muted/50 font-semibold text-xs tracking-wide active:scale-[0.97] transition-colors bg-white dark:bg-card border border-border/80 shadow-xs even:bg-muted/30 dark:even:bg-muted/15",
                       isConnected && "opacity-60"
                     )}
                     onClick={() => triggerConnect(platform)}
@@ -310,6 +311,7 @@ export default function SocialAccountsPage() {
             </CardContent>
           </Card>
         </div>
+      </div>
       </div>
     </PageContainerFluid>
   );

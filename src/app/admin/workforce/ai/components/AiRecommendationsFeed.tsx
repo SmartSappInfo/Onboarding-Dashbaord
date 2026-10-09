@@ -96,7 +96,7 @@ export function AiRecommendationsFeed({
           ))
         ) : recommendations.length > 0 ? (
           recommendations.map((rec) => (
-            <div key={rec.id} className="p-4 hover:bg-muted/10 transition-colors space-y-3">
+            <div key={rec.id} className="p-4 transition-colors hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-2 flex-wrap">
                   {priorityBadge(rec.priority)}

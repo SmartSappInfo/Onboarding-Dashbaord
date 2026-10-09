@@ -308,16 +308,11 @@ export function ReconciliationClient({
             <div className="h-10 w-10 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-sm">
               <Scale className="h-5 w-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-                  Payment Reconciliation Desk
-                </h1>
-                <CardInfoTooltip text="Mission control for multi-channel school fees & invoice settlement. Performs automated 3-way matching across bank wire memos, mobile money (MTN/Telecel), and Stripe payouts with tolerance verification." />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Automated 3-way settlement matcher, discrepancy tolerance verification, and exception triage queue.
-              </p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                Payment Reconciliation Desk
+              </h1>
+              <CardInfoTooltip text="Mission control for multi-channel school fees & invoice settlement. Performs automated 3-way matching across bank wire memos, mobile money (MTN/Telecel), and Stripe payouts with tolerance verification." />
             </div>
           </div>
 

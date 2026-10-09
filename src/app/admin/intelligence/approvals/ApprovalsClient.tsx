@@ -27,6 +27,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+import { PageContainerFluid } from '@/components/ui/page-container';
 import { ApprovalMetricsCards } from '@/components/approvals/ApprovalMetricsCards';
 import { EmergencyPauseBanner } from '@/components/approvals/EmergencyPauseBanner';
 import { ApprovalReviewCard } from '@/components/approvals/ApprovalReviewCard';
@@ -278,20 +279,16 @@ export function ApprovalsClient() {
   }, [proposals]);
 
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
-      {/* Surface Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
+    <PageContainerFluid>
+      <div className="flex-1 space-y-6 pb-20 w-full text-left">
+        {/* Surface Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border/80 pb-5">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/20">
-              <ShieldCheck className="h-6 w-6" />
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
               Agent Approval Center
               <CardInfoTooltip text="Central operator console for adjudicating high-risk agent proposals, managing dual-control compliance, and inspecting two-phase execution payloads." />
             </h1>
           </div>
-        </div>
 
         {/* Global Refresh Button */}
         <Button
@@ -450,6 +447,7 @@ export function ApprovalsClient() {
           isSubmitting={isProcessing}
         />
       )}
-    </div>
+      </div>
+    </PageContainerFluid>
   );
 }

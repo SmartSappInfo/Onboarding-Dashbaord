@@ -19,6 +19,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 import { useEventStream } from '@/hooks/useEventStream';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+import { PageContainerFluid } from '@/components/ui/page-container';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -318,23 +319,18 @@ export function McpClient() {
   };
 
   return (
-    <div className="space-y-6 pb-12">
-      {/* Console Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-5">
-        <div className="space-y-1">
+    <PageContainerFluid>
+      <div className="space-y-6 pb-20 w-full text-left">
+        {/* Console Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-5">
           <div className="flex items-center gap-2.5">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-              <Layers className="h-6 w-6 text-primary" />
-              <span>Operator Capability Console</span>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              Operator Capability Console
             </h1>
             <CardInfoTooltip
               text="Central mission control for platform capability registration, cryptographic tool fingerprinting, schema drift detection, and external MCP server allowlisting."
             />
           </div>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            Manage Model Context Protocol (MCP) streamable endpoints, verify supply-chain security, and monitor autonomous tool dispatches.
-          </p>
-        </div>
 
         <div className="flex items-center gap-2">
           <Button
@@ -446,6 +442,7 @@ export function McpClient() {
         onRegister={handleRegisterServer}
         isProcessing={isProcessing}
       />
-    </div>
+      </div>
+    </PageContainerFluid>
   );
 }

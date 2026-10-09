@@ -318,7 +318,7 @@ export function IntelligenceClient() {
           {recentCommands.map((item) => (
             <div
               key={item.id}
-              className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hover:bg-muted/20 transition-colors"
+              className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 transition-colors hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15"
             >
               <div className="space-y-1 min-w-0 max-w-2xl">
                 <div className="flex items-center gap-2">

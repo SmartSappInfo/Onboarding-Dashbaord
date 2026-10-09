@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+import { PageContainerFluid } from '@/components/ui/page-container';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { collection, query, where } from 'firebase/firestore';
 import { Label } from '@/components/ui/label';
@@ -197,18 +198,14 @@ export default function AnalyticsClient() {
   }, [kpis, invoices, contacts]);
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto py-8 px-4">
-      {/* Header Panel */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50 pb-6">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/10">
-            <ChartBarIcon className="h-5 w-5 text-white" />
-          </div>
+    <PageContainerFluid>
+      <div className="space-y-6 pb-20 w-full text-left">
+        {/* Header Panel */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50 pb-6">
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-extrabold tracking-tight text-foreground">ROI Analytics</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">ROI Analytics</h1>
             <CardInfoTooltip text="Track your social content click-through rates, lead acquisitions, and attributed program revenue." />
           </div>
-        </div>
 
         <RainbowButton 
           onClick={handleSeedMetrics}
@@ -358,6 +355,7 @@ export default function AnalyticsClient() {
           </CardContent>
         </Card>
       </div>
-    </div>
+      </div>
+    </PageContainerFluid>
   );
 }

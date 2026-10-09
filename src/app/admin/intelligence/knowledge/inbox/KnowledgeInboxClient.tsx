@@ -203,24 +203,16 @@ export function KnowledgeInboxClient() {
     <PageContainerFluid className="space-y-6 pb-16">
       {/* Zone 1: Executive Header & Status Badges */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-border/80 pb-5">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/20">
-              <Inbox className="h-5 w-5" />
-            </div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl flex items-center gap-2">
-              Knowledge Inbox
-              <CardInfoTooltip text="Intelligent triage center for newly extracted knowledge candidates, decisions, commitments, and conflict resolutions. Reviewing items promotes them into institutional memory." />
-            </h1>
-            {pendingCount > 0 && (
-              <Badge className="bg-primary/15 text-primary border-primary/30 text-xs px-2.5 py-0.5 rounded-full font-semibold">
-                {pendingCount} new
-              </Badge>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Review and govern facts, relationships, and decisions extracted by SmartSapp AI agents.
-          </p>
+        <div className="flex items-center gap-2.5">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
+            Knowledge Inbox
+            <CardInfoTooltip text="Intelligent triage center for newly extracted knowledge candidates, decisions, commitments, and conflict resolutions. Reviewing items promotes them into institutional memory." />
+          </h1>
+          {pendingCount > 0 && (
+            <Badge className="bg-primary/15 text-primary border-primary/30 text-xs px-2.5 py-0.5 rounded-full font-semibold">
+              {pendingCount} new
+            </Badge>
+          )}
         </div>
 
         <div className="flex items-center gap-2.5">

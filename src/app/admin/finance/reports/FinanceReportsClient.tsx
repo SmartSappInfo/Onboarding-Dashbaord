@@ -333,7 +333,7 @@ export function FinanceReportsClient() {
                     </TableHeader>
                     <TableBody>
                       {leaderboard.map((item, idx) => (
-                        <TableRow key={item.userId} className="hover:bg-muted/40 text-xs">
+                        <TableRow key={item.userId} className="hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 transition-colors text-xs">
                           <TableCell className="font-semibold text-foreground">
                             <span className="font-mono text-muted-foreground mr-1.5">#{idx + 1}</span>
                             {item.userName}
@@ -381,7 +381,7 @@ export function FinanceReportsClient() {
                 </TableHeader>
                 <TableBody>
                   {topDebtors.map((debtor) => (
-                    <TableRow key={debtor.id} className="hover:bg-muted/40 text-xs">
+                    <TableRow key={debtor.id} className="hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 transition-colors text-xs">
                       <TableCell className="font-mono text-muted-foreground font-semibold">{debtor.accountNumber}</TableCell>
                       <TableCell className="font-semibold text-foreground">{debtor.accountName}</TableCell>
                       <TableCell className="text-right font-mono">GHS {Number(debtor.totalInvoiced || 0).toLocaleString()}</TableCell>

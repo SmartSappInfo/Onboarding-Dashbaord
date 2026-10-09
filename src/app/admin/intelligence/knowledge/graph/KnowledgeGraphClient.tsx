@@ -324,19 +324,11 @@ export function KnowledgeGraphClient() {
       {/* Zone 1: Header & Graph Controls Toolbar */}
       <div className="flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/80 pb-3">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/20">
-                <Share2 className="h-5 w-5" />
-              </div>
-              <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl flex items-center gap-2">
-                Knowledge Graph Explorer
-                <CardInfoTooltip text="Interactive multi-perspective knowledge topology. Strictly bounded by Rule 55 (<= 80 nodes, <= 150 edges) for 60fps performance and instant graph explainability." />
-              </h1>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Traverse verified relationships, explain AI conclusions, and investigate institutional memory networks.
-            </p>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
+              Knowledge Graph Explorer
+              <CardInfoTooltip text="Interactive multi-perspective knowledge topology. Strictly bounded by Rule 55 (<= 80 nodes, <= 150 edges) for 60fps performance and instant graph explainability." />
+            </h1>
           </div>
 
           <div className="flex items-center gap-2">

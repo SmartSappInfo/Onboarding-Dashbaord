@@ -67,6 +67,8 @@ import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { useEventStream } from '@/hooks/useEventStream';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { PageContainerFluid } from '@/components/ui/page-container';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 import {
   AgentQualityKPIHeader,
@@ -372,18 +374,13 @@ export function EvaluationCenterClient({
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background text-foreground p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
-      {/* HEADER BAR */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border/80">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-            <Award className="w-5 h-5 text-primary" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold tracking-tight text-foreground">
-                Agent Evaluation Center
-              </h1>
+    <PageContainerFluid>
+      <div className="space-y-6 pb-20 w-full text-left">
+        {/* HEADER BAR */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border/80">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
+              Agent Evaluation Center
               <Badge variant="outline" className="text-[10px] font-mono border-primary/30 text-primary">
                 PROD_VERIFIED
               </Badge>
@@ -391,14 +388,11 @@ export function EvaluationCenterClient({
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 LIVE SSE
               </span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Multi-domain gold-standard benchmarking, continuous quality evaluation, and backoffice control plane.
-            </p>
+            </h1>
+            <CardInfoTooltip text="Multi-domain gold-standard benchmarking, continuous quality evaluation, and backoffice control plane." />
           </div>
-        </div>
 
-        <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5">
           <Button
             type="button"
             variant="outline"
@@ -758,6 +752,7 @@ export function EvaluationCenterClient({
         onOpenChange={setDetailModalOpen}
         data={detailData}
       />
-    </div>
+      </div>
+    </PageContainerFluid>
   );
 }

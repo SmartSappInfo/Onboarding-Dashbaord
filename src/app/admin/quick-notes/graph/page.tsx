@@ -25,7 +25,7 @@ function KnowledgeGraphPageContent() {
 
   return (
     <div className="font-figtree">
-      <PageContainerFluid className="py-4 px-4 md:px-6 max-w-[1700px]">
+      <PageContainerFluid>
         <KnowledgeGraphView initialFocusNodeId={initialFocus} />
       </PageContainerFluid>
     </div>

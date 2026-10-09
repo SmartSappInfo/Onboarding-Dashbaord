@@ -17,6 +17,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { PageContainerFluid } from '@/components/ui/page-container';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -123,20 +125,21 @@ export function MigrationClient() {
   };
 
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+    <PageContainerFluid>
+      <div className="space-y-6 pb-20 w-full text-left">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
+          <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider mb-1">
             <Database className="h-4 w-4" />
             Data Parity &amp; Sub-Ledger Migration
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-            Financial Migration Studio
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            Automated migration engine provisioning financial accounts and backfilling historical ledger debits in {activeWorkspace?.name || activeWorkspaceId}.
-          </p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              Financial Migration Studio
+            </h1>
+            <CardInfoTooltip text={`Automated migration engine provisioning financial accounts and backfilling historical ledger debits in ${activeWorkspace?.name || activeWorkspaceId || 'this workspace'}.`} />
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -261,6 +264,7 @@ export function MigrationClient() {
           </div>
         )}
       </Card>
-    </div>
+      </div>
+    </PageContainerFluid>
   );
 }

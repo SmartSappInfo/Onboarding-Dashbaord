@@ -258,7 +258,7 @@ export function RunsClient() {
 
   return (
     <PageContainerFluid>
-      <div className="space-y-6 max-w-7xl mx-auto font-figtree pb-32">
+      <div className="space-y-6 w-full text-left font-figtree pb-32">
         {/* Zone 1: Demarcated Header & Navigation */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-5">
           <div className="flex items-center gap-2.5">
@@ -268,10 +268,7 @@ export function RunsClient() {
             >
               <ArrowLeft className="w-4 h-4" />
             </Link>
-            <div className="p-1.5 rounded-xl bg-primary/10 text-primary border border-primary/20">
-              <Bot className="h-5 w-5" />
-            </div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
               Agent Run Mission Control
             </h1>
             <CardInfoTooltip text="Live telemetry, execution timeline, and resource governance across all autonomous multi-agent runs." />
@@ -387,7 +384,7 @@ export function RunsClient() {
                 {filteredRuns.map((run) => (
                   <tr
                     key={run.runId}
-                    className="hover:bg-muted/20 transition-colors group"
+                    className="transition-colors hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 group"
                   >
                     <td className="py-3.5 px-4 sm:px-6">
                       <div className="space-y-1">

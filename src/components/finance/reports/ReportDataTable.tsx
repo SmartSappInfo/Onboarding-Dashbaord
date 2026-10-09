@@ -73,7 +73,7 @@ export function ReportDataTable<TRow>({
 
               <TableBody>
                 {paginatedRows.map((row, rowIdx) => (
-                  <TableRow key={rowIdx} className="hover:bg-muted/40 text-xs">
+                  <TableRow key={rowIdx} className="hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 transition-colors text-xs">
                     {columns.map((col) => (
                       <TableCell
                         key={col.id}

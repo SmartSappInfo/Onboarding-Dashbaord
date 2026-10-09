@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Palette, Loader2, Save, Download, Sparkles } from 'lucide-react';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+import { PageContainerFluid } from '@/components/ui/page-container';
 import type { SocialBrandKit } from '@/lib/types';
 
 export default function BrandKitClient() {
@@ -124,19 +125,15 @@ export default function BrandKitClient() {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto py-8 px-4">
-      {/* Header Panel */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/50 pb-6">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/10">
-            <Palette className="h-5 w-5 text-white" />
-          </div>
+    <PageContainerFluid>
+      <div className="space-y-6 pb-20 w-full text-left">
+        {/* Header Panel */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/50 pb-6">
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Media Brand Kits</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Media Brand Kits</h1>
             <CardInfoTooltip text="Define your colors, logo, and slogan assets to style promotional media cards on the fly." />
           </div>
         </div>
-      </div>
 
       {isLoading ? (
         <Card className="border border-border/30 rounded-3xl bg-card/40 backdrop-blur-md">
@@ -349,6 +346,7 @@ export default function BrandKitClient() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </PageContainerFluid>
   );
 }

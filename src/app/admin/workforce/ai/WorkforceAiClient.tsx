@@ -13,6 +13,8 @@
 
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
+import { PageContainerFluid } from '@/components/ui/page-container';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
@@ -145,17 +147,16 @@ export function WorkforceAiClient() {
   };
 
   return (
-    <div className="space-y-6 pb-32 w-full p-4 md:p-8 max-w-7xl mx-auto">
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
-            <Sparkles className="w-6 h-6 text-primary" /> AI Workforce Intelligence & Role Advisor
-          </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Holistic workforce risk scoring, least-privilege pruning, and explainable access optimization
-          </p>
-        </div>
+    <PageContainerFluid>
+      <div className="space-y-6 pb-32 w-full text-left">
+        {/* Header Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-5">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              AI Workforce Intelligence & Role Advisor
+            </h1>
+            <CardInfoTooltip text="Holistic workforce risk scoring, least-privilege pruning, and explainable access optimization." />
+          </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
           <Button asChild variant="outline" size="sm" className="rounded-lg h-9 px-3.5 text-xs font-semibold active:scale-[0.97]">
@@ -194,7 +195,8 @@ export function WorkforceAiClient() {
         onApply={handleApplyRec}
         onDismiss={handleDismissRec}
       />
-    </div>
+      </div>
+    </PageContainerFluid>
   );
 }
 

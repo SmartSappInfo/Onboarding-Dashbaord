@@ -29,6 +29,8 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
+import { PageContainerFluid } from '@/components/ui/page-container';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -122,20 +124,21 @@ export function FinanceAutomationsClient() {
   };
 
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+    <PageContainerFluid>
+      <div className="space-y-6 pb-20 w-full text-left">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
+          <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider mb-1">
             <Zap className="h-4 w-4" />
             Automation & Communications
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-            Finance Automations & Reminders
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            Multi-channel payment reminder policies, automated dunning schedules, and delivery logs for {activeWorkspace?.name || activeWorkspaceId}.
-          </p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              Finance Automations & Reminders
+            </h1>
+            <CardInfoTooltip text={`Multi-channel payment reminder policies, automated dunning schedules, and delivery logs for ${activeWorkspace?.name || activeWorkspaceId || 'this workspace'}.`} />
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -280,7 +283,7 @@ export function FinanceAutomationsClient() {
                 </TableHeader>
                 <TableBody>
                   {logs.map((log) => (
-                    <TableRow key={log.id} className="hover:bg-muted/40">
+                    <TableRow key={log.id} className="hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 transition-colors">
                       <TableCell className="text-xs font-mono text-muted-foreground">
                         {log.sentDate}
                       </TableCell>
@@ -320,6 +323,7 @@ export function FinanceAutomationsClient() {
           )}
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </PageContainerFluid>
   );
 }

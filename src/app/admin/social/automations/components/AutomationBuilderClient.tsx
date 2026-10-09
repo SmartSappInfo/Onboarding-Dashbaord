@@ -6,6 +6,7 @@ import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+import { PageContainerFluid } from '@/components/ui/page-container';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -333,18 +334,14 @@ export default function AutomationBuilderClient() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-6rem)] max-w-7xl mx-auto py-6 px-4 gap-6">
-      {/* Header controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/50 pb-4">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/10">
-            <Zap className="h-5 w-5 text-white" />
-          </div>
+    <PageContainerFluid className="h-[calc(100vh-4rem)] flex flex-col">
+      <div className="flex flex-col flex-1 h-full w-full text-left gap-6 pb-6 overflow-hidden">
+        {/* Header controls */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/50 pb-4">
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Automation Builder</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Automation Builder</h1>
             <CardInfoTooltip text="Design instant triggers to tag leads, generate drafts, and alert teams in real-time." />
           </div>
-        </div>
 
         <Button 
           onClick={handleNewRule}
@@ -378,10 +375,10 @@ export default function AutomationBuilderClient() {
                     key={rule.id}
                     onClick={() => loadRuleConfig(rule)}
                     className={cn(
-                      "w-full text-left p-3.5 rounded-2xl border transition-all duration-200 flex flex-col gap-1 active:scale-[0.99]",
+                      "w-full text-left p-3.5 rounded-2xl border transition-colors duration-200 flex flex-col gap-1 active:scale-[0.99]",
                       isSelected 
-                        ? "bg-background/60 border-emerald-500/30 text-foreground shadow-lg shadow-emerald-500/2"
-                        : "bg-background/20 border-border/20 hover:border-border/40 text-muted-foreground"
+                        ? "bg-background/80 border-primary/40 text-foreground shadow-sm"
+                        : "hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 border-border/20 text-muted-foreground"
                     )}
                   >
                     <span className="font-extrabold text-xs text-foreground block truncate">{rule.name}</span>
@@ -582,6 +579,7 @@ export default function AutomationBuilderClient() {
           </form>
         </div>
       </div>
-    </div>
+      </div>
+    </PageContainerFluid>
   );
 }

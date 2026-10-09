@@ -136,7 +136,7 @@ export function ReconciliationExceptionTable({
               return (
                 <tr
                   key={item.exceptionId}
-                  className="hover:bg-muted/15 transition-colors group cursor-pointer"
+                  className="hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 transition-colors group cursor-pointer"
                   onClick={() => onInspect(item)}
                 >
                   <td className="py-3.5 px-4 font-mono font-medium">

@@ -28,6 +28,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+import { PageContainerFluid } from '@/components/ui/page-container';
 import { AgentPersonaDetailModal } from '@/components/registry/AgentPersonaDetailModal';
 import type { AgentPersonaSummary } from '@/platform/registry/contracts/registry-types';
 import { cn } from '@/lib/utils';
@@ -123,69 +124,17 @@ export function AgentRegistryClient({
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header & Page Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
+    <PageContainerFluid>
+      <div className="space-y-6 pb-20 w-full text-left">
+        {/* Header & Page Title */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border/80 pb-5">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20">
-              <Bot className="h-5 w-5" />
-            </div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
               Agent Persona Registry
             </h1>
             <CardInfoTooltip text="Catalog of 26 canonical agent personas with deterministic resource budgets, domain namespaces, and immutable least-privilege risk ceilings." />
           </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            Backoffice strategic asset catalog governing specialized autonomous agents across CRM, Sales, Meetings, Finance, School Ops, and Supervisor mesh.
-          </p>
         </div>
-      </div>
-
-      {/* Zone 1: Executive KPI Header */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
-            <span>Canonical Personas</span>
-            <Layers className="h-4 w-4 text-muted-foreground/70" />
-          </div>
-          <div className="text-2xl font-bold text-foreground">{totalCount}</div>
-          <div className="text-xs text-muted-foreground">Standardized platform identities</div>
-        </div>
-
-        <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
-            <span>Read-Only Personas</span>
-            <ShieldCheck className="h-4 w-4 text-emerald-500" />
-          </div>
-          <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-            {readOnlyCount}
-          </div>
-          <div className="text-xs text-muted-foreground">L0_READ research specialists</div>
-        </div>
-
-        <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
-            <span>Mutating Specialists</span>
-            <Lock className="h-4 w-4 text-amber-500" />
-          </div>
-          <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
-            {mutatingCount}
-          </div>
-          <div className="text-xs text-muted-foreground">Governed by Two-Phase Interceptors</div>
-        </div>
-
-        <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
-            <span>Domain Namespaces</span>
-            <Sparkles className="h-4 w-4 text-primary" />
-          </div>
-          <div className="text-2xl font-bold text-foreground">
-            {availableDomains.length}
-          </div>
-          <div className="text-xs text-muted-foreground">Scoped domain authorizations</div>
-        </div>
-      </div>
 
       {/* Zone 2: Filter Toolbar */}
       <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm space-y-3.5">
@@ -247,7 +196,7 @@ export function AgentRegistryClient({
             <tbody className="divide-y divide-border/60">
               {filteredPersonas.length > 0 ? (
                 filteredPersonas.map((persona) => (
-                  <tr key={persona.id} className="hover:bg-muted/10 transition-colors">
+                  <tr key={persona.id} className="transition-colors hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15">
                     <td className="px-5 py-3.5 max-w-sm">
                       <div className="font-semibold text-sm text-foreground flex items-center gap-1.5">
                         {persona.name}
@@ -319,6 +268,7 @@ export function AgentRegistryClient({
         onOpenChange={setIsDetailModalOpen}
         persona={selectedPersona}
       />
-    </div>
+      </div>
+    </PageContainerFluid>
   );
 }

@@ -33,6 +33,7 @@ import {
   DialogDescription,
   DialogFooter 
 } from '@/components/ui/dialog';
+import { PageContainerFluid } from '@/components/ui/page-container';
 import { 
   Select, 
   SelectContent, 
@@ -162,17 +163,15 @@ export function ProductsClient() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+    <PageContainerFluid>
+      <div className="space-y-6 pb-20 w-full text-left">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <Package className="h-7 w-7 text-primary" />
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
-              Product & Service Catalogue
-            </h1>
-            <CardInfoTooltip text="Institutional billing products, SKUs, units of measure, and default tax configurations for this workspace." />
-          </div>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+            Product & Service Catalogue
+          </h1>
+          <CardInfoTooltip text="Institutional billing products, SKUs, units of measure, and default tax configurations for this workspace." />
         </div>
 
         <Button
@@ -239,7 +238,7 @@ export function ProductsClient() {
                   </TableRow>
                 ) : (
                   filteredProducts.map((prod: FinanceProduct) => (
-                    <TableRow key={prod.id} className="border-border/80">
+                    <TableRow key={prod.id} className="border-border/80 hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 transition-colors">
                       <TableCell className="pl-6 py-4 font-bold text-xs text-foreground">
                         {prod.name}
                         {prod.description && (
@@ -396,6 +395,7 @@ export function ProductsClient() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </PageContainerFluid>
   );
 }

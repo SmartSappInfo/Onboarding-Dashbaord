@@ -602,12 +602,11 @@ export default function PackagesClient() {
 
   return (
     <PageContainerFluid>
-      <div className="space-y-6 pb-32 w-full text-left">
+      <div className="space-y-6 pb-20 w-full text-left">
         {/* Header Banner */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-2xl bg-card border border-border/80 shadow-sm">
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl md:text-3xl font-black tracking-tight text-foreground flex items-center gap-2.5">
-              <Package className="h-7 w-7 text-primary" />
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
               Commercial & Pricing Hub
             </h1>
             <CardInfoTooltip text="Centralized commercial catalog for standard products, recurring software subscriptions, institutional pricing tiers, price books, and margin analytics." />
@@ -743,7 +742,7 @@ export default function PackagesClient() {
                     ))
                   ) : filteredProducts.length ? (
                     filteredProducts.map((prod) => (
-                      <TableRow key={prod.id} className="border-border/80 group">
+                      <TableRow key={prod.id} className="border-border/80 group hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 transition-colors">
                         <TableCell className="pl-6 py-3.5">
                           <div>
                             <p className="font-bold text-xs text-foreground tracking-tight">{prod.name}</p>
@@ -849,7 +848,7 @@ export default function PackagesClient() {
                     ))
                   ) : filteredPackages.length ? (
                     filteredPackages.map((pkg) => (
-                      <TableRow key={pkg.id} className="border-border/80 group">
+                      <TableRow key={pkg.id} className="border-border/80 group hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 transition-colors">
                         <TableCell className="pl-6 py-3.5">
                           <div>
                             <p className="font-bold text-xs text-foreground tracking-tight">{pkg.name}</p>
@@ -937,7 +936,7 @@ export default function PackagesClient() {
                     ))
                   ) : priceBooks.length ? (
                     priceBooks.map((pb) => (
-                      <TableRow key={pb.id} className="border-border/80 group">
+                      <TableRow key={pb.id} className="border-border/80 group hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 transition-colors">
                         <TableCell className="pl-6 py-3.5">
                           <div>
                             <p className="font-bold text-xs text-foreground tracking-tight">{pb.name}</p>
@@ -1016,7 +1015,7 @@ export default function PackagesClient() {
                     ))
                   ) : categories.length ? (
                     categories.map((cat) => (
-                      <TableRow key={cat.id} className="border-border/80 group">
+                      <TableRow key={cat.id} className="border-border/80 group hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 transition-colors">
                         <TableCell className="pl-6 py-3.5">
                           <div className="flex items-center gap-2.5">
                             <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: cat.color || '#4f46e5' }} />

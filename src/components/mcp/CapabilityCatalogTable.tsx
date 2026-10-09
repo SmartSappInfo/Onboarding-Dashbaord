@@ -252,7 +252,7 @@ export function CapabilityCatalogTable({
               </TableRow>
             ) : (
               filtered.map((cap) => (
-                <TableRow key={cap.id} className="hover:bg-muted/10 transition-colors">
+                <TableRow key={cap.id} className="transition-colors hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15">
                   {/* Capability Details */}
                   <TableCell className="py-3.5">
                     <div className="space-y-0.5">

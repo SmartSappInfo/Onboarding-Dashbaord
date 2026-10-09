@@ -138,13 +138,13 @@ describe('Phase 15 Milestone 4 - Registry Operator UI Surfaces', () => {
     expect(screen.getByText(/Required RBAC Permissions/i)).toBeDefined();
   });
 
-  it('renders Agent Persona Registry with Zone 1 KPI cards and personas', () => {
+  it('renders Agent Persona Registry with personas and filter controls', () => {
     render(<AgentRegistryClient initialPersonas={samplePersonas} />);
 
     expect(screen.getByText('Agent Persona Registry')).toBeDefined();
     expect(screen.getByText('CRM Researcher Agent')).toBeDefined();
     expect(screen.getByText('Collections & Dunning Specialist')).toBeDefined();
-    expect(screen.getByText('Canonical Personas')).toBeDefined();
+    expect(screen.getByPlaceholderText(/Search personas by name/i)).toBeDefined();
   });
 
   it('opens AgentPersonaDetailModal adhering to theme.md §8 on Inspect click', () => {

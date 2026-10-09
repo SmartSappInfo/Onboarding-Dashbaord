@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import type { SocialPost, SocialInboxItem } from '@/lib/types';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+import { PageContainerFluid } from '@/components/ui/page-container';
 import { cn } from '@/lib/utils';
 
 interface SocialListeningAlert {
@@ -88,19 +89,15 @@ export default function SocialDashboardClient() {
   ];
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto py-8 px-4">
-      {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/50 pb-6">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/10">
-            <LayoutDashboard className="h-5 w-5 text-white" />
-          </div>
+    <PageContainerFluid>
+      <div className="space-y-6 pb-20 w-full text-left">
+        {/* Header Banner */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/50 pb-6">
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Social Hub</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Social Hub</h1>
             <CardInfoTooltip text="Configure brand voice tones, review unread comments, and track conversions pipeline." />
           </div>
         </div>
-      </div>
 
       {/* KPI Cards Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -165,7 +162,7 @@ export default function SocialDashboardClient() {
               <button
                 key={sc.title}
                 onClick={() => router.push(sc.href)}
-                className="w-full text-left p-4 rounded-2xl border border-border/20 bg-card/20 hover:bg-card/40 hover:border-border/40 hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between items-start gap-4 active:scale-[0.98]"
+                className="w-full text-left p-4 rounded-2xl border border-border/20 bg-card/20 hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 hover:border-border/40 hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between items-start gap-4 active:scale-[0.98]"
               >
                 <div className={cn("h-8 w-8 rounded-xl flex items-center justify-center border shrink-0", sc.color)}>
                   <Icon className="h-4 w-4" />
@@ -194,7 +191,7 @@ export default function SocialDashboardClient() {
               </Button>
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-4 divide-y divide-border/10 space-y-3.5">
+          <CardContent className="pt-4 divide-y divide-border/10 space-y-2">
             {isLoadingInbox ? (
               <div className="h-24 flex items-center justify-center text-muted-foreground gap-2">
                 <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
@@ -204,7 +201,7 @@ export default function SocialDashboardClient() {
               <p className="text-[10px] text-muted-foreground/60 italic py-4">No inbound comments or messages cataloged yet.</p>
             ) : (
               inboxItems.slice(0, 3).map((item) => (
-                <div key={item.id} className="pt-3.5 first:pt-0 flex items-start justify-between gap-3">
+                <div key={item.id} className="p-3 rounded-xl transition-colors hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <span className="font-extrabold text-[11px] text-foreground block">{item.senderName}</span>
                     <p className="text-[10px] text-muted-foreground/90 truncate max-w-sm mt-0.5">{item.content}</p>
@@ -226,12 +223,12 @@ export default function SocialDashboardClient() {
               </Button>
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-4 divide-y divide-border/10 space-y-3.5">
+          <CardContent className="pt-4 divide-y divide-border/10 space-y-2">
             {alerts.length === 0 ? (
               <p className="text-[10px] text-muted-foreground/60 italic py-4">No mentions captured yet. Trigger simulations to seed alerts.</p>
             ) : (
               alerts.slice(0, 3).map((alert) => (
-                <div key={alert.id} className="pt-3.5 first:pt-0 flex items-start justify-between gap-3">
+                <div key={alert.id} className="p-3 rounded-xl transition-colors hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <span className="font-extrabold text-[11px] text-foreground block">{alert.author} via {alert.platform}</span>
                     <p className="text-[10px] text-muted-foreground/90 truncate max-w-sm mt-0.5">{alert.content}</p>
@@ -243,6 +240,7 @@ export default function SocialDashboardClient() {
           </CardContent>
         </Card>
       </div>
-    </div>
+      </div>
+    </PageContainerFluid>
   );
 }
