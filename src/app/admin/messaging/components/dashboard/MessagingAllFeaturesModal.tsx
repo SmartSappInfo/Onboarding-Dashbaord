@@ -37,6 +37,10 @@ import {
   ListFilter,
   Sliders,
   CreditCard,
+  Palette,
+  Layers,
+  Code2,
+  UserCheck,
   ExternalLink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -68,6 +72,14 @@ function resolveIcon(name: string) {
       return <Sliders className="h-4 w-4 text-violet-600 dark:text-violet-400" />;
     case 'CreditCard':
       return <CreditCard className="h-4 w-4 text-rose-600 dark:text-rose-400" />;
+    case 'Palette':
+      return <Palette className="h-4 w-4 text-pink-600 dark:text-pink-400" />;
+    case 'Layers':
+      return <Layers className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />;
+    case 'Code2':
+      return <Code2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />;
+    case 'UserCheck':
+      return <UserCheck className="h-4 w-4 text-blue-600 dark:text-blue-400" />;
     default:
       return <ExternalLink className="h-4 w-4 text-muted-foreground" />;
   }
@@ -102,13 +114,11 @@ export function MessagingAllFeaturesModal({
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
           {ALL_MESSAGING_FEATURES.map((cluster) => (
             <div key={cluster.clusterId} className="space-y-3">
-              <div>
+              <div className="flex items-center gap-1.5">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   {cluster.title}
                 </h4>
-                <p className="text-xs text-muted-foreground/80 mt-0.5">
-                  {cluster.description}
-                </p>
+                <CardInfoTooltip text={cluster.description} />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">

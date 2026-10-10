@@ -13,17 +13,17 @@
  * - Rule 21: Graceful degradation and maintenance mode isolation.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MessagingSettingsTab } from '../../settings/components/MessagingSettingsTab';
 import { QuickMessageComposerCard } from '../components/dashboard/QuickMessageComposerCard';
 import { QuickTemplatesCard } from '../components/dashboard/QuickTemplatesCard';
 import { MessagingHeroGreeting } from '../components/dashboard/MessagingHeroGreeting';
 import { messagingGetDashboardSummaryTool } from '@/lib/mcp/tools/messaging-dashboard-tool';
-import * as settingsActions from '@/app/actions/messaging-settings-actions';
 
+const mockToast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({
-  useToast: () => ({ toast: vi.fn() }),
+  useToast: () => ({ toast: mockToast }),
 }));
 
 vi.mock('next/navigation', () => ({
@@ -51,30 +51,37 @@ vi.mock('@/firebase', () => ({
   }),
 }));
 
+const mockGetSettings = vi.fn();
+const mockUpdateSettings = vi.fn();
+
 vi.mock('@/app/actions/messaging-settings-actions', () => ({
-  getWorkspaceMessagingSettingsAction: vi.fn().mockResolvedValue({
-    success: true,
-    data: {
-      version: 1,
-      lowBalanceThreshold: 120,
-      quickTemplateIds: ['tpl_welcome', 'tpl_fee'],
-      aiPromptStarters: ['Custom Backoffice AI Prompt Starter'],
-      channelKillSwitches: { sms: true, whatsapp: false, email: false },
-    },
-  }),
-  updateWorkspaceMessagingSettingsAction: vi.fn().mockResolvedValue({
-    success: true,
-    data: {
-      version: 2,
-      lowBalanceThreshold: 150,
-      quickTemplateIds: ['tpl_welcome', 'tpl_fee'],
-      aiPromptStarters: ['Custom Backoffice AI Prompt Starter'],
-      channelKillSwitches: { sms: true, whatsapp: false, email: false },
-    },
-  }),
+  getWorkspaceMessagingSettingsAction: (...args: unknown[]) => mockGetSettings(...args),
+  updateWorkspaceMessagingSettingsAction: (...args: unknown[]) => mockUpdateSettings(...args),
 }));
 
 describe('Messaging Phase 7 End-to-End Integration', () => {
+  beforeEach(() => {
+    mockGetSettings.mockResolvedValue({
+      success: true,
+      data: {
+        version: 1,
+        lowBalanceThreshold: 120,
+        quickTemplateIds: ['tpl_welcome', 'tpl_fee'],
+        aiPromptStarters: ['Custom Backoffice AI Prompt Starter'],
+        channelKillSwitches: { sms: true, whatsapp: false, email: false },
+      },
+    });
+    mockUpdateSettings.mockResolvedValue({
+      success: true,
+      data: {
+        version: 2,
+        lowBalanceThreshold: 150,
+        quickTemplateIds: ['tpl_welcome', 'tpl_fee'],
+        aiPromptStarters: ['Custom Backoffice AI Prompt Starter'],
+        channelKillSwitches: { sms: true, whatsapp: false, email: false },
+      },
+    });
+  });
   it('loads backoffice governance settings and renders actionable controls', async () => {
     render(<MessagingSettingsTab workspaceId="ws_test" />);
 
@@ -101,7 +108,7 @@ describe('Messaging Phase 7 End-to-End Integration', () => {
     fireEvent.click(saveButton);
 
     await waitFor(() => {
-      expect(settingsActions.updateWorkspaceMessagingSettingsAction).toHaveBeenCalledWith(
+      expect(mockUpdateSettings).toHaveBeenCalledWith(
         'ws_test',
         expect.objectContaining({ lowBalanceThreshold: 150 }),
         1

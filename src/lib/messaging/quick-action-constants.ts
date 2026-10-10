@@ -92,7 +92,7 @@ export const ALL_MESSAGING_FEATURES: readonly FeatureDirectoryCategory[] = [
   {
     clusterId: 'outbound',
     title: 'Outbound & Broadcasts',
-    description: 'Tools for creating, designing, and scheduling outreach at scale.',
+    description: 'Tools for creating, designing, styling, and scheduling outreach at scale.',
     items: [
       {
         id: 'feat-campaigns',
@@ -116,18 +116,32 @@ export const ALL_MESSAGING_FEATURES: readonly FeatureDirectoryCategory[] = [
         iconName: 'FileText',
       },
       {
+        id: 'feat-styles',
+        title: 'Message Styles',
+        description: 'Standardize organization email branding, headers, footers, typography, and color themes.',
+        href: '/admin/messaging/styles',
+        iconName: 'Palette',
+      },
+      {
         id: 'feat-scheduled',
         title: 'Scheduled Broadcasts',
         description: 'View upcoming time-locked dispatches and pending supervisor approvals.',
         href: '/admin/messaging/scheduled',
         iconName: 'Clock',
       },
+      {
+        id: 'feat-jobs',
+        title: 'Bulk Dispatch Jobs',
+        description: 'Monitor asynchronous queue workers, batch progress, and dead-letter retries.',
+        href: '/admin/messaging/jobs',
+        iconName: 'Layers',
+      },
     ],
   },
   {
     clusterId: 'inbound',
     title: 'Inbound & Audience',
-    description: 'Conversational channels, contact directories, and automated workflows.',
+    description: 'Conversational channels, contact segments, template tokens, and automated workflows.',
     items: [
       {
         id: 'feat-inbox',
@@ -144,18 +158,25 @@ export const ALL_MESSAGING_FEATURES: readonly FeatureDirectoryCategory[] = [
         iconName: 'Zap',
       },
       {
-        id: 'feat-entities',
-        title: 'Contact Directory',
-        description: 'Browse, filter, and tag organization contacts and recipient groups.',
-        href: '/admin/entities',
+        id: 'feat-audiences',
+        title: 'Target Audiences',
+        description: 'Build dynamic audience filters, contact tag segments, and saved recipient groups.',
+        href: '/admin/messaging/audiences',
         iconName: 'Users',
+      },
+      {
+        id: 'feat-variables',
+        title: 'Template Variables',
+        description: 'Explore standardized variables, customer tokens, and dynamic data bindings.',
+        href: '/admin/messaging/variables',
+        iconName: 'Code2',
       },
     ],
   },
   {
     clusterId: 'operations',
     title: 'Operations & Audit',
-    description: 'Delivery logs, carrier configurations, and billing governance.',
+    description: 'Delivery telemetry, sender identities, carrier configurations, and billing governance.',
     items: [
       {
         id: 'feat-logs',
@@ -163,6 +184,13 @@ export const ALL_MESSAGING_FEATURES: readonly FeatureDirectoryCategory[] = [
         description: 'Complete immutable audit trail of sent messages with provider delivery receipts.',
         href: '/admin/messaging/logs',
         iconName: 'ListFilter',
+      },
+      {
+        id: 'feat-profiles',
+        title: 'Sender Profiles',
+        description: 'Manage verified SMS sender IDs, email from-addresses, and sender routing identities.',
+        href: '/admin/messaging/profiles',
+        iconName: 'UserCheck',
       },
       {
         id: 'feat-gateways',
