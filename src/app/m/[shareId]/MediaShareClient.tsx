@@ -6,6 +6,7 @@ import {
     Music, Link2, Download, ExternalLink, 
     Play, Pause, Volume2, ArrowRight, ChevronRight, X, Lock 
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import type { MediaAsset, OrgBranding } from '@/lib/types';
 import { getEffectiveDescription } from '@/app/admin/media/components/share-media-dialog';
 import ShareSocialDropdown from '@/components/shared/ShareSocialDropdown';
@@ -1091,7 +1092,7 @@ export default function MediaShareClient({
                                 height: modalContentHeight ? `${modalContentHeight}px` : 'auto', 
                                 maxHeight: '90vh' 
                             }}
-                            className="relative w-full max-w-3xl bg-background border border-border rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ease-out"
+                            className="relative w-full max-w-3xl bg-background border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ease-out"
                         >
                             {/* Floating Close Button (No Title Bar) */}
                             <button
@@ -1121,16 +1122,23 @@ export default function MediaShareClient({
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-[#070913] text-slate-900 dark:text-slate-100 flex flex-col font-sans selection:bg-primary selection:text-white transition-colors duration-300">
             {/* Header Banner */}
-            <header className="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-900 bg-white/80 dark:bg-[#070913]/80 backdrop-blur-md">
-                <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+            {/* 
+                ARCHITECTURAL GUIDANCE (Rule 10 Maintainer Guidance):
+                1. Mobile Responsive Brand: Brand text hides on mobile viewports (<640px) to prevent horizontal crowding.
+                2. Button Layout Order: Re-ordered strictly as Heart (Like) -> Save (icon-only on mobile via hidden sm:inline) -> Share -> Theme Toggler.
+                3. Touch Target Standards: All buttons strictly conform to min-h-[44px] min-w-[44px] with Emil Kowalski micro-animations.
+            */}
+            <header className="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800/80 bg-white/80 dark:bg-[#070913]/80 backdrop-blur-md">
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
                     <a
                         href={orgBranding?.website || '#'}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-3 hover:opacity-85 transition-opacity"
+                        className="flex items-center gap-2.5 sm:gap-3 hover:opacity-85 transition-opacity shrink-0"
+                        aria-label={orgBranding?.name || 'Workspace Media Hub'}
                     >
                         {orgBranding?.logoUrl ? (
-                            <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-white">
+                            <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-white shrink-0">
                                 <img
                                     src={orgBranding.logoUrl}
                                     alt={orgBranding.name || 'Organization Logo'}
@@ -1138,24 +1146,23 @@ export default function MediaShareClient({
                                 />
                             </div>
                         ) : (
-                            <div className="p-2 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-primary font-black text-xs">
+                            <div className="p-2 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-primary font-black text-xs shrink-0">
                                 {fallbackInitials}
                             </div>
                         )}
-                        <span className="font-extrabold text-sm tracking-tight text-slate-700 dark:text-slate-200">
+                        <span className="hidden sm:inline font-extrabold text-sm tracking-tight text-slate-700 dark:text-slate-200">
                             {orgBranding?.name || 'Workspace Media Hub'}
                         </span>
                     </a>
 
-                    <div className="flex items-center gap-2">
-                        <LikeButton initialLikes={((asset as unknown as Record<string, unknown>).likesCount as number) || 0} className="h-9 px-3 text-xs" />
-                        <ShareSocialDropdown 
-                            title={displayTitle} 
-                            url={typeof window !== 'undefined' ? window.location.href : ''} 
-                            onShareClick={() => logEvent('download')} 
-                            className="h-9 px-3 text-xs" 
+                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                        {/* 1. Heart (Like) Button */}
+                        <LikeButton 
+                            initialLikes={((asset as unknown as Record<string, unknown>).likesCount as number) || 0} 
+                            className="h-9 px-2.5 sm:px-3 text-xs min-h-[44px]" 
                         />
-                        <ThemeToggle />
+
+                        {/* 2. Save Button (Icon-only on mobile, label on sm+) */}
                         <Button
                             variant="ghost"
                             size="sm"
@@ -1163,45 +1170,74 @@ export default function MediaShareClient({
                                 logEvent('download');
                                 window.open(asset.url, '_blank');
                             }}
-                            className="rounded-xl text-xs font-black text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800/40 gap-1.5 h-9 cursor-pointer min-h-[44px]"
+                            className="rounded-xl text-xs font-black text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800/40 gap-1.5 h-9 px-2.5 sm:px-3 cursor-pointer min-h-[44px] min-w-[44px] active:scale-[0.97] transition-all flex items-center justify-center"
+                            aria-label="Save / Download Media"
+                            title="Save / Download"
                         >
-                            <Download className="h-3.5 w-3.5" /> Save
+                            <Download className="h-4 w-4 shrink-0" />
+                            <span className="hidden sm:inline">Save</span>
                         </Button>
+
+                        {/* 3. Share Dropdown */}
+                        <ShareSocialDropdown 
+                            title={displayTitle} 
+                            url={typeof window !== 'undefined' ? window.location.href : ''} 
+                            onShareClick={() => logEvent('download')} 
+                            className="h-9 px-2.5 sm:px-3 text-xs min-h-[44px]" 
+                        />
+
+                        {/* 4. Theme Toggler */}
+                        <ThemeToggle className="h-9 w-9 min-h-[44px] min-w-[44px] rounded-xl border border-slate-200 dark:border-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-900/60" />
                     </div>
                 </div>
             </header>
 
             {/* Main Visual Arena */}
-            <main className="flex-1 max-w-5xl w-full mx-auto px-6 py-8 md:py-12 flex flex-col items-center gap-8 text-center animate-in fade-in slide-in-from-bottom-3 duration-500">
+            <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 md:py-12 flex flex-col items-center gap-6 sm:gap-8 text-center animate-in fade-in slide-in-from-bottom-3 duration-500">
                 {/* 1. Typography and Meta Context - NOW AT THE TOP */}
-                <div className="w-full max-w-3xl space-y-3">
-                    <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-slate-50 leading-tight whitespace-pre-line">
+                <div className="w-full max-w-3xl space-y-2.5 sm:space-y-3">
+                    <h1 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-slate-50 leading-tight whitespace-pre-line">
                         {personalizedTitle}
                     </h1>
                     {personalizedDescription && (
-                        <p className="text-sm md:text-base text-slate-600 dark:text-slate-400 font-medium leading-relaxed whitespace-pre-line">
+                        <p className="text-xs sm:text-sm md:text-base text-slate-600 dark:text-slate-400 font-medium leading-relaxed whitespace-pre-line">
                             {personalizedDescription}
                         </p>
                     )}
                 </div>
 
                 {/* 2. Media Presentation Viewport - IN THE MIDDLE */}
-                <div className="w-full relative rounded-[2rem] border border-slate-200 dark:border-slate-900 bg-white dark:bg-slate-950/40 shadow-2xl dark:shadow-none overflow-hidden min-h-[300px] md:min-h-[500px] flex items-center justify-center">
+                {/* 
+                    ARCHITECTURAL GUIDANCE (Rule 10 Maintainer Guidance):
+                    1. Snug Media Height Matching: For video, image, and document assets, container binds to aspect-video
+                       without artificial min-h-[300px]/[500px], perfectly hugging the media dimensions with zero vertical blank space.
+                    2. Reduced Roundness: Bounded to modern rounded-xl sm:rounded-2xl adhering to workspace rules (avoiding rounded-[2rem]).
+                */}
+                <div 
+                    className={cn(
+                        "w-full relative rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800/80 shadow-xl dark:shadow-none overflow-hidden flex items-center justify-center transition-all",
+                        asset.type === 'video'
+                            ? "aspect-video bg-slate-950"
+                            : asset.type === 'image' || asset.type === 'document'
+                                ? "aspect-video bg-slate-50 dark:bg-slate-950"
+                                : "min-h-[220px] bg-white dark:bg-slate-950/40"
+                    )}
+                >
                     {/* Glowing Accent Backdrop */}
                     <div className="absolute -inset-10 bg-gradient-to-tr from-primary/10 via-transparent to-primary/5 blur-3xl opacity-40 pointer-events-none" />
 
                     {asset.type === 'image' && (
-                        <div className="relative w-full aspect-video md:aspect-[16/9] group/view flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+                        <div className="relative w-full h-full group/view flex items-center justify-center bg-slate-50 dark:bg-slate-950">
                             <img
                                 src={asset.url}
                                 alt={title}
-                                className="max-w-full max-h-full object-contain rounded-2xl transition-transform duration-500 group-hover/view:scale-[1.01]"
+                                className="max-w-full max-h-full object-contain rounded-lg sm:rounded-xl transition-transform duration-500 group-hover/view:scale-[1.01]"
                             />
                         </div>
                     )}
 
                     {asset.type === 'video' && (
-                        <div className="relative w-full aspect-video md:aspect-[16/9] bg-slate-50 dark:bg-slate-950 flex items-center justify-center overflow-hidden z-10">
+                        <div className="relative w-full h-full bg-slate-950 flex items-center justify-center overflow-hidden z-10">
                             {isEmbeddable && embedUrl ? (
                                 <>
                                     {!isVideoPlaying && (
@@ -1229,8 +1265,8 @@ export default function MediaShareClient({
                                                 <div className="relative">
                                                     <div className="absolute inset-0 rounded-full bg-primary/35 animate-ping" />
                                                     <div className="absolute -inset-4 rounded-full bg-primary/20 animate-pulse duration-1000" />
-                                                    <div className="relative h-20 w-20 sm:h-24 sm:w-24 bg-primary text-white rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(59,95,255,0.4)]">
-                                                        <Play className="w-10 h-10 sm:w-12 sm:h-12 fill-current ml-1" />
+                                                    <div className="relative h-16 w-16 sm:h-20 sm:w-20 bg-primary text-white rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(59,95,255,0.4)]">
+                                                        <Play className="w-8 h-8 sm:w-10 sm:h-10 fill-current ml-1" />
                                                     </div>
                                                 </div>
                                             </div>
@@ -1281,8 +1317,8 @@ export default function MediaShareClient({
                                                 <div className="relative">
                                                     <div className="absolute inset-0 rounded-full bg-primary/35 animate-ping" />
                                                     <div className="absolute -inset-4 rounded-full bg-primary/20 animate-pulse duration-1000" />
-                                                    <div className="relative h-20 w-20 sm:h-24 sm:w-24 bg-primary text-white rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(59,95,255,0.4)]">
-                                                        <Play className="w-10 h-10 sm:w-12 sm:h-12 fill-current ml-1" />
+                                                    <div className="relative h-16 w-16 sm:h-20 sm:w-20 bg-primary text-white rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(59,95,255,0.4)]">
+                                                        <Play className="w-8 h-8 sm:w-10 sm:h-10 fill-current ml-1" />
                                                     </div>
                                                 </div>
                                             </div>
@@ -1365,7 +1401,7 @@ export default function MediaShareClient({
                     )}
 
                     {(asset.type === 'document' || asset.url.toLowerCase().includes('.pdf') || asset.url.toLowerCase().includes('.doc') || asset.url.toLowerCase().includes('.ppt')) && (
-                        <div className="w-full aspect-video md:aspect-[16/9] relative z-10 bg-slate-950 flex flex-col rounded-2xl overflow-hidden shadow-2xl">
+                        <div className="w-full h-full relative z-10 bg-slate-950 flex flex-col rounded-xl sm:rounded-2xl overflow-hidden shadow-2xl">
                             <PdfCanvasViewer url={asset.url} title={title || asset.name} />
                         </div>
                     )}
@@ -1493,7 +1529,7 @@ export default function MediaShareClient({
                             height: modalContentHeight ? `${modalContentHeight}px` : 'auto', 
                             maxHeight: '90vh' 
                         }}
-                        className="relative w-full max-w-3xl bg-background border border-border rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ease-out"
+                        className="relative w-full max-w-3xl bg-background border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ease-out"
                     >
                         {/* Floating Close Button (No Title Bar) */}
                         <button
