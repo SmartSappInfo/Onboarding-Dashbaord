@@ -1790,7 +1790,7 @@ export default function TasksClient() {
                                         setStatusFilter('all');
                                         setPriorityFilter('all');
                                         setSelectedTagId('all');
-                                        setDateFilterType('day');
+                                        setDateFilterType('all');
                                         setSearchTerm('');
                                     }}
                                     className="min-h-[44px] text-xs font-semibold text-muted-foreground hover:text-foreground active:scale-[0.97]"
