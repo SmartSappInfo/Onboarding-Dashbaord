@@ -22,6 +22,7 @@ vi.mock('next/navigation', () => ({
     push: mockPush,
     replace: vi.fn(),
   }),
+  usePathname: () => '/admin/entities/contact_123',
 }));
 
 const mockToast = vi.fn();

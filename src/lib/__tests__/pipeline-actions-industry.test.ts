@@ -208,13 +208,10 @@ describe('createDefaultPipelineForIndustry', () => {
 
     const stages = Array.from(mockStages.values());
 
-    // Verify colors are assigned
-    expect(stages[0].color).toBe('#6B7280'); // gray
-    expect(stages[1].color).toBe('#3B82F6'); // blue
-    expect(stages[2].color).toBe('#F59E0B'); // amber
-    expect(stages[3].color).toBe('#10B981'); // green
-    expect(stages[4].color).toBe('#8B5CF6'); // purple
-    expect(stages[5].color).toBe('#EF4444'); // red
+    // Verify default neutral colors are assigned to stages (Rule 10 neutral stage design)
+    stages.forEach((stage) => {
+      expect(stage.color).toBe('#64748B');
+    });
   });
 
   it('should set stage order correctly', async () => {
