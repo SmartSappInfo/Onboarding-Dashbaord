@@ -8776,10 +8776,16 @@ export interface ActionConfigDataSources {
   tags: { id: string; name: string }[];
   stages: { id: string; name: string; pipelineId?: string }[];
   pipelines: { id: string; name: string }[];
+  meetings?: { id: string; title: string }[];
+  activeMeetings?: { id: string; title: string }[];
+  callCampaigns?: { id: string; name: string }[];
   dealTypes?: { id: string; name: string }[];
   cadences?: { id: string; name: string }[];
   messagingTemplates?: { id: string; name: string; channel: string }[];
   teamMembers?: { id: string; name: string; email?: string }[];
+  workspaceUsers?: { id: string; name?: string; email: string; photoURL?: string }[];
+  portals?: { id: string; name: string }[];
+  membershipPlans?: { id: string; name: string; portalId: string }[];
 }
 
 export interface CallCampaign {

@@ -22,8 +22,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import type { CallActionType, CallActionParams } from '@/lib/types';
+import type { CallActionType, CallActionParams, ActionConfigDataSources } from '@/lib/types';
 import { getActionMeta } from '@/lib/call-action-types';
+
+export type { ActionConfigDataSources };
 
 // Lazy-load the heavy template selector (57KB) to avoid bundle bloat
 // vercel-react: bundle-dynamic-imports
@@ -49,23 +51,6 @@ function toSelectValue(v: string | undefined): string {
 
 function fromSelectValue(v: string): string | undefined {
   return v === NONE_SENTINEL ? undefined : v;
-}
-
-// ─── Data source shapes (org-scoped lists fed to the per-action fields) ──────
-
-export interface ActionConfigDataSources {
-  tags: { id: string; name: string }[];
-  /** Pipeline stages; `pipelineId` lets us group them under their pipeline. */
-  stages: { id: string; name: string; pipelineId?: string }[];
-  pipelines: { id: string; name: string }[];
-  /** Create-mode meeting *types* (e.g. MEETING_TYPES) — { id, title }. */
-  meetings: { id: string; title: string }[];
-  /** Guest-list targets: existing, not-yet-due meetings — { id, title }. */
-  activeMeetings: { id: string; title: string }[];
-  callCampaigns: { id: string; name: string }[];
-  workspaceUsers?: { id: string; name?: string; email: string; photoURL?: string }[];
-  portals?: { id: string; name: string }[];
-  membershipPlans?: { id: string; name: string; portalId: string }[];
 }
 
 export interface ActionConfigFieldsProps {
@@ -235,7 +220,7 @@ const ActionConfigFields = React.memo(function ActionConfigFields({
   data,
 }: ActionConfigFieldsProps) {
   const meta = getActionMeta(type);
-  const { tags, stages, pipelines, meetings, activeMeetings, callCampaigns, workspaceUsers = [], portals = [], membershipPlans = [] } = data;
+  const { tags, stages, pipelines, meetings = [], activeMeetings = [], callCampaigns = [], workspaceUsers = [], portals = [], membershipPlans = [] } = data;
 
   // ── Derived task due-date values ──────────────────────────────────────────
   const taskDueDateMode = params.taskDueDateMode ?? 'days';
