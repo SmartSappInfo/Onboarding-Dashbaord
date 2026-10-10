@@ -74,3 +74,22 @@ export function formatTaskDate(
     return fallback;
   }
 }
+
+/**
+ * Formats time only (e.g. "2:30 PM" or "10:00 AM"), returning a fallback if invalid or absent.
+ * Strictly excludes any year, month, or day.
+ */
+export function formatTaskTime(
+  value: unknown,
+  pattern = 'h:mm a',
+  fallback = ''
+): string {
+  const date = safeParseDate(value);
+  if (!date) return fallback;
+  try {
+    return format(date, pattern);
+  } catch {
+    return fallback;
+  }
+}
+

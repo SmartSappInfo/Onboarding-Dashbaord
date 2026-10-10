@@ -64,15 +64,17 @@ import {
     MapPin,
     GraduationCap,
     ChevronLeft,
-    CheckCircle2
+    CheckCircle2,
+    Sparkles
 } from 'lucide-react';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { collection, orderBy, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc, orderBy, query, where } from 'firebase/firestore';
 import type { Task, UserProfile, EntityType } from '@/lib/types';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { EntityCombobox } from '@/components/entities/EntityCombobox';
 import { cn } from '@/lib/utils';
-import { safeParseDate, formatTaskDate } from '@/lib/utils/date-utils';
+import { safeParseDate, formatTaskDate, formatTaskTime } from '@/lib/utils/date-utils';
+import { generateTaskBaseSummary } from '@/lib/tasks/task-summary-utils';
 import { Badge } from '@/components/ui/badge';
 import { MediaSelect } from '../../entities/components/media-select';
 import { useTerminology } from '@/hooks/use-terminology';
@@ -222,6 +224,10 @@ export default function TaskEditor({
     const firestore = useFirestore();
     const terminology = useTerminology();
     const entityName = terminology?.singular || 'Campus';
+    const isCreating = !task?.id;
+    const [selectedEntityName, setSelectedEntityName] = React.useState<string>(preFilledEntityName || '');
+    const lastAutoSummaryRef = React.useRef<string>('');
+    const isDescriptionManuallyEditedRef = React.useRef<boolean>(false);
 
     // 1: Template Selection, 2: Task Form Details
     const [activeStep, setActiveStep] = React.useState<number>(1);
@@ -287,6 +293,36 @@ export default function TaskEditor({
     // Re-render loop prevention: track initialization key
     const lastResetKeyRef = React.useRef<string | null>(null);
 
+    // Synchronize selected entity display name when opened or preFilledEntityName/task changes
+    React.useEffect(() => {
+        if (!open) {
+            setSelectedEntityName('');
+            lastAutoSummaryRef.current = '';
+            isDescriptionManuallyEditedRef.current = false;
+            return;
+        }
+
+        if (preFilledEntityName) {
+            setSelectedEntityName(preFilledEntityName);
+        } else if (task && 'entityName' in task && typeof task.entityName === 'string' && task.entityName.trim()) {
+            setSelectedEntityName(task.entityName.trim());
+        } else if (task?.entityId && firestore) {
+            let active = true;
+            getDoc(doc(firestore, 'workspace_entities', task.entityId)).then((snap) => {
+                if (active && snap.exists()) {
+                    const data = snap.data() as { displayName?: string; name?: string };
+                    const name = data.displayName || data.name || '';
+                    if (name) setSelectedEntityName(name);
+                }
+            }).catch(() => {
+                // Ignore background fetch error
+            });
+            return () => {
+                active = false;
+            };
+        }
+    }, [open, preFilledEntityName, task, firestore]);
+
     React.useEffect(() => {
         const normalizeAssignees = (val: unknown): string[] => {
             if (Array.isArray(val)) {
@@ -307,6 +343,7 @@ export default function TaskEditor({
                     setChecklist(task.checklist || []);
                     setReminders(task.reminders || []);
                     if (task.id) {
+                        isDescriptionManuallyEditedRef.current = true;
                         setActiveStep(2);
                         reset({
                             title: task.title || '',
@@ -332,6 +369,13 @@ export default function TaskEditor({
                             tagIds: task.tagIds || [],
                         });
                     } else {
+                        if (task.description) {
+                            isDescriptionManuallyEditedRef.current = true;
+                            lastAutoSummaryRef.current = task.description;
+                        } else {
+                            isDescriptionManuallyEditedRef.current = false;
+                            lastAutoSummaryRef.current = '';
+                        }
                         if (task.category) {
                             setActiveStep(2);
                             reset({
@@ -377,6 +421,8 @@ export default function TaskEditor({
                         }
                     }
                 } else {
+                    isDescriptionManuallyEditedRef.current = false;
+                    lastAutoSummaryRef.current = '';
                     setChecklist([]);
                     setReminders([]);
                     setActiveStep(1);
@@ -405,6 +451,48 @@ export default function TaskEditor({
             lastResetKeyRef.current = null;
         }
     }, [open, task, reset, currentUser]);
+
+    const watchedTitle = form.watch('title');
+    const watchedStartDate = form.watch('startDate');
+    const watchedDueDate = form.watch('dueDate');
+
+    // Auto-prefill intelligent summary for task creation (time only, not date)
+    React.useEffect(() => {
+        // Only run when creating a task, dialog is open, and user has not typed custom description notes
+        if (!isCreating || !open || isDescriptionManuallyEditedRef.current) {
+            return;
+        }
+
+        const scheduledTime = watchedStartDate || watchedDueDate;
+        const autoSummary = generateTaskBaseSummary({
+            title: watchedTitle,
+            entityName: selectedEntityName,
+            time: scheduledTime,
+        });
+
+        if (!autoSummary) return;
+
+        const currentDescription = form.getValues('description') || '';
+        if (!currentDescription.trim() || currentDescription === lastAutoSummaryRef.current) {
+            setValue('description', autoSummary, { shouldDirty: false, shouldValidate: false });
+            lastAutoSummaryRef.current = autoSummary;
+        }
+    }, [isCreating, open, watchedTitle, watchedStartDate, watchedDueDate, selectedEntityName, setValue]);
+
+    const handleAutoSummarize = () => {
+        const scheduledTime = form.getValues('startDate') || form.getValues('dueDate');
+        const summary = generateTaskBaseSummary({
+            title: form.getValues('title'),
+            entityName: selectedEntityName,
+            time: scheduledTime,
+        });
+        if (summary) {
+            setValue('description', summary, { shouldDirty: true, shouldValidate: true });
+            lastAutoSummaryRef.current = summary;
+            isDescriptionManuallyEditedRef.current = false;
+        }
+    };
+
 
     const handleSelectPreset = (preset: typeof PRESET_TEMPLATES[number]) => {
         setValue('category', preset.category);
@@ -698,6 +786,12 @@ export default function TaskEditor({
                                                             if (details?.entityType) {
                                                                 setValue('entityType', details.entityType);
                                                             }
+                                                            const entityLabel = details?.displayName || '';
+                                                            if (entityLabel) {
+                                                                setSelectedEntityName(entityLabel);
+                                                            } else if (!id || id === 'none') {
+                                                                setSelectedEntityName('');
+                                                            }
                                                         }}
                                                         disabled={disableEntitySelect}
                                                         placeholder={preFilledEntityName ? preFilledEntityName : `Search or select ${entityName.toLowerCase()}...`}
@@ -760,9 +854,28 @@ export default function TaskEditor({
 
                                     {/* 6. Details: Description & Background Context */}
                                     <div className="space-y-2 text-left">
-                                        <Label className="text-xs font-semibold text-foreground/90 ml-1 text-left">Task Details</Label>
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-xs font-semibold text-foreground/90 ml-1 text-left">Task Details</Label>
+                                            {isCreating && (
+                                                <button
+                                                    type="button"
+                                                    onClick={handleAutoSummarize}
+                                                    className="text-[11px] font-semibold text-primary hover:text-primary/80 flex items-center gap-1 transition-colors px-2 py-0.5 rounded-md hover:bg-primary/10 active:scale-[0.97]"
+                                                    title="Summarize task name, target institution, and time"
+                                                >
+                                                    <Sparkles className="h-3 w-3" />
+                                                    <span>Auto-summarize</span>
+                                                </button>
+                                            )}
+                                        </div>
                                         <Textarea 
-                                            {...register('description')} 
+                                            {...register('description', {
+                                                onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                                                    if (e.target.value !== lastAutoSummaryRef.current) {
+                                                        isDescriptionManuallyEditedRef.current = true;
+                                                    }
+                                                }
+                                            })} 
                                             placeholder="Provide additional details or background context..." 
                                             className="min-h-[90px] rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground/45 focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary p-4 font-medium leading-relaxed text-left text-xs" 
                                         />

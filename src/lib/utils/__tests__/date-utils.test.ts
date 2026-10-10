@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { safeParseDate, isValidDate, formatTaskDueDate, formatTaskDate } from '../date-utils';
+import { safeParseDate, isValidDate, formatTaskDueDate, formatTaskDate, formatTaskTime } from '../date-utils';
 
 describe('date-utils defensive helpers', () => {
   describe('isValidDate', () => {
@@ -73,4 +73,21 @@ describe('date-utils defensive helpers', () => {
       expect(formatTaskDate(null, 'MMM d, yyyy', '—')).toBe('—');
     });
   });
+
+  describe('formatTaskTime', () => {
+    it('formats time with default pattern h:mm a (strictly time only)', () => {
+      // 14:30 UTC
+      const date = new Date('2026-10-10T14:30:00');
+      const formatted = formatTaskTime(date);
+      expect(formatted).toMatch(/\d{1,2}:\d{2}\s+(AM|PM)/i);
+    });
+
+    it('returns empty string fallback for null, undefined, or invalid values', () => {
+      expect(formatTaskTime(null)).toBe('');
+      expect(formatTaskTime(undefined)).toBe('');
+      expect(formatTaskTime('invalid-date')).toBe('');
+      expect(formatTaskTime('', 'h:mm a', 'TBD')).toBe('TBD');
+    });
+  });
 });
+
