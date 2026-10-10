@@ -274,7 +274,7 @@ export function InteractiveScriptView({
       const startNode = orderedMainNodes.find(n => n.type === 'start');
       setActiveNodeId(startNode ? startNode.id : orderedMainNodes[0].id);
     }
-  }, [orderedMainNodes, activeNodeId]);
+  }, [orderedMainNodes, activeNodeId, setActiveNodeId]);
 
   // Sync selected objection/action reset when activeNodeId changes
   React.useEffect(() => {
@@ -310,7 +310,7 @@ export function InteractiveScriptView({
     } else if (middleNode?.type === 'outcome') {
       setRightTab('outcomes');
     }
-  }, [middleNode?.id]);
+  }, [middleNode?.id, middleNode?.type]);
 
   // Initialize/reset local config when middleNode changes
   const prevMiddleNodeIdRef = React.useRef<string | null>(null);
@@ -1048,7 +1048,7 @@ export function InteractiveScriptView({
     setSelectedOutcomeId(null);
     setSelectedSubObjectionIndex(null);
     setEnteredObjectionFromChoice(false);
-  }, []);
+  }, [setActiveNodeId]);
 
   const handleObjectionClick = React.useCallback((objectionId: string, subIndex: number | null) => {
     if (activeNodeId) {
@@ -1078,7 +1078,7 @@ export function InteractiveScriptView({
     setSelectedOutcomeId(null);
     setSelectedSubObjectionIndex(null);
     setEnteredObjectionFromChoice(false);
-  }, [pathHistory]);
+  }, [pathHistory, setActiveNodeId]);
 
 
   // Compute active outgoing choices & actions for navigation
@@ -1217,7 +1217,7 @@ export function InteractiveScriptView({
     } else {
       handleMainNodeClick(targetNodeId);
     }
-  }, [nodes, edges, activeNodeId, onTriggerOutcome, onTriggerAction, openTrigger, runTrigger, handleMainNodeClick, triggerActionsAutomatically]);
+  }, [nodes, activeNodeId, onTriggerOutcome, onTriggerAction, openTrigger, runTrigger, handleMainNodeClick, triggerActionsAutomatically]);
 
   const handleNextStepAfterObjection = React.useCallback(() => {
     if (!middleNode) return;

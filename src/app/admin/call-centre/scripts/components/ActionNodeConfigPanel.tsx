@@ -33,7 +33,7 @@ const ActionNodeConfigPanel = React.memo(function ActionNodeConfigPanel({
   onUpdate,
   data,
 }: ActionNodeConfigPanelProps) {
-  const config = actionConfig ?? {};
+  const config = React.useMemo(() => actionConfig ?? {}, [actionConfig]);
   const activeType = actionType || 'SEND_SMS';
   const meta = getActionMeta(activeType);
 
