@@ -166,7 +166,7 @@ jobs:
           check() {
             local path="$1" expected="$2"
             local code
-            code=$(curl -o /dev/null -s -w '%{http_code}' --max-time 30 \
+            code=$(curl -o /dev/null -s -w '%{http_code}' --max-time 60 --retry 3 --retry-delay 5 --retry-connrefused \
               -H "Authorization: Bearer $TOKEN" "$URL$path" || echo 000)
             # Progress goes to stderr so it reaches the log; only the code goes to stdout,
             # where the caller captures it. Echoing both to stdout hid every result inside
