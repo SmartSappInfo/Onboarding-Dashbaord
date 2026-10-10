@@ -48,7 +48,7 @@ describe('ThreadList', () => {
     unreadCount: 2,
   };
 
-  it('renders contact name and institution name on primary line', () => {
+  it('renders recipient name on primary line and entity name as subtext', () => {
     render(
       <ThreadList
         threads={[mockThread]}
@@ -60,10 +60,10 @@ describe('ThreadList', () => {
     );
 
     expect(screen.getByText('Rosline Ackah')).toBeDefined();
-    expect(screen.getByText(/Solid Rock Academy/)).toBeDefined();
+    expect(screen.getByText('Solid Rock Academy')).toBeDefined();
   });
 
-  it('renders email and phone number as subtext before message preview', () => {
+  it('renders message preview and does not render email or phone in list view', () => {
     render(
       <ThreadList
         threads={[mockThread]}
@@ -74,9 +74,12 @@ describe('ThreadList', () => {
       />
     );
 
-    expect(screen.getByText('ackahrosline5@gmail.com')).toBeDefined();
-    expect(screen.getByText('+233244123456')).toBeDefined();
+    // Message preview is visible
     expect(screen.getByText('Welcome to Term 2')).toBeDefined();
+
+    // Email and phone are NOT rendered in the list view
+    expect(screen.queryByText('ackahrosline5@gmail.com')).toBeNull();
+    expect(screen.queryByText('+233244123456')).toBeNull();
   });
 
   it('renders unread badge count next to timestamp', () => {

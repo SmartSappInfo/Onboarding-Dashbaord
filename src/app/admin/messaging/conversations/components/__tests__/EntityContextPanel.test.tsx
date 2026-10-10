@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import EntityContextPanel from '../EntityContextPanel';
 import type { ThreadGroup } from '../../ConversationsClient';
@@ -22,7 +22,25 @@ vi.mock('@/firebase', () => ({
   useMemoFirebase: vi.fn((fn: () => unknown) => fn()),
 }));
 
+// Mock useTerminology
+const mockTerminology = { singular: 'School', plural: 'Schools' };
+vi.mock('@/hooks/use-terminology', () => ({
+  useTerminology: vi.fn(() => mockTerminology),
+}));
+
+// Mock useToast
+const mockToast = vi.fn();
+vi.mock('@/hooks/use-toast', () => ({
+  useToast: vi.fn(() => ({ toast: mockToast })),
+}));
+
+// Mock archiveEntityAction
+vi.mock('@/lib/workspace-entity-actions', () => ({
+  archiveEntityAction: vi.fn().mockResolvedValue({ success: true }),
+}));
+
 import { useDoc } from '@/firebase';
+import { archiveEntityAction } from '@/lib/workspace-entity-actions';
 
 describe('EntityContextPanel', () => {
   beforeEach(() => {
@@ -78,7 +96,7 @@ describe('EntityContextPanel', () => {
     expect(screen.getByTestId('entity-context-skeleton')).toBeDefined();
   });
 
-  it('renders CRM entity details when entity doc is loaded from Firestore', () => {
+  it('renders dynamic terminology header and entity details when doc is loaded from Firestore', () => {
     vi.mocked(useDoc).mockReturnValue({
       data: {
         id: 'entity-123',
@@ -94,13 +112,22 @@ describe('EntityContextPanel', () => {
     });
 
     render(<EntityContextPanel thread={mockThread} />);
-    expect(screen.getByText('Solid Rock Academy')).toBeDefined();
+    // Dynamic terminology header
+    expect(screen.getByText('School Details')).toBeDefined();
+    // Prominent entity name & contact person
+    expect(screen.getAllByText('Solid Rock Academy').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Dr. Mensah')).toBeDefined();
     expect(screen.getByText('info@solidrock.edu')).toBeDefined();
-    expect(screen.getByText('View Full Profile')).toBeDefined();
+    // Hygiene score
+    expect(screen.getByText(/Hygiene 100%/i)).toBeDefined();
+    // 4 quick action buttons
+    expect(screen.getByTitle('Call phone')).toBeDefined();
+    expect(screen.getByTitle('Compose message')).toBeDefined();
+    expect(screen.getByTitle('View School profile')).toBeDefined();
+    expect(screen.getByTitle('Delete or archive contact')).toBeDefined();
   });
 
-  it('renders rich Universal Contact Profile fallback when entity is not found in Firestore', () => {
+  it('renders rich Universal Contact Profile fallback with hygiene score when entity is not found in Firestore', () => {
     vi.mocked(useDoc).mockReturnValue({
       data: null,
       isLoading: false,
@@ -108,11 +135,12 @@ describe('EntityContextPanel', () => {
     });
 
     render(<EntityContextPanel thread={mockThread} />);
+    expect(screen.getByText('School Details')).toBeDefined();
     expect(screen.getByText('Rosline Ackah')).toBeDefined();
-    expect(screen.getByText('Solid Rock Academy')).toBeDefined();
+    expect(screen.getAllByText('Solid Rock Academy').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('rosline@solidrock.edu')).toBeDefined();
     expect(screen.getByText('+233244123456')).toBeDefined();
-    expect(screen.getByText(/Direct Contact/i)).toBeDefined();
+    expect(screen.getByText(/Hygiene 100%/i)).toBeDefined();
   });
 
   it('calls onClose when close button is clicked', () => {
@@ -128,5 +156,44 @@ describe('EntityContextPanel', () => {
     const closeBtn = screen.getByTitle('Close details panel');
     fireEvent.click(closeBtn);
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens confirmation modal and invokes archiveEntityAction when delete is confirmed', async () => {
+    vi.mocked(useDoc).mockReturnValue({
+      data: {
+        id: 'entity-123',
+        entityId: 'entity-123',
+        displayName: 'Solid Rock Academy',
+        primaryEmail: 'info@solidrock.edu',
+        primaryPhone: '+233201112222',
+        primaryContactName: 'Dr. Mensah',
+        status: 'Active',
+      } as unknown as WorkspaceEntity & { id: string },
+      isLoading: false,
+      error: null,
+    });
+
+    const onClose = vi.fn();
+    render(<EntityContextPanel thread={mockThread} onClose={onClose} />);
+
+    // Click delete action button
+    const deleteBtn = screen.getByTitle('Delete or archive contact');
+    fireEvent.click(deleteBtn);
+
+    // Modal opens
+    expect(screen.getByText('Delete School')).toBeDefined();
+
+    // Click confirm Delete Contact
+    const confirmBtn = screen.getByRole('button', { name: 'Delete Contact' });
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(archiveEntityAction).toHaveBeenCalledWith({
+        workspaceEntityId: 'entity-123',
+        entityId: 'entity-123',
+      });
+      expect(mockToast).toHaveBeenCalled();
+      expect(onClose).toHaveBeenCalled();
+    });
   });
 });

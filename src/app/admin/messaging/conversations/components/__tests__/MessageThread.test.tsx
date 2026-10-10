@@ -94,4 +94,22 @@ describe('MessageThread', () => {
     fireEvent.click(propsToggleBtn);
     expect(onToggleProperties).toHaveBeenCalledTimes(1);
   });
+
+  it('normalizes email HTML backgrounds and text colors for dark mode contrast', async () => {
+    const { normalizeEmailHtmlForTheme } = await import('../MessageThread');
+    const rawEmail = `
+      <div style="background-color: #FFFFFF; padding: 20px;">
+        <div class="content" style="color: #334155;">Hello World</div>
+        <a href="https://example.com" style="background-color: #3B82F6; color: #ffffff;">Button</a>
+      </div>
+    `;
+
+    const normalized = normalizeEmailHtmlForTheme(rawEmail);
+    expect(normalized).not.toContain('background-color: #FFFFFF');
+    expect(normalized).toContain('background-color: transparent');
+    expect(normalized).toContain('color: inherit');
+    // Button styling preserved
+    expect(normalized).toContain('background-color: #3B82F6');
+    expect(normalized).toContain('color: #ffffff');
+  });
 });

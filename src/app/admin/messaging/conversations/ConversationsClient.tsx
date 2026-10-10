@@ -15,16 +15,22 @@
  */
 
 import * as React from 'react';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy, limit } from 'firebase/firestore';
+import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { doc, collection, query, where, orderBy, limit } from 'firebase/firestore';
 import type { MessageLog } from '@/lib/types';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useTenant } from '@/context/TenantContext';
+import type { WorkspaceMessagingSettings } from '@/lib/types/messaging-settings';
+import { DEFAULT_MESSAGING_SETTINGS } from '@/lib/types/messaging-settings';
 import ThreadList from './components/ThreadList';
 import MessageThread from './components/MessageThread';
 import EntityContextPanel from './components/EntityContextPanel';
 import { MessageSquare, Loader2 } from 'lucide-react';
 import { PageContainerFluid } from '@/components/ui/page-container';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import { extractThreadIdentity } from './utils/thread-identity';
+import { isThreadForUser, type UserContextIdentity } from './utils/user-thread-filter';
 import { cn } from '@/lib/utils';
 
 export interface ThreadGroup {
@@ -49,13 +55,52 @@ const MAX_BATCH_LIMIT = 5000;
 export default function ConversationsClient() {
   const firestore = useFirestore();
   const { activeWorkspaceId } = useWorkspace();
+  const { user } = useUser();
+  const { isSuperAdmin, isWorkspaceAdmin, currentUserProfile } = useTenant();
   const [selectedEntityId, setSelectedEntityId] = React.useState<string | null>(null);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [readState, setReadState] = React.useState<ReadState>({});
 
+  // Workspace messaging settings doc query
+  const settingsDocRef = useMemoFirebase(() => {
+    if (!firestore || !activeWorkspaceId) return null;
+    return doc(firestore, 'workspaces', activeWorkspaceId, 'messaging_settings', 'current');
+  }, [firestore, activeWorkspaceId]);
+
+  const { data: messagingSettingsDoc } = useDoc<WorkspaceMessagingSettings>(settingsDocRef);
+  const messagingSettings = messagingSettingsDoc || DEFAULT_MESSAGING_SETTINGS;
+
+  // Administrative override: super admins and workspace admins always have visibility permissions
+  const isAdmin = Boolean(isSuperAdmin || isWorkspaceAdmin);
+  const canViewAllMessages = Boolean(
+    isAdmin || messagingSettings.allowViewingAllMessages !== false
+  );
+
+  const [scopeFilter, setScopeFilter] = React.useState<'all' | 'mine'>('all');
+
+  // Auto-switch to 'mine' if permission is restricted for non-admins
+  React.useEffect(() => {
+    if (!canViewAllMessages && scopeFilter !== 'mine') {
+      setScopeFilter('mine');
+    }
+  }, [canViewAllMessages, scopeFilter]);
+
+  // Construct identity context for thread matching
+  const userContext: UserContextIdentity = React.useMemo(() => {
+    return {
+      uid: user?.uid,
+      email: user?.email || currentUserProfile?.email,
+      displayName: user?.displayName || currentUserProfile?.displayName || currentUserProfile?.name,
+    };
+  }, [user?.uid, user?.email, user?.displayName, currentUserProfile?.email, currentUserProfile?.displayName, currentUserProfile?.name]);
+
   // Collapsible panels state (default false, post-mount synced with localStorage)
   const [isThreadListCollapsed, setIsThreadListCollapsed] = React.useState(false);
   const [isPropertiesCollapsed, setIsPropertiesCollapsed] = React.useState(false);
+
+  // Mobile details slide-over sheet state (for screens < 1024px)
+  const [isMobileDetailsOpen, setIsMobileDetailsOpen] = React.useState(false);
+  const isLargeScreen = useMediaQuery('(min-width: 1024px)');
 
   // Progressive batching limit (starts at 1,000, increments up to 5,000)
   const [batchLimit, setBatchLimit] = React.useState(1000);
@@ -120,6 +165,21 @@ export default function ConversationsClient() {
       return next;
     });
   }, [propsCollapsedKey]);
+
+  // Responsive details toggle handler (opens mobile sheet on < 1024px, collapses/expands panel on >= 1024px)
+  const handleToggleProperties = React.useCallback(() => {
+    if (isLargeScreen) {
+      toggleProperties();
+    } else {
+      setIsMobileDetailsOpen((prev) => !prev);
+    }
+  }, [isLargeScreen, toggleProperties]);
+
+  // Thread selection handler (clears mobile details sheet on selection change)
+  const handleSelectThread = React.useCallback((entityId: string | null) => {
+    setSelectedEntityId(entityId);
+    setIsMobileDetailsOpen(false);
+  }, []);
 
   // When selection changes, mark thread as read
   React.useEffect(() => {
@@ -223,6 +283,21 @@ export default function ConversationsClient() {
     [threads, selectedEntityId]
   );
 
+  // Effective scope: locked to 'mine' if non-admin and setting is disabled
+  const effectiveScope = canViewAllMessages ? scopeFilter : 'mine';
+
+  const totalAllCount = threads.length;
+  const totalMineCount = React.useMemo(() => {
+    return threads.filter((t) => isThreadForUser(t, userContext)).length;
+  }, [threads, userContext]);
+
+  const visibleThreads = React.useMemo(() => {
+    if (effectiveScope === 'mine') {
+      return threads.filter((t) => isThreadForUser(t, userContext));
+    }
+    return threads;
+  }, [threads, effectiveScope, userContext]);
+
   // Full-page spinner only on initial mount
   if (isInitialLoading) {
     return (
@@ -238,15 +313,20 @@ export default function ConversationsClient() {
   }
 
   return (
-    <PageContainerFluid className="h-[calc(100vh-64px)] flex flex-col p-2 sm:p-4 md:p-6">
-      <div className="flex flex-1 overflow-hidden rounded-2xl border border-border/80 bg-card text-card-foreground shadow-xs">
+    <PageContainerFluid className="h-[calc(100vh-64px)] flex flex-col p-0 sm:p-4 md:p-6">
+      <div className="flex flex-1 overflow-hidden rounded-none sm:rounded-2xl border-0 sm:border border-border/80 bg-card text-card-foreground shadow-xs">
         {/* Panel 1: Thread / Contact List */}
         <ThreadList
-          threads={threads}
+          threads={visibleThreads}
           selectedEntityId={selectedEntityId}
-          onSelect={setSelectedEntityId}
+          onSelect={handleSelectThread}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
+          scopeFilter={effectiveScope}
+          onScopeFilterChange={setScopeFilter}
+          canViewAllMessages={canViewAllMessages}
+          totalAllCount={totalAllCount}
+          totalMineCount={totalMineCount}
           isCollapsed={isThreadListCollapsed}
           onToggleCollapse={toggleThreadList}
           hasMore={hasMore}
@@ -254,7 +334,7 @@ export default function ConversationsClient() {
           isCapped={isCapped}
           onLoadMore={loadMore}
           className={cn(
-            selectedEntityId ? 'hidden md:flex' : 'flex',
+            selectedEntityId ? 'hidden md:flex' : 'flex w-full md:w-80 lg:w-96',
             isThreadListCollapsed && 'md:hidden'
           )}
         />
@@ -263,7 +343,7 @@ export default function ConversationsClient() {
         <div
           className={cn(
             'flex flex-1 overflow-hidden relative min-w-0',
-            !selectedEntityId ? 'hidden md:flex' : 'flex'
+            !selectedEntityId ? 'hidden md:flex' : 'flex w-full flex-1'
           )}
         >
           {selectedThread ? (
@@ -271,20 +351,39 @@ export default function ConversationsClient() {
               {/* Panel 2: Message Thread Canvas */}
               <MessageThread
                 thread={selectedThread}
-                onBack={() => setSelectedEntityId(null)}
+                onBack={() => handleSelectThread(null)}
                 isThreadListCollapsed={isThreadListCollapsed}
                 onExpandThreadList={toggleThreadList}
-                isPropertiesCollapsed={isPropertiesCollapsed}
-                onToggleProperties={toggleProperties}
+                isPropertiesCollapsed={isLargeScreen ? isPropertiesCollapsed : !isMobileDetailsOpen}
+                onToggleProperties={handleToggleProperties}
               />
 
-              {/* Panel 3: Universal Entity Context & Contact Details Panel */}
+              {/* Panel 3: Universal Entity Context & Contact Details Panel (Desktop inline) */}
               {!isPropertiesCollapsed && (
                 <EntityContextPanel
                   thread={selectedThread}
                   onClose={() => setIsPropertiesCollapsed(true)}
+                  className="hidden lg:flex"
                 />
               )}
+
+              {/* Mobile / Tablet Details Slide-Over Sheet */}
+              <Sheet open={isMobileDetailsOpen} onOpenChange={setIsMobileDetailsOpen}>
+                <SheetContent
+                  side="right"
+                  className="p-0 w-full sm:max-w-md border-l border-border bg-card flex flex-col h-full"
+                >
+                  <SheetHeader className="sr-only">
+                    <SheetTitle>Contact Details</SheetTitle>
+                    <SheetDescription>Contact information, CRM details, and timeline history</SheetDescription>
+                  </SheetHeader>
+                  <EntityContextPanel
+                    thread={selectedThread}
+                    onClose={() => setIsMobileDetailsOpen(false)}
+                    className="w-full flex flex-1 border-l-0 shadow-none"
+                  />
+                </SheetContent>
+              </Sheet>
             </>
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center p-8 text-center bg-muted/5">

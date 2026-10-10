@@ -1,7 +1,6 @@
 import * as React from 'react';
-import { Search, Mail, Smartphone, MessageSquare, PanelLeftClose, Check, Loader2 } from 'lucide-react';
+import { Search, Mail, Smartphone, MessageSquare, PanelLeftClose, Check, Loader2, Lock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -16,6 +15,11 @@ export interface ThreadListProps {
   onSelect: (id: string) => void;
   searchQuery: string;
   onSearchChange: (q: string) => void;
+  scopeFilter?: 'all' | 'mine';
+  onScopeFilterChange?: (scope: 'all' | 'mine') => void;
+  canViewAllMessages?: boolean;
+  totalAllCount?: number;
+  totalMineCount?: number;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   hasMore?: boolean;
@@ -51,6 +55,11 @@ export default function ThreadList({
   onSelect,
   searchQuery,
   onSearchChange,
+  scopeFilter = 'all',
+  onScopeFilterChange,
+  canViewAllMessages = true,
+  totalAllCount,
+  totalMineCount,
   isCollapsed = false,
   onToggleCollapse,
   hasMore = false,
@@ -66,16 +75,18 @@ export default function ThreadList({
   return (
     <div
       className={cn(
-        'w-80 shrink-0 border-r border-border bg-background flex flex-col h-full z-10 shadow-[2px_0_10px_rgba(0,0,0,0.02)] overflow-x-hidden',
+        'w-full md:w-80 lg:w-96 shrink-0 border-r border-border bg-background flex flex-col h-full z-10 shadow-[2px_0_10px_rgba(0,0,0,0.02)] overflow-hidden',
         className
       )}
     >
       {/* Header & Search */}
-      <div className="p-4 border-b border-border/50 shrink-0 space-y-3.5 bg-muted/10">
+      <div className="p-4 border-b border-border/80 shrink-0 space-y-3 bg-card/95 dark:bg-card backdrop-blur-md shadow-xs">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold tracking-tight text-foreground">Inbox</h2>
-            <Badge variant="secondary" className="font-mono text-[10px] tabular-nums px-2 py-0.5">
+            <h2 className="text-lg font-bold tracking-tight text-foreground">
+              {scopeFilter === 'mine' ? 'My Conversations' : 'All Conversations'}
+            </h2>
+            <Badge variant="outline" className="font-mono text-[10px] font-bold tabular-nums px-2 py-0.5 bg-muted/80 dark:bg-muted text-foreground border-border/70 rounded-full">
               {threads.length}
             </Badge>
           </div>
@@ -86,18 +97,79 @@ export default function ThreadList({
               size="icon"
               onClick={onToggleCollapse}
               title="Collapse inbox list"
-              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground active:scale-[0.97]"
+              className="hidden md:inline-flex h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground active:scale-[0.97]"
             >
               <PanelLeftClose className="h-4 w-4" />
             </Button>
           )}
         </div>
 
+        {/* Scope Switcher or Workspace Policy Banner */}
+        {canViewAllMessages ? (
+          <div className="flex items-center p-0.5 rounded-xl bg-muted/60 dark:bg-muted/30 border border-border/60 text-xs">
+            <button
+              type="button"
+              onClick={() => onScopeFilterChange?.('all')}
+              className={cn(
+                'flex-1 py-1.5 px-3 rounded-lg font-medium text-xs transition-all flex items-center justify-center gap-1.5 min-h-[34px] active:scale-[0.98]',
+                scopeFilter === 'all'
+                  ? 'bg-background text-foreground shadow-xs font-semibold'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+              aria-pressed={scopeFilter === 'all'}
+            >
+              <span>All</span>
+              {typeof totalAllCount === 'number' && (
+                <span
+                  className={cn(
+                    'tabular-nums text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold leading-none',
+                    scopeFilter === 'all'
+                      ? 'bg-muted text-foreground'
+                      : 'bg-muted/80 text-muted-foreground'
+                  )}
+                >
+                  {totalAllCount}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => onScopeFilterChange?.('mine')}
+              className={cn(
+                'flex-1 py-1.5 px-3 rounded-lg font-medium text-xs transition-all flex items-center justify-center gap-1.5 min-h-[34px] active:scale-[0.98]',
+                scopeFilter === 'mine'
+                  ? 'bg-background text-foreground shadow-xs font-semibold'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+              aria-pressed={scopeFilter === 'mine'}
+            >
+              <span>Mine</span>
+              {typeof totalMineCount === 'number' && (
+                <span
+                  className={cn(
+                    'tabular-nums text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold leading-none',
+                    scopeFilter === 'mine'
+                      ? 'bg-muted text-foreground'
+                      : 'bg-muted/80 text-muted-foreground'
+                  )}
+                >
+                  {totalMineCount}
+                </span>
+              )}
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-muted/40 border border-border/50 text-[11px] text-muted-foreground">
+            <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <span>Showing your conversations (workspace policy)</span>
+          </div>
+        )}
+
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <Input
             placeholder="Search messages, names, schools…"
-            className="pl-9 h-10 rounded-xl bg-background border-none shadow-xs focus-visible:ring-primary/20 text-xs"
+            className="pl-9 h-10 rounded-xl bg-muted/40 dark:bg-muted/20 border border-border/70 shadow-xs focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-primary/20 text-xs text-foreground placeholder:text-muted-foreground transition-all"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             autoComplete="off"
@@ -106,32 +178,26 @@ export default function ThreadList({
       </div>
 
       {/* Thread List Items (No horizontal scroll, clamped cards) */}
-      <ScrollArea className="flex-1 overflow-x-hidden">
-        <div className="p-2 space-y-1 overflow-x-hidden">
-          {threads.map((thread) => {
-            const isSelected = thread.entityId === selectedEntityId;
-            const hasUnread = thread.unreadCount > 0;
-            const displayName = thread.contactName || thread.entityName || 'Contact';
-            const initials = displayName.substring(0, 2).toUpperCase();
-            const channels = Array.from(new Set(thread.messages.map((m) => m.channel)));
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-1 w-full max-w-full min-w-0">
+        {threads.map((thread) => {
+          const isSelected = thread.entityId === selectedEntityId;
+          const hasUnread = thread.unreadCount > 0;
+          const displayName = thread.contactName || thread.entityName || 'Contact';
+          const initials = displayName.substring(0, 2).toUpperCase();
+          const channels = Array.from(new Set(thread.messages.map((m) => m.channel)));
 
-            return (
-              <button
-                key={thread.entityId}
-                onClick={() => onSelect(thread.entityId)}
-                className={cn(
-                  'w-full text-left p-3 rounded-xl transition-all flex gap-3 relative group outline-none overflow-x-hidden',
-                  'active:scale-[0.98] min-h-[44px]',
-                  isSelected
-                    ? 'bg-primary/10 hover:bg-primary/15'
-                    : 'even:bg-muted/20 dark:even:bg-muted/10 hover:bg-muted/50 focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-primary/20'
-                )}
-              >
-                {/* Left Unread Indicator Bar */}
-                {hasUnread && !isSelected && (
-                  <div className="absolute left-1 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full bg-primary" />
-                )}
-
+          return (
+            <button
+              key={thread.entityId}
+              onClick={() => onSelect(thread.entityId)}
+              className={cn(
+                'w-full max-w-full text-left p-3 rounded-xl transition-all flex gap-3 relative group outline-none overflow-hidden',
+                'active:scale-[0.98] min-h-[44px]',
+                isSelected
+                  ? 'bg-primary/10 hover:bg-primary/15'
+                  : 'even:bg-muted/20 dark:even:bg-muted/10 hover:bg-muted/50 focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-primary/20'
+              )}
+            >
                 {/* Avatar */}
                 <Avatar
                   className={cn(
@@ -150,31 +216,23 @@ export default function ThreadList({
                 </Avatar>
 
                 {/* Content Container (min-w-0 flex-1 avoids horizontal scroll) */}
-                <div className="flex-1 min-w-0 flex flex-col justify-center space-y-1 overflow-x-hidden">
-                  {/* Line 1: Contact Name · Institution Name & Timestamp */}
-                  <div className="flex items-center justify-between gap-1.5 min-w-0">
-                    <div className="min-w-0 flex-1 flex items-baseline gap-1 truncate">
-                      <span
-                        className={cn(
-                          'text-xs font-bold truncate transition-colors',
-                          isSelected
-                            ? 'text-primary'
-                            : hasUnread
-                            ? 'text-foreground font-extrabold'
-                            : 'text-foreground/90'
-                        )}
-                      >
-                        {thread.contactName || thread.entityName}
-                      </span>
-                      {thread.institutionName &&
-                        thread.institutionName !== (thread.contactName || thread.entityName) && (
-                          <span className="text-[11px] font-normal text-muted-foreground truncate">
-                            · {thread.institutionName}
-                          </span>
-                        )}
-                    </div>
+                <div className="flex-1 min-w-0 max-w-full flex flex-col justify-center space-y-1 overflow-hidden">
+                  {/* Line 1: Recipient Name & Timestamp */}
+                  <div className="flex items-center justify-between gap-1.5 min-w-0 w-full overflow-hidden">
+                    <span
+                      className={cn(
+                        'text-xs font-bold truncate transition-colors min-w-0 flex-1',
+                        isSelected
+                          ? 'text-primary'
+                          : hasUnread
+                          ? 'text-foreground font-extrabold'
+                          : 'text-foreground/90'
+                      )}
+                    >
+                      {thread.contactName || thread.entityName}
+                    </span>
 
-                    <div className="shrink-0 flex items-center gap-1.5">
+                    <div className="shrink-0 flex items-center gap-1.5 ml-1">
                       <span
                         className={cn(
                           'text-[10px] whitespace-nowrap font-medium tabular-nums',
@@ -194,25 +252,27 @@ export default function ThreadList({
                     </div>
                   </div>
 
-                  {/* Line 2: Subtext line (Email • Phone) */}
-                  {(thread.email || thread.phone) && (
-                    <div className="text-[11px] text-muted-foreground flex items-center gap-1.5 font-normal min-w-0 overflow-hidden leading-tight">
-                      {thread.email && (
-                        <span className="truncate min-w-0 flex-1">{thread.email}</span>
-                      )}
-                      {thread.email && thread.phone && (
-                        <span className="shrink-0 text-muted-foreground/40">•</span>
-                      )}
-                      {thread.phone && (
-                        <span className="truncate min-w-0 shrink-0 tabular-nums">
-                          {thread.phone}
-                        </span>
-                      )}
-                    </div>
-                  )}
+                  {/* Line 2: Entity Name (subtext) */}
+                  {(() => {
+                    const recipientName = thread.contactName || thread.entityName;
+                    const entitySubtext =
+                      thread.institutionName && thread.institutionName !== recipientName
+                        ? thread.institutionName
+                        : thread.contactName && thread.entityName && thread.entityName !== recipientName
+                        ? thread.entityName
+                        : null;
+
+                    if (!entitySubtext) return null;
+
+                    return (
+                      <p className="text-[11px] text-muted-foreground truncate font-normal leading-tight">
+                        {entitySubtext}
+                      </p>
+                    );
+                  })()}
 
                   {/* Line 3: Channel Icons & Message Preview Snippet */}
-                  <div className="flex items-center gap-1.5 min-w-0 pt-0.5">
+                  <div className="flex items-center gap-1.5 min-w-0 w-full pt-0.5 overflow-hidden">
                     <div className="flex -space-x-1 shrink-0">
                       {channels.includes('email') && (
                         <div
@@ -322,7 +382,6 @@ export default function ThreadList({
             </div>
           )}
         </div>
-      </ScrollArea>
-    </div>
-  );
-}
+      </div>
+    );
+  }
