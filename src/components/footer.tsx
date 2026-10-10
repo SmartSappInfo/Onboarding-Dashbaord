@@ -46,8 +46,8 @@ export default function Footer({ orgBranding, className }: FooterProps) {
   if (style === 'default') {
     return (
       <footer className={cn("bg-[#0A1427] text-white border-t border-border/10", className)}>
-        <div className="container px-6 sm:px-10 py-16 mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 text-center lg:text-left">
+        <div className="container px-6 sm:px-10 py-8 sm:py-16 mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-12 text-center lg:text-left">
             {/* Column 1: Brand & Logo */}
             <div className="space-y-4">
               <div className="flex items-center justify-center lg:justify-start space-x-2">
@@ -112,51 +112,49 @@ export default function Footer({ orgBranding, className }: FooterProps) {
             </div>
 
             {/* Column 4: Socials */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-white text-sm tracking-wider uppercase">Follow Us</h3>
-              {hasSocials ? (
-                <div className="flex items-center justify-center lg:justify-start gap-4">
-                  {socials.facebook && (
-                    <a href={socials.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="text-gray-400 hover:text-white transition-all hover:scale-105 active:scale-95 duration-200">
-                      <Facebook size={18} />
-                    </a>
-                  )}
-                  {socials.twitter && (
-                    <a href={socials.twitter} target="_blank" rel="noopener noreferrer" aria-label="Twitter" className="text-gray-400 hover:text-white transition-all hover:scale-105 active:scale-95 duration-200">
-                      <Twitter size={18} />
-                    </a>
-                  )}
-                  {socials.linkedin && (
-                    <a href={socials.linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="text-gray-400 hover:text-white transition-all hover:scale-105 active:scale-95 duration-200">
-                      <Linkedin size={18} />
-                    </a>
-                  )}
-                  {socials.instagram && (
-                    <a href={socials.instagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="text-gray-400 hover:text-white transition-all hover:scale-105 active:scale-95 duration-200">
-                      <Instagram size={18} />
-                    </a>
-                  )}
-                  {socials.youtube && (
-                    <a href={socials.youtube} target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="text-gray-400 hover:text-white transition-all hover:scale-105 active:scale-95 duration-200">
-                      <Youtube size={18} />
-                    </a>
-                  )}
-                </div>
-              ) : (
-                <div className="flex items-center justify-center lg:justify-start gap-4">
-                  <span className="text-gray-500 text-xs">No social handles linked</span>
-                </div>
-              )}
-              
-              {!orgBranding && (
-                <div className="pt-4 border-t border-gray-800/40">
-                  <MinexLogo className="h-7 mx-auto lg:mx-0 opacity-60" />
-                </div>
-              )}
-            </div>
+            {(hasSocials || !orgBranding) && (
+              <div className="space-y-4">
+                <h3 className="font-semibold text-white text-sm tracking-wider uppercase">Follow Us</h3>
+                {hasSocials && (
+                  <div className="flex items-center justify-center lg:justify-start gap-4">
+                    {socials.facebook && (
+                      <a href={socials.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="text-gray-400 hover:text-white transition-all hover:scale-105 active:scale-95 duration-200">
+                        <Facebook size={18} />
+                      </a>
+                    )}
+                    {socials.twitter && (
+                      <a href={socials.twitter} target="_blank" rel="noopener noreferrer" aria-label="Twitter" className="text-gray-400 hover:text-white transition-all hover:scale-105 active:scale-95 duration-200">
+                        <Twitter size={18} />
+                      </a>
+                    )}
+                    {socials.linkedin && (
+                      <a href={socials.linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="text-gray-400 hover:text-white transition-all hover:scale-105 active:scale-95 duration-200">
+                        <Linkedin size={18} />
+                      </a>
+                    )}
+                    {socials.instagram && (
+                      <a href={socials.instagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="text-gray-400 hover:text-white transition-all hover:scale-105 active:scale-95 duration-200">
+                        <Instagram size={18} />
+                      </a>
+                    )}
+                    {socials.youtube && (
+                      <a href={socials.youtube} target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="text-gray-400 hover:text-white transition-all hover:scale-105 active:scale-95 duration-200">
+                        <Youtube size={18} />
+                      </a>
+                    )}
+                  </div>
+                )}
+                
+                {!orgBranding && (
+                  <div className="pt-4 border-t border-gray-800/40">
+                    <MinexLogo className="h-7 mx-auto lg:mx-0 opacity-60" />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
-          <div className="mt-16 text-center border-t border-gray-800/40 pt-8">
+          <div className="mt-8 sm:mt-16 text-center border-t border-gray-800/40 pt-6 sm:pt-8">
             <p className="text-xs text-gray-500">
               Copyright © {currentYear} {orgName}. All rights reserved.
             </p>

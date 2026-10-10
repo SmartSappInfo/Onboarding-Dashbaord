@@ -1086,29 +1086,29 @@ export default function MediaShareClient({
 
                 {/* Direct Padded Modal Container without title header or nested card */}
                 {isCtaModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/85 backdrop-blur-md animate-in fade-in zoom-in-95 duration-200">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 bg-slate-950/85 backdrop-blur-md animate-in fade-in zoom-in-95 duration-200">
                         <div 
                             style={{ 
-                                height: modalContentHeight ? `${modalContentHeight}px` : 'auto', 
-                                maxHeight: '90vh' 
+                                height: modalContentHeight ? `${modalContentHeight}px` : undefined, 
+                                maxHeight: '94vh' 
                             }}
-                            className="relative w-full max-w-3xl bg-background border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ease-out font-figtree"
+                            className="relative w-full max-w-3xl h-[92vh] sm:h-auto max-h-[94vh] sm:max-h-[90vh] bg-background border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ease-out font-figtree"
                         >
                             {/* Floating Close Button (No Title Bar) */}
                             <button
                                 onClick={() => setIsCtaModalOpen(false)}
-                                className="absolute top-4 right-4 z-50 h-11 w-11 rounded-full bg-muted/80 hover:bg-muted border border-border flex items-center justify-center transition-all cursor-pointer text-muted-foreground hover:text-foreground shadow-md hover:scale-105 active:scale-95 min-h-[44px] min-w-[44px] shrink-0"
+                                className="absolute top-2.5 right-2.5 sm:top-4 sm:right-4 z-50 h-10 w-10 sm:h-11 sm:w-11 rounded-full bg-muted/80 hover:bg-muted border border-border flex items-center justify-center transition-all cursor-pointer text-muted-foreground hover:text-foreground shadow-md hover:scale-105 active:scale-95 min-h-[44px] min-w-[44px] shrink-0"
                                 aria-label="Close Modal"
                             >
                                 <X className="h-5 w-5" />
                             </button>
 
                             {/* Direct Form/Survey Viewport with Internal Padding */}
-                            <div className="flex-1 w-full p-4 sm:p-6 md:p-8 relative overflow-y-auto flex flex-col">
+                            <div className="flex-1 w-full p-2 sm:p-6 md:p-8 relative overflow-y-auto flex flex-col">
                                 <iframe 
                                     src={getFinalCtaUrl()} 
                                     className="w-full flex-1 border-none bg-transparent" 
-                                    style={{ minHeight: '300px' }} 
+                                    style={{ minHeight: '450px' }} 
                                 />
                             </div>
                         </div>
@@ -1193,14 +1193,14 @@ export default function MediaShareClient({
             </header>
 
             {/* Main Visual Arena */}
-            <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 md:py-12 flex flex-col items-center gap-6 sm:gap-8 text-center animate-in fade-in slide-in-from-bottom-3 duration-500">
+            <main className="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-8 md:py-12 flex flex-col items-center gap-4 sm:gap-8 text-center animate-in fade-in slide-in-from-bottom-3 duration-500">
                 {/* 1. Typography and Meta Context - NOW AT THE TOP */}
-                <div className="w-full max-w-3xl space-y-2.5 sm:space-y-3">
-                    <h1 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-slate-50 leading-tight whitespace-pre-line">
+                <div className="w-full max-w-3xl space-y-2 sm:space-y-3">
+                    <h1 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-slate-50 leading-tight whitespace-pre-line px-1">
                         {personalizedTitle}
                     </h1>
                     {personalizedDescription && (
-                        <p className="text-xs sm:text-sm md:text-base text-slate-600 dark:text-slate-400 font-medium leading-relaxed whitespace-pre-line">
+                        <p className="text-xs sm:text-sm md:text-base text-slate-600 dark:text-slate-400 font-medium leading-relaxed whitespace-pre-line px-1">
                             {personalizedDescription}
                         </p>
                     )}
@@ -1470,16 +1470,16 @@ export default function MediaShareClient({
 
                 {/* 3. CTA Pre-text & CTA Button Layout - AT THE BOTTOM */}
                 {ctaType !== 'none' && !(ctaPopoverEnabled && isPlaybackFinished) && (
-                    <div className="w-full max-w-2xl space-y-5 flex flex-col items-center pt-2 animate-in fade-in duration-300">
+                    <div className="w-full max-w-2xl space-y-3.5 sm:space-y-5 flex flex-col items-center pt-1 sm:pt-3 animate-in fade-in duration-300">
                         {ctaPretext && (
-                            <p className="text-sm md:text-base text-slate-750 dark:text-slate-300 font-medium leading-relaxed whitespace-pre-line text-center max-w-xl">
+                            <p className="text-xs sm:text-sm md:text-base text-slate-700 dark:text-slate-300 font-medium leading-relaxed whitespace-pre-line text-center max-w-xl px-2">
                                 {ctaPretext}
                             </p>
                         )}
                         <Button
                             disabled={!isCtaUnlocked}
                             onClick={handleCtaClick}
-                            className={`rounded-2xl font-extrabold h-12 px-8 shadow-xl transition-all flex items-center gap-2 group text-xs tracking-wider uppercase cursor-pointer ${
+                            className={`rounded-2xl font-extrabold h-12 sm:h-14 px-8 sm:px-10 shadow-xl transition-all flex items-center justify-center gap-2 group text-xs sm:text-sm tracking-wider uppercase cursor-pointer min-h-[48px] w-full max-w-xs sm:max-w-none sm:w-auto ${
                                 !isCtaUnlocked 
                                     ? 'bg-slate-300 dark:bg-slate-800 text-slate-500 dark:text-slate-500 cursor-not-allowed opacity-75 shadow-none border border-slate-300 dark:border-slate-800' 
                                     : `bg-gradient-to-r from-primary to-primary/80 hover:from-primary/95 hover:to-primary/85 text-white hover:shadow-primary/10 active:scale-[0.97] ${isCtaHighlighted ? 'ring-4 ring-primary/40 ring-offset-2 animate-pulse' : ''}`
@@ -1490,7 +1490,7 @@ export default function MediaShareClient({
                             {isCtaUnlocked && <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />}
                         </Button>
                         {!isCtaUnlocked && (
-                            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-450 flex items-center gap-1">
+                            <p className="text-[10px] sm:text-xs font-bold text-slate-500 dark:text-slate-450 flex items-center gap-1">
                                 {effectiveActivationGate === 'quarter' && 'Unlocks 25% through playback'}
                                 {effectiveActivationGate === 'half' && 'Unlocks halfway through playback'}
                                 {effectiveActivationGate === 'threequarters' && 'Unlocks 75% through playback'}
@@ -1523,29 +1523,29 @@ export default function MediaShareClient({
 
             {/* Direct Padded Modal Container without title header or nested card */}
             {isCtaModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/85 backdrop-blur-md animate-in fade-in zoom-in-95 duration-200">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 bg-slate-950/85 backdrop-blur-md animate-in fade-in zoom-in-95 duration-200">
                     <div 
                         style={{ 
-                            height: modalContentHeight ? `${modalContentHeight}px` : 'auto', 
-                            maxHeight: '90vh' 
+                            height: modalContentHeight ? `${modalContentHeight}px` : undefined, 
+                            maxHeight: '94vh' 
                         }}
-                        className="relative w-full max-w-3xl bg-background border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ease-out font-figtree"
+                        className="relative w-full max-w-3xl h-[92vh] sm:h-auto max-h-[94vh] sm:max-h-[90vh] bg-background border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ease-out font-figtree"
                     >
                         {/* Floating Close Button (No Title Bar) */}
                         <button
                             onClick={() => setIsCtaModalOpen(false)}
-                            className="absolute top-4 right-4 z-50 h-11 w-11 rounded-full bg-muted/80 hover:bg-muted border border-border flex items-center justify-center transition-all cursor-pointer text-muted-foreground hover:text-foreground shadow-md hover:scale-105 active:scale-95 min-h-[44px] min-w-[44px] shrink-0"
+                            className="absolute top-2.5 right-2.5 sm:top-4 sm:right-4 z-50 h-10 w-10 sm:h-11 sm:w-11 rounded-full bg-muted/80 hover:bg-muted border border-border flex items-center justify-center transition-all cursor-pointer text-muted-foreground hover:text-foreground shadow-md hover:scale-105 active:scale-95 min-h-[44px] min-w-[44px] shrink-0"
                             aria-label="Close Modal"
                         >
                             <X className="h-5 w-5" />
                         </button>
 
                         {/* Direct Form/Survey Viewport with Internal Padding */}
-                        <div className="flex-1 w-full p-4 sm:p-6 md:p-8 relative overflow-y-auto flex flex-col">
+                        <div className="flex-1 w-full p-2 sm:p-6 md:p-8 relative overflow-y-auto flex flex-col">
                             <iframe 
                                 src={getFinalCtaUrl()} 
                                 className="w-full flex-1 border-none bg-transparent" 
-                                style={{ minHeight: '300px' }} 
+                                style={{ minHeight: '450px' }} 
                             />
                         </div>
                     </div>
