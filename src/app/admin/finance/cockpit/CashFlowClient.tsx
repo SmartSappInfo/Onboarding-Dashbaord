@@ -137,10 +137,6 @@ export function CashFlowClient({
               Predictive Cash Flow Cockpit
             </h1>
             <CardInfoTooltip text="Deterministic 30/60/90-day cash runway projection, collections velocity, and school operations intelligence." />
-            <Badge variant="outline" className="text-xs gap-1.5 px-2 py-0.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Live Forecasting
-            </Badge>
           </div>
 
         {/* Action Controls */}
@@ -213,57 +209,62 @@ export function CashFlowClient({
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4">
         <div className="p-4 rounded-xl border border-border/80 bg-card shadow-xs space-y-1">
           <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
-            <span>Cash On Hand</span>
+            <div className="flex items-center gap-1.5">
+              <span>Cash On Hand</span>
+              <CardInfoTooltip text="Immediate liquidity" />
+            </div>
             <DollarSign className="h-3.5 w-3.5 text-emerald-500" />
           </div>
           <p className="text-xl font-bold tracking-tight text-foreground">
             {currency} {forecast.currentCashOnHand.toLocaleString()}
           </p>
-          <p className="text-[11px] text-muted-foreground">Immediate liquidity</p>
         </div>
 
         <div className="p-4 rounded-xl border border-border/80 bg-card shadow-xs space-y-1">
           <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
-            <span>30d Runway</span>
+            <div className="flex items-center gap-1.5">
+              <span>30d Runway</span>
+              <CardInfoTooltip text={`+${currency} ${runway['30d'].totalProjectedInflow.toLocaleString()} inflow`} />
+            </div>
             <ArrowUpRight className="h-3.5 w-3.5 text-blue-500" />
           </div>
           <p className="text-xl font-bold tracking-tight text-blue-600 dark:text-blue-400">
             {currency} {runway['30d'].projectedClosingCash.toLocaleString()}
           </p>
-          <p className="text-[11px] text-muted-foreground">
-            +{currency} {runway['30d'].totalProjectedInflow.toLocaleString()} inflow
-          </p>
         </div>
 
         <div className="p-4 rounded-xl border border-border/80 bg-card shadow-xs space-y-1">
           <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
-            <span>60d Runway</span>
+            <div className="flex items-center gap-1.5">
+              <span>60d Runway</span>
+              <CardInfoTooltip text={`+${currency} ${runway['60d'].totalProjectedInflow.toLocaleString()} inflow`} />
+            </div>
             <ArrowUpRight className="h-3.5 w-3.5 text-indigo-500" />
           </div>
           <p className="text-xl font-bold tracking-tight text-indigo-600 dark:text-indigo-400">
             {currency} {runway['60d'].projectedClosingCash.toLocaleString()}
           </p>
-          <p className="text-[11px] text-muted-foreground">
-            +{currency} {runway['60d'].totalProjectedInflow.toLocaleString()} inflow
-          </p>
         </div>
 
         <div className="p-4 rounded-xl border border-border/80 bg-card shadow-xs space-y-1">
           <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
-            <span>90d Runway</span>
+            <div className="flex items-center gap-1.5">
+              <span>90d Runway</span>
+              <CardInfoTooltip text={`+${currency} ${runway['90d'].totalProjectedInflow.toLocaleString()} inflow`} />
+            </div>
             <ArrowUpRight className="h-3.5 w-3.5 text-purple-500" />
           </div>
           <p className="text-xl font-bold tracking-tight text-purple-600 dark:text-purple-400">
             {currency} {runway['90d'].projectedClosingCash.toLocaleString()}
           </p>
-          <p className="text-[11px] text-muted-foreground">
-            +{currency} {runway['90d'].totalProjectedInflow.toLocaleString()} inflow
-          </p>
         </div>
 
         <div className="col-span-2 sm:col-span-1 p-4 rounded-xl border border-border/80 bg-card shadow-xs space-y-1">
           <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
-            <span>DSO Velocity</span>
+            <div className="flex items-center gap-1.5">
+              <span>DSO Velocity</span>
+              <CardInfoTooltip text={`Benchmark: ${dso.benchmarkDays}d`} />
+            </div>
             <Clock className="h-3.5 w-3.5 text-amber-500" />
           </div>
           <div className="flex items-center gap-2">
@@ -272,7 +273,6 @@ export function CashFlowClient({
               {dso.velocityBand}
             </Badge>
           </div>
-          <p className="text-[11px] text-muted-foreground">Benchmark: {dso.benchmarkDays}d</p>
         </div>
       </div>
 
@@ -311,13 +311,11 @@ export function CashFlowClient({
         {/* Selected Horizon Breakdown Card */}
         <div className="lg:col-span-2 rounded-xl border border-border/80 bg-card p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-border/70 pb-3">
-            <div>
+            <div className="flex items-center gap-1.5">
               <h3 className="text-sm font-bold text-foreground">
                 {selectedHorizon.toUpperCase()} Runway Inflow Breakdown
               </h3>
-              <p className="text-xs text-muted-foreground">
-                Weighted probability modeling across open invoices, installment milestones, and promises.
-              </p>
+              <CardInfoTooltip text="Weighted probability modeling across open invoices, installment milestones, and promises." />
             </div>
             <Badge variant="secondary" className="font-mono text-xs">
               Horizon: {runway[selectedHorizon].horizonDays} Days
@@ -363,9 +361,10 @@ export function CashFlowClient({
 
         {/* Debtor Concentration Risk Column */}
         <div className="rounded-xl border border-border/80 bg-card p-5 space-y-4">
-          <div className="flex items-center gap-2 border-b border-border/70 pb-3">
+          <div className="flex items-center gap-1.5 border-b border-border/70 pb-3">
             <Building2 className="h-4 w-4 text-amber-500" />
             <h3 className="text-sm font-bold text-foreground">Debtor Concentration Risk</h3>
+            <CardInfoTooltip text="Analysis of single debtor exposure and top debtor concentration against total receivables." />
           </div>
 
           <div className="space-y-3">

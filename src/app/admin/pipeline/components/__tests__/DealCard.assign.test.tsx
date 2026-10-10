@@ -18,8 +18,8 @@ import type { Deal } from '@/lib/types';
 // Mock dnd-kit sortable
 vi.mock('@dnd-kit/sortable', () => ({
   useSortable: () => ({
-    attributes: {},
-    listeners: {},
+    attributes: { 'data-testid': 'sortable-card', tabIndex: 0 },
+    listeners: { 'data-sortable-listeners': 'true' },
     setNodeRef: vi.fn(),
     transform: null,
     transition: null,
@@ -118,9 +118,13 @@ describe('DealCard - Assignee Mapping Integration', () => {
   it('opens AssignDealModal when tapping the footer "Unassigned" button', () => {
     render(<DealCard deal={mockUnassignedDeal} />);
 
-    // Footer button showing Unassigned
-    const unassignedBtn = screen.getByTitle(/Unassigned \(Click to assign\)/i);
+    // Footer button showing Unassigned (using accessible name without native title)
+    const unassignedBtn = screen.getByRole('button', { name: 'Assign deal' });
     expect(unassignedBtn).toBeDefined();
+
+    // Verify native title is NOT present (preventing browser double-tooltip)
+    expect(unassignedBtn.getAttribute('title')).toBeNull();
+    expect(unassignedBtn.querySelector('div')?.getAttribute('title')).toBeNull();
 
     fireEvent.click(unassignedBtn);
 
@@ -132,8 +136,12 @@ describe('DealCard - Assignee Mapping Integration', () => {
   it('opens AssignDealModal when tapping the footer assigned owner button', () => {
     render(<DealCard deal={mockAssignedDeal} />);
 
-    const assignedBtn = screen.getByTitle(/Assigned to: Peter Mensah \(Click to reassign\)/i);
+    const assignedBtn = screen.getByRole('button', { name: 'Assigned to Peter Mensah' });
     expect(assignedBtn).toBeDefined();
+
+    // Verify native title is NOT present on assigned button
+    expect(assignedBtn.getAttribute('title')).toBeNull();
+    expect(assignedBtn.querySelector('div')?.getAttribute('title')).toBeNull();
 
     fireEvent.click(assignedBtn);
 
@@ -155,4 +163,59 @@ describe('DealCard - Assignee Mapping Integration', () => {
     // Modal is open
     expect(screen.getByPlaceholderText('Search team members by name or email...')).toBeDefined();
   });
+
+  describe('Deal Value Visibility (showDealValue)', () => {
+    const valuedDeal: Deal = {
+      ...mockUnassignedDeal,
+      id: 'deal_valued_103',
+      value: 12500,
+    };
+
+    it('renders deal value by default when showDealValue is omitted', () => {
+      render(<DealCard deal={valuedDeal} />);
+      expect(screen.getByText('$12,500')).toBeDefined();
+    });
+
+    it('renders deal value when showDealValue is explicitly true', () => {
+      render(<DealCard deal={valuedDeal} showDealValue={true} />);
+      expect(screen.getByText('$12,500')).toBeDefined();
+    });
+
+    it('hides deal value when showDealValue is false', () => {
+      render(<DealCard deal={valuedDeal} showDealValue={false} />);
+      expect(screen.queryByText('$12,500')).toBeNull();
+    });
+  });
+
+  describe('Drag Handle Surface Integration (Upper and Lower Part Dragging)', () => {
+    it('binds sortable attributes and listeners to the outer Card, enabling dragging from both upper and lower parts', () => {
+      render(<DealCard deal={mockUnassignedDeal} />);
+
+      // The entire card container receives sortable attributes and listeners
+      const cardElement = screen.getByTestId('sortable-card');
+      expect(cardElement).toBeDefined();
+      expect(cardElement.getAttribute('data-sortable-listeners')).toBe('true');
+      expect(cardElement.className).toContain('cursor-grab');
+
+      // Verify that the lower part (footer containing assignee button and smart alert) is inside the draggable card
+      const unassignedBtn = screen.getByRole('button', { name: 'Assign deal' });
+      expect(cardElement.contains(unassignedBtn)).toBe(true);
+
+      // Verify that the upper part (title) is also inside the draggable card
+      const titleElement = screen.getByText('Royal Priesthood Academy - Opened Email');
+      expect(cardElement.contains(titleElement)).toBe(true);
+    });
+
+    it('isolates pointer events on the 3-dots menu button and assignee button to prevent drag interference', () => {
+      render(<DealCard deal={mockUnassignedDeal} />);
+
+      const unassignedBtn = screen.getByRole('button', { name: 'Assign deal' });
+      const pointerDownEvent = new MouseEvent('pointerdown', { bubbles: true, cancelable: true });
+      const stopPropagationSpy = vi.spyOn(pointerDownEvent, 'stopPropagation');
+      unassignedBtn.dispatchEvent(pointerDownEvent);
+      expect(stopPropagationSpy).toHaveBeenCalled();
+    });
+  });
 });
+
+

@@ -20,7 +20,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import {
-  BrainCircuit,
   Activity,
   Layers,
   ShieldCheck,

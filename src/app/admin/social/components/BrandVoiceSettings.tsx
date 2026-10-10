@@ -5,7 +5,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -146,7 +146,7 @@ export default function BrandVoiceSettings() {
 
   if (isLoading) {
     return (
-      <Card className="border border-border/30 rounded-3xl bg-card/40 backdrop-blur-md">
+      <Card className="border border-border/80 rounded-2xl bg-card shadow-xs">
         <CardHeader className="space-y-2">
           <Skeleton className="h-6 w-48" />
           <Skeleton className="h-4 w-72" />
@@ -162,14 +162,12 @@ export default function BrandVoiceSettings() {
 
   return (
     <form onSubmit={handleSave}>
-      <Card className="border border-border/30 rounded-3xl bg-card/40 backdrop-blur-md overflow-hidden relative">
-        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent pointer-events-none" />
-
-        <CardHeader className="border-b border-border/20 pb-4 relative z-10">
+      <Card className="border border-border/80 rounded-2xl bg-card overflow-hidden relative shadow-xs">
+        <CardHeader className="border-b border-border/60 bg-muted/20 pb-4 relative z-10">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <CardTitle className="text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-emerald-500" /> AI Brand Voice Guide
+                <Sparkles className="h-5 w-5 text-primary" /> AI Brand Voice Guide
               </CardTitle>
               <CardInfoTooltip text="Configure guidelines that prompt the AI Composer to replicate your organization's exact messaging style." />
             </div>
@@ -179,15 +177,15 @@ export default function BrandVoiceSettings() {
               size="sm"
               onClick={handleExtractStyle}
               disabled={isAnalyzing}
-              className="text-xs shrink-0 gap-1.5 rounded-xl h-9 hover:bg-emerald-500/10 font-bold active:scale-[0.97] transition-all border-emerald-500/20"
+              className="text-xs shrink-0 gap-1.5 rounded-xl h-9 hover:bg-muted font-bold active:scale-[0.97] transition-all bg-card border border-border/80 shadow-xs"
             >
               {isAnalyzing ? (
                 <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Analyzing posts...
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> Analyzing posts...
                 </>
               ) : (
                 <>
-                  <RefreshCw className="h-3.5 w-3.5" /> Analyze Past Posts
+                  <RefreshCw className="h-3.5 w-3.5 text-primary" /> Analyze Past Posts
                 </>
               )}
             </Button>
@@ -200,7 +198,7 @@ export default function BrandVoiceSettings() {
             <div className="space-y-2">
               <Label htmlFor="tone-select" className="text-xs font-bold text-muted-foreground uppercase">Writing Tone</Label>
               <Select value={tone} onValueChange={(val: 'professional' | 'casual' | 'inspiring' | 'bold' | 'educational' | 'witty') => setTone(val)}>
-                <SelectTrigger id="tone-select" className="rounded-xl border-border/30 h-10 bg-background/50 text-xs">
+                <SelectTrigger id="tone-select" className="rounded-xl border-border/80 h-10 bg-background text-xs">
                   <SelectValue placeholder="Select tone" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
@@ -217,7 +215,7 @@ export default function BrandVoiceSettings() {
             <div className="space-y-2">
               <Label htmlFor="emoji-select" className="text-xs font-bold text-muted-foreground uppercase">Emoji Density</Label>
               <Select value={emojiDensity} onValueChange={(val: 'none' | 'low' | 'medium' | 'high') => setEmojiDensity(val)}>
-                <SelectTrigger id="emoji-select" className="rounded-xl border-border/30 h-10 bg-background/50 text-xs">
+                <SelectTrigger id="emoji-select" className="rounded-xl border-border/80 h-10 bg-background text-xs">
                   <SelectValue placeholder="Select emoji density" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
@@ -232,7 +230,7 @@ export default function BrandVoiceSettings() {
             <div className="space-y-2">
               <Label htmlFor="length-select" className="text-xs font-bold text-muted-foreground uppercase">Average Length</Label>
               <Select value={averageLength} onValueChange={(val: 'short' | 'medium' | 'long') => setAverageLength(val)}>
-                <SelectTrigger id="length-select" className="rounded-xl border-border/30 h-10 bg-background/50 text-xs">
+                <SelectTrigger id="length-select" className="rounded-xl border-border/80 h-10 bg-background text-xs">
                   <SelectValue placeholder="Select length" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
@@ -246,7 +244,7 @@ export default function BrandVoiceSettings() {
             <div className="space-y-2">
               <Label htmlFor="automation-select" className="text-xs font-bold text-muted-foreground uppercase">AI Inbox Mode</Label>
               <Select value={automationMode} onValueChange={(val: 'manual' | 'suggest' | 'autopilot') => setAutomationMode(val)}>
-                <SelectTrigger id="automation-select" className="rounded-xl border-border/30 h-10 bg-background/50 text-xs">
+                <SelectTrigger id="automation-select" className="rounded-xl border-border/80 h-10 bg-background text-xs">
                   <SelectValue placeholder="Select automation mode" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl font-medium text-xs">
@@ -266,7 +264,7 @@ export default function BrandVoiceSettings() {
               placeholder="e.g., Local parents of children aged 3-10 looking for holistic preschool and elementary education."
               value={targetAudience}
               onChange={(e) => setTargetAudience(e.target.value)}
-              className="min-h-16 rounded-xl border-border/30 bg-background/50 text-xs"
+              className="min-h-16 rounded-xl border-border/80 bg-background text-xs"
             />
           </div>
 
@@ -277,7 +275,7 @@ export default function BrandVoiceSettings() {
               placeholder="e.g., SmartSapp Prep Academy: holistic child-centered learning, robotics club, advanced algebra prep, and competitive swimming."
               value={productDescriptions}
               onChange={(e) => setProductDescriptions(e.target.value)}
-              className="min-h-16 rounded-xl border-border/30 bg-background/50 text-xs"
+              className="min-h-16 rounded-xl border-border/80 bg-background text-xs"
             />
           </div>
 
@@ -288,7 +286,7 @@ export default function BrandVoiceSettings() {
               placeholder="e.g., We foster cognitive resilience, creative problem solving, and global stewardship in students within a diverse academic setting."
               value={missionStatement}
               onChange={(e) => setMissionStatement(e.target.value)}
-              className="min-h-16 rounded-xl border-border/30 bg-background/50 text-xs"
+              className="min-h-16 rounded-xl border-border/80 bg-background text-xs"
             />
           </div>
 
@@ -301,7 +299,7 @@ export default function BrandVoiceSettings() {
                 placeholder="holistic, enrollment, excellence (comma separated)"
                 value={mandatoryKeywordsStr}
                 onChange={(e) => setMandatoryKeywordsStr(e.target.value)}
-                className="rounded-xl border-border/30 h-10 bg-background/50 text-xs"
+                className="rounded-xl border-border/80 h-10 bg-background text-xs"
               />
             </div>
 
@@ -312,17 +310,17 @@ export default function BrandVoiceSettings() {
                 placeholder="cheap, guaranteed, low-cost (comma separated)"
                 value={forbiddenWordsStr}
                 onChange={(e) => setForbiddenWordsStr(e.target.value)}
-                className="rounded-xl border-border/30 h-10 bg-background/50 text-xs"
+                className="rounded-xl border-border/80 h-10 bg-background text-xs"
               />
             </div>
           </div>
         </CardContent>
 
-        <CardFooter className="border-t border-border/20 pt-4 pb-4 flex justify-end relative z-10">
+        <CardFooter className="border-t border-border/60 bg-muted/15 pt-4 pb-4 flex justify-end relative z-10">
           <Button
             type="submit"
             disabled={isSaving}
-            className="rounded-xl h-10 px-6 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs tracking-wider uppercase gap-2 shadow-lg shadow-emerald-500/10 active:scale-[0.97] transition-all"
+            className="rounded-xl h-10 px-6 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs tracking-wider uppercase gap-2 shadow-xs active:scale-[0.97] transition-all"
           >
             {isSaving ? (
               <>

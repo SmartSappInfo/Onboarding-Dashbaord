@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { collection, query, where, limit } from 'firebase/firestore';
 import { 
-  LayoutDashboard, 
   Sparkles, 
   Calendar, 
   MessageSquare, 
@@ -101,7 +100,7 @@ export default function SocialDashboardClient() {
 
       {/* KPI Cards Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <Card className="border border-border/30 bg-card/40 backdrop-blur-sm rounded-2xl hover:-translate-y-0.5 hover:shadow-md transition-all duration-300">
+        <Card className="border border-border/80 bg-card rounded-2xl shadow-xs hover:-translate-y-0.5 hover:shadow-md transition-all duration-300">
           <CardHeader className="pb-2">
             <CardDescription className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Connected Profiles</CardDescription>
           </CardHeader>
@@ -113,7 +112,7 @@ export default function SocialDashboardClient() {
           </CardContent>
         </Card>
 
-        <Card className="border border-border/30 bg-card/40 backdrop-blur-sm rounded-2xl hover:-translate-y-0.5 hover:shadow-md transition-all duration-300">
+        <Card className="border border-border/80 bg-card rounded-2xl shadow-xs hover:-translate-y-0.5 hover:shadow-md transition-all duration-300">
           <CardHeader className="pb-2">
             <CardDescription className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Inbox Inquiries</CardDescription>
           </CardHeader>
@@ -131,7 +130,7 @@ export default function SocialDashboardClient() {
           </CardContent>
         </Card>
 
-        <Card className="border border-border/30 bg-card/40 backdrop-blur-sm rounded-2xl hover:-translate-y-0.5 hover:shadow-md transition-all duration-300">
+        <Card className="border border-border/80 bg-card rounded-2xl shadow-xs hover:-translate-y-0.5 hover:shadow-md transition-all duration-300">
           <CardHeader className="pb-2">
             <CardDescription className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Queue Calendar</CardDescription>
           </CardHeader>
@@ -141,7 +140,7 @@ export default function SocialDashboardClient() {
           </CardContent>
         </Card>
 
-        <Card className="border border-border/30 bg-card/40 backdrop-blur-sm rounded-2xl hover:-translate-y-0.5 hover:shadow-md transition-all duration-300">
+        <Card className="border border-border/80 bg-card rounded-2xl shadow-xs hover:-translate-y-0.5 hover:shadow-md transition-all duration-300">
           <CardHeader className="pb-2">
             <CardDescription className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Active Alerts</CardDescription>
           </CardHeader>
@@ -162,13 +161,13 @@ export default function SocialDashboardClient() {
               <button
                 key={sc.title}
                 onClick={() => router.push(sc.href)}
-                className="w-full text-left p-4 rounded-2xl border border-border/20 bg-card/20 hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 hover:border-border/40 hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between items-start gap-4 active:scale-[0.98]"
+                className="w-full text-left p-4 rounded-2xl border border-border/80 bg-card shadow-xs hover:bg-muted/30 hover:border-border hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between items-start gap-4 active:scale-[0.98]"
               >
                 <div className={cn("h-8 w-8 rounded-xl flex items-center justify-center border shrink-0", sc.color)}>
                   <Icon className="h-4 w-4" />
                 </div>
                 <div className="space-y-1">
-                  <span className="font-extrabold text-xs text-foreground block flex items-center gap-1">
+                  <span className="font-extrabold text-xs text-foreground flex items-center gap-1">
                     {sc.title} <ArrowUpRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
                   </span>
                   <span className="text-[10px] text-muted-foreground font-medium leading-relaxed block">{sc.desc}</span>
@@ -182,26 +181,26 @@ export default function SocialDashboardClient() {
       {/* Bottom columns: Inbound Feed & Alerts Feed preview */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Column 1: Inbound Messages */}
-        <Card className="border border-border/20 bg-card/15 rounded-3xl overflow-hidden shadow-xl">
-          <CardHeader className="pb-4 border-b border-border/10">
+        <Card className="border border-border/80 bg-card rounded-2xl overflow-hidden shadow-xs">
+          <CardHeader className="pb-4 border-b border-border/80 bg-muted/10">
             <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
               Inbound Threads Preview
-              <Button variant="ghost" size="sm" onClick={() => router.push('/admin/social/inbox')} className="h-6 text-[9px] font-bold uppercase tracking-wider gap-0.5 text-emerald-500">
+              <Button variant="ghost" size="sm" onClick={() => router.push('/admin/social/inbox')} className="h-7 px-2 text-[9px] font-bold uppercase tracking-wider gap-0.5 text-primary hover:text-primary/80">
                 View Inbox <ChevronRight className="h-3.5 w-3.5" />
               </Button>
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-4 divide-y divide-border/10 space-y-2">
+          <CardContent className="pt-4 divide-y divide-border/40 space-y-2">
             {isLoadingInbox ? (
               <div className="h-24 flex items-center justify-center text-muted-foreground gap-2">
-                <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
                 <span className="text-[9px] font-bold uppercase tracking-widest">Loading previews...</span>
               </div>
             ) : inboxItems.length === 0 ? (
               <p className="text-[10px] text-muted-foreground/60 italic py-4">No inbound comments or messages cataloged yet.</p>
             ) : (
               inboxItems.slice(0, 3).map((item) => (
-                <div key={item.id} className="p-3 rounded-xl transition-colors hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 flex items-start justify-between gap-3">
+                <div key={item.id} className="p-3 rounded-xl transition-colors hover:bg-muted/30 border border-border/40 bg-muted/5 flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <span className="font-extrabold text-[11px] text-foreground block">{item.senderName}</span>
                     <p className="text-[10px] text-muted-foreground/90 truncate max-w-sm mt-0.5">{item.content}</p>
@@ -214,21 +213,21 @@ export default function SocialDashboardClient() {
         </Card>
 
         {/* Column 2: Brand Mentions alerts */}
-        <Card className="border border-border/20 bg-card/15 rounded-3xl overflow-hidden shadow-xl">
-          <CardHeader className="pb-4 border-b border-border/10">
+        <Card className="border border-border/80 bg-card rounded-2xl overflow-hidden shadow-xs">
+          <CardHeader className="pb-4 border-b border-border/80 bg-muted/10">
             <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
               Tracked Mentions Alert
-              <Button variant="ghost" size="sm" onClick={() => router.push('/admin/social/listening')} className="h-6 text-[9px] font-bold uppercase tracking-wider gap-0.5 text-emerald-500">
+              <Button variant="ghost" size="sm" onClick={() => router.push('/admin/social/listening')} className="h-7 px-2 text-[9px] font-bold uppercase tracking-wider gap-0.5 text-primary hover:text-primary/80">
                 View Listening <ChevronRight className="h-3.5 w-3.5" />
               </Button>
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-4 divide-y divide-border/10 space-y-2">
+          <CardContent className="pt-4 divide-y divide-border/40 space-y-2">
             {alerts.length === 0 ? (
               <p className="text-[10px] text-muted-foreground/60 italic py-4">No mentions captured yet. Trigger simulations to seed alerts.</p>
             ) : (
               alerts.slice(0, 3).map((alert) => (
-                <div key={alert.id} className="p-3 rounded-xl transition-colors hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 flex items-start justify-between gap-3">
+                <div key={alert.id} className="p-3 rounded-xl transition-colors hover:bg-muted/30 border border-border/40 bg-muted/5 flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <span className="font-extrabold text-[11px] text-foreground block">{alert.author} via {alert.platform}</span>
                     <p className="text-[10px] text-muted-foreground/90 truncate max-w-sm mt-0.5">{alert.content}</p>

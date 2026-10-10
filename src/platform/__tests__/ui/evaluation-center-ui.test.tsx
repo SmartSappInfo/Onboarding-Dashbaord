@@ -208,7 +208,8 @@ describe('Phase 15 Milestone 5 - Evaluation Center UI & Components Suite', () =>
     expect(screen.getByText('0')).toBeDefined();
     expect(screen.getByText('4.8%')).toBeDefined();
     expect(screen.getByText('18s')).toBeDefined();
-    expect(screen.getByText(/actual task performance/i)).toBeDefined();
+    expect(screen.getByText('Task Success')).toBeDefined();
+    expect(screen.queryByText(/actual task performance/i)).toBeNull();
   });
 
   it('2. renders HumanAgentComparisonCard with speedup, error reduction, and context breadth metrics', () => {
@@ -377,7 +378,8 @@ describe('Phase 15 Milestone 5 - Evaluation Center UI & Components Suite', () =>
 
     await waitFor(() => {
       expect(screen.getByText(/Agent Evaluation Center/i)).toBeDefined();
-      expect(screen.getByText('LIVE SSE')).toBeDefined();
+      expect(screen.queryByText('LIVE SSE')).toBeNull();
+      expect(screen.queryByText('PROD_VERIFIED')).toBeNull();
     });
 
     // Check tab presence

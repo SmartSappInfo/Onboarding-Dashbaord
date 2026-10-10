@@ -3,7 +3,8 @@
 import * as React from 'react';
 import { useUser, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { Workspace, CalendarConnection } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -227,25 +228,23 @@ export default function WorkspaceIntegrationsTab({ workspace, onSaveSuccess }: W
 
   return (
     <div className="space-y-8 text-left">
-      <Card className="rounded-[2rem] border border-border shadow-sm bg-transparent overflow-hidden">
-        <CardHeader className="p-8 border-b">
-          <CardTitle className="text-xl font-bold flex items-center gap-2">
-            <Key className="h-5 w-5 text-primary" />
-            Workspace Integrations & AI
-          </CardTitle>
-          <CardDescription className="text-xs font-semibold text-muted-foreground mt-0.5">
-            Configure default SMS sender profiles and calendar/conferencing OAuth connections for this workspace hub.
-          </CardDescription>
+      <Card className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm overflow-hidden">
+        <CardHeader className="p-6 border-b border-border/60 bg-muted/20">
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-base font-bold flex items-center gap-2">
+              <Key className="h-5 w-5 text-primary" />
+              Workspace Integrations & AI
+            </CardTitle>
+            <CardInfoTooltip text="Configure default SMS sender profiles and calendar/conferencing OAuth connections for this workspace hub." />
+          </div>
         </CardHeader>
-        <CardContent className="p-8 space-y-10">
+        <CardContent className="p-6 space-y-8">
           
           {/* Calendar & Conferencing Integrations */}
           <div className="space-y-6">
-            <div>
+            <div className="flex items-center gap-2">
               <h3 className="text-sm font-bold text-foreground">Calendar & Conferencing Connections</h3>
-              <p className="text-[10px] font-semibold text-muted-foreground mt-0.5 leading-relaxed max-w-xl">
-                Connect external accounts to sync scheduled bookings, meetings, and check for calendar conflicts automatically.
-              </p>
+              <CardInfoTooltip text="Connect external accounts to sync scheduled bookings, meetings, and check for calendar conflicts automatically." />
             </div>
 
             {loadingConnections ? (
@@ -256,7 +255,7 @@ export default function WorkspaceIntegrationsTab({ workspace, onSaveSuccess }: W
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl">
                 {/* 1. Google Calendar Card */}
-                <Card className="border rounded-2xl p-5 bg-card/40 flex flex-col justify-between min-h-[175px] relative">
+                <Card className="border border-border/80 rounded-2xl p-5 bg-card text-card-foreground shadow-xs flex flex-col justify-between min-h-[175px] relative">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="p-2 bg-red-500/10 text-red-500 rounded-xl">
@@ -342,7 +341,7 @@ export default function WorkspaceIntegrationsTab({ workspace, onSaveSuccess }: W
                 </Card>
 
                 {/* 2. Microsoft Teams Card */}
-                <Card className="border rounded-2xl p-5 bg-card/40 flex flex-col justify-between min-h-[175px] relative">
+                <Card className="border border-border/80 rounded-2xl p-5 bg-card text-card-foreground shadow-xs flex flex-col justify-between min-h-[175px] relative">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="p-2 bg-blue-500/10 text-blue-500 rounded-xl">
@@ -428,7 +427,7 @@ export default function WorkspaceIntegrationsTab({ workspace, onSaveSuccess }: W
                 </Card>
 
                 {/* 3. Zoom Meetings Card */}
-                <Card className="border rounded-2xl p-5 bg-card/40 flex flex-col justify-between min-h-[175px] relative">
+                <Card className="border border-border/80 rounded-2xl p-5 bg-card text-card-foreground shadow-xs flex flex-col justify-between min-h-[175px] relative">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="p-2 bg-indigo-500/10 text-indigo-500 rounded-xl">
@@ -530,15 +529,12 @@ export default function WorkspaceIntegrationsTab({ workspace, onSaveSuccess }: W
           <form onSubmit={handleSave} className="space-y-8">
             <div className="space-y-4 max-w-md">
               <div className="flex items-center justify-between">
-                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Default SMS Sender ID</Label>
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs font-bold text-foreground">Default SMS Sender ID</Label>
+                  <CardInfoTooltip text="Configure the default Sender ID for SMS dispatches sent from this workspace. Restricted to 11 alphanumeric characters. If left blank, 'SmartSapp' will be used as default." />
+                </div>
                 <Badge variant="outline" className="text-[8px] font-semibold uppercase px-1.5 h-4">Messaging</Badge>
               </div>
-              
-              <p className="text-[10px] font-medium text-muted-foreground leading-relaxed px-1">
-                Configure the default Sender ID for SMS dispatches sent from this workspace. 
-                This ID is restricted by telecommunication regulations to a maximum of 11 alphanumeric characters. 
-                If left blank, &apos;SmartSapp&apos; will be used as default.
-              </p>
 
               <div className="space-y-2 pt-2">
                 <Input 
@@ -550,7 +546,7 @@ export default function WorkspaceIntegrationsTab({ workspace, onSaveSuccess }: W
                     }
                   }} 
                   placeholder="e.g. SmartSapp" 
-                  className="h-11 rounded-xl bg-muted/20 border-none font-bold text-sm px-4 shadow-inner" 
+                  className="h-11 rounded-xl bg-white dark:bg-card border border-border/80 focus-visible:ring-primary font-bold text-sm px-4" 
                 />
                 {defaultSmsSenderId.length > 11 && (
                   <p className="text-[10px] font-medium text-destructive px-1">Sender ID must be at most 11 characters.</p>
@@ -558,11 +554,11 @@ export default function WorkspaceIntegrationsTab({ workspace, onSaveSuccess }: W
               </div>
             </div>
 
-            <div className="p-5 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-4 max-w-2xl shadow-inner">
+            <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-3.5 max-w-2xl">
               <Smartphone className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
               <div className="space-y-1">
-                <p className="text-[10px] font-semibold text-blue-900 ">Gateway Credentials</p>
-                <p className="text-[9px] font-bold text-blue-800/60 leading-relaxed tracking-tighter text-left">
+                <p className="text-xs font-semibold text-blue-900 dark:text-blue-300">Gateway Credentials</p>
+                <p className="text-[11px] font-medium text-blue-800/80 dark:text-blue-400/80 leading-relaxed text-left">
                   API keys and routing credentials (such as Gemini API, Resend, and mNotify API key) are governed globally by the organization settings to ensure centralized billing. 
                   Sender profiles can be customized at the workspace level.
                 </p>
@@ -574,7 +570,7 @@ export default function WorkspaceIntegrationsTab({ workspace, onSaveSuccess }: W
               <Button 
                 type="submit" 
                 disabled={isSaving || defaultSmsSenderId.length > 11} 
-                className="rounded-xl font-semibold px-10 shadow-2xl bg-primary text-white text-xs h-12 active:scale-[0.97] transition-all"
+                className="rounded-xl font-bold px-8 shadow-sm bg-primary text-primary-foreground text-xs h-11 active:scale-[0.97] transition-all"
               >
                 {isSaving ? (
                   <>

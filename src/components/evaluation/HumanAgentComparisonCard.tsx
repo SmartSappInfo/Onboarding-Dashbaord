@@ -45,16 +45,11 @@ export function HumanAgentComparisonCard({
           <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
             <Zap className="w-4 h-4 text-primary" />
           </div>
-          <div className="flex flex-col text-left">
-            <div className="flex items-center gap-1.5">
-              <span className="text-sm font-semibold text-foreground">
-                Human Baseline vs Autonomous Agent Performance
-              </span>
-              <CardInfoTooltip text="Empirical comparison between human knowledge workers and SmartSapp autonomous multi-agent swarm across 35 gold-standard enterprise tasks (Roadmap §16)." />
-            </div>
-            <span className="text-[11px] text-muted-foreground font-mono">
-              Roadmap §16 Verified Benchmarking Matrix
+          <div className="flex items-center gap-1.5 text-left">
+            <span className="text-sm font-semibold text-foreground">
+              Human Baseline vs Autonomous Agent Performance
             </span>
+            <CardInfoTooltip text="Empirical comparison between human knowledge workers and SmartSapp autonomous multi-agent swarm across 35 gold-standard enterprise tasks." />
           </div>
         </div>
 

@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { 
   format, 
   startOfMonth, 
@@ -16,9 +17,9 @@ import {
   parseISO
 } from 'date-fns';
 import { 
+  ArrowLeft,
   ChevronLeft, 
   ChevronRight, 
-  Calendar as CalendarIcon, 
   Facebook, 
   Instagram, 
   Linkedin, 
@@ -71,17 +72,17 @@ function DroppableDay({ id, children, isToday, isCurrentMonth }: DroppableDayPro
     <div
       ref={setNodeRef}
       className={cn(
-        "min-h-32 p-2 border-b border-r border-border/20 transition-all duration-200 relative flex flex-col gap-1.5 even:bg-muted/15 dark:even:bg-muted/10",
+        "min-h-32 p-2 border-b border-r border-border/60 transition-all duration-200 relative flex flex-col gap-1.5 even:bg-muted/15 dark:even:bg-muted/10",
         !isCurrentMonth && "bg-muted/10 opacity-30",
-        isToday && "bg-emerald-500/5 dark:bg-emerald-500/2",
-        isOver && "bg-emerald-500/10 dark:bg-emerald-500/5 border-emerald-500/40"
+        isToday && "bg-primary/5",
+        isOver && "bg-primary/10 border-primary/40"
       )}
     >
       <div className="flex justify-between items-center mb-1">
         <span className={cn(
           "text-[10px] font-extrabold px-2 py-0.5 rounded-full select-none",
           isToday 
-            ? "bg-emerald-500 text-white" 
+            ? "bg-primary text-primary-foreground" 
             : "text-muted-foreground bg-muted/30"
         )}>
           {id.split('-')[2]}
@@ -130,7 +131,7 @@ function DraggablePostCard({
         platformColors.bg,
         platformColors.border,
         platformColors.text,
-        isDragging && "opacity-40 z-50 scale-105 shadow-2xl border-emerald-500"
+        isDragging && "opacity-40 z-50 scale-105 shadow-2xl border-primary"
       )}
     >
       <div className="flex items-center gap-1.5 font-bold truncate">
@@ -269,53 +270,61 @@ export default function SocialCalendarClient() {
         {/* Calendar Header Panel */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/50 pb-6">
           <div className="flex items-center gap-2.5">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              asChild 
+              className="h-9 w-9 rounded-xl hover:bg-muted active:scale-[0.97] shrink-0 text-muted-foreground hover:text-foreground"
+            >
+              <Link href="/admin/social" aria-label="Back to Social Hub">
+                <ArrowLeft className="h-5 w-5" />
+              </Link>
+            </Button>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Content Calendar</h1>
             <CardInfoTooltip text="Manage and schedule posts via drag-and-drop on the monthly planner grid." />
           </div>
 
-        <div className="flex items-center gap-2 self-end sm:self-auto">
-          <Button variant="outline" size="icon" onClick={handlePrevMonth} className="rounded-xl h-9 w-9 active:scale-[0.97] transition-all bg-white dark:bg-card border border-border/80 shadow-xs">
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" onClick={handleToday} className="rounded-xl h-9 px-4 font-semibold text-xs active:scale-[0.97] transition-all bg-white dark:bg-card border border-border/80 shadow-xs">
-            Today
-          </Button>
-          <Button variant="outline" size="icon" onClick={handleNextMonth} className="rounded-xl h-9 w-9 active:scale-[0.97] transition-all bg-white dark:bg-card border border-border/80 shadow-xs">
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <span className="font-bold text-sm tracking-wide ml-2 bg-muted/40 py-1.5 px-4 rounded-xl border border-border/20">
-            {format(currentMonth, 'MMMM yyyy')}
-          </span>
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <Button variant="outline" size="icon" onClick={handlePrevMonth} className="rounded-xl h-9 w-9 active:scale-[0.97] transition-all bg-card border border-border/80 shadow-xs">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" onClick={handleToday} className="rounded-xl h-9 px-4 font-semibold text-xs active:scale-[0.97] transition-all bg-card border border-border/80 shadow-xs">
+              Today
+            </Button>
+            <Button variant="outline" size="icon" onClick={handleNextMonth} className="rounded-xl h-9 w-9 active:scale-[0.97] transition-all bg-card border border-border/80 shadow-xs">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <span className="font-bold text-sm tracking-wide ml-2 bg-muted/30 py-1.5 px-4 rounded-xl border border-border/80 text-foreground">
+              {format(currentMonth, 'MMMM yyyy')}
+            </span>
+          </div>
         </div>
-      </div>
 
-      {isLoading ? (
-        <Card className="border border-border/30 rounded-3xl bg-card/40 backdrop-blur-md">
-          <CardContent className="h-96 flex items-center justify-center">
-            <div className="flex flex-col items-center gap-2 text-muted-foreground">
-              <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
-              <span className="text-xs font-bold uppercase tracking-widest">Loading calendar...</span>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <DndContext onDragEnd={handleDragEnd}>
-          <Card className="border border-border/30 rounded-3xl bg-card/30 backdrop-blur-md overflow-hidden relative shadow-2xl">
-            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/2 to-transparent pointer-events-none" />
-            
-            {/* Grid Headers */}
-            <div className="grid grid-cols-7 border-b border-border/30 bg-muted/10 text-center font-bold text-[10px] tracking-wider uppercase py-3 text-muted-foreground">
-              <div>Sun</div>
-              <div>Mon</div>
-              <div>Tue</div>
-              <div>Wed</div>
-              <div>Thu</div>
-              <div>Fri</div>
-              <div>Sat</div>
-            </div>
+        {isLoading ? (
+          <Card className="border border-border/80 rounded-2xl bg-card shadow-xs">
+            <CardContent className="h-96 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <span className="text-xs font-bold uppercase tracking-widest">Loading calendar...</span>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <DndContext onDragEnd={handleDragEnd}>
+            <Card className="border border-border/80 rounded-2xl bg-card overflow-hidden relative shadow-xs">
+              {/* Grid Headers */}
+              <div className="grid grid-cols-7 border-b border-border/80 bg-muted/20 text-center font-bold text-[10px] tracking-wider uppercase py-3 text-muted-foreground">
+                <div>Sun</div>
+                <div>Mon</div>
+                <div>Tue</div>
+                <div>Wed</div>
+                <div>Thu</div>
+                <div>Fri</div>
+                <div>Sat</div>
+              </div>
 
-            {/* Grid Cells */}
-            <div className="grid grid-cols-7 bg-background/30">
+              {/* Grid Cells */}
+              <div className="grid grid-cols-7 bg-card">
               {days.map((day) => {
                 const dateKey = format(day, 'yyyy-MM-dd');
                 const dayEvents = events.filter((e) => isSameDay(e.scheduledDate, day));

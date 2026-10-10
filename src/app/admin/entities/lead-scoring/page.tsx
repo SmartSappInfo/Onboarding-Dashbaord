@@ -7,7 +7,8 @@ import { useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 import { PageContainerFluid } from '@/components/ui/page-container';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -950,13 +951,11 @@ export default function LeadScoringCleanupPage() {
       <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto py-6 animate-fade-in text-left">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/40 pb-5">
-          <div className="space-y-1">
+          <div className="flex items-center gap-2.5">
             <h1 className="text-2xl font-extrabold tracking-tight flex items-center gap-2">
               <Sparkles className="h-6 w-6 text-primary animate-pulse" /> Lead Scoring & Cleanup Center
             </h1>
-            <p className="text-sm text-muted-foreground">
-              Evaluate contact scores, run bulk adjustments, soft-archive stale leads, and customize scoring conditions.
-            </p>
+            <CardInfoTooltip text="Evaluate contact scores, run bulk adjustments, soft-archive stale leads, and customize scoring conditions." />
           </div>
           <div className="flex gap-2">
             <Button 
@@ -1445,7 +1444,7 @@ export default function LeadScoringCleanupPage() {
                       paginatedHygieneLeads.map((contact) => {
                         const isEmailBounced = contact.emailStatus === 'bounced';
                         const isPhoneBounced = contact.phoneStatus === 'failed';
-                        const isUnverified = contact.emailVerificationScore === undefined;
+                        const _isUnverified = contact.emailVerificationScore === undefined;
 
                         return (
                           <TableRow key={contact.id} className="hover:bg-muted/5 border-b border-border/30 last:border-none">
@@ -1677,13 +1676,11 @@ export default function LeadScoringCleanupPage() {
             <Card className="rounded-2xl border-border/40 bg-card/35 backdrop-blur-md">
               <CardHeader className="border-b border-border/30 py-4">
                 <div className="flex items-center justify-between w-full">
-                  <div className="space-y-1 text-left">
+                  <div className="flex items-center gap-2 text-left">
                     <CardTitle className="text-base font-extrabold flex items-center gap-2">
                       <Sliders className="h-4 w-4 text-primary" /> Auto-Scoring Mapping Rules
                     </CardTitle>
-                    <CardDescription className="text-xs">
-                      Set system parameters to automatically adjust scores when integrations detect verification or client events.
-                    </CardDescription>
+                    <CardInfoTooltip text="Set system parameters to automatically adjust scores when integrations detect verification or client events." />
                   </div>
                   <div className="flex items-center gap-2">
                     <Button 
@@ -1709,11 +1706,9 @@ export default function LeadScoringCleanupPage() {
                 {/* Email verification mapping */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <div className="space-y-0.5 text-left">
+                    <div className="flex items-center gap-1.5 text-left">
                       <Label className="text-xs font-black uppercase tracking-wider text-foreground">Email Verification Score Mapping</Label>
-                      <p className="text-[10px] text-muted-foreground">
-                        Automatically adjust score once email quality is checked in the background. (Rules sorted descending).
-                      </p>
+                      <CardInfoTooltip text="Automatically adjust score once email quality is checked in the background. (Rules sorted descending)." />
                     </div>
                     <Button 
                       onClick={addVerificationRule}
@@ -1771,13 +1766,11 @@ export default function LeadScoringCleanupPage() {
                 {/* Phone verification mapping */}
                 <div className="space-y-4 border-t border-border/40 pt-6">
                   <div className="flex items-center justify-between">
-                    <div className="space-y-0.5 text-left">
+                    <div className="flex items-center gap-1.5 text-left">
                       <Label className="text-xs font-black uppercase tracking-wider text-foreground flex items-center gap-1.5">
                         <Phone className="h-3.5 w-3.5 text-primary" /> Phone Verification Score Mapping
                       </Label>
-                      <p className="text-[10px] text-muted-foreground">
-                        Award points once a phone number passes background verification.
-                      </p>
+                      <CardInfoTooltip text="Award points once a phone number passes background verification." />
                     </div>
                     <Button
                       onClick={addPhoneVerificationRule}
@@ -1835,11 +1828,9 @@ export default function LeadScoringCleanupPage() {
                 {/* Engagement mapping */}
                 <div className="space-y-4 border-t border-border/40 pt-6">
                   <div className="flex items-center justify-between">
-                    <div className="space-y-0.5 text-left">
+                    <div className="flex items-center gap-1.5 text-left">
                       <Label className="text-xs font-black uppercase tracking-wider text-foreground">Engagement Activities Score Mapping</Label>
-                      <p className="text-[10px] text-muted-foreground">
-                        Automatically adjust lead scores when specific activities/engagements are logged in the CRM history.
-                      </p>
+                      <CardInfoTooltip text="Automatically adjust lead scores when specific activities/engagements are logged in the CRM history." />
                     </div>
                     <Button 
                       onClick={addEngagementRule}
@@ -1932,11 +1923,9 @@ export default function LeadScoringCleanupPage() {
 
                   {/* Call Campaign Outcomes section */}
                   <div className="space-y-4 border-t border-border/40 pt-6 mt-6">
-                    <div className="space-y-0.5 text-left">
+                    <div className="flex items-center gap-1.5 text-left">
                       <Label className="text-xs font-black uppercase tracking-wider text-foreground">Call Campaign Outcomes Scoring</Label>
-                      <p className="text-[10px] text-muted-foreground">
-                        Configure global defaults for call campaign outcomes. You can also override these by mapping specific outcomes above (e.g. <code>call_outcome:Agreed</code>).
-                      </p>
+                      <CardInfoTooltip text="Configure global defaults for call campaign outcomes. You can also override these by mapping specific outcomes above (e.g. call_outcome:Agreed)." />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -2004,7 +1993,7 @@ export default function LeadScoringCleanupPage() {
             <div className="space-y-4 my-2">
               <div className="space-y-1">
                 <Label className="text-[10px] font-bold text-muted-foreground uppercase">Adjustment Type</Label>
-                <Select value={adjustOperation} onValueChange={(v: any) => setAdjustOperation(v)}>
+                <Select value={adjustOperation} onValueChange={(v) => setAdjustOperation(v as 'add' | 'subtract' | 'set' | 'reset')}>
                   <SelectTrigger className="h-9 text-xs rounded-lg font-semibold bg-background">
                     <SelectValue />
                   </SelectTrigger>

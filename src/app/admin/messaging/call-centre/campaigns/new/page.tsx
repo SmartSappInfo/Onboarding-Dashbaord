@@ -1,11 +1,20 @@
-import { CampaignWizardClient } from './CampaignWizardClient';
+import { redirect } from 'next/navigation';
 
-export default async function NewCampaignPage({
+/**
+ * Backward compatibility redirect:
+ * Routes legacy /admin/messaging/call-centre/campaigns/new to /admin/call-centre/campaigns/new.
+ */
+export default async function LegacyCallCentreNewCampaignPage({
   searchParams,
 }: {
-  searchParams: Promise<{ id?: string; step?: string; scriptId?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { id, step, scriptId } = await searchParams;
-  const initialStep = step ? parseInt(step, 10) : undefined;
-  return <CampaignWizardClient campaignId={id} initialStep={initialStep} initialScriptId={scriptId} />;
+  const params = await searchParams;
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (typeof value === 'string') query.set(key, value);
+    else if (Array.isArray(value)) value.forEach(v => query.append(key, v));
+  });
+  const queryString = query.toString();
+  redirect(`/admin/call-centre/campaigns/new${queryString ? `?${queryString}` : ''}`);
 }

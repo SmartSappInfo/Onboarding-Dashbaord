@@ -44,7 +44,7 @@ export function TemporaryAccessModal({
   onClose,
   people,
   roles,
-  workspaces,
+  workspaces = [],
   onGranted,
 }: TemporaryAccessModalProps) {
   const { toast } = useToast();

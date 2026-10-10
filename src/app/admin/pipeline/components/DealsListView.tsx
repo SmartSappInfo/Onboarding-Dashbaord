@@ -53,9 +53,11 @@ import {
   Eye,
   UserCheck,
   Move,
+  CalendarRange,
 } from 'lucide-react';
 import AssignDealModal from './AssignDealModal';
 import TransferDealModal from './TransferDealModal';
+import { DealTaskCadenceModal } from './DealTaskCadenceModal';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -101,6 +103,9 @@ interface DealsListViewProps {
   onChangeColumns?: (cols: DealColumnKey[]) => void;
   density?: TableDensity;
   onChangeDensity?: (density: TableDensity) => void;
+  stages?: OnboardingStage[];
+  deals?: Deal[];
+  isLoadingDeals?: boolean;
 }
 
 type SortKey = 'name' | 'entity' | 'value' | 'forecast' | 'stage' | 'assignee' | 'status';
@@ -119,13 +124,16 @@ export default function DealsListView({
   onChangeColumns,
   density = 'standard',
   onChangeDensity,
+  stages: propsStages,
+  deals: propsDeals,
+  isLoadingDeals: propsIsLoadingDeals,
 }: DealsListViewProps) {
   const firestore = useFirestore();
   const router = useRouter();
   const { user } = useUser();
   const { toast } = useToast();
   const confirm = useConfirm();
-  const { activeWorkspaceId } = useWorkspace();
+  const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const { restrictDealsToAssigned, isWorkspaceAdmin } = useWorkspaceVisibility();
   const { assignedUserId } = useGlobalFilter();
   const { entitiesById, resolveIds } = useEntityResolver();
@@ -156,33 +164,54 @@ export default function DealsListView({
   const [mergeDealB, setMergeDealB] = React.useState<Deal | null>(null);
   const [isMergeOpen, setIsMergeOpen] = React.useState(false);
 
-  // 1. Fetch Deals
+  // Phase 5: Deal Task Cadence Cleanup Modal State
+  const [isCadenceOpen, setIsCadenceOpen] = React.useState(false);
+
+  // 1. Fetch Deals (skip if provided by parent)
   const dealsQuery = useMemoFirebase(
-    () => (firestore && activeWorkspaceId ? query(
+    () => (firestore && activeWorkspaceId && !propsDeals ? query(
       collection(firestore, 'deals'),
       where('pipelineId', '==', pipelineId),
       where('workspaceId', '==', activeWorkspaceId)
     ) : null),
-    [firestore, pipelineId, activeWorkspaceId]
+    [firestore, pipelineId, activeWorkspaceId, propsDeals]
   );
-  const { data: deals, isLoading } = useCollection<Deal>(dealsQuery);
+  const { data: fetchedDeals, isLoading: isLoadingDealsInternal } = useCollection<Deal>(dealsQuery);
+  const deals = propsDeals ?? fetchedDeals;
+  const isLoading = propsIsLoadingDeals !== undefined ? propsIsLoadingDeals : isLoadingDealsInternal;
 
-  // 2. Fetch Stages for current pipeline
+  const selectedDeals = React.useMemo(() => {
+    if (!deals || selectedDealIds.length === 0) return [];
+    const idSet = new Set(selectedDealIds);
+    return deals.filter((d) => idSet.has(d.id));
+  }, [deals, selectedDealIds]);
+
+  // 2. Fetch Stages for current pipeline (skip if provided by parent)
   const stagesQuery = useMemoFirebase(
-    () => (firestore && pipelineId ? query(
+    () => (firestore && pipelineId && !propsStages ? query(
       collection(firestore, 'onboardingStages'),
       where('pipelineId', '==', pipelineId),
       orderBy('order', 'asc')
     ) : null),
-    [firestore, pipelineId]
+    [firestore, pipelineId, propsStages]
   );
-  const { data: stages } = useCollection<OnboardingStage>(stagesQuery);
+  const { data: fetchedStages } = useCollection<OnboardingStage>(stagesQuery);
+  const stages = propsStages ?? fetchedStages;
 
   // Resolve the entities referenced by the current deals
+  const referencedEntityIdsKey = React.useMemo(() => {
+    const set = new Set<string>();
+    for (const d of deals || []) {
+      if (d.entityId) set.add(d.entityId);
+    }
+    return Array.from(set).sort().join(',');
+  }, [deals]);
+
   React.useEffect(() => {
-    const ids = (deals || []).map((d) => d.entityId).filter((x): x is string => !!x);
-    if (ids.length > 0) resolveIds(ids);
-  }, [deals, resolveIds]);
+    if (!referencedEntityIdsKey) return;
+    const ids = referencedEntityIdsKey.split(',');
+    resolveIds(ids);
+  }, [referencedEntityIdsKey, resolveIds]);
 
   const entityName = React.useCallback(
     (entityId: string) => entitiesById.get(entityId)?.displayName || 'Unknown',
@@ -828,6 +857,18 @@ export default function DealsListView({
             </div>
 
             <div className="flex items-center gap-1.5">
+              {/* Schedule Task Cadence */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsCadenceOpen(true)}
+                disabled={isBulkOperating}
+                className="h-8 rounded-xl font-bold text-xs gap-1.5 border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500 hover:text-white transition-colors active:scale-[0.97]"
+              >
+                <CalendarRange className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Schedule Cadence</span>
+              </Button>
+
               {/* Merge 2 Selected Deals */}
               {selectedDealIds.length === 2 && (
                 <Button
@@ -1013,6 +1054,20 @@ export default function DealsListView({
           setMergeDealB(null);
         }}
         onMerged={() => {
+          setSelectedDealIds([]);
+        }}
+      />
+
+      {/* Deal Task Cadence & Cleanup Wizard Modal */}
+      <DealTaskCadenceModal
+        open={isCadenceOpen}
+        onOpenChange={setIsCadenceOpen}
+        deals={selectedDeals}
+        workspaceId={activeWorkspaceId || ''}
+        organizationId={activeWorkspace?.organizationId || ''}
+        currency={selectedDeals[0]?.currency || 'USD'}
+        onCompleted={() => {
+          setIsCadenceOpen(false);
           setSelectedDealIds([]);
         }}
       />

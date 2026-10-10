@@ -33,6 +33,8 @@ import { WhatsAppCredentialRepository } from '@/lib/whatsapp/whatsapp-credential
 import { getWorkspaceMessagingSettingsAction } from './messaging-settings-actions';
 import { DEFAULT_MESSAGING_SETTINGS } from '@/lib/types/messaging-settings';
 import { resolveMessagePreviewSnippet } from '@/lib/messaging/preview-utils';
+import { extractThreadIdentity } from '@/app/admin/messaging/conversations/utils/thread-identity';
+import type { MessageLog } from '@/lib/types';
 
 export { type GetMessagingDashboardSummaryInput };
 
@@ -90,6 +92,7 @@ interface RawMessageLogDoc {
   subject?: string | null;
   previewText?: string | null;
   body?: string;
+  variables?: Record<string, unknown> | null;
 }
 
 interface RawCampaignDoc {
@@ -459,39 +462,121 @@ export async function getMessagingDashboardSummaryAction(
     const failedCount = rawLogs.filter((l) => l.status === 'failed').length;
 
     // 10. Inbox Thread Previews (Grouped by entityId or recipient)
-    const threadMap = new Map<string, InboxThreadPreviewItem>();
+    const groupedLogs = new Map<string, RawMessageLogDoc[]>();
     for (const log of rawLogs) {
       const threadKey = log.entityId || log.recipient || log.id;
-      if (!threadMap.has(threadKey) && threadMap.size < 10) {
-        const rawCh = (log.channel ?? 'sms').toLowerCase();
-        let ch: MessagingDashboardChannel = 'sms';
-        if (rawCh === 'whatsapp' || rawCh === 'email' || rawCh === 'in_app') {
-          ch = rawCh;
+      if (!groupedLogs.has(threadKey)) {
+        if (groupedLogs.size >= 10) continue;
+        groupedLogs.set(threadKey, []);
+      }
+      groupedLogs.get(threadKey)!.push(log);
+    }
+
+    // Batch-lookup real CRM entities if valid entityIds exist
+    const entityIdsToFetch = Array.from(groupedLogs.values())
+      .map((logs) => logs[0]?.entityId)
+      .filter((id): id is string => Boolean(id && !id.includes('@') && !id.startsWith('+')));
+
+    const entityDocsMap = new Map<string, { name?: string; contactName?: string; email?: string; phone?: string }>();
+    if (entityIdsToFetch.length > 0) {
+      try {
+        const entitySnaps = await Promise.all(
+          entityIdsToFetch.map((id) =>
+            adminDb
+              .collection('entities')
+              .doc(id)
+              .get()
+              .catch(() => null)
+          )
+        );
+        for (const snap of entitySnaps) {
+          if (snap && snap.exists) {
+            const data = snap.data();
+            if (data) {
+              entityDocsMap.set(snap.id, {
+                name: (data.name as string | undefined) || (data.displayName as string | undefined) || (data.institutionName as string | undefined),
+                contactName: (data.primaryContactName as string | undefined) || (data.contactPerson as string | undefined),
+                email: (data.primaryEmail as string | undefined) || (data.email as string | undefined),
+                phone: (data.primaryPhone as string | undefined) || (data.phone as string | undefined),
+              });
+            }
+          }
         }
-
-        const snippet = resolveMessagePreviewSnippet({
-          channel: ch,
-          title: log.title,
-          subject: log.subject,
-          previewText: log.previewText,
-          body: log.body,
-          maxLength: 120,
-        });
-
-        threadMap.set(threadKey, {
-          threadId: threadKey,
-          entityId: log.entityId,
-          entityName: log.displayName || log.entityName || log.recipient || 'Unknown Contact',
-          lastMessageSnippet: snippet,
-          lastMessageChannel: ch,
-          lastMessageTimestamp: log.sentAt || new Date().toISOString(),
-          unreadCount: 0,
-          isGroup: false,
-          isDirect: true,
-        });
+      } catch (err) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[MessagingDashboardAggregator] entities batch lookup degraded (non-fatal):', err);
+        }
       }
     }
-    const inboxPreview = Array.from(threadMap.values());
+
+    const inboxPreview: InboxThreadPreviewItem[] = [];
+    for (const [threadKey, logs] of groupedLogs.entries()) {
+      const latestLog = logs[0];
+      const rawCh = (latestLog.channel ?? 'sms').toLowerCase();
+      let ch: MessagingDashboardChannel = 'sms';
+      if (rawCh === 'whatsapp' || rawCh === 'email' || rawCh === 'in_app') {
+        ch = rawCh;
+      }
+
+      const snippet = resolveMessagePreviewSnippet({
+        channel: ch,
+        title: latestLog.title,
+        subject: latestLog.subject,
+        previewText: latestLog.previewText,
+        body: latestLog.body,
+        maxLength: 120,
+      });
+
+      // Extract rich multi-tier identity from log history & template variables
+      const identity = extractThreadIdentity(logs as unknown as MessageLog[]);
+      const entityDoc = latestLog.entityId ? entityDocsMap.get(latestLog.entityId) : null;
+
+      const recipientName =
+        entityDoc?.contactName ||
+        identity.contactName ||
+        latestLog.displayName ||
+        'Direct Contact';
+
+      const institutionName =
+        entityDoc?.name ||
+        identity.institutionName ||
+        latestLog.entityName ||
+        '';
+
+      const email = entityDoc?.email || identity.email || (latestLog.recipient?.includes('@') ? latestLog.recipient : null);
+      const phone = entityDoc?.phone || identity.phone || (!latestLog.recipient?.includes('@') ? latestLog.recipient : null);
+
+      // Contact address depending on the channel type
+      let contactAddress = latestLog.recipient || '';
+      if (ch === 'email' && email) {
+        contactAddress = email;
+      } else if ((ch === 'sms' || ch === 'whatsapp') && phone) {
+        contactAddress = phone;
+      }
+
+      // Display headline: prioritize recipient name with optional institution
+      const headline =
+        recipientName && institutionName && recipientName !== institutionName
+          ? `${recipientName} · ${institutionName}`
+          : recipientName || institutionName || latestLog.recipient || 'Unknown Contact';
+
+      inboxPreview.push({
+        threadId: threadKey,
+        entityId: latestLog.entityId,
+        entityName: headline,
+        recipientName: recipientName !== institutionName ? recipientName : undefined,
+        institutionName: institutionName || undefined,
+        email: email || null,
+        phone: phone || null,
+        contactAddress,
+        lastMessageSnippet: snippet,
+        lastMessageChannel: ch,
+        lastMessageTimestamp: latestLog.sentAt || new Date().toISOString(),
+        unreadCount: 0,
+        isGroup: false,
+        isDirect: true,
+      });
+    }
     const pendingApprovalCount = pendingJobsSnap?.data?.().count ?? 0;
 
     // 11. Assemble and Validate against Schema (Rule 4, 13, 14)

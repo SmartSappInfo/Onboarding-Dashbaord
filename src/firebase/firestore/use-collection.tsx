@@ -158,6 +158,15 @@ export function useCollection<T = any>(
             _error.message || _error
           );
 
+          if (_error.code === 'resource-exhausted') {
+            console.warn(
+              `[Firestore useCollection Quota Warning] Quota exceeded on path "${path}". Preserving existing state and falling back to cached data.`
+            );
+            setError(_error);
+            setSettledQuery(memoizedTargetRefOrQuery);
+            return;
+          }
+
           if (_error.code === 'permission-denied') {
             const contextualError = new FirestorePermissionError({
               operation: 'list',

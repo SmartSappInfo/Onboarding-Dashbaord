@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import {
   KeyRound,
   Fingerprint,
@@ -257,13 +258,11 @@ export function EnterpriseIdentityClient() {
     <div className="space-y-6 pb-32 w-full p-4 md:p-8 max-w-7xl mx-auto">
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+        <div className="flex items-center gap-2.5">
           <h1 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
             <Building2 className="w-6 h-6 text-primary" /> Enterprise Identity & Federation
           </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Single Sign-On (SAML/OIDC), WebAuthn Passkeys, SCIM 2.0 Directory Sync, and Session Policies
-          </p>
+          <CardInfoTooltip text="Single Sign-On (SAML/OIDC), WebAuthn Passkeys, SCIM 2.0 Directory Sync, and Session Policies" />
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">

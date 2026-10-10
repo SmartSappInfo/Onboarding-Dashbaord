@@ -28,7 +28,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
-import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User, FileUp, ShieldCheck, Share2, Tag as TagIcon, Mail, Phone, Building2, Flame, ChevronDown, ListFilter, X, RotateCcw, CalendarDays, ClipboardList, Video, PhoneCall, Download, Archive } from 'lucide-react';
+import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User, FileUp, ShieldCheck, Share2, Tag as TagIcon, Mail, Phone, Building2, Flame, ChevronDown, ListFilter, X, RotateCcw, CalendarDays, ClipboardList, Video, PhoneCall, Download, Archive, SlidersHorizontal } from 'lucide-react';
 import ManageWorkspacesModal from './components/ManageWorkspacesModal';
 import { BulkManageWorkspacesModal } from './components/BulkManageWorkspacesModal';
 import AiEntityGenerator from './components/ai-entity-generator';
@@ -75,10 +75,7 @@ import { MultiSelect } from '@/components/ui/multi-select';
 import { createAudience } from '@/lib/audience-hooks';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Loader2 } from 'lucide-react';
-import { type LocationValue } from '@/components/location/LocationCascade';
-import { CountrySelect } from '@/components/location/CountrySelect';
-import { RegionSelect } from '@/components/location/RegionSelect';
-import { DistrictSelect } from '@/components/location/DistrictSelect';
+import { LocationFilterPopover, type LocationValue } from '@/components/location/LocationFilterPopover';
 import { AsyncEntityAvatar } from '../components/AsyncEntityAvatar';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import { useTerminology } from '@/hooks/use-terminology';
@@ -338,22 +335,6 @@ export default function EntitiesClient() {
   };
 
   const { assignedUserId, setAssignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
-
-  /**
-   * Default Assigned User Auto-Filtering (Requirement: agent_mcp_rules.md & User Spec):
-   * When opening the Entity List page, if no explicit ?assignedTo param is in the URL,
-   * automatically filter entities to the logged-in user.
-   * If the workspace allows viewing all entities (!isRestricted), the user retains
-   * full ability to switch to "All Users", "Unassigned", or any team member via the dropdown.
-   */
-  const hasInitializedUserFilterRef = useRef(false);
-  useEffect(() => {
-    if (hasInitializedUserFilterRef.current) return;
-    if (currentUser?.uid && !searchParams.get('assignedTo')) {
-      hasInitializedUserFilterRef.current = true;
-      setAssignedUserId(currentUser.uid);
-    }
-  }, [currentUser?.uid, searchParams, setAssignedUserId]);
   const [sortConfig, setSortConfig] = useState<{ key: keyof WorkspaceEntity | string; direction: 'asc' | 'desc' } | null>({ key: 'addedAt', direction: 'desc' });
 
   // Unified atomic filter state (prevents state drift on Clear All)
@@ -380,6 +361,29 @@ export default function EntitiesClient() {
   const setLocationFilter = useCallback((v: LocationValue) => setFilterState(prev => ({ ...prev, location: v })), []);
   const setDateAddedFilter = useCallback((v: string) => setFilterState(prev => ({ ...prev, dateRange: v })), []);
   const setInterestFilter = useCallback((v: string[]) => setFilterState(prev => ({ ...prev, interests: v })), []);
+
+  // Tier 2 (Extended Filters) accordion state
+  const hasExtendedFiltersActive = Boolean(
+    (filterState.interests && filterState.interests.length > 0) ||
+    (filterState.contactRoles && filterState.contactRoles.length > 0) ||
+    (filterState.contactHealths && filterState.contactHealths.length > 0)
+  );
+  const [isMoreFiltersOpen, setIsMoreFiltersOpen] = useState(hasExtendedFiltersActive);
+
+  // Auto-expand Tier 2 if user activates extended filters from outside (e.g. URL query)
+  useEffect(() => {
+    if (hasExtendedFiltersActive) {
+      setIsMoreFiltersOpen(true);
+    }
+  }, [hasExtendedFiltersActive]);
+
+  const moreFiltersActiveCount = useMemo(() => {
+    let count = 0;
+    if (filterState.interests && filterState.interests.length > 0) count++;
+    if (filterState.contactRoles && filterState.contactRoles.length > 0) count++;
+    if (filterState.contactHealths && filterState.contactHealths.length > 0) count++;
+    return count;
+  }, [filterState.interests, filterState.contactRoles, filterState.contactHealths]);
   
   const clearAllFilters = useCallback(() => {
     setFilterState(DEFAULT_FILTERS);
@@ -1044,9 +1048,9 @@ export default function EntitiesClient() {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         <div className="flex items-center gap-3">
                             <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                                {plural} Hub
+                                {plural.toLowerCase().endsWith('contacts') ? plural : `${plural} Contacts`}
                             </h1>
-                            <CardInfoTooltip text={`Manage and monitor your ${plural} records`} />
+                            <CardInfoTooltip text={`Manage and monitor your ${plural.toLowerCase()} contacts`} />
                         </div>
                         <div className="flex items-center gap-2">
                             {selectedCount > 0 && (
@@ -1176,8 +1180,15 @@ export default function EntitiesClient() {
                     {isFilterPanelOpen && (
                         <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm bg-card/50 backdrop-blur-md overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
                             <div className="p-3 border-b bg-muted/20 flex items-center justify-between">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Advanced Filters</p>
-                                <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold text-destructive/70 hover:text-destructive" onClick={clearAllFilters}>Reset All</Button>
+                                <div className="flex items-center gap-2">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Quick Filters</p>
+                                    {activeFiltersCount > 0 && (
+                                        <Badge variant="secondary" className="h-5 px-1.5 text-[9px] font-bold">
+                                            {activeFiltersCount} active
+                                        </Badge>
+                                    )}
+                                </div>
+                                <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold text-destructive/70 hover:text-destructive active:scale-[0.97]" onClick={clearAllFilters}>Reset All</Button>
                             </div>
                             <div className="p-4 space-y-4">
                                 {/* Row 1: Filter by Tags (Full Width Row) */}
@@ -1190,7 +1201,7 @@ export default function EntitiesClient() {
                                             <button 
                                                 type="button" 
                                                 onClick={() => handleTagFilterChange({ tagIds: [], logic: 'OR' })} 
-                                                className="text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors animate-in fade-in"
+                                                className="text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors animate-in fade-in active:scale-[0.97]"
                                             >
                                                 Clear Tags
                                             </button>
@@ -1218,7 +1229,7 @@ export default function EntitiesClient() {
                                                         type="button"
                                                         onClick={() => toggleTagFilter(tag.id)}
                                                         className={cn(
-                                                            "h-7 px-2.5 rounded-xl text-[10px] font-bold uppercase transition-all duration-200 flex items-center gap-1.5 border touch-manipulation cursor-pointer",
+                                                            "h-7 px-2.5 rounded-xl text-[10px] font-bold uppercase transition-all duration-200 flex items-center gap-1.5 border touch-manipulation cursor-pointer active:scale-[0.97]",
                                                             isSelected
                                                                 ? "text-white shadow-sm border-transparent"
                                                                 : "bg-background/40 border-border/60 text-muted-foreground hover:bg-background hover:text-foreground"
@@ -1236,16 +1247,16 @@ export default function EntitiesClient() {
                                     </div>
                                 </div>
 
-                                {/* Row 2: Status + Country + Region + District + Date Added + Interests + Contact Roles — inline dropdowns */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-9 gap-3">
-                                    {/* Saved Audience / Segment Dropdown */}
+                                {/* Row 2: Tier 1 Quick Filters (5 Columns) */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+                                    {/* Column 1: Saved Audience / Segment Dropdown */}
                                     <div className="space-y-1.5 animate-in fade-in">
                                         <div className="flex items-center justify-between h-5">
                                             <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
                                                 <ListFilter className="h-2.5 w-2.5" /> Segment
                                             </label>
                                             {filterState.savedAudienceId && (
-                                                <button type="button" onClick={() => setFilterState(prev => ({ ...prev, savedAudienceId: null }))} className="text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors animate-in fade-in">Clear</button>
+                                                <button type="button" onClick={() => setFilterState(prev => ({ ...prev, savedAudienceId: null }))} className="text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors animate-in fade-in active:scale-[0.97]">Clear</button>
                                             )}
                                         </div>
                                         <Select value={filterState.savedAudienceId || 'none'} onValueChange={(val) => setFilterState(prev => ({ ...prev, savedAudienceId: val === 'none' ? null : val }))}>
@@ -1263,14 +1274,14 @@ export default function EntitiesClient() {
                                         </Select>
                                     </div>
 
-                                    {/* Status */}
+                                    {/* Column 2: Status */}
                                     <div className="space-y-1.5">
                                         <div className="flex items-center justify-between h-5">
                                             <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
                                                 <Building2 className="h-2.5 w-2.5" /> Status
                                             </label>
                                             {statusFilter !== 'all' && (
-                                                <button type="button" onClick={() => setStatusFilter('all')} className="text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors animate-in fade-in">Clear</button>
+                                                <button type="button" onClick={() => setStatusFilter('all')} className="text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors animate-in fade-in active:scale-[0.97]">Clear</button>
                                             )}
                                         </div>
                                         <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -1285,67 +1296,31 @@ export default function EntitiesClient() {
                                         </Select>
                                     </div>
 
-                                    {/* Country */}
+                                    {/* Column 3: Location (Unified Single Popover with specific selection label) */}
                                     <div className="space-y-1.5">
                                         <div className="flex items-center justify-between h-5">
                                             <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
-                                                <MapPin className="h-2.5 w-2.5" /> Country
+                                                <MapPin className="h-2.5 w-2.5" /> Location
                                             </label>
-                                            {locationFilter.country && (
-                                                <button type="button" onClick={() => setLocationFilter({ country: null, region: null, district: null })} className="text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors animate-in fade-in">Clear</button>
+                                            {(locationFilter.country || locationFilter.region || locationFilter.district) && (
+                                                <button type="button" onClick={() => setLocationFilter({ country: null, region: null, district: null })} className="text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors animate-in fade-in active:scale-[0.97]">Clear</button>
                                             )}
                                         </div>
-                                        <CountrySelect
-                                            value={locationFilter.country}
-                                            onValueChange={(country) => setLocationFilter({ country, region: null, district: null })}
-                                            className="h-9 rounded-xl bg-background/50 border-border shadow-sm font-bold text-xs"
+                                        <LocationFilterPopover
+                                            value={locationFilter}
+                                            onChange={setLocationFilter}
+                                            className="w-full"
                                         />
                                     </div>
 
-                                    {/* Region */}
-                                    <div className="space-y-1.5">
-                                        <div className="flex items-center justify-between h-5">
-                                            <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
-                                                <MapPin className="h-2.5 w-2.5" /> Region
-                                            </label>
-                                            {locationFilter.region && (
-                                                <button type="button" onClick={() => setLocationFilter({ ...locationFilter, region: null, district: null })} className="text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors animate-in fade-in">Clear</button>
-                                            )}
-                                        </div>
-                                        <RegionSelect
-                                            value={locationFilter.region}
-                                            onValueChange={(region) => setLocationFilter({ ...locationFilter, region, district: null })}
-                                            countryId={locationFilter.country?.id}
-                                            className="h-9 rounded-xl bg-background/50 border-border shadow-sm font-bold text-xs"
-                                        />
-                                    </div>
-
-                                    {/* District */}
-                                    <div className="space-y-1.5">
-                                        <div className="flex items-center justify-between h-5">
-                                            <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
-                                                <MapPin className="h-2.5 w-2.5" /> District
-                                            </label>
-                                            {locationFilter.district && (
-                                                <button type="button" onClick={() => setLocationFilter({ ...locationFilter, district: null })} className="text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors animate-in fade-in">Clear</button>
-                                            )}
-                                        </div>
-                                        <DistrictSelect
-                                            value={locationFilter.district}
-                                            onValueChange={(district) => setLocationFilter({ ...locationFilter, district })}
-                                            regionId={locationFilter.region?.id}
-                                            className="h-9 rounded-xl bg-background/50 border-border shadow-sm font-bold text-xs"
-                                        />
-                                    </div>
-
-                                    {/* Date Added — compact select */}
+                                    {/* Column 4: Date Added */}
                                     <div className="space-y-1.5">
                                         <div className="flex items-center justify-between h-5">
                                             <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
                                                 <CalendarDays className="h-2.5 w-2.5" /> Date Added
                                             </label>
                                             {dateAddedFilter !== 'all' && (
-                                                <button type="button" onClick={() => setDateAddedFilter('all')} className="text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors animate-in fade-in">Clear</button>
+                                                <button type="button" onClick={() => setDateAddedFilter('all')} className="text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors animate-in fade-in active:scale-[0.97]">Clear</button>
                                             )}
                                         </div>
                                         <Select value={dateAddedFilter} onValueChange={setDateAddedFilter}>
@@ -1362,62 +1337,104 @@ export default function EntitiesClient() {
                                         </Select>
                                     </div>
 
-                                    {/* Interests — multi select */}
+                                    {/* Column 5: More Filters (Tier 2 Accordion Toggle) */}
                                     <div className="space-y-1.5">
                                         <div className="flex items-center justify-between h-5">
                                             <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
-                                                <Flame className="h-2.5 w-2.5" /> Interests
+                                                <SlidersHorizontal className="h-2.5 w-2.5" /> Extended
                                             </label>
-                                            {interestFilter.length > 0 && (
-                                                <button type="button" onClick={() => setInterestFilter([])} className="text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors animate-in fade-in">Clear</button>
+                                            {moreFiltersActiveCount > 0 && (
+                                                <Badge variant="secondary" className="h-4 px-1.5 text-[8px] font-bold bg-primary/10 text-primary">
+                                                    {moreFiltersActiveCount} active
+                                                </Badge>
                                             )}
                                         </div>
-                                        <InterestFilterSelect
-                                            value={interestFilter}
-                                            onChange={setInterestFilter}
-                                        />
-                                    </div>
-
-                                    {/* Contact Roles — multi select */}
-                                    <div className="space-y-1.5">
-                                        <div className="flex items-center justify-between h-5">
-                                            <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
-                                                <User className="h-2.5 w-2.5" /> Contact Roles
-                                            </label>
-                                            {filterState.contactRoles && filterState.contactRoles.length > 0 && (
-                                                <button type="button" onClick={() => setFilterState(prev => ({ ...prev, contactRoles: [] }))} className="text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors animate-in fade-in">Clear</button>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => setIsMoreFiltersOpen(prev => !prev)}
+                                            className={cn(
+                                                "w-full h-9 rounded-xl bg-background/50 border-border shadow-sm font-bold text-xs flex items-center justify-between px-3 active:scale-[0.97] transition-all",
+                                                isMoreFiltersOpen && "border-primary/50 bg-primary/5 text-primary",
+                                                moreFiltersActiveCount > 0 && !isMoreFiltersOpen && "border-primary/40 ring-1 ring-primary/20 text-foreground"
                                             )}
-                                        </div>
-                                        <MultiSelect
-                                            options={contactRoleOptions}
-                                            value={filterState.contactRoles || []}
-                                            onChange={(val) => setFilterState(prev => ({ ...prev, contactRoles: val }))}
-                                            placeholder="Select roles..."
-                                            className="h-9 min-h-9 py-0.5 px-2 text-[10px] font-bold bg-background/50 border-border shadow-sm rounded-xl"
-                                        />
-                                    </div>
-
-                                    {/* Contact Health — multi select */}
-                                    <div className="space-y-1.5">
-                                        <div className="flex items-center justify-between h-5">
-                                            <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
-                                                <ShieldCheck className="h-2.5 w-2.5" /> Contact Health
-                                            </label>
-                                            {filterState.contactHealths && filterState.contactHealths.length > 0 && (
-                                                <button type="button" onClick={() => handleHealthFilterChange([])} className="text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors animate-in fade-in">Clear</button>
-                                            )}
-                                        </div>
-                                        <MultiSelect
-                                            options={contactHealthOptions}
-                                            value={filterState.contactHealths || []}
-                                            onChange={handleHealthFilterChange}
-                                            placeholder="Select health..."
-                                            className="h-9 min-h-9 py-0.5 px-2 text-[10px] font-bold bg-background/50 border-border shadow-sm rounded-xl"
-                                        />
+                                        >
+                                            <span className="flex items-center gap-1.5 truncate">
+                                                <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" />
+                                                <span>More Filters</span>
+                                            </span>
+                                            <div className="flex items-center gap-1.5 shrink-0">
+                                                {moreFiltersActiveCount > 0 && (
+                                                    <span className="h-4 min-w-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center">
+                                                        {moreFiltersActiveCount}
+                                                    </span>
+                                                )}
+                                                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", isMoreFiltersOpen && "rotate-180")} />
+                                            </div>
+                                        </Button>
                                     </div>
                                 </div>
 
+                                {/* Row 3: Tier 2 Extended Filters (Slide-down Accordion) */}
+                                {isMoreFiltersOpen && (
+                                    <div className="pt-3 border-t border-border/60 animate-in fade-in slide-in-from-top-2 duration-200">
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-muted/15 p-3 rounded-xl border border-border/40">
+                                            {/* Interests — multi select */}
+                                            <div className="space-y-1.5">
+                                                <div className="flex items-center justify-between h-5">
+                                                    <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+                                                        <Flame className="h-2.5 w-2.5" /> Interests
+                                                    </label>
+                                                    {interestFilter.length > 0 && (
+                                                        <button type="button" onClick={() => setInterestFilter([])} className="text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors animate-in fade-in active:scale-[0.97]">Clear</button>
+                                                    )}
+                                                </div>
+                                                <InterestFilterSelect
+                                                    value={interestFilter}
+                                                    onChange={setInterestFilter}
+                                                />
+                                            </div>
 
+                                            {/* Contact Roles — multi select */}
+                                            <div className="space-y-1.5">
+                                                <div className="flex items-center justify-between h-5">
+                                                    <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+                                                        <User className="h-2.5 w-2.5" /> Contact Roles
+                                                    </label>
+                                                    {filterState.contactRoles && filterState.contactRoles.length > 0 && (
+                                                        <button type="button" onClick={() => setFilterState(prev => ({ ...prev, contactRoles: [] }))} className="text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors animate-in fade-in active:scale-[0.97]">Clear</button>
+                                                    )}
+                                                </div>
+                                                <MultiSelect
+                                                    options={contactRoleOptions}
+                                                    value={filterState.contactRoles || []}
+                                                    onChange={(val) => setFilterState(prev => ({ ...prev, contactRoles: val }))}
+                                                    placeholder="Select roles..."
+                                                    className="h-9 min-h-9 py-0.5 px-2 text-[10px] font-bold bg-background/50 border-border shadow-sm rounded-xl"
+                                                />
+                                            </div>
+
+                                            {/* Contact Health — multi select */}
+                                            <div className="space-y-1.5">
+                                                <div className="flex items-center justify-between h-5">
+                                                    <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+                                                        <ShieldCheck className="h-2.5 w-2.5" /> Contact Health
+                                                    </label>
+                                                    {filterState.contactHealths && filterState.contactHealths.length > 0 && (
+                                                        <button type="button" onClick={() => handleHealthFilterChange([])} className="text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors animate-in fade-in active:scale-[0.97]">Clear</button>
+                                                    )}
+                                                </div>
+                                                <MultiSelect
+                                                    options={contactHealthOptions}
+                                                    value={filterState.contactHealths || []}
+                                                    onChange={handleHealthFilterChange}
+                                                    placeholder="Select health..."
+                                                    className="h-9 min-h-9 py-0.5 px-2 text-[10px] font-bold bg-background/50 border-border shadow-sm rounded-xl"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </Card>
                     )}

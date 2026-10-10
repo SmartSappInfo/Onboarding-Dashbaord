@@ -6,7 +6,6 @@ import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { RainbowButton } from '@/components/ui/rainbow-button';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { Input } from '@/components/ui/input';
@@ -14,7 +13,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { collection, query, where, doc, setDoc } from 'firebase/firestore';
+import Link from 'next/link';
 import { 
+  ArrowLeft,
   MessageSquare, 
   Linkedin, 
   Facebook, 
@@ -316,6 +317,16 @@ export default function InboxClient() {
         {/* Header controls */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/50 pb-4">
           <div className="flex items-center gap-2.5">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              asChild 
+              className="h-9 w-9 rounded-xl hover:bg-muted active:scale-[0.97] shrink-0 text-muted-foreground hover:text-foreground"
+            >
+              <Link href="/admin/social" aria-label="Back to Social Hub">
+                <ArrowLeft className="h-5 w-5" />
+              </Link>
+            </Button>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
               Social Inbox
             </h1>
@@ -332,10 +343,10 @@ export default function InboxClient() {
                 variant="outline"
                 onClick={() => handleSimulateInbound(platform as 'linkedin' | 'facebook' | 'instagram' | 'x')}
                 disabled={isSimulating}
-                className="h-8 rounded-xl text-xs font-semibold capitalize gap-1.5 active:scale-[0.97] transition-all bg-white dark:bg-card border border-border/80 shadow-xs"
+                className="h-8 rounded-xl text-xs font-semibold capitalize gap-1.5 active:scale-[0.97] transition-all bg-card border border-border/80 shadow-xs"
               >
                 {isSimulating ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <Loader2 className="h-3 w-3 animate-spin text-primary" />
                 ) : (
                   <Icon className="h-3.5 w-3.5 shrink-0" />
                 )}
@@ -348,8 +359,8 @@ export default function InboxClient() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch flex-1 overflow-hidden">
         {/* Column 1: Conversations list (3/12) */}
-        <div className="lg:col-span-3 flex flex-col gap-4 overflow-hidden border border-border/20 rounded-3xl bg-card/20 backdrop-blur-md p-4">
-          <div className="flex gap-1.5 p-1 bg-muted/40 rounded-2xl border border-border/10">
+        <div className="lg:col-span-3 flex flex-col gap-4 overflow-hidden border border-border/80 rounded-2xl bg-card shadow-xs p-4">
+          <div className="flex gap-1.5 p-1 bg-muted/30 rounded-xl border border-border/60">
             {['unread', 'pending', 'resolved'].map((status) => (
               <button
                 key={status}
@@ -360,7 +371,7 @@ export default function InboxClient() {
                 className={cn(
                   "flex-1 text-[10px] font-bold tracking-wider uppercase py-1.5 rounded-xl transition-all",
                   filterStatus === status 
-                    ? "bg-background/80 text-foreground shadow-sm" 
+                    ? "bg-background text-foreground shadow-sm" 
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -372,7 +383,7 @@ export default function InboxClient() {
           <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 scrollbar-none">
             {isLoadingInbox ? (
               <div className="h-32 flex items-center justify-center text-muted-foreground gap-2">
-                <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
                 <span className="text-[10px] font-bold uppercase tracking-widest">Loading threads...</span>
               </div>
             ) : threads.length === 0 ? (
@@ -390,10 +401,10 @@ export default function InboxClient() {
                     key={thread.id}
                     onClick={() => setActiveThreadId(thread.id)}
                     className={cn(
-                      "w-full text-left p-3 rounded-2xl border transition-colors duration-200 flex flex-col gap-1.5 active:scale-[0.99]",
+                      "w-full text-left p-3 rounded-xl border transition-colors duration-200 flex flex-col gap-1.5 active:scale-[0.99]",
                       isSelected 
-                        ? "bg-background/80 border-primary/40 text-foreground shadow-sm"
-                        : "hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 border-border/20 text-muted-foreground"
+                        ? "bg-primary/10 border-primary/50 text-foreground shadow-xs font-semibold"
+                        : "hover:bg-muted/40 border-border/60 bg-card text-muted-foreground"
                     )}
                   >
                     <div className="flex justify-between items-center gap-2 w-full">
@@ -416,11 +427,11 @@ export default function InboxClient() {
         </div>
 
         {/* Column 2: Chat panel (6/12) */}
-        <div className="lg:col-span-6 flex flex-col border border-border/20 rounded-3xl bg-card/10 backdrop-blur-md overflow-hidden relative">
+        <div className="lg:col-span-6 flex flex-col border border-border/80 rounded-2xl bg-card shadow-xs overflow-hidden relative">
           {activeThread ? (
             <>
               {/* Active Header */}
-              <div className="border-b border-border/20 p-4 bg-muted/10 flex items-center justify-between">
+              <div className="border-b border-border/80 p-4 bg-muted/10 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   {activeThread.senderAvatar ? (
                     <img 
@@ -478,8 +489,8 @@ export default function InboxClient() {
                       <div className={cn(
                         "p-3 border rounded-2xl text-xs font-semibold leading-relaxed rounded-tr-none",
                         isAI 
-                          ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400" 
-                          : "bg-background border-border/30 text-foreground"
+                          ? "bg-primary/10 border-primary/20 text-foreground" 
+                          : "bg-muted/20 border-border/60 text-foreground"
                       )}>
                         {reply.content}
                       </div>
@@ -492,7 +503,7 @@ export default function InboxClient() {
               </div>
 
               {/* Suggested bubbles & Text Composer */}
-              <div className="border-t border-border/20 p-4 bg-muted/10 space-y-3 relative">
+              <div className="border-t border-border/80 p-4 bg-muted/10 space-y-3 relative">
                 {/* Suggestion Bubbles */}
                 {activeThread.suggestedReplies && activeThread.suggestedReplies.length > 0 && (
                   <div className="flex flex-wrap gap-2 pt-1">
@@ -500,7 +511,7 @@ export default function InboxClient() {
                       <button
                         key={idx}
                         onClick={() => setReplyText(sug)}
-                        className="px-3 py-1.5 border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 rounded-full text-[10px] font-bold text-emerald-600 dark:text-emerald-400 transition-all active:scale-[0.97]"
+                        className="px-3 py-1.5 border border-primary/30 bg-primary/5 hover:bg-primary/10 rounded-full text-[10px] font-bold text-primary transition-all active:scale-[0.97]"
                       >
                         ⚡ {sug}
                       </button>
@@ -515,26 +526,27 @@ export default function InboxClient() {
                     rows={3}
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
-                    className="rounded-2xl border-border/30 bg-background text-xs leading-relaxed pb-12"
+                    className="rounded-2xl border-border/80 bg-background text-xs leading-relaxed pb-12"
                   />
                   <div className="absolute bottom-2.5 right-3.5 flex items-center gap-1.5">
-                    <RainbowButton
+                    <Button
                       type="button"
+                      variant="outline"
                       onClick={handleDraftAI}
                       disabled={isDraftingAI}
-                      className="h-8 text-xs font-bold rounded-xl gap-1.5 active:scale-[0.97] transition-all px-3 text-white shadow-xs"
+                      className="h-8 text-xs font-semibold rounded-xl gap-1.5 active:scale-[0.97] transition-all px-3 bg-card border-border/80 shadow-xs"
                     >
                       {isDraftingAI ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
                       ) : (
-                        <Sparkles className="h-3.5 w-3.5" />
+                        <Sparkles className="h-3.5 w-3.5 text-primary" />
                       )}
                       Draft with AI
-                    </RainbowButton>
+                    </Button>
                     <Button
                       onClick={handleSendReply}
                       disabled={isSending || !replyText.trim()}
-                      className="h-8 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs active:scale-[0.97] transition-all gap-1 px-4"
+                      className="h-8 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs active:scale-[0.97] transition-all gap-1 px-4 shadow-xs"
                     >
                       {isSending ? (
                         <Loader2 className="h-3 w-3 animate-spin" />
@@ -556,11 +568,11 @@ export default function InboxClient() {
         </div>
 
         {/* Column 3: CRM & Sentiment details (3/12) */}
-        <div className="lg:col-span-3 flex flex-col gap-6 overflow-y-auto border border-border/20 rounded-3xl bg-card/20 backdrop-blur-md p-4 scrollbar-none">
+        <div className="lg:col-span-3 flex flex-col gap-6 overflow-y-auto border border-border/80 rounded-2xl bg-card shadow-xs p-4 scrollbar-none">
           {activeThread ? (
             <>
               {/* Sentiment Card */}
-              <Card className="border border-border/20 rounded-2xl bg-background/50 overflow-hidden">
+              <Card className="border border-border/80 rounded-xl bg-card shadow-xs overflow-hidden">
                 <CardHeader className="pb-3 pt-4">
                   <CardTitle className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Sentiment Summary</CardTitle>
                 </CardHeader>
@@ -575,17 +587,17 @@ export default function InboxClient() {
 
               {/* CRM Link Panel */}
               {linkedContact ? (
-                <Card className="border border-border/20 rounded-2xl bg-background/50 overflow-hidden">
+                <Card className="border border-border/80 rounded-xl bg-card shadow-xs overflow-hidden">
                   <CardHeader className="pb-3 pt-4 flex flex-row items-center justify-between space-y-0">
-                    <CardTitle className="text-[10px] font-bold uppercase tracking-wider text-emerald-500 flex items-center gap-1.5">
-                      <UserCheck className="h-3.5 w-3.5" /> Linked Lead Profile
+                    <CardTitle className="text-[10px] font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                      <UserCheck className="h-3.5 w-3.5 text-primary" /> Linked Lead Profile
                     </CardTitle>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => handleLinkCRM('')}
                       disabled={isLinking}
-                      className="h-6 text-[9px] font-bold text-red-500 hover:text-red-600 hover:bg-red-500/10 rounded-lg"
+                      className="h-6 text-[9px] font-bold text-destructive hover:text-destructive hover:bg-destructive/10 rounded-lg"
                     >
                       Unlink
                     </Button>
@@ -614,7 +626,7 @@ export default function InboxClient() {
               ) : (
                 <>
                   {/* Link Dropdown */}
-                  <Card className="border border-border/20 rounded-2xl bg-background/50 overflow-hidden">
+                  <Card className="border border-border/80 rounded-xl bg-card shadow-xs overflow-hidden">
                     <CardHeader className="pb-3 pt-4">
                       <CardTitle className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Link CRM Contact</CardTitle>
                     </CardHeader>
@@ -624,7 +636,7 @@ export default function InboxClient() {
                           placeholder="Search contacts..."
                           value={searchContactQuery}
                           onChange={(e) => setSearchContactQuery(e.target.value)}
-                          className="h-8 rounded-lg border-border/30 bg-background text-[10px]"
+                          className="h-8 rounded-lg border-border/80 bg-background text-[10px]"
                         />
                       </div>
                       <div className="space-y-1 max-h-32 overflow-y-auto pr-1 scrollbar-none">
@@ -636,7 +648,7 @@ export default function InboxClient() {
                               key={contact.id}
                               onClick={() => handleLinkCRM(contact.id)}
                               disabled={isLinking}
-                              className="w-full text-left p-2 rounded-xl border border-border/10 text-[10px] font-bold flex items-center justify-between transition-colors hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15"
+                              className="w-full text-left p-2 rounded-xl border border-border/60 text-[10px] font-semibold flex items-center justify-between transition-colors hover:bg-muted/40 bg-card text-card-foreground"
                             >
                               <span className="truncate">{contact.displayName}</span>
                               <Link2 className="h-3.5 w-3.5 text-muted-foreground shrink-0 ml-1" />
@@ -648,10 +660,10 @@ export default function InboxClient() {
                   </Card>
 
                   {/* Create Lead Form */}
-                  <Card className="border border-border/20 rounded-2xl bg-background/50 overflow-hidden">
+                  <Card className="border border-border/80 rounded-xl bg-card shadow-xs overflow-hidden">
                     <CardHeader className="pb-3 pt-4">
                       <CardTitle className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                        <UserPlus className="h-3.5 w-3.5 text-emerald-500" /> Create CRM Contact
+                        <UserPlus className="h-3.5 w-3.5 text-primary" /> Create CRM Contact
                       </CardTitle>
                     </CardHeader>
                     <form onSubmit={handleCreateContactAndLink}>
@@ -664,7 +676,7 @@ export default function InboxClient() {
                               placeholder="Sarah"
                               value={newContactFirstName}
                               onChange={(e) => setNewContactFirstName(e.target.value)}
-                              className="h-8 rounded-lg border-border/30 bg-background text-[10px]"
+                              className="h-8 rounded-lg border-border/80 bg-background text-[10px]"
                               required
                             />
                           </div>
@@ -675,7 +687,7 @@ export default function InboxClient() {
                               placeholder="Jenkins"
                               value={newContactLastName}
                               onChange={(e) => setNewContactLastName(e.target.value)}
-                              className="h-8 rounded-lg border-border/30 bg-background text-[10px]"
+                              className="h-8 rounded-lg border-border/80 bg-background text-[10px]"
                               required
                             />
                           </div>
@@ -689,7 +701,7 @@ export default function InboxClient() {
                             placeholder="sarah@example.com"
                             value={newContactEmail}
                             onChange={(e) => setNewContactEmail(e.target.value)}
-                            className="h-8 rounded-lg border-border/30 bg-background text-[10px]"
+                            className="h-8 rounded-lg border-border/80 bg-background text-[10px]"
                           />
                         </div>
 
@@ -700,14 +712,14 @@ export default function InboxClient() {
                             placeholder="555-0199"
                             value={newContactPhone}
                             onChange={(e) => setNewContactPhone(e.target.value)}
-                            className="h-8 rounded-lg border-border/30 bg-background text-[10px]"
+                            className="h-8 rounded-lg border-border/80 bg-background text-[10px]"
                           />
                         </div>
 
                         <Button
                           type="submit"
                           disabled={isCreatingContact}
-                          className="w-full h-8 mt-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] uppercase tracking-wider active:scale-[0.97] transition-all gap-1"
+                          className="w-full h-8 mt-2 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-[10px] uppercase tracking-wider active:scale-[0.97] transition-all gap-1 shadow-xs"
                         >
                           {isCreatingContact ? (
                             <Loader2 className="h-3 w-3 animate-spin" />

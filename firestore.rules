@@ -482,6 +482,12 @@ service cloud.firestore {
         allow read: if isAuthorized();
         allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(workspaceId));
       }
+
+      // Workspace messaging settings (e.g. allowViewingAllMessages, kill-switches, template shortlist)
+      match /messaging_settings/{settingId} {
+        allow read: if isAuthorized();
+        allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(workspaceId));
+      }
     }
 
     // --- Operational Layer (Workspace Shared Array) ---
@@ -1741,6 +1747,92 @@ service cloud.firestore {
       allow write: if isAuthorized() && (
         isSystemAdmin() || 
         (getUserData() != null && resource.data.workspaceId in getUserData().get('workspaceIds', []))
+      );
+    }
+
+    // --- Operational Layer: Daily Standups ---
+    // Assumed Data Model:
+    // Collection: standups
+    // Document ID: `${workspaceId}_${userId}_${date}` (deterministic compound key)
+    // Fields:
+    //   - id: string (required) - unique document identifier
+    //   - workspaceId: string (required) - workspace reference for multi-tenant isolation
+    //   - organizationId: string (optional) - parent organization identifier
+    //   - userId: string (required) - author user UID
+    //   - userName: string (optional) - author display name
+    //   - userEmail: string (optional) - author email
+    //   - userPhotoUrl: string (optional) - author avatar URL
+    //   - date: string (required) - target standup date (YYYY-MM-DD)
+    //   - status: string (required) - 'draft' | 'submitted' | 'amended'
+    //   - completedWork: list (required) - array of completed work items
+    //   - plannedWork: list (required) - array of planned work items
+    //   - blockers: list (required) - array of blocker item summaries
+    //   - helpNeeded: string (optional) - help requested
+    //   - privateManagerNote: string (optional) - confidential note visible to workspace managers
+    //   - submittedAt: string (optional) - ISO 8601 submission timestamp
+    //   - updatedAt: string (optional) - ISO 8601 modification timestamp
+    //   - idempotencyKey: string (optional) - deduplication key
+    match /standups/{standupId} {
+      allow get, list: if isAuthorized() && (
+        isSystemAdmin() || 
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow create: if isAuthorized() && (
+        isSystemAdmin() || 
+        hasWorkspaceAccess(request.resource.data.workspaceId)
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() || 
+        (hasWorkspaceAccess(resource.data.workspaceId) && 
+         request.resource.data.workspaceId == resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && (
+        isSystemAdmin() || 
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+    }
+
+    // --- Operational Layer: Blocker Tracking ---
+    // Assumed Data Model:
+    // Collection: blockers
+    // Document ID: `${standupId}_blk_${id}` or unique blocker identifier
+    // Fields:
+    //   - id: string (required) - unique blocker identifier
+    //   - workspaceId: string (required) - workspace reference for multi-tenant isolation
+    //   - organizationId: string (optional) - parent organization identifier
+    //   - standupId: string (optional) - parent standup submission ID
+    //   - summary: string (required) - description of impediment
+    //   - category: string (required) - 'technical' | 'external_dependency' | 'client_approval' | 'internal_resource' | 'general'
+    //   - severity: string (required) - 'low' | 'medium' | 'high' | 'critical'
+    //   - status: string (required) - 'open' | 'in_progress' | 'resolved'
+    //   - affectedTaskIds: list (optional) - linked task IDs
+    //   - raisedBy: string (required) - reporter user UID
+    //   - raisedByName: string (optional) - reporter display name
+    //   - ownerId: string (optional/nullable) - assigned resolver user UID
+    //   - ownerName: string (optional/nullable) - assigned resolver display name
+    //   - resolutionNote: string (optional/nullable) - notes on resolution
+    //   - resolvedAt: string (optional/nullable) - ISO 8601 resolution timestamp
+    //   - resolvedBy: string (optional/nullable) - resolver user UID
+    //   - createdAt: string (required) - ISO 8601 creation timestamp
+    //   - updatedAt: string (required) - ISO 8601 modification timestamp
+    //   - idempotencyKey: string (optional) - deduplication key
+    match /blockers/{blockerId} {
+      allow get, list: if isAuthorized() && (
+        isSystemAdmin() || 
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow create: if isAuthorized() && (
+        isSystemAdmin() || 
+        hasWorkspaceAccess(request.resource.data.workspaceId)
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() || 
+        (hasWorkspaceAccess(resource.data.workspaceId) && 
+         request.resource.data.workspaceId == resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && (
+        isSystemAdmin() || 
+        hasWorkspaceAccess(resource.data.workspaceId)
       );
     }
 

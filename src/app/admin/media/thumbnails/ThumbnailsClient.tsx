@@ -4,7 +4,6 @@ import * as React from 'react';
 import { useState } from 'react';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { Button } from '@/components/ui/button';
-import { RainbowButton } from '@/components/ui/rainbow-button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
@@ -43,7 +42,7 @@ export default function ThumbnailsClient() {
     if (!designs) return [];
     if (!searchTerm.trim()) return designs;
     const s = searchTerm.toLowerCase();
-    return designs.filter((d) => d.name.toLowerCase().includes(s));
+    return designs.filter((d) => Boolean(d.name?.toLowerCase().includes(s)));
   }, [designs, searchTerm]);
 
   const handleEdit = (design: ThumbnailDesign) => {
@@ -65,67 +64,74 @@ export default function ThumbnailsClient() {
   return (
     <PageContainerFluid>
       <div className="h-full overflow-y-auto w-full text-left space-y-6 pb-24 animate-in fade-in duration-200">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        {/* Header with title tooltip and integrated filter/action controls */}
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight bg-gradient-to-r from-emerald-450 via-teal-400 to-blue-500 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold text-foreground">
               AI Thumbnail Studio
             </h1>
             <CardInfoTooltip text="Create scroll-stopping, high-CTR video cover thumbnails with AI." />
           </div>
-          <div className="flex items-center gap-2.5">
-            <RainbowButton asChild className="h-10 px-4 rounded-xl font-bold text-xs gap-1.5 shadow-md active:scale-[0.97]">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto">
+            <div className="relative w-full sm:w-60 md:w-72">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-60" />
+              <Input
+                placeholder="Search designs..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 h-11 min-h-[44px] bg-card border border-border text-foreground placeholder:text-muted-foreground rounded-xl shadow-xs transition-all font-medium text-xs w-full"
+              />
+            </div>
+            <Button
+              variant="outline"
+              asChild
+              className="rounded-xl font-bold shadow-xs h-11 min-h-[44px] px-5 transition-all active:scale-[0.97] text-xs shrink-0 w-full sm:w-auto border-border/80 bg-card hover:bg-muted/50"
+            >
               <Link href="/admin/creative-studio">
-                <Sparkles className="w-3.5 h-3.5" /> Explore Creative Studio 2.0
+                <Sparkles className="w-3.5 h-3.5 mr-1.5" /> Creative Studio
               </Link>
-            </RainbowButton>
-            <Button onClick={handleCreateNew} className="bg-emerald-500 hover:bg-emerald-600 active:scale-[0.97] font-bold rounded-xl text-xs h-10 px-5 transition-all text-white shadow-sm">
-              <Plus className="w-4 h-4 mr-1" /> Create Thumbnail
+            </Button>
+            <Button
+              onClick={handleCreateNew}
+              className="rounded-xl font-bold shadow-md h-11 min-h-[44px] px-6 transition-all active:scale-[0.97] text-xs shrink-0 w-full sm:w-auto"
+            >
+              <Plus className="w-4 h-4 mr-1.5" /> Create Thumbnail
             </Button>
           </div>
         </div>
 
-        {/* Search filter card */}
-        <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm max-w-md">
-          <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50" />
-            <Input
-              placeholder="Search designs..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 h-10 bg-background border-border/80 text-xs font-semibold text-foreground rounded-xl"
-            />
-          </div>
-        </Card>
-
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {[1, 2, 3].map((n) => (
-              <div key={n} className="aspect-video rounded-2xl bg-slate-900 animate-pulse border border-slate-850" />
+              <div key={n} className="aspect-video rounded-2xl bg-muted/40 animate-pulse border border-border/80 shadow-xs" />
             ))}
           </div>
         ) : filteredDesigns.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-12 border border-slate-800 rounded-3xl bg-slate-900/10 text-center space-y-4">
-            <div className="p-4 bg-slate-900 border border-slate-850 rounded-2xl text-slate-500">
+          <Card className="flex flex-col items-center justify-center p-12 border border-border/80 rounded-2xl bg-card text-center space-y-4 shadow-xs">
+            <div className="p-4 bg-muted/40 border border-border/80 rounded-2xl text-muted-foreground">
               <ImageIcon className="w-8 h-8" />
             </div>
             <div>
-              <h3 className="font-bold text-sm text-slate-200">No Thumbnails Found</h3>
-              <p className="text-xs font-medium text-slate-400 mt-1">
+              <h3 className="font-bold text-sm text-foreground">No Thumbnails Found</h3>
+              <p className="text-xs font-medium text-muted-foreground mt-1">
                 Start from a CTR layout formula or describe your topic to the AI Architect.
               </p>
             </div>
-            <Button onClick={handleCreateNew} className="bg-emerald-500 hover:bg-emerald-600 active:scale-[0.97] text-xs font-bold rounded-xl h-9 px-4 transition-all">
-              <Wand2 className="w-3.5 h-3.5 mr-1" /> Design with AI
+            <Button
+              onClick={handleCreateNew}
+              className="rounded-xl font-bold shadow-md h-10 px-5 transition-all active:scale-[0.97] text-xs"
+            >
+              <Wand2 className="w-3.5 h-3.5 mr-1.5" /> Design with AI
             </Button>
-          </div>
+          </Card>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {filteredDesigns.map((d) => (
-              <div
+              <Card
                 key={d.id}
-                className="group relative border border-slate-800 bg-slate-900/30 rounded-2xl overflow-hidden hover:border-slate-700 transition-all flex flex-col shadow-lg"
+                className="group relative border border-border/80 bg-card rounded-2xl overflow-hidden hover:border-border transition-all flex flex-col shadow-xs"
               >
-                <div className="aspect-video bg-slate-950 relative overflow-hidden flex items-center justify-center">
+                <div className="aspect-video bg-muted/30 relative overflow-hidden flex items-center justify-center border-b border-border/80">
                   {d.thumbnailUrl ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
                     <img 
@@ -134,23 +140,28 @@ export default function ThumbnailsClient() {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-slate-600 text-xs font-bold bg-slate-900/50">
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs font-semibold">
                       No Preview
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                    <Button onClick={() => handleEdit(d)} size="sm" className="bg-white text-slate-900 hover:bg-slate-100 rounded-lg font-bold text-xs h-8 px-4 transition-colors">
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-xs">
+                    <Button
+                      onClick={() => handleEdit(d)}
+                      size="sm"
+                      variant="secondary"
+                      className="rounded-xl font-bold text-xs h-8 px-4 transition-all active:scale-[0.97] shadow-sm"
+                    >
                       <Edit3 className="w-3.5 h-3.5 mr-1" /> Edit
                     </Button>
                   </div>
                 </div>
-                <div className="p-4 flex-1 flex flex-col justify-between bg-slate-900/40">
-                  <div className="font-bold text-xs text-slate-200 truncate" title={d.name}>{d.name}</div>
-                  <div className="text-[10px] text-slate-400 font-medium mt-2">
+                <div className="p-4 flex-1 flex flex-col justify-between bg-card">
+                  <div className="font-bold text-xs text-card-foreground truncate" title={d.name}>{d.name}</div>
+                  <div className="text-[10px] text-muted-foreground font-medium mt-2">
                     Updated {new Date(d.updatedAt).toLocaleDateString()}
                   </div>
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
         )}

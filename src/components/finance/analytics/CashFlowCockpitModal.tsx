@@ -87,44 +87,49 @@ export function CashFlowCockpitModal({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="p-3.5 rounded-xl border border-border/70 bg-background/50 space-y-1">
               <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
-                <span>Cash On Hand</span>
+                <div className="flex items-center gap-1.5">
+                  <span>Cash On Hand</span>
+                  <CardInfoTooltip text="Immediate liquidity" />
+                </div>
                 <DollarSign className="h-3.5 w-3.5 text-emerald-500" />
               </div>
               <p className="text-lg font-bold tracking-tight">
                 {currency} {(forecast?.currentCashOnHand ?? 0).toLocaleString()}
               </p>
-              <p className="text-[11px] text-muted-foreground">Immediate liquidity</p>
             </div>
 
             <div className="p-3.5 rounded-xl border border-border/70 bg-background/50 space-y-1">
               <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
-                <span>30d Closing</span>
+                <div className="flex items-center gap-1.5">
+                  <span>30d Closing</span>
+                  <CardInfoTooltip text={`Inflow: +${currency} ${(runway?.['30d']?.totalProjectedInflow ?? 0).toLocaleString()}`} />
+                </div>
                 <ArrowUpRight className="h-3.5 w-3.5 text-blue-500" />
               </div>
               <p className="text-lg font-bold tracking-tight text-blue-600 dark:text-blue-400">
                 {currency} {(runway?.['30d']?.projectedClosingCash ?? 0).toLocaleString()}
               </p>
-              <p className="text-[11px] text-muted-foreground">
-                Inflow: +{currency} {(runway?.['30d']?.totalProjectedInflow ?? 0).toLocaleString()}
-              </p>
             </div>
 
             <div className="p-3.5 rounded-xl border border-border/70 bg-background/50 space-y-1">
               <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
-                <span>60d Closing</span>
+                <div className="flex items-center gap-1.5">
+                  <span>60d Closing</span>
+                  <CardInfoTooltip text={`Inflow: +${currency} ${(runway?.['60d']?.totalProjectedInflow ?? 0).toLocaleString()}`} />
+                </div>
                 <ArrowUpRight className="h-3.5 w-3.5 text-indigo-500" />
               </div>
               <p className="text-lg font-bold tracking-tight text-indigo-600 dark:text-indigo-400">
                 {currency} {(runway?.['60d']?.projectedClosingCash ?? 0).toLocaleString()}
               </p>
-              <p className="text-[11px] text-muted-foreground">
-                Inflow: +{currency} {(runway?.['60d']?.totalProjectedInflow ?? 0).toLocaleString()}
-              </p>
             </div>
 
             <div className="p-3.5 rounded-xl border border-border/70 bg-background/50 space-y-1">
               <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
-                <span>DSO Velocity</span>
+                <div className="flex items-center gap-1.5">
+                  <span>DSO Velocity</span>
+                  <CardInfoTooltip text="Target: 45 Days" />
+                </div>
                 <Clock className="h-3.5 w-3.5 text-amber-500" />
               </div>
               <div className="flex items-center gap-1.5">
@@ -133,17 +138,18 @@ export function CashFlowCockpitModal({
                   {dso?.velocityBand ?? 'HEALTHY'}
                 </Badge>
               </div>
-              <p className="text-[11px] text-muted-foreground">Target: 45 Days</p>
             </div>
           </div>
 
           {/* Runway Projections Breakdown */}
           <div className="rounded-xl border border-border/70 bg-card overflow-hidden">
             <div className="px-4 py-3 border-b border-border/70 bg-muted/20 flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                30 / 60 / 90-Day Inflow Projections
-              </span>
-              <span className="text-xs text-muted-foreground">Cent-level double-entry math</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  30 / 60 / 90-Day Inflow Projections
+                </span>
+                <CardInfoTooltip text="Cent-level double-entry math" />
+              </div>
             </div>
             <div className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
               {(['30d', '60d', '90d'] as const).map((key) => {

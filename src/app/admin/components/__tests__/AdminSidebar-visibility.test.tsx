@@ -83,8 +83,9 @@ describe('AdminSidebar Visibility Hiding', () => {
     expect(screen.queryByText('Dashboard')).not.toBeNull();
     expect(screen.queryByText('Tasks')).not.toBeNull();
 
-    // Schools and Deals should NOT be visible anywhere in the DOM
+    // Schools and Deals / Pipeline & Deals should NOT be visible anywhere in the DOM
     expect(screen.queryByText('Schools')).toBeNull();
+    expect(screen.queryByText('Pipeline & Deals')).toBeNull();
     expect(screen.queryByText('Deals')).toBeNull();
   });
 });

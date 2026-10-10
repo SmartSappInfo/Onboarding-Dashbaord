@@ -16,7 +16,7 @@ describe('ActiveQueuesCard', () => {
     );
 
     expect(screen.getByText('Active Queues')).toBeInTheDocument();
-    expect(screen.getByText(/Operational queue pipeline/i)).toBeInTheDocument();
+    expect(screen.getByTestId('card-info-tooltip')).toBeInTheDocument();
     expect(screen.getByText('Scheduled Messages')).toBeInTheDocument();
     expect(screen.getByText('14')).toBeInTheDocument();
     expect(screen.getByText('Pending Approval')).toBeInTheDocument();

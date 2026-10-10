@@ -203,11 +203,11 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
     { href: wrapHref('/admin'), icon: LayoutDashboard, label: 'Dashboard', visible: can('operations', 'dashboard', 'view') },
     { href: wrapHref('/admin/entities'), icon: School, label: plural, visible: isFeatureEnabled('entities') && can('operations', 'campuses', 'view') },
     { href: wrapHref('/admin/lead-intelligence'), icon: Sparkles, label: 'Lead Intelligence', visible: isFeatureEnabled('entities') && (can('operations', 'leadIntelligence', 'view') || can('operations', 'campuses', 'view')) },
-    { href: wrapHref('/admin/pipeline'), icon: Workflow, label: dealPlural || 'Deals', visible: isFeatureEnabled('pipeline') && can('operations', 'pipeline', 'view') },
+    { href: wrapHref('/admin/pipeline'), icon: Workflow, label: dealPlural && dealPlural !== 'Deals' ? `Pipeline & ${dealPlural}` : 'Pipeline & Deals', visible: isFeatureEnabled('pipeline') && can('operations', 'pipeline', 'view') },
     { href: wrapHref('/admin/tasks'), icon: CheckSquare, label: 'Tasks', visible: isFeatureEnabled('tasks') && can('operations', 'tasks', 'view') },
     { href: wrapHref('/admin/meetings'), icon: Calendar, label: 'Meetings', visible: isFeatureEnabled('meetings') && can('operations', 'meetings', 'view') },
     { href: wrapHref('/admin/messaging'), icon: MessageSquareText, label: 'Messaging', visible: isFeatureEnabled('messaging') && can('studios', 'messaging', 'view') },
-    { href: wrapHref('/admin/messaging/call-centre'), icon: PhoneCall, label: 'Call Centre', visible: isFeatureEnabled('call_centre') && isFeatureEnabled('messaging') && can('studios', 'callCentre', 'view') },
+    { href: wrapHref('/admin/call-centre'), icon: PhoneCall, label: 'Call Centre', visible: isFeatureEnabled('call_centre') && can('studios', 'callCentre', 'view') },
     { href: wrapHref('/admin/portals'), icon: Globe, label: 'Public Portals', visible: isFeatureEnabled('portals') && can('studios', 'publicPortals', 'view') },
     { href: wrapHref('/admin/workforce/crm'), icon: ArrowRightLeft, label: 'CRM Workload', visible: can('workforce', 'crmWorkload', 'view') || can('management', 'users', 'view') },
   ], [wrapHref, isFeatureEnabled, can, plural, dealPlural]);
@@ -297,12 +297,12 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
 
   const navGroups = React.useMemo<{ title: string; items: NavItem[] }[]>(() => [
     { title: 'Work', items: workNavItems },
-    { title: 'Automation', items: automationNavItems },
-    { title: 'Intelligence', items: intelligenceNavItems },
-    { title: 'Studios', items: studioNavItems },
+    { title: 'Studio', items: studioNavItems },
+    { title: 'Automations', items: automationNavItems },
     { title: 'Transact', items: transactNavItems },
+    { title: 'Intelligence', items: intelligenceNavItems },
     { title: 'System', items: systemNavItems },
-  ], [workNavItems, automationNavItems, intelligenceNavItems, studioNavItems, transactNavItems, systemNavItems]);
+  ], [workNavItems, studioNavItems, automationNavItems, transactNavItems, intelligenceNavItems, systemNavItems]);
 
   const routeGroup = React.useMemo(() => {
     let best: { title: string; length: number } | null = null;

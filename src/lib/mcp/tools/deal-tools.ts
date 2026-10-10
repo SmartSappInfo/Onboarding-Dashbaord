@@ -28,6 +28,12 @@ import {
   dealTransferCapability,
 } from '@/platform/domains/deals_revenue/contracts/deal-capabilities.contract';
 import { transferDealCore } from '@/lib/deals/deal-transfer-core';
+import {
+  generateCadencePreview,
+  executeCadenceSchedule,
+} from '@/lib/deals/deal-task-cadence-core';
+import { PersonService } from '@/lib/services/identity/person-service';
+import type { Deal, DealTaskCadenceConfig } from '@/lib/deals/deal-types';
 import type { CrmActor } from '@/lib/crm/deal-core';
 
 // ==========================================
@@ -519,6 +525,196 @@ export const dealPreviewTransferTool: McpToolDefinition<
   responseSchema: transferDealOutputSchema,
   handler: async (params, context) => {
     return executeDealTransfer({ ...params, dryRun: true }, context);
+  },
+};
+
+// ==========================================
+// 6. deal.preview_task_cadence (Read-Only)
+// ==========================================
+
+const dealCadenceInputSchema = z.object({
+  dealIds: z.array(z.string().min(1)).min(1).describe('Array of deal IDs in current workspace to schedule follow-ups for.'),
+  actionType: z.enum(['call', 'email', 'meeting', 'review', 'custom']).describe('Channel or type of task to create.'),
+  taskTitle: z.string().min(1).describe('Title prefix or template for the generated tasks.'),
+  taskDescription: z.string().optional().describe('Actionable task description, context, or call script.'),
+  taskPriority: z.enum(['low', 'medium', 'high', 'urgent']),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe('Target start date in YYYY-MM-DD format.'),
+  maxFrequencyPerDay: z.number().int().min(1).max(50).describe('Maximum follow-up tasks assigned per day per representative.'),
+  intervalMinutes: z.number().int().min(10).max(240).describe('Pacing interval in minutes between intra-day slots.'),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/).describe('Daily cadence schedule start time (HH:mm).'),
+  skipWeekends: z.boolean().describe('Whether to skip Saturdays and Sundays.'),
+  assigneeMode: z.enum(['single', 'round_robin', 'ai_balanced']),
+  targetAssigneeIds: z.array(z.string().min(1)).min(1).describe('Target team representative user IDs who will receive the assigned deals and tasks.'),
+  idempotencyKey: z.string().optional().describe('Idempotency token for repeatable execution.'),
+});
+
+const dealCadencePreviewOutputSchema = z.object({
+  workspaceId: z.string(),
+  totalDeals: z.number(),
+  totalPipelineValue: z.number(),
+  totalDaysSpanned: z.number(),
+  startDate: z.string(),
+  endDate: z.string(),
+  slotsCount: z.number(),
+  daySummaries: z.array(
+    z.object({
+      date: z.string(),
+      dayNumber: z.number(),
+      taskCount: z.number(),
+      deals: z.array(
+        z.object({
+          id: z.string(),
+          title: z.string(),
+          assigneeName: z.string(),
+          time: z.string(),
+        })
+      ),
+    })
+  ),
+});
+
+export const dealPreviewTaskCadenceTool: McpToolDefinition<
+  z.infer<typeof dealCadenceInputSchema>,
+  z.infer<typeof dealCadencePreviewOutputSchema>
+> = {
+  name: 'deal.preview_task_cadence',
+  version: '1.0.0',
+  category: 'deal',
+  description: 'Simulates and previews an intelligent task cadence schedule and representative assignment without mutating database state (Two-Phase Action Model).',
+  riskLevel: 'read_only',
+  requiresApproval: false,
+  parameters: dealCadenceInputSchema,
+  responseSchema: dealCadencePreviewOutputSchema,
+  handler: async (params, context) => {
+    const dealsSnap = await adminDb
+      .collection('deals')
+      .where('workspaceId', '==', context.workspaceId)
+      .get();
+
+    const dealMap = new Map<string, Deal>();
+    for (const doc of dealsSnap.docs) {
+      dealMap.set(doc.id, { id: doc.id, ...doc.data() } as Deal);
+    }
+
+    const targetedDeals: Deal[] = [];
+    for (const id of params.dealIds) {
+      const d = dealMap.get(id);
+      if (d) targetedDeals.push(d);
+    }
+
+    if (targetedDeals.length === 0) {
+      throw new Error('None of the specified deals exist within the active workspace.');
+    }
+
+    const assignees = [];
+    for (const repId of params.targetAssigneeIds) {
+      const person = await PersonService.getPerson(repId);
+      if (person) {
+        assignees.push({
+          id: person.id,
+          name: person.displayName || person.email || repId,
+          email: person.email,
+        });
+      } else {
+        assignees.push({ id: repId, name: repId });
+      }
+    }
+
+    const config: DealTaskCadenceConfig = {
+      workspaceId: context.workspaceId,
+      organizationId: context.organizationId,
+      dealIds: params.dealIds,
+      actionType: params.actionType,
+      taskTitle: params.taskTitle,
+      taskDescription: params.taskDescription,
+      taskPriority: params.taskPriority,
+      startDate: params.startDate,
+      maxFrequencyPerDay: params.maxFrequencyPerDay,
+      intervalMinutes: params.intervalMinutes,
+      startTime: params.startTime,
+      skipWeekends: params.skipWeekends,
+      assigneeMode: params.assigneeMode,
+      targetAssigneeIds: params.targetAssigneeIds,
+      idempotencyKey: params.idempotencyKey,
+    };
+
+    const preview = generateCadencePreview(targetedDeals, config, assignees);
+    return {
+      workspaceId: preview.workspaceId,
+      totalDeals: preview.totalDeals,
+      totalPipelineValue: preview.totalPipelineValue,
+      totalDaysSpanned: preview.totalDaysSpanned,
+      startDate: preview.startDate,
+      endDate: preview.endDate,
+      slotsCount: preview.slots.length,
+      daySummaries: preview.daySummaries,
+    };
+  },
+};
+
+// ==========================================
+// 7. deal.execute_task_cadence (Low-Risk Mutation)
+// ==========================================
+
+const dealCadenceExecuteOutputSchema = z.object({
+  jobId: z.string(),
+  workspaceId: z.string(),
+  totalDealsProcessed: z.number(),
+  tasksCreatedCount: z.number(),
+  dealsUpdatedCount: z.number(),
+  startDate: z.string(),
+  endDate: z.string(),
+  executedAt: z.string(),
+  status: z.string(),
+  errors: z.array(z.string()).optional(),
+});
+
+export const dealExecuteTaskCadenceTool: McpToolDefinition<
+  z.infer<typeof dealCadenceInputSchema>,
+  z.infer<typeof dealCadenceExecuteOutputSchema>
+> = {
+  name: 'deal.execute_task_cadence',
+  version: '1.0.0',
+  category: 'deal',
+  description: 'Executes an automated deal task cadence: assigns designated representatives to deals and creates paced tasks within specified daily frequencies and intervals.',
+  riskLevel: 'low_risk',
+  requiresApproval: false,
+  parameters: dealCadenceInputSchema,
+  responseSchema: dealCadenceExecuteOutputSchema,
+  handler: async (params, context) => {
+    const callerUserId = context.callerType === 'agent' ? `system-${context.callerId}` : (context.userId || context.callerId);
+
+    const config: DealTaskCadenceConfig = {
+      workspaceId: context.workspaceId,
+      organizationId: context.organizationId,
+      dealIds: params.dealIds,
+      actionType: params.actionType,
+      taskTitle: params.taskTitle,
+      taskDescription: params.taskDescription,
+      taskPriority: params.taskPriority,
+      startDate: params.startDate,
+      maxFrequencyPerDay: params.maxFrequencyPerDay,
+      intervalMinutes: params.intervalMinutes,
+      startTime: params.startTime,
+      skipWeekends: params.skipWeekends,
+      assigneeMode: params.assigneeMode,
+      targetAssigneeIds: params.targetAssigneeIds,
+      idempotencyKey: params.idempotencyKey,
+    };
+
+    const result = await executeCadenceSchedule(config, callerUserId);
+    return {
+      jobId: result.jobId,
+      workspaceId: result.workspaceId,
+      totalDealsProcessed: result.totalDealsProcessed,
+      tasksCreatedCount: result.tasksCreatedCount,
+      dealsUpdatedCount: result.dealsUpdatedCount,
+      startDate: result.startDate,
+      endDate: result.endDate,
+      executedAt: result.executedAt,
+      status: result.status,
+      errors: result.errors,
+    };
   },
 };
 

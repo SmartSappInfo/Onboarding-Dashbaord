@@ -92,10 +92,10 @@ describe('Global Navigation Unification (Canonical 6-Group Architecture)', () =>
     vi.clearAllMocks();
   });
 
-  it('renders all 6 canonical groups: Work, Automation, Intelligence, Studios, Transact, System', () => {
+  it('renders all 6 canonical groups: Work, Studio, Automations, Transact, Intelligence, System', () => {
     render(<AdminSidebar />);
 
-    const groupTitles = ['Work', 'Automation', 'Intelligence', 'Studios', 'Transact', 'System'];
+    const groupTitles = ['Work', 'Studio', 'Automations', 'Transact', 'Intelligence', 'System'];
     for (const title of groupTitles) {
       const el = screen.getAllByRole('button', { name: new RegExp(title, 'i') })[0];
       expect(el).toBeInTheDocument();
@@ -115,12 +115,12 @@ describe('Global Navigation Unification (Canonical 6-Group Architecture)', () =>
     expect(screen.getByRole('link', { name: /Meetings/i })).toBeInTheDocument();
   });
 
-  it('verifies Automation group contains Workflows (/admin/workflows), Automations, and Approvals', async () => {
+  it('verifies Automations group contains Workflows (/admin/workflows), Automations, and Approvals', async () => {
     const user = userEvent.setup();
     render(<AdminSidebar />);
 
-    await user.click(groupTrigger('Automation'));
-    expect(isGroupOpen('Automation')).toBe(true);
+    await user.click(groupTrigger('Automations'));
+    expect(isGroupOpen('Automations')).toBe(true);
 
     expect(screen.getByRole('link', { name: /Workflows/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Automations/i })).toBeInTheDocument();
@@ -142,12 +142,12 @@ describe('Global Navigation Unification (Canonical 6-Group Architecture)', () =>
     expect(screen.getByRole('link', { name: /MCP Capabilities/i })).toBeInTheDocument();
   });
 
-  it('verifies Studios group contains Document, Media, Forms, and Social Hub creation tools', async () => {
+  it('verifies Studio group contains Document, Media, Forms, and Social Hub creation tools', async () => {
     const user = userEvent.setup();
     render(<AdminSidebar />);
 
-    await user.click(groupTrigger('Studios'));
-    expect(isGroupOpen('Studios')).toBe(true);
+    await user.click(groupTrigger('Studio'));
+    expect(isGroupOpen('Studio')).toBe(true);
 
     expect(screen.getByRole('link', { name: /Forms/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Landing Pages/i })).toBeInTheDocument();

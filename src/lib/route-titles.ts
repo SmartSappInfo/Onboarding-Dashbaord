@@ -62,6 +62,7 @@ export const ADMIN_ROUTE_TITLES: RouteTitleMap = {
   '/admin/flipbooks': 'Flipbook Studio',
   '/admin/surveys': 'Surveys',
   '/admin/pdfs': 'Doc Signing',
+  '/admin/call-centre': 'Call Centre',
   '/admin/messaging/call-centre': 'Call Centre',
   '/admin/messaging': 'Messaging',
   '/admin/forms': 'Forms',

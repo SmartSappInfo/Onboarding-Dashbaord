@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { RainbowButton } from '@/components/ui/rainbow-button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { useToast } from '@/hooks/use-toast';
 import { saveOrganizationAction } from '@/lib/organization-actions';
 import {
@@ -139,7 +140,7 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
             }
 
             setSeedResult(data.result as AISeedResult);
-        } catch (_err: unknown) {
+        } catch {
             setScrapeError('Network error. Please check your connection and try again.');
         } finally {
             setIsScraping(false);
@@ -196,21 +197,20 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
             {/* ---------------------------------------------------------------- */}
             {/* AI Website Seeding Assistant                                      */}
             {/* ---------------------------------------------------------------- */}
-            <Card className="rounded-[2rem] border border-violet-200 dark:border-violet-800/50 shadow-sm overflow-hidden bg-gradient-to-br from-violet-50/50 to-indigo-50/30 dark:from-violet-950/20 dark:to-indigo-950/10">
-                <CardHeader className="p-6 pb-4 border-b border-violet-200/60 dark:border-violet-800/40">
-                    <CardTitle className="text-base font-bold flex items-center gap-2">
-                        <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-violet-100 dark:bg-violet-900/60">
-                            <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+            <Card className="rounded-2xl border border-border/80 shadow-sm overflow-hidden bg-card text-card-foreground">
+                <CardHeader className="p-6 border-b border-border/60 bg-muted/20 flex flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-violet-100 dark:bg-violet-900/60 text-violet-600 dark:text-violet-400">
+                            <Sparkles className="h-4 w-4" />
                         </div>
-                        AI Seeding Assistant
-                        <span className="ml-auto text-[9px] font-black text-violet-500 uppercase tracking-widest bg-violet-100 dark:bg-violet-900/50 px-2 py-0.5 rounded-full">
-                            Beta
-                        </span>
-                    </CardTitle>
-                    <CardDescription className="text-xs text-muted-foreground/80 flex items-start gap-1.5">
-                        <Info className="h-3 w-3 mt-0.5 flex-shrink-0 text-violet-400" />
-                        Enter your organization&apos;s website URL and let AI automatically extract your brand colors, logo, and localization settings.
-                    </CardDescription>
+                        <CardTitle className="text-base font-bold">
+                            AI Seeding Assistant
+                        </CardTitle>
+                        <CardInfoTooltip text="Enter your organization's website URL and let AI automatically extract your brand colors, logo, and localization settings." />
+                    </div>
+                    <span className="text-[9px] font-black text-violet-600 dark:text-violet-400 uppercase tracking-widest bg-violet-100 dark:bg-violet-900/50 px-2.5 py-1 rounded-full border border-violet-200 dark:border-violet-800">
+                        Beta
+                    </span>
                 </CardHeader>
                 <CardContent className="p-6 space-y-4">
                     {/* URL Input row */}
@@ -223,7 +223,7 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
                                 onChange={(e) => setSeedUrl(e.target.value)}
                                 onKeyDown={handleKeyDown}
                                 placeholder="https://yourcompany.com"
-                                className="h-11 pl-10 rounded-xl bg-background/70 border-violet-200 dark:border-violet-800/60 font-medium text-sm shadow-inner"
+                                className="h-11 pl-10 rounded-xl bg-white dark:bg-card border border-border/80 focus-visible:ring-primary font-medium text-sm shadow-xs"
                                 disabled={isScraping}
                             />
                         </div>
@@ -294,17 +294,17 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
             {/* ---------------------------------------------------------------- */}
             {/* Manual Branding Controls                                          */}
             {/* ---------------------------------------------------------------- */}
-            <Card className="rounded-[2rem] border border-border shadow-sm bg-transparent overflow-hidden">
-                <CardHeader className="p-8 border-b">
-                    <CardTitle className="text-xl font-bold flex items-center gap-2">
+            <Card className="rounded-2xl border border-border/80 shadow-sm bg-card text-card-foreground overflow-hidden">
+                <CardHeader className="p-6 border-b border-border/60 bg-muted/20">
+                    <div className="flex items-center gap-2">
                         <Palette className="h-5 w-5 text-primary" />
-                        Brand & Aesthetics
-                    </CardTitle>
-                    <CardDescription className="text-xs font-semibold text-muted-foreground mt-0.5">
-                        Customize your institution&apos;s theme colors, fonts, and email footer compliance copies
-                    </CardDescription>
+                        <CardTitle className="text-xl font-bold">
+                            Brand & Aesthetics
+                        </CardTitle>
+                        <CardInfoTooltip text="Customize your institution's theme colors, fonts, and email footer compliance copies." />
+                    </div>
                 </CardHeader>
-                <CardContent className="p-8 space-y-6">
+                <CardContent className="p-6 space-y-6">
                     {/* Live color mesh preview */}
                     <div
                         className="h-3 w-full rounded-full transition-all duration-500"
@@ -323,13 +323,13 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
                                     type="color"
                                     value={brandPrimaryColor}
                                     onChange={(e) => setBrandPrimaryColor(e.target.value)}
-                                    className="w-12 h-11 p-1 bg-muted/20 border-none cursor-pointer rounded-xl"
+                                    className="w-12 h-11 p-1 bg-white dark:bg-card border border-border/80 cursor-pointer rounded-xl"
                                 />
                                 <Input
                                     value={brandPrimaryColor}
                                     onChange={(e) => setBrandPrimaryColor(e.target.value)}
                                     placeholder="#3B5FFF"
-                                    className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4 flex-1"
+                                    className="h-11 rounded-xl bg-white dark:bg-card border border-border/80 font-medium px-4 flex-1 focus-visible:ring-primary"
                                 />
                             </div>
                         </div>
@@ -343,13 +343,13 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
                                     type="color"
                                     value={brandSecondaryColor}
                                     onChange={(e) => setBrandSecondaryColor(e.target.value)}
-                                    className="w-12 h-11 p-1 bg-muted/20 border-none cursor-pointer rounded-xl"
+                                    className="w-12 h-11 p-1 bg-white dark:bg-card border border-border/80 cursor-pointer rounded-xl"
                                 />
                                 <Input
                                     value={brandSecondaryColor}
                                     onChange={(e) => setBrandSecondaryColor(e.target.value)}
                                     placeholder="#8B5CF6"
-                                    className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4 flex-1"
+                                    className="h-11 rounded-xl bg-white dark:bg-card border border-border/80 font-medium px-4 flex-1 focus-visible:ring-primary"
                                 />
                             </div>
                         </div>
@@ -361,7 +361,7 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
                             <select
                                 value={brandFontFamily}
                                 onChange={(e) => setBrandFontFamily(e.target.value)}
-                                className="h-11 w-full rounded-xl bg-muted/20 border-none shadow-inner font-semibold px-4 text-sm"
+                                className="h-11 w-full rounded-xl bg-white dark:bg-card border border-border/80 font-semibold px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                             >
                                 <option value="Figtree">Figtree</option>
                                 <option value="Inter">Inter</option>
@@ -386,7 +386,7 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
                                 }
                             }}
                             placeholder="You are receiving this email because you registered on our platform..."
-                            className="min-h-[90px] rounded-2xl bg-muted/20 border-none shadow-inner p-4 font-medium leading-relaxed animate-none"
+                            className="min-h-[90px] rounded-xl bg-white dark:bg-card border border-border/80 p-4 font-medium leading-relaxed focus-visible:ring-primary animate-none"
                         />
                         <div className="text-[9px] text-muted-foreground text-right font-bold">
                             {unsubscribeCopy.length}/300 characters
@@ -396,16 +396,14 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
             </Card>
 
             {/* Email Footer Card */}
-            <Card className="rounded-[2rem] border border-border shadow-sm bg-transparent overflow-hidden">
-                <CardHeader className="p-8 border-b flex flex-row items-center justify-between flex-wrap gap-4">
-                    <div className="space-y-1">
-                        <CardTitle className="text-xl font-bold flex items-center gap-2">
-                            <FileCode className="h-5 w-5 text-primary" />
+            <Card className="rounded-2xl border border-border/80 shadow-sm bg-card text-card-foreground overflow-hidden">
+                <CardHeader className="p-6 border-b border-border/60 bg-muted/20 flex flex-row items-center justify-between flex-wrap gap-4">
+                    <div className="flex items-center gap-2">
+                        <FileCode className="h-5 w-5 text-primary" />
+                        <CardTitle className="text-xl font-bold">
                             Email Footer
                         </CardTitle>
-                        <CardDescription className="text-xs font-semibold text-muted-foreground mt-0.5">
-                            Customize the compliance footer appended to outbound email templates
-                        </CardDescription>
+                        <CardInfoTooltip text="Customize the compliance footer appended to outbound email templates." />
                     </div>
                     <div className="flex items-center gap-3">
                         <span className="text-[10px] font-bold text-muted-foreground">Always Appended</span>
@@ -416,7 +414,7 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
                         />
                     </div>
                 </CardHeader>
-                <CardContent className="p-8 space-y-6">
+                <CardContent className="p-6 space-y-6">
                     <Tabs value={footerPreviewMode} onValueChange={(v) => setFooterPreviewMode(v as 'code' | 'preview')} className="space-y-4">
                         <div className="flex items-center justify-between border-b pb-2">
                             <TabsList className="bg-muted/50 border border-border/60 p-0.5 h-9 rounded-xl shadow-sm">
@@ -446,7 +444,7 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
                             <Textarea
                                 value={footerHtml}
                                 onChange={(e) => setFooterHtml(e.target.value)}
-                                className="min-h-[200px] font-mono text-xs bg-slate-950 text-blue-400 p-4 rounded-2xl border-slate-800 shadow-inner focus-visible:ring-primary/20 leading-relaxed resize-none"
+                                className="min-h-[200px] font-mono text-xs bg-slate-950 text-blue-400 p-4 rounded-xl border border-border/80 shadow-inner focus-visible:ring-primary/20 leading-relaxed resize-none"
                                 placeholder="Enter custom footer HTML here..."
                             />
                             
@@ -517,16 +515,14 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
             </Card>
 
             {/* Landing Page Footer Card */}
-            <Card className="rounded-[2rem] border border-border shadow-sm bg-transparent overflow-hidden mt-6">
-                <CardHeader className="p-8 border-b flex flex-row items-center justify-between flex-wrap gap-4">
-                    <div className="space-y-1">
-                        <CardTitle className="text-xl font-bold flex items-center gap-2">
-                            <Layout className="h-5 w-5 text-primary" />
+            <Card className="rounded-2xl border border-border/80 shadow-sm bg-card text-card-foreground overflow-hidden mt-6">
+                <CardHeader className="p-6 border-b border-border/60 bg-muted/20 flex flex-row items-center justify-between flex-wrap gap-4">
+                    <div className="flex items-center gap-2">
+                        <Layout className="h-5 w-5 text-primary" />
+                        <CardTitle className="text-xl font-bold">
                             Landing Page Footer
                         </CardTitle>
-                        <CardDescription className="text-xs font-semibold text-muted-foreground mt-0.5">
-                            Customize the dynamic footer rendered across forms, meetings, and survey landing pages
-                        </CardDescription>
+                        <CardInfoTooltip text="Customize the dynamic footer rendered across forms, meetings, and survey landing pages." />
                     </div>
                     <div className="flex items-center gap-3">
                         <span className="text-[10px] font-bold text-muted-foreground">Enabled</span>
@@ -537,14 +533,14 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
                         />
                     </div>
                 </CardHeader>
-                <CardContent className="p-8 space-y-6 text-left">
+                <CardContent className="p-6 space-y-6 text-left">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         {/* Left Column: Settings Form */}
                         <div className="space-y-5">
                             <div className="space-y-2">
                                 <Label className="text-xs font-bold text-muted-foreground ml-1">Footer Template Style</Label>
-                                <Select value={landingPageFooterStyle} onValueChange={(v) => setLandingPageFooterStyle(v as any)}>
-                                    <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-semibold text-sm">
+                                <Select value={landingPageFooterStyle} onValueChange={(v) => setLandingPageFooterStyle(v as 'default' | 'minimalist' | 'centered' | 'custom')}>
+                                    <SelectTrigger className="h-11 rounded-xl bg-white dark:bg-card border border-border/80 font-semibold text-sm">
                                         <SelectValue placeholder="Select Style Template" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -566,7 +562,7 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
                                             value={facebook}
                                             onChange={(e) => setFacebook(e.target.value)}
                                             placeholder="https://facebook.com/page"
-                                            className="h-10 rounded-xl bg-muted/20 border-none text-xs"
+                                            className="h-10 rounded-xl bg-white dark:bg-card border border-border/80 text-xs focus-visible:ring-primary"
                                         />
                                     </div>
                                     <div className="space-y-1">
@@ -575,7 +571,7 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
                                             value={twitter}
                                             onChange={(e) => setTwitter(e.target.value)}
                                             placeholder="https://twitter.com/handle"
-                                            className="h-10 rounded-xl bg-muted/20 border-none text-xs"
+                                            className="h-10 rounded-xl bg-white dark:bg-card border border-border/80 text-xs focus-visible:ring-primary"
                                         />
                                     </div>
                                     <div className="space-y-1">
@@ -584,7 +580,7 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
                                             value={linkedin}
                                             onChange={(e) => setLinkedin(e.target.value)}
                                             placeholder="https://linkedin.com/company/name"
-                                            className="h-10 rounded-xl bg-muted/20 border-none text-xs"
+                                            className="h-10 rounded-xl bg-white dark:bg-card border border-border/80 text-xs focus-visible:ring-primary"
                                         />
                                     </div>
                                     <div className="space-y-1">
@@ -593,7 +589,7 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
                                             value={instagram}
                                             onChange={(e) => setInstagram(e.target.value)}
                                             placeholder="https://instagram.com/handle"
-                                            className="h-10 rounded-xl bg-muted/20 border-none text-xs"
+                                            className="h-10 rounded-xl bg-white dark:bg-card border border-border/80 text-xs focus-visible:ring-primary"
                                         />
                                     </div>
                                     <div className="space-y-1">
@@ -602,7 +598,7 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
                                             value={youtube}
                                             onChange={(e) => setYoutube(e.target.value)}
                                             placeholder="https://youtube.com/c/channel"
-                                            className="h-10 rounded-xl bg-muted/20 border-none text-xs"
+                                            className="h-10 rounded-xl bg-white dark:bg-card border border-border/80 text-xs focus-visible:ring-primary"
                                         />
                                     </div>
                                 </div>
@@ -617,7 +613,7 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
                                     <Textarea
                                         value={landingPageFooterCustomHtml}
                                         onChange={(e) => setLandingPageFooterCustomHtml(e.target.value)}
-                                        className="flex-1 min-h-[160px] font-mono text-xs bg-slate-950 text-blue-400 p-4 rounded-2xl border-slate-800 shadow-inner focus-visible:ring-primary/20 leading-relaxed resize-none"
+                                        className="flex-1 min-h-[160px] font-mono text-xs bg-slate-950 text-blue-400 p-4 rounded-xl border border-border/80 shadow-inner focus-visible:ring-primary/20 leading-relaxed resize-none"
                                         placeholder="Enter custom landing footer HTML here..."
                                     />
                                     <div className="space-y-1">

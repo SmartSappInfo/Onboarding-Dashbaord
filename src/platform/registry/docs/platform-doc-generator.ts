@@ -190,7 +190,7 @@ export class PlatformDocGenerator {
         title: 'SmartSapp Autonomous Platform API',
         version: '1.0.0',
         description:
-          'Canonical OpenAPI 3.1.0 specification auto-generated from runtime CapabilityRegistry (Phase 15 Milestone 4 & Roadmap §25).',
+          'Canonical OpenAPI 3.1.0 specification auto-generated from runtime CapabilityRegistry.',
       },
       paths,
       components: {

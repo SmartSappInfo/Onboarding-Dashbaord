@@ -13,6 +13,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { AssignContactsToTagDialog } from '@/components/tags/AssignContactsToTagDialog';
 import {
   Dialog,
@@ -164,9 +173,11 @@ function TagForm({ formData, setFormData }: { formData: TagFormData, setFormData
 
 const PAGE_SIZE = 50;
 
+type MainTab = 'tags' | 'analytics' | 'cleanup' | 'audit';
+
 function TagsClientInner() {
   const { user } = useUser();
-  const { activeWorkspaceId, activeOrganizationId } = useWorkspace() as any;
+  const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
   const { toast } = useToast();
   const { tags, isLoading, invalidate } = useTagCache();
 
@@ -178,7 +189,7 @@ function TagsClientInner() {
   const [assigningTag, setAssigningTag] = useState<Tag | null>(null);
   const [formData, setFormData] = useState<TagFormData>(defaultFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [mainTab, setMainTab] = useState<'tags' | 'analytics' | 'cleanup' | 'audit'>('tags');
+  const [mainTab, setMainTab] = useState<MainTab>('tags');
   const [analyticsRefreshKey, setAnalyticsRefreshKey] = useState(0);
   // Pagination state
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -309,12 +320,12 @@ function TagsClientInner() {
                 });
                 invalidate();
               }}
- className="text-xs font-bold underline underline-offset-2 hover:no-underline"
+              className="text-xs font-bold underline underline-offset-2 hover:no-underline"
             >
               Undo
             </button>
           ),
-        } as any);
+        });
         invalidate();
         setDeletingTag(null);
       } else {
@@ -328,222 +339,248 @@ function TagsClientInner() {
   return (
     <PageContainer>
     <div className="space-y-8 pb-32 w-full">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-          <div className="flex flex-col items-start">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-3">
-                <TagIcon className="h-7 w-7 text-primary" />
-                Tags Hub
+      <Tabs value={mainTab} onValueChange={v => setMainTab(v as MainTab)} className="w-full space-y-8">
+        {/* Header with Title + Tooltip on left, Tabs + Create Tag button on right */}
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-3xl font-bold text-foreground flex items-center gap-2.5">
+              <TagIcon className="h-7 w-7 text-primary" />
+              Tags Hub
             </h1>
-            <p className="text-muted-foreground font-medium text-sm mt-1">
-              Intelligent contact labeling and segmentation registry
-            </p>
+            <CardInfoTooltip text="Intelligent contact labeling and segmentation registry." />
           </div>
-          <Button onClick={openCreate} className="rounded-xl font-bold shadow-lg h-11 px-8 transform active:scale-95 transition-all w-full sm:w-auto">
-            <PlusCircle className="mr-2 h-5 w-5" />
-            Create Tag
-          </Button>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <TabsList className="bg-muted/40 border border-border/80 shadow-xs h-11 p-1 rounded-xl gap-1">
+              <TabsTrigger value="tags" className="rounded-lg font-bold text-xs px-3.5 sm:px-4 gap-1.5 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all h-9">
+                <TagIcon className="h-3.5 w-3.5" /> Tag Registry
+              </TabsTrigger>
+              <TabsTrigger value="analytics" className="rounded-lg font-bold text-xs px-3.5 sm:px-4 gap-1.5 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all h-9">
+                <BarChart3 className="h-3.5 w-3.5" /> Analytics Hub
+              </TabsTrigger>
+              <TabsTrigger value="cleanup" className="rounded-lg font-bold text-xs px-3.5 sm:px-4 gap-1.5 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all h-9">
+                <Wrench className="h-3.5 w-3.5" /> Schema Cleanup
+              </TabsTrigger>
+              <TabsTrigger value="audit" className="rounded-lg font-bold text-xs px-3.5 sm:px-4 gap-1.5 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all h-9">
+                <History className="h-3.5 w-3.5" /> Audit Ledger
+              </TabsTrigger>
+            </TabsList>
+            <Button onClick={openCreate} className="rounded-xl font-bold shadow-md h-11 px-6 transition-all active:scale-[0.97] text-sm shrink-0 w-full sm:w-auto">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Create Tag
+            </Button>
+          </div>
         </div>
 
-        {/* Main navigation tabs */}
-         <Tabs value={mainTab} onValueChange={v => setMainTab(v as any)}>
-          <TabsList className="bg-transparent border border-border shadow-sm h-12 p-1 rounded-2xl gap-1 ring-1 ring-border">
-            <TabsTrigger value="tags" className="rounded-xl font-bold text-[10px] px-6 gap-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md transition-all">
-              <TagIcon className="h-4 w-4" /> Tag Registry
-            </TabsTrigger>
-            <TabsTrigger value="analytics" className="rounded-xl font-bold text-[10px] px-6 gap-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md transition-all">
-              <BarChart3 className="h-4 w-4" /> Analytics Hub
-            </TabsTrigger>
-            <TabsTrigger value="cleanup" className="rounded-xl font-bold text-[10px] px-6 gap-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md transition-all">
-              <Wrench className="h-4 w-4" /> Schema Cleanup
-            </TabsTrigger>
-            <TabsTrigger value="audit" className="rounded-xl font-bold text-[10px] px-6 gap-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md transition-all">
-              <History className="h-4 w-4" /> Audit Ledger
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Tags tab */}
-          <TabsContent value="tags" className="mt-6 space-y-8">
-            {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Card className="border border-border/80 bg-card shadow-sm rounded-2xl">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-primary/10 rounded-2xl text-primary shrink-0"><Hash className="h-5 w-5" /></div>
-                    <div>
-                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Total Tags</p>
-                      <p className="text-3xl font-bold tabular-nums tracking-tighter">{isLoading ? '—' : (tags?.length || 0)}</p>
-                    </div>
+        {/* Tags tab */}
+        <TabsContent value="tags" className="mt-0 space-y-8">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card className="border border-border/80 bg-card shadow-sm rounded-2xl">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-primary/10 rounded-2xl text-primary shrink-0"><Hash className="h-5 w-5" /></div>
+                  <div>
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Total Tags</p>
+                    <p className="text-3xl font-bold tabular-nums tracking-tighter">{isLoading ? '—' : (tags?.length || 0)}</p>
                   </div>
-                </CardContent>
-              </Card>
-              <Card className="border border-border/80 bg-card shadow-sm rounded-2xl">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-500 shrink-0"><Users className="h-5 w-5" /></div>
-                    <div>
-                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Aggregate Registry</p>
-                      <p className="text-3xl font-bold tabular-nums tracking-tighter">{isLoading ? '—' : totalUsage}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="border border-border/80 bg-card shadow-sm rounded-2xl">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-amber-500/10 rounded-2xl text-amber-500 shrink-0"><TrendingUp className="h-5 w-5" /></div>
-                    <div>
-                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Top Performer</p>
-                      <p className="text-3xl font-bold tracking-tighter truncate max-w-[120px]">{isLoading ? '—' : (mostUsedTag?.name || 'None')}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="border border-border/80 bg-card shadow-sm rounded-2xl">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-500 shrink-0"><TagIcon className="h-5 w-5" /></div>
-                    <div>
-                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Taxonomies</p>
-                      <p className="text-3xl font-bold tabular-nums tracking-tighter">
-                        {isLoading ? '—' : Object.values(tagsByCategory).filter(arr => arr.length > 0).length}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-             {/* Search */}
-             <Card className="border border-border/80 shadow-sm rounded-2xl bg-card">
-              <CardContent className="p-4">
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground opacity-40" />
-                  <Input
-                    id="tag-search"
-                    placeholder="Search the tag index by name or technical description…"
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
-                    className="pl-12 h-12 rounded-xl border border-border bg-background shadow-sm font-bold text-sm focus:ring-1 focus:ring-primary/20"
-                    aria-label="Search tags"
-                  />
                 </div>
               </CardContent>
             </Card>
-
-             {/* Tags by Category */}
-            <Tabs value={activeCategory} onValueChange={v => setActiveCategory(v as TagCategory | 'all')}>
-              <TabsList className="bg-transparent border border-border shadow-sm h-12 p-1 rounded-2xl flex-wrap h-auto gap-1 ring-1 ring-border mb-8">
-                <TabsTrigger value="all" className="rounded-xl font-bold text-[10px] px-6 data-[state=active]:bg-background data-[state=active]:text-primary transition-all uppercase tracking-widest">
-                  All Items ({tags?.length || 0})
-                </TabsTrigger>
-                {TAG_CATEGORIES.map(cat => (
-                  <TabsTrigger key={cat.value} value={cat.value} className="rounded-xl font-bold text-[10px] px-6 data-[state=active]:bg-background data-[state=active]:text-primary transition-all uppercase tracking-widest">
-                    {cat.label} ({tagsByCategory[cat.value]?.length || 0})
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-
- <TabsContent value={activeCategory} className="mt-6">
-                {isLoading ? (
- <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {Array.from({ length: 6 }).map((_, i) => (
- <Skeleton key={i} className="h-24 rounded-2xl" />
-                    ))}
+            <Card className="border border-border/80 bg-card shadow-sm rounded-2xl">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-500 shrink-0"><Users className="h-5 w-5" /></div>
+                  <div>
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Aggregate Registry</p>
+                    <p className="text-3xl font-bold tabular-nums tracking-tighter">{isLoading ? '—' : totalUsage}</p>
                   </div>
-                ) : filteredTags.length === 0 ? (
- <div className="py-20 text-center border-2 border-dashed rounded-2xl">
- <TagIcon className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
- <p className="text-[10px] font-semibold text-muted-foreground">
-                      {searchTerm ? 'No tags match your search' : 'No tags in this category'}
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border border-border/80 bg-card shadow-sm rounded-2xl">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-amber-500/10 rounded-2xl text-amber-500 shrink-0"><TrendingUp className="h-5 w-5" /></div>
+                  <div>
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Top Performer</p>
+                    <p className="text-3xl font-bold tracking-tighter truncate max-w-[120px]">{isLoading ? '—' : (mostUsedTag?.name || 'None')}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border border-border/80 bg-card shadow-sm rounded-2xl">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-500 shrink-0"><TagIcon className="h-5 w-5" /></div>
+                  <div>
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Taxonomies</p>
+                    <p className="text-3xl font-bold tabular-nums tracking-tighter">
+                      {isLoading ? '—' : Object.values(tagsByCategory).filter(arr => arr.length > 0).length}
                     </p>
-                    {!searchTerm && (
- <Button variant="outline" size="sm" onClick={openCreate} className="mt-4 rounded-xl font-bold">
- <PlusCircle className="mr-2 h-4 w-4" /> Create First Tag
-                      </Button>
-                    )}
                   </div>
-                ) : (
-                  <>
-                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {paginatedTags.map(tag => (
-                        <Card key={tag.id} className="border border-border/80 bg-card shadow-sm rounded-2xl hover:shadow-md transition-all group overflow-hidden">
-                          <div className="h-1.5 w-full transition-all group-hover:h-2" style={{ backgroundColor: tag.color }} />
-                          <CardContent className="p-6">
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="flex flex-col gap-1 min-w-0 flex-1">
-                                <p className="font-bold text-base tracking-tight truncate group-hover:text-primary transition-colors">{tag.name}</p>
-                                {tag.description && (
-                                  <p className="text-[10px] text-muted-foreground font-semibold line-clamp-1 opacity-70 italic">{tag.description}</p>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all translate-x-1 group-hover:translate-x-0 shrink-0">
-                                {!tag.isSystem && (
-                                  <>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary"
-                                      onClick={() => setAssigningTag(tag)}
-                                      title="Assign to Contacts"
-                                    >
-                                      <UserPlus className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary"
-                                      onClick={() => openEdit(tag)}
-                                    >
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 rounded-lg hover:bg-destructive/10 hover:text-destructive"
-                                      onClick={() => setDeletingTag(tag)}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-between mt-6 pt-4 border-t border-border/50">
-                              <Badge
-                                variant="outline"
-                                className={cn("text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md", CATEGORY_COLORS[tag.category])}
-                              >
-                                {tag.category}
-                              </Badge>
-                              <div className="flex items-center gap-1.5">
-                                <Users className="h-3 w-3 text-muted-foreground" />
-                                <span className="text-[10px] font-bold text-foreground">
-                                  {tag.usageCount || 0} items
-                                </span>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                    {/* Load More */}
-                    {hasMore && (
-                      <div className="flex justify-center pt-12">
-                        <Button
-                          variant="outline"
-                          className="rounded-xl font-bold h-11 px-8 border border-border/80 bg-white dark:bg-card text-foreground hover:bg-muted/60 transition-all shadow-xs active:scale-[0.97]"
-                          onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
-                        >
-                          Load More ({filteredTags.length - visibleCount} remaining)
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Search and Category Filter Dropdown */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-60" />
+              <Input
+                id="tag-search"
+                placeholder="Search the tag index by name or technical description..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="pl-10 h-11 min-h-[44px] bg-card border border-border text-foreground placeholder:text-muted-foreground rounded-xl shadow-xs transition-all font-medium text-xs w-full"
+                aria-label="Search tags"
+              />
+            </div>
+            <Select value={activeCategory} onValueChange={v => setActiveCategory(v as TagCategory | 'all')}>
+              <SelectTrigger className="w-full sm:w-[220px] h-11 min-h-[44px] bg-card border border-border text-foreground rounded-xl shadow-xs transition-all text-xs font-semibold shrink-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-border bg-card">
+                <SelectItem value="all">All Categories ({tags?.length || 0})</SelectItem>
+                {TAG_CATEGORIES.map(cat => (
+                  <SelectItem key={cat.value} value={cat.value}>
+                    {cat.label} ({tagsByCategory[cat.value]?.length || 0})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Tags ListView Table */}
+          <Card className="rounded-2xl border border-border/80 bg-card shadow-sm overflow-hidden text-left">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/10 border-b border-border">
+                  <TableHead className="pl-6 text-[10px] font-semibold py-4 text-muted-foreground uppercase tracking-widest">Tag Name</TableHead>
+                  <TableHead className="w-[160px] text-center text-[10px] font-semibold py-4 text-muted-foreground uppercase tracking-widest">Category</TableHead>
+                  <TableHead className="w-[140px] text-center text-[10px] font-semibold py-4 text-muted-foreground uppercase tracking-widest">Usage</TableHead>
+                  <TableHead className="hidden md:table-cell text-[10px] font-semibold py-4 text-muted-foreground uppercase tracking-widest">Description</TableHead>
+                  <TableHead className="w-[140px] text-right text-[10px] font-semibold py-4 pr-6 text-muted-foreground uppercase tracking-widest">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell className="pl-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <Skeleton className="h-3 w-3 rounded-full" />
+                          <Skeleton className="h-4 w-32 rounded" />
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center py-4"><Skeleton className="h-5 w-20 mx-auto rounded" /></TableCell>
+                      <TableCell className="text-center py-4"><Skeleton className="h-4 w-12 mx-auto rounded" /></TableCell>
+                      <TableCell className="hidden md:table-cell py-4"><Skeleton className="h-4 w-48 rounded" /></TableCell>
+                      <TableCell className="text-right pr-6 py-4"><Skeleton className="h-8 w-20 ml-auto rounded" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : filteredTags.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="py-16 text-center">
+                      <TagIcon className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+                      <p className="text-xs font-semibold text-muted-foreground">
+                        {searchTerm ? 'No tags match your search' : 'No tags found in this category'}
+                      </p>
+                      {!searchTerm && (
+                        <Button variant="outline" size="sm" onClick={openCreate} className="mt-4 rounded-xl font-bold">
+                          <PlusCircle className="mr-2 h-4 w-4" /> Create First Tag
                         </Button>
-                      </div>
-                    )}
-                  </>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  paginatedTags.map(tag => (
+                    <TableRow key={tag.id} className="hover:bg-muted/20 transition-colors border-b border-border/60">
+                      <TableCell className="pl-6 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <span
+                            className="h-3 w-3 rounded-full shrink-0 ring-1 ring-border shadow-2xs"
+                            style={{ backgroundColor: tag.color }}
+                          />
+                          <span className="font-bold text-sm tracking-tight text-foreground">
+                            {tag.name}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center py-3.5">
+                        <Badge
+                          variant="outline"
+                          className={cn("text-[9px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-md", CATEGORY_COLORS[tag.category])}
+                        >
+                          {tag.category}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center py-3.5">
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-muted/30 text-xs font-semibold text-foreground">
+                          <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span>{tag.usageCount || 0}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell py-3.5">
+                        <span className="text-xs text-muted-foreground line-clamp-1 italic">
+                          {tag.description || '—'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right pr-6 py-3.5">
+                        {!tag.isSystem ? (
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"
+                              onClick={() => setAssigningTag(tag)}
+                              title="Assign to Contacts"
+                            >
+                              <UserPlus className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"
+                              onClick={() => openEdit(tag)}
+                              title="Edit Tag"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 rounded-lg hover:bg-destructive/10 hover:text-destructive transition-colors"
+                              onClick={() => setDeletingTag(tag)}
+                              title="Delete Tag"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <Badge variant="secondary" className="text-[9px] font-semibold">System</Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
                 )}
-              </TabsContent>
-            </Tabs>
-          </TabsContent>
+              </TableBody>
+            </Table>
+          </Card>
+
+          {/* Load More */}
+          {hasMore && (
+            <div className="flex justify-center pt-6">
+              <Button
+                variant="outline"
+                className="rounded-xl font-bold h-11 px-8 border border-border/80 bg-card text-foreground hover:bg-muted/60 transition-all shadow-xs active:scale-[0.97]"
+                onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
+              >
+                Load More ({filteredTags.length - visibleCount} remaining)
+              </Button>
+            </div>
+          )}
+        </TabsContent>
 
           {/* Analytics tab */}
  <TabsContent value="analytics" className="mt-6">

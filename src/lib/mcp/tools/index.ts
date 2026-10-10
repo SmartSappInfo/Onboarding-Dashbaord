@@ -13,7 +13,15 @@ import {
 } from './memory-tools';
 import { contextBuildTool, contextGetDossierTool } from './context-tools';
 import { crmGetEntityTool, crmSearchEntitiesTool } from './crm-tools';
-import { dealGetTool, dealListTool, dealUpdateStageTool, dealTransferTool, dealPreviewTransferTool } from './deal-tools';
+import {
+  dealGetTool,
+  dealListTool,
+  dealUpdateStageTool,
+  dealTransferTool,
+  dealPreviewTransferTool,
+  dealPreviewTaskCadenceTool,
+  dealExecuteTaskCadenceTool,
+} from './deal-tools';
 import { taskListTool, taskCreateTool } from './task-tools';
 import {
   messagingGetConversationThreadTool,
@@ -21,8 +29,12 @@ import {
 } from './messaging-conversation-tools';
 import { messagingGetQueueStatsTool } from './messaging-queue-tools';
 import { messagingGetDashboardSummaryTool } from './messaging-dashboard-tool';
+import {
+  callCentreListCampaignsTool,
+  callCentreGetCampaignAnalyticsTool,
+} from './call-centre-tools';
 
-export { messagingGetDashboardSummaryTool };
+export { messagingGetDashboardSummaryTool, callCentreListCampaignsTool, callCentreGetCampaignAnalyticsTool };
 
 export const ALL_CORE_MCP_TOOLS = [
   memoryRecallTool,
@@ -38,12 +50,16 @@ export const ALL_CORE_MCP_TOOLS = [
   dealUpdateStageTool,
   dealTransferTool,
   dealPreviewTransferTool,
+  dealPreviewTaskCadenceTool,
+  dealExecuteTaskCadenceTool,
   taskListTool,
   taskCreateTool,
   messagingGetConversationThreadTool,
   messagingSuggestReplyTool,
   messagingGetQueueStatsTool,
   messagingGetDashboardSummaryTool,
+  callCentreListCampaignsTool,
+  callCentreGetCampaignAnalyticsTool,
 ] as const;
 
 /**

@@ -9,10 +9,10 @@ import { useToast } from '@/hooks/use-toast';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -200,8 +200,8 @@ export default function PromptsLibraryClient() {
               key={p.id}
               className="border-border bg-gradient-to-b from-card to-background relative overflow-hidden flex flex-col group/card shadow-sm hover:shadow-md transition-shadow rounded-2xl"
             >
-              <CardHeader className="pb-3 text-center flex flex-col items-center justify-center">
-                <div className="flex items-center justify-center gap-1.5 mb-2 flex-wrap">
+              <CardHeader className="p-5 pb-3 text-left flex flex-col items-start justify-start">
+                <div className="flex items-center justify-start gap-1.5 mb-2 flex-wrap">
                   <Badge variant="outline" className="text-[9px] uppercase tracking-wide font-black">
                     {p.category.replace('_', ' ')}
                   </Badge>
@@ -215,13 +215,11 @@ export default function PromptsLibraryClient() {
                     </Badge>
                   )}
                 </div>
-                <CardTitle className="text-base font-bold text-foreground leading-tight text-center w-full truncate">
-                  {p.title}
-                </CardTitle>
-                <div className="grid grid-rows-[0fr] group-hover/card:grid-rows-[1fr] transition-all duration-300 ease-in-out w-full overflow-hidden">
-                  <CardDescription className="text-xs text-muted-foreground text-center min-h-0 opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 pt-1">
-                    {p.description}
-                  </CardDescription>
+                <div className="flex items-center gap-1.5 w-full">
+                  <CardTitle className="text-base font-bold text-foreground leading-tight text-left truncate flex-1">
+                    {p.title}
+                  </CardTitle>
+                  <CardInfoTooltip text={p.description || p.title} />
                 </div>
               </CardHeader>
               

@@ -15,13 +15,11 @@ import { describe, it, expect } from 'vitest';
 import { MessagingQuickActions } from '../MessagingQuickActions';
 
 describe('MessagingQuickActions', () => {
-  it('renders section title, subtitle, and "View all features" link', () => {
+  it('renders section title, header info tooltip, and "View all features" link', () => {
     render(<MessagingQuickActions />);
 
     expect(screen.getByText('Quick Actions')).toBeInTheDocument();
-    expect(
-      screen.getByText('Get started with the most common messaging tasks.')
-    ).toBeInTheDocument();
+    expect(screen.getAllByTestId('card-info-tooltip').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole('button', { name: /View all features/i })).toBeInTheDocument();
   });
 

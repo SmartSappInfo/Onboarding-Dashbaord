@@ -78,7 +78,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ONBOARDING_STAGE_COLORS } from '@/lib/colors';
+import { PIPELINE_STAGE_COLORS, DEFAULT_STAGE_COLOR } from '@/lib/colors';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -159,8 +159,8 @@ function SortableStageItem({
           className="w-auto p-3 rounded-xl bg-popover border border-border shadow-md"
           align="start"
         >
-          <div className="grid grid-cols-6 gap-1 mb-2">
-            {ONBOARDING_STAGE_COLORS.map((color) => (
+          <div className="grid grid-cols-5 gap-1.5 mb-2">
+            {PIPELINE_STAGE_COLORS.map((color) => (
               <button
                 key={color}
                 type="button"
@@ -406,7 +406,7 @@ export default function StageEditor({ pipelineId }: StageEditorProps) {
     const newStage: Omit<OnboardingStage, 'id'> = {
       name: newStageName.trim(),
       order: maxOrder + 1,
-      color: ONBOARDING_STAGE_COLORS[Math.floor(Math.random() * ONBOARDING_STAGE_COLORS.length)],
+      color: DEFAULT_STAGE_COLOR,
       pipelineId,
       probability: 50,
       terminalType: 'none',

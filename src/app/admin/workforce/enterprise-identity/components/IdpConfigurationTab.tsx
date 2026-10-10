@@ -12,12 +12,13 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import {
   KeyRound,
   ShieldCheck,
@@ -102,11 +103,9 @@ export function IdpConfigurationTab({ config, onSave, isSaving }: IdpConfigurati
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-2">
               <KeyRound className="w-5 h-5 text-primary" />
-              <div>
+              <div className="flex items-center gap-1.5">
                 <CardTitle className="text-sm font-bold">Single Sign-On (SSO) Provider</CardTitle>
-                <CardDescription className="text-xs">
-                  Federate authentication via enterprise SAML 2.0 or OpenID Connect (OIDC)
-                </CardDescription>
+                <CardInfoTooltip text="Federate authentication via enterprise SAML 2.0 or OpenID Connect (OIDC)" />
               </div>
             </div>
             <div className="flex items-center gap-2">

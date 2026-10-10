@@ -124,10 +124,10 @@ export default function BackofficeHeader() {
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="relative h-9 w-9 rounded-xl p-0 hover:bg-accent transition-all cursor-pointer"
+              className="relative h-9 w-9 rounded-full p-0 hover:bg-accent transition-all cursor-pointer"
               aria-label="User menu"
             >
-              <Avatar className="h-9 w-9 border-2 border-emerald-500/20 shadow-sm">
+              <Avatar className="h-9 w-9">
                 <AvatarImage
                   src={user?.photoURL ?? undefined}
                   alt={user?.displayName ?? 'User'}

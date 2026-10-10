@@ -131,19 +131,19 @@ export async function seedGlobalMessagingBlueprint(): Promise<{ success: boolean
                 </style>
             </head>
             <body>
-                <div class="container">
-                    <div class="header">
-                        <img src="{{org_logo_url}}" alt="{{org_name}}" class="logo" />
+                <div class="container" style="max-width: 600px; margin: 24px auto; border-radius: 20px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); background-color: #ffffff;">
+                    <div class="header" style="padding: 32px 36px; text-align: center; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                        <img src="{{org_logo_url}}" alt="{{org_name}}" class="logo" style="max-height: 48px; width: auto; display: inline-block;" />
                     </div>
-                    <div class="content">
+                    <div class="content" style="padding: 36px 36px; background-color: #ffffff; color: #1e293b; font-size: 14px; line-height: 1.6;">
                         {{content}}
                     </div>
-                    <div class="footer">
-                        <div class="footer-text">
+                    <div class="footer" style="padding: 32px 36px; text-align: center; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
+                        <div class="footer-text" style="font-size: 12px; color: #64748b; margin-bottom: 16px; line-height: 1.5;">
                             <strong>{{org_name}}</strong><br/>
                             {{org_address}}
                         </div>
-                        <a href="{{unsubscribe_link}}" class="unsub">Unsubscribe from these emails</a>
+                        <a href="{{unsubscribe_link}}" class="unsub" style="font-size: 11px; color: #94a3b8; text-decoration: underline;">Unsubscribe from these emails</a>
                     </div>
                 </div>
             </body>

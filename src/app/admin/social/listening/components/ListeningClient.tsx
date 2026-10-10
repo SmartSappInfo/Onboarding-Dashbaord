@@ -1,12 +1,12 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { RainbowButton } from '@/components/ui/rainbow-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,7 @@ import { PageContainerFluid } from '@/components/ui/page-container';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { collection, query, where, doc, setDoc, getDocs, limit } from 'firebase/firestore';
 import { 
+  ArrowLeft,
   Radio, 
   Settings, 
   Sparkles, 
@@ -253,110 +254,121 @@ export default function ListeningClient() {
           {/* Header Panel */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50 pb-5">
             <div className="flex items-center gap-2.5">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                asChild 
+                className="h-9 w-9 rounded-xl hover:bg-muted active:scale-[0.97] shrink-0 text-muted-foreground hover:text-foreground"
+              >
+                <Link href="/admin/social" aria-label="Back to Social Hub">
+                  <ArrowLeft className="h-5 w-5" />
+                </Link>
+              </Button>
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Listening Engine</h1>
               <CardInfoTooltip text="Track public mentions, hashtags, and competitor actions to protect your brand reputation." />
             </div>
 
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
-            <TabsList className="inline-flex items-center gap-1 bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto">
-              <TabsTrigger 
-                value="alert-logs" 
-                className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
-              >
-                <Activity className="h-3.5 w-3.5" /> Alert Feed ({alerts.length})
-              </TabsTrigger>
-              <TabsTrigger 
-                value="rules-config" 
-                className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
-              >
-                <Settings className="h-3.5 w-3.5" /> Listening Rules
-              </TabsTrigger>
-            </TabsList>
+            <div className="flex flex-wrap items-center gap-3 shrink-0">
+              <TabsList className="inline-flex items-center gap-1 bg-muted/30 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-inner h-auto">
+                <TabsTrigger 
+                  value="alert-logs" 
+                  className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
+                >
+                  <Activity className="h-3.5 w-3.5" /> Alert Feed ({alerts.length})
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="rules-config" 
+                  className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
+                >
+                  <Settings className="h-3.5 w-3.5" /> Listening Rules
+                </TabsTrigger>
+              </TabsList>
 
-            <RainbowButton 
-              onClick={handleSimulateMention}
-              disabled={isSimulating}
-              className="rounded-xl h-8.5 px-4 font-bold text-xs active:scale-[0.97] transition-all gap-1.5 shadow-sm text-white"
-            >
-              {isSimulating ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Sparkles className="h-3.5 w-3.5" />
-              )}
-              Simulate Mention
-            </RainbowButton>
+              <Button 
+                variant="outline"
+                onClick={handleSimulateMention}
+                disabled={isSimulating}
+                className="rounded-xl h-8.5 px-4 font-bold text-xs active:scale-[0.97] transition-all gap-1.5 shadow-xs bg-card border-border/80 hover:bg-muted text-foreground"
+              >
+                {isSimulating ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5 text-primary" />
+                )}
+                Simulate Mention
+              </Button>
+            </div>
           </div>
-        </div>
 
-        {isLoadingRule ? (
-          <Card className="border border-border/30 rounded-3xl bg-card/40 backdrop-blur-md">
-            <CardContent className="h-96 flex items-center justify-center">
-              <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
-                <span className="text-xs font-bold uppercase tracking-widest">Loading engine parameters...</span>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <>
-
-          {/* Tab 1: Alert Logs Feed */}
-          <TabsContent value="alert-logs" className="pt-4 space-y-4">
-            {isLoadingAlerts ? (
-              <div className="h-48 flex items-center justify-center text-muted-foreground gap-2">
-                <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
-                <span className="text-[10px] font-bold uppercase tracking-widest">Loading alerts...</span>
-              </div>
-            ) : sortedAlerts.length === 0 ? (
-              <Card className="border border-border/20 rounded-3xl bg-card/10 backdrop-blur-md p-10 text-center">
-                <div className="flex flex-col items-center justify-center text-muted-foreground/60 gap-2">
-                  <Radio className="h-8 w-8 opacity-45" />
-                  <span className="text-xs font-bold uppercase tracking-widest">Alert feed empty</span>
-                  <p className="text-[10px] text-muted-foreground/90 max-w-xs mt-1">Configure rule keywords in the Listening Rules tab and trigger a simulation to seed brand posts.</p>
+          {isLoadingRule ? (
+            <Card className="border border-border/80 rounded-2xl bg-card shadow-xs">
+              <CardContent className="h-96 flex items-center justify-center">
+                <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <span className="text-xs font-bold uppercase tracking-widest">Loading engine parameters...</span>
                 </div>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {sortedAlerts.map((alert) => {
-                  const Icon = platformIcons[alert.platform] || Globe;
-                  return (
-                    <Card key={alert.id} className="border border-border/30 bg-card/40 rounded-2xl relative overflow-hidden flex flex-col justify-between hover:-translate-y-1 hover:shadow-lg transition-all duration-300 even:bg-muted/30 dark:even:bg-muted/15">
-                      <CardHeader className="pb-2 border-b border-border/10 bg-muted/10 flex flex-row items-center justify-between space-y-0 py-3">
-                        <div className="flex items-center gap-2">
-                          <Icon className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-extrabold text-xs text-foreground block">{alert.author}</span>
-                        </div>
-                        <Badge className="text-[9px] uppercase tracking-widest h-5 px-2 border" variant="outline">
-                          matched &apos;{alert.matchingKeyword}&apos;
-                        </Badge>
-                      </CardHeader>
-                      <CardContent className="pt-4 space-y-4 flex-1">
-                        <p className="text-[11px] leading-relaxed text-foreground/90 font-medium">
-                          {alert.content}
-                        </p>
-                        
-                        <div className="flex items-center justify-between w-full pt-2">
-                          <Badge className={cn("text-[9px] uppercase tracking-wider h-5 border", sentimentColors[alert.sentiment])} variant="outline">
-                            {alert.sentiment}
-                          </Badge>
-                          <span className="text-[9px] text-muted-foreground font-semibold">
-                            {new Date(alert.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
-                          </span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            )}
-          </TabsContent>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
 
-          {/* Tab 2: Listening Rules Settings Form */}
-          <TabsContent value="rules-config" className="pt-4">
-            <form onSubmit={handleSaveRules}>
-              <Card className="border border-border/30 rounded-3xl bg-card/40 backdrop-blur-md overflow-hidden relative">
-                <CardHeader className="border-b border-border/20 pb-4">
-                  <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Listening profile criteria</CardTitle>
+            {/* Tab 1: Alert Logs Feed */}
+            <TabsContent value="alert-logs" className="pt-4 space-y-4">
+              {isLoadingAlerts ? (
+                <div className="h-48 flex items-center justify-center text-muted-foreground gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Loading alerts...</span>
+                </div>
+              ) : sortedAlerts.length === 0 ? (
+                <Card className="border border-border/80 rounded-2xl bg-card p-10 text-center shadow-xs">
+                  <div className="flex flex-col items-center justify-center text-muted-foreground/60 gap-2">
+                    <Radio className="h-8 w-8 opacity-45" />
+                    <span className="text-xs font-bold uppercase tracking-widest">Alert feed empty</span>
+                    <p className="text-[10px] text-muted-foreground/90 max-w-xs mt-1">Configure rule keywords in the Listening Rules tab and trigger a simulation to seed brand posts.</p>
+                  </div>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {sortedAlerts.map((alert) => {
+                    const Icon = platformIcons[alert.platform] || Globe;
+                    return (
+                      <Card key={alert.id} className="border border-border/80 bg-card rounded-2xl relative overflow-hidden flex flex-col justify-between hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 shadow-xs">
+                        <CardHeader className="pb-2 border-b border-border/60 bg-muted/20 flex flex-row items-center justify-between space-y-0 py-3">
+                          <div className="flex items-center gap-2">
+                            <Icon className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-extrabold text-xs text-foreground block">{alert.author}</span>
+                          </div>
+                          <Badge className="text-[9px] uppercase tracking-widest h-5 px-2 border" variant="outline">
+                            matched &apos;{alert.matchingKeyword}&apos;
+                          </Badge>
+                        </CardHeader>
+                        <CardContent className="pt-4 space-y-4 flex-1">
+                          <p className="text-[11px] leading-relaxed text-foreground/90 font-medium">
+                            {alert.content}
+                          </p>
+                          
+                          <div className="flex items-center justify-between w-full pt-2">
+                            <Badge className={cn("text-[9px] uppercase tracking-wider h-5 border", sentimentColors[alert.sentiment])} variant="outline">
+                              {alert.sentiment}
+                            </Badge>
+                            <span className="text-[9px] text-muted-foreground font-semibold">
+                              {new Date(alert.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
+                            </span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Tab 2: Listening Rules Settings Form */}
+            <TabsContent value="rules-config" className="pt-4">
+              <form onSubmit={handleSaveRules}>
+                <Card className="border border-border/80 rounded-2xl bg-card shadow-xs overflow-hidden relative">
+                  <CardHeader className="border-b border-border/60 bg-muted/20 pb-4">
+                    <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Listening profile criteria</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
                   {/* Keywords builder */}
@@ -483,11 +495,11 @@ export default function ListeningClient() {
                   </div>
                 </CardContent>
 
-                <div className="border-t border-border/10 p-4 bg-muted/10 flex justify-end">
+                <div className="border-t border-border/60 p-4 bg-muted/15 flex justify-end">
                   <Button 
                     type="submit" 
                     disabled={isSaving}
-                    className="rounded-xl h-10 px-5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs tracking-wider uppercase active:scale-[0.97] transition-all gap-1.5 shadow-lg shadow-emerald-500/10"
+                    className="rounded-xl h-10 px-5 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs tracking-wider uppercase active:scale-[0.97] transition-all gap-1.5 shadow-xs"
                   >
                     {isSaving ? (
                       <Loader2 className="h-4 w-4 animate-spin" />

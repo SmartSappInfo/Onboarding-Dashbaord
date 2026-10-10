@@ -16,9 +16,10 @@
  */
 
 import * as React from 'react';
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
@@ -92,12 +93,12 @@ export function StandingsTableTab({
     <div className="space-y-6">
       <Card className="rounded-2xl border-border/40 bg-card/45 backdrop-blur-md overflow-hidden shadow-sm">
         <CardHeader className="border-b border-border/30 pb-4">
-          <CardTitle className="text-base font-extrabold flex items-center gap-2">
-            <ListCollapse className="h-4 w-4 text-primary" /> Performance Standings
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Rep ranking based on multi-dimensional performance index and effort points. Click on any row to audit individual activity points.
-          </CardDescription>
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-base font-extrabold flex items-center gap-2">
+              <ListCollapse className="h-4 w-4 text-primary" /> Performance Standings
+            </CardTitle>
+            <CardInfoTooltip text="Rep ranking based on multi-dimensional performance index and effort points. Click on any row to audit individual activity points." />
+          </div>
         </CardHeader>
 
         <div className="overflow-x-auto">

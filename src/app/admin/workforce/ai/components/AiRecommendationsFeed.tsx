@@ -12,7 +12,8 @@
  */
 
 import * as React from 'react';
-import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -74,15 +75,11 @@ export function AiRecommendationsFeed({
 
   return (
     <Card className="border bg-card shadow-xs overflow-hidden">
-      <CardHeader className="p-4 pb-3 border-b bg-muted/20 flex flex-row items-center justify-between">
+      <CardHeader className="p-4 py-3.5 border-b bg-muted/20 flex flex-row items-center justify-between">
         <div className="flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-primary" />
-          <div>
-            <CardTitle className="text-sm font-bold">AI Access & Role Advisor</CardTitle>
-            <CardDescription className="text-xs">
-              Actionable least-privilege pruning, SoD conflict remediation, and portfolio balancing
-            </CardDescription>
-          </div>
+          <CardTitle className="text-sm font-bold">AI Access & Role Advisor</CardTitle>
+          <CardInfoTooltip text="Actionable least-privilege pruning, SoD conflict remediation, and portfolio balancing." />
         </div>
       </CardHeader>
 

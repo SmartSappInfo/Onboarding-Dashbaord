@@ -91,7 +91,7 @@ export function PortalShellHeader({
   onSignOut,
 }: PortalShellHeaderProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
-  const { activeColors } = usePortalTheme();
+  const { activeColors: _activeColors } = usePortalTheme();
   const pathname = usePathname();
 
   const isItemActive = React.useCallback(
@@ -268,9 +268,9 @@ export function PortalShellHeader({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="flex items-center gap-2 p-1 rounded-xl hover:bg-muted/40 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
+                  className="flex items-center gap-2 p-0.5 rounded-full hover:bg-muted/40 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
                 >
-                  <Avatar className="w-8 h-8 border border-border">
+                  <Avatar className="w-8 h-8">
                     {user.photoURL && <AvatarImage src={user.photoURL} alt={user.displayName || 'Member'} />}
                     <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
                       {(user.displayName || user.email || 'M').charAt(0).toUpperCase()}

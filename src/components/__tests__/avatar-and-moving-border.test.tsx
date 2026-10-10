@@ -19,7 +19,7 @@ import {
 import { Button, MovingBorder } from '@/components/ui/moving-border';
 
 describe('Avatar Component QA Suite', () => {
-  it('renders avatar root with data-slot and custom className', () => {
+  it('renders avatar root with data-slot, custom className, and strictly circular rounded-full overflow-hidden geometry', () => {
     render(
       <Avatar className="custom-avatar-class" data-testid="avatar-root">
         <AvatarFallback>JD</AvatarFallback>
@@ -30,6 +30,20 @@ describe('Avatar Component QA Suite', () => {
     expect(root).toBeInTheDocument();
     expect(root).toHaveAttribute('data-slot', 'avatar');
     expect(root.className).toContain('custom-avatar-class');
+    expect(root.className).toContain('rounded-full');
+    expect(root.className).toContain('overflow-hidden');
+  });
+
+  it('guarantees circular shape and prevents square borders when border classes are passed', () => {
+    render(
+      <Avatar className="border-2 border-primary/20 shadow-xs" data-testid="avatar-border">
+        <AvatarFallback>JD</AvatarFallback>
+      </Avatar>
+    );
+
+    const root = screen.getByTestId('avatar-border');
+    expect(root.className).toContain('rounded-full');
+    expect(root.className).toContain('border-2');
   });
 
   it('renders fallback text when image is not loaded or missing', () => {

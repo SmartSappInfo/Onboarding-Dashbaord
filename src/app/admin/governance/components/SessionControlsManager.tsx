@@ -11,13 +11,14 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
@@ -149,11 +150,9 @@ export function SessionControlsManager() {
         <CardHeader className="p-4 pb-3 border-b bg-muted/20">
           <div className="flex items-center gap-2">
             <Lock className="w-5 h-5 text-primary" />
-            <div>
+            <div className="flex items-center gap-1.5">
               <CardTitle className="text-sm font-bold text-foreground">Organization Security Policies</CardTitle>
-              <CardDescription className="text-xs">
-                Configure Multi-Factor Authentication (MFA) enforcement and session idle timeouts
-              </CardDescription>
+              <CardInfoTooltip text="Configure Multi-Factor Authentication (MFA) enforcement and session idle timeouts." />
             </div>
           </div>
         </CardHeader>
@@ -224,10 +223,10 @@ export function SessionControlsManager() {
       {/* Active Sessions Table */}
       <Card className="border bg-card shadow-xs overflow-hidden">
         <CardHeader className="p-4 pb-3 border-b bg-muted/20">
-          <CardTitle className="text-sm font-bold">Active Device Sessions</CardTitle>
-          <CardDescription className="text-xs">
-            Inspect active connections and remotely invalidate compromised sessions
-          </CardDescription>
+          <div className="flex items-center gap-1.5">
+            <CardTitle className="text-sm font-bold">Active Device Sessions</CardTitle>
+            <CardInfoTooltip text="Inspect active connections and remotely invalidate compromised sessions." />
+          </div>
         </CardHeader>
 
         <div className="overflow-x-auto">

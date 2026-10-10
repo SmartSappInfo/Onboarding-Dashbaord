@@ -10,6 +10,7 @@ import PipelineFilterBar from './components/PipelineFilterBar';
 import DealsOverviewView from './components/DealsOverviewView';
 import DealsForecastView from './components/DealsForecastView';
 import CreateDealModal from '../entities/components/CreateDealModal';
+import { DealTaskCadenceModal } from './components/DealTaskCadenceModal';
 import {
     Workflow,
     Settings2,
@@ -28,7 +29,8 @@ import {
     TrendingUp,
     Target,
     BarChart3,
-    MoreVertical
+    MoreVertical,
+    Database
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
@@ -42,7 +44,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, orderBy, where } from 'firebase/firestore';
-import type { Pipeline, UserProfile, OnboardingStage, Tag, Automation, PipelineTarget } from '@/lib/types';
+import type { Deal, Pipeline, UserProfile, OnboardingStage, Tag, Automation, PipelineTarget } from '@/lib/types';
 import { KanbanFilters, DEFAULT_FILTERS } from './pipeline-types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -50,6 +52,7 @@ import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useWorkspaceVisibility } from '@/hooks/use-workspace-visibility';
+import { useGlobalFilter, getAssignedUserStorageKey } from '@/context/GlobalFilterProvider';
 import { useToast } from '@/hooks/use-toast';
 import { clonePipelineAction, setPipelineAsDefaultAction } from '@/lib/pipeline-actions';
 import { PageContainerFluid } from '@/components/ui/page-container';
@@ -68,14 +71,25 @@ import {
 
 export default function PipelineClient() {
   const firestore = useFirestore();
-  const { activeWorkspaceId, allowedWorkspaces } = useWorkspace();
+  const { activeWorkspaceId, allowedWorkspaces, activeWorkspace } = useWorkspace();
   const { user } = useUser();
   const { toast } = useToast();
   const { restrictDealsToAssigned, isWorkspaceAdmin } = useWorkspaceVisibility();
+  const { assignedUserId, setAssignedUserId } = useGlobalFilter();
+  const isRestricted = restrictDealsToAssigned && !isWorkspaceAdmin;
   
   const [activeView, setActiveView] = React.useState<'overview' | 'board' | 'actions' | 'list' | 'forecast' | 'analytics' | 'config'>('board');
   const [isCreateDealOpen, setIsCreateDealOpen] = React.useState(false);
   const [isCreatePipelineModalOpen, setIsCreatePipelineModalOpen] = React.useState(false);
+
+  // Phase 5: Deal Task Cadence & Cleanup Wizard State
+  const [cadenceDeals, setCadenceDeals] = React.useState<Deal[]>([]);
+  const [isCadenceModalOpen, setIsCadenceModalOpen] = React.useState(false);
+
+  const handleOpenCadence = React.useCallback((dealsToSchedule: Deal[]) => {
+    setCadenceDeals(dealsToSchedule);
+    setIsCadenceModalOpen(true);
+  }, []);
 
   // SHARED PIPELINES: Query by array-contains for active workspace
   const pipelinesQuery = useMemoFirebase(() => 
@@ -85,7 +99,7 @@ export default function PipelineClient() {
         orderBy('createdAt', 'desc')
     ) : null, 
   [firestore, activeWorkspaceId]);
-  const { data: pipelines, isLoading: isLoadingPipelines } = useCollection<Pipeline>(pipelinesQuery);
+  const { data: pipelines, isLoading: isLoadingPipelines, error: pipelinesError } = useCollection<Pipeline>(pipelinesQuery);
 
   // SHARED AUTOMATIONS: Query by array-contains for active workspace to drive stage indicators & Actions view
   const automationsQuery = useMemoFirebase(() => 
@@ -94,7 +108,7 @@ export default function PipelineClient() {
         where('workspaceIds', 'array-contains', activeWorkspaceId)
     ) : null, 
   [firestore, activeWorkspaceId]);
-  const { data: automations } = useCollection<Automation>(automationsQuery);
+  const { data: automations, error: automationsError } = useCollection<Automation>(automationsQuery);
 
   const activePipelines = React.useMemo(() => {
     return pipelines?.filter(p => !p.isArchived) || [];
@@ -106,7 +120,29 @@ export default function PipelineClient() {
 
   const [currentPipelineId, setCurrentPipelineId] = React.useState<string | null>(null);
   const [searchTerm, setSearchTerm] = React.useState('');
-  const [filters, setFilters] = React.useState<KanbanFilters>(DEFAULT_FILTERS);
+  const hasAppliedInitialPreset = React.useRef(false);
+
+  const [filters, setFilters] = React.useState<KanbanFilters>(() => {
+    if (isRestricted && user?.uid) {
+      return { ...DEFAULT_FILTERS, status: 'open', assignedToId: user.uid };
+    }
+    if (typeof window !== 'undefined' && activeWorkspaceId && user?.uid) {
+      try {
+        const storageKey = getAssignedUserStorageKey(activeWorkspaceId, user.uid);
+        const storedValue = localStorage.getItem(storageKey);
+        if (storedValue === 'all') {
+          return { ...DEFAULT_FILTERS, status: 'open', assignedToId: 'all' };
+        }
+        if (storedValue && storedValue !== 'all') {
+          return { ...DEFAULT_FILTERS, status: 'open', assignedToId: storedValue };
+        }
+      } catch {
+        // SSR / quota fallback
+      }
+      return { ...DEFAULT_FILTERS, status: 'open', assignedToId: user.uid };
+    }
+    return { ...DEFAULT_FILTERS, status: 'open', assignedToId: user?.uid || 'all' };
+  });
   const [columnWidth, setColumnWidth] = React.useState(320);
 
   // Phase 6: Saved Views & Columns Customization State
@@ -120,15 +156,49 @@ export default function PipelineClient() {
     }));
   });
   const [activeViewId, setActiveViewId] = React.useState<string>(() => {
-    return restrictDealsToAssigned && !isWorkspaceAdmin ? 'preset_my_deals' : 'preset_all_deals';
+    if (isRestricted) return 'preset_my_deals';
+    if (typeof window !== 'undefined' && activeWorkspaceId && user?.uid) {
+      try {
+        const storageKey = getAssignedUserStorageKey(activeWorkspaceId, user.uid);
+        const storedValue = localStorage.getItem(storageKey);
+        if (storedValue === 'all' || (storedValue && storedValue !== user.uid)) {
+          return 'preset_all_deals';
+        }
+      } catch {
+        // SSR fallback
+      }
+    }
+    return 'preset_my_deals';
   });
 
-  // Keep activeViewId synchronized with governance scoping if standard restricted user
+  // Reset initial load latch when switching workspaces
   React.useEffect(() => {
-    if (restrictDealsToAssigned && !isWorkspaceAdmin && activeViewId === 'preset_all_deals') {
-      setActiveViewId('preset_my_deals');
+    hasAppliedInitialPreset.current = false;
+  }, [activeWorkspaceId]);
+
+  // Keep activeViewId and filters synchronized with governance scoping and assigned preference
+  React.useEffect(() => {
+    if (isRestricted) {
+      if (activeViewId !== 'preset_my_deals') setActiveViewId('preset_my_deals');
+      if (user?.uid) {
+        setFilters(prev => prev.assignedToId === user.uid ? prev : { ...prev, assignedToId: user.uid });
+      }
+      return;
     }
-  }, [restrictDealsToAssigned, isWorkspaceAdmin, activeViewId]);
+
+    if (hasAppliedInitialPreset.current && assignedUserId !== undefined) {
+      const normalizedAssignedId = assignedUserId === null ? 'all' : assignedUserId;
+      setFilters(prev => {
+        if (prev.assignedToId === normalizedAssignedId) return prev;
+        return { ...prev, assignedToId: normalizedAssignedId };
+      });
+      if (normalizedAssignedId === user?.uid) {
+        setActiveViewId('preset_my_deals');
+      } else if (normalizedAssignedId === 'all') {
+        setActiveViewId('preset_all_deals');
+      }
+    }
+  }, [restrictDealsToAssigned, isWorkspaceAdmin, isRestricted, activeViewId, assignedUserId, user?.uid]);
   const [visibleColumns, setVisibleColumns] = React.useState<DealColumnKey[]>(DEFAULT_DEAL_COLUMNS);
   const [density, setDensity] = React.useState<TableDensity>('standard');
   const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = React.useState(false);
@@ -291,7 +361,7 @@ export default function PipelineClient() {
       orderBy('order', 'asc')
     ) : null,
   [firestore, currentPipelineId]);
-  const { data: filterStages } = useCollection<OnboardingStage>(filterStagesQuery);
+  const { data: filterStages, error: filterStagesError } = useCollection<OnboardingStage>(filterStagesQuery);
 
   // Deals for current pipeline to power Overview KPIs and Attention panels
   const pipelineDealsQuery = useMemoFirebase(() =>
@@ -303,7 +373,18 @@ export default function PipelineClient() {
         )
       : null,
   [firestore, activeWorkspaceId, currentPipelineId]);
-  const { data: pipelineDeals } = useCollection<import('@/lib/types').Deal>(pipelineDealsQuery);
+  const { data: pipelineDeals, isLoading: isLoadingPipelineDeals, error: pipelineDealsError } = useCollection<import('@/lib/types').Deal>(pipelineDealsQuery);
+
+  // Detect whether Firestore read quota has been exceeded (Spark plan limit)
+  const isQuotaExceeded = React.useMemo(() => {
+    const errors = [pipelinesError, automationsError, filterStagesError, pipelineDealsError];
+    return errors.some((err) => {
+      if (!err) return false;
+      const code = 'code' in err ? String(err.code) : '';
+      const msg = err.message ? err.message.toLowerCase() : '';
+      return code === 'resource-exhausted' || msg.includes('quota exceeded');
+    });
+  }, [pipelinesError, automationsError, filterStagesError, pipelineDealsError]);
 
   // Scoped deals adhering to security visibility rules
   const scopedPipelineDeals = React.useMemo(() => {
@@ -347,13 +428,25 @@ export default function PipelineClient() {
 
   const updateFilter = React.useCallback(<K extends keyof KanbanFilters>(key: K, value: KanbanFilters[K]) => {
     setFilters(prev => ({ ...prev, [key]: value }));
-  }, []);
+    if (key === 'assignedToId' && typeof value === 'string' && !isRestricted) {
+      setAssignedUserId(value);
+      if (value === user?.uid) {
+        setActiveViewId('preset_my_deals');
+      } else if (value === 'all') {
+        setActiveViewId('preset_all_deals');
+      }
+    }
+  }, [isRestricted, setAssignedUserId, user?.uid]);
 
   const clearAllFilters = React.useCallback(() => {
-    setFilters(DEFAULT_FILTERS);
+    const defaultAssigned = isRestricted ? (user?.uid || 'all') : 'all';
+    setFilters({ ...DEFAULT_FILTERS, assignedToId: defaultAssigned });
+    if (!isRestricted) {
+      setAssignedUserId('all');
+    }
     setSearchTerm('');
-    setActiveViewId('preset_all_deals');
-  }, []);
+    setActiveViewId(isRestricted ? 'preset_my_deals' : 'preset_all_deals');
+  }, [isRestricted, user?.uid, setAssignedUserId]);
 
   // Phase 6: Load Saved Views
   const loadSavedViews = React.useCallback(async () => {
@@ -375,13 +468,18 @@ export default function PipelineClient() {
   const handleSelectSavedView = React.useCallback((view: DealSavedView) => {
     setActiveViewId(view.id);
 
+    const targetAssignedToId = view.filters.ownerId === 'current_user' ? (user?.uid || 'all') : (view.filters.ownerId || 'all');
+    if (targetAssignedToId && !isRestricted) {
+      setAssignedUserId(targetAssignedToId);
+    }
+
     // Apply view filters
     const newFilters: KanbanFilters = {
       searchTerm: view.filters.searchTerm || '',
       status: view.filters.status || 'all',
       healthStatus: (view.filters.healthStatus as KanbanFilters['healthStatus']) || 'all',
       archiveStatus: view.filters.isArchived ? 'archived' : 'active',
-      assignedToId: view.filters.ownerId === 'current_user' ? (user?.uid || 'all') : (view.filters.ownerId || 'all'),
+      assignedToId: isRestricted ? (user?.uid || 'all') : targetAssignedToId,
       valueMin: view.filters.valueMin ?? null,
       valueMax: view.filters.valueMax ?? null,
       closeDateFrom: null,
@@ -401,19 +499,87 @@ export default function PipelineClient() {
     if (view.viewMode && ['overview', 'board', 'list', 'forecast', 'analytics'].includes(view.viewMode)) {
       setActiveView(view.viewMode as 'overview' | 'board' | 'list' | 'forecast' | 'analytics');
     }
-  }, [user?.uid]);
+  }, [user?.uid, isRestricted, setAssignedUserId]);
 
-  // ARCHITECTURAL NOTE (Rule 10):
-  // When a pipeline specifies a defaultPresetViewId (e.g. 'preset_my_deals'),
-  // automatically load that preset view on initial mount if still on default.
+  // ARCHITECTURAL NOTE (Rule 10, Rule 5):
+  // Initial Pipeline Load Scoping & Preset Protocol:
+  // By default on initial load, preset is 'My Deals' (preset_my_deals), scoping deals to the current
+  // user's open deals and setting the Owner filter dropdown to the current user.
+  // If the user previously chose another owner/preset preference in localStorage, respect that preference.
   React.useEffect(() => {
-    if (currentPipeline?.defaultPresetViewId && savedViews.length > 0 && activeViewId === 'preset_all_deals') {
+    if (!user?.uid || !activeWorkspaceId) return;
+    if (hasAppliedInitialPreset.current) return;
+
+    hasAppliedInitialPreset.current = true;
+
+    const storageKey = getAssignedUserStorageKey(activeWorkspaceId, user.uid);
+    let storedValue: string | null = null;
+    try {
+      storedValue = localStorage.getItem(storageKey);
+    } catch {
+      // Storage access error fallback
+    }
+
+    // 1. Pipeline-configured default view override (if set explicitly on current pipeline)
+    if (currentPipeline?.defaultPresetViewId) {
       const defaultView = savedViews.find(v => v.id === currentPipeline.defaultPresetViewId);
       if (defaultView) {
         handleSelectSavedView(defaultView);
+        return;
       }
     }
-  }, [currentPipeline?.id, currentPipeline?.defaultPresetViewId, savedViews, activeViewId, handleSelectSavedView]);
+
+    // 2. Security governance restriction: Standard users are locked to their own deals
+    if (isRestricted) {
+      const myDealsPreset = savedViews.find(v => v.id === 'preset_my_deals');
+      if (myDealsPreset) {
+        handleSelectSavedView(myDealsPreset);
+      } else {
+        setActiveViewId('preset_my_deals');
+        setFilters(prev => ({ ...prev, assignedToId: user.uid, status: 'open' }));
+      }
+      return;
+    }
+
+    // 3. User explicitly preferred "All Deals" / "Any Owner" previously
+    if (storedValue === 'all') {
+      const allDealsPreset = savedViews.find(v => v.id === 'preset_all_deals');
+      if (allDealsPreset) {
+        handleSelectSavedView(allDealsPreset);
+      } else {
+        setActiveViewId('preset_all_deals');
+        setFilters(prev => ({ ...prev, assignedToId: 'all', status: 'open' }));
+        setAssignedUserId('all');
+      }
+      return;
+    }
+
+    // 4. User explicitly preferred another specific assignee previously
+    if (storedValue && storedValue !== user.uid) {
+      setActiveViewId('preset_all_deals');
+      setFilters(prev => ({ ...prev, assignedToId: storedValue, status: 'open' }));
+      setAssignedUserId(storedValue);
+      return;
+    }
+
+    // 5. Default initial load: "My Deals" preset -> automatically switch to user's deals and owner to current user
+    const myDealsPreset = savedViews.find(v => v.id === 'preset_my_deals');
+    if (myDealsPreset) {
+      handleSelectSavedView(myDealsPreset);
+    } else {
+      setActiveViewId('preset_my_deals');
+      setFilters(prev => ({ ...prev, assignedToId: user.uid, status: 'open' }));
+      setAssignedUserId(user.uid);
+    }
+  }, [
+    user?.uid,
+    activeWorkspaceId,
+    isRestricted,
+    savedViews,
+    currentPipeline?.defaultPresetViewId,
+    handleSelectSavedView,
+    setAssignedUserId,
+  ]);
 
   React.useEffect(() => {
     if (!activeWorkspaceId) return;
@@ -479,10 +645,10 @@ export default function PipelineClient() {
   }, [handleSelectPipeline]);
 
   return (
-    <PageContainerFluid>
+    <PageContainerFluid noPadding className="h-full flex flex-col px-4 sm:px-6 pt-3 sm:pt-4 pb-2">
     <div className="flex h-full flex-col overflow-hidden w-full">
         <header className="shrink-0 bg-transparent z-30">
-            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-8">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-2.5">
                 <div className="flex flex-col items-start min-w-0">
                     <div className="inline-flex items-center p-1 rounded-2xl bg-card/85 dark:bg-card/50 backdrop-blur-xl border border-border/70 shadow-xs hover:border-border transition-all">
                         {/* Redesigned Sleek Pipeline Switcher */}
@@ -700,6 +866,7 @@ export default function PipelineClient() {
                 stages={filterStages}
                 showStagesFilter={activeView === 'list'}
                 onOpenAdvancedFilters={() => setIsAdvancedFilterOpen(true)}
+                isRestricted={isRestricted}
                 workspaceId={activeWorkspaceId || ''}
                 userId={user?.uid || ''}
                 userName={user?.displayName || user?.email || undefined}
@@ -711,6 +878,20 @@ export default function PipelineClient() {
                 currentDensity={density}
                 onRefreshViews={loadSavedViews}
             />
+        )}
+
+        {isQuotaExceeded && (
+            <div className="mb-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-900 dark:text-amber-200 flex items-center justify-between gap-3 animate-in fade-in duration-300">
+                <div className="flex items-center gap-2.5 min-w-0">
+                    <Database className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                    <span className="truncate">
+                        <strong>Daily Firestore Read Quota Reached:</strong> Serving data from local IndexedDB cache. Real-time sync resumes once daily quota resets (midnight PT).
+                    </span>
+                </div>
+                <span className="text-[11px] shrink-0 font-medium px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-300">
+                    Offline Cache Mode
+                </span>
+            </div>
         )}
 
         <div className="flex-1 overflow-hidden relative">
@@ -728,6 +909,7 @@ export default function PipelineClient() {
                                 onOpenDeal={(deal) => {
                                     window.open(`/admin/deals/${deal.id}`, '_blank');
                                 }}
+                                onScheduleCadence={handleOpenCadence}
                             />
                         ) : (
                             <div className="flex flex-col items-center justify-center h-full p-8 text-center gap-6 opacity-20">
@@ -790,6 +972,10 @@ export default function PipelineClient() {
                                 filters={mergedFilters} 
                                 automations={automations || undefined} 
                                 showDealTotals={Boolean(currentPipeline?.showDealTotals)}
+                                autoCollapseEmptyStages={Boolean(currentPipeline?.autoCollapseEmptyStages)}
+                                stages={filterStages || undefined}
+                                deals={pipelineDeals || undefined}
+                                isLoadingDeals={isLoadingPipelineDeals}
                             />
                         ) : (
                             <div className="flex flex-col items-center justify-center h-full p-8 text-center gap-6 opacity-20">
@@ -808,6 +994,9 @@ export default function PipelineClient() {
                                 onChangeColumns={setVisibleColumns}
                                 density={density}
                                 onChangeDensity={setDensity}
+                                stages={filterStages || undefined}
+                                deals={pipelineDeals || undefined}
+                                isLoadingDeals={isLoadingPipelineDeals}
                             />
                         ) : (
                             <div className="flex flex-col items-center justify-center h-full p-8 text-center gap-6 opacity-20"><Workflow size={120} /><p className="font-semibold tracking-[0.4em] text-2xl">Pipeline Clear</p></div>
@@ -945,6 +1134,19 @@ export default function PipelineClient() {
             stages={filterStages || []}
             users={users || []}
             currentUserId={user?.uid}
+        />
+
+        {/* Phase 4 & 5: Deal Task Cadence & Cleanup Wizard Modal */}
+        <DealTaskCadenceModal
+            open={isCadenceModalOpen}
+            onOpenChange={setIsCadenceModalOpen}
+            deals={cadenceDeals}
+            workspaceId={activeWorkspaceId || ''}
+            organizationId={activeWorkspace?.organizationId || ''}
+            currency={currentPipeline?.currency || 'USD'}
+            onCompleted={() => {
+                setIsCadenceModalOpen(false);
+            }}
         />
     </div>
     </PageContainerFluid>

@@ -4,11 +4,16 @@
  * @fileOverview CRM Ownership Transfer Wizard Modal (Phase 7)
  *
  * Wizard for safely re-assigning customer portfolios, deals, tasks, and automations
- * from a source representative to a destination team member.
+ * from a source representative to a destination team member within the workspace.
  *
  * ARCHITECTURAL GUIDANCE FOR MAINTAINERS:
- * - Employs Radix Dialog with Emil Kowalski spring easing (`cubic-bezier(0.32, 0.72, 0, 1)`).
- * - Conforms to `.agents/AGENTS.md` and zero `any` or `any[]` typing.
+ * - Employs Radix Dialog conforming strictly to `theme.md` Section 8 Modal Architecture.
+ * - Demarcated header with CardInfoTooltip and sr-only description.
+ * - Demarcated footer with tactile touch targets >= 44px (`active:scale-[0.97]`).
+ * - Strictly passes `workspaceId` to scope entity reassignments to active workspace.
+ * - Zero `any` or `any[]` typing standard.
+ *
+ * @testability Covered in `crm-workforce-services.test.ts`.
  */
 
 import * as React from 'react';
@@ -28,7 +33,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
-import { ArrowRightLeft, Loader2 } from 'lucide-react';
+import { ArrowRightLeft, Loader2, ShieldAlert } from 'lucide-react';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import type { CrmEntityType, CrmWorkloadSummary, PersonDetailView } from '@/lib/types';
 import { transferOwnershipAction } from '@/app/actions/crm-workforce-actions';
 
@@ -37,6 +43,8 @@ interface OwnershipTransferModalProps {
   onClose: () => void;
   sourceWorkload: CrmWorkloadSummary | null;
   people: PersonDetailView[];
+  workspaceId?: string;
+  currency?: string;
   onTransferred: () => void;
 }
 
@@ -45,6 +53,8 @@ export function OwnershipTransferModal({
   onClose,
   sourceWorkload,
   people,
+  workspaceId,
+  currency = 'USD',
   onTransferred,
 }: OwnershipTransferModalProps) {
   const { toast } = useToast();
@@ -63,9 +73,9 @@ export function OwnershipTransferModal({
   const [reason, setReason] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  const availableDestinations = people.filter(
-    (p) => p.person.id !== sourceWorkload?.personId
-  );
+  const availableDestinations = React.useMemo(() => {
+    return people.filter((p) => p.person.id !== sourceWorkload?.personId);
+  }, [people, sourceWorkload?.personId]);
 
   const toggleType = (type: CrmEntityType) => {
     setSelectedTypes((prev) =>
@@ -73,16 +83,39 @@ export function OwnershipTransferModal({
     );
   };
 
+  const formatCurrency = React.useCallback(
+    (val: number) => {
+      try {
+        return new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency,
+          maximumFractionDigits: 0,
+        }).format(val);
+      } catch {
+        return `$${val.toLocaleString()}`;
+      }
+    },
+    [currency]
+  );
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!authUser || !activeOrganizationId || !sourceWorkload) return;
 
     if (!targetPersonId) {
-      toast({ title: 'Validation Error', description: 'Please select a destination representative.', variant: 'destructive' });
+      toast({
+        title: 'Destination Required',
+        description: 'Please select a destination representative to receive these assets.',
+        variant: 'destructive',
+      });
       return;
     }
     if (selectedTypes.length === 0) {
-      toast({ title: 'Validation Error', description: 'Select at least one entity type to transfer.', variant: 'destructive' });
+      toast({
+        title: 'Assets Required',
+        description: 'Select at least one entity category to transfer.',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -92,18 +125,20 @@ export function OwnershipTransferModal({
       const res = await transferOwnershipAction({
         idToken,
         organizationId: activeOrganizationId,
+        workspaceId,
         data: {
           sourcePersonId: sourceWorkload.personId,
           targetPersonId,
           entityTypes: selectedTypes,
           reason: reason.trim() || undefined,
+          workspaceId,
         },
       });
 
       if (res.success && res.job) {
         toast({
-          title: 'Ownership Transferred Successfully',
-          description: `Transferred ${res.job.totalTransferred} records to ${res.job.targetPersonName}.`,
+          title: 'Ownership Transferred',
+          description: `Successfully migrated ${res.job.totalTransferred} records to ${res.job.targetPersonName}.`,
         });
         onTransferred();
         onClose();
@@ -112,7 +147,15 @@ export function OwnershipTransferModal({
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error transferring ownership';
-      toast({ title: 'Transfer Failed', description: msg, variant: 'destructive' });
+      toast({
+        title: 'Transfer Failed',
+        description: msg,
+        variant: 'destructive',
+        actionConfig: {
+          path: '/admin/workforce/crm',
+          label: 'Review Allocation',
+        },
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -122,57 +165,77 @@ export function OwnershipTransferModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg p-0 overflow-hidden bg-card border shadow-2xl">
+      <DialogContent className="max-w-lg p-0 overflow-hidden bg-card border border-border/80 text-card-foreground shadow-2xl sm:rounded-2xl">
         <form onSubmit={handleSubmit}>
-          <DialogHeader className="p-5 pb-4 border-b bg-muted/20">
+          {/* Standardized Demarcated Header */}
+          <DialogHeader demarcated>
             <div className="flex items-center gap-2">
               <ArrowRightLeft className="w-5 h-5 text-primary" />
-              <DialogTitle className="text-base font-bold">Transfer CRM Portfolio Ownership</DialogTitle>
+              <DialogTitle className="text-base font-bold text-foreground">
+                Transfer CRM Portfolio Ownership
+              </DialogTitle>
+              <CardInfoTooltip text="Reassign active leads, pipeline deals, tasks, and automations from a representative to another team member in this workspace." />
             </div>
-            <DialogDescription className="text-xs text-muted-foreground">
-              Reassign active leads, pipeline deals, tasks, and automations from <strong>{sourceWorkload.personName}</strong>
+            <DialogDescription className="sr-only">
+              Reassign active leads, pipeline deals, tasks, and automations from {sourceWorkload.personName}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="p-5 space-y-4 text-xs">
+          <div className="p-6 space-y-4 text-xs">
+            {/* Workspace Scope Indicator */}
+            {workspaceId && (
+              <div className="px-3.5 py-2.5 rounded-xl bg-primary/5 border border-primary/20 flex items-center justify-between text-[11px]">
+                <span className="text-muted-foreground flex items-center gap-1.5 font-medium">
+                  <ShieldAlert className="w-3.5 h-3.5 text-primary" /> Scope:
+                </span>
+                <span className="font-semibold text-primary">Active Workspace Assets Only</span>
+              </div>
+            )}
+
             {/* Source Portfolio Summary */}
-            <div className="p-3 bg-muted/30 border rounded-lg grid grid-cols-3 gap-2 text-center">
+            <div className="p-3.5 bg-muted/20 border border-border/80 rounded-xl grid grid-cols-3 gap-2 text-center">
               <div>
                 <span className="text-[10px] text-muted-foreground uppercase font-bold block">Deals Pipeline</span>
-                <span className="text-sm font-black text-foreground">
-                  {sourceWorkload.dealCount} (${sourceWorkload.totalPipelineValue.toLocaleString()})
+                <span className="text-xs font-black text-foreground">
+                  {sourceWorkload.dealCount} ({formatCurrency(sourceWorkload.totalPipelineValue)})
                 </span>
               </div>
               <div>
                 <span className="text-[10px] text-muted-foreground uppercase font-bold block">Contacts / Leads</span>
-                <span className="text-sm font-black text-foreground">{sourceWorkload.contactCount}</span>
+                <span className="text-xs font-black text-foreground">{sourceWorkload.contactCount}</span>
               </div>
               <div>
                 <span className="text-[10px] text-muted-foreground uppercase font-bold block">Open Tasks</span>
-                <span className="text-sm font-black text-foreground">{sourceWorkload.openTaskCount}</span>
+                <span className="text-xs font-black text-foreground">{sourceWorkload.openTaskCount}</span>
               </div>
             </div>
 
             {/* Target Rep Selector */}
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">Destination Representative</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-foreground">Destination Representative</Label>
               <Select value={targetPersonId} onValueChange={setTargetPersonId}>
-                <SelectTrigger className="h-9 text-xs">
+                <SelectTrigger className="min-h-[44px] text-xs rounded-xl border-border/80">
                   <SelectValue placeholder="Select target team member..." />
                 </SelectTrigger>
-                <SelectContent>
-                  {availableDestinations.map((p) => (
-                    <SelectItem key={p.person.id} value={p.person.id} className="text-xs">
-                      {p.person.displayName} ({p.person.email})
-                    </SelectItem>
-                  ))}
+                <SelectContent className="rounded-xl border-border/80">
+                  {availableDestinations.length > 0 ? (
+                    availableDestinations.map((p) => (
+                      <SelectItem key={p.person.id} value={p.person.id} className="text-xs">
+                        {p.person.displayName || p.person.email} ({p.person.email || p.person.id})
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="p-3 text-center text-xs text-muted-foreground">
+                      No other team members found in this workspace.
+                    </div>
+                  )}
                 </SelectContent>
               </Select>
             </div>
 
             {/* Entity Types Selection */}
             <div className="space-y-2">
-              <Label className="text-xs font-semibold">Assets to Transfer</Label>
+              <Label className="text-xs font-semibold text-foreground">Assets to Transfer</Label>
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { id: 'deal', label: `Deals (${sourceWorkload.dealCount})` },
@@ -182,7 +245,7 @@ export function OwnershipTransferModal({
                 ].map((item) => (
                   <label
                     key={item.id}
-                    className="flex items-center gap-2 p-2 border rounded-md cursor-pointer hover:bg-muted/20"
+                    className="flex items-center gap-2 p-2.5 border border-border/80 rounded-xl cursor-pointer hover:bg-muted/20 transition-colors"
                   >
                     <Checkbox
                       checked={selectedTypes.includes(item.id as CrmEntityType)}
@@ -195,25 +258,26 @@ export function OwnershipTransferModal({
             </div>
 
             {/* Reason */}
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">Reassignment Note / Reason</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-foreground">Reassignment Note / Reason</Label>
               <Textarea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 placeholder="e.g. Territory realignment or employee offboarding handoff..."
-                className="text-xs min-h-[60px]"
+                className="text-xs min-h-[64px] rounded-xl border-border/80"
               />
             </div>
           </div>
 
-          <DialogFooter className="p-4 border-t bg-muted/20 flex justify-end gap-2">
+          {/* Standardized Demarcated Footer */}
+          <DialogFooter demarcated className="px-6 py-3.5 border-t border-border/80 bg-muted/15 flex flex-row items-center justify-end gap-2.5">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={onClose}
               disabled={isSubmitting}
-              className="text-xs h-9 px-4 active:scale-[0.97]"
+              className="text-xs min-h-[44px] px-4 rounded-xl active:scale-[0.97]"
             >
               Cancel
             </Button>
@@ -221,15 +285,15 @@ export function OwnershipTransferModal({
               type="submit"
               size="sm"
               disabled={isSubmitting || !targetPersonId || selectedTypes.length === 0}
-              className="text-xs h-9 px-4 font-semibold active:scale-[0.97]"
+              className="text-xs min-h-[44px] px-5 font-semibold rounded-xl active:scale-[0.97]"
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Transferring Assets...
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Transferring Assets...
                 </>
               ) : (
                 <>
-                  <ArrowRightLeft className="w-3.5 h-3.5 mr-1.5" /> Execute Transfer
+                  <ArrowRightLeft className="w-4 h-4 mr-2" /> Execute Transfer
                 </>
               )}
             </Button>

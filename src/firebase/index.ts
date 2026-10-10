@@ -3,9 +3,26 @@
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, initializeFirestore } from 'firebase/firestore'
+import { 
+  getFirestore, 
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager 
+} from 'firebase/firestore';
 
-export function initializeFirebase() {
+export interface FirebaseSdks {
+  firebaseApp: FirebaseApp;
+  auth: ReturnType<typeof getAuth>;
+  firestore: ReturnType<typeof getFirestore>;
+}
+
+let cachedSdks: FirebaseSdks | null = null;
+
+export function initializeFirebase(): FirebaseSdks {
+  if (cachedSdks && getApps().length > 0) {
+    return cachedSdks;
+  }
+
   if (!getApps().length) {
     const useAppHostingAutoInit = process.env.NEXT_PUBLIC_FIREBASE_APP_HOSTING === 'true';
     let firebaseApp: FirebaseApp;
@@ -21,25 +38,50 @@ export function initializeFirebase() {
       firebaseApp = initializeApp(firebaseConfig);
     }
 
-    return getSdks(firebaseApp);
+    cachedSdks = getSdks(firebaseApp);
+    return cachedSdks;
   }
 
   // If already initialized, return the SDKs with the already initialized App
-  return getSdks(getApp());
+  cachedSdks = getSdks(getApp());
+  return cachedSdks;
 }
 
-export function getSdks(firebaseApp: FirebaseApp) {
-  let db;
+export function getSdks(firebaseApp: FirebaseApp): FirebaseSdks {
+  if (cachedSdks && cachedSdks.firebaseApp === firebaseApp) {
+    return cachedSdks;
+  }
+
+  let db: ReturnType<typeof getFirestore>;
   try {
-    db = initializeFirestore(firebaseApp, { experimentalAutoDetectLongPolling: true });
+    if (typeof window !== 'undefined') {
+      try {
+        db = initializeFirestore(firebaseApp, {
+          localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+          experimentalAutoDetectLongPolling: true,
+        });
+      } catch {
+        try {
+          db = getFirestore(firebaseApp);
+        } catch {
+          db = initializeFirestore(firebaseApp, { experimentalAutoDetectLongPolling: true });
+        }
+      }
+    } else {
+      db = initializeFirestore(firebaseApp, { experimentalAutoDetectLongPolling: true });
+    }
   } catch {
     db = getFirestore(firebaseApp);
   }
-  return {
+
+  const sdks: FirebaseSdks = {
     firebaseApp,
     auth: getAuth(firebaseApp),
     firestore: db
   };
+
+  cachedSdks = sdks;
+  return sdks;
 }
 
 export * from './provider';

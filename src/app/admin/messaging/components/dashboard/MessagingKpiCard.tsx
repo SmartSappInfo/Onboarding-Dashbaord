@@ -16,6 +16,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import type { TrendDeltaResult } from '@/lib/messaging/kpi-utils';
+import { CardInfoTooltip } from '@/components/ui/card-info-tooltip';
 import { cn } from '@/lib/utils';
 
 export interface MessagingKpiCardProps {
@@ -25,6 +26,7 @@ export interface MessagingKpiCardProps {
   iconBgClass: string;
   trend?: TrendDeltaResult;
   subtitle?: string;
+  description?: string;
   badge?: {
     label: string;
     variant: 'emerald' | 'amber' | 'rose';
@@ -45,6 +47,7 @@ export function MessagingKpiCard({
   iconBgClass,
   trend,
   subtitle,
+  description,
   badge,
   actionLink,
   className,
@@ -53,19 +56,22 @@ export function MessagingKpiCard({
     <div
       className={cn(
         'group relative flex flex-col justify-between overflow-hidden',
-        'rounded-2xl border border-border/80 bg-card p-3.5 sm:p-4 md:p-5 text-card-foreground',
+        'rounded-2xl border border-border/80 bg-card p-3 sm:p-3.5 md:p-4 text-card-foreground',
         'shadow-xs hover:shadow-md hover:border-border transition-all duration-200',
         className
       )}
     >
       {/* Top Header: Title & Icon Container */}
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs sm:text-sm font-medium text-muted-foreground line-clamp-1">
-          {title}
-        </span>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-xs sm:text-sm font-medium text-muted-foreground truncate">
+            {title}
+          </span>
+          {description && <CardInfoTooltip text={description} />}
+        </div>
         <div
           className={cn(
-            'flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl transition-transform group-hover:scale-105',
+            'flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-xl transition-transform group-hover:scale-105',
             iconBgClass
           )}
         >
@@ -74,13 +80,13 @@ export function MessagingKpiCard({
       </div>
 
       {/* Main Metric Value */}
-      <div className="my-2 sm:my-2.5">
+      <div className="my-1 sm:my-1.5">
         <span
           className={cn(
             'font-bold tracking-tight text-foreground tabular-nums block line-clamp-1',
             typeof value === 'number' || (typeof value === 'string' && /^\d+/.test(value))
-              ? 'text-xl sm:text-2xl lg:text-3xl'
-              : 'text-base sm:text-lg lg:text-xl'
+              ? 'text-lg sm:text-xl lg:text-2xl'
+              : 'text-sm sm:text-base lg:text-lg'
           )}
         >
           {value}

@@ -16,8 +16,13 @@
  */
 
 import * as React from 'react';
-import type { EntityContextRailData } from '@/platform/ui/context-rail';
-import { getEntityContextRailDataAction } from '@/app/actions/context-rail-actions';
+import { usePathname } from 'next/navigation';
+import { useTenant } from '@/context/TenantContext';
+import type { EntityContextRailData, WorkspaceContextRailData } from '@/platform/ui/context-rail';
+import {
+  getEntityContextRailDataAction,
+  getWorkspaceContextRailDataAction,
+} from '@/app/actions/context-rail-actions';
 
 export interface ContextRailEntity {
   id: string;
@@ -37,6 +42,7 @@ export interface ContextRailContextValue {
   activeEntityType?: string;
   setActiveEntity: (entity: ContextRailEntity | null) => void;
   data: EntityContextRailData | null;
+  workspaceData: WorkspaceContextRailData | null;
   isLoading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
@@ -65,6 +71,11 @@ export function ContextRailProvider({
   initialEntityType = 'contact',
   initialEntityName,
 }: ContextRailProviderProps): React.JSX.Element {
+  const pathname = usePathname();
+  const tenant = useTenant();
+  const activeOrgId = tenant?.activeOrganizationId || undefined;
+  const activeWsId = tenant?.activeWorkspaceId || undefined;
+
   const [isOpen, setIsOpen] = React.useState<boolean>(defaultOpen);
   const [activeEntity, setActiveEntity] = React.useState<ContextRailEntity | null>(
     initialEntityId
@@ -79,8 +90,72 @@ export function ContextRailProvider({
   const [activePromptQuery, setActivePromptQuery] = React.useState<string>('');
 
   const [data, setData] = React.useState<EntityContextRailData | null>(null);
+  const [workspaceData, setWorkspaceData] = React.useState<WorkspaceContextRailData | null>(null);
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  // Route-based entity resolution
+  React.useEffect(() => {
+    if (!pathname) return;
+
+    // 1. /admin/entities/:id
+    const entityMatch = pathname.match(/\/admin\/entities\/([^/?#]+)/);
+    if (entityMatch && entityMatch[1]) {
+      const subroutes = ['upload', 'lead-scoring', 'imports', 'new', 'components'];
+      if (!subroutes.includes(entityMatch[1])) {
+        const id = entityMatch[1];
+        setActiveEntity((prev) => {
+          if (prev?.id === id) return prev;
+          return {
+            id,
+            type: 'entity',
+            name: id.replace(/^[^_]+_/, '').replace(/[_-]/g, ' '),
+          };
+        });
+        return;
+      }
+    }
+
+    // 2. /admin/contacts/:id
+    const contactMatch = pathname.match(/\/admin\/contacts\/([^/?#]+)/);
+    if (contactMatch && contactMatch[1]) {
+      const subroutes = ['upload', 'new', 'imports'];
+      if (!subroutes.includes(contactMatch[1])) {
+        const id = contactMatch[1];
+        setActiveEntity((prev) => {
+          if (prev?.id === id) return prev;
+          return {
+            id,
+            type: 'contact',
+            name: id.replace(/^[^_]+_/, '').replace(/[_-]/g, ' '),
+          };
+        });
+        return;
+      }
+    }
+
+    // 3. /admin/finance/invoices/:id
+    const invoiceMatch = pathname.match(/\/admin\/finance\/invoices\/([^/?#]+)/);
+    if (invoiceMatch && invoiceMatch[1]) {
+      if (invoiceMatch[1] !== 'new') {
+        const id = invoiceMatch[1];
+        setActiveEntity((prev) => {
+          if (prev?.id === id) return prev;
+          return {
+            id,
+            type: 'invoice',
+            name: `Invoice ${id}`,
+          };
+        });
+        return;
+      }
+    }
+
+    // On non-entity route, clear entity to allow workspace standby mode (unless initialEntityId was explicitly set)
+    if (!initialEntityId) {
+      setActiveEntity(null);
+    }
+  }, [pathname, initialEntityId]);
 
   const fetchContextData = React.useCallback(async (entityId: string, entityType: string) => {
     setIsLoading(true);
@@ -88,10 +163,17 @@ export function ContextRailProvider({
     try {
       const res = await getEntityContextRailDataAction(
         entityId,
-        entityType as 'contact' | 'lead' | 'deal' | 'company' | 'ticket' | 'task'
+        entityType as 'contact' | 'lead' | 'deal' | 'company' | 'ticket' | 'task',
+        {
+          organizationId: activeOrgId,
+          workspaceId: activeWsId,
+        }
       );
       if (res.success && res.data) {
         setData(res.data);
+        if (res.data.entityName) {
+          setActiveEntity((prev) => prev ? { ...prev, name: res.data!.entityName } : prev);
+        }
       } else {
         setError(res.error?.message || 'Failed to fetch contextual intelligence');
       }
@@ -100,14 +182,36 @@ export function ContextRailProvider({
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [activeOrgId, activeWsId]);
 
-  // Fetch when active entity changes
+  const fetchWorkspaceData = React.useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await getWorkspaceContextRailDataAction({
+        organizationId: activeOrgId,
+        workspaceId: activeWsId,
+      });
+      if (res.success && res.data) {
+        setWorkspaceData(res.data);
+      } else {
+        setError(res.error?.message || 'Failed to fetch workspace contextual intelligence');
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Workspace intelligence fetch failed');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeOrgId, activeWsId]);
+
+  // Fetch when active entity changes or when drawer opens
   React.useEffect(() => {
     if (activeEntity?.id && activeEntity?.type) {
       fetchContextData(activeEntity.id, activeEntity.type);
+    } else if (isOpen) {
+      fetchWorkspaceData();
     }
-  }, [activeEntity?.id, activeEntity?.type, fetchContextData]);
+  }, [activeEntity?.id, activeEntity?.type, isOpen, fetchContextData, fetchWorkspaceData]);
 
   const toggleRail = React.useCallback(() => {
     setIsOpen((prev) => !prev);
@@ -137,8 +241,10 @@ export function ContextRailProvider({
   const refresh = React.useCallback(async () => {
     if (activeEntity?.id && activeEntity?.type) {
       await fetchContextData(activeEntity.id, activeEntity.type);
+    } else {
+      await fetchWorkspaceData();
     }
-  }, [activeEntity?.id, activeEntity?.type, fetchContextData]);
+  }, [activeEntity?.id, activeEntity?.type, fetchContextData, fetchWorkspaceData]);
 
   // Keyboard shortcut listener for Option/Alt + C (Agentic Architecture Suite Document 13 §2)
   React.useEffect(() => {
@@ -157,8 +263,12 @@ export function ContextRailProvider({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const pendingApprovalsCount = data?.pendingApprovals?.length ?? 0;
-  const activeRunsCount = data?.activeRuns?.length ?? 0;
+  const pendingApprovalsCount = activeEntity
+    ? (data?.pendingApprovals?.length ?? 0)
+    : (workspaceData?.pendingApprovals?.length ?? 0);
+  const activeRunsCount = activeEntity
+    ? (data?.activeRuns?.length ?? 0)
+    : (workspaceData?.activeRuns?.length ?? 0);
 
   const value = React.useMemo<ContextRailContextValue>(
     () => ({
@@ -173,6 +283,7 @@ export function ContextRailProvider({
       activeEntityType: activeEntity?.type,
       setActiveEntity,
       data,
+      workspaceData,
       isLoading,
       error,
       refresh,
@@ -190,6 +301,7 @@ export function ContextRailProvider({
       closeRail,
       activeEntity,
       data,
+      workspaceData,
       isLoading,
       error,
       refresh,

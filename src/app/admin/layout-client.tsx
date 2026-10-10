@@ -33,7 +33,6 @@ import { doc, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import AuthorizationLoader from './components/authorization-loader';
 import { enforceSuperAdminProfileAction } from '@/app/actions/onboarding-actions';
-import NotificationBell from './components/NotificationBell';
 import NotificationCenter from './components/NotificationCenter';
 import {
   DropdownMenu,
@@ -56,7 +55,6 @@ import { IndustryProvider } from '@/context/IndustryContext';
 import { GlobalFilterProvider } from '@/context/GlobalFilterProvider';
 import { EntityCacheProvider } from '@/context/EntityCacheContext';
 import { BreadcrumbNav } from './components/BreadcrumbNav';
-import { useTerminology } from '@/hooks/use-terminology';
 import { useFeatures } from '@/hooks/use-features';
 import AssignedUserGlobalFilter from './components/AssignedUserGlobalFilter';
 import type { Role } from '@/lib/types';
@@ -85,7 +83,6 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
   const firestore = useFirestore();
   const auth = useAuth();
   const { toast } = useToast();
-  const { singular: _singular, plural, dealPlural: _dealPlural } = useTerminology();
   const { activeWorkspaceId: _activeWorkspaceId, activeOrganization, isSuperAdmin } = useTenant();
   const { isFeatureEnabled: _isFeatureEnabled } = useFeatures();
   
@@ -297,29 +294,22 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
           <SidebarTrigger className="-ml-1 text-muted-foreground hover:text-foreground" />
           <div className="flex-1 min-w-0"><BreadcrumbNav /></div>
           <div className="flex items-center gap-3 shrink-0">
-              <Badge
-                variant="outline"
-                className="text-[8px] uppercase font-bold tracking-[0.15em] px-2.5 h-5 bg-primary/10 border-primary/20 text-primary hidden sm:flex"
-              >
-                {plural}
-              </Badge>
               <div className="hidden md:flex items-center gap-3">
                 <ThemeToggle />
                 <QuickComposeButton />
                 <FloatingNotesTrigger />
                 <ContextRailTrigger />
               </div>
-              <NotificationBell />
               <NotificationCenter />
               <div className="h-6 w-px bg-border mx-1" />
               <DropdownMenu>
               <DropdownMenuTrigger asChild>
-  <Button variant="ghost" className="relative h-10 w-10 rounded-xl p-0 hover:bg-primary/5 transition-all">
-  <Avatar className="h-10 w-10 border-2 border-primary/10 shadow-sm">
-                      <AvatarImage src={user?.photoURL ?? undefined} alt={user?.displayName || 'User'} />
-  <AvatarFallback className="bg-primary/5 text-primary font-semibold text-xs">{getInitials(user?.displayName || undefined)}</AvatarFallback>
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0 hover:bg-primary/5 transition-all">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={user?.photoURL ?? undefined} alt={user?.displayName || 'User'} />
+                    <AvatarFallback className="bg-primary/5 text-primary font-semibold text-xs">{getInitials(user?.displayName || undefined)}</AvatarFallback>
                   </Avatar>
-                  </Button>
+                </Button>
               </DropdownMenuTrigger>
   <DropdownMenuContent className="w-64 p-2 rounded-2xl border-border bg-card shadow-lg animate-in zoom-in-95 duration-200" align="end">
   <DropdownMenuLabel className="font-normal px-2 py-3">

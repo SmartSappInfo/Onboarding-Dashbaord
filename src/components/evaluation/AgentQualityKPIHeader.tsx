@@ -30,7 +30,6 @@ import {
   ShieldCheck,
   UserCheck,
   Clock,
-  Sparkles,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -45,23 +44,6 @@ export function AgentQualityKPIHeader({
 }: AgentQualityKPIHeaderProps): React.JSX.Element {
   return (
     <div className="space-y-3">
-      {/* OPERATING PRINCIPLE BANNER */}
-      <div className="flex items-center justify-between px-4 py-2 rounded-xl border border-primary/20 bg-primary/5 text-xs text-primary">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-3.5 h-3.5 shrink-0" />
-          <span className="font-medium">
-            Core Operating Principle: The important metric is not &quot;AI confidence&quot;. It is{' '}
-            <strong className="font-semibold underline decoration-primary/40 underline-offset-2">
-              actual task performance
-            </strong>
-            .
-          </span>
-        </div>
-        <span className="text-[11px] font-mono opacity-80 hidden md:inline">
-          {kpis.totalRunsEvaluated} Gold-Standard Runs Evaluated across {kpis.activePersonasCount} Personas
-        </span>
-      </div>
-
       {/* 5 CANONICAL METRIC CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
         {/* 1. TASK SUCCESS */}

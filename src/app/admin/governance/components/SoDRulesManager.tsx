@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
@@ -204,11 +205,9 @@ export function SoDRulesManager({ roles }: SoDRulesManagerProps) {
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-card p-3 rounded-xl border">
         <div className="flex items-center gap-2">
           <ShieldAlert className="w-5 h-5 text-primary" />
-          <div>
+          <div className="flex items-center gap-1.5">
             <h3 className="text-sm font-semibold text-foreground">Separation of Duties (SoD) Guardrails</h3>
-            <p className="text-xs text-muted-foreground">
-              Prevent toxic role combinations and audit toxic privilege pairings
-            </p>
+            <CardInfoTooltip text="Prevent toxic role combinations and audit toxic privilege pairings." />
           </div>
         </div>
 

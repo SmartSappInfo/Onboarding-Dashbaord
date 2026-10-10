@@ -19,6 +19,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import {
@@ -159,13 +160,11 @@ export function GovernanceClient() {
     <div className="space-y-6 pb-32 w-full p-4 md:p-8 max-w-7xl mx-auto">
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+        <div className="flex items-center gap-2.5">
           <h1 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
             <ShieldCheck className="w-6 h-6 text-primary" /> Governance & Security Center
           </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Certify workforce permissions, issue time-bounded JIT access, enforce Segregation of Duties, and monitor security telemetry
-          </p>
+          <CardInfoTooltip text="Certify workforce permissions, issue time-bounded JIT access, enforce Segregation of Duties, and monitor security telemetry." />
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">

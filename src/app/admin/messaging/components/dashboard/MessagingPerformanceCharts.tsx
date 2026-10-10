@@ -11,7 +11,8 @@
  */
 
 import * as React from 'react';
-import { CheckCircle2, TrendingUp, AlertCircle } from 'lucide-react';
+import { CheckCircle2, TrendingUp, AlertCircle, BarChart3 } from 'lucide-react';
+import { CardInfoTooltip } from '@/components/ui/card-info-tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import type {
@@ -59,10 +60,17 @@ export function MessagingPerformanceCharts({
 
   return (
     <div className={cn('rounded-2xl border border-border/80 bg-card p-4 sm:p-5 text-card-foreground shadow-xs', className)}>
-      <div className="flex items-center justify-between pb-3 border-b border-border/60">
-        <div>
-          <h3 className="text-sm font-semibold tracking-tight text-foreground">Delivery Performance</h3>
-          <p className="text-xs text-muted-foreground">Outbound reliability and channel distribution</p>
+      <div className="flex items-center justify-between pb-3 border-b border-border/60 gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
+            <BarChart3 className="h-3.5 w-3.5" />
+          </div>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <h3 className="text-sm sm:text-base font-semibold tracking-tight text-foreground truncate">
+              Delivery Performance
+            </h3>
+            <CardInfoTooltip text="Outbound reliability, SLA delivery rates, and channel volume breakdown." />
+          </div>
         </div>
         {/* Interactive Time Range Switcher */}
         <div className="flex items-center gap-1 bg-muted/40 p-0.5 rounded-lg">

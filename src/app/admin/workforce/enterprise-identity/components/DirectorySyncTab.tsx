@@ -11,12 +11,13 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import {
   RefreshCw,
   Copy,
@@ -77,11 +78,9 @@ export function DirectorySyncTab({ config, logs, onSave, isSaving }: DirectorySy
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-2">
               <RefreshCw className="w-5 h-5 text-primary" />
-              <div>
+              <div className="flex items-center gap-1.5">
                 <CardTitle className="text-sm font-bold">SCIM 2.0 Directory Synchronization</CardTitle>
-                <CardDescription className="text-xs">
-                  Automate user onboarding, role assignments, and safe de-provisioning from your Identity Provider
-                </CardDescription>
+                <CardInfoTooltip text="Automate user onboarding, role assignments, and safe de-provisioning from your Identity Provider" />
               </div>
             </div>
             <Badge
@@ -209,10 +208,10 @@ export function DirectorySyncTab({ config, logs, onSave, isSaving }: DirectorySy
       {/* Sync Log Stream */}
       <Card className="border bg-card shadow-xs overflow-hidden">
         <CardHeader className="p-4 pb-3 border-b bg-muted/20">
-          <CardTitle className="text-sm font-bold">Recent SCIM Synchronization Events</CardTitle>
-          <CardDescription className="text-xs">
-            Real-time audit log of inbound user provisioning and de-provisioning events
-          </CardDescription>
+          <div className="flex items-center gap-1.5">
+            <CardTitle className="text-sm font-bold">Recent SCIM Synchronization Events</CardTitle>
+            <CardInfoTooltip text="Real-time audit log of inbound user provisioning and de-provisioning events" />
+          </div>
         </CardHeader>
 
         <div className="overflow-x-auto">

@@ -5,7 +5,46 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useUser } from '@/firebase';
 import { useTenant } from './TenantContext';
 
-const STORAGE_KEY = 'globalAssignedUserId';
+export interface AssignedUserResolutionParams {
+  urlParam: string | null;
+  storedValue: string | null;
+  isRestricted: boolean;
+  currentUserId?: string | null;
+}
+
+export function getAssignedUserStorageKey(workspaceId?: string, userId?: string): string {
+  if (workspaceId && userId) {
+    return `crm_assigned_pref_${workspaceId}_${userId}`;
+  }
+  return 'globalAssignedUserId';
+}
+
+export function resolveInitialAssignedUser(params: AssignedUserResolutionParams): string | null {
+  const { urlParam, storedValue, isRestricted, currentUserId } = params;
+
+  // 1. Governance override: If user is restricted to assigned entities only,
+  // they cannot bypass this restriction via URL or localStorage.
+  if (isRestricted) {
+    return currentUserId || null;
+  }
+
+  // 2. URL parameter takes precedence if explicitly passed
+  if (urlParam !== null && urlParam !== undefined) {
+    return urlParam === 'all' ? null : urlParam;
+  }
+
+  // 3. Stored preference from localStorage
+  if (storedValue !== null && storedValue !== undefined) {
+    return storedValue === 'all' ? null : storedValue;
+  }
+
+  // 4. Default upon initial load with no preference: current user's assigned leads
+  if (currentUserId) {
+    return currentUserId;
+  }
+
+  return null;
+}
 
 type GlobalFilterContextType = {
   assignedUserId: string | null;
@@ -33,49 +72,53 @@ export function GlobalFilterProvider({ children }: { children: React.ReactNode }
     return activeWorkspace?.restrictVisibilityToAssigned !== false && !userIsAdmin;
   }, [activeWorkspace, userIsAdmin]);
 
+  const storageKey = React.useMemo(() => {
+    return getAssignedUserStorageKey(activeWorkspace?.id, user?.uid);
+  }, [activeWorkspace?.id, user?.uid]);
+
   // Compute the effective assigned user ID used for queries and filters
   const effectiveAssignedUserId = React.useMemo(() => {
     return isRestricted ? (user?.uid || null) : assignedUserId;
   }, [isRestricted, user, assignedUserId]);
 
-  // 1. Initialize state once from URL, sessionStorage, or user default.
+  // 1. Initialize state once from URL, localStorage, or user default.
   React.useEffect(() => {
-    // Wait for tenant data so we know whether visibility is restricted before
-    // choosing a default filter (otherwise we'd default to the current user even
-    // when the workspace is configured to show all entities).
     if (isUserLoading || isTenantLoading || isInitialized) {
       return;
     }
 
     const urlParam = searchParams.get('assignedTo');
-    const storedValue = sessionStorage.getItem(STORAGE_KEY);
-
-    let initialValue: string | null = null;
-
-    // The order of priority for the initial value is: URL > sessionStorage > default.
-    // When the workspace restricts visibility to assigned entities, default to the
-    // logged-in user. Otherwise ("All Entities" scope), default to showing all.
-    if (urlParam) {
-      initialValue = urlParam === 'all' ? null : urlParam;
-    } else if (storedValue) {
-      initialValue = storedValue === 'all' ? null : storedValue;
-    } else if (isRestricted && user) {
-      initialValue = user.uid;
+    let storedValue: string | null = null;
+    try {
+      storedValue = localStorage.getItem(storageKey);
+    } catch (_err) {
+      // In SSR or restricted storage environments
     }
+
+    const initialValue = resolveInitialAssignedUser({
+      urlParam,
+      storedValue,
+      isRestricted,
+      currentUserId: user?.uid,
+    });
 
     setAssignedUserIdState(initialValue);
     setIsInitialized(true); // Mark as initialized to prevent this from running again.
-  }, [isUserLoading, isTenantLoading, isRestricted, user, searchParams, isInitialized]);
+  }, [isUserLoading, isTenantLoading, isRestricted, user, searchParams, isInitialized, storageKey]);
   
 
   // 2. This function is exposed to the app to change the filter.
-  // It updates the state and persists the choice to sessionStorage for cross-page navigation.
+  // It updates the state and persists the choice to localStorage scoped to the workspace and user.
   const setAssignedUserId = React.useCallback((userId: string | null) => {
     // If restricted, do not allow changing the assigned filter state
     if (isRestricted) return;
     setAssignedUserIdState(userId);
-    sessionStorage.setItem(STORAGE_KEY, userId === null ? 'all' : userId);
-  }, [isRestricted]);
+    try {
+      localStorage.setItem(storageKey, userId === null ? 'all' : userId);
+    } catch (_err) {
+      // Ignore storage errors
+    }
+  }, [isRestricted, storageKey]);
   
   const searchParamsString = searchParams.toString();
   // 3. This effect syncs the state to the URL's query parameters.

@@ -11,11 +11,12 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import {
   Clock,
   ShieldAlert,
@@ -67,11 +68,9 @@ export function SessionPolicyTab({ config, onSave, isSaving }: SessionPolicyTabP
         <CardHeader className="p-4 pb-3 border-b bg-muted/20">
           <div className="flex items-center gap-2">
             <Clock className="w-5 h-5 text-primary" />
-            <div>
+            <div className="flex items-center gap-1.5">
               <CardTitle className="text-sm font-bold">Session Governance & Lifetime Policies</CardTitle>
-              <CardDescription className="text-xs">
-                Configure browser session expiration, idle lockouts, and step-up security
-              </CardDescription>
+              <CardInfoTooltip text="Configure browser session expiration, idle lockouts, and step-up security" />
             </div>
           </div>
         </CardHeader>

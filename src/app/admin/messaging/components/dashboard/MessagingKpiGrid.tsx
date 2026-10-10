@@ -41,22 +41,22 @@ export function MessagingKpiGridSkeleton({ className }: { className?: string }) 
   return (
     <div
       aria-label="Loading metrics"
-      className={cn('grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5', className)}
+      className={cn('grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4', className)}
     >
       {[1, 2, 3, 4].map((i) => (
         <div
           key={i}
           data-testid="kpi-skeleton-card"
-          className="rounded-2xl border border-border/60 bg-card p-3.5 sm:p-4 md:p-5 shadow-xs animate-pulse flex flex-col justify-between min-h-[120px] sm:min-h-[135px]"
+          className="rounded-2xl border border-border/60 bg-card p-3 sm:p-3.5 md:p-4 shadow-xs animate-pulse flex flex-col justify-between min-h-[96px] sm:min-h-[105px]"
         >
           <div className="flex items-center justify-between">
-            <div className="h-4 w-20 sm:w-24 bg-muted rounded-md" />
-            <div className="h-8 w-8 bg-muted rounded-xl" />
+            <div className="h-3.5 w-20 sm:w-24 bg-muted rounded-md" />
+            <div className="h-7 w-7 sm:h-8 sm:w-8 bg-muted rounded-xl" />
           </div>
-          <div className="my-2">
-            <div className="h-7 w-24 sm:w-32 bg-muted rounded-lg" />
+          <div className="my-1">
+            <div className="h-6 w-20 sm:w-28 bg-muted rounded-lg" />
           </div>
-          <div className="h-4 w-16 bg-muted rounded-md" />
+          <div className="h-3.5 w-16 bg-muted rounded-md" />
         </div>
       ))}
     </div>
@@ -90,7 +90,7 @@ export function MessagingKpiGrid({
     <div
       className={cn(
         // Responsive 2x2 grid on mobile/tablet; 4-column row on desktop
-        'grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5',
+        'grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4',
         className
       )}
     >
@@ -98,7 +98,8 @@ export function MessagingKpiGrid({
       <MessagingKpiCard
         title="Messages Sent"
         value={formatMetricNumber(metrics.messagesSent)}
-        icon={<MessageSquare className="h-4 w-4 sm:h-5 sm:w-5" />}
+        description="Total messages queued and dispatched across outbound channels."
+        icon={<MessageSquare className="h-4 w-4 sm:h-4.5 sm:w-4.5" />}
         iconBgClass="bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400"
         trend={messagesSentTrend}
         subtitle="vs. last 7 days"
@@ -108,7 +109,8 @@ export function MessagingKpiGrid({
       <MessagingKpiCard
         title="Delivery Rate"
         value={`${metrics.deliveryRate.toFixed(1)}%`}
-        icon={<CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />}
+        description="Percentage of messages confirmed delivered by carrier gateways."
+        icon={<CheckCircle2 className="h-4 w-4 sm:h-4.5 sm:w-4.5" />}
         iconBgClass="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400"
         trend={deliveryRateTrend}
         subtitle="vs. last 7 days"
@@ -118,7 +120,8 @@ export function MessagingKpiGrid({
       <MessagingKpiCard
         title="SMS Unit Balance"
         value={formatMetricNumber(metrics.smsBalance)}
-        icon={<Smartphone className="h-4 w-4 sm:h-5 sm:w-5" />}
+        description="Available SMS credits in your account balance for outbound dispatches."
+        icon={<Smartphone className="h-4 w-4 sm:h-4.5 sm:w-4.5" />}
         iconBgClass="bg-orange-50 text-orange-600 dark:bg-orange-950/60 dark:text-orange-400"
         badge={
           smsStatus.isLow
@@ -139,7 +142,8 @@ export function MessagingKpiGrid({
       <MessagingKpiCard
         title="Provider Status"
         value={metrics.providerStatusLabel}
-        icon={<ShieldCheck className="h-4 w-4 sm:h-5 sm:w-5" />}
+        description="Current operational health and connectivity status of messaging gateways."
+        icon={<ShieldCheck className="h-4 w-4 sm:h-4.5 sm:w-4.5" />}
         iconBgClass="bg-purple-50 text-purple-600 dark:bg-purple-950/60 dark:text-purple-400"
         badge={{
           label: providerDisplay.label,

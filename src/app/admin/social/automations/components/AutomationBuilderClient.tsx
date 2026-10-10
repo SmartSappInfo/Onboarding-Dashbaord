@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
@@ -15,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { collection, query, where, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { AnimatePresence, motion } from 'framer-motion';
 import { 
-  Zap, 
+  ArrowLeft,
   GitCommit, 
   Play, 
   Plus, 
@@ -70,11 +71,11 @@ const ActionRow = React.memo(function ActionRow({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
       transition={{ duration: 0.25, ease: EASE_OUT }}
-      className="p-4 rounded-2xl border border-border/20 bg-background/50 space-y-3 relative"
+      className="p-4 rounded-2xl border border-border/80 bg-card space-y-3 relative shadow-xs"
     >
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2">
-          <Badge className="h-5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[9px] font-bold uppercase tracking-wider">
+          <Badge className="h-5 rounded-lg bg-primary/10 text-primary border border-primary/20 text-[9px] font-bold uppercase tracking-wider">
             Step {index + 1}
           </Badge>
           <span className="text-[10px] font-extrabold text-muted-foreground uppercase">Flow Action</span>
@@ -339,27 +340,37 @@ export default function AutomationBuilderClient() {
         {/* Header controls */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/50 pb-4">
           <div className="flex items-center gap-2.5">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              asChild 
+              className="h-9 w-9 rounded-xl hover:bg-muted active:scale-[0.97] shrink-0 text-muted-foreground hover:text-foreground"
+            >
+              <Link href="/admin/social" aria-label="Back to Social Hub">
+                <ArrowLeft className="h-5 w-5" />
+              </Link>
+            </Button>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Automation Builder</h1>
             <CardInfoTooltip text="Design instant triggers to tag leads, generate drafts, and alert teams in real-time." />
           </div>
 
-        <Button 
-          onClick={handleNewRule}
-          className="rounded-xl h-10 px-5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs tracking-wide active:scale-[0.97] transition-all gap-1.5 shadow-lg shadow-emerald-500/10 self-end sm:self-auto"
-        >
-          <Plus className="h-4 w-4" /> New Flow Rule
-        </Button>
-      </div>
+          <Button 
+            onClick={handleNewRule}
+            className="rounded-xl h-10 px-5 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs tracking-wide active:scale-[0.97] transition-all gap-1.5 shadow-xs self-end sm:self-auto"
+          >
+            <Plus className="h-4 w-4" /> New Flow Rule
+          </Button>
+        </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch flex-1 overflow-hidden">
         {/* Column 1: Rules profiles list (3/12) */}
-        <div className="lg:col-span-3 flex flex-col gap-4 overflow-hidden border border-border/20 rounded-3xl bg-card/20 backdrop-blur-md p-4">
+        <div className="lg:col-span-3 flex flex-col gap-4 overflow-hidden border border-border/80 rounded-2xl bg-card shadow-xs p-4">
           <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Saved Workflows</span>
           
           <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 scrollbar-none">
             {isLoadingRules ? (
               <div className="h-32 flex items-center justify-center text-muted-foreground gap-2">
-                <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
                 <span className="text-[10px] font-bold uppercase tracking-widest">Loading rules...</span>
               </div>
             ) : rules.length === 0 ? (
@@ -377,12 +388,12 @@ export default function AutomationBuilderClient() {
                     className={cn(
                       "w-full text-left p-3.5 rounded-2xl border transition-colors duration-200 flex flex-col gap-1 active:scale-[0.99]",
                       isSelected 
-                        ? "bg-background/80 border-primary/40 text-foreground shadow-sm"
-                        : "hover:bg-muted/50 even:bg-muted/30 dark:even:bg-muted/15 border-border/20 text-muted-foreground"
+                        ? "bg-primary/10 border-primary/40 text-foreground shadow-xs"
+                        : "hover:bg-muted border-border/60 text-muted-foreground"
                     )}
                   >
                     <span className="font-extrabold text-xs text-foreground block truncate">{rule.name}</span>
-                    <span className="text-[9px] uppercase tracking-wider font-bold text-emerald-600 dark:text-emerald-400">
+                    <span className="text-[9px] uppercase tracking-wider font-bold text-primary">
                       {rule.trigger} ⚡ {rule.actions.length} Steps
                     </span>
                   </button>
@@ -393,14 +404,14 @@ export default function AutomationBuilderClient() {
         </div>
 
         {/* Column 2: Visual Node Flow (9/12) */}
-        <div className="lg:col-span-9 flex flex-col border border-border/20 rounded-3xl bg-card/10 backdrop-blur-md overflow-hidden relative">
+        <div className="lg:col-span-9 flex flex-col border border-border/80 rounded-2xl bg-card shadow-xs overflow-hidden relative">
           <form onSubmit={handleSaveRule} className="flex flex-col h-full">
-            <div className="border-b border-border/20 p-4 bg-muted/10 flex items-center justify-between">
+            <div className="border-b border-border/60 p-4 bg-muted/20 flex items-center justify-between">
               <div className="flex-1 max-w-md">
                 <Input
                   value={ruleName}
                   onChange={(e) => setRuleName(e.target.value)}
-                  className="h-9 font-extrabold text-xs rounded-lg border-border/30 bg-transparent text-foreground focus-visible:bg-background"
+                  className="h-9 font-extrabold text-xs rounded-lg border-border/80 bg-background text-foreground focus-visible:bg-background"
                   required
                 />
               </div>
@@ -410,7 +421,7 @@ export default function AutomationBuilderClient() {
                   type="button"
                   variant="ghost"
                   onClick={handleDeleteRule}
-                  className="h-8 px-3 text-[10px] font-bold text-red-500 hover:text-red-600 hover:bg-red-500/10 rounded-lg"
+                  className="h-8 px-3 text-[10px] font-bold text-destructive hover:text-destructive hover:bg-destructive/10 rounded-lg"
                 >
                   Delete Flow
                 </Button>
@@ -420,9 +431,9 @@ export default function AutomationBuilderClient() {
             {/* Node Flow scrollable area */}
             <div className="flex-1 p-6 overflow-y-auto space-y-6 scrollbar-none max-w-2xl mx-auto w-full">
               {/* NODE 1: TRIGGER */}
-              <div className="p-5 rounded-3xl border border-border/30 bg-background/40 backdrop-blur shadow-sm space-y-4">
-                <div className="flex items-center gap-2 border-b border-border/10 pb-3">
-                  <div className="h-6 w-6 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+              <div className="p-5 rounded-2xl border border-border/80 bg-card shadow-xs space-y-4">
+                <div className="flex items-center gap-2 border-b border-border/60 pb-3">
+                  <div className="h-6 w-6 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
                     <Play className="h-3.5 w-3.5 fill-current" />
                   </div>
                   <span className="text-xs font-black uppercase text-foreground">1. Automation Trigger</span>
@@ -434,7 +445,7 @@ export default function AutomationBuilderClient() {
                     value={triggerType} 
                     onValueChange={(val: SocialAutomationRule['trigger']) => setTriggerType(val)}
                   >
-                    <SelectTrigger id="trigger-picker" className="h-10 rounded-xl border-border/30 bg-background">
+                    <SelectTrigger id="trigger-picker" className="h-10 rounded-xl border-border/80 bg-background">
                       <SelectValue placeholder="Select trigger event" />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl text-xs font-semibold">
@@ -452,9 +463,9 @@ export default function AutomationBuilderClient() {
               </div>
 
               {/* NODE 2: CONDITIONS */}
-              <div className="p-5 rounded-3xl border border-border/30 bg-background/40 backdrop-blur shadow-sm space-y-4">
-                <div className="flex items-center gap-2 border-b border-border/10 pb-3">
-                  <div className="h-6 w-6 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+              <div className="p-5 rounded-2xl border border-border/80 bg-card shadow-xs space-y-4">
+                <div className="flex items-center gap-2 border-b border-border/60 pb-3">
+                  <div className="h-6 w-6 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
                     <Edit3 className="h-3.5 w-3.5" />
                   </div>
                   <span className="text-xs font-black uppercase text-foreground">2. Filter Conditions</span>
@@ -467,7 +478,7 @@ export default function AutomationBuilderClient() {
                       value={conditionType} 
                       onValueChange={(val: SocialAutomationRule['condition']) => setConditionType(val)}
                     >
-                      <SelectTrigger id="condition-picker" className="h-10 rounded-xl border-border/30 bg-background">
+                      <SelectTrigger id="condition-picker" className="h-10 rounded-xl border-border/80 bg-background">
                         <SelectValue placeholder="Select condition criteria" />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl text-xs font-semibold">
@@ -488,7 +499,7 @@ export default function AutomationBuilderClient() {
                           value={keywordInput}
                           onChange={(e) => setKeywordInput(e.target.value)}
                           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddKeywordTag(); } }}
-                          className="h-10 rounded-xl border-border/30 bg-background text-xs"
+                          className="h-10 rounded-xl border-border/80 bg-background text-xs"
                         />
                         <Button type="button" onClick={handleAddKeywordTag} className="rounded-xl h-10 px-4 bg-muted hover:bg-muted/80 text-xs font-bold">
                           Add
@@ -501,7 +512,7 @@ export default function AutomationBuilderClient() {
                 {conditionType === 'contains_keywords' && conditionKeywords.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 pt-2">
                     {conditionKeywords.map((tag) => (
-                      <Badge key={tag} className="h-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold uppercase text-[9px] gap-1">
+                      <Badge key={tag} className="h-6 rounded-lg bg-primary/10 text-primary border border-primary/20 font-bold uppercase text-[9px] gap-1">
                         {tag}
                         <button type="button" onClick={() => setConditionKeywords(prev => prev.filter(k => k !== tag))}>
                           <X className="h-3 w-3" />
@@ -518,10 +529,10 @@ export default function AutomationBuilderClient() {
               </div>
 
               {/* NODE 3: DYNAMIC ACTIONS LIST */}
-              <div className="p-5 rounded-3xl border border-border/30 bg-background/40 backdrop-blur shadow-sm space-y-4">
-                <div className="flex items-center justify-between border-b border-border/10 pb-3">
+              <div className="p-5 rounded-2xl border border-border/80 bg-card shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-border/60 pb-3">
                   <div className="flex items-center gap-2">
-                    <div className="h-6 w-6 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                    <div className="h-6 w-6 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
                       <CheckCircle className="h-3.5 w-3.5" />
                     </div>
                     <span className="text-xs font-black uppercase text-foreground">3. Dispatch Actions</span>
@@ -532,7 +543,7 @@ export default function AutomationBuilderClient() {
                     size="sm"
                     variant="outline"
                     onClick={handleAddAction}
-                    className="h-7 gap-1 text-xs font-semibold active:scale-[0.97] transition-all rounded-xl bg-white dark:bg-card border border-border/80 shadow-xs"
+                    className="h-7 gap-1 text-xs font-semibold active:scale-[0.97] transition-all rounded-xl bg-card border border-border/80 shadow-xs hover:bg-muted"
                   >
                     <Plus className="h-3.5 w-3.5" /> Add Step Action
                   </Button>
@@ -562,11 +573,11 @@ export default function AutomationBuilderClient() {
             </div>
 
             {/* Save bar */}
-            <div className="border-t border-border/20 p-4 bg-muted/10 flex justify-end">
+            <div className="border-t border-border/60 p-4 bg-muted/15 flex justify-end">
               <Button
                 type="submit"
                 disabled={isSaving}
-                className="rounded-xl h-10 px-5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs tracking-wider uppercase active:scale-[0.97] transition-all gap-1.5 shadow-lg shadow-emerald-500/10"
+                className="rounded-xl h-10 px-5 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs tracking-wider uppercase active:scale-[0.97] transition-all gap-1.5 shadow-xs"
               >
                 {isSaving ? (
                   <Loader2 className="h-4 w-4 animate-spin" />

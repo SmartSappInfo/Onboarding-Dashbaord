@@ -57,6 +57,7 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { useTerminology } from '@/hooks/use-terminology';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import { mergeById } from './deal-select-utils';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Input } from '@/components/ui/input';
@@ -114,6 +115,7 @@ export default function DealDetailsPage() {
     const { data: deal, isLoading } = useDoc<Deal>(dealDocRef);
 
     useSetBreadcrumb(deal?.name);
+    const { activeWorkspace } = useWorkspace();
 
     // Form inputs state
     const [name, setName] = React.useState('');
@@ -217,14 +219,17 @@ export default function DealDetailsPage() {
         if (currentPipeline) return currentPipeline;
         const targetId = deal?.pipelineId || currentStage?.pipelineId;
         if (targetId) {
+            const fallbackPipelineName = activeWorkspace?.name?.trim() 
+                ? (activeWorkspace.name.trim().toLowerCase().endsWith('pipeline') ? activeWorkspace.name.trim() : `${activeWorkspace.name.trim()} Pipeline`)
+                : 'Pipeline';
             return {
                 id: targetId,
-                name: dealPipelineName || 'Onboarding Pipeline',
+                name: dealPipelineName || fallbackPipelineName,
                 workspaceIds: deal?.workspaceId ? [deal.workspaceId] : [],
             } as Pipeline;
         }
         return null;
-    }, [currentPipeline, deal?.pipelineId, deal?.workspaceId, currentStage?.pipelineId, dealPipelineName]);
+    }, [currentPipeline, deal?.pipelineId, deal?.workspaceId, currentStage?.pipelineId, dealPipelineName, activeWorkspace?.name]);
 
     // Unified active pipeline reference for custom fields inheritance and defaults (Rule 10)
     const activePipeline = React.useMemo(() => {

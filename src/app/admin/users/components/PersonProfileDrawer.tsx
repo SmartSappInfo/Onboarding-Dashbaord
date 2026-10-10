@@ -355,7 +355,7 @@ export function PersonProfileDrawer({
           <div className="p-5 pb-4 border-b bg-muted/20 space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
-                <Avatar className="w-13 h-13 border-2 border-primary/20 shadow-xs">
+                <Avatar className="w-13 h-13 shadow-xs">
                   <AvatarImage src={user.photoURL} alt={user.name} />
                   <AvatarFallback className="bg-primary/10 text-primary font-bold text-base">
                     {getInitials(user.name)}

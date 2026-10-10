@@ -16,6 +16,7 @@ describe('resolveRouteTitle', () => {
 
   it('prefers the longest (most specific) prefix', () => {
     expect(resolveRouteTitle('/admin/entities/lead-scoring', ADMIN_ROUTE_TITLES)).toBe('Lead Cleanup');
+    expect(resolveRouteTitle('/admin/call-centre', ADMIN_ROUTE_TITLES)).toBe('Call Centre');
     expect(resolveRouteTitle('/admin/messaging/call-centre', ADMIN_ROUTE_TITLES)).toBe('Call Centre');
     expect(resolveRouteTitle('/admin/messaging/threads', ADMIN_ROUTE_TITLES)).toBe('Messaging');
   });

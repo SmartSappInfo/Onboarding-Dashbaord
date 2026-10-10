@@ -137,9 +137,10 @@ export default function PdfsClient() {
 
   const filteredPdfs = useMemo(() => {
     if (!pdfs) return [];
+    const term = searchTerm.toLowerCase();
     return pdfs.filter(p => 
       (statusFilter === 'all' || p.status === statusFilter) &&
-      (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.publicTitle?.toLowerCase().includes(searchTerm.toLowerCase()))
+      (Boolean(p.name?.toLowerCase().includes(term)) || Boolean(p.publicTitle?.toLowerCase().includes(term)))
     );
   }, [pdfs, searchTerm, statusFilter]);
 
@@ -255,41 +256,42 @@ export default function PdfsClient() {
         <TooltipProvider>
             <div className="h-full overflow-y-auto w-full">
                 <div className="space-y-8 pb-32 w-full p-8">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    {/* Header with title tooltip and integrated filter/action controls */}
+                    <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                         <div className="flex items-center gap-2.5">
                             <h1 className="text-3xl font-bold text-foreground">
                                 Signing Studio
                             </h1>
                             <CardInfoTooltip text="Manage interactive institutional agreements and tracking." />
                         </div>
-                        <Button asChild className="rounded-xl font-bold shadow-lg h-11 px-8 transition-all active:scale-[0.97]">
-                            <Link href="/admin/pdfs/new">
-                                <PlusCircle className="mr-2 h-4 w-4" /> New Blueprint
-                            </Link>
-                        </Button>
-                    </div>
-                    <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm flex flex-col md:flex-row gap-3 items-center">
-                        <div className="relative flex-1 w-full max-w-sm">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                                placeholder="Search document titles..." 
-                                className="pl-10 h-10 min-h-[44px] bg-background border border-border text-foreground placeholder:text-muted-foreground rounded-xl shadow-xs transition-all font-medium" 
-                                value={searchTerm} 
-                                onChange={e => setSearchTerm(e.target.value)} 
-                            />
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto">
+                            <div className="relative w-full sm:w-60 md:w-72">
+                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-60" />
+                                <Input 
+                                    placeholder="Search document titles..." 
+                                    className="pl-10 h-11 min-h-[44px] bg-card border border-border text-foreground placeholder:text-muted-foreground rounded-xl shadow-xs transition-all font-medium text-xs w-full" 
+                                    value={searchTerm} 
+                                    onChange={e => setSearchTerm(e.target.value)} 
+                                />
+                            </div>
+                            <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                <SelectTrigger className="w-full sm:w-[150px] md:w-[160px] h-11 min-h-[44px] bg-card border border-border text-foreground rounded-xl shadow-xs transition-all text-xs font-semibold shrink-0">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl border-border bg-card">
+                                    <SelectItem value="all">Global Hub</SelectItem>
+                                    <SelectItem value="published">Published</SelectItem>
+                                    <SelectItem value="draft">Drafts</SelectItem>
+                                    <SelectItem value="archived">Archived</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <Button asChild className="rounded-xl font-bold shadow-md h-11 px-6 transition-all active:scale-[0.97] shrink-0 text-sm w-full sm:w-auto">
+                                <Link href="/admin/pdfs/new">
+                                    <PlusCircle className="mr-2 h-4 w-4" /> New Blueprint
+                                </Link>
+                            </Button>
                         </div>
-                        <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-[180px] h-10 min-h-[44px] bg-background border border-border text-foreground rounded-xl shadow-xs transition-all">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl border-border bg-card">
-                                <SelectItem value="all">Global Hub</SelectItem>
-                                <SelectItem value="published">Published</SelectItem>
-                                <SelectItem value="draft">Drafts</SelectItem>
-                                <SelectItem value="archived">Archived</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </Card>
+                    </div>
 
                     <Card className="rounded-2xl border border-border/80 bg-card shadow-sm overflow-hidden text-left">
                         <Table>

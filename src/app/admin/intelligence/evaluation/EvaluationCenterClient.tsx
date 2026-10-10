@@ -379,15 +379,8 @@ export function EvaluationCenterClient({
         {/* HEADER BAR */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border/80">
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
               Agent Evaluation Center
-              <Badge variant="outline" className="text-[10px] font-mono border-primary/30 text-primary">
-                PROD_VERIFIED
-              </Badge>
-              <span className="flex items-center gap-1 text-[11px] font-mono text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                LIVE SSE
-              </span>
             </h1>
             <CardInfoTooltip text="Multi-domain gold-standard benchmarking, continuous quality evaluation, and backoffice control plane." />
           </div>

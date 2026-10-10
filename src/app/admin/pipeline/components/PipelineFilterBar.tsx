@@ -26,9 +26,9 @@ import {
   ChevronDown,
   Archive,
   Activity,
-  Bookmark,
   Sparkles,
-  Trash2
+  Trash2,
+  Lock
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -53,6 +53,7 @@ export interface PipelineFilterBarProps {
   stages: OnboardingStage[] | null;
   showStagesFilter: boolean;
   onOpenAdvancedFilters?: () => void;
+  isRestricted?: boolean;
   // Saved views & presets integration
   workspaceId: string;
   userId: string;
@@ -77,6 +78,7 @@ export default function PipelineFilterBar({
   stages,
   showStagesFilter,
   onOpenAdvancedFilters,
+  isRestricted = false,
   workspaceId,
   userId,
   userName,
@@ -125,9 +127,9 @@ export default function PipelineFilterBar({
   };
 
   return (
-    <div className="shrink-0 mb-4 rounded-2xl border border-border/80 shadow-sm bg-card transition-all duration-200">
+    <div className="shrink-0 mb-2 rounded-2xl border border-border/80 shadow-sm bg-card transition-all duration-200">
       {/* Primary Command Bar */}
-      <div className="flex flex-wrap items-center gap-2 p-2.5 sm:p-3">
+      <div className="flex flex-wrap items-center gap-2 p-2 sm:p-2.5">
         {/* Search Input */}
         <div className="relative flex-1 min-w-[180px] sm:min-w-[220px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50 pointer-events-none" />
@@ -182,19 +184,41 @@ export default function PipelineFilterBar({
 
         {/* Owner Dropdown */}
         <Select 
-          value={filters.assignedToId ?? 'all'} 
+          value={filters.assignedToId ?? (isRestricted ? userId : 'all')} 
           onValueChange={v => updateFilter('assignedToId', v)}
+          disabled={isRestricted}
         >
-          <SelectTrigger className="h-10 sm:h-9 w-full sm:w-[130px] rounded-xl border border-border/80 bg-white dark:bg-card font-bold text-xs sm:text-[11px] shadow-xs hover:bg-muted/10 active:scale-[0.97] transition-all min-h-[44px] sm:min-h-[36px] focus-visible:ring-1 focus-visible:ring-primary/40 focus:outline-none">
-            <Users className="h-3.5 w-3.5 mr-1 text-muted-foreground/60 shrink-0" />
+          <SelectTrigger className="h-10 sm:h-9 w-full sm:w-[140px] rounded-xl border border-border/80 bg-white dark:bg-card font-bold text-xs sm:text-[11px] shadow-xs hover:bg-muted/10 active:scale-[0.97] transition-all min-h-[44px] sm:min-h-[36px] focus-visible:ring-1 focus-visible:ring-primary/40 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed">
+            {isRestricted ? (
+              <Lock className="h-3.5 w-3.5 mr-1 text-muted-foreground/60 shrink-0" />
+            ) : (
+              <Users className="h-3.5 w-3.5 mr-1 text-muted-foreground/60 shrink-0" />
+            )}
             <SelectValue placeholder="Owner" />
           </SelectTrigger>
           <SelectContent className="rounded-xl max-h-[220px]">
-            <SelectItem value="all" className="text-xs font-semibold">Any Owner</SelectItem>
-            <SelectItem value="unassigned" className="text-xs font-semibold text-muted-foreground">Unassigned</SelectItem>
-            {users?.map(u => (
-              <SelectItem key={u.id} value={u.id} className="text-xs font-semibold">{u.name || u.email}</SelectItem>
-            ))}
+            {!isRestricted && (
+              <>
+                <SelectItem value="all" className="text-xs font-semibold">Any Owner</SelectItem>
+                <SelectItem value="unassigned" className="text-xs font-semibold text-muted-foreground">Unassigned</SelectItem>
+              </>
+            )}
+            {userId && !users?.some(u => u.id === userId) && (
+              <SelectItem value={userId} className="text-xs font-semibold">
+                {userName ? `${userName} (You)` : 'You'}
+              </SelectItem>
+            )}
+            {users?.map(u => {
+              const isSelf = u.id === userId;
+              const label = isSelf
+                ? (u.name || userName ? `${u.name || userName} (You)` : 'You')
+                : (u.name || u.email || u.id);
+              return (
+                <SelectItem key={u.id} value={u.id} className="text-xs font-semibold">
+                  {label}
+                </SelectItem>
+              );
+            })}
           </SelectContent>
         </Select>
 

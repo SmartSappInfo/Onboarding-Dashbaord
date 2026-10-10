@@ -414,7 +414,7 @@ export function CapabilityRegistryClient({
                   <FileCode className="h-4 w-4" />
                 </div>
                 <DialogTitle className="text-base font-semibold tracking-tight text-foreground">
-                  Export Platform Documentation (Roadmap §25)
+                  Export Platform Documentation
                 </DialogTitle>
                 <CardInfoTooltip text="Compiles live capability definitions, Zod schemas, and governance policies into industry-standard OpenAPI 3.1.0, Model Context Protocol (MCP), or Markdown guides." />
               </div>

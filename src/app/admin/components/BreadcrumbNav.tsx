@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useNavigation } from '@/context/NavigationContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTerminology } from '@/hooks/use-terminology';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 /**
  * @fileOverview High-fidelity Breadcrumb Navigation with Adaptive Truncation and ID Filtering.
@@ -70,8 +71,8 @@ const segmentMap: Record<string, string> = {
   entities: 'Directory',
   schools: 'Directory',
   prospects: 'Lead Pipeline',
-  pipeline: 'Onboarding Pipeline',
-  deals: 'Onboarding Pipeline',
+  pipeline: 'Pipeline',
+  deals: 'Pipeline',
   meetings: 'Meetings',
   portals: 'Portals',
   media: 'Media',
@@ -102,6 +103,17 @@ const segmentMap: Record<string, string> = {
   periods: 'Billing Cycles',
   pages: 'Landing Pages',
   builder: 'Builder',
+  crm: 'CRM',
+  'enterprise-identity': 'Enterprise Identity',
+  'revenue-forecasting': 'Revenue Forecasting',
+  'revenue-operating-system': 'Revenue OS',
+  'sales-command': 'Sales Command',
+  'quick-notes': 'Quick Notes',
+  'booking-pages': 'Booking Pages',
+  'my-day': 'My Day',
+  companybrain: 'Company Brain',
+  'ai-sales-workforce': 'AI Sales Workforce',
+  flipbooks: 'Flipbooks',
 };
 
 function formatSegmentTitle(segment: string): string {
@@ -122,6 +134,16 @@ export function BreadcrumbNav() {
   const isMobile = useIsMobile();
   const { customLabels } = useNavigation();
   const { plural } = useTerminology();
+  const { activeWorkspace } = useWorkspace();
+
+  const workspacePipelineLabel = React.useMemo(() => {
+    const wsName = activeWorkspace?.name?.trim();
+    if (!wsName) return 'Pipeline';
+    if (wsName.toLowerCase().endsWith('pipeline')) {
+      return wsName;
+    }
+    return `${wsName} Pipeline`;
+  }, [activeWorkspace?.name]);
 
   const segments = pathname.split('/').filter(Boolean);
   const track = searchParams.get('track');
@@ -135,10 +157,19 @@ export function BreadcrumbNav() {
       const segment = segments[i];
       currentPath += `/${segment}`;
       
+      // Omit the redundant root '/admin' / 'Dashboard' segment so breadcrumbs
+      // begin directly with the functional module (saving critical width on mobile)
+      if (currentPath === '/admin') {
+        continue;
+      }
+
       const customLabel = customLabels[currentPath];
-      const fallbackLabel = (segment === 'schools' || segment === 'entities') 
-        ? `${plural} Directory` 
-        : (segmentMap[segment] || formatSegmentTitle(segment));
+      let fallbackLabel = segmentMap[segment] || formatSegmentTitle(segment);
+      if (segment === 'schools' || segment === 'entities') {
+        fallbackLabel = plural.toLowerCase().endsWith('contacts') ? plural : `${plural} Contacts`;
+      } else if (segment === 'pipeline' || segment === 'deals') {
+        fallbackLabel = workspacePipelineLabel;
+      }
       
       const resolvedLabel = customLabel || fallbackLabel;
       
@@ -147,11 +178,13 @@ export function BreadcrumbNav() {
         let path = currentPath;
         if (currentPath === '/admin/deals') {
           path = '/admin/pipeline';
-        } else if (currentPath === '/admin/messaging/call-centre') {
+        } else if (currentPath === '/admin/call-centre' || currentPath === '/admin/messaging/call-centre') {
           if (pathname.includes('/scripts/')) {
-            path = '/admin/messaging/call-centre?tab=scripts';
+            path = '/admin/call-centre?tab=scripts';
           } else if (pathname.includes('/campaigns/') || pathname.includes('/workspace/') || pathname.includes('/analytics/')) {
-            path = '/admin/messaging/call-centre?tab=campaigns';
+            path = '/admin/call-centre?tab=campaigns';
+          } else {
+            path = '/admin/call-centre';
           }
         }
         if (track) {
@@ -176,17 +209,20 @@ export function BreadcrumbNav() {
       });
     }
 
-    // Filter out root '/admin' segment when we are deeper in the hierarchy
-    const visibleItems = rawItems.length > 1 && rawItems[0].path === '/admin'
-      ? rawItems.slice(1)
-      : rawItems;
+    // Defensive filter: Guarantee root '/admin' / 'Dashboard' is never shown as a leading item
+    const visibleItems = rawItems.filter((item, idx) => {
+      if (idx === 0 && (item.label === 'Dashboard' || item.path.replace(/\?.*$/, '') === '/admin')) {
+        return false;
+      }
+      return true;
+    });
 
     if (visibleItems.length > 0) {
       visibleItems[visibleItems.length - 1].isLast = true;
     }
 
     return visibleItems;
-  }, [segments, customLabels, pathname, track, plural, searchParams]);
+  }, [segments, customLabels, pathname, track, plural, searchParams, workspacePipelineLabel]);
 
   // ADAPTIVE LOGIC: Collapse intermediate steps on mobile if path is deep
   const displayItems = React.useMemo(() => {
@@ -211,7 +247,8 @@ export function BreadcrumbNav() {
     }
   };
 
-  if (pathname === '/admin') {
+  const normalizedPath = pathname.replace(/\/+$/, '') || '/';
+  if (normalizedPath === '/admin' || breadcrumbItems.length === 0) {
     return <span className="text-xs font-semibold text-foreground opacity-40 truncate whitespace-nowrap block">System Dashboard</span>;
   }
 
@@ -243,7 +280,9 @@ export function BreadcrumbNav() {
                   {item.label}
                 </span>
               ) : item.isCollapsed ? (
-                <span className="text-muted-foreground/30"><MoreHorizontal className="h-3.5 w-3.5" /></span>
+                <span className="text-muted-foreground/30 inline-flex items-center" aria-label="More segments" role="img">
+                  <MoreHorizontal className="h-3.5 w-3.5" />
+                </span>
               ) : (
                 <Link 
                   href={item.path}

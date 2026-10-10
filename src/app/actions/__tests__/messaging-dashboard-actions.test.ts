@@ -309,6 +309,15 @@ describe('getMessagingDashboardSummaryAction', () => {
 
       // Inbox preview
       expect(summary.inboxPreview.length).toBeGreaterThan(0);
+      const emailPreview = summary.inboxPreview.find((i) => i.lastMessageChannel === 'email');
+      expect(emailPreview).toBeDefined();
+      expect(emailPreview?.recipientName).toBe('Kwesi Appiah');
+      expect(emailPreview?.contactAddress).toBe('parent@example.com');
+
+      const smsPreview = summary.inboxPreview.find((i) => i.lastMessageChannel === 'sms');
+      expect(smsPreview).toBeDefined();
+      expect(smsPreview?.recipientName).toBeDefined();
+      expect(smsPreview?.contactAddress).toMatch(/^\+233/);
     }
   });
 

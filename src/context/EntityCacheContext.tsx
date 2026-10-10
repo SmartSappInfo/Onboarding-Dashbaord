@@ -58,7 +58,8 @@ export function EntityCacheProvider({ children }: { children: ReactNode }) {
   const { activeWorkspaceId } = useTenant();
 
   // Per-workspace by-entityId cache for `resolve`.
-  const resolveCacheRef = useRef<Map<string, CachedEntity>>(new Map());
+  // Stores CachedEntity if found, or null if queried and not found (negative caching).
+  const resolveCacheRef = useRef<Map<string, CachedEntity | null>>(new Map());
   useEffect(() => {
     resolveCacheRef.current = new Map(); // reset on workspace switch
   }, [activeWorkspaceId]);
@@ -71,28 +72,43 @@ export function EntityCacheProvider({ children }: { children: ReactNode }) {
       const wanted = dedupeIds(entityIds);
       const missing: string[] = [];
       for (const id of wanted) {
-        const cached = resolveCacheRef.current.get(id);
-        if (cached) result.set(id, cached);
-        else missing.push(id);
+        if (resolveCacheRef.current.has(id)) {
+          const cached = resolveCacheRef.current.get(id);
+          if (cached) result.set(id, cached);
+          // If null, it was already queried and not found; do not re-query
+        } else {
+          missing.push(id);
+        }
       }
       if (missing.length === 0) return result;
 
       // Batched `entityId in [...]` queries (≤30 per chunk), run concurrently.
       await Promise.all(
         chunkIds(missing, 30).map(async (chunk) => {
-          const snap = await getDocs(
-            query(
-              collection(firestore, 'workspace_entities'),
-              where('workspaceId', '==', activeWorkspaceId),
-              where('entityId', 'in', chunk),
-            ),
-          );
-          for (const d of snap.docs) {
-            const ent = { ...(d.data() as WorkspaceEntity), id: d.id } as CachedEntity;
-            if (ent.entityId) {
-              resolveCacheRef.current.set(ent.entityId, ent);
-              result.set(ent.entityId, ent);
+          // Pre-populate missing chunk IDs as null in the cache
+          // Any documents that are returned will overwrite with the real CachedEntity.
+          for (const id of chunk) {
+            resolveCacheRef.current.set(id, null);
+          }
+
+          try {
+            const snap = await getDocs(
+              query(
+                collection(firestore, 'workspace_entities'),
+                where('workspaceId', '==', activeWorkspaceId),
+                where('entityId', 'in', chunk),
+              ),
+            );
+            for (const d of snap.docs) {
+              const ent = { ...(d.data() as WorkspaceEntity), id: d.id } as CachedEntity;
+              if (ent.entityId) {
+                resolveCacheRef.current.set(ent.entityId, ent);
+                result.set(ent.entityId, ent);
+              }
             }
+          } catch (err: unknown) {
+            // If quota is exhausted or query fails, leave as null to prevent tight re-query loops
+            console.warn('[EntityCache] Failed to fetch entity chunk:', err);
           }
         }),
       );
@@ -124,6 +140,13 @@ export function useEntityResolver() {
       const resolved = await resolve(entityIds);
       if (resolved.size > 0) {
         setEntitiesById((prev) => {
+          let hasNew = false;
+          resolved.forEach((v, k) => {
+            if (!prev.has(k) || prev.get(k) !== v) {
+              hasNew = true;
+            }
+          });
+          if (!hasNew) return prev;
           const next = new Map(prev);
           resolved.forEach((v, k) => next.set(k, v));
           return next;

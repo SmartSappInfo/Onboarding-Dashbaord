@@ -48,6 +48,7 @@ interface DealsOverviewViewProps {
   onNavigateToBoard: (filterPreset?: string) => void;
   onNavigateToList: (filterPreset?: string) => void;
   onOpenDeal: (deal: Deal) => void;
+  onScheduleCadence?: (deals: Deal[]) => void;
 }
 
 export default function DealsOverviewView({
@@ -58,6 +59,7 @@ export default function DealsOverviewView({
   onNavigateToBoard,
   onNavigateToList,
   onOpenDeal,
+  onScheduleCadence,
 }: DealsOverviewViewProps) {
   const safeStages = React.useMemo(() => {
     return Array.isArray(stages) ? stages.filter((s): s is DealStage => Boolean(s && s.id)) : [];
@@ -206,6 +208,7 @@ export default function DealsOverviewView({
         onFilterSlaBreached={() => onNavigateToBoard('sla_breached')}
         onFilterNoNextStep={() => onNavigateToList('no_next_step')}
         onFilterClosingSoon={() => onNavigateToList('closing_soon')}
+        onScheduleCadence={onScheduleCadence}
       />
 
       {/* Health Distribution & Stage Breakdown */}

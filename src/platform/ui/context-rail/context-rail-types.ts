@@ -207,6 +207,25 @@ export const EntityContextRailDataSchema = z.object({
 });
 export type EntityContextRailData = z.infer<typeof EntityContextRailDataSchema>;
 
+export const WorkspaceRecentEntitySchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  type: z.string().default('account'),
+  status: z.string().default('active'),
+  tier: z.string().optional(),
+  updatedAt: z.string().optional(),
+});
+export type WorkspaceRecentEntity = z.infer<typeof WorkspaceRecentEntitySchema>;
+
+export const WorkspaceContextRailDataSchema = z.object({
+  organizationId: z.string().min(1),
+  workspaceId: z.string().min(1),
+  activeRuns: z.array(ContextRailRunSummarySchema).default([]),
+  pendingApprovals: z.array(ContextRailProposalSummarySchema).default([]),
+  recentEntities: z.array(WorkspaceRecentEntitySchema).default([]),
+});
+export type WorkspaceContextRailData = z.infer<typeof WorkspaceContextRailDataSchema>;
+
 // ============================================================================
 // 9. CRM "ASK ABOUT THIS" INPUTS & RESULTS
 // ============================================================================

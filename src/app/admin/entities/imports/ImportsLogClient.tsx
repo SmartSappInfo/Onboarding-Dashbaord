@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { purgeExpiredFailedImportsAction, getFailedRowsAction, updateFailedRowAction, ingestBatchAction, getDuplicateRowsAction, cancelBulkUploadAction, resumeBulkUploadAction, resolveFailedRowAction } from '@/lib/bulk-upload-actions';
 import { DuplicateResolutionPortal } from './components/DuplicateResolutionPortal';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/lib/errors/report-error';
 
@@ -161,20 +162,22 @@ export default function ImportsLogClient() {
     const summaryLog = logs?.find((l: any) => l.id === summaryLogId);
 
     return (
-        <div className="max-w-6xl mx-auto p-4 md:p-8 space-y-6">
-            <Link 
-                href={backUrl} 
-                className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-all duration-200 w-fit mb-2"
-            >
-                <ArrowLeft size={16} />
-                Back to Directory
-            </Link>
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Imports Log</h1>
-                    <p className="text-muted-foreground">Monitor bulk ingestion progress and resolve conflicts.</p>
+        <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                    <Link 
+                        href={backUrl} 
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-all duration-200 w-fit"
+                    >
+                        <ArrowLeft size={13} className="shrink-0" />
+                        Back to Directory
+                    </Link>
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Imports Log</h1>
+                        <CardInfoTooltip text="Monitor bulk ingestion progress and resolve conflicts." />
+                    </div>
                 </div>
-                <Button asChild className="gap-2 shrink-0">
+                <Button asChild size="sm" className="gap-2 shrink-0 rounded-xl h-9 px-4 font-semibold active:scale-[0.97] transition-all">
                     <Link href="/admin/entities/upload">
                         <FileUp className="h-4 w-4" />
                         New Bulk Import
@@ -183,9 +186,9 @@ export default function ImportsLogClient() {
             </div>
 
             <Card className="rounded-2xl border-none shadow-sm bg-card ring-1 ring-border">
-                <CardHeader className="border-b px-6 py-4 flex flex-row items-center justify-between">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                        <HardDrive className="h-5 w-5 text-primary" />
+                <CardHeader className="border-b px-5 sm:px-6 py-3.5 flex flex-row items-center justify-between">
+                    <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                        <HardDrive className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                         Audit Trail
                     </CardTitle>
                 </CardHeader>

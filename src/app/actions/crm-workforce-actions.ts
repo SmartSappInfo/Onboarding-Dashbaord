@@ -37,12 +37,14 @@ export async function getPersonCrmWorkloadAction(params: {
   idToken: string;
   organizationId: string;
   personId: string;
+  workspaceId?: string;
 }): Promise<{ success: boolean; workload?: CrmWorkloadSummary; error?: string }> {
   try {
     await verifyCaller(params.idToken);
     const workload = await CrmWorkloadService.getPersonCrmWorkload(
       params.organizationId,
-      params.personId
+      params.personId,
+      params.workspaceId
     );
     return { success: true, workload };
   } catch (err: unknown) {
@@ -54,12 +56,18 @@ export async function getPersonCrmWorkloadAction(params: {
 export async function getOrganizationCrmWorkloadOverviewAction(params: {
   idToken: string;
   organizationId: string;
+  workspaceId?: string;
 }): Promise<{ success: boolean; workloads: CrmWorkloadSummary[]; error?: string }> {
   try {
     await verifyCaller(params.idToken);
-    const workloads = await CrmWorkloadService.getOrganizationCrmWorkloadOverview(
-      params.organizationId
-    );
+    const workloads = params.workspaceId
+      ? await CrmWorkloadService.getWorkspaceCrmWorkloadOverview(
+          params.organizationId,
+          params.workspaceId
+        )
+      : await CrmWorkloadService.getOrganizationCrmWorkloadOverview(
+          params.organizationId
+        );
     return { success: true, workloads };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Failed to get CRM workload overview';
@@ -74,17 +82,21 @@ export async function getOrganizationCrmWorkloadOverviewAction(params: {
 export async function transferOwnershipAction(params: {
   idToken: string;
   organizationId: string;
+  workspaceId?: string;
   data: {
     sourcePersonId: string;
     targetPersonId: string;
     entityTypes: CrmEntityType[];
     reason?: string;
+    workspaceId?: string;
   };
 }): Promise<{ success: boolean; job?: CrmOwnershipTransferJob; error?: string }> {
   try {
     const decoded = await verifyCaller(params.idToken);
+    const workspaceId = params.data.workspaceId || params.workspaceId;
     const job = await OwnershipTransferService.transferOwnership(params.organizationId, {
       ...params.data,
+      workspaceId,
       executedBy: decoded.uid,
     });
     return { success: true, job };
@@ -97,10 +109,14 @@ export async function transferOwnershipAction(params: {
 export async function listOwnershipTransferJobsAction(params: {
   idToken: string;
   organizationId: string;
+  workspaceId?: string;
 }): Promise<{ success: boolean; jobs: CrmOwnershipTransferJob[]; error?: string }> {
   try {
     await verifyCaller(params.idToken);
-    const jobs = await OwnershipTransferService.listTransferJobs(params.organizationId);
+    const jobs = await OwnershipTransferService.listTransferJobs(
+      params.organizationId,
+      params.workspaceId
+    );
     return { success: true, jobs };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Failed to list transfer jobs';

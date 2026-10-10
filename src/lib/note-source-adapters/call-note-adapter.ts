@@ -33,7 +33,7 @@ export function callNoteToUnified(item: RawCallQueueItem): UnifiedNote | null {
     links: { entityId: item.entityId, entityName: item.entityName },
     isPinned: false,
     createdAt: item.updatedAt || item.lastAttemptAt || '',
-    originHref: '/admin/messaging/call-centre',
+    originHref: '/admin/call-centre',
     editable: false,
   };
 }

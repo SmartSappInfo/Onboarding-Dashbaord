@@ -12,7 +12,9 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { PageContainerFluid } from '@/components/ui/page-container';
+import Link from 'next/link';
 import { 
+  ArrowLeft,
   Linkedin, 
   Facebook, 
   Instagram, 
@@ -137,6 +139,16 @@ export default function SocialAccountsPage() {
         {/* Header: Title & Description */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50 pb-6">
           <div className="flex items-center gap-2.5">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              asChild 
+              className="h-9 w-9 rounded-xl hover:bg-muted active:scale-[0.97] shrink-0 text-muted-foreground hover:text-foreground"
+            >
+              <Link href="/admin/social" aria-label="Back to Social Hub">
+                <ArrowLeft className="h-5 w-5" />
+              </Link>
+            </Button>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
               Connected Profiles
             </h1>
@@ -150,11 +162,11 @@ export default function SocialAccountsPage() {
         </div>
 
       {/* Info notice about mock mode */}
-      <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-4 flex gap-3 text-emerald-800 dark:text-emerald-300">
-        <Info className="h-5 w-5 shrink-0 mt-0.5" />
+      <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 flex gap-3 text-foreground">
+        <Info className="h-5 w-5 shrink-0 mt-0.5 text-primary" />
         <div className="text-xs leading-relaxed space-y-1">
           <span className="font-bold block">Developer Notice</span>
-          <p>
+          <p className="text-muted-foreground">
             You are running in <strong>Dual Simulation Mode</strong>. Clicking &quot;Connect Profile&quot; will instantly simulate the OAuth response locally, generating mock profile tokens and populating simulated content streams.
           </p>
         </div>
@@ -171,7 +183,7 @@ export default function SocialAccountsPage() {
           {isLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {[1, 2].map((i) => (
-                <Card key={i} className="border border-border/30 rounded-2xl bg-card/50 backdrop-blur-md">
+                <Card key={i} className="border border-border/80 rounded-2xl bg-card shadow-xs">
                   <CardHeader className="flex flex-row items-center gap-4 space-y-0">
                     <Skeleton className="h-12 w-12 rounded-full" />
                     <div className="space-y-2">
@@ -183,7 +195,7 @@ export default function SocialAccountsPage() {
               ))}
             </div>
           ) : accounts.length === 0 ? (
-            <Card className="border border-dashed border-border/40 rounded-3xl bg-card/20 backdrop-blur-sm p-12 text-center">
+            <Card className="border border-dashed border-border/80 rounded-2xl bg-card shadow-xs p-12 text-center">
               <CardContent className="space-y-4">
                 <div className="h-12 w-12 rounded-full bg-muted/40 mx-auto flex items-center justify-center text-muted-foreground">
                   <Globe className="h-6 w-6" />
@@ -199,7 +211,6 @@ export default function SocialAccountsPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {accounts.map((acc) => {
-                const Icon = iconMap[acc.platform] || Globe;
                 const colors = colorMap[acc.platform] || { 
                   bg: 'bg-muted/10', 
                   border: 'border-border/10', 
@@ -212,18 +223,15 @@ export default function SocialAccountsPage() {
                   <Card 
                     key={acc.id} 
                     className={cn(
-                      "border rounded-2xl transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 relative overflow-hidden group bg-card/60 backdrop-blur-md even:bg-muted/30 dark:even:bg-muted/15",
+                      "border border-border/80 rounded-2xl transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 relative overflow-hidden group bg-card shadow-xs text-card-foreground",
                       colors.border
                     )}
                   >
-                    {/* Brand glow overlay on hover */}
-                    <div className={cn("absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300 pointer-events-none", acc.platform === 'linkedin' ? 'bg-indigo-500' : 'bg-emerald-500')} />
-                    
                     <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-4 relative z-10">
                       <img 
                         src={acc.avatarUrl} 
                         alt={acc.displayName} 
-                        className="h-12 w-12 rounded-xl object-cover border border-border/30 bg-muted shrink-0" 
+                        className="h-12 w-12 rounded-xl object-cover border border-border/80 bg-muted shrink-0" 
                       />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
@@ -245,7 +253,7 @@ export default function SocialAccountsPage() {
                       <Button 
                         size="icon" 
                         variant="ghost" 
-                        className="h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-xl active:scale-[0.97] transition-all"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl active:scale-[0.97] transition-all"
                         onClick={() => handleRemoveAccount(acc.id, acc.displayName)}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -264,7 +272,7 @@ export default function SocialAccountsPage() {
             Available Channels
           </h2>
 
-          <Card className="border border-border/30 rounded-3xl bg-card/40 backdrop-blur-md overflow-hidden">
+          <Card className="border border-border/80 rounded-2xl bg-card shadow-xs overflow-hidden">
             <CardHeader className="pb-4">
               <CardTitle className="text-sm font-bold">Add Social Profile</CardTitle>
               <CardDescription className="text-xs">Select a channel to register it in simulated mode.</CardDescription>
@@ -287,7 +295,7 @@ export default function SocialAccountsPage() {
                     key={platform}
                     variant="outline" 
                     className={cn(
-                      "w-full justify-between h-12 rounded-xl hover:bg-muted/50 font-semibold text-xs tracking-wide active:scale-[0.97] transition-colors bg-white dark:bg-card border border-border/80 shadow-xs even:bg-muted/30 dark:even:bg-muted/15",
+                      "w-full justify-between h-12 rounded-xl hover:bg-muted/50 font-semibold text-xs tracking-wide active:scale-[0.97] transition-colors bg-card border border-border/80 shadow-xs text-card-foreground",
                       isConnected && "opacity-60"
                     )}
                     onClick={() => triggerConnect(platform)}

@@ -89,7 +89,7 @@ describe('callNoteToUnified', () => {
       source: 'call_note',
       title: 'Call with Acme',
       plainText: '[no_answer] Left a voicemail',
-      originHref: '/admin/messaging/call-centre',
+      originHref: '/admin/call-centre',
       editable: false,
     });
     expect(u!.links).toEqual({ entityId: 'e1', entityName: 'Acme' });

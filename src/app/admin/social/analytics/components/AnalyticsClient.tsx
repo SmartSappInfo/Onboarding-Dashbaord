@@ -1,19 +1,19 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { RainbowButton } from '@/components/ui/rainbow-button';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { collection, query, where } from 'firebase/firestore';
 import { Label } from '@/components/ui/label';
 import { 
-  BarChart as ChartBarIcon, 
+  ArrowLeft,
   TrendingUp, 
   MousePointer, 
   Users, 
@@ -203,158 +203,166 @@ export default function AnalyticsClient() {
         {/* Header Panel */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50 pb-6">
           <div className="flex items-center gap-2.5">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              asChild 
+              className="h-9 w-9 rounded-xl hover:bg-muted active:scale-[0.97] shrink-0 text-muted-foreground hover:text-foreground"
+            >
+              <Link href="/admin/social" aria-label="Back to Social Hub">
+                <ArrowLeft className="h-5 w-5" />
+              </Link>
+            </Button>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">ROI Analytics</h1>
             <CardInfoTooltip text="Track your social content click-through rates, lead acquisitions, and attributed program revenue." />
           </div>
 
-        <RainbowButton 
-          onClick={handleSeedMetrics}
-          disabled={isSeeding}
-          className="rounded-xl h-10 px-5 font-bold text-xs tracking-wide active:scale-[0.97] transition-all gap-1.5 shadow-sm text-white self-end md:self-auto"
-        >
-          {isSeeding ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Sparkles className="h-4 w-4" />
-          )}
-          Simulate Post Conversions
-        </RainbowButton>
-      </div>
-
-      {/* Select filters card */}
-      <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm max-w-xl">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <Label className="text-[10px] font-bold text-muted-foreground uppercase">Filter Profile Channel</Label>
-            <Select value={activePlatform} onValueChange={setActivePlatform}>
-              <SelectTrigger className="rounded-xl border-border/80 h-10 bg-background">
-                <SelectValue placeholder="All channels" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectItem value="all">All Profiles</SelectItem>
-                <SelectItem value="linkedin">LinkedIn</SelectItem>
-                <SelectItem value="facebook">Facebook</SelectItem>
-                <SelectItem value="instagram">Instagram</SelectItem>
-                <SelectItem value="x">X</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1">
-            <Label className="text-[10px] font-bold text-muted-foreground uppercase">Filter Specific Campaign</Label>
-            <Select value={selectedPostId} onValueChange={setSelectedPostId}>
-              <SelectTrigger className="rounded-xl border-border/80 h-10 bg-background">
-                <SelectValue placeholder="All campaigns" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectItem value="all">All Posts / Campaigns</SelectItem>
-                {posts.map((post) => (
-                  <SelectItem key={post.id} value={post.id}>
-                    {post.contentObject.title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <Button 
+            onClick={handleSeedMetrics}
+            disabled={isSeeding}
+            className="rounded-xl h-10 px-5 font-bold text-xs tracking-wide active:scale-[0.97] transition-all gap-1.5 shadow-xs bg-primary hover:bg-primary/90 text-primary-foreground self-end md:self-auto"
+          >
+            {isSeeding ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+            Simulate Post Conversions
+          </Button>
         </div>
-      </Card>
 
-      {/* KPI metric summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <Card className="border border-border/30 bg-card/40 backdrop-blur-sm rounded-2xl hover:-translate-y-1 hover:shadow-lg transition-all duration-300 relative overflow-hidden">
-          <CardHeader className="pb-2">
-            <CardDescription className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Platform Reach</CardDescription>
-          </CardHeader>
-          <CardContent className="flex items-center justify-between pb-4">
-            <span className="text-xl font-black text-foreground">{kpis.reach.toLocaleString()}</span>
-            <TrendingUp className="h-5 w-5 text-emerald-500 opacity-60" />
-          </CardContent>
+        {/* Select filters card */}
+        <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-xs max-w-xl">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <Label className="text-[10px] font-bold text-muted-foreground uppercase">Filter Profile Channel</Label>
+              <Select value={activePlatform} onValueChange={setActivePlatform}>
+                <SelectTrigger className="rounded-xl border-border/80 h-10 bg-background">
+                  <SelectValue placeholder="All channels" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="all">All Profiles</SelectItem>
+                  <SelectItem value="linkedin">LinkedIn</SelectItem>
+                  <SelectItem value="facebook">Facebook</SelectItem>
+                  <SelectItem value="instagram">Instagram</SelectItem>
+                  <SelectItem value="x">X</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-[10px] font-bold text-muted-foreground uppercase">Filter Specific Campaign</Label>
+              <Select value={selectedPostId} onValueChange={setSelectedPostId}>
+                <SelectTrigger className="rounded-xl border-border/80 h-10 bg-background">
+                  <SelectValue placeholder="All campaigns" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="all">All Posts / Campaigns</SelectItem>
+                  {posts.map((post) => (
+                    <SelectItem key={post.id} value={post.id}>
+                      {post.contentObject.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </Card>
 
-        <Card className="border border-border/30 bg-card/40 backdrop-blur-sm rounded-2xl hover:-translate-y-1 hover:shadow-lg transition-all duration-300 relative overflow-hidden">
-          <CardHeader className="pb-2">
-            <CardDescription className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Post Link Clicks</CardDescription>
-          </CardHeader>
-          <CardContent className="flex items-center justify-between pb-4">
-            <span className="text-xl font-black text-foreground">{kpis.clicks.toLocaleString()}</span>
-            <MousePointer className="h-5 w-5 text-emerald-500 opacity-60" />
-          </CardContent>
-        </Card>
+        {/* KPI metric summary cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <Card className="border border-border/80 bg-card rounded-2xl hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 relative overflow-hidden shadow-xs">
+            <CardHeader className="pb-2">
+              <CardDescription className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Platform Reach</CardDescription>
+            </CardHeader>
+            <CardContent className="flex items-center justify-between pb-4">
+              <span className="text-xl font-black text-foreground">{kpis.reach.toLocaleString()}</span>
+              <TrendingUp className="h-5 w-5 text-primary opacity-80" />
+            </CardContent>
+          </Card>
 
-        <Card className="border border-border/30 bg-card/40 backdrop-blur-sm rounded-2xl hover:-translate-y-1 hover:shadow-lg transition-all duration-300 relative overflow-hidden">
-          <CardHeader className="pb-2">
-            <CardDescription className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">CRM Leads Generated</CardDescription>
-          </CardHeader>
-          <CardContent className="flex items-center justify-between pb-4">
-            <span className="text-xl font-black text-foreground">{kpis.leads.toLocaleString()}</span>
-            <Users className="h-5 w-5 text-emerald-500 opacity-60" />
-          </CardContent>
-        </Card>
+          <Card className="border border-border/80 bg-card rounded-2xl hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 relative overflow-hidden shadow-xs">
+            <CardHeader className="pb-2">
+              <CardDescription className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Post Link Clicks</CardDescription>
+            </CardHeader>
+            <CardContent className="flex items-center justify-between pb-4">
+              <span className="text-xl font-black text-foreground">{kpis.clicks.toLocaleString()}</span>
+              <MousePointer className="h-5 w-5 text-primary opacity-80" />
+            </CardContent>
+          </Card>
 
-        <Card className="border border-border/30 bg-card/40 backdrop-blur-sm rounded-2xl hover:-translate-y-1 hover:shadow-lg transition-all duration-300 relative overflow-hidden">
-          <CardHeader className="pb-2">
-            <CardDescription className="text-[9px] font-bold uppercase tracking-wider text-emerald-500 flex items-center gap-1">
-              Attributed ROI Revenue
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex items-center justify-between pb-4">
-            <span className="text-xl font-black text-foreground">${kpis.revenue.toLocaleString()}</span>
-            <DollarSign className="h-5 w-5 text-emerald-500 opacity-60" />
-          </CardContent>
-        </Card>
-      </div>
+          <Card className="border border-border/80 bg-card rounded-2xl hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 relative overflow-hidden shadow-xs">
+            <CardHeader className="pb-2">
+              <CardDescription className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">CRM Leads Generated</CardDescription>
+            </CardHeader>
+            <CardContent className="flex items-center justify-between pb-4">
+              <span className="text-xl font-black text-foreground">{kpis.leads.toLocaleString()}</span>
+              <Users className="h-5 w-5 text-primary opacity-80" />
+            </CardContent>
+          </Card>
 
-      {/* Visual Analytics graphs */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        {/* Engagement log (8/12) */}
-        <Card className="lg:col-span-8 border border-border/20 bg-card/10 backdrop-blur-md rounded-3xl overflow-hidden relative shadow-2xl">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/2 to-transparent pointer-events-none" />
-          <CardHeader className="pb-6 border-b border-border/10 bg-muted/5">
-            <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Weekly Engagement Timeline</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6 h-80 max-h-[350px]">
-            <ResponsiveContainer width="100%" height="100%" debounce={100}>
-              <AreaChart data={timelineData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorReach" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(142, 70%, 45%)" stopOpacity={0.2}/>
-                    <stop offset="95%" stopColor="hsl(142, 70%, 45%)" stopOpacity={0.01}/>
-                  </linearGradient>
-                  <linearGradient id="colorClicks" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(200, 70%, 45%)" stopOpacity={0.2}/>
-                    <stop offset="95%" stopColor="hsl(200, 70%, 45%)" stopOpacity={0.01}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(128,128,128,0.1)" />
-                <XAxis dataKey="date" stroke="rgba(128,128,128,0.5)" tickLine={false} axisLine={false} style={{ fontSize: '9px', fontWeight: 'bold' }} />
-                <YAxis stroke="rgba(128,128,128,0.5)" tickLine={false} axisLine={false} style={{ fontSize: '9px', fontWeight: 'bold' }} />
-                <Tooltip contentStyle={{ background: 'rgba(0,0,0,0.85)', borderRadius: '12px', border: 'rgba(128,128,128,0.2)', fontSize: '10px', color: '#fff' }} />
-                <Area type="monotone" dataKey="Reach" stroke="hsl(142, 70%, 45%)" fillOpacity={1} fill="url(#colorReach)" strokeWidth={2} />
-                <Area type="monotone" dataKey="Clicks" stroke="hsl(200, 70%, 45%)" fillOpacity={1} fill="url(#colorClicks)" strokeWidth={2} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          <Card className="border border-border/80 bg-card rounded-2xl hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 relative overflow-hidden shadow-xs">
+            <CardHeader className="pb-2">
+              <CardDescription className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                Attributed ROI Revenue
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex items-center justify-between pb-4">
+              <span className="text-xl font-black text-foreground">${kpis.revenue.toLocaleString()}</span>
+              <DollarSign className="h-5 w-5 text-primary opacity-80" />
+            </CardContent>
+          </Card>
+        </div>
 
-        {/* Funnel Conversions (4/12) */}
-        <Card className="lg:col-span-4 border border-border/20 bg-card/10 backdrop-blur-md rounded-3xl overflow-hidden relative shadow-2xl">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/2 to-transparent pointer-events-none" />
-          <CardHeader className="pb-6 border-b border-border/10 bg-muted/5">
-            <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Pipeline Funnel</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6 h-80 max-h-[350px]">
-            <ResponsiveContainer width="100%" height="100%" debounce={100}>
-              <BarChart data={funnelData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(128,128,128,0.1)" />
-                <XAxis dataKey="stage" stroke="rgba(128,128,128,0.5)" tickLine={false} axisLine={false} style={{ fontSize: '9px', fontWeight: 'bold' }} />
-                <YAxis stroke="rgba(128,128,128,0.5)" tickLine={false} axisLine={false} style={{ fontSize: '9px', fontWeight: 'bold' }} />
-                <Tooltip contentStyle={{ background: 'rgba(0,0,0,0.85)', borderRadius: '12px', border: 'rgba(128,128,128,0.2)', fontSize: '10px', color: '#fff' }} />
-                <Bar dataKey="value" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
+        {/* Visual Analytics graphs */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+          {/* Engagement log (8/12) */}
+          <Card className="lg:col-span-8 border border-border/80 bg-card rounded-2xl overflow-hidden relative shadow-xs">
+            <CardHeader className="pb-6 border-b border-border/60 bg-muted/20">
+              <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Weekly Engagement Timeline</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6 h-80 max-h-[350px]">
+              <ResponsiveContainer width="100%" height="100%" debounce={100}>
+                <AreaChart data={timelineData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorReach" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.2}/>
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.01}/>
+                    </linearGradient>
+                    <linearGradient id="colorClicks" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(200, 70%, 45%)" stopOpacity={0.2}/>
+                      <stop offset="95%" stopColor="hsl(200, 70%, 45%)" stopOpacity={0.01}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(128,128,128,0.1)" />
+                  <XAxis dataKey="date" stroke="rgba(128,128,128,0.5)" tickLine={false} axisLine={false} style={{ fontSize: '9px', fontWeight: 'bold' }} />
+                  <YAxis stroke="rgba(128,128,128,0.5)" tickLine={false} axisLine={false} style={{ fontSize: '9px', fontWeight: 'bold' }} />
+                  <Tooltip contentStyle={{ background: 'rgba(0,0,0,0.85)', borderRadius: '12px', border: 'rgba(128,128,128,0.2)', fontSize: '10px', color: '#fff' }} />
+                  <Area type="monotone" dataKey="Reach" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorReach)" strokeWidth={2} />
+                  <Area type="monotone" dataKey="Clicks" stroke="hsl(200, 70%, 45%)" fillOpacity={1} fill="url(#colorClicks)" strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Funnel Conversions (4/12) */}
+          <Card className="lg:col-span-4 border border-border/80 bg-card rounded-2xl overflow-hidden relative shadow-xs">
+            <CardHeader className="pb-6 border-b border-border/60 bg-muted/20">
+              <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Pipeline Funnel</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6 h-80 max-h-[350px]">
+              <ResponsiveContainer width="100%" height="100%" debounce={100}>
+                <BarChart data={funnelData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(128,128,128,0.1)" />
+                  <XAxis dataKey="stage" stroke="rgba(128,128,128,0.5)" tickLine={false} axisLine={false} style={{ fontSize: '9px', fontWeight: 'bold' }} />
+                  <YAxis stroke="rgba(128,128,128,0.5)" tickLine={false} axisLine={false} style={{ fontSize: '9px', fontWeight: 'bold' }} />
+                  <Tooltip contentStyle={{ background: 'rgba(0,0,0,0.85)', borderRadius: '12px', border: 'rgba(128,128,128,0.2)', fontSize: '10px', color: '#fff' }} />
+                  <Bar dataKey="value" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </PageContainerFluid>
   );

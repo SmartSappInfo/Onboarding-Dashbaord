@@ -22,6 +22,7 @@ import {
   FileText,
   Plus,
   Trash2,
+  Users,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -69,7 +70,7 @@ export function MessagingSettingsTab({ workspaceId, className }: MessagingSettin
     } finally {
       setIsLoading(false);
     }
-  }, [workspaceId]);
+  }, [workspaceId, toast]);
 
   React.useEffect(() => {
     loadSettings();
@@ -321,7 +322,51 @@ export function MessagingSettingsTab({ workspaceId, className }: MessagingSettin
         </CardContent>
       </Card>
 
-      {/* 4. Channel Maintenance Kill-Switches */}
+      {/* 4. Conversations Visibility Governance */}
+      <Card className="rounded-2xl border border-border/80 bg-card shadow-xs">
+        <CardHeader className="p-5 sm:p-6 border-b border-border/60">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+              <Users className="h-4 w-4" />
+            </div>
+            <div>
+              <CardTitle className="text-base sm:text-lg font-bold">
+                Conversations Visibility Governance
+              </CardTitle>
+              <CardDescription className="text-xs text-muted-foreground">
+                Configure whether team members can view all workspace conversations or only their own.
+              </CardDescription>
+            </div>
+            <CardInfoTooltip text="By default, all workspace members can view everyone's conversations. Disable this to restrict team members to only viewing conversations where they are the assigned owner or recipient. Administrators always retain full visibility." />
+          </div>
+        </CardHeader>
+        <CardContent className="p-5 sm:p-6">
+          <div className="flex items-center justify-between py-1">
+            <div className="space-y-0.5 max-w-xl">
+              <p className="text-xs font-semibold text-foreground">
+                Allow everyone to view all workspace conversations
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {settings.allowViewingAllMessages
+                  ? 'All team members can browse and respond to all conversation threads across the workspace (Default).'
+                  : 'Restricted: Non-admin team members can only view conversations assigned to them.'}
+              </p>
+            </div>
+            <Switch
+              checked={settings.allowViewingAllMessages}
+              onCheckedChange={(checked) =>
+                setSettings((prev) => ({
+                  ...prev,
+                  allowViewingAllMessages: checked,
+                }))
+              }
+              aria-label="Allow everyone to view all workspace conversations"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 5. Channel Maintenance Kill-Switches */}
       <Card className="rounded-2xl border border-border/80 bg-card shadow-xs">
         <CardHeader className="p-5 sm:p-6 border-b border-border/60">
           <div className="flex items-center gap-2.5">

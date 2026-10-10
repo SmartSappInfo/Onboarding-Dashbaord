@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import type { WorkspaceEntity, MessageAudience } from '@/lib/types';
 import type { LocationValue } from '@/components/location/LocationCascade';
+import { getSpecificLocationLabel } from '@/components/location/LocationFilterPopover';
 import type { TagFilter as TagFilterState } from '@/components/tags/TagFilter';
 import { evaluateConditionNode } from '@/lib/automation-condition';
 
@@ -321,13 +322,10 @@ export function useEntityFilters({
     }
 
     if (filterState.location.country) {
-      const parts = [filterState.location.country.name];
-      if (filterState.location.region) parts.push(filterState.location.region.name);
-      if (filterState.location.district) parts.push(filterState.location.district.name);
       capsules.push({
         id: 'location',
         label: 'Location',
-        value: parts.join(' › '),
+        value: getSpecificLocationLabel(filterState.location),
         onClear: () => ({ ...filterState, location: {} }),
       });
     }

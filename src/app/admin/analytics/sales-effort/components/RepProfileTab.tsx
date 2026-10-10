@@ -21,6 +21,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   HelpCircle, 
@@ -147,13 +148,11 @@ export function RepProfileTab({
           {/* Left: Multidimensional Dimensions Breakdown (7 Cols) */}
           <Card className="lg:col-span-7 rounded-2xl border-border/40 bg-card/45 backdrop-blur-md p-6 space-y-6">
             <div className="flex items-center justify-between border-b border-border/30 pb-4">
-              <div>
+              <div className="flex items-center gap-2">
                 <h4 className="text-sm font-extrabold text-foreground flex items-center gap-2">
                   <ShieldCheck className="h-4 w-4 text-primary" /> 5-Dimension Performance Scorecard
                 </h4>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Multi-factor breakdown separating volume, intentional effort, quality, response, and results.
-                </p>
+                <CardInfoTooltip text="Multi-factor breakdown separating volume, intentional effort, quality, response, and results." />
               </div>
               <div className="text-right">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Index</span>
@@ -203,9 +202,12 @@ export function RepProfileTab({
             {/* "Why?" Explanation Card */}
             <Card className="rounded-2xl border-border/40 bg-card/45 backdrop-blur-md p-5 space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-extrabold text-foreground flex items-center gap-2">
-                  <HelpCircle className="h-4 w-4 text-amber-500" /> Score Drivers (&quot;Why?&quot;)
-                </h4>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-extrabold text-foreground flex items-center gap-2">
+                    <HelpCircle className="h-4 w-4 text-amber-500" /> Score Drivers (&quot;Why?&quot;)
+                  </h4>
+                  <CardInfoTooltip text="Operational drivers and positive or negative activity factors influencing this representative's score." />
+                </div>
                 <Badge variant="outline" className="text-[10px] font-bold">
                   Explainable
                 </Badge>
@@ -256,8 +258,11 @@ export function RepProfileTab({
             {/* Coaching Recommendation */}
             {whyExplanation?.aiRecommendation && (
               <Card className="rounded-2xl border-indigo-500/20 bg-indigo-500/5 backdrop-blur-md p-5 space-y-2">
-                <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-extrabold text-xs">
-                  <Compass className="h-4 w-4" /> Tactical Coaching Suggestion
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-extrabold text-xs">
+                    <Compass className="h-4 w-4" /> Tactical Coaching Suggestion
+                  </div>
+                  <CardInfoTooltip text="Actionable habit and pipeline coaching generated from recent sales activity trends." />
                 </div>
                 <p className="text-xs text-foreground/90 font-medium leading-relaxed">
                   &ldquo;{whyExplanation.aiRecommendation}&rdquo;

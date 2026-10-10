@@ -23,7 +23,6 @@ import { useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import {
@@ -120,11 +119,8 @@ export default function SalesEffortClient() {
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/40 pb-5">
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
               Sales Performance & Intelligence
-              <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wider text-primary border-primary/30">
-                2.0
-              </Badge>
             </h1>
             <CardInfoTooltip text="Multi-dimensional sales performance scoring, real-time quota pacing, and operational audit trail." />
           </div>

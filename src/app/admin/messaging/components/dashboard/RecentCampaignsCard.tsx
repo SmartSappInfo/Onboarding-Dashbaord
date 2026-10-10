@@ -14,6 +14,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { Megaphone, Sparkles, ArrowRight } from 'lucide-react';
+import { CardInfoTooltip } from '@/components/ui/card-info-tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -45,14 +46,21 @@ export function RecentCampaignsCard({
   return (
     <div className={cn('space-y-4', className)}>
       <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 text-card-foreground shadow-xs">
-        <div className="flex items-center justify-between pb-3 border-b border-border/60">
-          <div>
-            <h3 className="text-sm font-semibold tracking-tight text-foreground">Recent Campaigns</h3>
-            <p className="text-xs text-muted-foreground">Latest broadcast dispatches</p>
+        <div className="flex items-center justify-between pb-3 border-b border-border/60 gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 shrink-0">
+              <Megaphone className="h-3.5 w-3.5" />
+            </div>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <h3 className="text-sm sm:text-base font-semibold tracking-tight text-foreground truncate">
+                Recent Campaigns
+              </h3>
+              <CardInfoTooltip text="Latest broadcast campaigns, recipient reach, and delivery rates." />
+            </div>
           </div>
           <Link
             href="/admin/messaging/campaigns"
-            className="text-xs font-medium text-primary hover:underline flex items-center gap-1 active:scale-[0.97] transition-all"
+            className="text-xs font-medium text-primary hover:underline flex items-center gap-1 active:scale-[0.97] transition-all shrink-0"
           >
             View all <ArrowRight className="w-3 h-3" />
           </Link>

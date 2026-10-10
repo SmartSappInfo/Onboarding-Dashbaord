@@ -21,9 +21,9 @@ import WhatsAppCopyButton from './WhatsAppCopyButton';
  */
 export default function WhatsAppGuidePanel({ webhookUrl }: { webhookUrl: string }) {
   return (
-    <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm bg-card overflow-hidden">
-      {/* Thin title bar — icon aligned with title, no description */}
-      <div className="px-5 py-3.5 border-b border-border flex items-center gap-2">
+    <Card className="rounded-2xl border border-border/80 shadow-sm bg-card text-card-foreground overflow-hidden">
+      {/* Demarcated title bar */}
+      <div className="px-6 py-4 border-b border-border/60 bg-muted/20 flex items-center gap-2">
         <ListChecks className="h-4 w-4 text-primary" />
         <h2 className="text-sm font-bold tracking-tight">Step-by-step guide</h2>
       </div>

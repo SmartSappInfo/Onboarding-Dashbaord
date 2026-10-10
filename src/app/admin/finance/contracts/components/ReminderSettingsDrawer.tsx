@@ -38,10 +38,11 @@ import {
   Loader2,
   Zap,
 } from 'lucide-react';
-import type {
+import {
   ReminderScheduleConfig,
   ReminderChannel,
 } from '@/lib/types/document-signing';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 
 export interface ReminderSettingsDrawerProps {
   open: boolean;
@@ -176,221 +177,212 @@ export default function ReminderSettingsDrawer({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl p-6">
-        <DialogHeader>
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+      <DialogContent className="max-w-xl max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl">
+        <DialogHeader demarcated>
+          <div className="flex flex-row items-center gap-2.5 min-w-0">
+            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
               <Bell className="h-4 w-4" />
             </div>
-            <div>
-              <DialogTitle className="text-base font-bold text-foreground">
+            <div className="flex flex-row items-center gap-2 min-w-0">
+              <DialogTitle className="text-base font-bold text-foreground truncate">
                 Automated Reminders & Escalations
               </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground">
-                Configure signer nudges, delivery channels, renewal alerts, and quiet hours.
-              </DialogDescription>
+              <CardInfoTooltip text="Configure signer nudges, delivery channels, renewal alerts, and quiet hours." />
             </div>
           </div>
+          <DialogDescription className="sr-only">
+            Configure signer nudges, delivery channels, renewal alerts, and quiet hours.
+          </DialogDescription>
         </DialogHeader>
 
-        {isLoading ? (
-          <div className="py-12 flex flex-col items-center justify-center space-y-2 text-xs text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" />
-            <p>Loading reminder preferences...</p>
-          </div>
-        ) : (
-          <div className="space-y-6 py-2">
-            {/* Master Toggle */}
-            <div className="flex items-center justify-between p-4 rounded-xl border border-border/80 bg-muted/20">
-              <div className="space-y-0.5">
-                <Label htmlFor="master-toggle" className="text-xs font-bold text-foreground">
-                  Enable Automated Reminders
-                </Label>
-                <p className="text-[11px] text-muted-foreground">
-                  Automatically nudges pending signers based on configured schedule
-                </p>
-              </div>
-              <Switch id="master-toggle" checked={enabled} onCheckedChange={setEnabled} />
+        <div className="overflow-y-auto flex-1 p-6 space-y-6">
+          {isLoading ? (
+            <div className="py-12 flex flex-col items-center justify-center space-y-2 text-xs text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <p>Loading reminder preferences...</p>
             </div>
-
-            {/* Reminder Intervals */}
-            <div className="space-y-3">
-              <div>
-                <Label className="text-xs font-bold text-foreground">
-                  Signer Nudge Schedule
-                </Label>
-                <p className="text-[11px] text-muted-foreground">
-                  Days after dispatch when automated reminders are sent to pending signers
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {AVAILABLE_REMINDER_DAYS.map((day) => {
-                  const isSelected = reminderDays.includes(day);
-                  return (
-                    <Button
-                      key={day}
-                      type="button"
-                      variant={isSelected ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => toggleReminderDay(day)}
-                      disabled={!enabled}
-                      className="rounded-xl text-xs font-bold h-9 px-4 active:scale-[0.97] transition-all min-h-[44px] sm:min-h-0"
-                    >
-                      {day} Days After Sending
-                    </Button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Delivery Channels */}
-            <div className="space-y-3">
-              <div>
-                <Label className="text-xs font-bold text-foreground">Notification Channels</Label>
-                <p className="text-[11px] text-muted-foreground">
-                  Select which transactional communication rails to use for reminders
-                </p>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div
-                  onClick={() => enabled && toggleChannel('email')}
-                  className={`p-3.5 rounded-xl border cursor-pointer transition-all flex items-center gap-3 ${
-                    channels.includes('email')
-                      ? 'border-primary bg-primary/5 text-primary'
-                      : 'border-border bg-card text-muted-foreground'
-                  }`}
-                >
-                  <Mail className="h-4 w-4" />
-                  <div className="text-xs font-semibold">Email</div>
-                </div>
-
-                <div
-                  onClick={() => enabled && toggleChannel('sms')}
-                  className={`p-3.5 rounded-xl border cursor-pointer transition-all flex items-center gap-3 ${
-                    channels.includes('sms')
-                      ? 'border-primary bg-primary/5 text-primary'
-                      : 'border-border bg-card text-muted-foreground'
-                  }`}
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  <div className="text-xs font-semibold">SMS (mNotify)</div>
-                </div>
-
-                <div
-                  onClick={() => enabled && toggleChannel('whatsapp')}
-                  className={`p-3.5 rounded-xl border cursor-pointer transition-all flex items-center gap-3 ${
-                    channels.includes('whatsapp')
-                      ? 'border-primary bg-primary/5 text-primary'
-                      : 'border-border bg-card text-muted-foreground'
-                  }`}
-                >
-                  <Zap className="h-4 w-4" />
-                  <div className="text-xs font-semibold">WhatsApp</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Contract Renewal Advance Alerts */}
-            <div className="space-y-3">
-              <div>
-                <Label className="text-xs font-bold text-foreground">
-                  Contract Renewal Warnings
-                </Label>
-                <p className="text-[11px] text-muted-foreground">
-                  Advance notices sent to internal deal owners before agreement expiration
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {AVAILABLE_RENEWAL_DAYS.map((day) => {
-                  const isSelected = renewalAlertDays.includes(day);
-                  return (
-                    <Button
-                      key={day}
-                      type="button"
-                      variant={isSelected ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => toggleRenewalDay(day)}
-                      disabled={!enabled}
-                      className="rounded-xl text-xs font-bold h-9 px-4 active:scale-[0.97] transition-all min-h-[44px] sm:min-h-0"
-                    >
-                      {day} Days Before Renewal
-                    </Button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Quiet Hours Window */}
-            <div className="p-4 rounded-xl border border-border/80 bg-muted/10 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="quiet-hours" className="text-xs font-bold text-foreground">
-                    Quiet Hours Protection
+          ) : (
+            <div className="space-y-6">
+              {/* Master Toggle */}
+              <div className="flex items-center justify-between p-4 rounded-xl border border-border/80 bg-muted/20">
+                <div className="flex items-center gap-1.5">
+                  <Label htmlFor="master-toggle" className="text-xs font-bold text-foreground cursor-pointer">
+                    Enable Automated Reminders
                   </Label>
-                  <p className="text-[11px] text-muted-foreground">
-                    Holds messages during night hours in counterparty local time
-                  </p>
+                  <CardInfoTooltip text="Automatically nudges pending signers based on configured schedule." />
+                </div>
+                <Switch id="master-toggle" checked={enabled} onCheckedChange={setEnabled} />
+              </div>
+
+              {/* Reminder Intervals */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs font-bold text-foreground">
+                    Signer Nudge Schedule
+                  </Label>
+                  <CardInfoTooltip text="Days after dispatch when automated reminders are sent to pending signers." />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {AVAILABLE_REMINDER_DAYS.map((day) => {
+                    const isSelected = reminderDays.includes(day);
+                    return (
+                      <Button
+                        key={day}
+                        type="button"
+                        variant={isSelected ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => toggleReminderDay(day)}
+                        disabled={!enabled}
+                        className="rounded-xl text-xs font-bold h-9 px-4 active:scale-[0.97] transition-all min-h-[44px] sm:min-h-0"
+                      >
+                        {day} Days After Sending
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Delivery Channels */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs font-bold text-foreground">Notification Channels</Label>
+                  <CardInfoTooltip text="Select which transactional communication rails to use for reminders." />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div
+                    onClick={() => enabled && toggleChannel('email')}
+                    className={`p-3.5 rounded-xl border cursor-pointer transition-all flex items-center gap-3 ${
+                      channels.includes('email')
+                        ? 'border-primary bg-primary/5 text-primary'
+                        : 'border-border bg-card text-muted-foreground'
+                    }`}
+                  >
+                    <Mail className="h-4 w-4" />
+                    <div className="text-xs font-semibold">Email</div>
+                  </div>
+
+                  <div
+                    onClick={() => enabled && toggleChannel('sms')}
+                    className={`p-3.5 rounded-xl border cursor-pointer transition-all flex items-center gap-3 ${
+                      channels.includes('sms')
+                        ? 'border-primary bg-primary/5 text-primary'
+                        : 'border-border bg-card text-muted-foreground'
+                    }`}
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                    <div className="text-xs font-semibold">SMS (mNotify)</div>
+                  </div>
+
+                  <div
+                    onClick={() => enabled && toggleChannel('whatsapp')}
+                    className={`p-3.5 rounded-xl border cursor-pointer transition-all flex items-center gap-3 ${
+                      channels.includes('whatsapp')
+                        ? 'border-primary bg-primary/5 text-primary'
+                        : 'border-border bg-card text-muted-foreground'
+                    }`}
+                  >
+                    <Zap className="h-4 w-4" />
+                    <div className="text-xs font-semibold">WhatsApp</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contract Renewal Advance Alerts */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs font-bold text-foreground">
+                    Contract Renewal Warnings
+                  </Label>
+                  <CardInfoTooltip text="Advance notices sent to internal deal owners before agreement expiration." />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {AVAILABLE_RENEWAL_DAYS.map((day) => {
+                    const isSelected = renewalAlertDays.includes(day);
+                    return (
+                      <Button
+                        key={day}
+                        type="button"
+                        variant={isSelected ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => toggleRenewalDay(day)}
+                        disabled={!enabled}
+                        className="rounded-xl text-xs font-bold h-9 px-4 active:scale-[0.97] transition-all min-h-[44px] sm:min-h-0"
+                      >
+                        {day} Days Before Renewal
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Quiet Hours Window */}
+              <div className="p-4 rounded-xl border border-border/80 bg-muted/10 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="quiet-hours" className="text-xs font-bold text-foreground cursor-pointer">
+                      Quiet Hours Protection
+                    </Label>
+                    <CardInfoTooltip text="Holds messages during night hours in counterparty local time." />
+                  </div>
+                  <Switch
+                    id="quiet-hours"
+                    checked={quietHoursEnabled}
+                    onCheckedChange={setQuietHoursEnabled}
+                    disabled={!enabled}
+                  />
+                </div>
+
+                {quietHoursEnabled && (
+                  <div className="grid grid-cols-2 gap-3 pt-2">
+                    <div className="space-y-1">
+                      <Label className="text-[11px] font-medium text-muted-foreground">Start Time</Label>
+                      <Input
+                        type="time"
+                        value={quietHoursStart}
+                        onChange={(e) => setQuietHoursStart(e.target.value)}
+                        disabled={!enabled}
+                        className="text-base sm:text-xs rounded-xl h-9"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[11px] font-medium text-muted-foreground">End Time</Label>
+                      <Input
+                        type="time"
+                        value={quietHoursEnd}
+                        onChange={(e) => setQuietHoursEnd(e.target.value)}
+                        disabled={!enabled}
+                        className="text-base sm:text-xs rounded-xl h-9"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Deal Stage Auto-Progression */}
+              <div className="flex items-center justify-between p-4 rounded-xl border border-border/80 bg-muted/20">
+                <div className="flex items-center gap-1.5">
+                  <Label htmlFor="auto-stage" className="text-xs font-bold text-foreground cursor-pointer">
+                    CRM Deal Auto-Won Progression
+                  </Label>
+                  <CardInfoTooltip text="Automatically mark linked CRM deal as Won upon final contract signature." />
                 </div>
                 <Switch
-                  id="quiet-hours"
-                  checked={quietHoursEnabled}
-                  onCheckedChange={setQuietHoursEnabled}
-                  disabled={!enabled}
+                  id="auto-stage"
+                  checked={dealAutoStageAdvance}
+                  onCheckedChange={setDealAutoStageAdvance}
                 />
               </div>
-
-              {quietHoursEnabled && (
-                <div className="grid grid-cols-2 gap-3 pt-2">
-                  <div className="space-y-1">
-                    <Label className="text-[11px] font-medium text-muted-foreground">Start Time</Label>
-                    <Input
-                      type="time"
-                      value={quietHoursStart}
-                      onChange={(e) => setQuietHoursStart(e.target.value)}
-                      disabled={!enabled}
-                      className="text-base sm:text-xs rounded-xl h-9"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[11px] font-medium text-muted-foreground">End Time</Label>
-                    <Input
-                      type="time"
-                      value={quietHoursEnd}
-                      onChange={(e) => setQuietHoursEnd(e.target.value)}
-                      disabled={!enabled}
-                      className="text-base sm:text-xs rounded-xl h-9"
-                    />
-                  </div>
-                </div>
-              )}
             </div>
+          )}
+        </div>
 
-            {/* Deal Stage Auto-Progression */}
-            <div className="flex items-center justify-between p-4 rounded-xl border border-border/80 bg-muted/20">
-              <div className="space-y-0.5">
-                <Label htmlFor="auto-stage" className="text-xs font-bold text-foreground">
-                  CRM Deal Auto-Won Progression
-                </Label>
-                <p className="text-[11px] text-muted-foreground">
-                  Automatically mark linked CRM deal as Won upon final contract signature
-                </p>
-              </div>
-              <Switch
-                id="auto-stage"
-                checked={dealAutoStageAdvance}
-                onCheckedChange={setDealAutoStageAdvance}
-              />
-            </div>
-          </div>
-        )}
-
-        <DialogFooter className="gap-2 sm:gap-0 pt-3">
+        <DialogFooter demarcated>
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isSaving}
-            className="rounded-xl text-xs font-bold min-h-[44px] sm:min-h-0"
+            className="rounded-xl text-xs font-bold min-h-[44px] sm:min-h-0 active:scale-[0.97]"
           >
             Cancel
           </Button>
@@ -398,7 +390,7 @@ export default function ReminderSettingsDrawer({
             type="button"
             onClick={handleSave}
             disabled={isSaving || isLoading}
-            className="rounded-xl text-xs font-bold active:scale-[0.97] transition-all min-h-[44px] sm:min-h-0"
+            className="rounded-xl text-xs font-bold active:scale-[0.97] transition-all min-h-[44px] sm:min-h-0 bg-primary text-primary-foreground font-medium"
           >
             {isSaving ? (
               <>

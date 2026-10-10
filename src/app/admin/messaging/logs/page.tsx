@@ -445,10 +445,22 @@ export default function MessageLogsPage() {
  <div className="p-4 rounded-xl bg-muted/30 border border-dashed text-xs font-semibold tracking-tight shadow-inner">
  <span className="opacity-40 mr-2 text-left">Subject:</span> {selectedLog.subject}
                                         </div>
- <div className="border rounded-3xl bg-card shadow-2xl min-h-[350px] overflow-hidden relative ring-1 ring-border/50 text-left">
+ <div className="border rounded-2xl bg-card shadow-lg min-h-[350px] overflow-hidden relative ring-1 ring-border/50 text-left p-4 sm:p-6 md:p-8">
  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-20" />
                                             <div 
- className="p-8 prose prose-sm max-w-none text-foreground dark:prose-invert leading-relaxed font-medium"
+ className={cn(
+   "prose prose-sm max-w-none text-foreground dark:prose-invert leading-relaxed font-medium",
+   "[&_.container]:w-full [&_.container]:max-w-full [&_.container]:rounded-xl [&_.container]:overflow-hidden [&_.container]:border [&_.container]:border-border/60 [&_.container]:shadow-xs",
+   "[&_.content]:!p-6 sm:[&_.content]:!p-8 md:[&_.content]:!p-10 [&_.content]:space-y-4",
+   "[&_.header]:!p-5 sm:[&_.header]:!p-6 [&_.header]:border-b [&_.header]:border-border/40",
+   "[&_.footer]:!p-5 sm:[&_.footer]:!p-6 [&_.footer]:border-t [&_.footer]:border-border/40",
+   "[&_td]:!p-4 sm:[&_td]:!p-6",
+   "dark:[&_.container]:!bg-card/90 dark:[&_.container]:!border-border/60 dark:[&_.container]:!text-foreground",
+   "dark:[&_.content]:!bg-card/95 dark:[&_.content]:!text-foreground",
+   "dark:[&_.header]:!bg-muted/20 dark:[&_.header]:!border-border/40",
+   "dark:[&_.footer]:!bg-muted/20 dark:[&_.footer]:!border-border/40",
+   "dark:[&_p]:!text-foreground/90 dark:[&_span]:!text-foreground/90 dark:[&_div]:!text-foreground/90"
+ )}
                                                 dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedLog.body, { ADD_ATTR: ['target'] }) }}
                                             />
                                         </div>

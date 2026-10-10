@@ -1,12 +1,12 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import { QuickTemplatesCard, STARTER_TEMPLATES } from '../QuickTemplatesCard';
+import { QuickTemplatesCard } from '../QuickTemplatesCard';
 
 describe('QuickTemplatesCard', () => {
-  it('renders title, subtitle, and all starter templates', () => {
+  it('renders title, info tooltip, and all starter templates', () => {
     render(<QuickTemplatesCard />);
     expect(screen.getByText('Quick Templates')).toBeInTheDocument();
-    expect(screen.getByText(/Standardized starter layouts/i)).toBeInTheDocument();
+    expect(screen.getByTestId('card-info-tooltip')).toBeInTheDocument();
     expect(screen.getByText('Welcome Message')).toBeInTheDocument();
     expect(screen.getByText('Fee Reminder')).toBeInTheDocument();
     expect(screen.getByText('Event Invite')).toBeInTheDocument();

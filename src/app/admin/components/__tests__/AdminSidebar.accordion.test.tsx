@@ -102,7 +102,7 @@ describe('AdminSidebar accordion', () => {
     mockPathname = '/admin/surveys';
     render(<AdminSidebar />);
 
-    expect(isGroupOpen('Studios')).toBe(true);
+    expect(isGroupOpen('Studio')).toBe(true);
     expect(isGroupOpen('Work')).toBe(false);
   });
 
@@ -111,12 +111,12 @@ describe('AdminSidebar accordion', () => {
     mockPathname = '/admin/surveys';
     render(<AdminSidebar />);
 
-    expect(isGroupOpen('Studios')).toBe(true);
+    expect(isGroupOpen('Studio')).toBe(true);
 
     await user.click(groupTrigger('Transact'));
 
     expect(isGroupOpen('Transact')).toBe(true);
-    expect(isGroupOpen('Studios')).toBe(false);
+    expect(isGroupOpen('Studio')).toBe(false);
     expect(isGroupOpen('Work')).toBe(false);
   });
 
@@ -136,13 +136,13 @@ describe('AdminSidebar accordion', () => {
     mockPathname = '/admin/surveys';
     const { rerender } = render(<AdminSidebar />);
 
-    await user.click(groupTrigger('Automation'));
-    expect(isGroupOpen('Automation')).toBe(true);
+    await user.click(groupTrigger('Automations'));
+    expect(isGroupOpen('Automations')).toBe(true);
 
     // A re-render on the same route must not snap back to the route's own group.
     rerender(<AdminSidebar />);
-    expect(isGroupOpen('Automation')).toBe(true);
-    expect(isGroupOpen('Studios')).toBe(false);
+    expect(isGroupOpen('Automations')).toBe(true);
+    expect(isGroupOpen('Studio')).toBe(false);
   });
 
   it('falls back to Work when the route matches no group', () => {
@@ -165,8 +165,8 @@ describe('AdminSidebar search', () => {
     const user = userEvent.setup();
     render(<AdminSidebar />);
 
-    // Studios is closed on /admin, so Surveys is not reachable without searching.
-    expect(isGroupOpen('Studios')).toBe(false);
+    // Studio is closed on /admin, so Surveys is not reachable without searching.
+    expect(isGroupOpen('Studio')).toBe(false);
 
     await user.type(field(), 'survey');
 

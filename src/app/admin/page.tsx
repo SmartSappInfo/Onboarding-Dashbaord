@@ -39,7 +39,7 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
                     <div className="w-16 h-16 mx-auto bg-primary/10 rounded-2xl flex items-center justify-center mb-6">
                         <LayoutGrid className="h-8 w-8 text-primary" />
                     </div>
-                    <h2 className="text-2xl font-semibold tracking-tight">Welcome to Intelligence Hub</h2>
+                    <h2 className="text-2xl font-semibold tracking-tight">Welcome to Dashboard</h2>
                     <p className="text-muted-foreground">
                         You do not currently have an active workspace selected, or your organization has no workspaces. Please select or create a workspace to view dashboard metrics.
                     </p>

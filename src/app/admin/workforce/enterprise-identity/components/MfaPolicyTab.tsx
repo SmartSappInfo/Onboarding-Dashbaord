@@ -12,13 +12,14 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import {
   ShieldCheck,
   Fingerprint,
@@ -87,11 +88,9 @@ export function MfaPolicyTab({ policy, onSave, isSaving }: MfaPolicyTabProps) {
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-2">
               <Fingerprint className="w-5 h-5 text-primary" />
-              <div>
+              <div className="flex items-center gap-1.5">
                 <CardTitle className="text-sm font-bold">MFA & Passkeys Policy</CardTitle>
-                <CardDescription className="text-xs">
-                  Enforce strong second-factor authentication and hardware-bound passkeys
-                </CardDescription>
+                <CardInfoTooltip text="Enforce strong second-factor authentication and hardware-bound passkeys" />
               </div>
             </div>
             <Badge

@@ -95,9 +95,9 @@ export const DEFAULT_ORG_STYLE_WRAPPER = `
 </head>
 <body style="margin: 0; padding: 0; background-color: #F8FAFC; font-family: 'Figtree', Helvetica, Arial, sans-serif; color: #1E293B;">
   <div style="background-color: #F8FAFC; padding: 32px 16px;">
-    <div style="max-width: 600px; margin: 0 auto; background-color: #FFFFFF; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05); border: 1px solid #E2E8F0;">
+    <div class="container" style="max-width: 600px; margin: 0 auto; background-color: #FFFFFF; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05); border: 1px solid #E2E8F0;">
       <!-- Header Logo Bar -->
-      <div style="padding: 28px 32px 20px 32px; border-bottom: 1px solid #F1F5F9; text-align: left;">
+      <div class="header" style="padding: 28px 32px 20px 32px; border-bottom: 1px solid #F1F5F9; text-align: left;">
         {{#if org_logo_url}}
           <img src="{{org_logo_url}}" alt="{{org_name}}" style="max-height: 48px; width: auto; display: block; border: 0;" />
         {{else}}
@@ -105,11 +105,13 @@ export const DEFAULT_ORG_STYLE_WRAPPER = `
         {{/if}}
       </div>
       <!-- Email Main Content Gateway -->
-      <div style="padding: 36px 32px; font-size: 15px; line-height: 1.6; color: #334155;">
+      <div class="content" style="padding: 36px 32px; font-size: 15px; line-height: 1.6; color: #334155;">
         {{content}}
       </div>
       <!-- Organization Footer -->
-      {{org_footer}}
+      <div class="footer">
+        {{org_footer}}
+      </div>
     </div>
   </div>
 </body>

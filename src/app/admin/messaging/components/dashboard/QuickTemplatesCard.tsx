@@ -14,6 +14,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { FileText, ArrowRight, Sparkles, DollarSign, Calendar, Megaphone, UserPlus } from 'lucide-react';
+import { CardInfoTooltip } from '@/components/ui/card-info-tooltip';
 import { cn } from '@/lib/utils';
 import type { MessagingDashboardChannel } from '@/lib/types/messaging-dashboard';
 
@@ -82,14 +83,21 @@ export function QuickTemplatesCard({ onSelectTemplate, allowedTemplateIds, class
 
   return (
     <div className={cn('rounded-2xl border border-border/80 bg-card p-4 sm:p-5 text-card-foreground shadow-xs', className)}>
-      <div className="flex items-center justify-between pb-3 border-b border-border/60">
-        <div>
-          <h3 className="text-sm font-semibold tracking-tight text-foreground">Quick Templates</h3>
-          <p className="text-xs text-muted-foreground">Standardized starter layouts</p>
+      <div className="flex items-center justify-between pb-3 border-b border-border/60 gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
+            <FileText className="h-3.5 w-3.5" />
+          </div>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <h3 className="text-sm sm:text-base font-semibold tracking-tight text-foreground truncate">
+              Quick Templates
+            </h3>
+            <CardInfoTooltip text="Standardized starter layouts and reusable broadcast templates." />
+          </div>
         </div>
         <Link
           href="/admin/messaging/templates"
-          className="text-xs font-medium text-primary hover:underline flex items-center gap-1 active:scale-[0.97] transition-all"
+          className="text-xs font-medium text-primary hover:underline flex items-center gap-1 active:scale-[0.97] transition-all shrink-0"
         >
           All templates <ArrowRight className="w-3 h-3" />
         </Link>

@@ -33,6 +33,20 @@ if (process.env.NODE_ENV === 'development') {
         return;
       }
 
+      // Suppress benign Firestore multi-tab primary lease contention logs in development.
+      // In multi-tab mode (persistentMultipleTabManager), secondary tabs log advisory lease
+      // re-election notices at error level while deferring remote event applications to the primary tab.
+      const isFirestoreLeaseNotice = args.some(
+        (arg) => typeof arg === 'string' && (
+          arg.includes('Failed to obtain primary lease') ||
+          arg.includes('primary lease for action')
+        )
+      );
+
+      if (isFirestoreLeaseNotice) {
+        return;
+      }
+
       originalError.apply(console, args);
     };
 

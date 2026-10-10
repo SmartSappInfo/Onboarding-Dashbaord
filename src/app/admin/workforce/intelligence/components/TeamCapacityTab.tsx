@@ -12,8 +12,9 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Layers, AlertTriangle, CheckCircle2, Flame } from 'lucide-react';
 import type { TeamIntelligenceSummary, TeamCapacityStatus } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -57,12 +58,10 @@ export function TeamCapacityTab({ teams }: TeamCapacityTabProps) {
       <Card className="border bg-card shadow-xs">
         <CardHeader className="p-4 pb-3 border-b bg-muted/20">
           <div className="flex items-center gap-2">
-            <Layers className="w-5 h-5 text-primary" />
-            <div>
+            <Layers className="w-5 h-5 text-primary shrink-0" />
+            <div className="flex items-center gap-2">
               <CardTitle className="text-sm font-bold">Team Utilization & Operational Capacity</CardTitle>
-              <CardDescription className="text-xs">
-                Real-time workload balancing across departments and operational squads
-              </CardDescription>
+              <CardInfoTooltip text="Real-time workload balancing across departments and operational squads." />
             </div>
           </div>
         </CardHeader>
@@ -73,10 +72,12 @@ export function TeamCapacityTab({ teams }: TeamCapacityTabProps) {
               key={t.teamId}
               className="p-4 border rounded-lg bg-card hover:bg-muted/10 transition-colors space-y-3"
             >
-              <div className="flex items-start justify-between gap-2">
-                <div>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
                   <h4 className="font-bold text-xs text-foreground">{t.teamName}</h4>
-                  <span className="text-[10px] text-muted-foreground">{t.departmentName}</span>
+                  <Badge variant="outline" className="text-[9px] py-0 px-1.5 h-4 font-normal text-muted-foreground">
+                    {t.departmentName}
+                  </Badge>
                 </div>
                 {statusBadge(t.status)}
               </div>

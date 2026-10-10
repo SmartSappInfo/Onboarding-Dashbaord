@@ -2,8 +2,8 @@ import PipelineClient from './PipelineClient';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Onboarding Pipeline',
-  description: 'Visual Kanban tracking for school progression from initial signup to go-live.',
+  title: 'Pipeline',
+  description: 'Visual Kanban tracking for progression across stages.',
 };
 
 export default function PipelinePage() {

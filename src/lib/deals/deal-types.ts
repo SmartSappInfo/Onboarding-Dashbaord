@@ -777,4 +777,80 @@ export interface CreateDealWithNewEntityResult {
   duplicates?: import('../entity-duplicate-detection').DuplicateMatch[];
 }
 
+// ==========================================
+// DEAL TASK CADENCE & CLEANUP ENGINE
+// ==========================================
+
+export type DealCadenceActionType = 'call' | 'email' | 'meeting' | 'review' | 'custom';
+export type DealCadenceAssigneeMode = 'single' | 'round_robin' | 'ai_balanced';
+
+export interface DealCadenceTimeSlot {
+  dealId: string;
+  dealTitle: string;
+  dealValue: number;
+  focalContactName?: string;
+  focalContactEmail?: string;
+  focalContactPhone?: string;
+  assigneeId: string;
+  assigneeName: string;
+  assigneeEmail?: string;
+  scheduledAt: string; // ISO 8601 string
+  dayIndex: number;    // 0-indexed day relative to start
+  actionTitle: string;
+  actionDescription?: string;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  aiRecommended?: boolean;
+}
+
+export interface DealTaskCadenceConfig {
+  workspaceId: string;
+  organizationId: string;
+  dealIds: string[];
+  actionType: DealCadenceActionType;
+  taskTitle: string;
+  taskDescription?: string;
+  taskPriority: 'low' | 'medium' | 'high' | 'urgent';
+  maxFrequencyPerDay: number; // 1 to 50 tasks per rep/day
+  startDate: string;          // YYYY-MM-DD
+  startTime: string;          // HH:mm (e.g., "09:00")
+  intervalMinutes: number;    // e.g., 30, 45, 60 minutes between touches
+  skipWeekends: boolean;      // Skip Saturday and Sunday
+  assigneeMode: DealCadenceAssigneeMode;
+  targetAssigneeIds: string[]; // 1 ID for 'single', 1+ IDs for 'round_robin' or 'ai_balanced'
+  enableAiActionCustomization?: boolean;
+  idempotencyKey?: string;
+}
+
+export interface DealTaskCadenceDaySummary {
+  date: string;
+  dayNumber: number;
+  taskCount: number;
+  deals: Array<{ id: string; title: string; assigneeName: string; time: string }>;
+}
+
+export interface DealTaskCadencePreview {
+  workspaceId: string;
+  totalDeals: number;
+  totalPipelineValue: number;
+  totalDaysSpanned: number;
+  startDate: string;
+  endDate: string;
+  slots: DealCadenceTimeSlot[];
+  daySummaries: DealTaskCadenceDaySummary[];
+}
+
+export interface DealTaskCadenceExecutionResult {
+  jobId: string;
+  workspaceId: string;
+  totalDealsProcessed: number;
+  tasksCreatedCount: number;
+  dealsUpdatedCount: number;
+  startDate: string;
+  endDate: string;
+  executedAt: string;
+  status: 'completed' | 'partial' | 'failed';
+  errors?: string[];
+}
+
+
 

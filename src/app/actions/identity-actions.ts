@@ -270,7 +270,12 @@ export async function getPeopleDirectoryAction(params: {
       }
 
       if (params.filter?.workspaceId) {
-        if (!enrichedWsMems.some((w) => w.workspaceId === params.filter?.workspaceId)) continue;
+        const targetWsId = params.filter.workspaceId;
+        const inMemberships = enrichedWsMems.some((w) => w.workspaceId === targetWsId);
+        const inProfileArray = Array.isArray(userProfile.workspaceIds) && userProfile.workspaceIds.includes(targetWsId);
+        const legacyWsId = (userProfile as { workspaceId?: string }).workspaceId;
+        const inProfileSingle = legacyWsId === targetWsId;
+        if (!inMemberships && !inProfileArray && !inProfileSingle) continue;
       }
 
       detailViews.push({

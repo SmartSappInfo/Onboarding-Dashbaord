@@ -603,8 +603,8 @@ export default function PackagesClient() {
   return (
     <PageContainerFluid>
       <div className="space-y-6 pb-20 w-full text-left">
-        {/* Header Banner */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-2xl bg-card border border-border/80 shadow-sm">
+        {/* Header Banner - Direct header without enclosing card */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
               Commercial & Pricing Hub
@@ -648,40 +648,40 @@ export default function PackagesClient() {
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as typeof activeTab)} className="space-y-6">
-          <TabsList className="bg-muted/40 p-1.5 rounded-2xl border border-border/50 h-auto flex flex-wrap gap-1">
+        {/* Tab Navigation - Left-aligned tabs with full-width container stretching as wide as cards */}
+        <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as typeof activeTab)} className="w-full space-y-6">
+          <TabsList className="w-full justify-start bg-muted/40 p-1.5 rounded-2xl border border-border/50 h-auto flex flex-wrap gap-1">
             <TabsTrigger 
               value="products" 
-              className="rounded-xl font-bold text-xs px-4 py-2.5 min-h-[40px] data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-primary gap-2"
+              className="rounded-xl font-bold text-xs px-4 py-2.5 min-h-[40px] data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-primary gap-2 active:scale-[0.97] transition-all"
             >
               <Package className="h-3.5 w-3.5" />
               Products & Services ({products.length})
             </TabsTrigger>
             <TabsTrigger 
               value="packages" 
-              className="rounded-xl font-bold text-xs px-4 py-2.5 min-h-[40px] data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-primary gap-2"
+              className="rounded-xl font-bold text-xs px-4 py-2.5 min-h-[40px] data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-primary gap-2 active:scale-[0.97] transition-all"
             >
               <Wallet className="h-3.5 w-3.5" />
               Subscription Tiers ({packages.length})
             </TabsTrigger>
             <TabsTrigger 
               value="price_books" 
-              className="rounded-xl font-bold text-xs px-4 py-2.5 min-h-[40px] data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-primary gap-2"
+              className="rounded-xl font-bold text-xs px-4 py-2.5 min-h-[40px] data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-primary gap-2 active:scale-[0.97] transition-all"
             >
               <BookOpen className="h-3.5 w-3.5" />
               Price Books ({priceBooks.length})
             </TabsTrigger>
             <TabsTrigger 
               value="categories" 
-              className="rounded-xl font-bold text-xs px-4 py-2.5 min-h-[40px] data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-primary gap-2"
+              className="rounded-xl font-bold text-xs px-4 py-2.5 min-h-[40px] data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-primary gap-2 active:scale-[0.97] transition-all"
             >
               <Tag className="h-3.5 w-3.5" />
               Categories ({categories.length})
             </TabsTrigger>
             <TabsTrigger 
               value="analytics" 
-              className="rounded-xl font-bold text-xs px-4 py-2.5 min-h-[40px] data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-primary gap-2"
+              className="rounded-xl font-bold text-xs px-4 py-2.5 min-h-[40px] data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-primary gap-2 active:scale-[0.97] transition-all"
             >
               <TrendingUp className="h-3.5 w-3.5" />
               Commercial Analytics & AI
@@ -812,8 +812,8 @@ export default function PackagesClient() {
 
           {/* TAB 2: SUBSCRIPTION PACKAGES */}
           <TabsContent value="packages" className="space-y-4">
-            <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm max-w-md">
-              <div className="relative">
+            <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm">
+              <div className="relative max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground opacity-50" />
                 <Input 
                   placeholder="Search subscription packages..." 

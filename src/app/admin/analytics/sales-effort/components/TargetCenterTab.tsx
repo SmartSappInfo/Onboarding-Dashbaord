@@ -19,6 +19,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -166,13 +167,11 @@ export function TargetCenterTab({
     <div className="space-y-6">
       {/* Header and Add Action */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+        <div className="flex items-center gap-2">
           <h3 className="text-base font-extrabold tracking-tight flex items-center gap-2">
             <Target className="h-5 w-5 text-primary" /> Target & Quota Center
           </h3>
-          <p className="text-xs text-muted-foreground">
-            Track real-time attainment progress and required daily operational velocity.
-          </p>
+          <CardInfoTooltip text="Track real-time attainment progress and required daily operational velocity." />
         </div>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -186,8 +185,9 @@ export function TargetCenterTab({
               <DialogHeader>
                 <DialogTitle className="text-base font-extrabold flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-yellow-500 fill-current" /> Create Performance Target
+                  <CardInfoTooltip text="Configure operational goals and quotas for representatives or the team." />
                 </DialogTitle>
-                <DialogDescription className="text-xs">
+                <DialogDescription className="sr-only">
                   Configure operational goals and quotas for representatives or the team.
                 </DialogDescription>
               </DialogHeader>

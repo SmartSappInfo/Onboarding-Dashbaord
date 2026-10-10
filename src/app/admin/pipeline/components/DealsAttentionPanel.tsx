@@ -22,7 +22,8 @@
 import * as React from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, Clock, Calendar, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { AlertCircle, Clock, Calendar, ArrowRight, CheckCircle2, CalendarRange } from 'lucide-react';
 import type { Deal, DealStage } from '@/lib/types';
 import { calculateDealHealth, extractTimestampMs } from '@/lib/deals/deal-health-engine';
 
@@ -33,6 +34,7 @@ interface DealsAttentionPanelProps {
   onFilterSlaBreached?: () => void;
   onFilterNoNextStep?: () => void;
   onFilterClosingSoon?: () => void;
+  onScheduleCadence?: (deals: Deal[]) => void;
 }
 
 export default function DealsAttentionPanel({
@@ -42,6 +44,7 @@ export default function DealsAttentionPanel({
   onFilterSlaBreached,
   onFilterNoNextStep,
   onFilterClosingSoon,
+  onScheduleCadence,
 }: DealsAttentionPanelProps) {
   const stageMap = React.useMemo(() => {
     const map = new Map<string, DealStage>();
@@ -130,11 +133,23 @@ export default function DealsAttentionPanel({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
           <AlertCircle className="h-4 w-4 text-amber-500" />
           Attention Required ({slaBreachedDeals.length + noNextStepDeals.length + closingSoonDeals.length})
         </h3>
+
+        {onScheduleCadence && noNextStepDeals.length > 0 && (
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => onScheduleCadence(noNextStepDeals)}
+            className="h-8 min-h-[32px] rounded-xl px-3 text-xs font-bold gap-1.5 bg-amber-500 hover:bg-amber-600 text-white shadow-sm active:scale-[0.97] transition-all"
+          >
+            <CalendarRange className="h-3.5 w-3.5" />
+            <span>Schedule Follow-up Cadence ({noNextStepDeals.length})</span>
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -169,21 +184,40 @@ export default function DealsAttentionPanel({
             onClick={onFilterNoNextStep}
             className="group p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 hover:border-amber-500/40 transition-all cursor-pointer shadow-sm flex flex-col justify-between"
           >
-            <div className="flex items-start justify-between gap-2 mb-2">
-              <div className="flex items-center gap-2">
-                <Clock className="h-3.5 w-3.5 text-amber-500" />
-                <span className="text-xs font-bold text-amber-600 dark:text-amber-400">No Next Step</span>
+            <div>
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-3.5 w-3.5 text-amber-500" />
+                  <span className="text-xs font-bold text-amber-600 dark:text-amber-400">No Next Step</span>
+                </div>
+                <Badge variant="outline" className="bg-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] font-extrabold px-2 py-0.5 border-amber-500/30">
+                  {noNextStepDeals.length}
+                </Badge>
               </div>
-              <Badge variant="outline" className="bg-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] font-extrabold px-2 py-0.5 border-amber-500/30">
-                {noNextStepDeals.length}
-              </Badge>
+              <p className="text-xs text-muted-foreground mb-3">
+                {noNextStepDeals.length} active {noNextStepDeals.length === 1 ? 'deal has' : 'deals have'} no upcoming task or meeting scheduled.
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground mb-3">
-              {noNextStepDeals.length} active {noNextStepDeals.length === 1 ? 'deal has' : 'deals have'} no upcoming task or meeting scheduled.
-            </p>
-            <div className="flex items-center justify-between text-xs font-bold text-amber-600 dark:text-amber-400 group-hover:translate-x-0.5 transition-transform">
-              <span>Schedule Follow-ups</span>
-              <ArrowRight className="h-3.5 w-3.5" />
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-amber-500/20">
+              <div className="flex items-center gap-1 text-xs font-bold text-amber-600 dark:text-amber-400 group-hover:translate-x-0.5 transition-transform">
+                <span>Filter List</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </div>
+              {onScheduleCadence && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onScheduleCadence(noNextStepDeals);
+                  }}
+                  className="h-7 px-2.5 rounded-lg text-[11px] font-bold gap-1 border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-amber-500 hover:text-white active:scale-[0.97]"
+                >
+                  <CalendarRange className="h-3 w-3" />
+                  <span>Cadence</span>
+                </Button>
+              )}
             </div>
           </div>
         )}

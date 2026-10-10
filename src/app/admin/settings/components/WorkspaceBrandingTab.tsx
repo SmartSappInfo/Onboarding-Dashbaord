@@ -3,7 +3,8 @@
 import * as React from 'react';
 import { useUser } from '@/firebase';
 import type { Workspace } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -57,17 +58,17 @@ export default function WorkspaceBrandingTab({ workspace, onSaveSuccess }: Works
   };
 
   return (
-    <Card className="rounded-[2rem] border border-border shadow-sm bg-transparent overflow-hidden text-left">
-      <CardHeader className="p-8 border-b">
-        <CardTitle className="text-xl font-bold flex items-center gap-2">
+    <Card className="rounded-2xl border border-border/80 shadow-sm bg-card text-card-foreground overflow-hidden text-left">
+      <CardHeader className="p-6 border-b border-border/60 bg-muted/20">
+        <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-primary" />
-          Workspace Brand & Styling
-        </CardTitle>
-        <CardDescription className="text-xs font-semibold text-muted-foreground mt-0.5">
-          Customize the aesthetic primary colors of this hub workspace.
-        </CardDescription>
+          <CardTitle className="text-xl font-bold">
+            Workspace Brand & Styling
+          </CardTitle>
+          <CardInfoTooltip text="Customize the aesthetic primary colors of this hub workspace." />
+        </div>
       </CardHeader>
-      <CardContent className="p-8">
+      <CardContent className="p-6">
         <form onSubmit={handleSave} className="space-y-8">
           
           <div className="space-y-4 max-w-md">
@@ -96,7 +97,7 @@ export default function WorkspaceBrandingTab({ workspace, onSaveSuccess }: Works
                 </PopoverContent>
               </Popover>
               <div className="flex-1 space-y-1">
-                <div className="flex items-center rounded-xl bg-muted/20 border border-border/40 focus-within:border-primary/50 overflow-hidden px-3">
+                <div className="flex items-center rounded-xl bg-white dark:bg-card border border-border/80 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 overflow-hidden px-3">
                   <span className="text-sm font-semibold text-muted-foreground mr-1">HEX</span>
                   <Input 
                     value={color} 
@@ -104,18 +105,18 @@ export default function WorkspaceBrandingTab({ workspace, onSaveSuccess }: Works
                     className="h-11 bg-transparent border-none font-mono font-bold text-base focus-visible:ring-0 shadow-none px-0" 
                   />
                 </div>
-                <p className="text-[9px] font-medium text-muted-foreground ml-1">
+                <p className="text-[10px] font-medium text-muted-foreground ml-1">
                   Click the swatch or enter a hex color code to override the primary styling.
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="p-5 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-4 max-w-2xl shadow-inner">
-            <Palette className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="text-[10px] font-semibold text-blue-900 ">Workspace Personalization</p>
-              <p className="text-[9px] font-bold text-blue-800/60 leading-relaxed tracking-tighter text-left">
+          <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-3 max-w-2xl">
+            <Palette className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <p className="text-xs font-bold text-blue-950 dark:text-blue-200">Workspace Personalization</p>
+              <p className="text-[11px] text-blue-800/80 dark:text-blue-300/80 leading-relaxed text-left">
                 Theme colors are applied across header banners, metrics highlights, and workflow progress paths inside this workspace.
               </p>
             </div>
@@ -126,7 +127,7 @@ export default function WorkspaceBrandingTab({ workspace, onSaveSuccess }: Works
             <Button 
               type="submit" 
               disabled={isSaving || !color.trim()} 
-              className="rounded-xl font-semibold px-10 shadow-2xl bg-primary text-white text-xs h-12 active:scale-[0.97] transition-all"
+              className="rounded-xl font-bold px-8 shadow-sm bg-primary text-primary-foreground text-xs h-11 active:scale-[0.97] transition-all"
             >
               {isSaving ? (
                 <>

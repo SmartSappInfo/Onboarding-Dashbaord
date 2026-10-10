@@ -28,18 +28,21 @@ import {
 import * as contextRailActions from '@/app/actions/context-rail-actions';
 import type { EntityContextRailData } from '@/platform/ui/context-rail';
 
+let mockPathname = '/admin/entities/contact_john_doe';
+
 // Mock Next.js navigation
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
     replace: vi.fn(),
   }),
-  usePathname: () => '/admin/entities/contact_john_doe',
+  usePathname: () => mockPathname,
 }));
 
 // Mock server actions
 vi.mock('@/app/actions/context-rail-actions', () => ({
   getEntityContextRailDataAction: vi.fn(),
+  getWorkspaceContextRailDataAction: vi.fn(),
   askEntityAiAction: vi.fn(),
   executeObjectCommandAction: vi.fn(),
 }));
@@ -147,10 +150,29 @@ const mockContextData: EntityContextRailData = {
 
 describe('Global Context Rail UI Components (Phase 8 Milestone 4)', () => {
   beforeEach(() => {
+    mockPathname = '/admin/entities/contact_john_doe';
     vi.restoreAllMocks();
     vi.mocked(contextRailActions.getEntityContextRailDataAction).mockResolvedValue({
       success: true,
       data: mockContextData,
+    });
+    vi.mocked(contextRailActions.getWorkspaceContextRailDataAction).mockResolvedValue({
+      success: true,
+      data: {
+        organizationId: 'org_test_1',
+        workspaceId: 'ws_test_1',
+        activeRuns: mockContextData.activeRuns,
+        pendingApprovals: mockContextData.pendingApprovals,
+        recentEntities: [
+          {
+            id: 'ent_acme',
+            name: 'Acme International',
+            type: 'account',
+            status: 'active',
+            tier: 'Tier 1',
+          },
+        ],
+      },
     });
   });
 
@@ -247,5 +269,66 @@ describe('Global Context Rail UI Components (Phase 8 Milestone 4)', () => {
     expect(screen.getByText('L3 FINANCIAL')).toBeInTheDocument();
     expect(screen.getByText(/SHA-256: e3b0c44298/)).toBeInTheDocument();
     expect(screen.getByText('Review Proposal')).toBeInTheDocument();
+  });
+
+  it('9. renders exactly one close button in the drawer header (no duplicate close buttons)', async () => {
+    render(
+      <ContextRailProvider initialEntityId="contact_john_doe" initialEntityType="contact" defaultOpen={true}>
+        <GlobalContextRail />
+      </ContextRailProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('global-context-rail')).toBeInTheDocument();
+    });
+
+    // The header must have exactly one button with aria-label "Close context rail"
+    const headerCloseButtons = screen.getAllByRole('button', { name: /close context rail/i });
+    expect(headerCloseButtons).toHaveLength(1);
+  });
+
+  it('10. renders Workspace Standby Desk when no active entity is in context instead of empty blank screen', async () => {
+    mockPathname = '/admin/dashboard';
+    render(
+      <ContextRailProvider defaultOpen={true}>
+        <GlobalContextRail />
+      </ContextRailProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('context-rail-standby')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Workspace Intelligence Active')).toBeInTheDocument();
+    expect(screen.getByText('Standby Mode')).toBeInTheDocument();
+    expect(screen.getByText(/Context Intelligence continuously monitors/i)).toBeInTheDocument();
+    expect(screen.getByText('Recent Workspace Accounts')).toBeInTheDocument();
+    expect(screen.getByText('Acme International')).toBeInTheDocument();
+    expect(screen.getByText('Workspace Context Active')).toBeInTheDocument();
+  });
+
+  it('11. renders actionable error state when context fetch fails', async () => {
+    vi.mocked(contextRailActions.getEntityContextRailDataAction).mockResolvedValueOnce({
+      success: false,
+      error: {
+        code: 'ENTITY_NOT_FOUND',
+        message: 'Entity contact_missing was not found in the active workspace context',
+      },
+    });
+
+    render(
+      <ContextRailProvider initialEntityId="contact_missing" initialEntityType="contact" defaultOpen={true}>
+        <GlobalContextRail />
+      </ContextRailProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('context-rail-error')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Failed to load contextual intelligence')).toBeInTheDocument();
+    expect(screen.getByText(/Entity contact_missing was not found/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /switch to workspace overview/i })).toBeInTheDocument();
   });
 });

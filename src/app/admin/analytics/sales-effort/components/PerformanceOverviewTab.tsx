@@ -22,6 +22,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -43,7 +44,6 @@ import {
   Users,
   Activity,
   Sparkles,
-  HelpCircle,
   ArrowRight,
   ShieldCheck,
   ListCollapse,
@@ -157,9 +157,12 @@ export function PerformanceOverviewTab({
         {/* Top Rep Standout Card (Gold Highlight Bento) */}
         <Card className="rounded-2xl border-yellow-500/25 bg-gradient-to-br from-yellow-500/10 via-yellow-500/5 to-transparent backdrop-blur-md shadow-sm p-5 flex items-center justify-between gap-3 relative overflow-hidden group">
           <div className="space-y-1 z-10 text-left">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-yellow-600 dark:text-yellow-400 flex items-center gap-1">
-              <Trophy className="h-3 w-3 fill-current" /> Leader Standout
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-yellow-600 dark:text-yellow-400 flex items-center gap-1">
+                <Trophy className="h-3 w-3 fill-current" /> Leader Standout
+              </span>
+              <CardInfoTooltip text="Top performing representative based on cumulative effort points and composite performance index." />
+            </div>
             <h4 className="font-extrabold text-sm text-foreground truncate max-w-[150px]">
               {topRep?.userName || 'No reps active'}
             </h4>
@@ -209,22 +212,12 @@ export function PerformanceOverviewTab({
               <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                 Team Performance Index
               </span>
-              <button
-                type="button"
-                onClick={() => setIsExplainerOpen(true)}
-                className="text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded-full"
-                title="How is this calculated?"
-              >
-                <HelpCircle className="h-3 w-3" />
-              </button>
+              <CardInfoTooltip text="Multi-factor 5-dimension balanced average across activity, effort, quality, effectiveness, and outcome." />
             </div>
             <div className="flex items-baseline gap-1.5">
               <h2 className="text-2xl font-black font-mono text-foreground">{averagePerformanceIndex}</h2>
               <span className="text-xs font-bold text-muted-foreground">/ 100</span>
             </div>
-            <p className="text-[10px] text-muted-foreground font-medium">
-              Multi-factor 5-dimension balanced average
-            </p>
           </div>
           <ShieldCheck className="h-8 w-8 text-primary opacity-60 shrink-0" />
         </Card>
@@ -232,13 +225,13 @@ export function PerformanceOverviewTab({
         {/* Total Points */}
         <Card className="rounded-2xl border-border/40 bg-card/45 backdrop-blur-md shadow-sm p-5 flex items-center justify-between">
           <div className="space-y-1 text-left">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Total Workspace Effort
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Total Workspace Effort
+              </span>
+              <CardInfoTooltip text="Aggregated activity scoring points accrued across all team operations." />
+            </div>
             <h2 className="text-2xl font-black font-mono text-foreground">{totalPoints.toLocaleString()}</h2>
-            <p className="text-[10px] text-muted-foreground font-medium">
-              Activity scoring points accrued
-            </p>
           </div>
           <TrendingUp className="h-8 w-8 text-emerald-500 opacity-60 shrink-0" />
         </Card>
@@ -246,9 +239,12 @@ export function PerformanceOverviewTab({
         {/* Quota & Active Reps */}
         <Card className="rounded-2xl border-border/40 bg-card/45 backdrop-blur-md shadow-sm p-5 flex items-center justify-between">
           <div className="space-y-1 text-left">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Active Reps & Quotas
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Active Reps & Quotas
+              </span>
+              <CardInfoTooltip text="Count of active sales representatives and quota pacing velocity." />
+            </div>
             <div className="flex items-baseline gap-2">
               <h2 className="text-2xl font-black font-mono text-foreground">{activeRepsCount}</h2>
               <span className="text-xs font-semibold text-muted-foreground">reps</span>
@@ -269,13 +265,11 @@ export function PerformanceOverviewTab({
         {/* Left: 5-Dimension Breakdown (7 Cols) */}
         <Card className="lg:col-span-7 rounded-2xl border-border/40 bg-card/45 backdrop-blur-md p-6 space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/30 pb-4">
-            <div className="text-left">
+            <div className="text-left flex items-center gap-2">
               <h3 className="text-sm font-extrabold text-foreground flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-primary" /> Workspace 5-Dimension Balance
               </h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Evaluates team execution beyond volume across effort, hygiene, conversion, and revenue.
-              </p>
+              <CardInfoTooltip text="Evaluates team execution beyond volume across effort, hygiene, conversion, and revenue." />
             </div>
             <Button
               variant="ghost"
@@ -326,6 +320,7 @@ export function PerformanceOverviewTab({
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-extrabold text-foreground flex items-center gap-2">
                 <Target className="h-4 w-4 text-primary" /> Active Quotas & Pacing
+                <CardInfoTooltip text="Track active sales quotas, daily pacing velocity, and attainment targets." />
               </h4>
               <Button
                 variant="outline"
@@ -375,6 +370,7 @@ export function PerformanceOverviewTab({
           <Card className="rounded-2xl border-border/40 bg-card/45 backdrop-blur-md p-5 space-y-3 text-left">
             <h4 className="text-sm font-extrabold text-foreground flex items-center gap-2">
               <ListCollapse className="h-4 w-4 text-primary" /> Quick Navigation
+              <CardInfoTooltip text="Quick links to complete team leaderboard standings and individual rep performance profiles." />
             </h4>
             <div className="grid grid-cols-2 gap-2">
               <Button
@@ -401,14 +397,10 @@ export function PerformanceOverviewTab({
         {/* Top Reps Points Bar Chart (7 Cols) */}
         <Card className="lg:col-span-7 rounded-2xl border-border/40 bg-card/45 backdrop-blur-md p-5 space-y-4">
           <div className="flex items-center justify-between text-left">
-            <div>
-              <h4 className="text-sm font-extrabold tracking-tight flex items-center gap-2 text-foreground">
-                <Sparkles className="h-4 w-4 text-yellow-500 fill-current" /> Effort by Executive (Top 8)
-              </h4>
-              <p className="text-xs text-muted-foreground">
-                Distribution of scored operational activity points across leading reps.
-              </p>
-            </div>
+            <h4 className="text-sm font-extrabold tracking-tight flex items-center gap-2 text-foreground">
+              <Sparkles className="h-4 w-4 text-yellow-500 fill-current" /> Effort by Executive (Top 8)
+              <CardInfoTooltip text="Distribution of scored operational activity points across leading reps." />
+            </h4>
           </div>
 
           <div className="h-[220px] w-full">
@@ -447,10 +439,8 @@ export function PerformanceOverviewTab({
           <div className="text-left">
             <h4 className="text-sm font-extrabold tracking-tight flex items-center gap-2 text-foreground">
               <Activity className="h-4 w-4 text-emerald-400" /> CRM Action Mix
+              <CardInfoTooltip text="Proportion of meetings, calls, tasks, deals, and campaigns executed." />
             </h4>
-            <p className="text-xs text-muted-foreground">
-              Proportion of meetings, calls, tasks, deals, and campaigns executed.
-            </p>
           </div>
 
           <div className="h-[220px] w-full flex flex-col sm:flex-row items-center justify-around gap-4">

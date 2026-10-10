@@ -3,7 +3,8 @@
 import * as React from 'react';
 import { useUser } from '@/firebase';
 import type { Workspace, ContactIdentifierPolicy, EntityDefaults } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -183,17 +184,17 @@ export default function WorkspaceRegionalTab({ workspace, onSaveSuccess }: Works
   const unusedSuggestions = suggestedKeys.filter(k => !(k in entityDefaults));
 
   return (
-    <Card className="rounded-[2rem] border border-border shadow-sm bg-transparent overflow-hidden text-left">
-      <CardHeader className="p-8 border-b">
-        <CardTitle className="text-xl font-bold flex items-center gap-2">
+    <Card className="rounded-2xl border border-border/80 shadow-sm bg-card text-card-foreground overflow-hidden text-left">
+      <CardHeader className="p-6 border-b border-border/60 bg-muted/20">
+        <div className="flex items-center gap-2">
           <Sliders className="h-5 w-5 text-primary" />
-          Workspace Localization & Rules
-        </CardTitle>
-        <CardDescription className="text-xs font-semibold text-muted-foreground mt-0.5">
-          Configure local workspace defaults, contact identifiers requirements, and record visibility.
-        </CardDescription>
+          <CardTitle className="text-xl font-bold">
+            Workspace Localization & Rules
+          </CardTitle>
+          <CardInfoTooltip text="Configure local workspace defaults, contact identifiers requirements, and record visibility." />
+        </div>
       </CardHeader>
-      <CardContent className="p-8">
+      <CardContent className="p-6">
         <form onSubmit={handleSave} className="space-y-10">
 
           {/* Section 1: Contact Identifier Policy */}
@@ -201,11 +202,8 @@ export default function WorkspaceRegionalTab({ workspace, onSaveSuccess }: Works
             <div className="flex items-center gap-2 px-1">
               <Globe className="h-4 w-4 text-primary" />
               <h4 className="text-xs font-semibold">Contact Identifier Policy</h4>
+              <CardInfoTooltip text="Determines which contact fields must be provided before saving records in this hub." />
             </div>
-
-            <p className="text-[10px] font-medium text-muted-foreground leading-relaxed px-1">
-              Determines which contact fields must be provided before saving records in this hub.
-            </p>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {([
@@ -256,11 +254,8 @@ export default function WorkspaceRegionalTab({ workspace, onSaveSuccess }: Works
             <div className="flex items-center gap-2 px-1">
               <MapPin className="h-4 w-4 text-primary" />
               <h4 className="text-xs font-semibold">Entity Visibility Scope</h4>
+              <CardInfoTooltip text="Determine whether users in this workspace can see all entities or only the ones explicitly assigned to them." />
             </div>
-
-            <p className="text-[10px] font-medium text-muted-foreground leading-relaxed px-1">
-              Determine whether users in this workspace can see all entities or only the ones explicitly assigned to them.
-            </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <button
@@ -334,11 +329,8 @@ export default function WorkspaceRegionalTab({ workspace, onSaveSuccess }: Works
             <div className="flex items-center gap-2 px-1">
               <Briefcase className="h-4 w-4 text-primary" />
               <h4 className="text-xs font-semibold">Deals Visibility Scope</h4>
+              <CardInfoTooltip text="Determine whether users in this workspace can see all deals or only deals assigned to or created by them." />
             </div>
-
-            <p className="text-[10px] font-medium text-muted-foreground leading-relaxed px-1">
-              Determine whether users in this workspace can see all deals or only deals assigned to or created by them.
-            </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <button
@@ -412,11 +404,8 @@ export default function WorkspaceRegionalTab({ workspace, onSaveSuccess }: Works
             <div className="flex items-center gap-2 px-1">
               <CheckSquare className="h-4 w-4 text-primary" />
               <h4 className="text-xs font-semibold">Tasks Visibility Scope</h4>
+              <CardInfoTooltip text="Determine whether users in this workspace can see all tasks or only tasks assigned to or created by them." />
             </div>
-
-            <p className="text-[10px] font-medium text-muted-foreground leading-relaxed px-1">
-              Determine whether users in this workspace can see all tasks or only tasks assigned to or created by them.
-            </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <button
@@ -490,21 +479,18 @@ export default function WorkspaceRegionalTab({ workspace, onSaveSuccess }: Works
             <div className="flex items-center gap-2 px-1">
               <Sliders className="h-4 w-4 text-primary" />
               <h4 className="text-xs font-semibold">Entity Defaults</h4>
+              <CardInfoTooltip text="Configure default values that are auto-applied to entities during bulk imports or creation pages." />
               <Badge variant="outline" className="text-[8px] font-semibold uppercase px-1.5 h-4 ml-auto">Per Workspace</Badge>
             </div>
 
-            <p className="text-[10px] font-medium text-muted-foreground leading-relaxed px-1">
-              Configure default values that are auto-applied to entities during bulk imports or creation pages.
-            </p>
-
             <div className="space-y-4 max-w-xl">
               {Object.entries(entityDefaults).map(([keyName, valueStr]) => (
-                <div key={keyName} className="flex items-center gap-3 p-3 rounded-2xl bg-muted/20 border border-border/40 group">
+                <div key={keyName} className="flex items-center gap-3 p-3 rounded-2xl bg-muted/20 border border-border/80 group">
                   <span className="text-xs font-bold text-primary min-w-[140px] truncate">{keyName}</span>
                   
                   {keyName === 'language' ? (
                     <Select value={valueStr} onValueChange={(val) => updateDefaultValue(keyName, val)}>
-                      <SelectTrigger className="h-9 rounded-xl bg-background border-none flex-1 font-semibold text-xs shadow-sm">
+                      <SelectTrigger className="h-10 rounded-xl bg-white dark:bg-card border border-border/80 flex-1 font-semibold text-xs shadow-xs focus-visible:ring-primary">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -515,7 +501,7 @@ export default function WorkspaceRegionalTab({ workspace, onSaveSuccess }: Works
                     </Select>
                   ) : keyName === 'countryCode' ? (
                     <Select value={valueStr} onValueChange={(val) => updateDefaultValue(keyName, val)}>
-                      <SelectTrigger className="h-9 rounded-xl bg-background border-none flex-1 font-semibold text-xs shadow-sm">
+                      <SelectTrigger className="h-10 rounded-xl bg-white dark:bg-card border border-border/80 flex-1 font-semibold text-xs shadow-xs focus-visible:ring-primary">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -526,7 +512,7 @@ export default function WorkspaceRegionalTab({ workspace, onSaveSuccess }: Works
                     </Select>
                   ) : keyName === 'timezone' ? (
                     <Select value={valueStr} onValueChange={(val) => updateDefaultValue(keyName, val)}>
-                      <SelectTrigger className="h-9 rounded-xl bg-background border-none flex-1 font-semibold text-xs shadow-sm">
+                      <SelectTrigger className="h-10 rounded-xl bg-white dark:bg-card border border-border/80 flex-1 font-semibold text-xs shadow-xs focus-visible:ring-primary">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -539,7 +525,7 @@ export default function WorkspaceRegionalTab({ workspace, onSaveSuccess }: Works
                     <Input 
                       value={valueStr} 
                       onChange={e => updateDefaultValue(keyName, e.target.value)}
-                      className="h-9 rounded-xl bg-background border-none font-semibold text-xs shadow-sm flex-1" 
+                      className="h-10 rounded-xl bg-white dark:bg-card border border-border/80 font-semibold text-xs shadow-xs flex-1 focus-visible:ring-primary" 
                     />
                   )}
 
@@ -558,7 +544,7 @@ export default function WorkspaceRegionalTab({ workspace, onSaveSuccess }: Works
               <div className="flex items-center gap-3 pt-2">
                 {unusedSuggestions.length > 0 ? (
                   <Select value={newKey} onValueChange={setNewKey}>
-                    <SelectTrigger className="h-10 rounded-xl font-semibold text-xs w-[160px] bg-muted/20 border-none shadow-sm">
+                    <SelectTrigger className="h-10 rounded-xl font-semibold text-xs w-[160px] bg-white dark:bg-card border border-border/80 shadow-xs focus-visible:ring-primary">
                       <SelectValue placeholder="Select Default Field" />
                     </SelectTrigger>
                     <SelectContent>
@@ -573,7 +559,7 @@ export default function WorkspaceRegionalTab({ workspace, onSaveSuccess }: Works
                     value={newKey}
                     onChange={e => setNewKey(e.target.value)}
                     placeholder="Field key name"
-                    className="h-10 rounded-xl font-semibold text-xs w-[160px] bg-muted/20 border-none shadow-sm"
+                    className="h-10 rounded-xl font-semibold text-xs w-[160px] bg-white dark:bg-card border border-border/80 shadow-xs focus-visible:ring-primary"
                   />
                 )}
 
@@ -581,7 +567,7 @@ export default function WorkspaceRegionalTab({ workspace, onSaveSuccess }: Works
                   <Input 
                     onChange={e => setNewKey(e.target.value)}
                     placeholder="Enter custom key..."
-                    className="h-10 rounded-xl font-semibold text-xs w-[160px] bg-muted/20 border-none shadow-sm"
+                    className="h-10 rounded-xl font-semibold text-xs w-[160px] bg-white dark:bg-card border border-border/80 shadow-xs focus-visible:ring-primary"
                   />
                 ) : null}
 
@@ -589,15 +575,15 @@ export default function WorkspaceRegionalTab({ workspace, onSaveSuccess }: Works
                   value={newValue}
                   onChange={e => setNewValue(e.target.value)}
                   placeholder="Enter default value"
-                  className="h-10 rounded-xl font-semibold text-xs bg-muted/20 border-none shadow-sm flex-1"
+                  className="h-10 rounded-xl font-semibold text-xs bg-white dark:bg-card border border-border/80 shadow-xs flex-1 focus-visible:ring-primary"
                 />
 
                 <Button 
-                  type="button"
+                  type="button" 
                   variant="outline"
                   onClick={handleAddDefault}
                   disabled={!newKey.trim() || newKey === '__custom'}
-                  className="h-10 rounded-xl text-xs font-bold px-4 active:scale-95 transition-transform"
+                  className="h-10 rounded-xl text-xs font-bold px-4 active:scale-[0.97] transition-all"
                 >
                   <Plus className="h-3.5 w-3.5 mr-1" /> Add
                 </Button>
@@ -610,8 +596,8 @@ export default function WorkspaceRegionalTab({ workspace, onSaveSuccess }: Works
               )}
 
               <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-3 mt-4">
-                <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                <p className="text-[9px] font-medium text-blue-800/70 leading-relaxed text-left">
+                <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                <p className="text-[11px] font-medium text-blue-800/80 dark:text-blue-300/80 leading-relaxed text-left">
                   Priority Resolution order: Imported entity data overrides local workspace defaults, which override global organization localization rules.
                 </p>
               </div>
@@ -623,7 +609,7 @@ export default function WorkspaceRegionalTab({ workspace, onSaveSuccess }: Works
             <Button 
               type="submit" 
               disabled={isSaving} 
-              className="rounded-xl font-semibold px-10 shadow-2xl bg-primary text-white text-xs h-12 active:scale-[0.97] transition-all"
+              className="rounded-xl font-bold px-8 shadow-sm bg-primary text-primary-foreground text-xs h-11 active:scale-[0.97] transition-all"
             >
               {isSaving ? (
                 <>

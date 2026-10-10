@@ -6,8 +6,8 @@ import { useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 
 import type { Deal, OnboardingStage, Automation } from '@/lib/types';
-import { Card, CardHeader, CardTitle } from '@/components/ui/card';
-import { GripVertical, ShieldCheck as ShieldIcon, Plus, MoreVertical, Trash2, Zap, ExternalLink, ArrowDownToLine } from 'lucide-react';
+import { Card, CardHeader } from '@/components/ui/card';
+import { GripVertical, ShieldCheck as ShieldIcon, Plus, MoreVertical, Trash2, Zap, ExternalLink, ArrowDownToLine, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn, toTitleCase } from '@/lib/utils';
@@ -38,6 +38,59 @@ interface StageColumnProps {
     isDraggingDeal?: boolean;
     showDealTotals?: boolean;
     entitiesById?: Map<string, CachedEntity>;
+    stages?: OnboardingStage[];
+    isCollapsed?: boolean;
+    onToggleCollapse?: () => void;
+}
+
+interface TruncatedStageTitleProps {
+    title: string;
+    delayDuration?: number;
+}
+
+/**
+ * ARCHITECTURAL POINTER:
+ * Detects whether the stage title is visually truncated with text-overflow: ellipsis (...).
+ * When truncated (scrollWidth > clientWidth), a Radix hover tooltip is mounted displaying the full title.
+ * When untruncated, tooltip display is suppressed to avoid redundant UI tooltips.
+ */
+export function TruncatedStageTitle({ title, delayDuration = 150 }: TruncatedStageTitleProps) {
+    const textRef = React.useRef<HTMLHeadingElement>(null);
+    const [open, setOpen] = React.useState(false);
+
+    const handleOpenChange = React.useCallback((nextOpen: boolean) => {
+        if (nextOpen) {
+            const el = textRef.current;
+            // Only open tooltip if content overflows container and is truncated with ellipsis
+            const isTruncated = el ? el.scrollWidth > el.clientWidth : false;
+            setOpen(isTruncated);
+        } else {
+            setOpen(false);
+        }
+    }, []);
+
+    return (
+        <TooltipProvider delayDuration={delayDuration}>
+            <Tooltip open={open} onOpenChange={handleOpenChange}>
+                <TooltipTrigger asChild>
+                    <h3 
+                        ref={textRef}
+                        data-slot="card-title"
+                        className="text-sm font-bold tracking-tight truncate block text-foreground cursor-default select-none"
+                    >
+                        {title}
+                    </h3>
+                </TooltipTrigger>
+                <TooltipContent 
+                    side="top" 
+                    align="start"
+                    className="text-xs font-semibold max-w-[280px] break-words shadow-lg z-[100] px-2.5 py-1.5"
+                >
+                    {title}
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
+    );
 }
 
 /**
@@ -59,7 +112,10 @@ export default function StageColumn({
     automations, 
     isDraggingDeal,
     showDealTotals = false,
-    entitiesById
+    entitiesById,
+    stages,
+    isCollapsed = false,
+    onToggleCollapse
 }: StageColumnProps) {
     const [isCreateDealOpen, setIsCreateDealOpen] = React.useState(false);
     const [isClearing, setIsClearing] = React.useState(false);
@@ -69,6 +125,16 @@ export default function StageColumn({
     const { toast } = useToast();
 
     const activePipelineId = pipelineId || stage.pipelineId;
+
+    const nextStage = React.useMemo(() => {
+        if (!stages || stages.length === 0) return undefined;
+        const sorted = [...stages].sort((a, b) => a.order - b.order);
+        const currentIndex = sorted.findIndex(s => s.id === stage.id);
+        if (currentIndex !== -1 && currentIndex < sorted.length - 1) {
+            return sorted[currentIndex + 1];
+        }
+        return undefined;
+    }, [stages, stage.id]);
 
     const attachedAutomations = React.useMemo(() => {
         return (automations || []).filter(a => isAutomationLinkedToStage(a, activePipelineId, stage.id));
@@ -166,7 +232,137 @@ export default function StageColumn({
         opacity: isDragging ? 0.3 : 1,
     };
 
-    const stageColor = stage.color || '#6366f1';
+    const stageColor = React.useMemo(() => {
+        if (stage.color) return stage.color;
+        if (stage.terminalType === 'won' || stage.isWon) return '#10B981';
+        if (stage.terminalType === 'lost' || stage.terminalType === 'abandoned' || stage.isLost) return '#EF4444';
+        return '#3B82F6';
+    }, [stage.color, stage.terminalType, stage.isWon, stage.isLost]);
+
+    if (isCollapsed) {
+        return (
+            <div
+                ref={isOverlay ? undefined : setNodeRef}
+                style={{ ...style, width: '56px' }}
+                className="h-full flex-shrink-0 select-none pb-4 w-14 min-w-[56px] max-w-[56px] transition-all duration-300"
+            >
+                <Card
+                    className={cn(
+                        "flex flex-col flex-1 h-full min-h-[420px] bg-card/80 hover:bg-card border rounded-2xl overflow-hidden transition-all duration-300 w-full relative shadow-xs group/sliver cursor-pointer",
+                        isOverlay && "shadow-2xl scale-[1.02] border-primary/60",
+                        isDraggingDeal && !isOver && "border-dashed border-border/80",
+                        isOver && isDraggingDeal
+                            ? "bg-primary/15 border-primary ring-2 ring-primary/50 shadow-xl scale-[1.02]"
+                            : "border-border/70 hover:border-primary/40"
+                    )}
+                >
+                    <div ref={setDroppableNodeRef} className="absolute inset-0 z-0 pointer-events-none" />
+
+                    {/* Top Rounded Color Bar */}
+                    <div 
+                        className="absolute top-0 left-0 right-0 h-1.5 rounded-t-2xl z-30 pointer-events-none transition-colors duration-200" 
+                        style={{ backgroundColor: stageColor }} 
+                    />
+
+                    {/* Top Control Bar: Grip and Expand Chevron */}
+                    <div className="p-2 pt-2.5 border-b border-border/50 bg-card/95 backdrop-blur-md shrink-0 flex flex-col items-center gap-1 z-10 sticky top-0">
+                        <Button 
+                            variant="ghost" 
+                            size="icon"
+                            {...attributes} 
+                            {...listeners} 
+                            className="cursor-grab active:cursor-grabbing h-6 w-6 rounded-lg hover:bg-muted text-muted-foreground/30 hover:text-primary transition-colors shrink-0"
+                            aria-label="Drag column"
+                        >
+                            <GripVertical className="h-3.5 w-3.5" />
+                        </Button>
+
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onToggleCollapse?.();
+                                        }}
+                                        className="h-7 w-7 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all shrink-0 active:scale-95"
+                                        aria-label={`Expand stage ${stage.name}`}
+                                    >
+                                        <ChevronsRight className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="right" className="text-xs font-semibold">
+                                    <p className="font-bold">Expand {toTitleCase(stage.name)}</p>
+                                    <p className="text-[10px] text-muted-foreground">{deals.length} {deals.length === 1 ? 'deal' : 'deals'}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+
+                        <Badge 
+                            variant="secondary" 
+                            className="rounded-full h-5 px-1.5 font-bold tabular-nums bg-muted/80 text-muted-foreground border border-border/60 text-[10px] select-none"
+                        >
+                            {deals.length}
+                        </Badge>
+                    </div>
+
+                    {/* Center Area: Vertical Stage Name or Drop Cue */}
+                    <div 
+                        onClick={() => onToggleCollapse?.()}
+                        className="flex-1 flex flex-col items-center justify-center py-6 px-1.5 overflow-hidden relative"
+                        title={`Click to expand ${toTitleCase(stage.name)} (${deals.length} deals)`}
+                    >
+                        {isOver && isDraggingDeal ? (
+                            <div className="flex flex-col items-center justify-center gap-1.5 text-primary animate-pulse my-auto">
+                                <ArrowDownToLine className="h-5 w-5 animate-bounce" />
+                                <span className="text-[9px] font-black uppercase tracking-wider [writing-mode:vertical-rl] rotate-180">
+                                    Drop to Move
+                                </span>
+                            </div>
+                        ) : (
+                            <div className="my-auto flex flex-col items-center justify-center gap-2">
+                                {attachedAutomations.length > 0 && (
+                                    <Zap className="h-3.5 w-3.5 fill-amber-500 text-amber-500 animate-pulse shrink-0" />
+                                )}
+                                <span className="text-xs font-bold tracking-tight text-muted-foreground group-hover/sliver:text-foreground transition-colors [writing-mode:vertical-rl] rotate-180 truncate max-h-[300px] select-none">
+                                    {toTitleCase(stage.name)}
+                                </span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Bottom Area: Quick Add Deal */}
+                    <div className="p-2 border-t border-border/40 bg-card/60 shrink-0 flex flex-col items-center">
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setIsCreateDealOpen(true);
+                                        }}
+                                        className="h-7 w-7 rounded-lg text-muted-foreground/60 hover:text-primary hover:bg-primary/10 transition-all shrink-0"
+                                        aria-label={`Add deal to ${stage.name}`}
+                                    >
+                                        <Plus className="h-3.5 w-3.5" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="right" className="text-xs font-semibold">
+                                    Add deal to {toTitleCase(stage.name)}
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    </div>
+
+                    <CreateDealModal open={isCreateDealOpen} onOpenChange={setIsCreateDealOpen} initialStageId={stage.id} initialPipelineId={activePipelineId} />
+                </Card>
+            </div>
+        );
+    }
 
     return (
         <div
@@ -179,21 +375,31 @@ export default function StageColumn({
         >
             <Card
                 className={cn(
-                    "flex flex-col bg-card border border-border rounded-2xl overflow-hidden transition-all duration-300 w-full relative",
+                    "flex flex-col bg-card border rounded-2xl overflow-hidden transition-all duration-300 w-full relative",
                     isOverlay && "shadow-2xl scale-[1.02] border-primary/60",
-                    isOver && isDraggingDeal && "bg-primary/[0.06] border-primary/50 ring-2 ring-primary/20 shadow-lg"
+                    isDraggingDeal && !isOver && "border-dashed border-border/90",
+                    isOver && isDraggingDeal
+                        ? "bg-primary/[0.04] dark:bg-primary/[0.08] border-primary ring-2 ring-primary/40 shadow-xl"
+                        : "border-border shadow-xs"
                 )}
             >
                 <div ref={setDroppableNodeRef} className="absolute inset-0 z-0 pointer-events-none" />
 
-                {/* Top Accent Line - Matches the image curvature and color */}
+                {/* Top Rounded Color Bar */}
                 <div 
-                    className="absolute top-0 left-0 right-0 h-1.5 rounded-t-full z-20" 
+                    className="absolute top-0 left-0 right-0 h-1.5 rounded-t-2xl z-30 pointer-events-none transition-colors duration-200" 
                     style={{ backgroundColor: stageColor }} 
                 />
 
-                {/* Glass Header Section */}
-                <CardHeader className="p-4 pb-2.5 border-b border-border/10 bg-card/40 backdrop-blur-xl shrink-0 flex flex-col z-10 pt-5 space-y-2">
+                {/* Sticky Header Section */}
+                <CardHeader 
+                    className={cn(
+                        "p-3.5 pt-3.5 pb-2 border-b shrink-0 flex flex-col z-20 space-y-1.5 sticky top-0 transition-colors duration-200",
+                        isOver && isDraggingDeal
+                            ? "border-primary/40 bg-card/95 shadow-xs"
+                            : "border-border/60 bg-card/95 backdrop-blur-md shadow-2xs"
+                    )}
+                >
                     <div className="flex items-center justify-between gap-2 w-full">
                         <div className="flex items-center gap-2.5 min-w-0 flex-1">
                             <Button 
@@ -206,12 +412,7 @@ export default function StageColumn({
                                 <GripVertical className="h-4 w-4" />
                             </Button>
                             <div className="min-w-0 flex-1">
-                                <CardTitle 
-                                    className="text-sm font-bold tracking-tight truncate block"
-                                    style={{ color: stageColor }}
-                                >
-                                    {toTitleCase(stage.name)}
-                                </CardTitle>
+                                <TruncatedStageTitle title={toTitleCase(stage.name)} />
                             </div>
                         </div>
                         
@@ -271,15 +472,53 @@ export default function StageColumn({
                             )}
 
                             <Badge 
-                                variant="outline" 
-                                className="rounded-full h-6 px-2.5 font-bold tabular-nums border-none transition-colors shadow-inner text-xs"
-                                style={{ 
-                                    backgroundColor: `${stageColor}15`, 
-                                    color: stageColor
-                                }}
+                                variant="secondary" 
+                                className="rounded-full h-5 px-2 font-bold tabular-nums bg-muted/80 text-muted-foreground border border-border/60 text-[11px]"
                             >
                                 {deals.length}
                             </Badge>
+
+                            {/* Simple small + icon in column header next to the three-dot menu */}
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => setIsCreateDealOpen(true)}
+                                            className="h-6 w-6 rounded-lg text-muted-foreground/60 hover:text-primary hover:bg-primary/10 transition-all shrink-0"
+                                            aria-label={`Add deal to ${stage.name}`}
+                                        >
+                                            <Plus className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="bottom" className="text-xs">
+                                        Add deal to {toTitleCase(stage.name)}
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+
+                            {/* Quick Collapse to Vertical Sliver Button */}
+                            {onToggleCollapse && (
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={onToggleCollapse}
+                                                className="h-6 w-6 rounded-lg text-muted-foreground/50 hover:text-primary hover:bg-primary/10 transition-all shrink-0"
+                                                aria-label={`Collapse stage ${stage.name}`}
+                                            >
+                                                <ChevronsLeft className="h-3.5 w-3.5" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="bottom" className="text-xs">
+                                            Collapse stage to sliver
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            )}
 
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -299,6 +538,15 @@ export default function StageColumn({
                                         <Plus className="h-3.5 w-3.5 text-primary" />
                                         Add Deal to Stage
                                     </DropdownMenuItem>
+                                    {onToggleCollapse && (
+                                        <DropdownMenuItem
+                                            onClick={onToggleCollapse}
+                                            className="py-2 cursor-pointer font-semibold text-xs flex items-center gap-2 text-foreground hover:text-primary focus:text-primary focus:bg-primary/10 rounded-lg"
+                                        >
+                                            <ChevronsLeft className="h-3.5 w-3.5 text-muted-foreground" />
+                                            Collapse to Sliver
+                                        </DropdownMenuItem>
+                                    )}
                                     <DropdownMenuItem
                                         onClick={handleAddAutomationToStage}
                                         className="py-2 cursor-pointer font-semibold text-xs flex items-center gap-2 text-amber-600 dark:text-amber-400 focus:text-amber-600 focus:bg-amber-500/10 rounded-lg"
@@ -353,8 +601,8 @@ export default function StageColumn({
                 </CardHeader>
                 
                 <div 
-                    className="w-full min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-3 pt-5 pb-2 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
-                    style={{ maxHeight: 'min(600px, 70vh)' }}
+                    className="w-full min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-3 pt-4 pb-2 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
+                    style={{ maxHeight: 'min(700px, 75vh)' }}
                 >
                     <SortableContext items={deals.map(d => d.id)} strategy={verticalListSortingStrategy}>
                         <div className="min-h-[100px] flex flex-col items-stretch w-full min-w-0">
@@ -363,6 +611,8 @@ export default function StageColumn({
                                     <DealCard 
                                         deal={deal} 
                                         stage={stage} 
+                                        nextStage={nextStage}
+                                        showDealValue={showDealTotals}
                                         taskStats={tasksByDealId?.[deal.id]} 
                                         clientName={entitiesById?.get(deal.entityId)?.displayName}
                                     />
@@ -372,14 +622,25 @@ export default function StageColumn({
                             {/* Receiving Drop Target Indicator */}
                             {isOver && isDraggingDeal && (
                                 <div 
-                                    className="w-full rounded-2xl border-2 border-dashed border-primary/60 bg-primary/10 dark:bg-primary/20 p-4 my-2 flex flex-col items-center justify-center gap-1.5 text-primary text-center shadow-inner animate-pulse transition-all duration-200"
+                                    className="w-full rounded-2xl border-2 border-dashed border-primary bg-primary/10 dark:bg-primary/20 p-4 my-2 flex flex-col items-center justify-center gap-1.5 text-primary text-center shadow-lg ring-2 ring-primary/20 animate-pulse transition-all duration-200"
                                 >
-                                    <div className="flex items-center gap-1.5 font-bold text-xs">
+                                    <div className="flex items-center gap-2 font-bold text-xs">
                                         <ArrowDownToLine className="h-4 w-4 animate-bounce text-primary" />
                                         <span>Drop in {toTitleCase(stage.name)}</span>
                                     </div>
-                                    <span className="text-[10px] text-primary/80 font-medium">Release to advance stage</span>
+                                    <span className="text-[10px] text-primary/80 font-medium">Release to move deal to this stage</span>
                                 </div>
+                            )}
+                            {/* Single ghost button at the very bottom of the scrollable card stack */}
+                            {deals.length > 0 && !isDraggingDeal && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setIsCreateDealOpen(true)}
+                                    className="w-full mt-1 mb-2 h-8 border border-dashed border-border/50 hover:border-primary/40 text-muted-foreground/60 hover:text-primary rounded-xl font-medium text-xs gap-1.5 flex items-center justify-center bg-transparent hover:bg-primary/5 transition-all"
+                                >
+                                    <Plus className="h-3 w-3" /> Add Deal
+                                </Button>
                             )}
                         </div>
                     </SortableContext>
@@ -407,16 +668,6 @@ export default function StageColumn({
                     )}
                 </div>
                 
-                <div className="p-3 bg-card border-t border-border/10 shrink-0">
-                    <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => setIsCreateDealOpen(true)}
-                        className="w-full h-9 border border-dashed border-border hover:border-primary/40 text-muted-foreground hover:text-primary rounded-xl font-bold text-xs gap-1.5 flex items-center justify-center bg-muted/10 hover:bg-primary/5 transition-all"
-                    >
-                        <Plus className="h-3.5 w-3.5" /> Add Deal
-                    </Button>
-                </div>
                 <CreateDealModal open={isCreateDealOpen} onOpenChange={setIsCreateDealOpen} initialStageId={stage.id} initialPipelineId={activePipelineId} />
             </Card>
         </div>

@@ -358,8 +358,8 @@ export default function MediaClient() {
                       <Skeleton key={i} className="aspect-square rounded-2xl" />
                     ))
                   ) : filteredAssets.length > 0 ? (
-                    filteredAssets.map(asset => (
-                      <MediaAssetCard key={asset.id} asset={asset} />
+                    filteredAssets.map((asset, index) => (
+                      <MediaAssetCard key={asset.id} asset={asset} priority={index < 4} />
                     ))
                   ) : (
                     <div className="col-span-full py-32 text-center border border-border border-dashed rounded-2xl flex flex-col items-center justify-center gap-4 opacity-30">

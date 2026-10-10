@@ -7,6 +7,7 @@ import type { Pipeline, IndustryVertical, CreatePipelinePayload, PipelineCustomF
 import { canUser } from './workspace-permissions';
 import { INDUSTRY_CONFIG } from './industry-config';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+import { DEFAULT_STAGE_COLOR, TERMINAL_WON_COLOR, TERMINAL_LOST_COLOR } from '@/lib/colors';
 
 /**
  * @fileOverview Server-side actions for Pipeline management.
@@ -71,7 +72,7 @@ export async function createPipelineWithStagesAction(
         pipelineId,
         name: stageConfig.name.trim(),
         order: stageConfig.order ?? (index + 1),
-        color: stageConfig.color || getStageColor(index),
+        color: stageConfig.color || (stageConfig.isWon ? TERMINAL_WON_COLOR : stageConfig.isLost ? TERMINAL_LOST_COLOR : DEFAULT_STAGE_COLOR),
         probability: typeof stageConfig.probability === 'number'
           ? Math.min(100, Math.max(0, stageConfig.probability))
           : (payload.defaultProbability ?? 50),
@@ -98,6 +99,7 @@ export async function createPipelineWithStagesAction(
       accessRoles: payload.accessRoles || [],
       columnWidth: payload.columnWidth || 320,
       showDealTotals: Boolean(payload.showDealTotals),
+      autoCollapseEmptyStages: Boolean(payload.autoCollapseEmptyStages),
       defaultDealValue: typeof payload.defaultDealValue === 'number' && !Number.isNaN(payload.defaultDealValue)
         ? Math.max(0, payload.defaultDealValue)
         : 0,
@@ -492,19 +494,11 @@ export async function createDefaultPipelineForIndustry(
 }
 
 /**
- * Helper function to assign colors to pipeline stages based on their order.
- * Provides a consistent color scheme across all industry pipelines.
+ * Helper function to assign default neutral color to pipeline stages.
+ * Intermediate stages default to neutral slate (#64748B) to eliminate rainbow clutter.
  */
-function getStageColor(index: number): string {
-    const colors = [
-        '#6B7280', // gray - initial stages (Lead, Enquiry, Intake)
-        '#3B82F6', // blue - qualification stages (Trial, Application, Conflict Check)
-        '#F59E0B', // amber - in-progress stages (Onboarding, Review, Planning)
-        '#10B981', // green - active/success stages (Active, Accepted, Execution)
-        '#8B5CF6', // purple - advanced stages (Renewal, Enrolled, Delivery)
-        '#EF4444', // red - terminal stages (Churned, Closed, Outcome)
-    ];
-    return colors[index % colors.length];
+function getStageColor(_index: number): string {
+    return DEFAULT_STAGE_COLOR;
 }
 
 /**

@@ -34,7 +34,7 @@ import { ScriptThumbnailCard } from '@/components/call-centre/ScriptThumbnailCar
 
 const InteractiveScriptView = dynamic(
   () =>
-    import('@/app/admin/messaging/call-centre/scripts/components/InteractiveScriptView').then(
+    import('@/app/admin/call-centre/scripts/components/InteractiveScriptView').then(
       (m) => m.InteractiveScriptView
     ),
   {

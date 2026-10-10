@@ -1,12 +1,12 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { RainbowButton } from '@/components/ui/rainbow-button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { 
+  ArrowLeft,
   Sparkles, 
   Linkedin, 
   Facebook, 
@@ -260,48 +261,58 @@ export default function UniversalComposerClient() {
         {/* Header Panel */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50 pb-6">
           <div className="flex items-center gap-2.5">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              asChild 
+              className="h-9 w-9 rounded-xl hover:bg-muted active:scale-[0.97] shrink-0 text-muted-foreground hover:text-foreground"
+            >
+              <Link href="/admin/social" aria-label="Back to Social Hub">
+                <ArrowLeft className="h-5 w-5" />
+              </Link>
+            </Button>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
               Universal Composer
             </h1>
             <CardInfoTooltip text="Draft once and generate tailored, channel-specific variations utilizing your AI brand voice profile." />
           </div>
 
-        <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            className="rounded-xl h-10 px-4 font-semibold text-xs tracking-wide active:scale-[0.97] transition-all bg-white dark:bg-card border border-border/80 shadow-xs"
-            onClick={() => handlePublish('draft')}
-            disabled={isPublishing}
-          >
-            Save Draft
-          </Button>
-          <Button 
-            variant="secondary" 
-            className="rounded-xl h-10 px-4 font-semibold text-xs tracking-wide active:scale-[0.97] transition-all gap-1.5"
-            onClick={() => handlePublish('scheduled')}
-            disabled={isPublishing}
-          >
-            <Calendar className="h-4 w-4" /> Schedule Post
-          </Button>
-          <Button 
-            className="rounded-xl h-10 px-5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs tracking-wide active:scale-[0.97] transition-all gap-1.5 shadow-lg shadow-emerald-500/10"
-            onClick={() => handlePublish('published')}
-            disabled={isPublishing}
-          >
-            {isPublishing ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-            Publish Now (Simulated)
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              className="rounded-xl h-10 px-4 font-semibold text-xs tracking-wide active:scale-[0.97] transition-all bg-card border border-border/80 shadow-xs"
+              onClick={() => handlePublish('draft')}
+              disabled={isPublishing}
+            >
+              Save Draft
+            </Button>
+            <Button 
+              variant="secondary" 
+              className="rounded-xl h-10 px-4 font-semibold text-xs tracking-wide active:scale-[0.97] transition-all gap-1.5"
+              onClick={() => handlePublish('scheduled')}
+              disabled={isPublishing}
+            >
+              <Calendar className="h-4 w-4" /> Schedule Post
+            </Button>
+            <Button 
+              className="rounded-xl h-10 px-5 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs tracking-wide active:scale-[0.97] transition-all gap-1.5 shadow-xs"
+              onClick={() => handlePublish('published')}
+              disabled={isPublishing}
+            >
+              {isPublishing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+              Publish Now (Simulated)
+            </Button>
+          </div>
         </div>
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Column: Editor Configs */}
         <div className="lg:col-span-7 space-y-6">
-          <Card className="border border-border/30 rounded-3xl bg-card/40 backdrop-blur-md overflow-hidden relative">
+          <Card className="border border-border/80 rounded-2xl bg-card shadow-xs overflow-hidden relative">
             <CardHeader className="pb-4">
               <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Post Parameters</CardTitle>
             </CardHeader>
@@ -313,7 +324,7 @@ export default function UniversalComposerClient() {
                   placeholder="e.g., Open House Promotion - Fall 2026"
                   value={postTitle}
                   onChange={(e) => setPostTitle(e.target.value)}
-                  className="rounded-xl border-border/30 h-10 bg-background/50 text-xs"
+                  className="rounded-xl border-border/80 h-10 bg-background text-xs"
                 />
               </div>
 
@@ -323,7 +334,6 @@ export default function UniversalComposerClient() {
                 <div className="flex flex-wrap gap-3">
                   {Object.keys(selectedPlatforms).map((platform) => {
                     const Icon = platformIcons[platform] || Globe;
-                    const colors = platformColors[platform] || { text: 'text-foreground', border: 'border-border/30', bg: 'bg-muted/10' };
                     const isChecked = selectedPlatforms[platform];
 
                     return (
@@ -337,11 +347,11 @@ export default function UniversalComposerClient() {
                         className={cn(
                           "flex items-center gap-2 px-4 py-2 border rounded-xl font-bold text-xs tracking-wider transition-all duration-200 active:scale-[0.97]",
                           isChecked 
-                            ? cn("bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400")
-                            : "bg-background/40 border-border/30 text-muted-foreground hover:text-foreground"
+                            ? cn("bg-primary/10 border-primary/30 text-primary")
+                            : "bg-card border-border/80 text-muted-foreground hover:text-foreground"
                         )}
                       >
-                        <Icon className={cn("h-4 w-4 shrink-0", isChecked ? "text-emerald-500" : "text-muted-foreground")} />
+                        <Icon className={cn("h-4 w-4 shrink-0", isChecked ? "text-primary" : "text-muted-foreground")} />
                         <span className="capitalize">{platform}</span>
                       </button>
                     );
@@ -353,13 +363,14 @@ export default function UniversalComposerClient() {
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <Label htmlFor="base-composer" className="text-xs font-semibold">Base Draft Idea</Label>
-                  <RainbowButton
+                  <Button
                     type="button"
+                    variant="outline"
                     onClick={handleAdaptAll}
-                    className="h-8 text-xs font-bold rounded-xl gap-1.5 active:scale-[0.97] transition-all px-3 text-white shadow-xs"
+                    className="h-8 text-xs font-bold rounded-xl gap-1.5 active:scale-[0.97] transition-all px-3 bg-card border-border/80 hover:bg-muted shadow-xs"
                   >
-                    <Sparkles className="h-3.5 w-3.5" /> Adapt Selected with AI
-                  </RainbowButton>
+                    <Sparkles className="h-3.5 w-3.5 text-primary" /> Adapt Selected with AI
+                  </Button>
                 </div>
                 <Textarea
                   id="base-composer"
@@ -367,7 +378,7 @@ export default function UniversalComposerClient() {
                   placeholder="e.g., Join us this Saturday at 10am for our Campus Tour. See the classroom spaces, meet teachers, and discover why we are the #1 local choice."
                   value={baseCaption}
                   onChange={(e) => setBaseCaption(e.target.value)}
-                  className="rounded-xl border-border/30 bg-background/50 text-xs leading-relaxed"
+                  className="rounded-xl border-border/80 bg-background text-xs leading-relaxed"
                 />
               </div>
 
@@ -382,7 +393,7 @@ export default function UniversalComposerClient() {
                       placeholder="https://images.unsplash.com/photo-..."
                       value={mediaUrlInput}
                       onChange={(e) => setMediaUrlInput(e.target.value)}
-                      className="pl-9 rounded-xl border-border/30 h-10 bg-background/50 text-xs"
+                      className="pl-9 rounded-xl border-border/80 h-10 bg-background text-xs"
                     />
                   </div>
                   <Button 
@@ -396,11 +407,11 @@ export default function UniversalComposerClient() {
                 {mediaUrls.length > 0 && (
                   <div className="flex flex-wrap gap-2 pt-2">
                     {mediaUrls.map((url, index) => (
-                      <div key={index} className="relative rounded-xl border border-border/30 bg-background/40 p-2 pr-8 text-[10px] font-medium truncate max-w-xs">
+                      <div key={index} className="relative rounded-xl border border-border/80 bg-card p-2 pr-8 text-[10px] font-medium truncate max-w-xs shadow-xs">
                         {url}
                         <button
                           type="button"
-                          className="absolute right-2 top-2 text-red-500 hover:text-red-600 font-bold"
+                          className="absolute right-2 top-2 text-destructive hover:text-destructive/80 font-bold"
                           onClick={() => setMediaUrls(prev => prev.filter((_, idx) => idx !== index))}
                         >
                           ×
@@ -421,25 +432,26 @@ export default function UniversalComposerClient() {
               const data = platformData[platform];
 
               return (
-                <Card key={platform} className="border border-border/30 rounded-2xl bg-card/30 backdrop-blur-sm overflow-hidden even:bg-muted/30 dark:even:bg-muted/15">
-                  <CardHeader className="flex flex-row items-center justify-between pb-3 space-y-0 border-b border-border/10 bg-muted/10">
+                <Card key={platform} className="border border-border/80 rounded-2xl bg-card shadow-xs overflow-hidden">
+                  <CardHeader className="flex flex-row items-center justify-between pb-3 space-y-0 border-b border-border/60 bg-muted/20">
                     <div className="flex items-center gap-2">
                       <Icon className="h-4 w-4 text-muted-foreground" />
                       <span className="capitalize text-xs font-bold">{platform} Variation</span>
                     </div>
-                    <RainbowButton
+                    <Button
                       type="button"
+                      variant="outline"
                       onClick={() => handleAdaptPlatform(platform)}
                       disabled={data.generating}
-                      className="text-xs font-bold rounded-xl h-7 gap-1 active:scale-[0.97] transition-all px-2.5 text-white shadow-xs"
+                      className="text-xs font-bold rounded-xl h-7 gap-1 active:scale-[0.97] transition-all px-2.5 bg-card border-border/80 hover:bg-muted shadow-xs"
                     >
                       {data.generating ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <Loader2 className="h-3 w-3 animate-spin text-primary" />
                       ) : (
-                        <Sparkles className="h-3 w-3" />
+                        <Sparkles className="h-3 w-3 text-primary" />
                       )}
                       Re-adapt
-                    </RainbowButton>
+                    </Button>
                   </CardHeader>
                   <CardContent className="pt-4">
                     <Textarea
@@ -453,7 +465,7 @@ export default function UniversalComposerClient() {
                           [platform]: { ...prev[platform], caption: val }
                         }));
                       }}
-                      className="rounded-xl border-border/30 bg-background/50 text-xs leading-relaxed"
+                      className="rounded-xl border-border/80 bg-background text-xs leading-relaxed"
                     />
                   </CardContent>
                 </Card>
@@ -490,7 +502,7 @@ export default function UniversalComposerClient() {
                       <TabsTrigger 
                         key={platform} 
                         value={platform} 
-                        className="rounded-xl text-xs capitalize py-2 px-4 border border-border/30 data-[state=active]:bg-emerald-500/10 data-[state=active]:border-emerald-500/30 data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400 gap-1.5 transition-all duration-200"
+                        className="rounded-xl text-xs capitalize py-2 px-4 border border-border/80 data-[state=active]:bg-primary/10 data-[state=active]:border-primary/30 data-[state=active]:text-primary gap-1.5 transition-all duration-200"
                       >
                         <Icon className="h-3.5 w-3.5" />
                         {platform}
@@ -508,9 +520,9 @@ export default function UniversalComposerClient() {
 
                   return (
                     <TabsContent key={platform} value={platform} className="pt-3">
-                      <Card className="border border-border/20 rounded-3xl bg-background overflow-hidden shadow-2xl relative">
+                      <Card className="border border-border/80 rounded-2xl bg-card overflow-hidden shadow-xs relative">
                         {/* Mock Header */}
-                        <div className="border-b border-border/10 p-4 flex items-center gap-3 bg-muted/5">
+                        <div className="border-b border-border/60 p-4 flex items-center gap-3 bg-muted/20">
                           <div className={cn("h-9 w-9 rounded-xl flex items-center justify-center border", colors.border, colors.bg)}>
                             <Icon className={cn("h-4 w-4", colors.text)} />
                           </div>
@@ -527,7 +539,7 @@ export default function UniversalComposerClient() {
                           </p>
 
                           {mediaUrls.length > 0 ? (
-                            <div className="aspect-video rounded-2xl border border-border/30 bg-muted/40 overflow-hidden relative group">
+                            <div className="aspect-video rounded-2xl border border-border/80 bg-muted/40 overflow-hidden relative group">
                               <img 
                                 src={mediaUrls[0]} 
                                 alt="Post media preview" 
@@ -538,7 +550,7 @@ export default function UniversalComposerClient() {
                               </div>
                             </div>
                           ) : (
-                            <div className="aspect-video rounded-2xl border border-dashed border-border/30 bg-muted/10 flex flex-col items-center justify-center text-muted-foreground p-6">
+                            <div className="aspect-video rounded-2xl border border-dashed border-border/80 bg-muted/10 flex flex-col items-center justify-center text-muted-foreground p-6">
                               <ImageIcon className="h-8 w-8 opacity-40 mb-2" />
                               <span className="text-[10px] font-semibold">No media attached</span>
                             </div>

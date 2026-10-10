@@ -7,7 +7,6 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { CampaignPage } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -101,8 +100,8 @@ export default function PagesClient() {
     () =>
       pages?.filter(
         p =>
-          p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          p.slug.toLowerCase().includes(searchTerm.toLowerCase()),
+          (p.name?.toLowerCase() ?? '').includes(searchTerm.toLowerCase()) ||
+          (p.slug?.toLowerCase() ?? '').includes(searchTerm.toLowerCase()),
       ) ?? [],
     [pages, searchTerm],
   );
@@ -230,7 +229,7 @@ export default function PagesClient() {
 
   return (
     <PageContainerFluid>
-      <div className="space-y-12 pb-32 text-left w-full">
+      <div className="space-y-8 pb-32 text-left w-full">
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -238,29 +237,28 @@ export default function PagesClient() {
             <h1 className="text-3xl font-bold text-foreground">Campaign Hub</h1>
             <CardInfoTooltip text="Conversion-optimized landing architectural system." />
           </div>
-          <Button
-            asChild
-            className="h-11 px-8 rounded-xl font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg transform active:scale-[0.97] transition-all text-sm w-full sm:w-auto"
-          >
-            <Link href="/admin/pages/new">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              New Blueprint
-            </Link>
-          </Button>
-        </div>
 
-        {/* ── Filter Card ────────────────────────────────────────────────── */}
-        <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm">
-          <div className="relative w-full sm:max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-60" />
-            <Input
-              placeholder="Filter pages..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="pl-10 h-10 min-h-[44px] rounded-xl bg-background border-border text-foreground font-medium text-xs w-full"
-            />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+            <div className="relative w-full sm:w-64 md:w-80">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-60" />
+              <Input
+                placeholder="Filter pages..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="pl-10 h-11 min-h-[44px] rounded-xl bg-card border-border text-foreground font-medium text-xs w-full shadow-xs"
+              />
+            </div>
+            <Button
+              asChild
+              className="h-11 px-6 rounded-xl font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-md transform active:scale-[0.97] transition-all text-sm shrink-0 w-full sm:w-auto"
+            >
+              <Link href="/admin/pages/new">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                New Blueprint
+              </Link>
+            </Button>
           </div>
-        </Card>
+        </div>
 
         {/* ── Grid ───────────────────────────────────────────────────────── */}
         {isLoading ? (

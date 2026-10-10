@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { useToast } from '@/hooks/use-toast';
 import { saveOrganizationAction } from '@/lib/organization-actions';
 import { createOrUpdateDepartmentAction, deleteDepartmentAction } from '@/app/actions/workforce-actions';
@@ -251,17 +252,17 @@ export default function OrganizationRegionalTab({ organization }: OrganizationRe
     };
 
     return (
-        <Card className="rounded-[2rem] border border-border shadow-sm bg-transparent overflow-hidden">
-            <CardHeader className="p-8 border-b">
-                <CardTitle className="text-xl font-bold flex items-center gap-2">
+        <Card className="rounded-2xl border border-border/80 shadow-sm bg-card text-card-foreground overflow-hidden">
+            <CardHeader className="p-6 border-b border-border/60 bg-muted/20">
+                <div className="flex items-center gap-2">
                     <Settings className="h-5 w-5 text-primary" />
-                    Regional settings
-                </CardTitle>
-                <CardDescription className="text-xs font-semibold text-muted-foreground mt-0.5">
-                    Customize language, defaults, and selectable departments for your team members
-                </CardDescription>
+                    <CardTitle className="text-xl font-bold">
+                        Regional Settings
+                    </CardTitle>
+                    <CardInfoTooltip text="Customize language, defaults, and selectable departments for your team members." />
+                </div>
             </CardHeader>
-            <CardContent className="p-8 space-y-6">
+            <CardContent className="p-6 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="space-y-2">
                         <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
@@ -270,7 +271,7 @@ export default function OrganizationRegionalTab({ organization }: OrganizationRe
                         <select
                             value={defaultLanguage}
                             onChange={e => setDefaultLanguage(e.target.value)}
-                            className="h-11 w-full rounded-xl bg-muted/20 border-none shadow-inner font-semibold px-4 text-sm"
+                            className="h-11 w-full rounded-xl bg-white dark:bg-card border border-border/80 font-semibold px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                         >
                             {LANGUAGES.map(lang => (
                                 <option key={lang.code} value={lang.code}>
@@ -287,7 +288,7 @@ export default function OrganizationRegionalTab({ organization }: OrganizationRe
                         <select 
                             value={defaultCountryCode}
                             onChange={e => setDefaultCountryCode(e.target.value)}
-                            className="h-11 w-full rounded-xl bg-muted/20 border-none shadow-inner font-semibold px-4 text-sm"
+                            className="h-11 w-full rounded-xl bg-white dark:bg-card border border-border/80 font-semibold px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                         >
                             {COUNTRIES.map(c => (
                                 <option key={c.code} value={c.code}>
@@ -310,7 +311,7 @@ export default function OrganizationRegionalTab({ organization }: OrganizationRe
                             value={defaultCurrency} 
                             onChange={e => setDefaultCurrency(e.target.value)} 
                             placeholder="USD" 
-                            className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-semibold px-4" 
+                            className="h-11 rounded-xl bg-white dark:bg-card border border-border/80 font-semibold px-4 text-sm focus-visible:ring-primary" 
                         />
                     </div>
 
@@ -321,7 +322,7 @@ export default function OrganizationRegionalTab({ organization }: OrganizationRe
                         <select 
                             value={defaultTimezone}
                             onChange={e => setDefaultTimezone(e.target.value)}
-                            className="h-11 w-full rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4 text-sm"
+                            className="h-11 w-full rounded-xl bg-white dark:bg-card border border-border/80 font-medium px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                         >
                             {IANA_TIMEZONES.map(tz => (
                                 <option key={tz} value={tz}>{tz.replace(/_/g, ' ')}</option>
@@ -337,7 +338,7 @@ export default function OrganizationRegionalTab({ organization }: OrganizationRe
                     <select 
                         value={defaultRoleId}
                         onChange={e => setDefaultRoleId(e.target.value)}
-                        className="h-11 w-full rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4 text-sm"
+                        className="h-11 w-full rounded-xl bg-white dark:bg-card border border-border/80 font-medium px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                     >
                         <option value="">No Default (Manual Selection Required)</option>
                         {roles.map(r => (
@@ -350,9 +351,9 @@ export default function OrganizationRegionalTab({ organization }: OrganizationRe
 
                 <div className="space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div>
-                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Onboarding Departments</Label>
-                            <p className="text-xs text-muted-foreground">Canonical departments selectable during onboarding and team assignments.</p>
+                        <div className="flex items-center gap-1.5">
+                            <Label className="text-xs font-bold text-foreground ml-1">Onboarding Departments</Label>
+                            <CardInfoTooltip text="Canonical departments selectable during onboarding and team assignments." />
                         </div>
                         <Button
                             asChild
@@ -380,13 +381,13 @@ export default function OrganizationRegionalTab({ organization }: OrganizationRe
                             }}
                             placeholder="Add department (e.g. Sales, Marketing)..."
                             disabled={isAddingDept}
-                            className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4 flex-1 animate-none text-sm"
+                            className="h-11 rounded-xl bg-white dark:bg-card border border-border/80 font-medium px-4 flex-1 animate-none text-sm focus-visible:ring-primary"
                         />
                         <Button
                             type="button"
                             onClick={handleAddDepartment}
                             disabled={isAddingDept || !newDept.trim()}
-                            className="h-11 rounded-xl font-semibold bg-primary text-white hover:bg-primary/90 px-5 shrink-0 min-h-[44px] active:scale-[0.97] transition-all"
+                            className="h-11 rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90 px-5 shrink-0 min-h-[44px] active:scale-[0.97] transition-all"
                         >
                             {isAddingDept ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add'}
                         </Button>
@@ -438,16 +439,12 @@ export default function OrganizationRegionalTab({ organization }: OrganizationRe
 
                 <Separator className="opacity-50" />
 
-                <div className="rounded-2xl border border-border/60 bg-muted/10 p-5 space-y-3">
+                <div className="rounded-2xl border border-border/80 bg-muted/10 p-5 space-y-3">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <div className="space-y-1">
-                            <h4 className="text-sm font-bold flex items-center gap-2">
-                                <ShieldCheck className="h-4 w-4 text-emerald-500" />
-                                Phone Hygiene & Deliverability
-                            </h4>
-                            <p className="text-xs text-muted-foreground">
-                                Re-evaluate contacts whose numbers were marked invalid due to missing country prefixes or stale cache records.
-                            </p>
+                        <div className="flex items-center gap-2">
+                            <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                            <h4 className="text-sm font-bold">Phone Hygiene & Deliverability</h4>
+                            <CardInfoTooltip text="Re-evaluate contacts whose numbers were marked invalid due to missing country prefixes or stale cache records." />
                         </div>
                         <Button
                             type="button"
@@ -455,7 +452,7 @@ export default function OrganizationRegionalTab({ organization }: OrganizationRe
                             size="sm"
                             onClick={handleReconcileHygiene}
                             disabled={isReconciling}
-                            className="min-h-[44px] px-4 font-bold rounded-xl border border-border shadow-sm active:scale-[0.97] transition-all shrink-0"
+                            className="min-h-[44px] px-4 font-bold rounded-xl border border-border/80 shadow-sm active:scale-[0.97] transition-all shrink-0"
                         >
                             {isReconciling ? (
                                 <>
@@ -473,7 +470,7 @@ export default function OrganizationRegionalTab({ organization }: OrganizationRe
                 </div>
 
                 <div className="flex justify-end pt-4">
-                    <Button onClick={handleSave} disabled={isSaving} className="rounded-xl font-bold h-11 px-8 shadow-lg shadow-primary/10 active:scale-[0.97] transition-all">
+                    <Button onClick={handleSave} disabled={isSaving} className="rounded-xl font-bold h-11 px-8 shadow-sm bg-primary text-primary-foreground active:scale-[0.97] transition-all">
                         {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                         Save Settings
                     </Button>

@@ -17,7 +17,7 @@ import { useTenant } from '@/context/TenantContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useUser, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { Building, Globe, Mail, Phone, MapPin, Pencil, Sparkles, Sliders, Key, Layers, CreditCard, MessageSquare, Receipt, ArrowRight, ExternalLink } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -137,7 +137,7 @@ export default function SettingsClient() {
           description: result.error || "Failed to update logo.",
         });
       }
-    } catch (_error) {
+    } catch {
       toast({
         variant: "destructive",
         title: "Error",
@@ -493,11 +493,8 @@ export default function SettingsClient() {
                       <CardTitle className="text-xl sm:text-2xl font-bold tracking-tight">
                         SMS Units & Billing Management
                       </CardTitle>
-                      <CardInfoTooltip text="Manage SMS unit credits, gateway routing credentials, and institutional billing protocols." />
+                      <CardInfoTooltip text="Manage SMS unit credits, gateway routing credentials, and institutional billing protocols. Monitor credit reserves, top up dispatch capacity, and configure organization tax and remittance profiles." />
                     </div>
-                    <CardDescription className="text-xs text-muted-foreground mt-1">
-                      Monitor credit reserves, top up dispatch capacity, and configure organization tax and remittance profiles.
-                    </CardDescription>
                   </div>
                   <Button
                     asChild
@@ -524,10 +521,10 @@ export default function SettingsClient() {
                           Active Gateway
                         </Badge>
                       </div>
-                      <h3 className="text-lg font-bold text-foreground">mNotify Provider Credits</h3>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        Outbound SMS dispatches route through your configured mNotify gateway credentials. To purchase additional units or renew your sending bundle, access your provider dashboard.
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-bold text-foreground">mNotify Provider Credits</h3>
+                        <CardInfoTooltip text="Outbound SMS dispatches route through your configured mNotify gateway credentials. To purchase additional units or renew your sending bundle, access your provider dashboard." />
+                      </div>
                     </div>
                     <div className="pt-2 flex flex-wrap gap-2.5 items-center">
                       <Button
@@ -560,10 +557,10 @@ export default function SettingsClient() {
                           Finance Hub
                         </Badge>
                       </div>
-                      <h3 className="text-lg font-bold text-foreground">Billing & Remittance Protocols</h3>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        Configure institutional tax codes, VAT/Levy schedules, bank remittance details, authorized digital signatures, and fee invoicing schedules.
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-bold text-foreground">Billing & Remittance Protocols</h3>
+                        <CardInfoTooltip text="Configure institutional tax codes, VAT/Levy schedules, bank remittance details, authorized digital signatures, and fee invoicing schedules." />
+                      </div>
                     </div>
                     <div className="pt-2 flex flex-wrap gap-2.5 items-center">
                       <Button

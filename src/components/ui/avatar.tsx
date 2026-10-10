@@ -37,20 +37,22 @@ const avatarStatusVariants = cva('flex items-center rounded-full size-2 border-2
 
 function Avatar({ className, ...props }: React.ComponentProps<typeof AvatarPrimitive.Root>) {
   return (
-    <AvatarPrimitive.Root data-slot="avatar" className={cn('relative flex shrink-0 size-10', className)} {...props} />
+    <AvatarPrimitive.Root
+      data-slot="avatar"
+      className={cn('relative flex shrink-0 size-10 overflow-hidden rounded-full', className)}
+      {...props}
+    />
   );
 }
 
 function AvatarImage({ className, src, ...props }: React.ComponentProps<typeof AvatarPrimitive.Image>) {
   return (
-    <div className={cn('relative overflow-hidden rounded-full', className)}>
-      <AvatarPrimitive.Image 
-        data-slot="avatar-image" 
-        className={cn('aspect-square h-full w-full')} 
-        {...props} 
-        src={src || undefined}
-      />
-    </div>
+    <AvatarPrimitive.Image 
+      data-slot="avatar-image" 
+      className={cn('aspect-square h-full w-full object-cover rounded-full', className)} 
+      {...props} 
+      src={src || undefined}
+    />
   );
 }
 
@@ -59,7 +61,7 @@ function AvatarFallback({ className, ...props }: React.ComponentProps<typeof Ava
     <AvatarPrimitive.Fallback
       data-slot="avatar-fallback"
       className={cn(
-        'flex h-full w-full items-center justify-center rounded-full border border-border bg-accent text-accent-foreground text-xs',
+        'flex h-full w-full items-center justify-center rounded-full bg-accent text-accent-foreground text-xs font-semibold',
         className,
       )}
       {...props}

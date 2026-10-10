@@ -75,7 +75,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import CreateQRButton from '@/components/qr-studio/create-qr-button';
-import { PageContainer } from '@/components/ui/page-container';
+import { PageContainerFluid } from '@/components/ui/page-container';
 import ShareEmbedDialog from '@/components/share-embed-dialog';
 import AiFormGeneratorModal from './components/AiFormGeneratorModal';
 import { getErrorMessage } from '@/lib/errors/report-error';
@@ -350,8 +350,8 @@ export default function FormsClient() {
 
     return (
         <TooltipProvider>
-            <PageContainer>
-                <div className="space-y-8 pb-32 w-full">
+            <PageContainerFluid>
+                <div className="space-y-8 pb-32 w-full text-left">
                     {/* Header */}
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/80 pb-5">
                         <div className="flex items-center gap-3">
@@ -405,46 +405,46 @@ export default function FormsClient() {
 
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="border border-border shadow-sm rounded-2xl bg-transparent transition-all hover:bg-accent/5">
+            <Card className="border border-border/80 shadow-xs rounded-2xl bg-card transition-all hover:shadow-sm">
               <CardContent className="p-5">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary/10 rounded-xl"><ClipboardSignature className="h-4 w-4 text-primary" /></div>
+                  <div className="p-2.5 bg-primary/10 rounded-xl"><ClipboardSignature className="h-4 w-4 text-primary" /></div>
                   <div>
-                    <p className="text-[10px] font-semibold text-muted-foreground">Total Forms</p>
-                    <p className="text-2xl font-semibold tabular-nums">{isLoading ? '—' : (forms?.length || 0)}</p>
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Total Forms</p>
+                    <p className="text-2xl font-bold tabular-nums text-foreground">{isLoading ? '—' : (forms?.length || 0)}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
-            <Card className="border border-border shadow-sm rounded-2xl bg-transparent transition-all hover:bg-accent/5">
+            <Card className="border border-border/80 shadow-xs rounded-2xl bg-card transition-all hover:shadow-sm">
               <CardContent className="p-5">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-emerald-100 rounded-xl"><Eye className="h-4 w-4 text-emerald-600" /></div>
+                  <div className="p-2.5 bg-emerald-500/10 rounded-xl"><Eye className="h-4 w-4 text-emerald-600 dark:text-emerald-400" /></div>
                   <div>
-                    <p className="text-[10px] font-semibold text-muted-foreground">Published</p>
-                    <p className="text-2xl font-semibold tabular-nums">{isLoading ? '—' : forms?.filter(f => f.status === 'published').length || 0}</p>
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Published</p>
+                    <p className="text-2xl font-bold tabular-nums text-foreground">{isLoading ? '—' : forms?.filter(f => f.status === 'published').length || 0}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
-            <Card className="border border-border shadow-sm rounded-2xl bg-transparent transition-all hover:bg-accent/5">
+            <Card className="border border-border/80 shadow-xs rounded-2xl bg-card transition-all hover:shadow-sm">
               <CardContent className="p-5">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-amber-100 rounded-xl"><FileText className="h-4 w-4 text-amber-600" /></div>
+                  <div className="p-2.5 bg-amber-500/10 rounded-xl"><FileText className="h-4 w-4 text-amber-600 dark:text-amber-400" /></div>
                   <div>
-                    <p className="text-[10px] font-semibold text-muted-foreground">Drafts</p>
-                    <p className="text-2xl font-semibold tabular-nums">{isLoading ? '—' : forms?.filter(f => f.status === 'draft').length || 0}</p>
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Drafts</p>
+                    <p className="text-2xl font-bold tabular-nums text-foreground">{isLoading ? '—' : forms?.filter(f => f.status === 'draft').length || 0}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
-            <Card className="border border-border shadow-sm rounded-2xl bg-transparent transition-all hover:bg-accent/5">
+            <Card className="border border-border/80 shadow-xs rounded-2xl bg-card transition-all hover:shadow-sm">
               <CardContent className="p-5">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 rounded-xl"><Hash className="h-4 w-4 text-blue-600" /></div>
+                  <div className="p-2.5 bg-blue-500/10 rounded-xl"><Hash className="h-4 w-4 text-blue-600 dark:text-blue-400" /></div>
                   <div>
-                    <p className="text-[10px] font-semibold text-muted-foreground">Total Submissions</p>
-                    <p className="text-2xl font-semibold tabular-nums">{isLoading ? '—' : forms?.reduce((s, f) => s + (f.submissionCount || 0), 0) || 0}</p>
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Total Submissions</p>
+                    <p className="text-2xl font-bold tabular-nums text-foreground">{isLoading ? '—' : forms?.reduce((s, f) => s + (f.submissionCount || 0), 0) || 0}</p>
                   </div>
                 </div>
               </CardContent>
@@ -452,18 +452,18 @@ export default function FormsClient() {
           </div>
 
           {/* Search & Filter */}
-          <div className="flex flex-col md:flex-row gap-4 items-center bg-transparent p-4 rounded-3xl border shadow-sm ring-1 ring-border">
+          <div className="flex flex-col md:flex-row gap-4 items-center bg-card p-3 sm:p-4 rounded-2xl border border-border/80 shadow-xs">
             <div className="relative flex-grow w-full">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-60" />
                <Input
                 placeholder="Search forms by name or slug..."
-                className="pl-11 h-12 rounded-2xl bg-background/50 backdrop-blur-sm border border-border font-bold shadow-sm focus:ring-1 focus:ring-primary/20 transition-all"
+                className="pl-11 h-11 min-h-[44px] rounded-xl bg-background border border-border text-foreground font-medium text-xs shadow-xs focus:ring-1 focus:ring-primary/20 transition-all"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
               />
             </div>
              <Select value={statusFilter} onValueChange={setStatusFilter}>
-               <SelectTrigger className="h-12 w-full md:w-[200px] rounded-2xl bg-background/50 backdrop-blur-sm border border-border shadow-sm font-semibold text-[10px] transition-all hover:bg-accent/10 focus:ring-1 focus:ring-primary/20">
+               <SelectTrigger className="h-11 min-h-[44px] w-full md:w-[200px] rounded-xl bg-background border border-border text-foreground shadow-xs font-semibold text-xs transition-all hover:bg-muted/60 focus:ring-1 focus:ring-primary/20">
                  <SelectValue />
                </SelectTrigger>
 
@@ -477,24 +477,24 @@ export default function FormsClient() {
           </div>
 
            {/* Table */}
-          <div className="rounded-2xl border border-border bg-transparent text-card-foreground shadow-sm overflow-hidden">
+          <div className="rounded-2xl border border-border/80 bg-card text-card-foreground shadow-xs overflow-hidden">
             <Table>
                <TableHeader>
-                <TableRow className="bg-muted/10 border-b border-border/50">
-                  <TableHead className="text-[10px] font-semibold py-4 pl-6">Form Name</TableHead>
-                  <TableHead className="w-[100px] text-[10px] font-semibold py-4 text-center">Type</TableHead>
-                  <TableHead className="w-[120px] text-[10px] font-semibold py-4 text-center">Status</TableHead>
-                  <TableHead className="w-[100px] text-center text-[10px] font-semibold py-4">Fields</TableHead>
-                  <TableHead className="w-[120px] text-center text-[10px] font-semibold py-4">Submissions</TableHead>
-                  <TableHead className="w-[180px] hidden md:table-cell text-[10px] font-semibold py-4">Created</TableHead>
-                  <TableHead className="w-[160px] text-right text-[10px] font-semibold py-4 pr-6">Actions</TableHead>
+                <TableRow className="bg-muted/30 border-b border-border/80 hover:bg-muted/30">
+                  <TableHead className="text-[10px] uppercase font-bold py-3 pl-6">Form Name</TableHead>
+                  <TableHead className="w-[100px] text-[10px] uppercase font-bold py-3 text-center">Type</TableHead>
+                  <TableHead className="w-[120px] text-[10px] uppercase font-bold py-3 text-center">Status</TableHead>
+                  <TableHead className="w-[100px] text-center text-[10px] uppercase font-bold py-3">Fields</TableHead>
+                  <TableHead className="w-[120px] text-center text-[10px] uppercase font-bold py-3">Submissions</TableHead>
+                  <TableHead className="w-[180px] hidden md:table-cell text-[10px] uppercase font-bold py-3">Created</TableHead>
+                  <TableHead className="w-[160px] text-right text-[10px] uppercase font-bold py-3 pr-6">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
                   Array.from({ length: 3 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell className="pl-6"><Skeleton className="h-5 w-3/4" /></TableCell>
+                    <TableRow key={i} className="border-b border-border/60">
+                      <TableCell className="pl-6 py-4"><Skeleton className="h-5 w-3/4" /></TableCell>
                       <TableCell><Skeleton className="h-6 w-16 mx-auto" /></TableCell>
                       <TableCell><Skeleton className="h-6 w-20 mx-auto" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-10 mx-auto" /></TableCell>
@@ -505,7 +505,7 @@ export default function FormsClient() {
                   ))
                 ) : filteredForms.length > 0 ? (
                   filteredForms.map(form => (
-                    <TableRow key={form.id} className="group hover:bg-accent/5 transition-colors border-border/30">
+                    <TableRow key={form.id} className="group hover:bg-muted/40 transition-colors border-b border-border/60">
                       <TableCell className="font-bold pl-6">
                         <div className="flex flex-col gap-0.5 min-w-0">
                           <Link
@@ -638,7 +638,7 @@ export default function FormsClient() {
           userId={user.uid}
         />
       )}
-            </PageContainer>
+            </PageContainerFluid>
     </TooltipProvider>
   );
 }

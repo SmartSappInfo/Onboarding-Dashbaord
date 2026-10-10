@@ -13,7 +13,8 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -131,29 +132,27 @@ export function WorkspaceAiSettingsCard({
   const allModels = AiModelRegistry.getAllModels();
 
   return (
-    <Card className={cn('rounded-[2rem] border-none shadow-sm ring-1 ring-border overflow-hidden', className)}>
-      <CardHeader className="bg-primary/5 border-b p-6 sm:p-8">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3.5">
-            <div className="p-3 bg-primary/10 text-primary rounded-2xl">
-              <Cpu className="h-6 w-6" />
+    <Card className={cn('rounded-2xl border border-border/80 bg-card text-card-foreground shadow-sm overflow-hidden', className)}>
+      <CardHeader className="p-6 border-b border-border/60 bg-muted/20">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-primary/10 text-primary rounded-xl">
+              <Cpu className="h-5 w-5" />
             </div>
-            <div>
-              <CardTitle className="text-xl font-bold flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-base font-bold">
                 Workspace AI Engine
               </CardTitle>
-              <CardDescription>
-                Single source of truth for all autonomous flows, prompts, and specialists in this workspace.
-              </CardDescription>
+              <CardInfoTooltip text="Single source of truth for all autonomous flows, prompts, and specialists in this workspace." />
             </div>
           </div>
-          <Badge variant="secondary" className="bg-primary/10 text-primary border-none hidden sm:inline-flex">
+          <Badge variant="secondary" className="bg-primary/10 text-primary border-none hidden sm:inline-flex text-[10px] font-bold">
             Workspace Governance
           </Badge>
         </div>
       </CardHeader>
 
-      <CardContent className="p-6 sm:p-8 space-y-6">
+      <CardContent className="p-6 space-y-6">
         <form onSubmit={handleSave} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Preferred Provider */}
@@ -165,7 +164,7 @@ export function WorkspaceAiSettingsCard({
               <select
                 value={provider}
                 onChange={(e) => handleProviderChange(e.target.value as AiProviderId)}
-                className="w-full rounded-xl min-h-[44px] border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-all"
+                className="w-full rounded-xl min-h-[44px] border border-border/80 bg-white dark:bg-card px-3 py-2 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all"
               >
                 {AiModelRegistry.getProviders().map((prov) => (
                   <option key={prov.id} value={prov.id}>
@@ -187,7 +186,7 @@ export function WorkspaceAiSettingsCard({
               <select
                 value={preferredModelId}
                 onChange={(e) => setPreferredModelId(e.target.value)}
-                className="w-full rounded-xl min-h-[44px] border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-all"
+                className="w-full rounded-xl min-h-[44px] border border-border/80 bg-white dark:bg-card px-3 py-2 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all"
               >
                 {AiModelRegistry.getModelsByProvider(provider).map((model) => (
                   <option key={model.id} value={model.id}>
@@ -214,7 +213,7 @@ export function WorkspaceAiSettingsCard({
               <select
                 value={reasoningModelId}
                 onChange={(e) => setReasoningModelId(e.target.value)}
-                className="w-full rounded-xl min-h-[44px] border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-all"
+                className="w-full rounded-xl min-h-[44px] border border-border/80 bg-white dark:bg-card px-3 py-2 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all"
               >
                 <option value="">Auto-resolve from provider defaults</option>
                 {allModels
@@ -239,7 +238,7 @@ export function WorkspaceAiSettingsCard({
               <select
                 value={fastModelId}
                 onChange={(e) => setFastModelId(e.target.value)}
-                className="w-full rounded-xl min-h-[44px] border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-all"
+                className="w-full rounded-xl min-h-[44px] border border-border/80 bg-white dark:bg-card px-3 py-2 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all"
               >
                 <option value="">Auto-resolve from provider defaults</option>
                 {allModels
@@ -263,7 +262,7 @@ export function WorkspaceAiSettingsCard({
             <Button
               type="submit"
               disabled={isSaving}
-              className="rounded-xl font-semibold px-8 shadow-sm bg-primary text-white text-xs min-h-[44px] active:scale-[0.97] transition-all"
+              className="rounded-xl font-bold px-8 shadow-sm bg-primary text-primary-foreground text-xs min-h-[44px] active:scale-[0.97] transition-all"
             >
               {isSaving ? (
                 <>

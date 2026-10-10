@@ -26,11 +26,13 @@ import {
   FileText,
   Clock,
   ArrowRight,
+  Zap,
 } from 'lucide-react';
 import {
   PRIMARY_QUICK_ACTIONS,
   type QuickActionItem,
 } from '@/lib/messaging/quick-action-constants';
+import { CardInfoTooltip } from '@/components/ui/card-info-tooltip';
 import { MessagingAllFeaturesModal } from './MessagingAllFeaturesModal';
 import { cn } from '@/lib/utils';
 
@@ -42,13 +44,13 @@ export interface MessagingQuickActionsProps {
 function resolveActionIcon(iconName: QuickActionItem['iconName']) {
   switch (iconName) {
     case 'Megaphone':
-      return <Megaphone className="h-5 w-5" />;
+      return <Megaphone className="h-4 w-4 sm:h-5 sm:w-5" />;
     case 'Send':
-      return <Send className="h-5 w-5" />;
+      return <Send className="h-4 w-4 sm:h-5 sm:w-5" />;
     case 'FileText':
-      return <FileText className="h-5 w-5" />;
+      return <FileText className="h-4 w-4 sm:h-5 sm:w-5" />;
     case 'Clock':
-      return <Clock className="h-5 w-5" />;
+      return <Clock className="h-4 w-4 sm:h-5 sm:w-5" />;
   }
 }
 
@@ -81,19 +83,22 @@ export function MessagingQuickActions({ onOpenAllFeatures, className }: Messagin
   const [modalOpen, setModalOpen] = React.useState<boolean>(false);
 
   return (
-    <section className={cn('space-y-3.5', className)} aria-labelledby="quick-actions-heading">
+    <section className={cn('space-y-3', className)} aria-labelledby="quick-actions-heading">
       {/* Section Header */}
       <div className="flex flex-row items-center justify-between gap-2">
-        <div>
-          <h3
-            id="quick-actions-heading"
-            className="text-base sm:text-lg font-semibold tracking-tight text-foreground"
-          >
-            Quick Actions
-          </h3>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            Get started with the most common messaging tasks.
-          </p>
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 shrink-0">
+            <Zap className="h-3.5 w-3.5" />
+          </div>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <h3
+              id="quick-actions-heading"
+              className="text-sm sm:text-base font-semibold tracking-tight text-foreground truncate"
+            >
+              Quick Actions
+            </h3>
+            <CardInfoTooltip text="Get started with the most common messaging tasks." />
+          </div>
         </div>
 
         <button
@@ -111,7 +116,7 @@ export function MessagingQuickActions({ onOpenAllFeatures, className }: Messagin
       </div>
 
       {/* 4-Card Responsive Grid: 4-col desktop, 2x2 mobile */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {PRIMARY_QUICK_ACTIONS.map((action) => {
           const accents = resolveAccentClasses(action.accentColor);
           return (
@@ -120,16 +125,16 @@ export function MessagingQuickActions({ onOpenAllFeatures, className }: Messagin
               href={action.href}
               className={cn(
                 'group relative flex flex-col justify-between overflow-hidden',
-                'rounded-2xl border border-border/80 bg-card p-3.5 sm:p-4 md:p-5 text-card-foreground',
+                'rounded-2xl border border-border/80 bg-card p-3 sm:p-3.5 md:p-4 text-card-foreground',
                 'shadow-xs hover:shadow-md hover:border-primary/40 transition-all duration-200',
-                'active:scale-[0.98] min-h-[140px] sm:min-h-[155px] cursor-pointer'
+                'active:scale-[0.98] min-h-[105px] sm:min-h-[115px] cursor-pointer'
               )}
             >
               {/* Top: Squircle Icon & Badge */}
               <div className="flex items-center justify-between gap-2">
                 <div
                   className={cn(
-                    'flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl transition-transform group-hover:scale-105',
+                    'flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl transition-transform group-hover:scale-105',
                     accents.bg
                   )}
                 >
@@ -138,7 +143,7 @@ export function MessagingQuickActions({ onOpenAllFeatures, className }: Messagin
                 {action.badgeLabel && (
                   <span
                     className={cn(
-                      'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold',
+                      'inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold',
                       accents.badge
                     )}
                   >
@@ -147,14 +152,12 @@ export function MessagingQuickActions({ onOpenAllFeatures, className }: Messagin
                 )}
               </div>
 
-              {/* Bottom: Title & Description */}
-              <div className="mt-3">
-                <span className="text-xs sm:text-sm font-bold text-foreground group-hover:text-primary transition-colors block truncate">
+              {/* Bottom: Title & Info Tooltip */}
+              <div className="mt-2.5 flex items-center justify-between gap-1.5">
+                <span className="text-xs sm:text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate">
                   {action.title}
                 </span>
-                <p className="text-[11px] sm:text-xs text-muted-foreground line-clamp-2 mt-1 leading-snug">
-                  {action.description}
-                </p>
+                <CardInfoTooltip text={action.description} />
               </div>
             </Link>
           );

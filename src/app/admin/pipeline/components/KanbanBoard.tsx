@@ -14,6 +14,9 @@ import {
   type DragEndEvent,
   type DragOverEvent,
   closestCorners,
+  pointerWithin,
+  rectIntersection,
+  type CollisionDetection,
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import {
@@ -29,12 +32,12 @@ import { useWorkspaceVisibility } from '@/hooks/use-workspace-visibility';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Workflow } from 'lucide-react';
+import { Workflow, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 import { useEntityResolver } from '@/context/EntityCacheContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { triggerInternalNotification } from '@/lib/notification-engine';
-import { updateStageOrdersAction } from '@/app/actions/deal-actions';
+import { updateStageOrdersAction, updateDealStatusAction } from '@/app/actions/deal-actions';
 import { useCapability } from '@/platform/capabilities/ui/use-capability';
 import { CapabilityErrorNotice } from '@/components/capabilities/CapabilityErrorNotice';
 import { VersionConflictDialog } from '@/components/capabilities/VersionConflictDialog';
@@ -43,7 +46,9 @@ import type {
   DealAdvanceStageInput,
   DealAdvanceStageOutput,
 } from '@/platform/domains/deals_revenue/contracts/deal-capabilities.contract';
+import { KanbanTerminalDropBar } from './KanbanTerminalDropBar';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Dialog,
   DialogContent,
@@ -63,6 +68,7 @@ import { validateStageTransition } from '@/lib/deals/deal-stage-validation';
 import type { StageRequiredField } from '@/lib/types';
 import type { KanbanFilters } from '../pipeline-types';
 import { applyDealFilters } from '../utils/filter-deals';
+import { cn } from '@/lib/utils';
 
 interface KanbanBoardProps {
     pipelineId: string;
@@ -71,13 +77,28 @@ interface KanbanBoardProps {
     filters: KanbanFilters;
     automations?: Automation[];
     showDealTotals?: boolean;
+    autoCollapseEmptyStages?: boolean;
+    stages?: OnboardingStage[];
+    deals?: Deal[];
+    isLoadingDeals?: boolean;
 }
 
 /**
  * ARCHITECTURAL POINTER (KanbanBoard Component):
  * Real-time deal progression hub with DnD, stage filters, and stage-linked automation indicators.
  */
-export default function KanbanBoard({ pipelineId, pipelineName, customWidth, filters, automations, showDealTotals = false }: KanbanBoardProps) {
+export default function KanbanBoard({ 
+  pipelineId, 
+  pipelineName, 
+  customWidth, 
+  filters, 
+  automations, 
+  showDealTotals = false,
+  autoCollapseEmptyStages = false,
+  stages: propsStages,
+  deals: propsDeals,
+  isLoadingDeals: propsIsLoadingDeals,
+}: KanbanBoardProps) {
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
@@ -92,30 +113,34 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
     [entitiesById]
   );
 
-  // 1. Fetch Stages for specific Pipeline
+  // 1. Fetch Stages for specific Pipeline (skip if provided by parent)
   const stagesQuery = useMemoFirebase(
     () =>
-      firestore
+      firestore && !propsStages
         ? query(
             collection(firestore, 'onboardingStages'), 
             where('pipelineId', '==', pipelineId),
             orderBy('order', 'asc')
           )
         : null,
-    [firestore, pipelineId]
+    [firestore, pipelineId, propsStages]
   );
-  const { data: stages, isLoading: isLoadingStages } = useCollection<OnboardingStage>(stagesQuery);
+  const { data: fetchedStages, isLoading: isLoadingStagesInternal } = useCollection<OnboardingStage>(stagesQuery);
+  const stages = propsStages ?? fetchedStages;
+  const isLoadingStages = propsStages !== undefined ? false : isLoadingStagesInternal;
 
-  // 2. Fetch Deals from the modern unified collection
+  // 2. Fetch Deals from the modern unified collection (skip if provided by parent)
   const dealsQuery = useMemoFirebase(
-    () => (firestore && activeWorkspaceId ? query(
+    () => (firestore && activeWorkspaceId && !propsDeals ? query(
         collection(firestore, 'deals'), 
         where('pipelineId', '==', pipelineId),
         where('workspaceId', '==', activeWorkspaceId)
     ) : null),
-    [firestore, pipelineId, activeWorkspaceId]
+    [firestore, pipelineId, activeWorkspaceId, propsDeals]
   );
-  const { data: deals, isLoading: isLoadingDeals } = useCollection<Deal>(dealsQuery);
+  const { data: fetchedDeals, isLoading: isLoadingDealsInternal } = useCollection<Deal>(dealsQuery);
+  const deals = propsDeals ?? fetchedDeals;
+  const isLoadingDeals = propsIsLoadingDeals !== undefined ? propsIsLoadingDeals : isLoadingDealsInternal;
 
   // 3. Fetch Tasks to index badges
   const tasksQuery = useMemoFirebase(
@@ -204,16 +229,104 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
     setMounted(true);
   }, []);
 
+  // ---------------------------------------------------------------------------
+  // Collapsible Stages & Long-Term User Preference State (LocalStorage)
+  // ---------------------------------------------------------------------------
+  const storageKeyAutoCollapse = React.useMemo(() => {
+    return pipelineId ? `kanban_auto_collapse_empty_${pipelineId}` : 'kanban_auto_collapse_empty_default';
+  }, [pipelineId]);
+
+  const storageKeyCollapsedStages = React.useMemo(() => {
+    return pipelineId ? `kanban_collapsed_stages_${pipelineId}` : 'kanban_collapsed_stages_default';
+  }, [pipelineId]);
+
+  const [isAutoCollapseEmpty, setIsAutoCollapseEmpty] = React.useState<boolean>(autoCollapseEmptyStages);
+  const [manualCollapsedStages, setManualCollapsedStages] = React.useState<Record<string, boolean>>({});
+
+  // Sync preferences from localStorage after mount to eliminate SSR hydration mismatches
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const storedAuto = localStorage.getItem(storageKeyAutoCollapse);
+      if (storedAuto !== null) {
+        setIsAutoCollapseEmpty(storedAuto === 'true');
+      } else {
+        setIsAutoCollapseEmpty(autoCollapseEmptyStages);
+      }
+
+      const storedStages = localStorage.getItem(storageKeyCollapsedStages);
+      if (storedStages) {
+        setManualCollapsedStages(JSON.parse(storedStages));
+      } else {
+        setManualCollapsedStages({});
+      }
+    } catch {
+      // localStorage may be disabled or restricted in private browsing
+    }
+  }, [storageKeyAutoCollapse, storageKeyCollapsedStages, autoCollapseEmptyStages]);
+
+  const isStageCollapsed = React.useCallback((stageId: string, stageDealsCount: number) => {
+    if (Object.prototype.hasOwnProperty.call(manualCollapsedStages, stageId)) {
+      return manualCollapsedStages[stageId];
+    }
+    if (isAutoCollapseEmpty && stageDealsCount === 0) {
+      return true;
+    }
+    return false;
+  }, [manualCollapsedStages, isAutoCollapseEmpty]);
+
+  const handleToggleStageCollapse = React.useCallback((stageId: string, stageDealsCount: number) => {
+    const currentlyCollapsed = isStageCollapsed(stageId, stageDealsCount);
+    const next = !currentlyCollapsed;
+    setManualCollapsedStages(prev => {
+      const updated = { ...prev, [stageId]: next };
+      try {
+        localStorage.setItem(storageKeyCollapsedStages, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  }, [isStageCollapsed, storageKeyCollapsedStages]);
+
+  const handleToggleAutoCollapseEmpty = React.useCallback(() => {
+    setIsAutoCollapseEmpty(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem(storageKeyAutoCollapse, String(next));
+        localStorage.removeItem(storageKeyCollapsedStages);
+      } catch {}
+      setManualCollapsedStages({});
+      return next;
+    });
+  }, [storageKeyAutoCollapse, storageKeyCollapsedStages]);
+
+  const handleExpandAllStages = React.useCallback(() => {
+    setIsAutoCollapseEmpty(false);
+    setManualCollapsedStages({});
+    try {
+      localStorage.setItem(storageKeyAutoCollapse, 'false');
+      localStorage.removeItem(storageKeyCollapsedStages);
+    } catch {}
+  }, [storageKeyAutoCollapse, storageKeyCollapsedStages]);
+
   const allDeals = React.useMemo(() => {
     return deals || [];
   }, [deals]);
 
   // Resolve the entities referenced by the current deals (deduped + batched) so
   // tag filtering has the data it needs — O(deals), not O(all entities).
+  const referencedEntityIdsKey = React.useMemo(() => {
+    const set = new Set<string>();
+    for (const d of allDeals) {
+      if (d.entityId) set.add(d.entityId);
+    }
+    return Array.from(set).sort().join(',');
+  }, [allDeals]);
+
   React.useEffect(() => {
-    const ids = allDeals.map((d) => d.entityId).filter((x): x is string => !!x);
-    if (ids.length > 0) resolveIds(ids);
-  }, [allDeals, resolveIds]);
+    if (!referencedEntityIdsKey) return;
+    const ids = referencedEntityIdsKey.split(',');
+    resolveIds(ids);
+  }, [referencedEntityIdsKey, resolveIds]);
 
   // 4. Apply Multi-Layer Filtering (shared with the list view)
   const filteredDeals = React.useMemo(
@@ -272,6 +385,33 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
     [stages, dealsByStage]
   );
 
+  /**
+   * Calibrated Collision Detection Strategy:
+   * When dragging a DEAL card, prioritizes floating terminal drop zones (Drop to Won / Drop to Lost)
+   * via pointerWithin / rectIntersection to prevent interference from tall background stage columns.
+   * Falls back to closestCorners for natural card reordering and stage transitions.
+   */
+  const kanbanCollisionDetection: CollisionDetection = React.useCallback((args) => {
+    if (args.active.data.current?.type === 'DEAL') {
+      const pointerCollisions = pointerWithin(args);
+      const terminalPointerMatch = pointerCollisions.find(
+        (c) => c.id === 'won-drop-zone' || c.id === 'lost-drop-zone'
+      );
+      if (terminalPointerMatch) {
+        return [terminalPointerMatch];
+      }
+
+      const rectCollisions = rectIntersection(args);
+      const terminalRectMatch = rectCollisions.find(
+        (c) => c.id === 'won-drop-zone' || c.id === 'lost-drop-zone'
+      );
+      if (terminalRectMatch) {
+        return [terminalRectMatch];
+      }
+    }
+    return closestCorners(args);
+  }, []);
+
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
     const initialWidth = active.rect.current.initial?.width;
@@ -297,6 +437,15 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
     
     const activeType = active.data.current?.type;
     if (activeType !== 'DEAL') return;
+
+    // Ignore terminal drop zones during drag-over so stage cards don't jitter or shuffle prematurely
+    if (
+      over.id === 'won-drop-zone' ||
+      over.id === 'lost-drop-zone' ||
+      over.data.current?.type === 'TERMINAL_DROP'
+    ) {
+      return;
+    }
 
     const activeContainer = findContainer(active.id as string);
     const overContainer = findContainer(over.id as string);
@@ -335,33 +484,78 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
 
     try {
       const lostReasonString = `${selectedReason}${extraNotes ? ': ' + extraNotes : ''}`;
+      const isTargetLost =
+        targetStage.terminalType === 'lost' ||
+        targetStage.terminalType === 'abandoned' ||
+        targetStage.isLost ||
+        targetStage.name.toLowerCase().includes('lost');
       
-      const outcome = await dealAdvanceStageCap.execute({
-        workspaceId: activeWorkspaceId,
-        dealId: deal.id,
-        stageId: targetStage.id,
-        reason: lostReasonString,
-        bypassValidation: true,
-      });
-
-      if (!outcome.success) {
-        if (outcome.error.code === 'VERSION_CONFLICT' || outcome.error.conflict) {
-          setVersionConflict(
-            outcome.error.conflict || { expectedVersion: 'current', actualVersion: 'latest' }
-          );
-        }
-        setCapabilityError(outcome.error);
-        toast({
-          variant: 'destructive',
-          title: 'Stage Advance Failed',
-          description: outcome.error.message,
+      if (isTargetLost) {
+        const outcome = await dealAdvanceStageCap.execute({
+          workspaceId: activeWorkspaceId,
+          dealId: deal.id,
+          stageId: targetStage.id,
+          reason: lostReasonString,
+          bypassValidation: true,
         });
-        setDealsByStage(initialDealsByStage.current);
-        setPendingLostDeal(null);
-        setSelectedReason('Competitor');
-        setExtraNotes('');
-        return;
+
+        if (!outcome.success) {
+          if (outcome.error.code === 'VERSION_CONFLICT' || outcome.error.conflict) {
+            setVersionConflict(
+              outcome.error.conflict || { expectedVersion: 'current', actualVersion: 'latest' }
+            );
+          }
+          setCapabilityError(outcome.error);
+          toast({
+            variant: 'destructive',
+            title: 'Stage Advance Failed',
+            description: outcome.error.message,
+          });
+          setDealsByStage(initialDealsByStage.current);
+          setPendingLostDeal(null);
+          setSelectedReason('Competitor');
+          setExtraNotes('');
+          return;
+        }
+      } else {
+        const statusRes = await updateDealStatusAction(deal.id, 'lost', lostReasonString);
+        if (!statusRes.success) {
+          toast({
+            variant: 'destructive',
+            title: 'Failed to Mark Lost',
+            description: statusRes.error,
+          });
+          setDealsByStage(initialDealsByStage.current);
+          setPendingLostDeal(null);
+          setSelectedReason('Competitor');
+          setExtraNotes('');
+          return;
+        }
       }
+
+      // Optimistic update of local dealsByStage
+      setDealsByStage((prev) => {
+        const sourceStageId = deal.stageId || '';
+        const sourceDeals = prev[sourceStageId] || [];
+        if (isTargetLost && targetStage.id !== sourceStageId) {
+          const targetDeals = prev[targetStage.id] || [];
+          return {
+            ...prev,
+            [sourceStageId]: sourceDeals.filter((d) => d.id !== deal.id),
+            [targetStage.id]: [
+              { ...deal, stageId: targetStage.id, status: 'lost', lostReason: lostReasonString },
+              ...targetDeals.filter((d) => d.id !== deal.id),
+            ],
+          };
+        } else {
+          return {
+            ...prev,
+            [sourceStageId]: sourceDeals.map((d) =>
+              d.id === deal.id ? { ...d, status: 'lost', lostReason: lostReasonString } : d
+            ),
+          };
+        }
+      });
 
       toast({
         title: 'Deal Updated',
@@ -436,11 +630,153 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
       return;
     }
 
-    // Handle deal moving across stage columns
+    // Handle deal moving across stage columns or terminal drop zones (Drop to Won / Drop to Lost)
     if (deal) {
-      const targetStageId = over.data.current?.type === 'COLUMN' 
-        ? (over.data.current.stage?.id as string) 
-        : findContainer(over.id as string);
+      // 1. Intercept Terminal Drop Zones (Drop to Won / Drop to Lost)
+      const isTerminalDrop =
+        over.id === 'won-drop-zone' ||
+        over.id === 'lost-drop-zone' ||
+        over.data.current?.type === 'TERMINAL_DROP';
+
+      if (isTerminalDrop) {
+        const outcome: 'won' | 'lost' =
+          over.id === 'won-drop-zone' || over.data.current?.outcome === 'won' ? 'won' : 'lost';
+
+        if (outcome === 'won') {
+          const wonStage = stages?.find(
+            (s) =>
+              s.terminalType === 'won' ||
+              s.isWon ||
+              s.name.toLowerCase().includes('won') ||
+              s.name.toLowerCase().includes('live')
+          );
+
+          // Optimistically update local dealsByStage
+          setDealsByStage((prev) => {
+            const currentSourceStageId = sourceStageId || deal.stageId || '';
+            const sourceDeals = prev[currentSourceStageId] || [];
+            if (wonStage && wonStage.id !== currentSourceStageId) {
+              const targetDeals = prev[wonStage.id] || [];
+              return {
+                ...prev,
+                [currentSourceStageId]: sourceDeals.filter((d) => d.id !== deal.id),
+                [wonStage.id]: [
+                  { ...deal, stageId: wonStage.id, status: 'won' as const },
+                  ...targetDeals.filter((d) => d.id !== deal.id),
+                ],
+              };
+            } else {
+              return {
+                ...prev,
+                [currentSourceStageId]: sourceDeals.map((d) =>
+                  d.id === deal.id ? { ...d, status: 'won' as const } : d
+                ),
+              };
+            }
+          });
+
+          try {
+            if (wonStage) {
+              const outcomeRes = await dealAdvanceStageCap.execute({
+                workspaceId: activeWorkspaceId,
+                dealId: deal.id,
+                stageId: wonStage.id,
+                bypassValidation: true,
+              });
+
+              if (!outcomeRes.success) {
+                setDealsByStage(initialDealsByStage.current);
+                if (outcomeRes.error.code === 'VERSION_CONFLICT' || outcomeRes.error.conflict) {
+                  setVersionConflict(
+                    outcomeRes.error.conflict || { expectedVersion: 'current', actualVersion: 'latest' }
+                  );
+                }
+                setCapabilityError(outcomeRes.error);
+                toast({
+                  variant: 'destructive',
+                  title: 'Stage Advance Failed',
+                  description: outcomeRes.error.message,
+                });
+                return;
+              }
+            } else {
+              const statusRes = await updateDealStatusAction(deal.id, 'won');
+              if (!statusRes.success) {
+                setDealsByStage(initialDealsByStage.current);
+                toast({
+                  variant: 'destructive',
+                  title: 'Failed to update deal',
+                  description: statusRes.error,
+                });
+                return;
+              }
+            }
+
+            initialDealsByStage.current = dealsByStage;
+            setCapabilityError(null);
+
+            toast({
+              title: '🎉 Deal Won!',
+              description: wonStage
+                ? `Deal "${deal.name}" closed as Won and moved to "${wonStage.name}".`
+                : `Deal "${deal.name}" marked as Closed Won.`,
+              actionConfig: {
+                path: `/admin/deals/${deal.id}`,
+                label: 'View Deal',
+              },
+            });
+
+            triggerInternalNotification({
+              triggerKey: 'stage_change',
+              dealId: deal.id,
+              entityId: deal.entityId,
+              notifyManager: true,
+              channel: 'both',
+              variables: {
+                workspaceId: activeWorkspaceId,
+                school_name: deal.name,
+                entity_name: deal.name,
+                deal_name: deal.name,
+                new_stage: wonStage?.name || 'Closed Won',
+                event_type: 'Deal Won',
+              },
+            }).catch(console.error);
+          } catch (err: unknown) {
+            console.error('Failed to mark deal as won:', err);
+            setDealsByStage(initialDealsByStage.current);
+            const msg = err instanceof Error ? err.message : 'Failed to update deal status';
+            toast({ variant: 'destructive', title: 'Logic Error', description: msg });
+          }
+          return;
+        }
+
+        if (outcome === 'lost') {
+          const lostStage = stages?.find(
+            (s) =>
+              s.terminalType === 'lost' ||
+              s.terminalType === 'abandoned' ||
+              s.isLost ||
+              s.name.toLowerCase().includes('lost')
+          );
+          const fallbackStage = stages?.find((s) => s.id === (deal.stageId || sourceStageId)) || stages?.[0];
+
+          if (lostStage || fallbackStage) {
+            setPendingLostDeal({
+              deal,
+              targetStage: lostStage || fallbackStage!,
+            });
+          }
+          return;
+        }
+      }
+
+      // 2. Normal stage column drop handling
+      const targetStageId =
+        over.data.current?.type === 'STAGE'
+          ? (over.data.current.stage?.id as string)
+          : over.data.current?.type === 'COLUMN'
+          ? (over.data.current.stage?.id as string)
+          : findContainer(over.id as string);
 
       const newStage = stages?.find((s) => s.id === targetStageId);
 
@@ -541,6 +877,21 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
     }
   };
 
+  const handleSelectMobileStage = React.useCallback((stageId: string) => {
+    setActiveMobileStageId(stageId);
+    if (typeof document !== 'undefined') {
+      const el = document.getElementById(`stage-column-${stageId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }
+  }, []);
+
+  const collapsedCount = React.useMemo(() => {
+    if (!stages) return 0;
+    return stages.filter((s) => isStageCollapsed(s.id, (dealsByStage[s.id] || []).length)).length;
+  }, [stages, isStageCollapsed, dealsByStage]);
+
   const isLoading = isLoadingDeals || isLoadingStages || isLoadingFilter || isLoadingTasks;
 
   if (isLoading) {
@@ -569,16 +920,6 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
     );
   }
 
-  const handleSelectMobileStage = (stageId: string) => {
-    setActiveMobileStageId(stageId);
-    if (typeof document !== 'undefined') {
-      const el = document.getElementById(`stage-column-${stageId}`);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-      }
-    }
-  };
-
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Capability Error / Refusal Banner (Rule 51) */}
@@ -599,6 +940,60 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
         onSelectStage={handleSelectMobileStage}
       />
 
+      {/* Board Controls: Collapsed Stage Summary & Auto-Collapse Empty Stages Toggle */}
+      <div className="flex items-center justify-between px-3 md:px-4 py-1 text-xs shrink-0 select-none">
+        <div className="flex items-center gap-2">
+          {collapsedCount > 0 && (
+            <span className="text-[11px] font-semibold text-muted-foreground bg-muted/60 px-2.5 py-0.5 rounded-full border border-border/50">
+              {collapsedCount} of {stages.length} {collapsedCount === 1 ? 'stage' : 'stages'} collapsed
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={isAutoCollapseEmpty ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={handleToggleAutoCollapseEmpty}
+                  className={cn(
+                    "h-7 px-2.5 rounded-lg text-xs font-semibold gap-1.5 transition-all border",
+                    isAutoCollapseEmpty
+                      ? "bg-primary/10 text-primary border-primary/30 hover:bg-primary/15"
+                      : "text-muted-foreground border-border/40 hover:border-border hover:bg-muted/40"
+                  )}
+                >
+                  {isAutoCollapseEmpty ? (
+                    <PanelLeftClose className="h-3.5 w-3.5 text-primary" />
+                  ) : (
+                    <PanelLeftOpen className="h-3.5 w-3.5 text-muted-foreground" />
+                  )}
+                  <span>{isAutoCollapseEmpty ? "Auto-collapse empty: ON" : "Auto-collapse empty"}</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs max-w-[260px]">
+                {isAutoCollapseEmpty
+                  ? "Empty stages (0 deals) automatically collapse into slim vertical slivers. Click to disable."
+                  : "Click to automatically collapse stages with 0 deals into slim vertical slivers."}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          {collapsedCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleExpandAllStages}
+              className="h-7 px-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+            >
+              Expand all
+            </Button>
+          )}
+        </div>
+      </div>
+
       <DndContext
         sensors={sensors}
         onDragStart={handleDragStart}
@@ -609,29 +1004,43 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
           setDraggedItemWidth(null); 
           setDealsByStage(initialDealsByStage.current); 
         }}
-        collisionDetection={closestCorners}
+        collisionDetection={kanbanCollisionDetection}
       >
         <ScrollArea className="flex-1 whitespace-nowrap">
-          <div className="flex items-start gap-8 p-6 md:p-10">
-            {stages.map((stage) => (
-              <div key={stage.id} id={`stage-column-${stage.id}`}>
-                <StageColumn
-                  stage={stage}
-                  pipelineId={pipelineId}
-                  pipelineName={pipelineName}
-                  customWidth={customWidth}
-                  deals={dealsByStage[stage.id] || []}
-                  tasksByDealId={tasksByDealId}
-                  automations={automations}
-                  isDraggingDeal={!!activeElement && !('order' in activeElement)}
-                  showDealTotals={showDealTotals}
-                  entitiesById={entitiesById}
-                />
-              </div>
-            ))}
+          <div className="flex items-start gap-4 md:gap-5 px-3 md:px-4 pt-1.5 pb-4">
+            {stages.map((stage) => {
+              const stageDeals = dealsByStage[stage.id] || [];
+              const collapsed = isStageCollapsed(stage.id, stageDeals.length);
+
+              return (
+                <div key={stage.id} id={`stage-column-${stage.id}`}>
+                  <StageColumn
+                    stage={stage}
+                    pipelineId={pipelineId}
+                    pipelineName={pipelineName}
+                    customWidth={customWidth}
+                    deals={stageDeals}
+                    tasksByDealId={tasksByDealId}
+                    automations={automations}
+                    isDraggingDeal={!!activeElement && !('order' in activeElement)}
+                    showDealTotals={showDealTotals}
+                    entitiesById={entitiesById}
+                    stages={stages}
+                    isCollapsed={collapsed}
+                    onToggleCollapse={() => handleToggleStageCollapse(stage.id, stageDeals.length)}
+                  />
+                </div>
+              );
+            })}
           </div>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
+
+        {/* Floating Terminal Stage Drop Bar (Drop to Won / Drop to Lost) */}
+        <KanbanTerminalDropBar
+          isVisible={!!activeElement && !('order' in activeElement)}
+          draggedDealName={activeElement && !('order' in activeElement) ? (activeElement as Deal).name : undefined}
+        />
         {mounted && typeof document !== 'undefined' ? createPortal(
           <DragOverlay dropAnimation={null}>
             {activeElement ? (
@@ -653,6 +1062,8 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
                     automations={automations}
                     showDealTotals={showDealTotals}
                     entitiesById={entitiesById}
+                    stages={stages}
+                    isCollapsed={isStageCollapsed((activeElement as OnboardingStage).id, (dealsByStage[(activeElement as OnboardingStage).id] || []).length)}
                   />
                 </div>
               ) : (
@@ -665,6 +1076,7 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
                   <DealCard 
                     deal={activeElement as Deal} 
                     isOverlay 
+                    showDealValue={showDealTotals}
                     taskStats={tasksByDealId[(activeElement as Deal).id]}
                     clientName={entitiesById.get((activeElement as Deal).entityId)?.displayName}
                   />

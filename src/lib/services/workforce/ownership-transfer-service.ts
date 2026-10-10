@@ -3,9 +3,12 @@
  *
  * Atomically migrates portfolios of leads, contacts, deals, tasks, meetings,
  * and automations from a source member to a target member in safe batches of <= 250 write operations.
+ * Supports both workspace-scoped and organization-wide portfolio migrations.
  *
  * ARCHITECTURAL GUIDANCE FOR MAINTAINERS:
  * - Employs batching with progress tracking in `crm_ownership_transfers`.
+ * - When `workspaceId` is specified, strictly scopes mutations to assets in that workspace.
+ * - Supports modern composite assignee objects ({ userId, name, email }) as well as legacy string IDs.
  * - Zero `any` or `any[]` typing.
  *
  * @testability Covered in `crm-workforce-services.test.ts`.
@@ -33,6 +36,7 @@ export class OwnershipTransferService {
       entityTypes: CrmEntityType[];
       reason?: string;
       executedBy: string;
+      workspaceId?: string;
     }
   ): Promise<CrmOwnershipTransferJob> {
     if (payload.sourcePersonId === payload.targetPersonId) {
@@ -48,12 +52,19 @@ export class OwnershipTransferService {
       throw new Error('Source or target member not found.');
     }
 
+    const targetAssigneeObject = {
+      userId: targetPerson.id,
+      name: targetPerson.displayName || targetPerson.email || targetPerson.id,
+      email: targetPerson.email || '',
+    };
+
     const jobRef = adminDb.collection(this.collectionName).doc();
     const now = new Date().toISOString();
 
     const job: CrmOwnershipTransferJob = {
       id: jobRef.id,
       organizationId,
+      workspaceId: payload.workspaceId,
       sourcePersonId: payload.sourcePersonId,
       sourcePersonName: sourcePerson.displayName || sourcePerson.email,
       targetPersonId: payload.targetPersonId,
@@ -92,59 +103,142 @@ export class OwnershipTransferService {
 
       // 1. Transfer Deals
       if (payload.entityTypes.includes('deal')) {
-        const dealsSnap = await adminDb
-          .collection('deals')
-          .where('organizationId', '==', organizationId)
-          .where('assignedTo', '==', payload.sourcePersonId)
-          .get();
+        let dealsQuery: FirebaseFirestore.Query = adminDb.collection('deals');
+        if (payload.workspaceId) {
+          dealsQuery = dealsQuery.where('workspaceId', '==', payload.workspaceId);
+        } else {
+          dealsQuery = dealsQuery.where('organizationId', '==', organizationId);
+        }
+        const dealsSnap = await dealsQuery.get().catch(() => ({ docs: [] as FirebaseFirestore.QueryDocumentSnapshot[] }));
 
-        for (let i = 0; i < dealsSnap.docs.length; i += CHUNK_SIZE) {
-          const chunk = dealsSnap.docs.slice(i, i + CHUNK_SIZE);
+        const matchingDeals = dealsSnap.docs.filter((d) => {
+          const data = d.data();
+          const assigned = data.assignedTo;
+          const repId = typeof assigned === 'string' ? assigned : assigned?.userId;
+          return repId === payload.sourcePersonId || data.ownerId === payload.sourcePersonId;
+        });
+
+        for (let i = 0; i < matchingDeals.length; i += CHUNK_SIZE) {
+          const chunk = matchingDeals.slice(i, i + CHUNK_SIZE);
           const batch = adminDb.batch();
           for (const d of chunk) {
             batch.update(d.ref, {
-              assignedTo: payload.targetPersonId,
+              assignedTo: targetAssigneeObject,
+              ownerId: payload.targetPersonId,
               historicOwnerId: payload.sourcePersonId,
               updatedAt: new Date().toISOString(),
             });
           }
           await batch.commit();
         }
-        transferredCounts.deal = dealsSnap.docs.length;
+        transferredCounts.deal = matchingDeals.length;
       }
 
       // 2. Transfer Contacts & Leads
       if (payload.entityTypes.includes('contact') || payload.entityTypes.includes('lead')) {
-        const contactsSnap = await adminDb
-          .collection('contacts')
-          .where('organizationId', '==', organizationId)
-          .where('assignedTo', '==', payload.sourcePersonId)
-          .get();
+        // A. Workspace Entities (Unified directory)
+        let weQuery: FirebaseFirestore.Query = adminDb.collection('workspace_entities');
+        if (payload.workspaceId) {
+          weQuery = weQuery.where('workspaceId', '==', payload.workspaceId);
+        } else {
+          weQuery = weQuery.where('organizationId', '==', organizationId);
+        }
+        const weSnap = await weQuery.get().catch(() => ({ docs: [] as FirebaseFirestore.QueryDocumentSnapshot[] }));
 
-        for (let i = 0; i < contactsSnap.docs.length; i += CHUNK_SIZE) {
-          const chunk = contactsSnap.docs.slice(i, i + CHUNK_SIZE);
+        const matchingWe = weSnap.docs.filter((d) => {
+          const data = d.data();
+          if (data.status === 'archived') return false;
+          const assigned = data.assignedTo;
+          const repId = (typeof assigned === 'string' ? assigned : assigned?.userId) || data.ownerId;
+          const matchesRep = repId === payload.sourcePersonId;
+          if (!matchesRep) return false;
+          if (data.entityType === 'lead') return payload.entityTypes.includes('lead');
+          return payload.entityTypes.includes('contact');
+        });
+
+        const seenEntityIds = new Set<string>();
+        for (let i = 0; i < matchingWe.length; i += CHUNK_SIZE) {
+          const chunk = matchingWe.slice(i, i + CHUNK_SIZE);
           const batch = adminDb.batch();
-          for (const c of chunk) {
-            batch.update(c.ref, {
-              assignedTo: payload.targetPersonId,
+          for (const d of chunk) {
+            const data = d.data();
+            seenEntityIds.add(data.entityId || d.id);
+            if (data.entityType === 'lead') {
+              transferredCounts.lead = (transferredCounts.lead || 0) + 1;
+            } else {
+              transferredCounts.contact = (transferredCounts.contact || 0) + 1;
+            }
+            batch.update(d.ref, {
+              assignedTo: targetAssigneeObject,
+              ownerId: payload.targetPersonId,
               updatedAt: new Date().toISOString(),
             });
           }
           await batch.commit();
         }
-        transferredCounts.contact = contactsSnap.docs.length;
+
+        // B. Standard contacts collection
+        let contactsQuery: FirebaseFirestore.Query = adminDb.collection('contacts');
+        if (payload.workspaceId) {
+          contactsQuery = contactsQuery.where('workspaceId', '==', payload.workspaceId);
+        } else {
+          contactsQuery = contactsQuery.where('organizationId', '==', organizationId);
+        }
+        const contactsSnap = await contactsQuery.get().catch(() => ({ docs: [] as FirebaseFirestore.QueryDocumentSnapshot[] }));
+
+        const matchingContacts = contactsSnap.docs.filter((d) => {
+          const data = d.data();
+          if (seenEntityIds.has(d.id) || (data.entityId && seenEntityIds.has(data.entityId))) return false;
+          const assigned = data.assignedTo;
+          const repId = (typeof assigned === 'string' ? assigned : assigned?.userId) || data.ownerId;
+          const matchesRep = repId === payload.sourcePersonId;
+          if (!matchesRep) return false;
+          if (data.type === 'lead') return payload.entityTypes.includes('lead');
+          return payload.entityTypes.includes('contact');
+        });
+
+        for (let i = 0; i < matchingContacts.length; i += CHUNK_SIZE) {
+          const chunk = matchingContacts.slice(i, i + CHUNK_SIZE);
+          const batch = adminDb.batch();
+          for (const c of chunk) {
+            const data = c.data();
+            if (data.type === 'lead') {
+              transferredCounts.lead = (transferredCounts.lead || 0) + 1;
+            } else {
+              transferredCounts.contact = (transferredCounts.contact || 0) + 1;
+            }
+            batch.update(c.ref, {
+              assignedTo: targetAssigneeObject,
+              updatedAt: new Date().toISOString(),
+            });
+          }
+          await batch.commit();
+        }
       }
 
       // 3. Transfer Tasks
       if (payload.entityTypes.includes('task')) {
-        const tasksSnap = await adminDb
-          .collection('crm_tasks')
-          .where('organizationId', '==', organizationId)
-          .where('assignedTo', '==', payload.sourcePersonId)
-          .get();
+        let tasksQuery: FirebaseFirestore.Query = adminDb.collection('tasks');
+        if (payload.workspaceId) {
+          tasksQuery = tasksQuery.where('workspaceId', '==', payload.workspaceId);
+        } else {
+          tasksQuery = tasksQuery.where('organizationId', '==', organizationId);
+        }
+        const tasksSnap = await tasksQuery.get().catch(() => ({ docs: [] as FirebaseFirestore.QueryDocumentSnapshot[] }));
 
-        for (let i = 0; i < tasksSnap.docs.length; i += CHUNK_SIZE) {
-          const chunk = tasksSnap.docs.slice(i, i + CHUNK_SIZE);
+        const matchingTasks = tasksSnap.docs.filter((d) => {
+          const data = d.data();
+          if (data.status === 'completed' || data.status === 'cancelled' || data.status === 'archived') return false;
+          const assigned = data.assignedTo;
+          return (
+            (typeof assigned === 'string' && assigned === payload.sourcePersonId) ||
+            (Array.isArray(assigned) && assigned.includes(payload.sourcePersonId)) ||
+            (assigned?.userId === payload.sourcePersonId)
+          );
+        });
+
+        for (let i = 0; i < matchingTasks.length; i += CHUNK_SIZE) {
+          const chunk = matchingTasks.slice(i, i + CHUNK_SIZE);
           const batch = adminDb.batch();
           for (const t of chunk) {
             batch.update(t.ref, {
@@ -154,41 +248,89 @@ export class OwnershipTransferService {
           }
           await batch.commit();
         }
-        transferredCounts.task = tasksSnap.docs.length;
-      }
 
-      // 4. Transfer Meetings
-      if (payload.entityTypes.includes('meeting')) {
-        const meetingsSnap = await adminDb
-          .collection('crm_meetings')
-          .where('organizationId', '==', organizationId)
+        // Also check legacy crm_tasks if present
+        let legacyTasksQuery: FirebaseFirestore.Query = adminDb.collection('crm_tasks');
+        if (payload.workspaceId) {
+          legacyTasksQuery = legacyTasksQuery.where('workspaceId', '==', payload.workspaceId);
+        } else {
+          legacyTasksQuery = legacyTasksQuery.where('organizationId', '==', organizationId);
+        }
+        const legacyTasksSnap = await legacyTasksQuery
           .where('assignedTo', '==', payload.sourcePersonId)
-          .get();
+          .get()
+          .catch(() => ({ docs: [] as FirebaseFirestore.QueryDocumentSnapshot[] }));
 
-        for (let i = 0; i < meetingsSnap.docs.length; i += CHUNK_SIZE) {
-          const chunk = meetingsSnap.docs.slice(i, i + CHUNK_SIZE);
+        for (let i = 0; i < legacyTasksSnap.docs.length; i += CHUNK_SIZE) {
+          const chunk = legacyTasksSnap.docs.slice(i, i + CHUNK_SIZE);
           const batch = adminDb.batch();
-          for (const m of chunk) {
-            batch.update(m.ref, {
+          for (const t of chunk) {
+            batch.update(t.ref, {
               assignedTo: payload.targetPersonId,
               updatedAt: new Date().toISOString(),
             });
           }
           await batch.commit();
         }
-        transferredCounts.meeting = meetingsSnap.docs.length;
+
+        transferredCounts.task = matchingTasks.length + legacyTasksSnap.docs.length;
+      }
+
+      // 4. Transfer Meetings
+      if (payload.entityTypes.includes('meeting')) {
+        let meetingsQuery: FirebaseFirestore.Query = adminDb.collection('meetings');
+        if (payload.workspaceId) {
+          meetingsQuery = meetingsQuery.where('workspaceIds', 'array-contains', payload.workspaceId);
+        } else {
+          meetingsQuery = meetingsQuery.where('organizationId', '==', organizationId);
+        }
+        const meetingsSnap = await meetingsQuery.get().catch(async () => {
+          if (payload.workspaceId) {
+            return adminDb.collection('meetings').where('workspaceId', '==', payload.workspaceId).get().catch(() => ({ docs: [] as FirebaseFirestore.QueryDocumentSnapshot[] }));
+          }
+          return { docs: [] as FirebaseFirestore.QueryDocumentSnapshot[] };
+        });
+
+        const matchingMeetings = meetingsSnap.docs.filter((d) => {
+          const data = d.data();
+          return data.hostId === payload.sourcePersonId || data.assignedTo === payload.sourcePersonId || data.createdBy === payload.sourcePersonId;
+        });
+
+        for (let i = 0; i < matchingMeetings.length; i += CHUNK_SIZE) {
+          const chunk = matchingMeetings.slice(i, i + CHUNK_SIZE);
+          const batch = adminDb.batch();
+          for (const m of chunk) {
+            const data = m.data();
+            const update: Record<string, unknown> = { updatedAt: new Date().toISOString() };
+            if (data.hostId === payload.sourcePersonId) update.hostId = payload.targetPersonId;
+            if (data.assignedTo === payload.sourcePersonId) update.assignedTo = payload.targetPersonId;
+            if (data.createdBy === payload.sourcePersonId) update.createdBy = payload.targetPersonId;
+            batch.update(m.ref, update);
+          }
+          await batch.commit();
+        }
+        transferredCounts.meeting = matchingMeetings.length;
       }
 
       // 5. Transfer Automations
       if (payload.entityTypes.includes('automation')) {
-        const autoSnap = await adminDb
-          .collection('automations')
-          .where('organizationId', '==', organizationId)
-          .where('createdBy', '==', payload.sourcePersonId)
-          .get();
+        let autoQuery: FirebaseFirestore.Query = adminDb.collection('automations');
+        if (payload.workspaceId) {
+          autoQuery = autoQuery.where('workspaceIds', 'array-contains', payload.workspaceId);
+        } else {
+          autoQuery = autoQuery.where('organizationId', '==', organizationId);
+        }
+        const autoSnap = await autoQuery.get().catch(async () => {
+          if (payload.workspaceId) {
+            return adminDb.collection('automations').where('workspaceId', '==', payload.workspaceId).get().catch(() => ({ docs: [] as FirebaseFirestore.QueryDocumentSnapshot[] }));
+          }
+          return { docs: [] as FirebaseFirestore.QueryDocumentSnapshot[] };
+        });
 
-        for (let i = 0; i < autoSnap.docs.length; i += CHUNK_SIZE) {
-          const chunk = autoSnap.docs.slice(i, i + CHUNK_SIZE);
+        const matchingAutos = autoSnap.docs.filter((d) => d.data().createdBy === payload.sourcePersonId && d.data().isArchived !== true);
+
+        for (let i = 0; i < matchingAutos.length; i += CHUNK_SIZE) {
+          const chunk = matchingAutos.slice(i, i + CHUNK_SIZE);
           const batch = adminDb.batch();
           for (const a of chunk) {
             batch.update(a.ref, {
@@ -198,7 +340,7 @@ export class OwnershipTransferService {
           }
           await batch.commit();
         }
-        transferredCounts.automation = autoSnap.docs.length;
+        transferredCounts.automation = matchingAutos.length;
       }
 
       const totalTransferred = Object.values(transferredCounts).reduce((a, b) => a + b, 0);
@@ -220,7 +362,7 @@ export class OwnershipTransferService {
         actorName: 'Workforce Admin',
         targetId: targetPerson.id,
         targetName: targetPerson.displayName,
-        description: `Transferred ${totalTransferred} CRM assets from ${sourcePerson.displayName} to ${targetPerson.displayName}.`,
+        description: `Transferred ${totalTransferred} CRM assets from ${sourcePerson.displayName} to ${targetPerson.displayName}${payload.workspaceId ? ` in workspace ${payload.workspaceId}` : ''}.`,
       });
 
       return completedJob;
@@ -236,14 +378,21 @@ export class OwnershipTransferService {
   }
 
   /**
-   * Lists all ownership transfer jobs for an organization.
+   * Lists all ownership transfer jobs for an organization, optionally filtered by workspace.
    */
-  static async listTransferJobs(organizationId: string): Promise<CrmOwnershipTransferJob[]> {
-    const snap = await adminDb
+  static async listTransferJobs(
+    organizationId: string,
+    workspaceId?: string
+  ): Promise<CrmOwnershipTransferJob[]> {
+    let query: FirebaseFirestore.Query = adminDb
       .collection(this.collectionName)
-      .where('organizationId', '==', organizationId)
-      .get();
+      .where('organizationId', '==', organizationId);
 
+    if (workspaceId) {
+      query = query.where('workspaceId', '==', workspaceId);
+    }
+
+    const snap = await query.get();
     const jobs = snap.docs.map((d) => d.data() as CrmOwnershipTransferJob);
     return jobs.sort((a, b) => b.startedAt.localeCompare(a.startedAt));
   }

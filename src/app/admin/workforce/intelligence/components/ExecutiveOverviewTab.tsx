@@ -14,6 +14,7 @@
 import * as React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import {
   Activity,
   AlertTriangle,
@@ -36,8 +37,11 @@ export function ExecutiveOverviewTab({ snapshot }: ExecutiveOverviewTabProps) {
         <Card className="border bg-card shadow-xs">
           <CardContent className="p-4 space-y-2">
             <div className="flex items-center justify-between text-muted-foreground">
-              <span className="text-xs font-semibold">Organizational Health</span>
-              <Activity className="w-4 h-4 text-emerald-600" />
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-foreground">Organizational Health</span>
+                <CardInfoTooltip text="Aggregate multi-signal score measuring workforce engagement, velocity, and strain posture." />
+              </div>
+              <Activity className="w-4 h-4 text-emerald-600 shrink-0" />
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-black text-foreground">
@@ -57,8 +61,11 @@ export function ExecutiveOverviewTab({ snapshot }: ExecutiveOverviewTabProps) {
         <Card className="border bg-card shadow-xs">
           <CardContent className="p-4 space-y-2">
             <div className="flex items-center justify-between text-muted-foreground">
-              <span className="text-xs font-semibold">Average Squad Capacity</span>
-              <Layers className="w-4 h-4 text-primary" />
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-foreground">Average Squad Capacity</span>
+                <CardInfoTooltip text="Workload concentration and operational resource utilization across squads." />
+              </div>
+              <Layers className="w-4 h-4 text-primary shrink-0" />
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-black text-foreground">
@@ -78,8 +85,11 @@ export function ExecutiveOverviewTab({ snapshot }: ExecutiveOverviewTabProps) {
         <Card className="border bg-card shadow-xs">
           <CardContent className="p-4 space-y-2">
             <div className="flex items-center justify-between text-muted-foreground">
-              <span className="text-xs font-semibold">Strained & At-Risk</span>
-              <AlertTriangle className="w-4 h-4 text-amber-600" />
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-foreground">Strained & At-Risk</span>
+                <CardInfoTooltip text="Workforce members experiencing high workload strain or dormant engagement." />
+              </div>
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-black text-foreground">
@@ -97,8 +107,11 @@ export function ExecutiveOverviewTab({ snapshot }: ExecutiveOverviewTabProps) {
         <Card className="border bg-card shadow-xs">
           <CardContent className="p-4 space-y-2">
             <div className="flex items-center justify-between text-muted-foreground">
-              <span className="text-xs font-semibold">Enterprise IAM Maturity</span>
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-foreground">Enterprise IAM Maturity</span>
+                <CardInfoTooltip text="Identity federation readiness, SSO coverage, and MFA policy enforcement score." />
+              </div>
+              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-black text-foreground">
@@ -118,14 +131,12 @@ export function ExecutiveOverviewTab({ snapshot }: ExecutiveOverviewTabProps) {
       {/* Snapshot Metadata Banner */}
       <div className="p-4 bg-muted/20 border rounded-lg flex items-center justify-between flex-wrap gap-2 text-xs">
         <div className="flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-primary" />
+          <TrendingUp className="w-4 h-4 text-primary shrink-0" />
           <span className="font-semibold text-foreground">
             Snapshot Generated: {new Date(snapshot.generatedAt).toLocaleString()}
           </span>
+          <CardInfoTooltip text="Synthesizes telemetry, CRM workload, role entitlements, and identity governance." />
         </div>
-        <span className="text-muted-foreground text-[11px]">
-          Synthesizes telemetry, CRM workload, role entitlements, and identity governance
-        </span>
       </div>
     </div>
   );

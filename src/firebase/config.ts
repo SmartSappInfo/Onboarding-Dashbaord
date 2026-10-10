@@ -10,7 +10,12 @@ export const firebaseConfig = {
 };
 
 // Re-export firestore for test compatibility
-import { getFirestore, initializeFirestore } from 'firebase/firestore';
+import { 
+  getFirestore, 
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager 
+} from 'firebase/firestore';
 import { initializeApp, getApps } from 'firebase/app';
 
 let _firestore: ReturnType<typeof getFirestore> | null = null;
@@ -20,7 +25,18 @@ export const firestore = (() => {
   
   const app = getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig);
   try {
-    _firestore = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
+    if (typeof window !== 'undefined') {
+      try {
+        _firestore = initializeFirestore(app, {
+          localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+          experimentalAutoDetectLongPolling: true,
+        });
+      } catch {
+        _firestore = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
+      }
+    } else {
+      _firestore = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
+    }
   } catch {
     _firestore = getFirestore(app);
   }

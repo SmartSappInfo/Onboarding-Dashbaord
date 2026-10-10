@@ -39,7 +39,7 @@ const QUALITY_STYLE: Record<WhatsAppQualityRating, string> = {
   RED: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20',
 };
 
-const INPUT_CLS = 'h-10 rounded-xl border-border bg-background px-4 font-medium';
+const INPUT_CLS = 'h-11 rounded-xl border border-border/80 bg-white dark:bg-card px-4 font-medium focus-visible:ring-primary';
 
 // localStorage key prefix for the unsaved-credential draft. Scoped per org so
 // switching organizations never bleeds one tenant's draft into another. The
@@ -247,9 +247,9 @@ export default function WhatsAppCredentialForm() {
     accessToken.trim().length >= 10;
 
   return (
-    <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm bg-card overflow-hidden">
+    <Card className="rounded-2xl border border-border/80 shadow-sm bg-card text-card-foreground overflow-hidden">
       {/* Thin title bar — icon aligned with title, no description */}
-      <div className="px-5 py-3.5 border-b border-border flex items-center justify-between gap-3 flex-wrap">
+      <div className="px-6 py-4 border-b border-border/60 bg-muted/20 flex items-center justify-between gap-3 flex-wrap">
         <h2 className="text-sm font-bold tracking-tight flex items-center gap-2">
           <MessageCircle className="h-4 w-4 text-primary" /> Credentials
         </h2>
@@ -337,20 +337,20 @@ export default function WhatsAppCredentialForm() {
             <div className="flex flex-wrap justify-end gap-2 pt-1">
               {conn && (
                 <Button type="button" variant="ghost" onClick={handleDisconnect} disabled={isDisconnecting}
-                  className="rounded-xl font-semibold h-10 px-5 text-destructive hover:text-destructive hover:bg-destructive/10">
+                  className="rounded-xl font-bold h-11 px-5 text-destructive hover:text-destructive hover:bg-destructive/10 active:scale-[0.97]">
                   {isDisconnecting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Unplug className="h-4 w-4 mr-2" />}
                   Disconnect
                 </Button>
               )}
               {conn && (
                 <Button type="button" variant="outline" onClick={handleTest} disabled={isTesting}
-                  className="rounded-xl font-semibold h-10 px-5 border-border">
+                  className="rounded-xl font-bold h-11 px-5 border-border/80 active:scale-[0.97]">
                   {isTesting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <PlugZap className="h-4 w-4 mr-2" />}
                   Test connection
                 </Button>
               )}
               <Button onClick={handleSave} disabled={isSaving || !canSave}
-                className="rounded-xl font-semibold h-10 px-6 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all">
+                className="rounded-xl font-bold h-11 px-8 shadow-sm bg-primary text-primary-foreground active:scale-[0.97] transition-all">
                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                 Save credentials
               </Button>

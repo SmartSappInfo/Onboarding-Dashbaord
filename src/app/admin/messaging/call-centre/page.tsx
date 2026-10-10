@@ -1,19 +1,20 @@
-import { CallCentreClient } from './CallCentreClient';
-import { Suspense } from 'react';
+import { redirect } from 'next/navigation';
 
-export default async function CallCentrePage({
+/**
+ * Backward compatibility redirect:
+ * Routes legacy /admin/messaging/call-centre traffic to the standalone /admin/call-centre route.
+ */
+export default async function LegacyCallCentrePage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { tab } = await searchParams;
-  return (
-    <Suspense fallback={
-      <div className="flex items-center justify-center py-40">
-        <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    }>
-      <CallCentreClient defaultTab={tab || 'campaigns'} />
-    </Suspense>
-  );
+  const params = await searchParams;
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (typeof value === 'string') query.set(key, value);
+    else if (Array.isArray(value)) value.forEach(v => query.append(key, v));
+  });
+  const queryString = query.toString();
+  redirect(`/admin/call-centre${queryString ? `?${queryString}` : ''}`);
 }

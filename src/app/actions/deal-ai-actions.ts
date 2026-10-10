@@ -379,3 +379,148 @@ Synthesize following the strict schema:
   }
 }
 
+// ==========================================
+// CADENCE CLEANUP NEXT-BEST-ACTION SYNTHESIS
+// ==========================================
+
+export interface CadenceAiRecommendation {
+  dealId: string;
+  recommendedActionTitle: string;
+  recommendedDescription: string;
+  recommendedPriority: 'low' | 'medium' | 'high' | 'urgent';
+  urgencyScore: number;
+  outreachDraft?: string;
+}
+
+const cadenceAiRecommendationListSchema = z.object({
+  recommendations: z.array(
+    z.object({
+      dealId: z.string(),
+      recommendedActionTitle: z.string(),
+      recommendedDescription: z.string(),
+      recommendedPriority: z.enum(['low', 'medium', 'high', 'urgent']),
+      urgencyScore: z.number().min(0).max(100),
+      outreachDraft: z.string().optional(),
+    })
+  ),
+});
+
+/**
+ * Synthesizes opportunity prioritization scores, Next-Best-Actions (NBA), and outreach drafts
+ * for a batch of unassigned or unattended deals in a cadence cleanup job.
+ */
+export async function synthesizeCadenceTaskDetailsAction(params: {
+  dealIds: string[];
+  workspaceId: string;
+  defaultActionTitle?: string;
+}): Promise<{
+  success: boolean;
+  recommendations?: CadenceAiRecommendation[];
+  isFallback?: boolean;
+  error?: string;
+}> {
+  try {
+    await requireWorkspace(params.workspaceId);
+
+    if (!params.dealIds || params.dealIds.length === 0) {
+      return { success: true, recommendations: [] };
+    }
+
+    // Bounded queries (Rule 23): Process up to 25 deals with AI insights
+    const boundedIds = params.dealIds.slice(0, 25);
+
+    // Fetch deals
+    const dealsSnap = await adminDb
+      .collection('deals')
+      .where('workspaceId', '==', params.workspaceId)
+      .get();
+
+    const targetedDeals: Deal[] = [];
+    for (const doc of dealsSnap.docs) {
+      if (boundedIds.includes(doc.id)) {
+        targetedDeals.push({ id: doc.id, ...doc.data() } as Deal);
+      }
+    }
+
+    // Build deterministic baseline fallback
+    const fallbackRecommendations: CadenceAiRecommendation[] = targetedDeals.map((d) => {
+      const val = Number(d.value || 0);
+      const isHighValue = val >= 25000;
+      const focal = d.focalContacts?.find((fc) => fc.isPrimary) || d.focalContacts?.[0];
+      const contactName = focal?.name || d.contacts?.[0]?.name || 'there';
+      return {
+        dealId: d.id,
+        recommendedActionTitle: params.defaultActionTitle || (isHighValue ? 'Executive Follow-up Call' : 'Opportunity Check-in'),
+        recommendedDescription: `Touchpoint for ${d.name || 'opportunity'}. Review requirements and propose clear next steps.`,
+        recommendedPriority: isHighValue ? 'high' : 'medium',
+        urgencyScore: Math.min(100, Math.max(10, Math.floor(val / 1000))),
+        outreachDraft: `Hi ${contactName},\n\nI wanted to follow up regarding our discussion on ${d.name}. Do you have 10 minutes this week for a brief review?\n\nBest regards,`,
+      };
+    });
+
+    try {
+      const resolvedModel = await getModel();
+      const activeAi = ai;
+
+      const prompt = `You are a high-performance CRM Sales Cadence Director.
+Given these ${targetedDeals.length} deals in workspace ${params.workspaceId}, analyze each deal and provide:
+1. recommendedActionTitle: A punchy, stage-appropriate next-best-action (e.g. "Conduct ICP Pain Discovery", "Address Quote Objections", "Deliver Re-engagement Brief").
+2. recommendedDescription: 1-2 sentence instruction for the sales rep.
+3. recommendedPriority: 'low' | 'medium' | 'high' | 'urgent'.
+4. urgencyScore: A 0-100 numerical score where high-value, SLA-breaching, or stalled deals get 80-100, so they get scheduled first.
+5. outreachDraft: A personalized, friendly 2-paragraph outreach email or call script.
+
+Deals Data:
+${JSON.stringify(
+  targetedDeals.map((d) => {
+    const focal = d.focalContacts?.find((fc) => fc.isPrimary) || d.focalContacts?.[0];
+    return {
+      id: d.id,
+      name: d.name,
+      value: d.value,
+      stageId: d.stageId,
+      daysInStage: d.stageHistory?.length ? calculateDaysInStage(d.stageHistory[d.stageHistory.length - 1].enteredAt) : 5,
+      contactName: focal?.name || d.contacts?.[0]?.name,
+      contactEmail: focal?.email || d.contacts?.[0]?.email,
+    };
+  })
+)}`;
+
+      // 6-second timeout guard
+      const generatePromise = activeAi.generate({
+        model: resolvedModel.modelString,
+        prompt,
+        output: {
+          schema: cadenceAiRecommendationListSchema,
+        },
+      });
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Cadence AI synthesis timed out after 6s')), 6000)
+      );
+
+      const response = await Promise.race([generatePromise, timeoutPromise]);
+
+      if (response.output?.recommendations && response.output.recommendations.length > 0) {
+        return {
+          success: true,
+          recommendations: response.output.recommendations,
+          isFallback: false,
+        };
+      }
+    } catch (aiErr) {
+      console.warn('[synthesizeCadenceTaskDetailsAction] AI fallback triggered:', aiErr);
+    }
+
+    return {
+      success: true,
+      recommendations: fallbackRecommendations,
+      isFallback: true,
+    };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Failed to synthesize cadence recommendations';
+    console.error('[synthesizeCadenceTaskDetailsAction] Fatal error:', error);
+    return { success: false, error: msg };
+  }
+}
+
+

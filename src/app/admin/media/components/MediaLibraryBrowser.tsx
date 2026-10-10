@@ -380,10 +380,11 @@ export default function MediaLibraryBrowser({
                   <Skeleton key={i} className="aspect-square rounded-[2rem]" />
                 ))
               ) : filteredAssets.length > 0 ? (
-                filteredAssets.map(asset => (
+                filteredAssets.map((asset, index) => (
                   <MediaAssetCard 
                     key={asset.id} 
                     asset={asset} 
+                    priority={index < 4}
                     isConfigured={configuredAssetIds.has(asset.id)}
                     onCardClick={onSelectAsset} 
                     onInspect={(a) => setInspectingAsset(a)}

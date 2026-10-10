@@ -10,7 +10,6 @@ import {
     CheckSquare
 } from "lucide-react";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
 import { CardInfoTooltip } from "@/components/shared/CardInfoTooltip";
 import type { Workspace } from "@/lib/types";
@@ -34,6 +33,13 @@ export function DashboardHeader({
 }: DashboardHeaderProps) {
     const isProspectTrack = activeWorkspaceId === 'prospects' || activeWorkspaceId === 'prospect';
 
+    const rawWorkspaceName = activeWorkspace?.name?.trim();
+    const fallbackName = activeWorkspaceId ? activeWorkspaceId.replace(/[-_]/g, ' ').trim() : '';
+    const nameToUse = rawWorkspaceName || fallbackName;
+    const dashboardTitle = nameToUse 
+        ? (nameToUse.toLowerCase().endsWith('dashboard') ? nameToUse : `${nameToUse} Dashboard`)
+        : 'Dashboard';
+
     return (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 sm:pb-5 border-b border-border/40">
             <motion.div 
@@ -42,21 +48,10 @@ export function DashboardHeader({
                 className="flex flex-col gap-1.5 text-left"
             >
                 <div className="flex items-center gap-3 flex-wrap">
-                    <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Intelligence Hub</h1>
-                    <CardInfoTooltip text={`Enterprise performance audit for the ${activeWorkspace?.name || activeWorkspaceId} subsystem`} />
-                    {activeWorkspace?.name && (
-                        <Badge 
-                            variant="outline" 
-                            className="font-bold text-[10px] px-2.5 h-6 border uppercase tracking-widest ring-1 ring-border/50"
-                            style={{ 
-                                borderColor: `${activeWorkspace.color || '#3B5FFF'}60`,
-                                color: activeWorkspace.color,
-                                backgroundColor: `${activeWorkspace.color || '#3B5FFF'}10`
-                            }}
-                        >
-                            {activeWorkspace.name}
-                        </Badge>
-                    )}
+                    <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+                        {dashboardTitle}
+                    </h1>
+                    <CardInfoTooltip text={`Enterprise performance audit for the ${nameToUse || 'workspace'} subsystem`} />
                 </div>
             </motion.div>
 

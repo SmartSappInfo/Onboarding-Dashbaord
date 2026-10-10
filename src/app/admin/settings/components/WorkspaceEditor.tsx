@@ -20,12 +20,13 @@ import {
     Filter,
     Lock
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter 
 } from '@/components/ui/dialog';
@@ -316,129 +317,362 @@ export default function WorkspaceEditor({ workspaces, selectedScope: _selectedSc
         setCurrentStep(prev => prev - 1);
     };
 
+    const formatSafeSyncDate = (dateVal?: string) => {
+        if (!dateVal) return '—';
+        try {
+            const d = new Date(dateVal);
+            if (isNaN(d.getTime())) return '—';
+            return format(d, 'MMM d, HH:mm');
+        } catch {
+            return '—';
+        }
+    };
+
+    const filteredWorkspaces = React.useMemo(() => {
+        return workspaces?.filter((w) => industryFilter === 'all' || w.industry === industryFilter) || [];
+    }, [workspaces, industryFilter]);
+
     return (
         <>
             <div className="space-y-6">
-                <div className="flex items-center justify-between px-1">
+                {/* Header: Title on Left, Filter and New Workspace Button Positioned Next to Each Other on Right */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
                     <div className="flex items-center gap-2 text-left">
                         <h3 className="text-xl font-semibold tracking-tight text-foreground">Workspace Architect</h3>
                         <CardInfoTooltip text={`Manage workspaces for ${activeOrganization?.name || 'current organization'}`} />
                     </div>
-                    <Button 
-                        onClick={handleOpenCreate} 
-                        className="rounded-xl font-semibold h-11 px-6 shadow-lg gap-2 active:scale-[0.97]"
-                        disabled={!activeOrganizationId}
-                    >
-                        <Plus className="h-4 w-4" /> New Workspace
-                    </Button>
+
+                    {/* Filter and New Workspace button positioned side-by-side */}
+                    <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+                        <div className="flex items-center gap-2 bg-card border border-border/80 rounded-xl px-3 h-11 shadow-xs">
+                            <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <Select value={industryFilter} onValueChange={(value) => setIndustryFilter(value as IndustryVertical | 'all')}>
+                                <SelectTrigger 
+                                    className="w-[160px] sm:w-[180px] h-9 border-0 bg-transparent shadow-none px-0 text-xs font-semibold focus:ring-0 focus:ring-offset-0"
+                                    aria-label="Filter workspaces by industry"
+                                >
+                                    <SelectValue placeholder="All Industries" />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl">
+                                    <SelectItem value="all">All Industries</SelectItem>
+                                    {enabledIndustries.map((ind) => {
+                                        const Icon = getIndustryIcon(ind);
+                                        return (
+                                            <SelectItem key={ind} value={ind}>
+                                                <div className="flex items-center gap-2">
+                                                    <Icon className="h-3.5 w-3.5" />
+                                                    <span>{getIndustryDisplayName(ind)}</span>
+                                                </div>
+                                            </SelectItem>
+                                        );
+                                    })}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <Button 
+                            onClick={handleOpenCreate} 
+                            className="rounded-xl font-semibold h-11 px-5 shadow-sm gap-2 active:scale-[0.97] shrink-0 min-h-[44px] sm:min-h-[44px]"
+                            disabled={!activeOrganizationId}
+                        >
+                            <Plus className="h-4 w-4" /> New Workspace
+                        </Button>
+                    </div>
                 </div>
 
-                {/* Industry Filter */}
-                <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm flex items-center gap-3">
-                    <div className="flex items-center gap-2">
-                        <Filter className="h-4 w-4 text-muted-foreground" />
-                        <Label className="text-xs font-semibold text-muted-foreground">Filter by Industry:</Label>
-                    </div>
-                    <Select value={industryFilter} onValueChange={(value) => setIndustryFilter(value as IndustryVertical | 'all')}>
-                        <SelectTrigger className="w-[200px] h-9 rounded-xl border border-border/80 bg-white dark:bg-card shadow-xs">
-                            <SelectValue placeholder="All Industries" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Industries</SelectItem>
-                            {enabledIndustries.map((ind) => {
-                                const Icon = getIndustryIcon(ind);
+                {/* Workspaces Count Summary */}
+                <div className="flex items-center justify-between text-xs text-muted-foreground font-semibold px-1">
+                    <span>
+                        Showing {filteredWorkspaces.length} of {workspaces?.length || 0} workspaces
+                    </span>
+                    {activeOrganization?.name && (
+                        <span className="truncate max-w-[200px] text-muted-foreground/80">
+                            {activeOrganization.name}
+                        </span>
+                    )}
+                </div>
+
+                {/* Workspace Listview: Desktop Table (Single Row Per Record) + Mobile Cards */}
+                {filteredWorkspaces.length === 0 ? (
+                    <Card className="rounded-2xl border bg-card/40 p-12 text-center space-y-2">
+                        <p className="text-sm font-semibold text-foreground">No workspaces found</p>
+                        <p className="text-xs text-muted-foreground">
+                            {industryFilter !== 'all' 
+                                ? 'Try changing the industry filter to view other workspaces.' 
+                                : 'Get started by creating your first workspace.'}
+                        </p>
+                    </Card>
+                ) : (
+                    <>
+                        {/* Tabular Desktop Table View (Each Record Occupies One Row) */}
+                        <div className="hidden md:block rounded-2xl border border-border/80 bg-card/60 backdrop-blur-sm overflow-hidden shadow-xs">
+                            <Table>
+                                <TableHeader className="bg-muted/30 border-b border-border/60">
+                                    <TableRow className="hover:bg-transparent">
+                                        <TableHead className="text-[10px] uppercase font-bold py-3 pl-4">Workspace</TableHead>
+                                        <TableHead className="text-[10px] uppercase font-bold py-3">Industry & Scope</TableHead>
+                                        <TableHead className="text-[10px] uppercase font-bold py-3">Status</TableHead>
+                                        <TableHead className="text-[10px] uppercase font-bold py-3">Default</TableHead>
+                                        <TableHead className="text-[10px] uppercase font-bold py-3">Last Sync</TableHead>
+                                        <TableHead className="text-[10px] uppercase font-bold py-3 text-right pr-4">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredWorkspaces.map(w => {
+                                        const IndustryIcon = getIndustryIcon(w.industry || 'SaaS');
+                                        const isDefault = activeOrganization?.defaultWorkspaceId === w.id;
+                                        const isArchived = w.status === 'archived';
+
+                                        return (
+                                            <TableRow
+                                                key={w.id}
+                                                className={cn(
+                                                    "group hover:bg-muted/15 transition-colors border-b border-border/40 last:border-none",
+                                                    isArchived && "opacity-50 grayscale"
+                                                )}
+                                            >
+                                                {/* Workspace Name & Color Bar */}
+                                                <TableCell className="pl-4 py-3.5">
+                                                    <div className="flex items-center gap-3">
+                                                        <div 
+                                                            className="w-1.5 h-8 rounded-full shrink-0 shadow-xs" 
+                                                            style={{ backgroundColor: w.color || '#3B5FFF' }} 
+                                                        />
+                                                        <div className="min-w-0">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-semibold text-sm text-foreground truncate">
+                                                                    {w.name}
+                                                                </span>
+                                                                <CardInfoTooltip text={w.description || 'No description provided.'} />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </TableCell>
+
+                                                {/* Industry & Scope Badges */}
+                                                <TableCell className="py-3.5">
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-lg border bg-muted/20 flex items-center gap-1">
+                                                            <IndustryIcon className="h-3 w-3" />
+                                                            {getIndustryDisplayName(w.industry || 'SaaS')}
+                                                        </Badge>
+
+                                                        {w.contactScope && (
+                                                            <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-lg border bg-muted/20 flex items-center gap-1">
+                                                                {w.contactScope === 'institution' && <Building2 className="h-2.5 w-2.5" />}
+                                                                {w.contactScope === 'family' && <Users className="h-2.5 w-2.5" />}
+                                                                {w.contactScope === 'person' && <User className="h-2.5 w-2.5" />}
+                                                                {w.terminology?.plural || (w.contactScope === 'institution' ? 'Institutions' : w.contactScope === 'family' ? 'Families' : 'People')}
+                                                            </Badge>
+                                                        )}
+
+                                                        <Badge variant="secondary" className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md">
+                                                            {w.statuses?.length || 0} Statuses
+                                                        </Badge>
+
+                                                        {w.industryScopeLocked && (
+                                                            <Lock className="h-3 w-3 text-muted-foreground" />
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+
+                                                {/* Active/Archived Status */}
+                                                <TableCell className="py-3.5">
+                                                    <Badge 
+                                                        variant={w.status === 'active' ? 'default' : 'outline'} 
+                                                        className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md"
+                                                    >
+                                                        {w.status}
+                                                    </Badge>
+                                                </TableCell>
+
+                                                {/* Default Workspace */}
+                                                <TableCell className="py-3.5">
+                                                    {isDefault ? (
+                                                        <Badge className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 bg-orange-500 hover:bg-orange-600 text-white border-none shadow-xs flex items-center gap-1 w-fit">
+                                                            <ShieldCheck className="h-3 w-3" />
+                                                            Default
+                                                        </Badge>
+                                                    ) : (
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="sm" 
+                                                            className="h-7 rounded-lg px-2 text-[10px] font-semibold text-muted-foreground hover:bg-primary/10 hover:text-primary transition-all active:scale-[0.97]"
+                                                            onClick={() => handleSetDefault(w.id)}
+                                                        >
+                                                            Set as Default
+                                                        </Button>
+                                                    )}
+                                                </TableCell>
+
+                                                {/* Last Sync */}
+                                                <TableCell className="py-3.5">
+                                                    <span className="text-[10px] font-mono font-medium text-muted-foreground/60 tabular-nums">
+                                                        {formatSafeSyncDate(w.updatedAt)}
+                                                    </span>
+                                                </TableCell>
+
+                                                {/* Actions */}
+                                                <TableCell className="py-3.5 text-right pr-4">
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            className="h-8 w-8 rounded-lg text-primary hover:bg-primary/10 active:scale-[0.97]" 
+                                                            onClick={() => onSelectWorkspace(w.id)}
+                                                            title="Edit workspace"
+                                                            aria-label={`Edit ${w.name}`}
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            className="h-8 w-8 rounded-lg text-orange-600 hover:bg-orange-500/10 active:scale-[0.97]" 
+                                                            onClick={() => handleArchive(w)}
+                                                            title={isArchived ? "Restore workspace" : "Archive workspace"}
+                                                            aria-label={`${isArchived ? "Restore" : "Archive"} ${w.name}`}
+                                                        >
+                                                            <Archive className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            className="h-8 w-8 rounded-lg text-destructive hover:bg-destructive/10 active:scale-[0.97]" 
+                                                            onClick={() => handleDelete(w)}
+                                                            title="Delete workspace"
+                                                            aria-label={`Delete ${w.name}`}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                </TableBody>
+                            </Table>
+                        </div>
+
+                        {/* Mobile Responsive Card List View */}
+                        <div className="space-y-3 md:hidden">
+                            {filteredWorkspaces.map(w => {
+                                const IndustryIcon = getIndustryIcon(w.industry || 'SaaS');
+                                const isDefault = activeOrganization?.defaultWorkspaceId === w.id;
+                                const isArchived = w.status === 'archived';
+
                                 return (
-                                    <SelectItem key={ind} value={ind}>
-                                        <div className="flex items-center gap-2">
-                                            <Icon className="h-3.5 w-3.5" />
-                                            <span>{getIndustryDisplayName(ind)}</span>
+                                    <Card
+                                        key={w.id}
+                                        className={cn(
+                                            "rounded-2xl border border-border/80 bg-card p-4 space-y-3 shadow-xs relative overflow-hidden text-left",
+                                            isArchived && "opacity-50 grayscale"
+                                        )}
+                                    >
+                                        {/* Left accent color bar */}
+                                        <div 
+                                            className="absolute left-0 top-0 bottom-0 w-1.5" 
+                                            style={{ backgroundColor: w.color || '#3B5FFF' }} 
+                                        />
+
+                                        {/* Top Row: Title, Tooltip & Status/Default Badges */}
+                                        <div className="pl-2 flex items-start justify-between gap-2">
+                                            <div className="min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-semibold text-sm text-foreground truncate">
+                                                        {w.name}
+                                                    </span>
+                                                    <CardInfoTooltip text={w.description || 'No description provided.'} />
+                                                </div>
+                                                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                                                    <Badge variant={w.status === 'active' ? 'default' : 'outline'} className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md">
+                                                        {w.status}
+                                                    </Badge>
+
+                                                    {isDefault ? (
+                                                        <Badge className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 bg-orange-500 text-white border-none shadow-xs flex items-center gap-1">
+                                                            <ShieldCheck className="h-2.5 w-2.5" />
+                                                            Default
+                                                        </Badge>
+                                                    ) : (
+                                                        <Button 
+                                                            variant="outline" 
+                                                            size="sm" 
+                                                            className="h-6 rounded-md px-2 text-[9px] font-semibold text-muted-foreground hover:bg-primary/10 hover:text-primary active:scale-[0.97]"
+                                                            onClick={() => handleSetDefault(w.id)}
+                                                        >
+                                                            Set Default
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <span className="text-[9px] font-mono font-medium text-muted-foreground/60 tabular-nums shrink-0 pt-0.5">
+                                                {formatSafeSyncDate(w.updatedAt)}
+                                            </span>
                                         </div>
-                                    </SelectItem>
+
+                                        {/* Middle Row: Industry & Scope Badges */}
+                                        <div className="pl-2 flex items-center gap-1.5 flex-wrap">
+                                            <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-lg border bg-muted/20 flex items-center gap-1">
+                                                <IndustryIcon className="h-3 w-3" />
+                                                {getIndustryDisplayName(w.industry || 'SaaS')}
+                                            </Badge>
+
+                                            {w.contactScope && (
+                                                <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-lg border bg-muted/20 flex items-center gap-1">
+                                                    {w.contactScope === 'institution' && <Building2 className="h-2.5 w-2.5" />}
+                                                    {w.contactScope === 'family' && <Users className="h-2.5 w-2.5" />}
+                                                    {w.contactScope === 'person' && <User className="h-2.5 w-2.5" />}
+                                                    {w.terminology?.plural || (w.contactScope === 'institution' ? 'Institutions' : w.contactScope === 'family' ? 'Families' : 'People')}
+                                                </Badge>
+                                            )}
+
+                                            <Badge variant="secondary" className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md">
+                                                {w.statuses?.length || 0} Statuses
+                                            </Badge>
+
+                                            {w.industryScopeLocked && (
+                                                <Lock className="h-3 w-3 text-muted-foreground" />
+                                            )}
+                                        </div>
+
+                                        {/* Bottom Row: Mobile Action Buttons (>= 44px touch targets) */}
+                                        <div className="pl-2 flex items-center justify-end gap-2 pt-2 border-t border-border/40">
+                                            <Button 
+                                                variant="outline" 
+                                                size="sm" 
+                                                className="min-h-[44px] px-3.5 rounded-xl text-xs font-semibold text-primary hover:bg-primary/10 active:scale-[0.97] flex items-center gap-1.5"
+                                                onClick={() => onSelectWorkspace(w.id)}
+                                                aria-label={`Edit ${w.name}`}
+                                            >
+                                                <Pencil className="h-3.5 w-3.5" /> Edit
+                                            </Button>
+                                            <Button 
+                                                variant="outline" 
+                                                size="sm" 
+                                                className="min-h-[44px] px-3.5 rounded-xl text-xs font-semibold text-orange-600 hover:bg-orange-500/10 active:scale-[0.97] flex items-center gap-1.5"
+                                                onClick={() => handleArchive(w)}
+                                                aria-label={`${isArchived ? "Restore" : "Archive"} ${w.name}`}
+                                            >
+                                                <Archive className="h-3.5 w-3.5" /> {isArchived ? "Restore" : "Archive"}
+                                            </Button>
+                                            <Button 
+                                                variant="outline" 
+                                                size="sm" 
+                                                className="min-h-[44px] px-3.5 rounded-xl text-xs font-semibold text-destructive hover:bg-destructive/10 active:scale-[0.97] flex items-center gap-1.5"
+                                                onClick={() => handleDelete(w)}
+                                                aria-label={`Delete ${w.name}`}
+                                            >
+                                                <Trash2 className="h-3.5 w-3.5" /> Delete
+                                            </Button>
+                                        </div>
+                                    </Card>
                                 );
                             })}
-                        </SelectContent>
-                    </Select>
-                </Card>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {workspaces
-                        ?.filter((w) => industryFilter === 'all' || w.industry === industryFilter)
-                        .map(w => {
-                            const IndustryIcon = getIndustryIcon(w.industry || 'SaaS');
-                            return (
-                                <Card key={w.id} className={cn(
-                                    "rounded-2xl border border-border/80 bg-card text-card-foreground text-left shadow-sm group transition-all duration-300",
-                                    w.status === 'archived' ? "opacity-50 grayscale" : "hover:border-primary/40 hover:shadow-xl"
-                                )}>
-                                    <div className="h-1.5 w-full" style={{ backgroundColor: w.color || '#3B5FFF' }} />
-                                    <CardHeader className="p-6 pb-4 flex flex-row items-center justify-between">
-                                        <div className="min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <CardTitle className="text-base font-semibold tracking-tight truncate">{w.name}</CardTitle>
-                                                <CardInfoTooltip text={w.description || 'No description provided.'} />
-                                            </div>
-                                            <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                                <Badge variant="secondary" className="text-[8px] font-semibold uppercase px-1.5 h-4">{w.statuses?.length || 0} Statuses</Badge>
-                                                {/* Industry Badge */}
-                                                <Badge variant="outline" className="text-[8px] font-semibold uppercase px-1.5 h-4 flex items-center gap-1">
-                                                    <IndustryIcon className="h-2.5 w-2.5" />
-                                                    {getIndustryDisplayName(w.industry || 'SaaS')}
-                                                </Badge>
-                                                {w.contactScope && (
-                                                    <Badge variant="outline" className="text-[8px] font-semibold uppercase px-1.5 h-4 flex items-center gap-1">
-                                                        {w.contactScope === 'institution' && <Building2 className="h-2.5 w-2.5" />}
-                                                        {w.contactScope === 'family' && <Users className="h-2.5 w-2.5" />}
-                                                        {w.contactScope === 'person' && <User className="h-2.5 w-2.5" />}
-                                                        {w.terminology?.plural || (w.contactScope === 'institution' ? 'Institutions' : w.contactScope === 'family' ? 'Families' : 'People')}
-                                                    </Badge>
-                                                )}
-                                                {w.industryScopeLocked && (
-                                                    <Lock className="h-3 w-3 text-muted-foreground" />
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => onSelectWorkspace(w.id)}>
-                                                <Pencil className="h-4 w-4 text-primary" />
-                                            </Button>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => handleArchive(w)}>
-                                                <Archive className="h-4 w-4 text-orange-600" />
-                                            </Button>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-destructive" onClick={() => handleDelete(w)}>
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent className="p-6 pt-0 space-y-4">
-                                        
-                                        <div className="flex items-center justify-between pt-2">
-                                            <div className="flex items-center gap-2">
-                                                <Badge variant={w.status === 'active' ? 'default' : 'outline'} className="text-[8px] font-semibold uppercase px-2 h-5">
-                                                    {w.status}
-                                                </Badge>
-                                                {activeOrganization?.defaultWorkspaceId === w.id ? (
-                                                    <Badge className="text-[8px] font-semibold uppercase px-2 h-5 bg-orange-500 hover:bg-orange-600 text-white border-none shadow-sm flex items-center gap-1">
-                                                        <ShieldCheck className="h-2.5 w-2.5" />
-                                                        Default
-                                                    </Badge>
-                                                ) : (
-                                                    <Button 
-                                                        variant="ghost" 
-                                                        size="sm" 
-                                                        className="h-5 rounded-md px-1.5 text-[8px] font-semibold bg-background hover:bg-primary hover:text-white transition-all opacity-0 group-hover:opacity-100"
-                                                        onClick={() => handleSetDefault(w.id)}
-                                                    >
-                                                        Set as Default
-                                                    </Button>
-                                                )}
-                                            </div>
-                                            <span className="text-[9px] font-bold text-muted-foreground/40 tabular-nums">Sync: {format(new Date(w.updatedAt), 'MMM d, HH:mm')}</span>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            );
-                        })}
-                </div>
+                        </div>
+                    </>
+                )}
             </div>
 
             {/* NEW WORKSPACE MODAL */}

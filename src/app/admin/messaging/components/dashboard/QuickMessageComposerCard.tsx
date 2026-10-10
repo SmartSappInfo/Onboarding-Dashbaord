@@ -31,6 +31,7 @@ import { VariablesPanel } from '@/components/shared/VariablesPanel';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { CardInfoTooltip } from '@/components/ui/card-info-tooltip';
 import type { MessagingDashboardChannel } from '@/lib/types/messaging-dashboard';
 import type { ChannelKillSwitches } from '@/lib/types/messaging-settings';
 import { dispatchQuickDirectMessageAction } from '@/app/actions/quick-message-actions';
@@ -193,10 +194,17 @@ export function QuickMessageComposerCard({
   return (
     <div className={cn('rounded-2xl border border-border/80 bg-card p-4 sm:p-5 text-card-foreground shadow-xs', className)}>
       {/* Header with Channel Switcher */}
-      <div className="flex items-center justify-between pb-3 border-b border-border/60">
-        <div>
-          <h3 className="text-sm font-semibold tracking-tight text-foreground">Quick Compose</h3>
-          <p className="text-xs text-muted-foreground">Direct 1-to-1 message dispatch</p>
+      <div className="flex items-center justify-between pb-3 border-b border-border/60 gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0">
+            <Send className="h-3.5 w-3.5" />
+          </div>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <h3 className="text-sm sm:text-base font-semibold tracking-tight text-foreground truncate">
+              Quick Compose
+            </h3>
+            <CardInfoTooltip text="Direct 1-to-1 message dispatch across SMS, WhatsApp, and Email channels." />
+          </div>
         </div>
         <div className="flex items-center gap-1 bg-muted/40 p-0.5 rounded-lg">
           {(['sms', 'whatsapp', 'email'] as const).map((ch) => (

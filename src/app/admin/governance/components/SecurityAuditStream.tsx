@@ -12,9 +12,10 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import {
@@ -80,11 +81,9 @@ export function SecurityAuditStream() {
   return (
     <Card className="border bg-card shadow-xs overflow-hidden">
       <CardHeader className="p-4 pb-3 border-b bg-muted/20 flex flex-row items-center justify-between">
-        <div>
+        <div className="flex items-center gap-1.5">
           <CardTitle className="text-sm font-bold">Immutable Security Audit Log</CardTitle>
-          <CardDescription className="text-xs">
-            Append-only compliance log of all privilege escalations and governance events
-          </CardDescription>
+          <CardInfoTooltip text="Append-only compliance log of all privilege escalations and governance events." />
         </div>
 
         <Button

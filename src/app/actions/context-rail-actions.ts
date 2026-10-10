@@ -19,6 +19,7 @@ import { requireAuth, type AuthContext } from '@/lib/auth/require-auth';
 import { adminDb } from '@/lib/firebase-admin';
 import {
   type EntityContextRailData,
+  type WorkspaceContextRailData,
   type AskEntityAiInput,
   type AskEntityAiResult,
   type ObjectCommandActionInput,
@@ -340,6 +341,164 @@ export async function getEntityContextRailDataAction(
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to retrieve context rail data';
+    return {
+      success: false,
+      error: {
+        code: message.includes('IDOR') ? CONTEXT_RAIL_ERROR_CODES.IDOR_VIOLATION : 'RETRIEVAL_ERROR',
+        message,
+      },
+    };
+  }
+}
+
+// ============================================================================
+// 3.5 ACTION 1.5: Get Workspace Context Rail Data (Standby & Fleet Mode)
+// ============================================================================
+
+export async function getWorkspaceContextRailDataAction(options?: {
+  organizationId?: string;
+  workspaceId?: string;
+}): Promise<ContextRailActionResult<WorkspaceContextRailData>> {
+  try {
+    const auth = await requireAuth();
+    const requestedOrgId = options?.organizationId || auth.profile.organizationId;
+    if (!requestedOrgId) {
+      return {
+        success: false,
+        error: {
+          code: CONTEXT_RAIL_ERROR_CODES.TENANT_REQUIRED,
+          message: 'Missing organization context',
+        },
+      };
+    }
+
+    assertTenantContext(auth, requestedOrgId);
+    const orgId = requestedOrgId;
+    const wsId = options?.workspaceId || auth.profile.defaultWorkspaceId || 'default';
+
+    // 1. Fetch Active Runs across workspace
+    let activeRuns: EntityContextRailData['activeRuns'] = [];
+    try {
+      const runStore = getAgentRunStore();
+      const rawResult = await runStore.listRuns(orgId, {
+        workspaceId: wsId,
+        limit: 5,
+      });
+
+      const runsArray = Array.isArray(rawResult)
+        ? rawResult
+        : Array.isArray(rawResult?.runs)
+          ? rawResult.runs
+          : [];
+
+      activeRuns = runsArray.map((r: {
+        runId?: string;
+        id?: string;
+        goal?: { prompt?: string; description?: string } | string;
+        status?: string;
+        agentPersonaId?: string;
+        personaName?: string;
+        createdAt?: string;
+        budgetUsage?: { tokensUsed?: number };
+      }) => {
+        const runId = r.runId || r.id || 'unknown_run';
+        const goalText =
+          typeof r.goal === 'string'
+            ? r.goal
+            : r.goal?.prompt || r.goal?.description || 'Autonomous Run';
+        const status = r.status || 'running';
+        const persona = r.personaName || r.agentPersonaId || 'agent';
+
+        return {
+          id: runId,
+          runId,
+          goal: goalText,
+          goalDescription: goalText,
+          status,
+          personaName: persona,
+          personaId: persona,
+          createdAt: r.createdAt || new Date().toISOString(),
+          startedAt: r.createdAt || new Date().toISOString(),
+          totalTokens: r.budgetUsage?.tokensUsed ?? 0,
+          progressPercent: status === 'completed' ? 100 : status === 'executing' ? 65 : 20,
+          stepProgress: { completed: status === 'completed' ? 5 : 2, total: 5 },
+          viewUrl: `/admin/intelligence/runs?runId=${runId}`,
+        };
+      });
+    } catch {
+      // Fallback
+    }
+
+    // 2. Fetch Pending Approvals across workspace
+    let pendingApprovals: EntityContextRailData['pendingApprovals'] = [];
+    try {
+      const proposalsRes = await listActionProposalsAction({
+        organizationId: orgId,
+        workspaceId: wsId,
+        status: 'pending',
+        limit: 5,
+      });
+
+      if (proposalsRes.success && proposalsRes.data) {
+        pendingApprovals = proposalsRes.data.map((p) => ({
+          id: p.proposalId,
+          proposalId: p.proposalId,
+          actionType: p.capabilityId,
+          actionName: p.capabilityId,
+          targetEntityName: 'Workspace Action',
+          riskLevel: p.blastRadius?.riskLevel || 'L2_STATE_MUTATION',
+          what: p.what,
+          why: p.why,
+          createdAt: p.createdAt,
+          payloadHash: p.payloadHash,
+          requiresOperatorIntervention: true,
+          reviewUrl: `/admin/intelligence/approvals?proposalId=${p.proposalId}`,
+        }));
+      }
+    } catch {
+      // Fallback
+    }
+
+    // 3. Fetch Recent Entities in workspace
+    const recentEntities: WorkspaceContextRailData['recentEntities'] = [];
+    if (adminDb) {
+      try {
+        const snap = await adminDb
+          .collection('organizations')
+          .doc(orgId)
+          .collection('entities')
+          .orderBy('updatedAt', 'desc')
+          .limit(6)
+          .get();
+
+        snap.docs.forEach((doc) => {
+          const d = doc.data() || {};
+          recentEntities.push({
+            id: doc.id,
+            name: d.name || d.displayName || doc.id,
+            type: d.type || 'account',
+            status: d.status || 'active',
+            tier: d.tier,
+            updatedAt: typeof d.updatedAt === 'string' ? d.updatedAt : undefined,
+          });
+        });
+      } catch {
+        // Fallback if index or collection missing
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        organizationId: orgId,
+        workspaceId: wsId,
+        activeRuns,
+        pendingApprovals,
+        recentEntities,
+      },
+    };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to retrieve workspace context rail data';
     return {
       success: false,
       error: {

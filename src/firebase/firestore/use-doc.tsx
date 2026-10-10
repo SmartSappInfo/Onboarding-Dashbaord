@@ -122,6 +122,15 @@ export function useDoc<T = any>(
             _error.message || _error
           );
 
+          if (_error.code === 'resource-exhausted') {
+            console.warn(
+              `[Firestore useDoc Quota Warning] Quota exceeded on path "${path}". Preserving existing state and falling back to cached data.`
+            );
+            setError(_error);
+            setSettledRef(memoizedDocRef);
+            return;
+          }
+
           if (_error.code === 'permission-denied') {
             const contextualError = new FirestorePermissionError({
               operation: 'get',

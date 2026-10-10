@@ -12,9 +12,10 @@
  */
 
 import * as React from 'react';
-import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Activity } from 'lucide-react';
 import type { UserHealthScore, UserHealthStatus } from '@/lib/types';
 
@@ -62,12 +63,10 @@ export function UserHealthTab({ scores }: UserHealthTabProps) {
     <Card className="border bg-card shadow-xs overflow-hidden">
       <CardHeader className="p-4 pb-3 border-b bg-muted/20">
         <div className="flex items-center gap-2">
-          <Activity className="w-5 h-5 text-primary" />
-          <div>
+          <Activity className="w-5 h-5 text-primary shrink-0" />
+          <div className="flex items-center gap-2">
             <CardTitle className="text-sm font-bold">Workforce Health & Strain Index</CardTitle>
-            <CardDescription className="text-xs">
-              Multi-signal score evaluating telemetry consistency, onboarding velocity, and CRM workload
-            </CardDescription>
+            <CardInfoTooltip text="Multi-signal score evaluating telemetry consistency, onboarding velocity, and CRM workload." />
           </div>
         </div>
       </CardHeader>

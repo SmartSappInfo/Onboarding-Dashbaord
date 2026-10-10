@@ -101,9 +101,16 @@ interface MediaAssetCardProps {
   onCardClick?: (asset: MediaAsset) => void;
   onInspect?: (asset: MediaAsset) => void;
   isConfigured?: boolean;
+  priority?: boolean;
 }
 
-export default function MediaAssetCard({ asset, onCardClick, onInspect, isConfigured = false }: MediaAssetCardProps) {
+export default function MediaAssetCard({
+  asset,
+  onCardClick,
+  onInspect,
+  isConfigured = false,
+  priority = false,
+}: MediaAssetCardProps) {
   const { toast } = useToast();
   const firestore = useFirestore();
   const { allowedWorkspaces } = useWorkspace();
@@ -274,6 +281,7 @@ export default function MediaAssetCard({ asset, onCardClick, onInspect, isConfig
                   src={previewSrc}
                   alt={asset.name}
                   fill
+                  priority={priority}
                   sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
                   className="object-cover transition-transform duration-1000 group-hover:scale-110"
                 />
@@ -281,6 +289,7 @@ export default function MediaAssetCard({ asset, onCardClick, onInspect, isConfig
                 <img
                   src={previewSrc}
                   alt={asset.name}
+                  loading={priority ? 'eager' : 'lazy'}
                   className="object-cover w-full h-full transition-transform duration-1000 group-hover:scale-110 absolute inset-0"
                 />
               )

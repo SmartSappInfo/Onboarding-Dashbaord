@@ -12,8 +12,9 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Sparkles, Shield, Layers, Users, ArrowRight } from 'lucide-react';
 import type { AiStrategicInsight } from '@/lib/types';
 
@@ -41,12 +42,10 @@ export function AiStrategicInsightsTab({ insights }: AiStrategicInsightsTabProps
       <Card className="border bg-card shadow-xs">
         <CardHeader className="p-4 pb-3 border-b bg-muted/20">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-primary" />
-            <div>
+            <Sparkles className="w-5 h-5 text-primary shrink-0" />
+            <div className="flex items-center gap-2">
               <CardTitle className="text-sm font-bold">AI Strategic Organizational Insights</CardTitle>
-              <CardDescription className="text-xs">
-                Synthesized executive intelligence and structural optimization recommendations
-              </CardDescription>
+              <CardInfoTooltip text="Synthesized executive intelligence and structural optimization recommendations." />
             </div>
           </div>
         </CardHeader>
@@ -61,6 +60,7 @@ export function AiStrategicInsightsTab({ insights }: AiStrategicInsightsTabProps
                 <div className="flex items-center gap-2">
                   {categoryIcon(ins.category)}
                   <h4 className="font-bold text-xs text-foreground">{ins.title}</h4>
+                  <CardInfoTooltip text={ins.summary} />
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Badge variant="secondary" className="text-[9px] uppercase font-bold">
@@ -74,8 +74,6 @@ export function AiStrategicInsightsTab({ insights }: AiStrategicInsightsTabProps
                   </Badge>
                 </div>
               </div>
-
-              <p className="text-xs text-muted-foreground leading-relaxed">{ins.summary}</p>
 
               <div className="p-3 bg-muted/20 border rounded-md text-xs space-y-1">
                 <span className="font-bold text-primary flex items-center gap-1 text-[11px]">

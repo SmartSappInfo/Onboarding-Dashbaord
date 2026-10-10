@@ -25,7 +25,8 @@ import {
     DollarSign,
     Bookmark,
     Sliders,
-    ArrowRightLeft
+    ArrowRightLeft,
+    PanelLeftClose
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -48,6 +49,7 @@ export interface PipelineFormData {
   workspaceIds: string[];
   columnWidth: number;
   showDealTotals: boolean;
+  autoCollapseEmptyStages: boolean;
   defaultPresetViewId?: string;
   defaultDealValue: number | '';
   accessRoles: string[];
@@ -194,6 +196,26 @@ export function PipelineConfigFields({
           id="showDealTotals"
           checked={formData.showDealTotals}
           onCheckedChange={(val) => onChange('showDealTotals', val)}
+          disabled={disabled}
+          className="shrink-0"
+        />
+      </div>
+
+      {/* Kanban Board Auto-Collapse Empty Stages Toggle */}
+      <div className="flex items-center justify-between p-4 rounded-xl bg-muted/20 border border-border/60 hover:border-border transition-colors">
+        <div className="space-y-0.5 pr-4 text-left">
+          <Label htmlFor="autoCollapseEmptyStages" className="text-xs font-bold flex items-center gap-2 cursor-pointer text-foreground">
+            <PanelLeftClose className="h-4 w-4 text-primary shrink-0" />
+            Auto-Collapse Empty Stages
+          </Label>
+          <p className="text-[11px] text-muted-foreground font-normal leading-relaxed">
+            Automatically collapse stages with zero deals into compact vertical slivers to keep active deals front and center. Disabled by default.
+          </p>
+        </div>
+        <Switch
+          id="autoCollapseEmptyStages"
+          checked={formData.autoCollapseEmptyStages}
+          onCheckedChange={(val) => onChange('autoCollapseEmptyStages', val)}
           disabled={disabled}
           className="shrink-0"
         />
