@@ -35,14 +35,20 @@ describe('task-triage-filter-engine', () => {
   const createMockTask = (overrides: Partial<Task>): Task => ({
     id: `task-${Math.random().toString(36).slice(2, 7)}`,
     title: 'Test Task',
+    description: '',
     status: 'todo',
     priority: 'medium',
     category: 'general',
+    assignedTo: 'user-1',
+    dueDate: '2026-10-15T10:00:00.000Z',
+    reminders: [],
+    reminderSent: false,
     workspaceId: 'ws-123',
     createdAt: '2026-10-01T08:00:00.000Z',
     updatedAt: '2026-10-01T08:00:00.000Z',
     ...overrides,
   });
+
 
   describe('isMondayDate', () => {
     it('correctly identifies a Monday', () => {

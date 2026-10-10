@@ -3,9 +3,9 @@
 import * as React from 'react';
 import { collection, query, orderBy, where, limit } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { Task, UserProfile, TaskPriority, TaskCategory, TaskStatus, Tag } from '@/lib/types';
+import type { Task, UserProfile, TaskCategory, TaskStatus, Tag } from '@/lib/types';
 import { useEntityResolver } from '@/context/EntityCacheContext';
-import { format, isToday, isPast, differenceInCalendarDays, addDays, startOfWeek, endOfWeek, endOfMonth, addMonths, addWeeks, startOfDay, endOfDay } from 'date-fns';
+import { format, isToday, isPast, differenceInCalendarDays, addDays, startOfWeek, endOfWeek, endOfMonth, addMonths, addWeeks, startOfDay, endOfDay, subDays, subWeeks, subMonths, isYesterday, isTomorrow } from 'date-fns';
 import { safeParseDate } from '@/lib/utils/date-utils';
 import { Separator } from '@/components/ui/separator';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
@@ -31,6 +31,7 @@ import {
     ArrowLeft, 
     CalendarDays,
     BarChart3,
+    Plus,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -67,10 +68,23 @@ import {
     DropdownMenuSubTrigger,
     DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
-import TaskEditor from './components/TaskEditor';
+import TaskEditor, { type TaskSavePayload } from './components/TaskEditor';
 import TaskBoard from './components/TaskBoard';
 import TaskCalendar from './components/TaskCalendar';
 import { TaskScopeSwitcher, type TaskScope } from './components/TaskScopeSwitcher';
+import { TaskFilterPopover } from './components/filters/TaskFilterPopover';
+import { StandupModeToggle } from './components/filters/StandupModeToggle';
+import { TaskAccordionHeader } from './components/TaskAccordionHeader';
+import {
+    calculateTriageBuckets,
+    getGlobalPresetSubFilters,
+    type TaskTriageMode,
+    type CompletedSubFilter,
+    type UpcomingSubFilter,
+    type OverdueSubFilter,
+    type GlobalPeriodPreset,
+    type TriageCardId,
+} from '@/lib/tasks/task-triage-filter-engine';
 import { TaskFilterChips, type FilterChipItem } from './components/TaskFilterChips';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TaskListRow } from './components/TaskListRow';
@@ -98,6 +112,7 @@ import type { ClientCapabilityError } from '@/platform/capabilities/ui/types';
 import type { TaskCreateInput, TaskCreateOutput } from '@/platform/domains/tasks_productivity/contracts/task-create.contract';
 import type { TaskCompleteInput, TaskCompleteOutput } from '@/platform/domains/tasks_productivity/contracts/task-complete.contract';
 import type { TaskUpdateInput, TaskUpdateOutput } from '@/platform/domains/tasks_productivity/contracts/task-update.contract';
+import { sanitizeTaskErrorMessage } from '@/lib/tasks/task-summary-utils';
 
 const STATUS_LABELS: Record<TaskStatus, string> = {
     todo: 'To Do',
@@ -130,9 +145,18 @@ export default function TasksClient() {
     const [searchTerm, setSearchTerm] = React.useState('');
     const [smartFilter, _setSmartFilter] = React.useState<'none' | 'today' | 'overdue'>('none');
     const [isSimpleView, setIsSimpleView] = React.useState(true);
-    const [taskScope, setTaskScope] = React.useState<'my' | 'team' | 'all'>('all');
+    const [taskScope, setTaskScope] = React.useState<TaskScope>('all');
+    const [selectedMemberId, setSelectedMemberId] = React.useState<string | null>(null);
     const [selectedTagId, setSelectedTagId] = React.useState<string>('all');
     const [isMobileFilterOpen, setIsMobileFilterOpen] = React.useState(false);
+
+    // Triage & Standup Engine States
+    const [triageMode, setTriageMode] = React.useState<TaskTriageMode>('normal');
+    const [anchorDate, setAnchorDate] = React.useState<Date>(new Date());
+    const [activeGlobalPreset, setActiveGlobalPreset] = React.useState<GlobalPeriodPreset>('all_time');
+    const [completedSubFilter, setCompletedSubFilter] = React.useState<CompletedSubFilter>('all_time');
+    const [upcomingSubFilter, setUpcomingSubFilter] = React.useState<UpcomingSubFilter>('all_time');
+    const [overdueSubFilter, setOverdueSubFilter] = React.useState<OverdueSubFilter>('all_time');
 
     // Capability Governance & Error/Conflict Surfaces (Phase 1 / PR-9 / PR-11)
     const [capabilityError, setCapabilityError] = React.useState<ClientCapabilityError | null>(null);
@@ -151,8 +175,8 @@ export default function TasksClient() {
         workspaceId: activeWorkspaceId,
     });
 
-    // Date Interval Filter States - Defaults to 'day' (Today) per business rules
-    const [dateFilterType, setDateFilterType] = React.useState<'all' | 'range' | 'month' | 'week' | 'day'>('day');
+    // Date Interval Filter States - Defaults to 'all' (All Time) per business rules
+    const [dateFilterType, setDateFilterType] = React.useState<'all' | 'range' | 'month' | 'week' | 'day'>('all');
     const [dateRange, setDateRange] = React.useState<{ start: Date | null, end: Date | null }>({ start: null, end: null });
     const [selectedMonth, setSelectedMonth] = React.useState<string>('');
     const [selectedWeek, setSelectedWeek] = React.useState<string>('');
@@ -267,6 +291,64 @@ export default function TasksClient() {
         else if (selectedDayType === 'custom' && selectedCustomDay) base = selectedCustomDay;
         setSelectedDayType('custom');
         setSelectedCustomDay(addDays(base, direction));
+    };
+
+    // Global Preset Synchronization and Anchor Date Navigation
+    const handleGlobalPresetChange = (preset: GlobalPeriodPreset) => {
+        setActiveGlobalPreset(preset);
+        const subFilters = getGlobalPresetSubFilters(preset);
+        setCompletedSubFilter(subFilters.completed);
+        setUpcomingSubFilter(subFilters.upcoming);
+        setOverdueSubFilter(subFilters.overdue);
+
+        // Keep dateFilterType in sync for Board and Calendar views
+        if (preset === 'today') {
+            setDateFilterType('day');
+            setSelectedDayType('today');
+            setAnchorDate(new Date());
+        } else if (preset === 'this_week') {
+            setDateFilterType('week');
+            setSelectedWeek(format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd'));
+            setAnchorDate(new Date());
+        } else if (preset === 'this_month') {
+            setDateFilterType('month');
+            setSelectedMonth(format(new Date(), 'yyyy-MM'));
+            setAnchorDate(new Date());
+        } else if (preset === 'all_time') {
+            setDateFilterType('all');
+            setAnchorDate(new Date());
+        }
+    };
+
+    const handleStepAnchorDate = (direction: 1 | -1) => {
+        setAnchorDate((prev) => {
+            if (activeGlobalPreset === 'today') {
+                return direction === 1 ? addDays(prev, 1) : subDays(prev, 1);
+            } else if (activeGlobalPreset === 'this_week') {
+                return direction === 1 ? addWeeks(prev, 1) : subWeeks(prev, 1);
+            } else if (activeGlobalPreset === 'this_month') {
+                return direction === 1 ? addMonths(prev, 1) : subMonths(prev, 1);
+            }
+            return prev;
+        });
+    };
+
+    const formatAnchorDateLabel = (date: Date, preset: GlobalPeriodPreset): string => {
+        if (preset === 'today') {
+            if (isToday(date)) return 'Today';
+            if (isYesterday(date)) return 'Yesterday';
+            if (isTomorrow(date)) return 'Tomorrow';
+            return format(date, 'MMM d, yyyy');
+        }
+        if (preset === 'this_week') {
+            const start = startOfWeek(date, { weekStartsOn: 1 });
+            const end = endOfWeek(date, { weekStartsOn: 1 });
+            return `${format(start, 'MMM d')} – ${format(end, 'MMM d, yyyy')}`;
+        }
+        if (preset === 'this_month') {
+            return format(date, 'MMMM yyyy');
+        }
+        return '';
     };
 
     // Selection State
@@ -434,7 +516,7 @@ export default function TasksClient() {
         return true;
     }, [dateFilterType, dateRange, selectedMonth, selectedWeek, selectedDayType, selectedCustomDay]);
 
-    const filteredTasks = React.useMemo(() => {
+    const scopeAndFilterTasks = React.useMemo(() => {
         if (!allTasks) return [];
         return allTasks.filter(task => {
             let matchesScope = true;
@@ -445,6 +527,10 @@ export default function TasksClient() {
                     : true;
             } else if (taskScope === 'team') {
                 matchesScope = Array.isArray(task.assignedTo) ? task.assignedTo.length > 0 : Boolean(task.assignedTo);
+            } else if (taskScope === 'member' && selectedMemberId) {
+                matchesScope = Array.isArray(task.assignedTo)
+                    ? task.assignedTo.includes(selectedMemberId)
+                    : task.assignedTo === selectedMemberId;
             }
 
             const matchesTag = selectedTagId === 'all'
@@ -467,9 +553,30 @@ export default function TasksClient() {
                 matchesSmart = Boolean(parsedDue && isPast(parsedDue) && !isToday(parsedDue) && task.status !== 'done');
             }
 
-            return matchesScope && matchesTag && matchesStatus && matchesPriority && matchesAssignee(task) && matchesSearch && matchesSmart && matchesDateFilter(task);
+            return matchesScope && matchesTag && matchesStatus && matchesPriority && matchesAssignee(task) && matchesSearch && matchesSmart;
         });
-    }, [allTasks, taskScope, selectedTagId, statusFilter, priorityFilter, searchTerm, smartFilter, currentUser?.uid, matchesAssignee, matchesDateFilter]);
+    }, [allTasks, taskScope, selectedMemberId, selectedTagId, statusFilter, priorityFilter, searchTerm, smartFilter, currentUser?.uid, matchesAssignee]);
+
+    // Feed scopeAndFilterTasks into the Pure Domain Triage Engine
+    const triageResult = React.useMemo(() => {
+        return calculateTriageBuckets(scopeAndFilterTasks, {
+            anchorDate,
+            mode: triageMode,
+            completedFilter: completedSubFilter,
+            upcomingFilter: upcomingSubFilter,
+            overdueFilter: overdueSubFilter,
+        });
+    }, [scopeAndFilterTasks, anchorDate, triageMode, completedSubFilter, upcomingSubFilter, overdueSubFilter]);
+
+    const totalTriageTasks = React.useMemo(() => {
+        return triageResult.overdueTasks.length + triageResult.upcomingTasks.length + triageResult.completedTasks.length;
+    }, [triageResult]);
+
+    // Backward-compatibility alias for Board and global queries
+    const filteredTasks = React.useMemo(() => {
+        if (dateFilterType === 'all') return scopeAndFilterTasks;
+        return scopeAndFilterTasks.filter(matchesDateFilter);
+    }, [scopeAndFilterTasks, dateFilterType, matchesDateFilter]);
 
     const calendarFilteredTasks = React.useMemo(() => {
         if (!allTasks) return [];
@@ -482,6 +589,10 @@ export default function TasksClient() {
                     : true;
             } else if (taskScope === 'team') {
                 matchesScope = Array.isArray(task.assignedTo) ? task.assignedTo.length > 0 : Boolean(task.assignedTo);
+            } else if (taskScope === 'member' && selectedMemberId) {
+                matchesScope = Array.isArray(task.assignedTo)
+                    ? task.assignedTo.includes(selectedMemberId)
+                    : task.assignedTo === selectedMemberId;
             }
 
             const matchesTag = selectedTagId === 'all'
@@ -519,78 +630,7 @@ export default function TasksClient() {
 
             return matchesScope && matchesTag && matchesStatus && matchesPriority && matchesAssigned && matchesSearch && matchesSmart;
         });
-    }, [allTasks, taskScope, selectedTagId, statusFilter, priorityFilter, assignedUserId, searchTerm, smartFilter, currentUser?.uid]);
-
-    // The first ("current period") accordion adapts to the active date filter.
-    // All Time / Custom Range fall back to a monthly grouping.
-    const periodGrouping = React.useMemo<'day' | 'week' | 'month'>(() => {
-        if (dateFilterType === 'day') return 'day';
-        if (dateFilterType === 'week') return 'week';
-        return 'month';
-    }, [dateFilterType]);
-
-    const currentPeriodLabel = periodGrouping === 'day'
-        ? 'Today'
-        : periodGrouping === 'week'
-            ? 'This Week'
-            : 'This Month';
-
-    // Whether the selected period (after any arrow navigation) is the real-world
-    // current period. When false, the current-period accordion is hidden.
-    const isViewingCurrentPeriod = React.useMemo(() => {
-        if (dateFilterType === 'day') {
-            let target = new Date();
-            if (selectedDayType === 'yesterday') target = addDays(new Date(), -1);
-            else if (selectedDayType === 'tomorrow') target = addDays(new Date(), 1);
-            else if (selectedDayType === 'custom' && selectedCustomDay) target = selectedCustomDay;
-            return isToday(target);
-        }
-        if (dateFilterType === 'week') {
-            if (!selectedWeek) return true;
-            return selectedWeek === format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
-        }
-        if (dateFilterType === 'month') {
-            if (!selectedMonth) return true;
-            return selectedMonth === format(new Date(), 'yyyy-MM');
-        }
-        return true; // all / range have no period navigation
-    }, [dateFilterType, selectedDayType, selectedCustomDay, selectedWeek, selectedMonth]);
-
-    const groupedListTasks = React.useMemo(() => {
-        const overdue: Task[] = [];
-        const current: Task[] = [];
-        const upcoming: Task[] = [];
-        const completed: Task[] = [];
-
-        const now = new Date();
-        const periodEnd = periodGrouping === 'day'
-            ? endOfDay(now)
-            : periodGrouping === 'week'
-                ? endOfWeek(now, { weekStartsOn: 1 })
-                : endOfMonth(now);
-
-        filteredTasks.forEach(task => {
-            if (task.status === 'done') {
-                completed.push(task);
-                return;
-            }
-
-            const dueDateObj = safeParseDate(task.dueDate);
-            if (!dueDateObj) {
-                upcoming.push(task);
-            } else if (differenceInCalendarDays(dueDateObj, now) < 0) {
-                // Past due (before today) is always Overdue, regardless of period.
-                overdue.push(task);
-            } else if (dueDateObj <= periodEnd) {
-                // Due today through the end of the current period.
-                current.push(task);
-            } else {
-                upcoming.push(task);
-            }
-        });
-
-        return { overdue, current, upcoming, completed };
-    }, [filteredTasks, periodGrouping]);
+    }, [allTasks, taskScope, selectedMemberId, selectedTagId, statusFilter, priorityFilter, assignedUserId, searchTerm, smartFilter, currentUser?.uid]);
 
     // Stat cards reflect the currently-selected date range, assignee scope, and tags,
     // independent of status/search/smart filters.
@@ -605,6 +645,10 @@ export default function TasksClient() {
                     : true;
             } else if (taskScope === 'team') {
                 matchesScope = Array.isArray(task.assignedTo) ? task.assignedTo.length > 0 : Boolean(task.assignedTo);
+            } else if (taskScope === 'member' && selectedMemberId) {
+                matchesScope = Array.isArray(task.assignedTo)
+                    ? task.assignedTo.includes(selectedMemberId)
+                    : task.assignedTo === selectedMemberId;
             }
 
             const matchesTag = selectedTagId === 'all'
@@ -613,7 +657,7 @@ export default function TasksClient() {
 
             return matchesScope && matchesTag && matchesAssignee(task) && matchesDateFilter(task);
         });
-    }, [allTasks, taskScope, selectedTagId, currentUser?.uid, matchesAssignee, matchesDateFilter]);
+    }, [allTasks, taskScope, selectedMemberId, selectedTagId, currentUser?.uid, matchesAssignee, matchesDateFilter]);
 
     const stats = React.useMemo(() => {
         const scoped = statsScopedTasks;
@@ -643,10 +687,13 @@ export default function TasksClient() {
             return;
         }
         setTaskScope(newScope);
+        if (newScope !== 'member') {
+            setSelectedMemberId(null);
+        }
     };
 
     const scopeCounts = React.useMemo(() => {
-        if (!allTasks) return { my: 0, team: 0, all: 0 };
+        if (!allTasks) return { my: 0, team: 0, all: 0, member: 0 };
         const uid = currentUser?.uid;
         const myCount = allTasks.filter(t => {
             if (!uid) return false;
@@ -655,12 +702,16 @@ export default function TasksClient() {
         const teamCount = allTasks.filter(t => {
             return Array.isArray(t.assignedTo) ? t.assignedTo.length > 0 : Boolean(t.assignedTo);
         }).length;
+        const memberCount = selectedMemberId
+            ? allTasks.filter(t => Array.isArray(t.assignedTo) ? t.assignedTo.includes(selectedMemberId) : t.assignedTo === selectedMemberId).length
+            : 0;
         return {
             my: myCount,
             team: teamCount,
             all: allTasks.length,
+            member: memberCount,
         };
-    }, [allTasks, currentUser?.uid]);
+    }, [allTasks, currentUser?.uid, selectedMemberId]);
 
     const activeFilterCount = React.useMemo(() => {
         let count = 0;
@@ -668,18 +719,31 @@ export default function TasksClient() {
         if (statusFilter !== 'all') count++;
         if (priorityFilter !== 'all') count++;
         if (selectedTagId !== 'all') count++;
-        if (dateFilterType !== 'day') count++;
+        if (activeGlobalPreset !== 'all_time') count++;
         if (searchTerm.trim()) count++;
         return count;
-    }, [taskScope, statusFilter, priorityFilter, selectedTagId, dateFilterType, searchTerm]);
+    }, [taskScope, statusFilter, priorityFilter, selectedTagId, activeGlobalPreset, searchTerm]);
 
     const filterChips: FilterChipItem[] = React.useMemo(() => {
         const chips: FilterChipItem[] = [];
-        if (taskScope !== 'all') {
+        if (taskScope === 'my') {
             chips.push({
                 key: 'scope',
-                label: `Scope: ${taskScope === 'my' ? 'My Tasks' : 'Team Tasks'}`,
-                value: taskScope,
+                label: 'Scope: My Tasks',
+                value: 'my',
+            });
+        } else if (taskScope === 'team') {
+            chips.push({
+                key: 'scope',
+                label: 'Scope: All Team Members',
+                value: 'team',
+            });
+        } else if (taskScope === 'member' && selectedMemberId) {
+            const memberName = userMap.get(selectedMemberId)?.name || 'Team Member';
+            chips.push({
+                key: 'scope',
+                label: `Member: ${memberName}`,
+                value: selectedMemberId,
             });
         }
         if (statusFilter !== 'all') {
@@ -704,16 +768,17 @@ export default function TasksClient() {
                 value: selectedTagId,
             });
         }
-        if (dateFilterType !== 'day') {
-            let dateLabel = `Date: ${dateFilterType}`;
-            if (dateFilterType === 'all') dateLabel = 'Date: All Time';
-            else if (dateFilterType === 'month') dateLabel = `Month: ${selectedMonth}`;
-            else if (dateFilterType === 'week') dateLabel = `Week: ${selectedWeek}`;
-            else if (dateFilterType === 'range') dateLabel = 'Date: Custom Range';
+        if (activeGlobalPreset !== 'all_time') {
+            const labels: Record<GlobalPeriodPreset, string> = {
+                today: 'Today',
+                this_week: 'This Week',
+                this_month: 'This Month',
+                all_time: 'All Time',
+            };
             chips.push({
                 key: 'date',
-                label: dateLabel,
-                value: dateFilterType,
+                label: `Period: ${labels[activeGlobalPreset]}`,
+                value: activeGlobalPreset,
             });
         }
         if (searchTerm.trim()) {
@@ -724,14 +789,16 @@ export default function TasksClient() {
             });
         }
         return chips;
-    }, [taskScope, statusFilter, priorityFilter, selectedTagId, dateFilterType, selectedMonth, selectedWeek, searchTerm, workspaceTags]);
+    }, [taskScope, selectedMemberId, userMap, statusFilter, priorityFilter, selectedTagId, activeGlobalPreset, searchTerm, workspaceTags]);
 
     const handleRemoveChip = (chip: FilterChipItem) => {
-        if (chip.key === 'scope') handleScopeChange('all');
-        else if (chip.key === 'status') setStatusFilter('all');
+        if (chip.key === 'scope') {
+            handleScopeChange('all');
+            setSelectedMemberId(null);
+        } else if (chip.key === 'status') setStatusFilter('all');
         else if (chip.key === 'priority') setPriorityFilter('all');
         else if (chip.key === 'tag') setSelectedTagId('all');
-        else if (chip.key === 'date') setDateFilterType('all');
+        else if (chip.key === 'date') handleGlobalPresetChange('all_time');
         else if (chip.key === 'search') setSearchTerm('');
     };
 
@@ -742,6 +809,8 @@ export default function TasksClient() {
         setSearchTerm('');
         setDateFilterType('all');
         setTaskScope('all');
+        setSelectedMemberId(null);
+        handleGlobalPresetChange('all_time');
     };
 
     const handleCreateNewTask = () => {
@@ -912,7 +981,7 @@ export default function TasksClient() {
         }
     };
 
-    const handleSaveTask = async (payload: { title: string; description?: string; priority?: TaskPriority; dueDate?: string; entityId?: string; category?: string; [key: string]: unknown }) => {
+    const handleSaveTask = async (payload: TaskSavePayload) => {
         if (!currentUser) return;
         if (!canCreate && !editingTask) {
             toast({
@@ -941,7 +1010,10 @@ export default function TasksClient() {
         setIsSaving(true);
         setCapabilityError(null);
         try {
-            if (editingTask) {
+            // Strictly discriminate update vs create: an update MUST have a valid, non-empty taskId.
+            // Draft tasks (e.g. from calendar date click or template select with id: '') route to creation.
+            const isUpdating = Boolean(editingTask?.id && editingTask.id.trim().length > 0);
+            if (isUpdating && editingTask) {
                 const outcome = await taskUpdateCap.execute({
                     workspaceId: activeWorkspaceId,
                     taskId: editingTask.id,
@@ -949,6 +1021,7 @@ export default function TasksClient() {
                     description: payload.description,
                     priority: payload.priority,
                     dueDate: payload.dueDate,
+                    tagIds: payload.tagIds,
                 });
 
                 if (outcome.success) {
@@ -960,17 +1033,22 @@ export default function TasksClient() {
                         setVersionConflict(outcome.error.conflict || { expectedVersion: 'current', actualVersion: 'latest' });
                     }
                     setCapabilityError(outcome.error);
-                    toast({ variant: 'destructive', title: 'Operation Failed', description: outcome.error.message });
+                    toast({ 
+                        variant: 'destructive', 
+                        title: 'Operation Failed', 
+                        description: sanitizeTaskErrorMessage(outcome.error.message) 
+                    });
                 }
             } else {
                 const outcome = await taskCreateCap.execute({
                     workspaceId: activeWorkspaceId,
-                    title: payload.title,
+                    title: payload.title || 'Untitled Task',
                     description: payload.description,
                     priority: payload.priority,
                     dueDate: payload.dueDate,
-                    entityId: payload.entityId,
+                    entityId: payload.entityId || undefined,
                     category: payload.category || 'follow_up',
+                    tagIds: payload.tagIds && payload.tagIds.length > 0 ? payload.tagIds : undefined,
                 });
 
                 if (outcome.success) {
@@ -979,11 +1057,19 @@ export default function TasksClient() {
                     setEditingTask(null);
                 } else {
                     setCapabilityError(outcome.error);
-                    toast({ variant: 'destructive', title: 'Operation Failed', description: outcome.error.message });
+                    toast({ 
+                        variant: 'destructive', 
+                        title: 'Operation Failed', 
+                        description: sanitizeTaskErrorMessage(outcome.error.message) 
+                    });
                 }
             }
         } catch (e: unknown) {
-            toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) || "Failed to save task." });
+            toast({ 
+                variant: 'destructive', 
+                title: 'Operation Failed', 
+                description: sanitizeTaskErrorMessage(getErrorMessage(e)) 
+            });
         } finally {
             setIsSaving(false);
         }
@@ -1332,7 +1418,7 @@ export default function TasksClient() {
                                 value="list" 
                                 className="h-8.5 rounded-lg text-xs font-semibold px-3.5 transition-all flex items-center gap-1.5 active:scale-[0.97] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
                             >
-                                <LayoutList className="h-3.5 w-3.5" /> List ({filteredTasks.length})
+                                <LayoutList className="h-3.5 w-3.5" /> List ({totalTriageTasks})
                             </TabsTrigger>
                             <TabsTrigger 
                                 value="board" 
@@ -1400,7 +1486,7 @@ export default function TasksClient() {
 
                 {/* Toolbar */}
                 <div className="flex flex-col gap-4 bg-card border border-border/80 shadow-sm p-4 sm:p-5 rounded-2xl">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                         <div className="flex flex-wrap items-center gap-3">
                             <h2 className="text-xl font-bold text-foreground tracking-tight">Tasks</h2>
                             <TaskScopeSwitcher
@@ -1408,6 +1494,9 @@ export default function TasksClient() {
                                 onScopeChange={handleScopeChange}
                                 canViewAllTasks={canViewAllTasks}
                                 counts={scopeCounts}
+                                workspaceUsers={workspaceUsers}
+                                selectedMemberId={selectedMemberId}
+                                onSelectMember={setSelectedMemberId}
                             />
                         </div>
 
@@ -1444,10 +1533,132 @@ export default function TasksClient() {
                                 </Button>
                             )}
                         </div>
+
+                        {/* Desktop Search & Primary Controls */}
+                        <div className="hidden md:flex items-center gap-2.5">
+                            <div className="relative w-56 lg:w-64">
+                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-60" />
+                                <Input 
+                                    placeholder="Search tasks..." 
+                                    value={searchTerm}
+                                    onChange={e => setSearchTerm(e.target.value)}
+                                    className="h-11 min-h-[44px] rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground/45 focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary font-semibold pl-10 text-xs"
+                                />
+                            </div>
+
+                            {/* Consolidated Filter Popover */}
+                            <TaskFilterPopover
+                                statusFilter={statusFilter}
+                                onStatusChange={setStatusFilter}
+                                priorityFilter={priorityFilter}
+                                onPriorityChange={setPriorityFilter}
+                                selectedTagId={selectedTagId}
+                                onTagChange={setSelectedTagId}
+                                onClearFilters={handleClearFilters}
+                            />
+
+                            {/* Simple View Toggle */}
+                            {activeTab === 'list' && (
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        setIsSimpleView(prev => {
+                                            const next = !prev;
+                                            if (typeof window !== 'undefined') {
+                                                localStorage.setItem('task_simple_view', String(next));
+                                            }
+                                            return next;
+                                        });
+                                    }}
+                                    className={cn(
+                                        "h-11 min-h-[44px] rounded-xl px-3.5 gap-2 font-bold text-xs transition-all border border-border/80 bg-white dark:bg-card text-foreground hover:bg-muted/60 shrink-0 active:scale-[0.97] shadow-xs",
+                                        isSimpleView && "bg-blue-500/10 text-blue-600 border-blue-500/30 hover:bg-blue-500/15"
+                                    )}
+                                >
+                                    <LayoutList className={cn("h-4 w-4 transition-transform", isSimpleView && "text-blue-500")} />
+                                    <span>{isSimpleView ? "Simple" : "Detailed"}</span>
+                                </Button>
+                            )}
+
+                            {/* Add Task Button */}
+                            {canCreate && (
+                                <Button 
+                                    onClick={handleCreateNewTask} 
+                                    className="rounded-xl font-bold h-11 min-h-[44px] px-5 shadow-sm bg-primary hover:bg-primary/90 text-primary-foreground active:scale-[0.97] text-xs gap-1.5 transition-all"
+                                >
+                                    <Plus className="h-4 w-4" />
+                                    <span>Add Task</span>
+                                </Button>
+                            )}
+                        </div>
                     </div>
 
-                    {/* Desktop Toolbar Row (hidden on small screens) */}
-                    <div className="hidden md:flex flex-wrap items-center gap-3 pt-1 border-t border-border/40">
+                    {/* Sub-row: Standup Mode Toggle & Global Period Stepper */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-border/40">
+                        <div className="flex flex-wrap items-center gap-3">
+                            <StandupModeToggle
+                                mode={triageMode}
+                                onModeChange={setTriageMode}
+                                anchorDate={anchorDate}
+                            />
+
+                            {/* Global Period Preset Buttons */}
+                            <div className="inline-flex items-center p-1 rounded-xl bg-muted/40 border border-border/80 shadow-2xs">
+                                {(['today', 'this_week', 'this_month', 'all_time'] as GlobalPeriodPreset[]).map((preset) => {
+                                    const labels: Record<GlobalPeriodPreset, string> = {
+                                        today: 'Today',
+                                        this_week: 'This Week',
+                                        this_month: 'This Month',
+                                        all_time: 'All Time',
+                                    };
+                                    const isSelected = activeGlobalPreset === preset;
+                                    return (
+                                        <button
+                                            key={preset}
+                                            type="button"
+                                            onClick={() => handleGlobalPresetChange(preset)}
+                                            className={cn(
+                                                "px-3 py-1.5 rounded-lg text-xs font-semibold h-11 min-h-[44px] sm:min-h-[36px] transition-all active:scale-[0.97]",
+                                                isSelected
+                                                    ? "bg-card text-foreground shadow-xs font-bold border border-border/60"
+                                                    : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                                            )}
+                                        >
+                                            {labels[preset]}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Date Anchor Stepper (< and >) */}
+                            {activeGlobalPreset !== 'all_time' && (
+                                <div className="flex items-center gap-1">
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={() => handleStepAnchorDate(-1)}
+                                        aria-label="Previous period"
+                                        className="h-11 w-11 min-h-[44px] min-w-[44px] rounded-xl active:scale-[0.97] border border-border/80"
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                    </Button>
+                                    <span className="text-xs font-semibold px-2 text-muted-foreground">
+                                        {formatAnchorDateLabel(anchorDate, activeGlobalPreset)}
+                                    </span>
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={() => handleStepAnchorDate(1)}
+                                        aria-label="Next period"
+                                        className="h-11 w-11 min-h-[44px] min-w-[44px] rounded-xl active:scale-[0.97] border border-border/80"
+                                    >
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Selection Mode Button (List View) */}
                         {activeTab === 'list' && (
                             <Button 
                                 variant="outline" 
@@ -1461,248 +1672,12 @@ export default function TasksClient() {
                                 {isSelectionMode ? <CheckSquare className="h-4 w-4" /> : <ListChecks className="h-4 w-4" />} Selection
                             </Button>
                         )}
- 
-                        <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="h-11 min-h-[44px] w-[140px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
-                                <SelectValue placeholder="All Statuses" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl border-border bg-card text-foreground">
-                                <SelectItem value="all">All Statuses</SelectItem>
-                                <SelectItem value="todo">To Do</SelectItem>
-                                <SelectItem value="in_progress">In Progress</SelectItem>
-                                <SelectItem value="waiting">Waiting</SelectItem>
-                                <SelectItem value="review">Review</SelectItem>
-                                <SelectItem value="done">Done</SelectItem>
-                            </SelectContent>
-                        </Select>
- 
-                        <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                            <SelectTrigger className="h-11 min-h-[44px] w-[140px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
-                                <SelectValue placeholder="All Priorities" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl border-border bg-card text-foreground">
-                                <SelectItem value="all">All Priorities</SelectItem>
-                                <SelectItem value="urgent">Urgent</SelectItem>
-                                <SelectItem value="high">High</SelectItem>
-                                <SelectItem value="medium">Medium</SelectItem>
-                                <SelectItem value="low">Low</SelectItem>
-                            </SelectContent>
-                        </Select>
-
-                        {/* Tag Filter Dropdown */}
-                        <Select value={selectedTagId} onValueChange={setSelectedTagId}>
-                            <SelectTrigger className="h-11 min-h-[44px] w-[140px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
-                                <SelectValue placeholder="All Tags" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl border-border bg-card text-foreground">
-                                <SelectItem value="all">All Tags</SelectItem>
-                                {workspaceTags?.map((tag) => (
-                                    <SelectItem key={tag.id} value={tag.id}>
-                                        <div className="flex items-center gap-1.5">
-                                            {tag.color && (
-                                                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: tag.color }} />
-                                            )}
-                                            <span className="truncate">{tag.name}</span>
-                                        </div>
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
- 
-                        {/* Date Filter Select */}
-                        <Select value={dateFilterType} onValueChange={(val: 'all' | 'range' | 'month' | 'week' | 'day') => setDateFilterType(val)}>
-                            <SelectTrigger className="h-11 min-h-[44px] w-[140px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
-                                <SelectValue placeholder="All Time" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl border-border bg-card text-foreground">
-                                <SelectItem value="all">All Time</SelectItem>
-                                <SelectItem value="range">Custom Range</SelectItem>
-                                <SelectItem value="month">By Month</SelectItem>
-                                <SelectItem value="week">By Week</SelectItem>
-                                <SelectItem value="day">By Day</SelectItem>
-                            </SelectContent>
-                        </Select>
-
-                        {/* Date Range Inputs */}
-                        {mounted && dateFilterType === 'range' && (
-                            <div className="flex items-center gap-2">
-                                <DateTimePicker 
-                                    value={dateRange.start || undefined} 
-                                    onChange={(d) => setDateRange(prev => ({ ...prev, start: d || null }))} 
-                                    className="h-11 min-h-[44px] rounded-xl bg-background border border-border text-foreground font-semibold text-xs w-[180px]"
-                                />
-                                <span className="text-muted-foreground text-xs font-semibold">to</span>
-                                <DateTimePicker 
-                                    value={dateRange.end || undefined} 
-                                    onChange={(d) => setDateRange(prev => ({ ...prev, end: d || null }))} 
-                                    className="h-11 min-h-[44px] rounded-xl bg-background border border-border text-foreground font-semibold text-xs w-[180px]"
-                                />
-                            </div>
-                        )}
-
-                        {/* Month Selector */}
-                        {mounted && dateFilterType === 'month' && (
-                            <div className="flex items-center gap-1.5">
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() => navigateMonth(-1)}
-                                    aria-label="Previous month"
-                                    className="h-11 w-11 min-h-[44px] min-w-[44px] active:scale-[0.97] rounded-xl bg-background border-border text-foreground hover:bg-muted/50 shrink-0"
-                                >
-                                    <ChevronLeft className="h-4 w-4" />
-                                </Button>
-                                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                                    <SelectTrigger className="h-11 min-h-[44px] w-[160px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
-                                        <SelectValue placeholder="Select Month" />
-                                    </SelectTrigger>
-                                    <SelectContent className="rounded-xl border-border bg-card text-foreground">
-                                        {monthOptions.map((opt) => (
-                                             <SelectItem key={opt.value} value={opt.value}>
-                                                {opt.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() => navigateMonth(1)}
-                                    aria-label="Next month"
-                                    className="h-11 w-11 min-h-[44px] min-w-[44px] active:scale-[0.97] rounded-xl bg-background border-border text-foreground hover:bg-muted/50 shrink-0"
-                                >
-                                    <ChevronRight className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        )}
-
-                        {/* Week Selector */}
-                        {mounted && dateFilterType === 'week' && (
-                            <div className="flex items-center gap-1.5">
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() => navigateWeek(-1)}
-                                    aria-label="Previous week"
-                                    className="h-11 w-11 min-h-[44px] min-w-[44px] active:scale-[0.97] rounded-xl bg-background border-border text-foreground hover:bg-muted/50 shrink-0"
-                                >
-                                    <ChevronLeft className="h-4 w-4" />
-                                </Button>
-                                <Select value={selectedWeek} onValueChange={setSelectedWeek}>
-                                    <SelectTrigger className="h-11 min-h-[44px] w-[240px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
-                                        <SelectValue placeholder="Select Week" />
-                                    </SelectTrigger>
-                                    <SelectContent className="rounded-xl border-border bg-card text-foreground">
-                                        {weekOptions.map((opt) => (
-                                            <SelectItem key={opt.value} value={opt.value}>
-                                                {opt.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() => navigateWeek(1)}
-                                    aria-label="Next week"
-                                    className="h-11 w-11 min-h-[44px] min-w-[44px] active:scale-[0.97] rounded-xl bg-background border-border text-foreground hover:bg-muted/50 shrink-0"
-                                >
-                                    <ChevronRight className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        )}
-
-                        {/* Day Selector */}
-                        {mounted && dateFilterType === 'day' && (
-                            <div className="flex items-center gap-1.5">
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() => navigateDay(-1)}
-                                    aria-label="Previous day"
-                                    className="h-11 w-11 min-h-[44px] min-w-[44px] active:scale-[0.97] rounded-xl bg-background border-border text-foreground hover:bg-muted/50 shrink-0"
-                                >
-                                    <ChevronLeft className="h-4 w-4" />
-                                </Button>
-                                <Select value={selectedDayType} onValueChange={(val: 'today' | 'yesterday' | 'tomorrow' | 'custom') => setSelectedDayType(val)}>
-                                    <SelectTrigger className="h-11 min-h-[44px] w-[150px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
-                                        <SelectValue placeholder="Select Day" />
-                                    </SelectTrigger>
-                                    <SelectContent className="rounded-xl border-border bg-card text-foreground">
-                                        <SelectItem value="today">Today</SelectItem>
-                                        <SelectItem value="yesterday">Yesterday</SelectItem>
-                                        <SelectItem value="tomorrow">Tomorrow</SelectItem>
-                                        <SelectItem value="custom">Specific Date...</SelectItem>
-                                    </SelectContent>
-                                </Select>
-
-                                {selectedDayType === 'custom' && (
-                                    <DateTimePicker
-                                        value={selectedCustomDay || undefined}
-                                        onChange={(d) => setSelectedCustomDay(d || null)}
-                                        className="h-11 min-h-[44px] rounded-xl bg-background border border-border text-foreground font-semibold text-xs w-[180px]"
-                                    />
-                                )}
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() => navigateDay(1)}
-                                    aria-label="Next day"
-                                    className="h-11 w-11 min-h-[44px] min-w-[44px] active:scale-[0.97] rounded-xl bg-background border-border text-foreground hover:bg-muted/50 shrink-0"
-                                >
-                                    <ChevronRight className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        )}
-
-                        <div className="relative w-full sm:w-[240px] group">
-                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-60" />
-                            <Input 
-                                placeholder="Search tasks..." 
-                                value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
-                                className="h-11 min-h-[44px] rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground/45 focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary font-semibold pl-10 text-xs"
-                            />
-                        </div>
-
-                        {activeTab === 'list' && (
-                            <Button
-                                variant="outline"
-                                onClick={() => {
-                                    setIsSimpleView(prev => {
-                                        const next = !prev;
-                                        if (typeof window !== 'undefined') {
-                                            localStorage.setItem('task_simple_view', String(next));
-                                        }
-                                        return next;
-                                    });
-                                }}
-                                className={cn(
-                                    "h-11 min-h-[44px] rounded-xl px-4 gap-2 font-bold text-xs transition-all border-none ring-1 shrink-0 active:scale-[0.97]",
-                                    isSimpleView 
-                                        ? "bg-blue-500/10 text-blue-600 ring-blue-500/30 hover:bg-blue-500/15" 
-                                        : "bg-background text-foreground ring-border hover:bg-muted/50"
-                                )}
-                            >
-                                <LayoutList className={cn("h-4 w-4 transition-transform", isSimpleView && "text-blue-500")} />
-                                <span>{isSimpleView ? "Simple View" : "Detailed View"}</span>
-                            </Button>
-                        )}
- 
-                        {canCreate && (
-                            <Button 
-                                onClick={handleCreateNewTask} 
-                                className="rounded-xl font-bold h-11 min-h-[44px] px-6 shadow-md bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.97] text-xs"
-                            >
-                                + Add Task
-                            </Button>
-                        )}
                     </div>
 
                     {filterChips.length > 0 && (
                         <TaskFilterChips
                             chips={filterChips}
-                            totalMatching={filteredTasks.length}
+                            totalMatching={totalTriageTasks}
                             onRemoveChip={handleRemoveChip}
                             onClearAll={handleClearFilters}
                             className="mt-1"
@@ -1978,51 +1953,100 @@ export default function TasksClient() {
                                 message={tasksError.message || "An error occurred while loading tasks."}
                                 onRetry={() => window.location.reload()} 
                             />
-                        ) : !isLoading && filteredTasks.length === 0 ? (
+                        ) : !isLoading && totalTriageTasks === 0 ? (
                             <TaskEmptyState 
                                 isFiltered={activeFilterCount > 0} 
                                 onClearFilters={handleClearFilters} 
                                 onCreateTask={handleCreateNewTask} 
                             />
                         ) : (
-                            /* Grouped Lists by Accordions */
+                            /* 3-Card Grouped Triage Lists */
                             (() => {
-                                const categoriesConfig = [
-                                    { id: 'current', label: currentPeriodLabel, tasks: groupedListTasks.current, count: groupedListTasks.current.length },
-                                    { id: 'overdue', label: 'Overdue Tasks', tasks: groupedListTasks.overdue, count: groupedListTasks.overdue.length },
-                                    { id: 'upcoming', label: 'Upcoming Tasks', tasks: groupedListTasks.upcoming, count: groupedListTasks.upcoming.length },
-                                    { id: 'completed', label: 'Completed Archive', tasks: groupedListTasks.completed, count: groupedListTasks.completed.length },
-                                ];
+                                const cardConfigs: Record<TriageCardId, {
+                                    id: TriageCardId;
+                                    title: string;
+                                    tasks: Task[];
+                                    header: React.ReactNode;
+                                }> = {
+                                    overdue: {
+                                        id: 'overdue',
+                                        title: 'Overdue Tasks',
+                                        tasks: triageResult.overdueTasks,
+                                        header: (
+                                            <TaskAccordionHeader<OverdueSubFilter>
+                                                title="Overdue Tasks"
+                                                count={triageResult.overdueTasks.length}
+                                                badgeClassName="bg-destructive/15 text-destructive font-bold"
+                                                filterOptions={[
+                                                    { value: 'yesterday', label: 'Yesterday' },
+                                                    { value: 'this_week', label: 'This Week' },
+                                                    { value: 'last_week', label: 'Last Week' },
+                                                    { value: 'this_month', label: 'This Month' },
+                                                    { value: 'last_month', label: 'Last Month' },
+                                                    { value: 'all_time', label: 'All Time' },
+                                                ]}
+                                                activeFilter={overdueSubFilter}
+                                                onSelectFilter={setOverdueSubFilter}
+                                                isExpanded={Boolean(expandedSections.overdue)}
+                                                onToggleExpand={() => toggleSection('overdue')}
+                                            />
+                                        ),
+                                    },
+                                    upcoming: {
+                                        id: 'upcoming',
+                                        title: 'Upcoming (Due)',
+                                        tasks: triageResult.upcomingTasks,
+                                        header: (
+                                            <TaskAccordionHeader<UpcomingSubFilter>
+                                                title="Upcoming (Due)"
+                                                count={triageResult.upcomingTasks.length}
+                                                badgeClassName="bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold"
+                                                filterOptions={[
+                                                    { value: 'today', label: 'Today' },
+                                                    { value: 'tomorrow', label: 'Tomorrow' },
+                                                    { value: 'this_week', label: 'This Week' },
+                                                    { value: 'this_month', label: 'This Month' },
+                                                    { value: 'all_time', label: 'All Time' },
+                                                ]}
+                                                activeFilter={upcomingSubFilter}
+                                                onSelectFilter={setUpcomingSubFilter}
+                                                isExpanded={Boolean(expandedSections.upcoming)}
+                                                onToggleExpand={() => toggleSection('upcoming')}
+                                            />
+                                        ),
+                                    },
+                                    completed: {
+                                        id: 'completed',
+                                        title: 'Completed',
+                                        tasks: triageResult.completedTasks,
+                                        header: (
+                                            <TaskAccordionHeader<CompletedSubFilter>
+                                                title="Completed"
+                                                count={triageResult.completedTasks.length}
+                                                badgeClassName="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold"
+                                                filterOptions={[
+                                                    { value: 'today', label: 'Today' },
+                                                    { value: 'yesterday', label: 'Yesterday' },
+                                                    { value: 'this_week', label: 'This Week' },
+                                                    { value: 'this_month', label: 'This Month' },
+                                                    { value: 'all_time', label: 'All Time' },
+                                                ]}
+                                                activeFilter={completedSubFilter}
+                                                onSelectFilter={setCompletedSubFilter}
+                                                isExpanded={Boolean(expandedSections.completed)}
+                                                onToggleExpand={() => toggleSection('completed')}
+                                            />
+                                        ),
+                                    },
+                                };
 
-                                const isPeriodFilter = dateFilterType === 'day' || dateFilterType === 'week' || dateFilterType === 'month';
-
-                                return categoriesConfig.map(category => {
-                                    const isExpanded = expandedSections[category.id];
-                                    if (category.id === 'current' && !isViewingCurrentPeriod) return null;
-                                    if ((category.id === 'overdue' || category.id === 'upcoming') && category.count === 0 && isPeriodFilter) return null;
-                                    if (category.id === 'completed' && category.count === 0 && !isPeriodFilter) return null;
+                                return triageResult.cardOrder.map((cardId) => {
+                                    const card = cardConfigs[cardId];
+                                    const isExpanded = Boolean(expandedSections[cardId]);
 
                                     return (
-                                        <div key={category.id} className="rounded-2xl border border-border/80 shadow-sm bg-card overflow-hidden">
-                                            {/* Accordion Trigger */}
-                                            <button
-                                                type="button"
-                                                onClick={() => toggleSection(category.id)}
-                                                className="w-full flex items-center justify-between py-3.5 px-5 bg-muted/20 hover:bg-muted/30 border-b border-border/80 transition-all text-left cursor-pointer"
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <ChevronDown 
-                                                        className={cn(
-                                                            "h-5 w-5 text-muted-foreground transition-transform duration-200", 
-                                                            isExpanded ? "transform rotate-0" : "transform -rotate-90"
-                                                        )} 
-                                                    />
-                                                    <h3 className="text-base font-bold text-foreground tracking-tight">{category.label}</h3>
-                                                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-muted text-muted-foreground">
-                                                        {category.count}
-                                                    </span>
-                                                </div>
-                                            </button>
+                                        <div key={card.id} className="rounded-2xl border border-border/80 shadow-sm bg-card overflow-hidden">
+                                            {card.header}
 
                                             {/* Accordion Content */}
                                             {isExpanded && (
@@ -2031,8 +2055,8 @@ export default function TasksClient() {
                                                         <div className="p-4">
                                                             <TaskSkeleton variant="list" count={3} />
                                                         </div>
-                                                    ) : category.tasks.length > 0 ? (
-                                                        category.tasks.map((task) => (
+                                                    ) : card.tasks.length > 0 ? (
+                                                        card.tasks.map((task) => (
                                                             <TaskListRow
                                                                 key={task.id}
                                                                 task={task}
@@ -2053,7 +2077,9 @@ export default function TasksClient() {
                                                     ) : (
                                                         <div className="p-8 text-center bg-transparent flex flex-col items-center gap-2">
                                                             <EyeOff className="h-6 w-6 text-muted-foreground opacity-30" />
-                                                            <p className="text-[11px] font-semibold text-muted-foreground opacity-50">No tasks in this category</p>
+                                                            <p className="text-[11px] font-semibold text-muted-foreground opacity-50">
+                                                                No {card.title.toLowerCase()} found for this period
+                                                            </p>
                                                         </div>
                                                     )}
                                                 </div>
@@ -2136,7 +2162,12 @@ export default function TasksClient() {
 
             <TaskEditor
                 open={editorOpen}
-                onOpenChange={setEditorOpen}
+                onOpenChange={(open) => {
+                    setEditorOpen(open);
+                    if (!open) {
+                        setEditingTask(null);
+                    }
+                }}
                 task={editingTask}
                 onSave={handleSaveTask}
                 isSaving={isSaving}

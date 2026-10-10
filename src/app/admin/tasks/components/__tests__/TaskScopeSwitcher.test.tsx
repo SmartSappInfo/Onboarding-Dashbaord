@@ -12,6 +12,7 @@ describe('TaskScopeSwitcher (Roadmap §27, UI Spec §444-462)', () => {
       email: 'alice@example.com',
       organizationId: 'org-1',
       workspaceIds: ['ws-1'],
+      createdAt: '2026-01-01T00:00:00Z',
     },
     {
       id: 'user-2',
@@ -19,6 +20,7 @@ describe('TaskScopeSwitcher (Roadmap §27, UI Spec §444-462)', () => {
       email: 'bob@example.com',
       organizationId: 'org-1',
       workspaceIds: ['ws-1'],
+      createdAt: '2026-01-01T00:00:00Z',
     },
   ];
 

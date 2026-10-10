@@ -73,7 +73,7 @@ import type { Task, UserProfile, EntityType } from '@/lib/types';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { EntityCombobox } from '@/components/entities/EntityCombobox';
 import { cn } from '@/lib/utils';
-import { safeParseDate, formatTaskDate, formatTaskTime } from '@/lib/utils/date-utils';
+import { safeParseDate, formatTaskDate } from '@/lib/utils/date-utils';
 import { generateTaskBaseSummary } from '@/lib/tasks/task-summary-utils';
 import { Badge } from '@/components/ui/badge';
 import { MediaSelect } from '../../entities/components/media-select';
@@ -278,7 +278,7 @@ export default function TaskEditor({
         }
     });
 
-    const { register, control, handleSubmit, reset, setValue } = form;
+    const { register, control, handleSubmit, reset, setValue, getValues, watch } = form;
 
     const { fields: notes, append: appendNote, remove: removeNote } = useFieldArray({
         control,
@@ -452,9 +452,9 @@ export default function TaskEditor({
         }
     }, [open, task, reset, currentUser]);
 
-    const watchedTitle = form.watch('title');
-    const watchedStartDate = form.watch('startDate');
-    const watchedDueDate = form.watch('dueDate');
+    const watchedTitle = watch('title');
+    const watchedStartDate = watch('startDate');
+    const watchedDueDate = watch('dueDate');
 
     // Auto-prefill intelligent summary for task creation (time only, not date)
     React.useEffect(() => {
@@ -472,17 +472,17 @@ export default function TaskEditor({
 
         if (!autoSummary) return;
 
-        const currentDescription = form.getValues('description') || '';
+        const currentDescription = getValues('description') || '';
         if (!currentDescription.trim() || currentDescription === lastAutoSummaryRef.current) {
             setValue('description', autoSummary, { shouldDirty: false, shouldValidate: false });
             lastAutoSummaryRef.current = autoSummary;
         }
-    }, [isCreating, open, watchedTitle, watchedStartDate, watchedDueDate, selectedEntityName, setValue]);
+    }, [isCreating, open, watchedTitle, watchedStartDate, watchedDueDate, selectedEntityName, setValue, getValues]);
 
     const handleAutoSummarize = () => {
-        const scheduledTime = form.getValues('startDate') || form.getValues('dueDate');
+        const scheduledTime = getValues('startDate') || getValues('dueDate');
         const summary = generateTaskBaseSummary({
-            title: form.getValues('title'),
+            title: getValues('title'),
             entityName: selectedEntityName,
             time: scheduledTime,
         });
@@ -492,6 +492,7 @@ export default function TaskEditor({
             isDescriptionManuallyEditedRef.current = false;
         }
     };
+
 
 
     const handleSelectPreset = (preset: typeof PRESET_TEMPLATES[number]) => {

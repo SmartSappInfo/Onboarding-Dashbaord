@@ -14,7 +14,7 @@
  */
 
 import * as React from 'react';
-import { Filter, X, RotateCcw } from 'lucide-react';
+import { Filter, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -24,7 +24,6 @@ import {
 } from '@/components/ui/popover';
 import { TagSelector } from '@/components/tags/TagSelector';
 import { cn } from '@/lib/utils';
-import type { TaskStatus, TaskPriority } from '@/lib/types';
 
 export interface TaskFilterPopoverProps {
   statusFilter: string;
