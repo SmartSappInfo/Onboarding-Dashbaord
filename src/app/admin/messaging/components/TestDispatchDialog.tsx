@@ -304,6 +304,36 @@ export default function TestDispatchDialog({
             return;
         }
 
+        const trimmedRecipient = recipient.trim();
+        if (channel === 'email') {
+            if (!trimmedRecipient.includes('@')) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Invalid Email Address',
+                    description: 'Please enter a valid email address for test email dispatch.'
+                });
+                return;
+            }
+        } else {
+            // SMS / WhatsApp
+            if (trimmedRecipient.includes('@')) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Invalid Phone Number',
+                    description: `Cannot send ${channel.toUpperCase()} to an email address. Please enter a valid phone number.`
+                });
+                return;
+            }
+            if (rawBody && (/<!DOCTYPE\s+html/i.test(rawBody) || /<html[\s>]/i.test(rawBody) || /<table[\s>]/i.test(rawBody) || /<!--\s*org-footer-sentinel\s*-->/i.test(rawBody))) {
+                toast({
+                    variant: 'destructive',
+                    title: 'HTML Markup Detected',
+                    description: 'Cannot send HTML email templates via SMS. SMS messages must be plain text.'
+                });
+                return;
+            }
+        }
+
         setIsSending(true);
         try {
             const finalVars = { ...variables, ...localVariables };
@@ -311,12 +341,15 @@ export default function TestDispatchDialog({
             if (templateId) {
                 const result = await sendMessage({
                     templateId,
+                    expectedChannel: channel,
                     senderProfileId: senderProfileId || 'default',
-                    recipient: recipient.trim(),
+                    recipient: trimmedRecipient,
                     variables: finalVars,
                     entityId: contextEntityId,
                     workspaceId: activeWorkspaceId || undefined,
-                    organizationId: activeOrganizationId || undefined
+                    organizationId: activeOrganizationId || undefined,
+                    ...(rawBody ? { body: rawBody } : {}),
+                    ...(rawSubject ? { subject: rawSubject } : {})
                 });
                 if (!result.success) throw new Error(result.error);
             } else if (rawBody) {
@@ -325,14 +358,15 @@ export default function TestDispatchDialog({
                 }
                 const result = await sendRawMessage({
                     channel,
-                    recipient: recipient.trim(),
+                    recipient: trimmedRecipient,
                     body: rawBody,
                     subject: rawSubject,
                     senderProfileId,
                     variables: finalVars,
                     entityId: contextEntityId,
                     workspaceIds: activeWorkspaceId ? [activeWorkspaceId] : [],
-                    organizationId: activeOrganizationId || undefined
+                    organizationId: activeOrganizationId || undefined,
+                    templateId: templateId || undefined
                 });
                 if (!result.success) throw new Error(result.error);
             }

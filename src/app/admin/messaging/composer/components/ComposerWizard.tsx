@@ -1533,7 +1533,13 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                 <Label className="text-[10px] font-bold text-primary uppercase tracking-widest">1. Channel</Label>
                                 <div className="grid grid-cols-3 gap-3">
                                     {([['email', 'Email', Mail], ['sms', 'SMS', Smartphone], ['whatsapp', 'WhatsApp', MessageCircle]] as const).map(([val, label, Icon]) => (
-                                        <button key={val} type="button" onClick={() => setValue('channel', val)}
+                                        <button key={val} type="button" onClick={() => {
+                                            setValue('channel', val);
+                                            if (selectedTemplate && selectedTemplate.channel !== val) {
+                                                setSelectedTemplate(null);
+                                                setValue('templateId', '');
+                                            }
+                                        }}
                                             className={cn('flex flex-col items-center gap-2 p-5 rounded-2xl border-2 transition-all duration-300 font-semibold text-sm',
                                                 watchedChannel === val ? 'border-primary bg-primary/5 text-primary shadow-lg shadow-primary/10' : 'border-border hover:border-primary/30 text-muted-foreground'
                                             )}>
@@ -2361,7 +2367,9 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                 open={isTestModalOpen}
                 onOpenChange={setIsTestModalOpen}
                 channel={watchedChannel}
-                templateId={watchedTemplateId || ''}
+                templateId={watch('messageSourceType') === 'template' && (!selectedTemplate || selectedTemplate.channel === watchedChannel) ? (watchedTemplateId || '') : ''}
+                rawBody={getValues('customBody') || ''}
+                rawSubject={getValues('customSubject') || ''}
                 variables={getValues('variables')}
                 senderProfileId={getValues('senderProfileId') || ''}
                 entityId={getValues('entityId') || ''}

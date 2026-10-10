@@ -93,8 +93,92 @@ describe('TestDispatchDialog tenant context', () => {
     await waitFor(() => expect(sendMessage).toHaveBeenCalledTimes(1));
     expect(sendMessage.mock.calls[0][0]).toMatchObject({
       templateId: 'tpl1',
+      expectedChannel: 'email',
       workspaceId: 'ws1',
       organizationId: 'org1',
+    });
+  });
+
+  it('rejects sending SMS when recipient is an email address', async () => {
+    render(
+      <TestDispatchDialog
+        open
+        onOpenChange={() => {}}
+        channel="sms"
+        rawBody="Your code is 123456"
+        variables={{}}
+      />
+    );
+
+    await userEvent.type(
+      screen.getByPlaceholderText('e.g. +233242737120'),
+      'invalid-email@smartsapp.com'
+    );
+    await clickSend();
+
+    expect(sendMessage).not.toHaveBeenCalled();
+    expect(sendRawMessage).not.toHaveBeenCalled();
+    expect(toast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: 'destructive',
+        title: 'Invalid Phone Number',
+      })
+    );
+  });
+
+  it('rejects sending SMS when rawBody contains HTML email markup', async () => {
+    render(
+      <TestDispatchDialog
+        open
+        onOpenChange={() => {}}
+        channel="sms"
+        rawBody="<!DOCTYPE html><html><body><table><tr><td>How We Stopped 60 Schools</td></tr></table></body></html>"
+        variables={{}}
+      />
+    );
+
+    await userEvent.type(
+      screen.getByPlaceholderText('e.g. +233242737120'),
+      '+233501234567'
+    );
+    await clickSend();
+
+    expect(sendMessage).not.toHaveBeenCalled();
+    expect(sendRawMessage).not.toHaveBeenCalled();
+    expect(toast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: 'destructive',
+        title: 'HTML Markup Detected',
+      })
+    );
+  });
+
+  it('forwards expectedChannel and templateId for SMS template sends', async () => {
+    render(
+      <TestDispatchDialog
+        open
+        onOpenChange={() => {}}
+        channel="sms"
+        templateId="sms-tpl-99"
+        rawBody="Clean plain text alert"
+        variables={{}}
+      />
+    );
+
+    await userEvent.type(
+      screen.getByPlaceholderText('e.g. +233242737120'),
+      '+233501234567'
+    );
+    await clickSend();
+
+    await waitFor(() => expect(sendMessage).toHaveBeenCalledTimes(1));
+    expect(sendMessage.mock.calls[0][0]).toMatchObject({
+      templateId: 'sms-tpl-99',
+      expectedChannel: 'sms',
+      recipient: '+233501234567',
+      workspaceId: 'ws1',
+      organizationId: 'org1',
+      body: 'Clean plain text alert',
     });
   });
 });

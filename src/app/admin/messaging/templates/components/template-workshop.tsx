@@ -3042,22 +3042,22 @@ export function TemplateWorkshop({
     
     // Default style wrapper selector logic (7-Tier Priority Order via style-resolver)
     const [styleId, setStyleId] = React.useState(() => {
-        if (initialTemplate) return initialTemplate.styleId || 'none';
-        if (initialContext?.channel === 'sms') return 'none';
+        if (initialTemplate) return initialTemplate.channel === 'email' ? (initialTemplate.styleId || 'none') : 'none';
+        if (initialContext?.channel === 'sms' || initialContext?.channel === 'whatsapp') return 'none';
         const defaultStyle = getDefaultStyle(styles, activeOrganizationId, activeWorkspaceId);
         return defaultStyle?.id || 'none';
     });
 
     React.useEffect(() => {
         if (!initialTemplate) {
-            if (contentMode === 'html_code') {
+            if (channel !== 'email' || contentMode === 'html_code') {
                 setStyleId('none');
             } else {
                 const defaultStyle = getDefaultStyle(styles, activeOrganizationId, activeWorkspaceId);
                 setStyleId(defaultStyle?.id || 'none');
             }
         }
-    }, [contentMode, initialTemplate, styles, activeOrganizationId, activeWorkspaceId]);
+    }, [channel, contentMode, initialTemplate, styles, activeOrganizationId, activeWorkspaceId]);
 
     // Email Architect State Hooks
     const [architectPrompt, setArchitectPrompt] = React.useState('');
@@ -4122,10 +4122,11 @@ export function TemplateWorkshop({
             // body is source of truth — clear blocks
             saveData.blocks = [];
         }
-        // SMS and WhatsApp are always plain_text
+        // SMS and WhatsApp are always plain_text and have no HTML styles
         if (channel === 'sms' || channel === 'whatsapp') {
             saveData.contentMode = 'plain_text';
             saveData.blocks = [];
+            saveData.styleId = 'none';
         }
         // Carry the Meta submission details so pushing to Meta needs no guesswork.
         if (channel === 'whatsapp') {
@@ -4312,10 +4313,15 @@ export function TemplateWorkshop({
     }, [styleId, styles, activeSimVariables, target, activeOrganizationId, activeWorkspaceId, activeOrganization]);
 
     const resolvedPreviewHtml = React.useMemo(() => {
+        // SMS and WhatsApp are strictly plain text — never apply HTML email wrappers
+        if (channel === 'sms' || channel === 'whatsapp') {
+            return resolveVariables(body, activeSimVariables);
+        }
+
         const activeStyle = styleId !== 'none'
             ? (styleId === 'default' || !styleId ? getDefaultStyle(styles, activeOrganizationId, activeWorkspaceId) : styles.find(s => s.id === styleId))
             : null;
-        const effectiveMode = (channel === 'sms' || channel === 'whatsapp') ? 'plain_text' : contentMode;
+        const effectiveMode = contentMode;
         
         let styleWrapper = activeStyle
             ? (target === 'internal_team'
@@ -4829,7 +4835,11 @@ export function TemplateWorkshop({
                                                 <div className={cn("grid grid-cols-1 sm:grid-cols-3 gap-3", initialContext?.channel ? "opacity-70 pointer-events-none" : "")}>
                                                     <button
                                                         type="button"
-                                                        onClick={() => { setChannel('email'); }}
+                                                        onClick={() => {
+                                                            setChannel('email');
+                                                            const defaultStyle = getDefaultStyle(styles, activeOrganizationId, activeWorkspaceId);
+                                                            setStyleId(defaultStyle?.id || 'none');
+                                                        }}
                                                         className={cn(
                                                             "flex items-center gap-3 p-4 rounded-xl border-2 text-left transition-all duration-200",
                                                             channel === 'email'
@@ -4847,7 +4857,7 @@ export function TemplateWorkshop({
                                                     </button>
                                                     <button
                                                         type="button"
-                                                        onClick={() => { setChannel('sms'); setContentMode('plain_text'); }}
+                                                        onClick={() => { setChannel('sms'); setContentMode('plain_text'); setStyleId('none'); }}
                                                         className={cn(
                                                             "flex items-center gap-3 p-4 rounded-xl border-2 text-left transition-all duration-200",
                                                             channel === 'sms'
@@ -4865,7 +4875,7 @@ export function TemplateWorkshop({
                                                     </button>
                                                     <button
                                                         type="button"
-                                                        onClick={() => { setChannel('whatsapp'); setContentMode('plain_text'); }}
+                                                        onClick={() => { setChannel('whatsapp'); setContentMode('plain_text'); setStyleId('none'); }}
                                                         className={cn(
                                                             "flex items-center gap-3 p-4 rounded-xl border-2 text-left transition-all duration-200",
                                                             channel === 'whatsapp'
@@ -6215,6 +6225,7 @@ export function TemplateWorkshop({
                 open={isTestModalOpen}
                 onOpenChange={setIsTestModalOpen}
                 channel={channel as 'email' | 'sms'}
+                templateId={initialTemplate?.id}
                 rawBody={resolvedPreviewHtml}
                 rawSubject={resolveVariables(subject, simVariables)}
                 variables={simVariables}

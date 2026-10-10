@@ -29,6 +29,11 @@ interface SendMessageInput {
   templateId: string;
   senderProfileId: string;
   /**
+   * Optional rigid channel guard: when provided, fails closed if the template's
+   * configured channel does not match expectedChannel.
+   */
+  expectedChannel?: 'email' | 'sms' | 'whatsapp' | 'in_app' | 'push';
+  /**
    * Tenant the message is sent on behalf of. When omitted it is derived from
    * the template, then the workspace. Sender resolution is scoped strictly to
    * this org — there is no cross-tenant fallback.
@@ -109,6 +114,27 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     const templateSnap = await adminDb.collection('message_templates').doc(templateId).get();
     if (!templateSnap.exists) throw new Error(`Template not found: ${templateId}`);
     let template = { id: templateSnap.id, ...templateSnap.data() } as MessageTemplate;
+
+    // Rigid Channel Enforcement: Never send email templates via SMS and never send SMS templates via email
+    if (input.expectedChannel && input.expectedChannel !== template.channel) {
+        return {
+            success: false,
+            error: `Channel mismatch: Template "${template.name || template.id}" is configured for ${template.channel}, but dispatch requested ${input.expectedChannel}. Never send email templates via SMS and never send SMS templates via email.`
+        };
+    }
+
+    if ((template.channel === 'sms' || template.channel === 'whatsapp') && recipient.includes('@')) {
+        return {
+            success: false,
+            error: `Cannot send ${template.channel.toUpperCase()}: Recipient appears to be an email address (${recipient}). SMS and WhatsApp require a valid phone number.`
+        };
+    }
+    if (template.channel === 'email' && !recipient.includes('@')) {
+        return {
+            success: false,
+            error: `Cannot send EMAIL: Recipient appears to be a phone number (${recipient}). Email requires a valid email address.`
+        };
+    }
 
     // 2. Resolve Organization (org-first; no cross-tenant fallback).
     // The org is resolved BEFORE the sender so the sender query can be scoped to it.
@@ -556,11 +582,11 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     const { generateSecureUnsubscribeLink } = await import('./services/unsubscribe-service');
     finalVariables.unsubscribe_link = await generateSecureUnsubscribeLink(recipient, resolvedEntityId, resolvedWorkspaceId);
 
-    // 6. Resolve Style Wrapper
+    // 6. Resolve Style Wrapper (Email channel only)
     let styleWrapper = '';
     let activeStyleDoc: MessageStyle | null = null;
 
-    if (template.styleId !== 'none') {
+    if (template.channel === 'email' && template.styleId !== 'none') {
         const styleIdToUse = template.styleId;
         
         // If styleId is empty, undefined, null, or 'default', query 7-Tier priority default style (Org-default -> Workspace-default -> Global-default)
@@ -1101,6 +1127,8 @@ export async function sendRawMessage(input: {
     entityId?: string,
     entityType?: string,
     isAutomation?: boolean,
+    templateId?: string,
+    templateName?: string,
     // Automation correlation — enables per-node delivery stats.
     automationId?: string,
     runId?: string,
@@ -1108,7 +1136,30 @@ export async function sendRawMessage(input: {
     isResend?: boolean,
     scheduledAt?: string
 }) {
-    const { channel, recipient, body, subject, previewText, senderProfileId, variables = {}, workspaceIds = [], messageType = 'marketing', entityId, entityType, isAutomation = false, automationId, runId, nodeId, isResend = false, scheduledAt } = input;
+    const { channel, recipient, body, subject, previewText, senderProfileId, variables = {}, workspaceIds = [], messageType = 'marketing', entityId, entityType, isAutomation = false, automationId, runId, nodeId, isResend = false, scheduledAt, templateId, templateName } = input;
+
+    // Rigid Channel & Payload Guardrails: Never send email templates via SMS and never send SMS templates via email
+    if (channel === 'sms' || channel === 'whatsapp') {
+        const { assertNoHtmlInSms } = await import('./mnotify-service');
+        try {
+            assertNoHtmlInSms(body);
+        } catch (htmlErr) {
+            return { success: false, error: (htmlErr as Error).message };
+        }
+        if (recipient.includes('@')) {
+            return {
+                success: false,
+                error: `Cannot send ${channel.toUpperCase()}: Recipient appears to be an email address (${recipient}). SMS and WhatsApp require a valid phone number.`
+            };
+        }
+    } else if (channel === 'email') {
+        if (!recipient.includes('@')) {
+            return {
+                success: false,
+                error: `Cannot send EMAIL: Recipient appears to be a phone number (${recipient}). Email requires a valid email address.`
+            };
+        }
+    }
 
     try {
         // Resolve workspace context dynamically
@@ -1394,8 +1445,8 @@ export async function sendRawMessage(input: {
         // Save dispatch to message_logs
         const logData = {
             title: `Direct ${channel.toUpperCase()}: ${resolvedSubject || 'Alert'}`,
-            templateId: 'raw-direct-dispatch',
-            templateName: 'Direct Raw Message',
+            templateId: templateId || 'raw-direct-dispatch',
+            templateName: templateName || (templateId ? 'Custom Template' : 'Direct Raw Message'),
             senderProfileId: sender.id,
             senderName: sender.name || 'System',
             channel,

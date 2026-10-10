@@ -143,6 +143,9 @@ export async function sendTestMessageAction(
     if (channel === 'email' && !recipient.includes('@')) {
       throw new Error('Invalid email format for test dispatch');
     }
+    if (channel === 'sms' && recipient.includes('@')) {
+      throw new Error(`Invalid phone number format: recipient appears to be an email address (${recipient})`);
+    }
 
     const result = await sendRawMessage({
       channel,

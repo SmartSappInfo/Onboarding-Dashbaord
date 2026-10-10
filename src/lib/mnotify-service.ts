@@ -84,6 +84,31 @@ async function mNotifyRequest(
 }
 
 /**
+ * Strict channel guard: SMS must never contain HTML markup.
+ * Throws a descriptive error if HTML email content or templates are passed to SMS.
+ */
+export function assertNoHtmlInSms(message: string): void {
+  if (!message) return;
+  const htmlPatterns = [
+    /<!DOCTYPE\s+html/i,
+    /<html[\s>]/i,
+    /<head[\s>]/i,
+    /<body[\s>]/i,
+    /<table[\s>]/i,
+    /<!--\s*org-footer-sentinel\s*-->/i,
+    /<style[\s>]/i,
+    /<script[\s>]/i,
+  ];
+  for (const pattern of htmlPatterns) {
+    if (pattern.test(message)) {
+      throw new Error(
+        'Cannot send SMS: Message contains HTML markup. SMS messages must be plain text. Never send email templates or HTML markup via SMS.'
+      );
+    }
+  }
+}
+
+/**
  * Sends an immediate or scheduled SMS.
  */
 export async function sendSms(params: {
@@ -94,6 +119,7 @@ export async function sendSms(params: {
   apiKey?: string;
 }) {
   await assertOutboundAllowed('sms');
+  assertNoHtmlInSms(params.message);
 
   const recipients = Array.isArray(params.recipient) 
     ? params.recipient.map(normalizePhoneNumber) 

@@ -791,8 +791,10 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                 ].map(ch => (
                                     <button key={ch.value} type="button" onClick={() => {
                                         setField('channel', ch.value);
-                                        // Reset sender so the auto-select effect picks the right one for the new channel.
+                                        // Reset sender and template so the new channel doesn't retain mismatched channel templates.
                                         setField('senderProfileId', '');
+                                        setField('templateId', '');
+                                        setField('templateName', '');
                                     }} className={cn(
                                         "flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left",
                                         state.channel === ch.value ? "border-primary bg-primary/5" : "border-border/50 hover:border-primary/20"
