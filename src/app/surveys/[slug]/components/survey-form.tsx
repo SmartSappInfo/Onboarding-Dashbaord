@@ -1468,7 +1468,7 @@ const ElementRenderer = ({
             case 'heading': {
                 const Tag = block.variant || 'h2';
                 const fontWeightClass = survey.questionTitleBold !== false ? "font-bold" : "font-semibold";
-                const sizeClass = Tag === 'h1' ? "text-3xl sm:text-4xl" : Tag === 'h3' ? "text-xl" : "text-2xl";
+                const sizeClass = Tag === 'h1' ? "text-2xl sm:text-3xl" : Tag === 'h3' ? "text-base sm:text-lg" : "text-lg sm:text-xl";
                 return (
                     <Tag id={block.id} className={cn(sizeClass, fontWeightClass, alignmentClass, "mt-2 mb-4 leading-tight whitespace-pre-wrap")}>
                         <span dangerouslySetInnerHTML={{ __html: interpolateHtml(block.title || '') }} />
@@ -1742,8 +1742,8 @@ function SurveyStepper({
 
     // 3. Full Variant (Details / Full Text)
     return (
-        <div className="w-full mb-0 pt-2 pb-0 no-scrollbar overflow-x-auto">
-            <div className="w-full flex items-start justify-center gap-1 sm:gap-4 px-2 min-w-fit">
+        <div className="w-full mb-1 pt-1 pb-0.5 no-scrollbar overflow-x-auto">
+            <div className="w-full max-w-xs sm:max-w-md mx-auto flex items-start justify-center gap-1 sm:gap-2 px-2">
                 {displayPages.map((page, index) => {
                     const actualIdx = index + (hasCover ? 1 : 0);
                     if (!isPageVisible(actualIdx)) return null;
@@ -1759,7 +1759,7 @@ function SurveyStepper({
                     const isLast = index === displayPages.length - 1;
 
                     return (
-                        <div key={index} className="flex-1 relative flex flex-col items-center min-w-[60px]">
+                        <div key={index} className="flex-1 relative flex flex-col items-center min-w-[48px] max-w-[80px] sm:max-w-[96px]">
                             {!isLast && (
                                 <div className="absolute left-[50%] right-[-50%] top-4 h-[2px] bg-slate-200 dark:bg-slate-800 z-0">
                                     <motion.div 
@@ -1809,11 +1809,11 @@ function SurveyStepper({
                                   * lives alone on the <p>.
                                   */}
                                 <div className={cn(
-                                    "mt-3 text-center px-1 w-full max-w-[100px] h-8 overflow-hidden",
+                                    "mt-1.5 text-center px-0.5 w-full max-w-[84px] sm:max-w-[96px] h-7 overflow-hidden",
                                     isActive ? "block" : "hidden sm:block"
                                 )}>
                                     <p className={cn(
-                                        "text-[10px] font-black uppercase tracking-widest leading-tight line-clamp-2 transition-colors",
+                                        "text-[11px] sm:text-xs font-bold uppercase tracking-wider leading-tight line-clamp-2 transition-colors",
                                         isActive ? "text-foreground" : "text-muted-foreground opacity-60 group-hover:opacity-100",
                                         isCompleted && isInvalid && "text-destructive opacity-100"
                                     )}>
@@ -2980,10 +2980,10 @@ export default function SurveyForm({
                             </div>
 
                              {pageSection && (pageSection.showSectionHeader ?? true) && (elementStates[pageSection.id]?.isVisible ?? !pageSection.hidden) && (
-                                <div className="text-center space-y-2 mb-4 sm:mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                                    <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-foreground leading-tight whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: interpolateHtml(pageSection.title || '') }} />
+                                <div className="text-center space-y-1.5 mb-3 sm:mb-5 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                                    <h2 className="text-lg sm:text-xl font-bold uppercase tracking-wider text-foreground leading-snug whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: interpolateHtml(pageSection.title || '') }} />
                                     {pageSection.description && (
-                                        <div className="text-muted-foreground text-lg sm:text-xl leading-relaxed max-w-3xl mx-auto font-medium italic whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: interpolateHtml(pageSection.description) }} />
+                                        <div className="text-muted-foreground text-sm sm:text-base leading-relaxed max-w-2xl mx-auto font-medium whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: interpolateHtml(pageSection.description) }} />
                                     )}
                                 </div>
                             )}

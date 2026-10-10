@@ -199,3 +199,10 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Defensive suppression of unconfigured 3rd-party Zoho Guided Conversations and Qualaroo error blobs */
+#zohogc-helper-main,
+#qualaroo_dnt_frame {
+  display: none !important;
+}
+

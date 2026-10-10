@@ -113,16 +113,16 @@ export default function SurveyPreviewRenderer({ element }: { element: SurveyElem
     switch (block.type) {
         case 'section':
             return (
-                <div className="my-6 border-b pb-4 text-center">
-                    <h2 id={block.id} className="text-3xl font-bold" dangerouslySetInnerHTML={{ __html: block.title || '' }} />
-                    {block.description && <div className="text-muted-foreground mt-2" dangerouslySetInnerHTML={{ __html: block.description }} />}
+                <div className="my-5 border-b pb-3 text-center">
+                    <h2 id={block.id} className="text-lg sm:text-xl font-bold uppercase tracking-wider text-foreground" dangerouslySetInnerHTML={{ __html: block.title || '' }} />
+                    {block.description && <div className="text-muted-foreground text-sm mt-1.5" dangerouslySetInnerHTML={{ __html: block.description }} />}
                     {block.renderAsPage && <Badge variant="outline" className="mt-4 mx-auto block w-fit">New Page</Badge>}
                 </div>
             );
         case 'heading': {
             const Tag = block.variant || 'h2';
-            const sizeClass = Tag === 'h1' ? "text-3xl font-black" : Tag === 'h3' ? "text-xl font-bold" : "text-2xl font-bold";
-            return <Tag id={block.id} className={cn(sizeClass, alignmentClass, "mt-8 mb-4 border-b pb-2")} dangerouslySetInnerHTML={{ __html: block.title || '' }} />;
+            const sizeClass = Tag === 'h1' ? "text-2xl sm:text-3xl font-bold" : Tag === 'h3' ? "text-base sm:text-lg font-bold" : "text-lg sm:text-xl font-bold";
+            return <Tag id={block.id} className={cn(sizeClass, alignmentClass, "mt-6 mb-3 border-b pb-2")} dangerouslySetInnerHTML={{ __html: block.title || '' }} />;
         }
         case 'description': 
             return <div className={cn("text-muted-foreground my-4", alignmentClass)} dangerouslySetInnerHTML={{ __html: block.text || '' }} />;

@@ -1092,15 +1092,15 @@ export default function MediaShareClient({
                                 height: modalContentHeight ? `${modalContentHeight}px` : undefined, 
                                 maxHeight: '94vh' 
                             }}
-                            className="relative w-full max-w-3xl h-[92vh] sm:h-auto max-h-[94vh] sm:max-h-[90vh] bg-background border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ease-out font-figtree"
+                            className="relative w-full max-w-3xl h-[92vh] sm:h-auto max-h-[94vh] sm:max-h-[90vh] bg-background border border-border rounded-xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ease-out font-figtree"
                         >
                             {/* Floating Close Button (No Title Bar) */}
                             <button
                                 onClick={() => setIsCtaModalOpen(false)}
-                                className="absolute top-2.5 right-2.5 sm:top-4 sm:right-4 z-50 h-10 w-10 sm:h-11 sm:w-11 rounded-full bg-muted/80 hover:bg-muted border border-border flex items-center justify-center transition-all cursor-pointer text-muted-foreground hover:text-foreground shadow-md hover:scale-105 active:scale-95 min-h-[44px] min-w-[44px] shrink-0"
+                                className="absolute top-2.5 right-2.5 sm:top-3.5 sm:right-3.5 z-50 h-8 w-8 rounded-full bg-background/85 hover:bg-muted border border-border/80 flex items-center justify-center transition-all cursor-pointer text-muted-foreground hover:text-foreground shadow-sm hover:scale-105 active:scale-95 shrink-0"
                                 aria-label="Close Modal"
                             >
-                                <X className="h-5 w-5" />
+                                <X className="h-4 w-4" />
                             </button>
 
                             {/* Direct Form/Survey Viewport with Internal Padding */}
@@ -1529,15 +1529,15 @@ export default function MediaShareClient({
                             height: modalContentHeight ? `${modalContentHeight}px` : undefined, 
                             maxHeight: '94vh' 
                         }}
-                        className="relative w-full max-w-3xl h-[92vh] sm:h-auto max-h-[94vh] sm:max-h-[90vh] bg-background border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ease-out font-figtree"
+                        className="relative w-full max-w-3xl h-[92vh] sm:h-auto max-h-[94vh] sm:max-h-[90vh] bg-background border border-border rounded-xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ease-out font-figtree"
                     >
                         {/* Floating Close Button (No Title Bar) */}
                         <button
                             onClick={() => setIsCtaModalOpen(false)}
-                            className="absolute top-2.5 right-2.5 sm:top-4 sm:right-4 z-50 h-10 w-10 sm:h-11 sm:w-11 rounded-full bg-muted/80 hover:bg-muted border border-border flex items-center justify-center transition-all cursor-pointer text-muted-foreground hover:text-foreground shadow-md hover:scale-105 active:scale-95 min-h-[44px] min-w-[44px] shrink-0"
+                            className="absolute top-2.5 right-2.5 sm:top-3.5 sm:right-3.5 z-50 h-8 w-8 rounded-full bg-background/85 hover:bg-muted border border-border/80 flex items-center justify-center transition-all cursor-pointer text-muted-foreground hover:text-foreground shadow-sm hover:scale-105 active:scale-95 shrink-0"
                             aria-label="Close Modal"
                         >
-                            <X className="h-5 w-5" />
+                            <X className="h-4 w-4" />
                         </button>
 
                         {/* Direct Form/Survey Viewport with Internal Padding */}

@@ -20,11 +20,15 @@ export function GtmProvider() {
     const skip =
       pathname.startsWith('/admin') ||
       pathname.startsWith('/forms') ||
-      pathname.startsWith('/surveys');
+      pathname.startsWith('/surveys') ||
+      pathname.startsWith('/m/') ||
+      pathname === '/m';
 
     const removeGtm = () => {
       document.getElementById(BOOTSTRAP_SCRIPT_ID)?.remove();
       document.getElementById(NOSCRIPT_CONTAINER_ID)?.remove();
+      document.getElementById('zohogc-helper-main')?.remove();
+      document.getElementById('qualaroo_dnt_frame')?.remove();
       injectedPathRef.current = null;
     };
 
