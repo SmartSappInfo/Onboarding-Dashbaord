@@ -119,7 +119,7 @@
     scroll-behavior: smooth;
   }
   body {
-    @apply text-foreground;
+    @apply text-foreground font-figtree font-body;
   }
   /* ── Dark mode: Deep gradient + subtle dot grid ──────────────── */
   .dark body {

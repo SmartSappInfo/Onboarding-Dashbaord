@@ -21,6 +21,10 @@ export default {
     },
   	extend: {
   		fontFamily: {
+  			sans: [
+  				'Figtree',
+  				'sans-serif'
+  			],
   			figtree: [
   				'Figtree',
   				'sans-serif'

@@ -844,7 +844,7 @@ export default function MediaShareClient({
     // Render 1: Chromeless Iframe Embed Mode
     if (isEmbed) {
         return (
-            <div className="w-full h-full min-h-screen bg-[#0B0F19] text-white flex flex-col justify-between overflow-hidden relative group">
+            <div className="w-full h-full min-h-screen bg-[#0B0F19] text-white flex flex-col justify-between overflow-hidden relative group font-figtree">
                 <div className="flex-1 w-full h-full relative flex items-center justify-center">
                     {asset.type === 'image' && (
                         <div className="relative w-full h-full flex items-center justify-center bg-slate-950">
@@ -1092,7 +1092,7 @@ export default function MediaShareClient({
                                 height: modalContentHeight ? `${modalContentHeight}px` : 'auto', 
                                 maxHeight: '90vh' 
                             }}
-                            className="relative w-full max-w-3xl bg-background border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ease-out"
+                            className="relative w-full max-w-3xl bg-background border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ease-out font-figtree"
                         >
                             {/* Floating Close Button (No Title Bar) */}
                             <button
@@ -1120,7 +1120,7 @@ export default function MediaShareClient({
 
     // Render 2: Premium Public Media Viewing Page Layout
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-[#070913] text-slate-900 dark:text-slate-100 flex flex-col font-sans selection:bg-primary selection:text-white transition-colors duration-300">
+        <div className="min-h-screen bg-slate-50 dark:bg-[#070913] text-slate-900 dark:text-slate-100 flex flex-col font-figtree selection:bg-primary selection:text-white transition-colors duration-300">
             {/* Header Banner */}
             {/* 
                 ARCHITECTURAL GUIDANCE (Rule 10 Maintainer Guidance):
@@ -1529,7 +1529,7 @@ export default function MediaShareClient({
                             height: modalContentHeight ? `${modalContentHeight}px` : 'auto', 
                             maxHeight: '90vh' 
                         }}
-                        className="relative w-full max-w-3xl bg-background border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ease-out"
+                        className="relative w-full max-w-3xl bg-background border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ease-out font-figtree"
                     >
                         {/* Floating Close Button (No Title Bar) */}
                         <button

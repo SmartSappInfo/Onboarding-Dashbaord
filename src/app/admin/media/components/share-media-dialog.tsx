@@ -31,7 +31,7 @@ import { cn } from '@/lib/utils';
 import { checkSlugAvailabilityAction } from '@/lib/media-analytics-actions';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useWorkspaceScopedQueries } from '@/app/admin/automations/hooks/useWorkspaceScopedQueries';
-import type { ActionConfigDataSources } from '@/app/admin/messaging/call-centre/scripts/components/ActionConfigFields';
+import type { ActionConfigDataSources } from '@/app/admin/call-centre/scripts/components/ActionConfigFields';
 import type { CallOutcomeAutomation } from '@/lib/types';
 import { useTenant } from '@/context/TenantContext';
 import { MediaSharePreview } from './MediaSharePreview';
@@ -777,7 +777,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                         )}
                                                     />
                                                 </div>
-                                                <p className="text-[9px] font-medium text-slate-500 ml-1 font-sans">Customize the back half of the viewing URL. Only lowercase alphanumeric, hyphens, and underscores are allowed.</p>
+                                                <p className="text-[9px] font-medium text-slate-500 ml-1 font-figtree">Customize the back half of the viewing URL. Only lowercase alphanumeric, hyphens, and underscores are allowed.</p>
                                             </div>
 
                                             {(asset.type === 'video' || asset.type === 'audio') && (
@@ -1112,7 +1112,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                                 <ExternalLink className="h-4 w-4" />
                                                             </Button>
                                                         </div>
-                                                        <p className="text-[9px] font-medium text-slate-500 font-sans">
+                                                        <p className="text-[9px] font-medium text-slate-500 font-figtree">
                                                             The back half of the viewing URL remains customizable anytime even after saving. Only lowercase alphanumeric, hyphens, and underscores are allowed.
                                                         </p>
                                                     </div>
