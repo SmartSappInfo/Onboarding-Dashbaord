@@ -552,6 +552,8 @@ export interface Workspace {
   description?: string;
   icon?: string;
   color?: string;
+  /** Workspace default operational currency (e.g. 'USD', 'GHS') */
+  currency?: string;
   status: 'active' | 'archived';
   statuses: WorkspaceStatus[];
   contactScope?: ContactScope; // Declares the contact type this workspace manages
@@ -929,6 +931,8 @@ export interface Pipeline {
   currency?: string;
   /** Controls whether deal financial totals are displayed in Kanban stage headers. Defaults to false. */
   showDealTotals?: boolean;
+  /** Controls whether empty stages (0 deals) are automatically collapsed into vertical slivers. Defaults to false. */
+  autoCollapseEmptyStages?: boolean;
   /** Backoffice-configured default landing filter preset for this pipeline (e.g. 'preset_all_deals', 'preset_my_deals'). */
   defaultPresetViewId?: string;
   /** Default monetary deal value for newly created deals in this pipeline (defaults to 0). */
@@ -958,6 +962,7 @@ export interface CreatePipelinePayload {
   workspaceIds: string[];
   columnWidth?: number;
   showDealTotals?: boolean;
+  autoCollapseEmptyStages?: boolean;
   defaultPresetViewId?: string;
   accessRoles?: string[];
   assignmentStrategy?: 'direct' | 'round-robin' | 'value-based' | 'unassigned';
@@ -1898,6 +1903,7 @@ export type CrmOwnershipTransferStatus = 'pending' | 'in_progress' | 'completed'
 export interface CrmOwnershipTransferJob {
   id: string;
   organizationId: string;
+  workspaceId?: string;
   sourcePersonId: string;
   sourcePersonName: string;
   targetPersonId: string;
@@ -5918,6 +5924,7 @@ export interface MessageLog {
   templateName: string;
   senderProfileId: string;
   senderName: string;
+  userId?: string;
   channel: 'email' | 'sms' | 'whatsapp';
   /** Direction of the message. Defaults to outbound when absent (legacy logs). */
   direction?: 'inbound' | 'outbound';
@@ -8763,6 +8770,16 @@ export type CallCampaignStatus = 'draft' | 'scheduled' | 'running' | 'paused' | 
 export interface CallOutcomeAutomation {
   type: CallActionType;
   params: CallActionParams;
+}
+
+export interface ActionConfigDataSources {
+  tags: { id: string; name: string }[];
+  stages: { id: string; name: string; pipelineId?: string }[];
+  pipelines: { id: string; name: string }[];
+  dealTypes?: { id: string; name: string }[];
+  cadences?: { id: string; name: string }[];
+  messagingTemplates?: { id: string; name: string; channel: string }[];
+  teamMembers?: { id: string; name: string; email?: string }[];
 }
 
 export interface CallCampaign {

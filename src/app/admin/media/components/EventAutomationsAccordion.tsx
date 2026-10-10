@@ -1,9 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import type { CallOutcomeAutomation } from '@/lib/types';
-import type { ActionConfigDataSources } from '@/app/admin/messaging/call-centre/scripts/components/ActionConfigFields';
-import { OutcomeAutomationsEditor } from '@/app/admin/messaging/call-centre/scripts/components/OutcomeAutomationsEditor';
+import type { CallOutcomeAutomation, ActionConfigDataSources } from '@/lib/types';
+import { OutcomeAutomationsEditor } from '@/app/admin/call-centre/scripts/components/OutcomeAutomationsEditor';
 import { TRIGGER_DEFINITIONS } from './ConfiguredAutomationsSummary';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

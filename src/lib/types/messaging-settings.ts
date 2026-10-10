@@ -52,6 +52,10 @@ export const WorkspaceMessagingSettingsSchema = z.object({
     whatsapp: false,
     email: false,
   }),
+  allowViewingAllMessages: z
+    .boolean()
+    .default(true)
+    .describe('When true (default), all teammates can see everyone\'s messages. When false, non-admins only see their own.'),
   updatedAt: z.string().optional(),
   updatedBy: z.string().optional(),
 });
@@ -73,4 +77,5 @@ export const DEFAULT_MESSAGING_SETTINGS: WorkspaceMessagingSettings = {
     whatsapp: false,
     email: false,
   },
+  allowViewingAllMessages: true,
 };

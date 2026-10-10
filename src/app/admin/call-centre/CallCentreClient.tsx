@@ -1,0 +1,1014 @@
+'use client';
+
+// Force Turbopack re-compilation to clear runtime caching error
+import * as React from 'react';
+
+import { useRouter } from 'next/navigation';
+import { useWorkspace } from '@/context/WorkspaceContext';
+import { usePermissions } from '@/hooks/use-permissions';
+import { useUser } from '@/firebase';
+import { useCallCampaigns, useCallScripts } from '@/lib/call-centre-hooks';
+import {
+  deleteCallScriptAction,
+  deleteCallCampaignAction,
+  generateCampaignQueueAction,
+  cloneCallCampaignAction,
+  archiveCallCampaignAction,
+  importCallScriptAction,
+  endCallCampaignAction,
+} from '@/lib/call-centre-actions';
+import { isJsonGraph, parseGraph } from '@/lib/call-centre-graph';
+import {
+  serializeScriptExport,
+  slugifyScriptName,
+  parseScriptExport,
+  buildScriptExport,
+  CFLOW_EXTENSION,
+  MAX_CFLOW_BYTES,
+} from '@/lib/call-script-portability';
+import { downloadTextFile } from '@/lib/client-download';
+import { useToast } from '@/hooks/use-toast';
+import { PageContainer } from '@/components/ui/page-container';
+import type { CallCampaign, CallScript } from '@/lib/types';
+import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
+import { ScriptThumbnailCard } from '@/components/call-centre/ScriptThumbnailCard';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import dynamic from 'next/dynamic';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ScriptPlaybookView } from './scripts/components/ScriptPlaybookView';
+import { ManageCampaignContactsDialog } from './components/ManageCampaignContactsDialog';
+import { getErrorMessage } from '@/lib/errors/report-error';
+import {
+  PhoneCall, 
+  Plus, 
+  FileText, 
+  Play, 
+  RefreshCw, 
+  Trash2, 
+  Edit3, 
+  CheckCircle2, 
+  Clock, 
+  PhoneOff,
+  UserCheck,
+  BarChart3,
+  MoreHorizontal,
+  Settings,
+  Archive,
+  UserPlus,
+  Upload,
+  Search
+} from 'lucide-react';
+
+const AddContactsDialog = dynamic(
+  () => import('./components/AddContactsDialog').then(m => m.AddContactsDialog),
+  { ssr: false, loading: () => <Skeleton className="h-10 w-full rounded-xl" /> }
+);
+export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
+  const router = useRouter();
+  const { user } = useUser();
+  useSetBreadcrumb('Call Centre');
+  // Rule 5: Strict typing - useWorkspace() returns TenantContextType natively
+  const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
+  const { toast } = useToast();
+
+  // Rule 10 & RBAC: Call Centre access controls
+  // 'view' is default-granted for all profiles. Mutations require explicit roles or superadmin privilege.
+  const { can, isSystemAdmin } = usePermissions();
+  const canCreate = isSystemAdmin || can('studios', 'callCentre', 'create');
+  const canEdit = isSystemAdmin || can('studios', 'callCentre', 'edit');
+  const canDelete = isSystemAdmin || can('studios', 'callCentre', 'delete');
+
+  const { campaigns, isLoading: campaignsLoading } = useCallCampaigns(activeWorkspaceId);
+  const { scripts, isLoading: scriptsLoading } = useCallScripts(activeWorkspaceId);
+
+  const [activeTab, setActiveTab] = React.useState(defaultTab);
+  const [campaignSearch, setCampaignSearch] = React.useState('');
+  const [scriptSearch, setScriptSearch] = React.useState('');
+
+  const filteredCampaigns = React.useMemo(() => {
+    if (!campaignSearch.trim()) return campaigns;
+    const q = campaignSearch.toLowerCase();
+    return campaigns.filter(c => c.name.toLowerCase().includes(q) || (c.description || '').toLowerCase().includes(q));
+  }, [campaigns, campaignSearch]);
+
+  const filteredScripts = React.useMemo(() => {
+    if (!scriptSearch.trim()) return scripts;
+    const q = scriptSearch.toLowerCase();
+    return scripts.filter(s => s.name.toLowerCase().includes(q) || (s.description || '').toLowerCase().includes(q));
+  }, [scripts, scriptSearch]);
+
+  const wrapHref = (href: string) => {
+    if (!activeWorkspaceId) return href;
+    const separator = href.includes('?') ? '&' : '?';
+    return `${href}${separator}track=${activeWorkspaceId}`;
+  };
+
+  // ─── Calculations ──────────────────────────────────────────────────────────
+
+  const stats = React.useMemo(() => {
+    let totalCalls = 0;
+    let completedCalls = 0;
+    let pendingCalls = 0;
+    let callbackCalls = 0;
+    let deferredCalls = 0;
+
+    campaigns.forEach(c => {
+      totalCalls += c.progress?.total || 0;
+      completedCalls += c.progress?.completed || 0;
+      pendingCalls += c.progress?.pending || 0;
+      callbackCalls += c.progress?.callbacks || 0;
+      deferredCalls += c.progress?.deferred || 0;
+    });
+
+    return { totalCalls, completedCalls, pendingCalls, callbackCalls, deferredCalls };
+  }, [campaigns]);
+
+  // ─── States & Handlers ─────────────────────────────────────────────────────
+
+  const [scriptToDelete, setScriptToDelete] = React.useState<string | null>(null);
+  const [campaignToDelete, setCampaignToDelete] = React.useState<string | null>(null);
+  const [campaignToLaunch, setCampaignToLaunch] = React.useState<string | null>(null);
+  const [launchingCampaignId, setLaunchingCampaignId] = React.useState<string | null>(null);
+  const [previewScript, setPreviewScript] = React.useState<CallScript | null>(null);
+  const [campaignForAddContacts, setCampaignForAddContacts] = React.useState<CallCampaign | null>(null);
+  const [campaignForManageContacts, setCampaignForManageContacts] = React.useState<CallCampaign | null>(null);
+  const [isCloningId, setIsCloningId] = React.useState<string | null>(null);
+  const [isImporting, setIsImporting] = React.useState(false);
+  const importInputRef = React.useRef<HTMLInputElement>(null);
+
+  // ─── Script export / import (.cflow) ───────────────────────────────────────
+  const handleExportScript = React.useCallback((script: CallScript) => {
+    try {
+      const text = serializeScriptExport(buildScriptExport(script));
+      downloadTextFile(`${slugifyScriptName(script.name)}${CFLOW_EXTENSION}`, text);
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Export Failed', description: getErrorMessage(err) });
+    }
+  }, [toast]);
+
+  const handleImportFile = React.useCallback(async (file: File) => {
+    if (file.size > MAX_CFLOW_BYTES) {
+      toast({ variant: 'destructive', title: 'File Too Large', description: 'This .cflow file exceeds the size limit.' });
+      return;
+    }
+    setIsImporting(true);
+    try {
+      const text = await file.text();
+      // Early client-side validation for a fast, friendly error.
+      const parsed = parseScriptExport(text);
+      if (!parsed.ok) {
+        toast({ variant: 'destructive', title: 'Invalid File', description: parsed.error });
+        return;
+      }
+      const result = await importCallScriptAction(
+        text,
+        { organizationId: activeOrganizationId, workspaceId: activeWorkspaceId },
+        user?.uid || ''
+      );
+      if (result.success) {
+        toast({ title: 'Script Imported', description: `"${parsed.script.name}" was recreated in this workspace. Post-call automations were cleared — reconfigure templates, tags, stages and webhooks for this workspace.` });
+      } else {
+        toast({ variant: 'destructive', title: 'Import Failed', description: result.error });
+      }
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Import Failed', description: getErrorMessage(err) });
+    } finally {
+      setIsImporting(false);
+    }
+  }, [toast, activeOrganizationId, activeWorkspaceId, user?.uid]);
+
+  const handleCloneCampaign = async (campaignId: string) => {
+    setIsCloningId(campaignId);
+    try {
+      const result = await cloneCallCampaignAction(campaignId, activeWorkspaceId, user?.uid || '');
+      if (result.success) {
+        toast({ title: 'Campaign Cloned', description: 'Draft copy created successfully.' });
+      } else {
+        toast({ variant: 'destructive', title: 'Clone Failed', description: result.error });
+      }
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) });
+    } finally {
+      setIsCloningId(null);
+    }
+  };
+
+  const handleArchiveCampaign = async (campaignId: string) => {
+    try {
+      const result = await archiveCallCampaignAction(campaignId, activeWorkspaceId, user?.uid || '');
+      if (result.success) {
+        toast({ title: 'Campaign Archived' });
+      } else {
+        toast({ variant: 'destructive', title: 'Archive Failed', description: result.error });
+      }
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) });
+    }
+  };
+
+  const handleEndCampaign = async (campaignId: string) => {
+    try {
+      const result = await endCallCampaignAction(campaignId, activeWorkspaceId, user?.uid || '');
+      if (result.success) {
+        toast({ title: 'Campaign Completed', description: 'Audience queue has been closed.' });
+      } else {
+        toast({ variant: 'destructive', title: 'Operation Failed', description: result.error });
+      }
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) });
+    }
+  };
+
+  const performDeleteScript = async (scriptId: string) => {
+    if (!canDelete) {
+      toast({
+        variant: 'destructive',
+        title: 'Action Denied',
+        description: 'You do not have permission to delete call centre scripts.',
+        actionConfig: {
+          path: '/admin/users/roles',
+          label: 'View Permissions',
+        },
+      });
+      return;
+    }
+    try {
+      const result = await deleteCallScriptAction(scriptId, activeWorkspaceId, user?.uid || '');
+      if (result.success) {
+        toast({ title: 'Script Deleted' });
+      } else {
+        toast({ variant: 'destructive', title: 'Error', description: result.error });
+      }
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) });
+    } finally {
+      setScriptToDelete(null);
+    }
+  };
+
+  const performDeleteCampaign = async (campaignId: string) => {
+    if (!canDelete) {
+      toast({
+        variant: 'destructive',
+        title: 'Action Denied',
+        description: 'You do not have permission to delete call campaigns.',
+        actionConfig: {
+          path: '/admin/users/roles',
+          label: 'View Permissions',
+        },
+      });
+      return;
+    }
+    try {
+      const result = await deleteCallCampaignAction(campaignId, activeWorkspaceId, user?.uid || '');
+      if (result.success) {
+        toast({ title: 'Campaign Deleted' });
+      } else {
+        toast({ variant: 'destructive', title: 'Error', description: result.error });
+      }
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) });
+    } finally {
+      setCampaignToDelete(null);
+    }
+  };
+
+  const handleLaunchConfirm = (campaign: CallCampaign) => {
+    if (!campaign.scriptId) {
+      toast({
+        variant: 'destructive',
+        title: 'Launch Prevented',
+        description: 'You must edit the campaign and assign a script playbook before launching.'
+      });
+      return;
+    }
+    setCampaignToLaunch(campaign.id);
+  };
+
+  const performLaunchCampaign = async (campaignId: string) => {
+    setCampaignToLaunch(null);
+    setLaunchingCampaignId(campaignId);
+    try {
+      const result = await generateCampaignQueueAction(campaignId, activeWorkspaceId, user?.uid || '');
+      if (result.success) {
+        toast({ title: 'Campaign Launched', description: 'Call queue successfully created.' });
+        router.push(wrapHref(`/admin/call-centre/workspace/${campaignId}`));
+      } else {
+        toast({ variant: 'destructive', title: 'Launch Failed', description: result.error });
+      }
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) });
+    } finally {
+      setLaunchingCampaignId(null);
+    }
+  };
+
+  const handleDeleteScript = (scriptId: string) => {
+    setScriptToDelete(scriptId);
+  };
+
+  const handleDeleteCampaign = (campaignId: string) => {
+    setCampaignToDelete(campaignId);
+  };
+
+  // Status Badge Helper
+  const _getStatusBadge = (status: CallCampaign['status']) => {
+    switch (status) {
+      case 'running':
+        return <Badge className="bg-emerald-500 hover:bg-emerald-600 font-bold uppercase text-[9px] px-2 rounded-md">Running</Badge>;
+      case 'paused':
+        return <Badge variant="secondary" className="bg-amber-500/20 text-amber-500 hover:bg-amber-500/30 font-bold uppercase text-[9px] px-2 rounded-md">Paused</Badge>;
+      case 'completed':
+        return <Badge className="bg-blue-500 hover:bg-blue-600 font-bold uppercase text-[9px] px-2 rounded-md">Completed</Badge>;
+      case 'cancelled':
+        return <Badge variant="destructive" className="font-bold uppercase text-[9px] px-2 rounded-md">Cancelled</Badge>;
+      default:
+        return <Badge variant="outline" className="font-bold uppercase text-[9px] px-2 rounded-md">Draft</Badge>;
+    }
+  };
+
+  return (
+    <div className="h-full overflow-y-auto bg-background text-foreground">
+      <PageContainer>
+        <Tabs defaultValue="campaigns" value={activeTab} onValueChange={setActiveTab} className="w-full space-y-8 py-6">
+          
+          {/* Header */}
+          <div className="flex items-center justify-between flex-wrap gap-4 border-b border-border/80 pb-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-inner shrink-0">
+                <PhoneCall className="h-5 w-5 text-primary animate-pulse" />
+              </div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-black uppercase text-foreground tracking-wider mt-0.5">Call Centre</h1>
+                <CardInfoTooltip text="Outreach scripts, dialer queues, and AI-powered calling workflows." />
+              </div>
+            </div>
+            <div className="flex items-center gap-4 flex-wrap">
+              <TabsList className="bg-muted/40 border border-border/80 shadow-xs h-10 p-1 rounded-xl">
+                <TabsTrigger value="campaigns" className="rounded-lg font-bold text-xs px-4 py-1.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">Outreach Campaigns</TabsTrigger>
+                <TabsTrigger value="scripts" className="rounded-lg font-bold text-xs px-4 py-1.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">Call Scripts</TabsTrigger>
+              </TabsList>
+
+              {activeTab === 'campaigns' ? (
+                <Button
+                  onClick={() => router.push(wrapHref('/admin/call-centre/campaigns/new'))}
+                  disabled={!canCreate}
+                  title={!canCreate ? 'Requires Call Centre create permission' : undefined}
+                  className="h-10 px-4 rounded-xl font-bold text-xs uppercase tracking-wider gap-2 bg-primary hover:bg-primary/95 text-white shadow-sm active:scale-[0.97] disabled:opacity-50"
+                >
+                  <Plus className="h-3.5 w-3.5" /> New Campaign
+                </Button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={importInputRef}
+                    type="file"
+                    accept=".cflow,application/json"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleImportFile(file);
+                      e.target.value = ''; // allow re-importing the same file
+                    }}
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => importInputRef.current?.click()}
+                    disabled={isImporting || !canCreate}
+                    title={!canCreate ? 'Requires Call Centre create permission' : undefined}
+                    className="h-10 px-4 rounded-xl font-bold text-xs uppercase tracking-wider gap-2 border border-border/80 bg-white dark:bg-card text-foreground hover:bg-muted/60 shadow-xs active:scale-[0.97] disabled:opacity-50"
+                  >
+                    {isImporting ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                    Import Script
+                  </Button>
+                  <Button
+                    onClick={() => router.push(wrapHref('/admin/call-centre/scripts/new'))}
+                    disabled={!canCreate}
+                    title={!canCreate ? 'Requires Call Centre create permission' : undefined}
+                    className="h-10 px-4 rounded-xl font-bold text-xs uppercase tracking-wider gap-2 bg-primary hover:bg-primary/95 text-white shadow-sm active:scale-[0.97] disabled:opacity-50"
+                  >
+                    <FileText className="h-3.5 w-3.5" /> New Script
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Stats Row */}
+          {activeTab === 'campaigns' && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="border border-border/80 bg-card rounded-2xl shadow-sm hover:shadow-md transition-all">
+                <CardContent className="p-6 flex items-center gap-4">
+                  <div className="p-3 bg-primary/10 text-primary rounded-xl border border-primary/20">
+                    <CheckCircle2 className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Calls Completed</p>
+                      <CardInfoTooltip text="Total outbound calls successfully finalized." />
+                    </div>
+                    <p className="text-2xl font-black text-foreground">{stats.completedCalls}</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border border-border/80 bg-card rounded-2xl shadow-sm hover:shadow-md transition-all">
+                <CardContent className="p-6 flex items-center gap-4">
+                  <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl border border-amber-500/20">
+                    <Clock className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Callbacks Pending</p>
+                      <CardInfoTooltip text="Scheduled callbacks requiring agent follow-up." />
+                    </div>
+                    <p className="text-2xl font-black text-foreground">{stats.callbackCalls}</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border border-border/80 bg-card rounded-2xl shadow-sm hover:shadow-md transition-all">
+                <CardContent className="p-6 flex items-center gap-4">
+                  <div className="p-3 bg-indigo-500/10 text-indigo-500 rounded-xl border border-indigo-500/20">
+                    <UserCheck className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Deferred / Retries</p>
+                      <CardInfoTooltip text="Unanswered calls queued for automated retry." />
+                    </div>
+                    <p className="text-2xl font-black text-foreground">{stats.deferredCalls}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Campaigns View */}
+          <TabsContent value="campaigns" className="mt-0 space-y-6 outline-none">
+            {campaigns.length > 0 && (
+              <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50" />
+                  <Input
+                    placeholder="Search campaigns..."
+                    value={campaignSearch}
+                    onChange={(e) => setCampaignSearch(e.target.value)}
+                    className="pl-10 h-10 rounded-xl bg-background border-border/80 text-foreground placeholder:text-muted-foreground text-xs"
+                  />
+                </div>
+                <div className="text-xs font-semibold text-muted-foreground">
+                  {filteredCampaigns.length} {filteredCampaigns.length === 1 ? 'campaign' : 'campaigns'}
+                </div>
+              </Card>
+            )}
+
+            {campaignsLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <RefreshCw className="h-6 w-6 text-primary animate-spin" />
+              </div>
+            ) : campaigns.length === 0 ? (
+              <Card className="border border-dashed border-border/70 p-12 text-center rounded-2xl bg-muted/10">
+                <div className="max-w-md mx-auto space-y-4">
+                  <PhoneOff className="h-10 w-10 text-muted-foreground mx-auto" />
+                  <h3 className="text-sm font-bold text-foreground">No call campaigns found</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Organize your outreach workflow, assign target scripts, and process customer segments.
+                  </p>
+                  <Button onClick={() => router.push(wrapHref('/admin/call-centre/campaigns/new'))} className="rounded-xl font-bold text-xs">
+                    Create Campaign
+                  </Button>
+                </div>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {filteredCampaigns.map((camp) => {
+                  const progressVal = camp.progress?.total 
+                    ? Math.round((camp.progress.completed / camp.progress.total) * 100)
+                    : 0;
+
+                  return (
+                    <div 
+                      key={camp.id} 
+                      className="grid grid-cols-[1fr_auto_auto] items-center p-4 bg-card even:bg-muted/30 dark:even:bg-muted/15 hover:bg-muted/50 border border-border/80 rounded-2xl transition-all gap-4"
+                    >
+                      {/* Left Section: Icon & Info (clickable → analytics) */}
+                      <div 
+                        className="flex items-center gap-3 min-w-0 cursor-pointer group/name"
+                        onClick={() => router.push(wrapHref(`/admin/call-centre/analytics/${camp.id}`))}
+                      >
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 text-primary">
+                          <PhoneCall className="h-5 w-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-bold text-foreground truncate group-hover/name:text-primary group-hover/name:underline transition-colors">{camp.name}</h4>
+                            {(camp.status === 'running' || camp.status === 'completed') && (
+                              <TooltipProvider delayDuration={150}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className={cn(
+                                      "w-2 h-2 rounded-full shrink-0",
+                                      camp.status === 'running' ? "bg-emerald-500 animate-pulse" : "bg-blue-500"
+                                    )} />
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top">
+                                    <p className="text-[10px] font-bold">
+                                      {camp.status === 'running' ? 'Campaign is active and calling queues are running.' : 'Campaign has ended. All queue items completed.'}
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-muted-foreground truncate mt-0.5 max-w-sm sm:max-w-md">
+                            {camp.description || 'Calling campaign.'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Middle Section: Progress & Stats (fixed column) */}
+                      <div className="flex items-center gap-6 shrink-0">
+                        <div 
+                          onClick={() => router.push(wrapHref(`/admin/call-centre/analytics/${camp.id}`))}
+                          className="w-40 space-y-1 cursor-pointer hover:opacity-80 hover:shadow-sm transition-all p-1 rounded-lg"
+                          title="Click to view analytics"
+                        >
+                          <div className="flex justify-between text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
+                            <span>Progress</span>
+                            <span>{progressVal}% ({camp.progress?.completed}/{camp.progress?.total})</span>
+                          </div>
+                          <Progress value={progressVal} className="h-1.5 bg-muted" />
+                        </div>
+
+                        <div className="flex gap-4 text-center">
+                          <div>
+                            <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest block">Pending</span>
+                            <span className="text-xs font-black text-foreground">{camp.progress?.pending}</span>
+                          </div>
+                          <div className="border-l border-border pl-4">
+                            <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest block">Callbacks</span>
+                            <span className="text-xs font-black text-amber-500">{camp.progress?.callbacks}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right Section: Quick Actions + Menu (fixed width to prevent layout shift) */}
+                      <div className="flex items-center gap-1.5 shrink-0 justify-end min-w-[7rem]">
+                        {/* Add Contacts quick icon */}
+                        {camp.allowAddContactsAfterLaunch !== false || camp.status === 'draft' ? (
+                          <TooltipProvider delayDuration={150}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  onClick={() => setCampaignForAddContacts(camp)}
+                                  className="w-8 h-8 rounded-lg text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10"
+                                >
+                                  <UserPlus className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                <p className="text-[10px] font-bold">Add Contacts</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : null}
+
+                        {/* Open Workspace quick icon (running/paused only) */}
+                        {(camp.status === 'running' || camp.status === 'paused') && (
+                          <TooltipProvider delayDuration={150}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  onClick={() => router.push(wrapHref(`/admin/call-centre/workspace/${camp.id}`))}
+                                  className="w-8 h-8 rounded-lg text-muted-foreground hover:text-[#4d69ff] hover:bg-[#4d69ff]/10"
+                                >
+                                  <Play className="h-4 w-4 fill-current" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                <p className="text-[10px] font-bold">Open Workspace</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+
+                        {/* Dots menu */}
+                        <DropdownMenu modal={false}>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-muted"
+                              aria-label="Campaign actions"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-52 rounded-xl p-2 mt-1">
+                            {camp.status !== 'draft' && (
+                              <DropdownMenuItem 
+                                onClick={() => router.push(wrapHref(`/admin/call-centre/analytics/${camp.id}`))}
+                                className="rounded-lg p-2.5 gap-2.5 cursor-pointer font-bold text-xs"
+                              >
+                                <BarChart3 className="h-4 w-4 text-primary" />
+                                View Statistics
+                              </DropdownMenuItem>
+                            )}
+
+                            {(camp.status === 'running' || camp.status === 'paused') && (
+                              <DropdownMenuItem 
+                                onClick={() => router.push(wrapHref(`/admin/call-centre/workspace/${camp.id}`))}
+                                className="rounded-lg p-2.5 gap-2.5 cursor-pointer font-bold text-xs"
+                              >
+                                <Play className="h-4 w-4 text-[#4d69ff]" />
+                                Open Workspace
+                              </DropdownMenuItem>
+                            )}
+
+                            {canCreate && (
+                              <DropdownMenuItem 
+                                onClick={() => handleCloneCampaign(camp.id)}
+                                disabled={isCloningId === camp.id}
+                                className="rounded-lg p-2.5 gap-2.5 cursor-pointer font-bold text-xs"
+                              >
+                                {isCloningId === camp.id ? (
+                                  <RefreshCw className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <RefreshCw className="h-4 w-4 text-violet-500" />
+                                )}
+                                Clone Campaign
+                              </DropdownMenuItem>
+                            )}
+
+                            {canEdit && (
+                              <>
+                                <DropdownMenuSeparator className="my-1 bg-border/50" />
+
+                                <DropdownMenuItem 
+                                  onClick={() => router.push(wrapHref(`/admin/call-centre/campaigns/new?id=${camp.id}`))}
+                                  className="rounded-lg p-2.5 gap-2.5 cursor-pointer font-bold text-xs"
+                                >
+                                  <Edit3 className="h-4 w-4 text-amber-500" />
+                                  Edit Settings
+                                </DropdownMenuItem>
+
+                                <DropdownMenuItem 
+                                  onClick={() => router.push(wrapHref(`/admin/call-centre/campaigns/new?id=${camp.id}&step=3`))}
+                                  className="rounded-lg p-2.5 gap-2.5 cursor-pointer font-bold text-xs"
+                                >
+                                  <Settings className="h-4 w-4 text-blue-500" />
+                                  Audience Management
+                                </DropdownMenuItem>
+
+                                {/* Add Contacts (Dynamic vs Fixed Audience) */}
+                                {camp.allowAddContactsAfterLaunch === false && camp.status !== 'draft' ? (
+                                  <TooltipProvider delayDuration={150}>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="opacity-50 pointer-events-none">
+                                          <DropdownMenuItem 
+                                            disabled
+                                            className="rounded-lg p-2.5 gap-2.5 cursor-pointer font-bold text-xs"
+                                          >
+                                            <UserPlus className="h-4 w-4 text-emerald-500" />
+                                            Add Contacts
+                                          </DropdownMenuItem>
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="left">
+                                        <p className="text-[10px] font-bold">Audience is fixed after launch.</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                ) : (
+                                  <DropdownMenuItem 
+                                    onClick={() => setCampaignForAddContacts(camp)}
+                                    className="rounded-lg p-2.5 gap-2.5 cursor-pointer font-bold text-xs"
+                                  >
+                                    <UserPlus className="h-4 w-4 text-emerald-500" />
+                                    Add Contacts
+                                  </DropdownMenuItem>
+                                )}
+
+                                <DropdownMenuItem 
+                                  onClick={() => setCampaignForManageContacts(camp)}
+                                  className="rounded-lg p-2.5 gap-2.5 cursor-pointer font-bold text-xs"
+                                >
+                                  <UserPlus className="h-4 w-4 text-violet-500" />
+                                  Manage Contacts
+                                </DropdownMenuItem>
+                              </>
+                            )}
+
+                            <DropdownMenuSeparator className="my-1 bg-border/50" />
+
+                            {(camp.status === 'draft' || camp.status === 'paused' || camp.status === 'scheduled') && (
+                              <DropdownMenuItem 
+                                onClick={() => handleLaunchConfirm(camp)}
+                                disabled={launchingCampaignId === camp.id}
+                                className="rounded-lg p-2.5 gap-2.5 cursor-pointer font-bold text-xs text-emerald-600 focus:text-emerald-600"
+                              >
+                                <Play className="h-4 w-4 text-emerald-500" />
+                                Launch Campaign
+                              </DropdownMenuItem>
+                            )}
+
+                            {(camp.status === 'running' || camp.status === 'paused') && (
+                              <DropdownMenuItem 
+                                onClick={() => handleEndCampaign(camp.id)}
+                                className="rounded-lg p-2.5 gap-2.5 cursor-pointer font-bold text-xs text-rose-600 focus:text-rose-600"
+                              >
+                                <PhoneOff className="h-4 w-4 text-rose-500" />
+                                End Campaign
+                              </DropdownMenuItem>
+                            )}
+
+                            {camp.status !== 'archived' ? (
+                              <DropdownMenuItem 
+                                onClick={() => handleArchiveCampaign(camp.id)}
+                                className="rounded-lg p-2.5 gap-2.5 cursor-pointer font-bold text-xs text-amber-600 focus:text-amber-600"
+                              >
+                                <Archive className="h-4 w-4 text-amber-500" />
+                                Archive Campaign
+                              </DropdownMenuItem>
+                            ) : (
+                              canDelete && (
+                                <DropdownMenuItem 
+                                  onClick={() => handleDeleteCampaign(camp.id)}
+                                  className="rounded-lg p-2.5 gap-2.5 cursor-pointer font-bold text-xs text-rose-600 focus:text-rose-600"
+                                >
+                                  <Trash2 className="h-4 w-4 text-rose-500" />
+                                  Delete Campaign
+                                </DropdownMenuItem>
+                              )
+                            )}
+
+                            {camp.status === 'draft' && canDelete && (
+                              <DropdownMenuItem 
+                                onClick={() => handleDeleteCampaign(camp.id)}
+                                className="rounded-lg p-2.5 gap-2.5 cursor-pointer font-bold text-xs text-rose-600 focus:text-rose-600"
+                              >
+                                <Trash2 className="h-4 w-4 text-rose-500" />
+                                Delete Campaign
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Scripts View */}
+          <TabsContent value="scripts" className="mt-0 space-y-6 outline-none">
+            {scripts.length > 0 && (
+              <Card className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50" />
+                  <Input
+                    placeholder="Search scripts by title or description..."
+                    value={scriptSearch}
+                    onChange={(e) => setScriptSearch(e.target.value)}
+                    className="pl-10 h-10 rounded-xl bg-background border-border/80 text-foreground placeholder:text-muted-foreground text-xs"
+                  />
+                </div>
+                <div className="text-xs font-semibold text-muted-foreground">
+                  {filteredScripts.length} {filteredScripts.length === 1 ? 'script' : 'scripts'}
+                </div>
+              </Card>
+            )}
+
+            {scriptsLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <RefreshCw className="h-6 w-6 text-primary animate-spin" />
+              </div>
+            ) : scripts.length === 0 ? (
+              <Card className="border border-dashed border-border/70 p-12 text-center rounded-2xl bg-muted/10">
+                <div className="max-w-md mx-auto space-y-4">
+                  <FileText className="h-10 w-10 text-muted-foreground mx-auto" />
+                  <h3 className="text-sm font-bold text-foreground">No call scripts defined</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Scripts serve as dynamic templates. Set placeholder tokens like `FIRST_NAME` and `SCHOOL_NAME` to assist callers.
+                  </p>
+                  <Button onClick={() => router.push(wrapHref('/admin/call-centre/scripts/new'))} className="rounded-xl font-bold text-xs">
+                    Create Script
+                  </Button>
+                </div>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredScripts.map((script) => (
+                  <ScriptThumbnailCard
+                    key={script.id}
+                    mode="library"
+                    script={script}
+                    onPreview={(s) => setPreviewScript(s)}
+                    onUse={(s) => router.push(wrapHref(`/admin/call-centre/campaigns/new?scriptId=${s.id}`))}
+                    onEdit={(s) => router.push(wrapHref(`/admin/call-centre/scripts/new?id=${s.id}`))}
+                    onExport={(s) => handleExportScript(s)}
+                    onDelete={(id) => handleDeleteScript(id)}
+                    canCreate={canCreate}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </PageContainer>
+
+      {/* Script Deletion Confirmation Dialog */}
+      <AlertDialog open={!!scriptToDelete} onOpenChange={(o) => !o && setScriptToDelete(null)}>
+        <AlertDialogContent className="rounded-2xl max-w-md p-6 bg-card border border-border text-foreground">
+          <AlertDialogHeader className="space-y-3">
+            <AlertDialogTitle className="font-bold text-base text-foreground">Delete Call Script</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
+              Are you sure you want to delete this script? This action cannot be undone and will permanently remove this script definition.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-6 flex justify-end gap-3">
+            <AlertDialogCancel className="rounded-xl border border-border bg-muted text-muted-foreground hover:text-foreground hover:bg-accent text-xs font-bold px-4 py-2">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (scriptToDelete) {
+                  performDeleteScript(scriptToDelete);
+                }
+              }}
+              className="rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold px-4 py-2 border-none"
+            >
+              Delete Script
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Campaign Deletion Confirmation Dialog */}
+      <AlertDialog open={!!campaignToDelete} onOpenChange={(o) => !o && setCampaignToDelete(null)}>
+        <AlertDialogContent className="rounded-2xl max-w-md p-6 bg-card border border-border text-foreground">
+          <AlertDialogHeader className="space-y-3">
+            <AlertDialogTitle className="font-bold text-base text-foreground">Delete Call Campaign</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
+              Are you sure you want to delete this campaign and all its call queue items? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-6 flex justify-end gap-3">
+            <AlertDialogCancel className="rounded-xl border border-border bg-muted text-muted-foreground hover:text-foreground hover:bg-accent text-xs font-bold px-4 py-2">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (campaignToDelete) {
+                  performDeleteCampaign(campaignToDelete);
+                }
+              }}
+              className="rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold px-4 py-2 border-none"
+            >
+              Delete Campaign
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Launch Confirmation Dialog */}
+      <AlertDialog open={!!campaignToLaunch} onOpenChange={(open) => !open && setCampaignToLaunch(null)}>
+        <AlertDialogContent className="rounded-2xl max-w-md p-6 bg-card border border-border text-foreground">
+          <AlertDialogHeader className="space-y-3">
+            <AlertDialogTitle className="font-bold text-base text-foreground">Launch Call Campaign?</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
+              This will resolve your target audience, lock in the selected script snapshot, and generate a new dialer queue. Unused callbacks from previous runs of the same campaign will be cleared.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-6 flex justify-end gap-3">
+            <AlertDialogCancel className="rounded-xl border border-border bg-muted text-muted-foreground hover:text-foreground hover:bg-accent text-xs font-bold px-4 py-2">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (campaignToLaunch) {
+                  performLaunchCampaign(campaignToLaunch);
+                }
+              }}
+              className="rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-bold px-4 py-2 border-none"
+            >
+              Launch Campaign
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {/* Script Preview Dialog */}
+      <Dialog open={!!previewScript} onOpenChange={(open) => !open && setPreviewScript(null)}>
+        <DialogContent className="rounded-2xl max-w-4xl max-h-[85vh] p-6 bg-card border border-border text-foreground flex flex-col overflow-hidden shadow-2xl">
+          <DialogHeader className="space-y-1.5 shrink-0">
+            <DialogTitle className="font-bold text-base text-foreground flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              {previewScript?.name || 'Script Preview'}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground leading-relaxed">
+              {previewScript?.description || 'Outbound call outreach conversation layout.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto min-h-[300px] mt-4 pr-1 scrollbar-thin">
+            {previewScript && (
+              isJsonGraph(previewScript.content) ? (
+                <div className="bg-muted/30 p-4 rounded-xl border border-border/50">
+                  <ScriptPlaybookView graph={parseGraph(previewScript.content)} />
+                </div>
+              ) : (
+                <div className="bg-muted/30 p-5 rounded-xl border border-border/50 text-sm font-serif whitespace-pre-line leading-relaxed select-text">
+                  {previewScript.content}
+                </div>
+              )
+            )}
+          </div>
+          <div className="mt-6 flex justify-end gap-3 shrink-0 border-t border-border pt-4">
+            <Button
+              variant="outline"
+              onClick={() => setPreviewScript(null)}
+              className="rounded-xl border border-border bg-muted text-muted-foreground hover:text-foreground hover:bg-accent text-xs font-bold px-4 h-9"
+            >
+              Close
+            </Button>
+            {previewScript && (
+              <Button
+                onClick={() => {
+                  router.push(wrapHref(`/admin/call-centre/campaigns/new?scriptId=${previewScript.id}`));
+                  setPreviewScript(null);
+                }}
+                className="rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-bold px-4 h-9 gap-1.5"
+              >
+                <Play className="h-3 w-3 fill-current" />
+                Use Script
+              </Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {campaignForAddContacts && (
+        <AddContactsDialog
+          open={!!campaignForAddContacts}
+          onOpenChange={(open) => !open && setCampaignForAddContacts(null)}
+          campaignId={campaignForAddContacts.id}
+          workspaceId={activeWorkspaceId}
+          campaignName={campaignForAddContacts.name}
+        />
+      )}
+
+      {campaignForManageContacts && (
+        <ManageCampaignContactsDialog
+          open={!!campaignForManageContacts}
+          onOpenChange={(open) => !open && setCampaignForManageContacts(null)}
+          campaign={campaignForManageContacts}
+        />
+      )}
+    </div>
+  );
+}

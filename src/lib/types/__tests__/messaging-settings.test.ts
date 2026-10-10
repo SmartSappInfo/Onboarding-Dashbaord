@@ -17,6 +17,7 @@ describe('WorkspaceMessagingSettingsSchema', () => {
         whatsapp: false,
         email: false,
       },
+      allowViewingAllMessages: true,
     };
 
     const parsed = WorkspaceMessagingSettingsSchema.safeParse(validData);
@@ -36,6 +37,17 @@ describe('WorkspaceMessagingSettingsSchema', () => {
       expect(parsed.data.lowBalanceThreshold).toBe(100);
       expect(parsed.data.quickTemplateIds).toEqual(DEFAULT_MESSAGING_SETTINGS.quickTemplateIds);
       expect(parsed.data.channelKillSwitches.sms).toBe(false);
+      expect(parsed.data.allowViewingAllMessages).toBe(true);
+    }
+  });
+
+  it('allows disabling allowViewingAllMessages', () => {
+    const parsed = WorkspaceMessagingSettingsSchema.safeParse({
+      allowViewingAllMessages: false,
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.allowViewingAllMessages).toBe(false);
     }
   });
 

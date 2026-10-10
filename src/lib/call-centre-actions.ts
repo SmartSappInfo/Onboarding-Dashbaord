@@ -31,7 +31,7 @@ export async function createCallScriptAction(
       ...data,
       createdBy: userId,
     });
-    revalidatePath('/admin/messaging/call-centre');
+    revalidatePath('/admin/call-centre');
     return { success: true, id };
   } catch (error: unknown) {
     return { success: false, error: toClientErrorMessage('call-centre-actions', error, undefined, 'Failed to create script') };
@@ -49,7 +49,7 @@ export async function updateCallScriptAction(
   try {
     const { workspaceId: _, ...cleanData } = data;
     await CallCentreService.updateScript(id, cleanData);
-    revalidatePath('/admin/messaging/call-centre');
+    revalidatePath('/admin/call-centre');
     return { success: true };
   } catch (error: unknown) {
     return { success: false, error: toClientErrorMessage('call-centre-actions', error, undefined, 'Failed to update script') };
@@ -62,7 +62,7 @@ export async function deleteCallScriptAction(id: string, workspaceId: string, us
 
   try {
     await CallCentreService.deleteScript(id);
-    revalidatePath('/admin/messaging/call-centre');
+    revalidatePath('/admin/call-centre');
     return { success: true };
   } catch (error: unknown) {
     return { success: false, error: toClientErrorMessage('call-centre-actions', error, undefined, 'Failed to delete script') };
@@ -122,7 +122,7 @@ export async function importCallScriptAction(
     if (description) data.description = description;
 
     const id = await CallCentreService.createScript(data);
-    revalidatePath('/admin/messaging/call-centre');
+    revalidatePath('/admin/call-centre');
     return { success: true, id };
   } catch (error: unknown) {
     return { success: false, error: toClientErrorMessage('call-centre-actions', error, undefined, 'Failed to import script') };
@@ -183,7 +183,7 @@ export async function createCallCampaignAction(
       ...data,
       createdBy: userId,
     });
-    revalidatePath('/admin/messaging/call-centre');
+    revalidatePath('/admin/call-centre');
     return { success: true, id };
   } catch (error: unknown) {
     return { success: false, error: toClientErrorMessage('call-centre-actions', error, undefined, 'Failed to create campaign') };
@@ -201,7 +201,7 @@ export async function updateCallCampaignAction(
   try {
     const { workspaceId: _, ...cleanData } = data;
     await CallCentreService.updateCampaign(id, cleanData);
-    revalidatePath('/admin/messaging/call-centre');
+    revalidatePath('/admin/call-centre');
     return { success: true };
   } catch (error: unknown) {
     return { success: false, error: toClientErrorMessage('call-centre-actions', error, undefined, 'Failed to update campaign') };
@@ -214,7 +214,7 @@ export async function deleteCallCampaignAction(id: string, workspaceId: string, 
 
   try {
     await CallCentreService.deleteCampaign(id);
-    revalidatePath('/admin/messaging/call-centre');
+    revalidatePath('/admin/call-centre');
     return { success: true };
   } catch (error: unknown) {
     return { success: false, error: toClientErrorMessage('call-centre-actions', error, undefined, 'Failed to delete campaign') };
@@ -250,7 +250,7 @@ export async function generateCampaignQueueAction(campaignId: string, workspaceI
 
   try {
     const result = await CallCentreService.generateCampaignQueue(campaignId);
-    revalidatePath('/admin/messaging/call-centre');
+    revalidatePath('/admin/call-centre');
     return result;
   } catch (error: unknown) {
     return { success: false, error: toClientErrorMessage('call-centre-actions', error, undefined, 'Failed to generate queue'), count: 0 };
@@ -306,7 +306,7 @@ export async function submitCallOutcomeAction(params: {
       agentName,
       customAutomations,
     });
-    revalidatePath('/admin/messaging/call-centre');
+    revalidatePath('/admin/call-centre');
     return result;
   } catch (error: unknown) {
     return { success: false, error: toClientErrorMessage('call-centre-actions', error, undefined, 'Submit failed.') };
@@ -337,7 +337,7 @@ export async function skipQueueItemAction(queueItemId: string, workspaceId: stri
 
   try {
     await CallCentreService.skipQueueItem(queueItemId);
-    revalidatePath('/admin/messaging/call-centre');
+    revalidatePath('/admin/call-centre');
     return { success: true };
   } catch (error: unknown) {
     return { success: false, error: toClientErrorMessage('call-centre-actions', error, undefined, 'Failed to skip queue item') };
@@ -350,7 +350,7 @@ export async function deferQueueItemAction(queueItemId: string, workspaceId: str
 
   try {
     await CallCentreService.deferQueueItem(queueItemId);
-    revalidatePath('/admin/messaging/call-centre');
+    revalidatePath('/admin/call-centre');
     return { success: true };
   } catch (error: unknown) {
     return { success: false, error: toClientErrorMessage('call-centre-actions', error, undefined, 'Failed to defer queue item') };
@@ -368,7 +368,7 @@ export async function scheduleCallbackAction(
 
   try {
     await CallCentreService.scheduleCallback(queueItemId, callbackDate);
-    revalidatePath('/admin/messaging/call-centre');
+    revalidatePath('/admin/call-centre');
     return { success: true };
   } catch (error: unknown) {
     return { success: false, error: toClientErrorMessage('call-centre-actions', error, undefined, 'Failed to schedule callback') };
@@ -431,7 +431,7 @@ export async function cloneCallCampaignAction(campaignId: string, workspaceId: s
 
   try {
     const id = await CallCentreService.cloneCampaign(campaignId, userId);
-    revalidatePath('/admin/messaging/call-centre');
+    revalidatePath('/admin/call-centre');
     return { success: true, id };
   } catch (error: unknown) {
     return { success: false, error: toClientErrorMessage('call-centre-actions', error, undefined, 'Failed to clone campaign') };
@@ -460,8 +460,8 @@ export async function addContactsToCallCampaignAction(
       contactOverrides,
       contactScope
     );
-    revalidatePath('/admin/messaging/call-centre');
-    revalidatePath(`/admin/messaging/call-centre/analytics/${campaignId}`);
+    revalidatePath('/admin/call-centre');
+    revalidatePath(`/admin/call-centre/analytics/${campaignId}`);
     return result;
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error);
@@ -485,8 +485,8 @@ export async function removeContactsFromCampaignAction(
       workspaceId,
       userId
     );
-    revalidatePath('/admin/messaging/call-centre');
-    revalidatePath(`/admin/messaging/call-centre/analytics/${campaignId}`);
+    revalidatePath('/admin/call-centre');
+    revalidatePath(`/admin/call-centre/analytics/${campaignId}`);
     return result;
   } catch (error: unknown) {
     return { success: false, count: 0, error: toClientErrorMessage('call-centre-actions', error, undefined, 'Failed to remove contacts') };
@@ -499,7 +499,7 @@ export async function archiveCallCampaignAction(campaignId: string, workspaceId:
 
   try {
     await CallCentreService.archiveCampaign(campaignId);
-    revalidatePath('/admin/messaging/call-centre');
+    revalidatePath('/admin/call-centre');
     return { success: true };
   } catch (error: unknown) {
     return { success: false, error: toClientErrorMessage('call-centre-actions', error, undefined, 'Failed to archive campaign') };
@@ -512,8 +512,8 @@ export async function endCallCampaignAction(campaignId: string, workspaceId: str
 
   try {
     await CallCentreService.endCampaign(campaignId);
-    revalidatePath('/admin/messaging/call-centre');
-    revalidatePath(`/admin/messaging/call-centre/analytics/${campaignId}`);
+    revalidatePath('/admin/call-centre');
+    revalidatePath(`/admin/call-centre/analytics/${campaignId}`);
     return { success: true };
   } catch (error: unknown) {
     return { success: false, error: toClientErrorMessage('call-centre-actions', error, undefined, 'Failed to end campaign') };
