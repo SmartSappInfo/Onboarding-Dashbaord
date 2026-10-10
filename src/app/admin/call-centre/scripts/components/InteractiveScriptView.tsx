@@ -1245,7 +1245,7 @@ export function InteractiveScriptView({
       setSelectedSubObjectionIndex(null);
       setEnteredObjectionFromChoice(false);
     }
-  }, [nodes, orderedMainNodes]);
+  }, [nodes, orderedMainNodes, setActiveNodeId]);
 
   // Active navigation handlers for the current step
   const activeHandlers = React.useMemo(() => {

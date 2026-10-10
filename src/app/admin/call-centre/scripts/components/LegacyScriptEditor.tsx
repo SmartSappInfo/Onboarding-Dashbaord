@@ -322,7 +322,7 @@ export const LegacyScriptEditor = React.forwardRef<LegacyScriptEditorHandle, Leg
 
       setShowMenu(false);
       syncAndNotify();
-    }, [showMenu, syncAndNotify, onChange, value]);
+    }, [showMenu, syncAndNotify]);
 
     /* ── Imperative handle for parent ─── */
     React.useImperativeHandle(ref, () => ({

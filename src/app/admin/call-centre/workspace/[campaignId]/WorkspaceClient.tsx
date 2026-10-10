@@ -378,7 +378,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
       window.removeEventListener('beforeunload', handleUnload);
       releaseQueueItemAction(currentItemId, workspaceId, user.uid);
     };
-  }, [currentItemId, workspaceId, user]);
+  }, [currentItemId, workspaceId, user, toast]);
 
   // ─── Call Timer Effect ─────────────────────────────────────────────────────
 
@@ -472,7 +472,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     }, 2000); // 2 second debounce
 
     return () => clearTimeout(timeout);
-  }, [notes, currentItem?.id, currentItem?.notesDraft, workspaceId, user]);
+  }, [notes, currentItem, workspaceId, user]);
 
   // ─── Query Entity Contact History ──────────────────────────────────────────
 
@@ -575,7 +575,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     if (campaign?.scriptSnapshot && (!currentItem || activeScriptSnapshot === '')) {
       setActiveScriptSnapshot(campaign.scriptSnapshot);
     }
-  }, [currentItem?.id, campaign?.scriptSnapshot]);
+  }, [currentItem, campaign?.scriptSnapshot, activeScriptSnapshot]);
 
   // Switching to interactive mode collapses both side panels (and the contact card is
   // hidden via render) to maximise reading room; switching back to guided restores them.
@@ -726,7 +726,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
             });
             return;
           }
-        } catch (_e) {
+        } catch {
           console.error('[WORKSPACE_CLIENT] Invalid validation regex pattern:', qc.validationPattern);
         }
       }
@@ -784,7 +784,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     setCurrentNodeId(targetNodeId);
   }, [currentItem?.entityId, contactDeals, firestore, toast, scriptGraph, triggeredNodeIds, actionStatus]);
 
-  const handleGoBack = () => {
+  const handleGoBack = React.useCallback(() => {
     if (pathHistory.length === 0) return;
     const newHistory = [...pathHistory];
     const prevNodeId = newHistory.pop();
@@ -793,7 +793,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     setValidationError(null);
     setSelectedSubObjectionIndex(null);
     setEnteredObjectionFromChoice(false);
-  };
+  }, [pathHistory]);
 
   const _handleObjectionClick = (nodeId: string) => {
     if (!currentNodeId) return;

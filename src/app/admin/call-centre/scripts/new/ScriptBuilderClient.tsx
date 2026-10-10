@@ -380,7 +380,7 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
         }
       }
     }
-  }, [_onNodesChange, nodes, edges, selectedNodeId, confirm, pushHistory, legacyText]);
+  }, [_onNodesChange, nodes, edges, selectedNodeId, confirm, pushHistory, legacyText, setEdges, setNodes]);
 
   const legacyEditorRef = React.useRef<LegacyScriptEditorHandle>(null);
   // Node dialogue body editor ref (for the visual flow node inspector)
@@ -592,7 +592,6 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
   const { data: callCampaignsData } = useCollection<{ id: string; name: string }>(callCampaignsQuery);
 
   const { data: workspaceUsersData } = useWorkspaceUsers(activeWorkspaceId);
-  const workspaceUsers = workspaceUsersData || [];
 
   // Active, not-yet-due meetings available as guest-list targets (derived client-side to
   // avoid a composite Firestore index — vercel-react: rerender-derived-state-no-effect).
@@ -611,10 +610,10 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
     meetings: MEETING_TYPES.map(t => ({ id: t.id, title: t.name })),
     activeMeetings,
     callCampaigns: callCampaignsData ?? [],
-    workspaceUsers: workspaceUsers,
+    workspaceUsers: workspaceUsersData ?? [],
     portals: portalsData ?? [],
     membershipPlans: plansData ?? [],
-  }), [tagsData, stagesData, pipelinesData, activeMeetings, callCampaignsData, workspaceUsers, portalsData, plansData]);
+  }), [tagsData, stagesData, pipelinesData, activeMeetings, callCampaignsData, workspaceUsersData, portalsData, plansData]);
 
   const wrapHref = React.useCallback((href: string) => {
     if (!activeWorkspaceId) return href;
@@ -821,7 +820,7 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
   }, [selectedNodeId]);
 
 
-  const updateSelectedNode = (dataPatch: Record<string, any>) => {
+  const updateSelectedNode = React.useCallback((dataPatch: Record<string, unknown>) => {
     if (!selectedNodeId) return;
     setNodes(nds => nds.map(node => {
       if (node.id === selectedNodeId) {
@@ -835,7 +834,7 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
       }
       return node;
     }));
-  };
+  }, [selectedNodeId, setNodes]);
 
 
   const handleAddNode = (type: string) => {
